@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher, unified_diff
+import re
 import xml.etree.ElementTree as ET
 from typing import Callable, Iterable, Mapping, Sequence
 
@@ -26,14 +27,53 @@ def canonicalise_text(payload: str) -> str:
     return "\n".join(lines)
 
 
+_XML_DECLARATION_PATTERN = re.compile(r"<\?xml[^>]*\?>", re.IGNORECASE)
+
+
 def canonicalise_xml(payload: str) -> str:
-    """Return canonical XML with insignificant whitespace stripped."""
+    """Return canonical XML with insignificant whitespace stripped.
+
+    The XML declaration and DOCTYPE strings are preserved verbatim when
+    present. They are captured before parsing so the normalised body can be
+    prefixed with the original prolog, ensuring canonical diffs retain those
+    contextual lines for reviewers.
+    """
 
     if not payload:
         return ""
+
+    xml_declaration = ""
+    doctype = ""
+    working = payload.lstrip()
+
+    declaration_match = _XML_DECLARATION_PATTERN.match(working)
+    if declaration_match:
+        xml_declaration = declaration_match.group(0)
+        working = working[declaration_match.end() :].lstrip()
+
+    if working.upper().startswith("<!DOCTYPE"):
+        end = 0
+        depth = 0
+        for index, character in enumerate(working):
+            if character == "[":
+                depth += 1
+            elif character == "]" and depth:
+                depth -= 1
+            elif character == ">" and depth == 0 and index:
+                end = index + 1
+                break
+        if end:
+            doctype = working[:end]
+            working = working[end:].lstrip()
+        else:
+            # Fall back to the original payload if the DOCTYPE appears malformed.
+            working = payload
+            xml_declaration = ""
+            doctype = ""
+
     try:
         parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-        root = ET.fromstring(payload, parser=parser)
+        root = ET.fromstring(working, parser=parser)
     except ET.ParseError:
         return canonicalise_text(payload)
 
@@ -50,7 +90,12 @@ def canonicalise_xml(payload: str) -> str:
                 child.tail = child.tail.strip()
 
     _normalise(root)
-    return ET.tostring(root, encoding="unicode")
+    serialised = ET.tostring(root, encoding="unicode")
+    prolog_parts = [part for part in (xml_declaration, doctype) if part]
+    if prolog_parts:
+        prolog = "\n".join(prolog_parts)
+        return f"{prolog}\n{serialised}"
+    return serialised
 
 
 _NORMALISERS: Mapping[str, Callable[[str], str]] = {
