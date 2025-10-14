@@ -23,11 +23,8 @@ comply with the Apache 2.0 license while protecting users from liability.
 
 ## 3. Contributor Rules
 
-1. Every contribution must include:
-   - SPDX tag: `// SPDX-License-Identifier: Apache-2.0`
-   - Copyright line: `// Copyright (c) 2025 <author>`
-2. All contributions are automatically licensed under Apache 2.0 unless a
-   separate written CLA (Contributor License Agreement) is signed.
+1. All contributions automatically fall under Apache 2.0 via the root `LICENSE`.
+2. Update `NOTICE` when third-party attribution is required.
 3. No proprietary or third-party confidential material may be submitted.
 4. Dependencies must use OSI-approved licenses compatible with Apache 2.0
    (MIT, BSD, MPL 2.0, etc.).
@@ -48,7 +45,7 @@ comply with the Apache 2.0 license while protecting users from liability.
 
 | Stage | Action |
 |-------|---------|
-| **Detection** | Automated CI runs `reuse lint` and license header checks. |
+| **Detection** | Automated CI runs security scans and build/test validation. |
 | **Violation** | Contributor notified and PR blocked until fixed. |
 | **Escalation** | Repeat violations → contributor removal per governance policy. |
 | **Third-Party Infringement** | File issue → remove artifact until cleared. |

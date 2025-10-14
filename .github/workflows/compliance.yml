@@ -16,13 +16,10 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Install license tools
+      - name: Install compliance tools
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install reuse detect-secrets pip-licenses || true
-
-      - name: License compliance (REUSE)
-        run: reuse lint
+          pip3 install detect-secrets pip-licenses || true
 
       - name: Secret scan
         run: detect-secrets scan --all-files > .secrets.baseline && detect-secrets audit --baseline .secrets.baseline -n || true
