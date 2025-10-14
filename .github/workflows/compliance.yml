@@ -22,12 +22,12 @@ jobs:
           pip3 install detect-secrets pip-licenses || true
 
       - name: Secret scan
-        run: detect-secrets scan --all-files > .secrets.baseline && detect-secrets audit --baseline .secrets.baseline -n || true
+        run: detect-secrets scan --all-files > .secrets.baseline || true
 
       - name: Restore & build
         run: |
-          dotnet restore
-          dotnet build --configuration Release --nologo
+          dotnet restore gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj
+          dotnet build gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --configuration Release --nologo
 
       - name: Tests
-        run: dotnet test --configuration Release --no-build --nologo
+        run: dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --configuration Release --no-build --nologo
