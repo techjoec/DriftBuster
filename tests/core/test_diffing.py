@@ -40,7 +40,23 @@ def test_plan_to_kwargs_reflects_plan() -> None:
     assert payload["context_lines"] == 3
 
 
-def test_execute_diff_plan_not_implemented() -> None:
-    plan = build_diff_plan("a", "b")
-    with pytest.raises(NotImplementedError):
-        execute_diff_plan(plan)
+def test_execute_diff_plan_invokes_reporting_layer() -> None:
+    plan = build_diff_plan(
+        "secret=1\n",
+        "secret=2\n",
+        from_label="old",
+        to_label="new",
+        label="config",
+        mask_tokens=("secret",),
+        placeholder="***",
+        context_lines=0,
+    )
+
+    result = execute_diff_plan(plan)
+
+    assert result.label == "config"
+    assert result.canonical_before == "secret=1\n"
+    assert result.canonical_after == "secret=2\n"
+    assert "--- old" in result.diff
+    assert "+++ new" in result.diff
+    assert "***=1" in result.diff

@@ -21,7 +21,10 @@ decoupled from reporting dependencies until the diff runner lands.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, MutableMapping, Optional, Sequence
+from typing import TYPE_CHECKING, Mapping, MutableMapping, Optional, Sequence
+
+if TYPE_CHECKING:  # pragma: no cover
+    from driftbuster.reporting.diff import DiffResult
 
 
 @dataclass(frozen=True)
@@ -92,10 +95,12 @@ def plan_to_kwargs(plan: DiffPlan) -> Mapping[str, object]:
     return payload
 
 
-def execute_diff_plan(plan: DiffPlan) -> None:
-    """Placeholder hook for the eventual diff execution pipeline."""
+def execute_diff_plan(plan: DiffPlan) -> "DiffResult":
+    """Execute ``plan`` via the reporting diff builder."""
 
-    raise NotImplementedError("Diff execution will land after HOLD lifts.")
+    from driftbuster.reporting.diff import build_unified_diff
+
+    return build_unified_diff(**plan_to_kwargs(plan))
 
 
 __all__ = [

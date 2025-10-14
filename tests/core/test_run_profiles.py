@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from driftbuster import run_profiles
 
 
@@ -19,7 +21,7 @@ def test_save_and_load_profile(tmp_path: Path) -> None:
     loaded = run_profiles.load_profile("vdi", base_dir=tmp_path)
     assert loaded.name == "vdi"
     assert loaded.sources == ("*.json",)
-    assert loaded.options["sample_size"] == 65536
+    assert loaded.options["sample_size"] == "65536"
 
 
 def test_execute_profile_collects_files(tmp_path: Path) -> None:
@@ -59,3 +61,37 @@ def test_execute_profile_respects_baseline_order(tmp_path: Path) -> None:
     result = run_profiles.execute_profile(profile, base_dir=tmp_path)
     metadata = json.loads((result.output_dir / "metadata.json").read_text(encoding="utf-8"))
     assert metadata["baseline"].endswith("b.json")
+
+
+def test_execute_profile_rejects_missing_source(tmp_path: Path) -> None:
+    profile = run_profiles.RunProfile(
+        name="missing",
+        sources=(str(tmp_path / "missing.json"),),
+    )
+
+    with pytest.raises(FileNotFoundError):
+        run_profiles.execute_profile(profile, base_dir=tmp_path)
+
+
+def test_execute_profile_rejects_missing_glob_base(tmp_path: Path) -> None:
+    profile = run_profiles.RunProfile(
+        name="globby",
+        sources=(str(tmp_path / "ghost" / "*.json"),),
+    )
+
+    with pytest.raises(FileNotFoundError, match="Glob base directory not found"):
+        run_profiles.execute_profile(profile, base_dir=tmp_path)
+
+
+def test_execute_profile_requires_baseline_in_sources(tmp_path: Path) -> None:
+    source = tmp_path / "data.json"
+    source.write_text("{}", encoding="utf-8")
+
+    profile = run_profiles.RunProfile(
+        name="baseline",
+        sources=(str(source),),
+        baseline=str(tmp_path / "other.json"),
+    )
+
+    with pytest.raises(ValueError):
+        run_profiles.execute_profile(profile, base_dir=tmp_path)

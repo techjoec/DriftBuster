@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,9 +20,12 @@ public partial class RunProfilesViewModel : ObservableObject
 {
     private readonly IDriftbusterService _service;
 
+    private static readonly char[] GlobCharacters = { '*', '?', '[' };
+
     public ObservableCollection<RunProfileDefinition> Profiles { get; } = new();
     public ObservableCollection<SourceEntry> Sources { get; } = new();
     public ObservableCollection<KeyValueEntry> Options { get; } = new();
+    public ObservableCollection<RunResultEntry> RunResults { get; } = new();
 
     [ObservableProperty]
     private string _profileName = string.Empty;
@@ -35,6 +42,9 @@ public partial class RunProfilesViewModel : ObservableObject
     [ObservableProperty]
     private RunProfileDefinition? _selectedProfile;
 
+    [ObservableProperty]
+    private string? _outputDirectory;
+
     public IAsyncRelayCommand RefreshCommand { get; }
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand RunCommand { get; }
@@ -43,6 +53,9 @@ public partial class RunProfilesViewModel : ObservableObject
     public IRelayCommand AddOptionCommand { get; }
     public IRelayCommand<KeyValueEntry> RemoveOptionCommand { get; }
     public IRelayCommand<RunProfileDefinition> LoadProfileCommand { get; }
+    public IRelayCommand OpenOutputCommand { get; }
+
+    public bool HasRunResults => RunResults.Count > 0;
 
     public RunProfilesViewModel(IDriftbusterService service)
     {
@@ -57,11 +70,16 @@ public partial class RunProfilesViewModel : ObservableObject
         AddOptionCommand = new RelayCommand(AddOption);
         RemoveOptionCommand = new RelayCommand<KeyValueEntry>(RemoveOption, option => option is not null);
         LoadProfileCommand = new RelayCommand<RunProfileDefinition>(LoadProfile, profile => profile is not null);
+        OpenOutputCommand = new RelayCommand(OpenOutput, () => !string.IsNullOrWhiteSpace(OutputDirectory) && Directory.Exists(OutputDirectory));
+
+        RunResults.CollectionChanged += OnRunResultsChanged;
 
         if (Sources.Count == 0)
         {
             AddSourceEntry(string.Empty, isBaseline: true);
         }
+
+        ValidateSources();
     }
 
     partial void OnProfileNameChanged(string value)
@@ -70,11 +88,16 @@ public partial class RunProfilesViewModel : ObservableObject
         RunCommand.NotifyCanExecuteChanged();
     }
 
+    partial void OnOutputDirectoryChanged(string? value)
+    {
+        OpenOutputCommand.NotifyCanExecuteChanged();
+    }
+
     private void AddSource()
     {
         AddSourceEntry(string.Empty, Sources.All(entry => !entry.IsBaseline));
         RemoveSourceCommand.NotifyCanExecuteChanged();
-        NotifyCommands();
+        ValidateSources();
     }
 
     private void RemoveSource(SourceEntry? entry)
@@ -95,7 +118,7 @@ public partial class RunProfilesViewModel : ObservableObject
         }
 
         RemoveSourceCommand.NotifyCanExecuteChanged();
-        NotifyCommands();
+        ValidateSources();
     }
 
     private void AddOption()
@@ -148,7 +171,43 @@ public partial class RunProfilesViewModel : ObservableObject
 
     private bool CanSave()
     {
-        return !string.IsNullOrWhiteSpace(ProfileName) && Sources.Any(source => !string.IsNullOrWhiteSpace(source.Path));
+        if (string.IsNullOrWhiteSpace(ProfileName))
+        {
+            return false;
+        }
+
+        if (Sources.Count == 0)
+        {
+            return false;
+        }
+
+        var baseline = Sources.FirstOrDefault(source => source.IsBaseline);
+        if (baseline is null || !string.IsNullOrWhiteSpace(baseline.Error))
+        {
+            return false;
+        }
+
+        var hasValid = false;
+
+        foreach (var source in Sources)
+        {
+            if (!string.IsNullOrWhiteSpace(source.Error))
+            {
+                if (!string.IsNullOrWhiteSpace(source.Path))
+                {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(source.Path))
+            {
+                hasValid = true;
+            }
+        }
+
+        return hasValid;
     }
 
     private async Task SaveAsync()
@@ -178,16 +237,22 @@ public partial class RunProfilesViewModel : ObservableObject
 
     private async Task RunAsync()
     {
+        ClearRunResults();
+
         try
         {
             IsBusy = true;
             var profile = BuildCurrentProfile();
             var result = await _service.RunProfileAsync(profile, saveProfile: true).ConfigureAwait(false);
-            StatusMessage = $"Run complete. Files copied: {result.Files.Length}. Output: {result.OutputDir}";
+            PopulateRunResults(result);
+            StatusMessage = result.Files.Length == 0
+                ? "Run complete. No files were copied."
+                : $"Run complete. Files copied: {result.Files.Length}.";
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
+            ClearRunResults();
         }
         finally
         {
@@ -229,6 +294,8 @@ public partial class RunProfilesViewModel : ObservableObject
             return;
         }
 
+        ClearRunResults();
+
         ProfileName = profile.Name;
         ProfileDescription = profile.Description;
 
@@ -263,13 +330,20 @@ public partial class RunProfilesViewModel : ObservableObject
         {
             Path = path,
             Parent = this,
-            Error = string.Empty,
+            Error = null,
         };
         Sources.Add(entry);
         entry.IsBaseline = false;
+        var becameBaseline = false;
         if (isBaseline || Sources.All(source => !source.IsBaseline))
         {
             entry.IsBaseline = true;
+            becameBaseline = true;
+        }
+
+        if (!becameBaseline)
+        {
+            ValidateSources();
         }
         return entry;
     }
@@ -278,6 +352,163 @@ public partial class RunProfilesViewModel : ObservableObject
     {
         SaveCommand.NotifyCanExecuteChanged();
         RunCommand.NotifyCanExecuteChanged();
+    }
+
+    private void PopulateRunResults(RunProfileRunResult result)
+    {
+        RunResults.Clear();
+        foreach (var file in result.Files.OrderBy(file => file.Source, StringComparer.OrdinalIgnoreCase))
+        {
+            RunResults.Add(new RunResultEntry(file.Source, file.Destination, file.Size, file.Sha256));
+        }
+
+        OutputDirectory = string.IsNullOrWhiteSpace(result.OutputDir) ? null : result.OutputDir;
+    }
+
+    private void ClearRunResults()
+    {
+        RunResults.Clear();
+        OutputDirectory = null;
+    }
+
+    private void OpenOutput()
+    {
+        if (string.IsNullOrWhiteSpace(OutputDirectory) || !Directory.Exists(OutputDirectory))
+        {
+            return;
+        }
+
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"\"{OutputDirectory}\"",
+                    UseShellExecute = true,
+                });
+                return;
+            }
+
+            if (OperatingSystem.IsMacOS())
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "open",
+                    Arguments = $"\"{OutputDirectory}\"",
+                    UseShellExecute = false,
+                });
+                return;
+            }
+
+            if (OperatingSystem.IsLinux())
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "xdg-open",
+                    Arguments = OutputDirectory,
+                    UseShellExecute = false,
+                });
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = OutputDirectory,
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
+    }
+
+    private void ValidateSources()
+    {
+        foreach (var source in Sources)
+        {
+            source.Error = ValidateSourceEntry(source);
+        }
+
+        NotifyCommands();
+    }
+
+    private static string? ValidateSourceEntry(SourceEntry entry)
+    {
+        var path = entry.Path?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return entry.IsBaseline ? "Select a baseline path." : "Select a source path.";
+        }
+
+        if (ContainsGlob(path))
+        {
+            var baseDirectory = TryGetGlobBaseDirectory(path);
+            if (string.IsNullOrWhiteSpace(baseDirectory) || !Directory.Exists(baseDirectory))
+            {
+                return "Glob base directory not found.";
+            }
+
+            return null;
+        }
+
+        try
+        {
+            path = Path.GetFullPath(path);
+        }
+        catch (Exception)
+        {
+            return "Path is invalid.";
+        }
+
+        if (!File.Exists(path) && !Directory.Exists(path))
+        {
+            return "Path does not exist.";
+        }
+
+        return null;
+    }
+
+    private static bool ContainsGlob(string value) => value.IndexOfAny(GlobCharacters) >= 0;
+
+    private static string? TryGetGlobBaseDirectory(string value)
+    {
+        try
+        {
+            var normalized = value.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            var root = Path.GetPathRoot(normalized) ?? string.Empty;
+            var remainder = normalized[root.Length..];
+
+            var segments = remainder.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+            var baseSegments = new List<string>();
+
+            foreach (var segment in segments)
+            {
+                if (segment.IndexOfAny(GlobCharacters) >= 0)
+                {
+                    break;
+                }
+
+                baseSegments.Add(segment);
+            }
+
+            var baseDirectory = baseSegments.Count > 0
+                ? Path.Combine(root, Path.Combine(baseSegments.ToArray()))
+                : (string.IsNullOrEmpty(root) ? Environment.CurrentDirectory : root);
+
+            return Path.GetFullPath(baseDirectory);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private void OnRunResultsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HasRunResults));
     }
 
     public sealed partial class SourceEntry : ObservableObject
@@ -298,7 +529,7 @@ public partial class RunProfilesViewModel : ObservableObject
 
         partial void OnPathChanged(string value)
         {
-            Parent?.NotifyCommands();
+            Parent?.ValidateSources();
         }
 
         public RunProfilesViewModel? Parent { get; set; }
@@ -338,6 +569,36 @@ public partial class RunProfilesViewModel : ObservableObject
             _updatingBaseline = false;
         }
 
-        NotifyCommands();
+        ValidateSources();
+    }
+
+    public sealed class RunResultEntry
+    {
+        public RunResultEntry(string source, string destination, long size, string sha256)
+        {
+            Source = source;
+            Destination = destination;
+            Size = FormatSize(size);
+            Hash = sha256;
+        }
+
+        public string Source { get; }
+
+        public string Destination { get; }
+
+        public string Size { get; }
+
+        public string Hash { get; }
+
+        private static string FormatSize(long size)
+        {
+            if (size == 1)
+            {
+                return "1 byte";
+            }
+
+            var formatted = size.ToString("N0", CultureInfo.InvariantCulture);
+            return $"{formatted} bytes";
+        }
     }
 }

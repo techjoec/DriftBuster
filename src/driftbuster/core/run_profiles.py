@@ -16,7 +16,8 @@ def _timestamp() -> str:
 
 
 def _expand_path(text: str) -> str:
-    return os.path.expandvars(os.path.expanduser(text))
+    expanded = os.path.expandvars(os.path.expanduser(text))
+    return os.path.abspath(expanded)
 
 
 def _has_magic(pattern: str) -> bool:
@@ -31,13 +32,81 @@ def _safe_name(text: str) -> str:
     )
 
 
+def _glob_base_directory(pattern: str) -> Path:
+    expanded = Path(pattern)
+    parts = expanded.parts
+    base_parts: List[str] = []
+
+    for part in parts:
+        if _has_magic(part):
+            break
+        base_parts.append(part)
+
+    if not base_parts:
+        return Path.cwd()
+
+    base = Path(*base_parts)
+    if not base.is_absolute():
+        base = Path.cwd() / base
+    return base
+
+
+def _normalise_options(options: Mapping[str, Any] | None) -> Mapping[str, str]:
+    if not options:
+        return {}
+    return {str(key): "" if value is None else str(value) for key, value in options.items()}
+
+
+def _validate_profile(profile: "RunProfile") -> None:
+    if not profile.sources:
+        raise ValueError("At least one source must be provided.")
+
+    for source in profile.sources:
+        if not source or not str(source).strip():
+            raise ValueError("Source paths must not be empty.")
+
+        expanded = _expand_path(source)
+        candidate = Path(expanded)
+
+        if _has_magic(expanded):
+            base_dir = _glob_base_directory(expanded)
+            if not base_dir.exists():
+                raise FileNotFoundError(f"Glob base directory not found: {base_dir}")
+        else:
+            if not candidate.exists():
+                raise FileNotFoundError(f"Path does not exist: {expanded}")
+
+    if profile.baseline:
+        if profile.baseline not in profile.sources:
+            raise ValueError("Baseline must be one of the sources.")
+
+        expanded_baseline = _expand_path(profile.baseline)
+        baseline_path = Path(expanded_baseline)
+        if _has_magic(expanded_baseline):
+            base_dir = _glob_base_directory(expanded_baseline)
+            if not base_dir.exists():
+                raise FileNotFoundError(f"Glob base directory not found: {base_dir}")
+        elif not baseline_path.exists():
+            raise FileNotFoundError(f"Baseline path does not exist: {expanded_baseline}")
+
+
 @dataclass
 class RunProfile:
     name: str
     description: str | None = None
     sources: Sequence[str] = field(default_factory=tuple)
     baseline: str | None = None
-    options: Mapping[str, Any] = field(default_factory=dict)
+    options: Mapping[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "name", str(self.name))
+        if self.description is not None:
+            object.__setattr__(self, "description", str(self.description))
+        if self.baseline is not None:
+            object.__setattr__(self, "baseline", str(self.baseline))
+
+        object.__setattr__(self, "sources", tuple(str(entry) for entry in self.sources))
+        object.__setattr__(self, "options", dict(_normalise_options(self.options)))
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "RunProfile":
@@ -46,7 +115,7 @@ class RunProfile:
             description=payload.get("description"),
             sources=tuple(payload.get("sources", ())),
             baseline=payload.get("baseline"),
-            options=payload.get("options", {}),
+            options=_normalise_options(payload.get("options", {})),
         )
 
     def to_dict(self) -> Mapping[str, Any]:
@@ -115,6 +184,8 @@ def load_profile(
 
 
 def save_profile(profile: RunProfile, *, base_dir: Path | None = None) -> Path:
+    _validate_profile(profile)
+
     profile_dir = profile_directory(profile.name, base_dir=base_dir)
     profile_dir.mkdir(parents=True, exist_ok=True)
     config_path = profile_dir / "profile.json"

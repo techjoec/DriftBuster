@@ -114,6 +114,36 @@
           </StackPanel>
 
           <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" />
+
+          <StackPanel Spacing="10" IsVisible="{Binding HasRunResults}">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+              <TextBlock Text="Run outputs" FontWeight="SemiBold" />
+              <Button Content="Open output folder"
+                      Command="{Binding OpenOutputCommand}" />
+            </StackPanel>
+            <Border Classes="surface" Padding="12" CornerRadius="{DynamicResource Radius.Small}">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,*,120,220" Margin="0,0,0,4">
+                  <TextBlock Text="Source" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="1" Text="Destination" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="2" Text="Size" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="3" Text="SHA-256" FontWeight="SemiBold" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding RunResults}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="*,*,120,220" Margin="0,0,0,4">
+                        <TextBlock Text="{Binding Source}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Column="1" Text="{Binding Destination}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Column="2" Text="{Binding Size}" />
+                        <TextBlock Grid.Column="3" Text="{Binding Hash}" FontFamily="Consolas" FontSize="12" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </StackPanel>
         </StackPanel>
       </ScrollViewer>
     </Border>

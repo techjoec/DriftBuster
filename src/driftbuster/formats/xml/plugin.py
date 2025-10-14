@@ -295,7 +295,7 @@ class XmlPlugin:
         if path is not None:
             metadata.setdefault("config_original_filename", path.name)
 
-        role, confidence, inferred_transform, transform_scope = self._detect_config_role(
+        role, confidence, inferred_transform, transform_scope, transform_stages = self._detect_config_role(
             path,
             text,
             reasons,
@@ -320,6 +320,23 @@ class XmlPlugin:
             scope = transform_scope or (role if role != "generic" else None)
             if scope:
                 metadata["config_transform_scope"] = scope
+            if transform_stages:
+                cleaned_stages = [stage.strip() for stage in transform_stages if stage.strip()]
+                if cleaned_stages:
+                    metadata["config_transform_stages"] = cleaned_stages
+                    metadata["config_transform_primary_stage"] = cleaned_stages[-1]
+                    metadata["config_transform_stage_count"] = len(cleaned_stages)
+                    if len(cleaned_stages) == 1:
+                        self._add_reason(
+                            reasons,
+                            f"Filename stage '{cleaned_stages[0]}' indicates transform precedence",
+                        )
+                    elif len(cleaned_stages) > 1:
+                        chain = " -> ".join(cleaned_stages)
+                        self._add_reason(
+                            reasons,
+                            f"Transform stages applied in order: {chain}",
+                        )
             confidence = max(confidence, 0.9)
 
         metadata.setdefault("config_role", role)
@@ -346,11 +363,11 @@ class XmlPlugin:
         path: Optional[Path],
         text: str,
         reasons: List[str],
-    ) -> Tuple[str, float, bool, Optional[str]]:
+    ) -> Tuple[str, float, bool, Optional[str], List[str]]:
         """Combine filename and section hints to classify `.config` roles.
 
         The helper returns a tuple ``(role, confidence, inferred_transform,
-        transform_scope)``.  Filename patterns such as ``web.config`` or
+        transform_scope, transform_stages)``.  Filename patterns such as ``web.config`` or
         ``app.Release.config`` set the baseline role before content-based hints
         (``<system.web>`` vs ``<startup>``) adjust the classification.  This
         ordering ensures transforms inherit the correct scope while generic
@@ -362,6 +379,7 @@ class XmlPlugin:
         confidence = 0.85
         inferred_transform = False
         transform_scope: Optional[str] = None
+        transform_stages: List[str] = []
 
         filename = path.name if path is not None else ""
         lowered = filename.lower()
@@ -392,6 +410,10 @@ class XmlPlugin:
                 scope = transform_match.group("scope").lower()
                 inferred_transform = True
                 transform_scope = scope
+                base_name = filename[:-7] if filename.lower().endswith(".config") else filename
+                parts = [segment for segment in base_name.split(".") if segment]
+                if len(parts) > 1:
+                    transform_stages = parts[1:]
                 if scope == "web":
                     role = "web"
                 elif scope == "app":
@@ -428,7 +450,7 @@ class XmlPlugin:
         if role is None:
             role = "generic"
 
-        return role, confidence, inferred_transform, transform_scope
+        return role, confidence, inferred_transform, transform_scope, transform_stages
 
     def _append_declaration_reasons(self, metadata: Dict[str, object], reasons: List[str]) -> None:
         if "xml_declaration" not in metadata:
@@ -514,10 +536,14 @@ class XmlPlugin:
                 metadata.setdefault("root_attributes", attributes)
             break
 
-        namespace_matches = {
-            (m.group("prefix") or "default"): m.group("uri") for m in _XMLNS_ATTRIBUTE.finditer(snippet)
-        }
-        if namespace_matches:
+        namespace_pairs = []
+        for m in _XMLNS_ATTRIBUTE.finditer(snippet):
+            prefix = m.group("prefix") or "default"
+            uri = (m.group("uri") or "").strip()
+            namespace_pairs.append((prefix, uri))
+        if namespace_pairs:
+            namespace_pairs.sort(key=lambda item: (item[0].lower(), item[0]))
+            namespace_matches = {prefix: uri for prefix, uri in namespace_pairs}
             metadata["namespaces"] = namespace_matches
             root_prefix = metadata.get("root_prefix")
             if isinstance(root_prefix, str):
@@ -530,9 +556,9 @@ class XmlPlugin:
         return metadata
 
     def _extract_root_attributes(self, snippet: str, start_index: int) -> Dict[str, str]:
-        attributes: Dict[str, str] = {}
+        items: List[Tuple[str, str]] = []
         if ">" not in snippet[start_index:]:
-            return attributes
+            return {}
         segment = []
         in_quote: Optional[str] = None
         for char in snippet[start_index:]:
@@ -550,14 +576,17 @@ class XmlPlugin:
             segment.append(char)
         raw_segment = "".join(segment).strip()
         if not raw_segment:
-            return attributes
+            return {}
         if raw_segment.endswith("/"):
             raw_segment = raw_segment[:-1].rstrip()
         for attr in _XML_DECLARATION_ATTR.finditer(raw_segment):
             name = attr.group("name")
-            value = attr.group("value")
-            attributes[name] = value
-        return attributes
+            value = attr.group("value").strip()
+            items.append((name, value))
+        if not items:
+            return {}
+        items.sort(key=lambda entry: (entry[0].lower(), entry[0]))
+        return {name: value for name, value in items}
 
 
 register(XmlPlugin())

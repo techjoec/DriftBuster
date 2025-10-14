@@ -19,7 +19,13 @@ Record the metadata emitted for each sample, focusing on sampling behaviour.
 |-------------|---------------|----------|------------------|---------------------|
 | Text/XML | 203-246 | utf-8 | false | Variants `web-config`, `app-config`, `machine-config`, `web-config-transform`; metadata timestamps logged in `notes/snippets/xml-config-diffs.md`. |
 | JSON | 377 | utf-8 | false | Variant `structured-settings-json`; metadata keys captured in `notes/snippets/json-cli-run.md`. |
+| Large text/XML | 65536+ | utf-8 | true | Confirm truncation banner emitted and `DetectionMatch.reasons` remain trimmed/deduplicated; capture run in `notes/snippets/xml-truncation-check.md`. |
 | Binary | | | | |
+
+### Reason normalisation audit
+
+- [ ] Scrub collected `DetectionMatch.reasons` for duplicate, padded, or multi-line entries after each smoke run.
+- [ ] Record any anomalies alongside the fixture path and attach sanitized output snippets.
 
 ## Profile scan smoke
 
