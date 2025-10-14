@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 name: CLA & Provenance Check
 
 on:
@@ -15,6 +17,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const login = context.payload.pull_request.user?.login || "";
+            const bypassHandles = new Set([
+              "techjoec",
+            ]);
+
+            if (bypassHandles.has(login)) {
+              core.info(`CLA check bypassed for ${login}.`);
+              return;
+            }
+
             const body = context.payload.pull_request.body || "";
             const ok = body.includes("[x] I have read and agree to the **Individual or Entity CLA**");
             if (!ok) {

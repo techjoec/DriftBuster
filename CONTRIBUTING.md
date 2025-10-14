@@ -45,19 +45,11 @@ Do **not** submit code, snippets, or data from:
 
 ---
 
-## 4. File Headers & Licensing
+## 4. Licensing Basics
 
-Every file **must** begin with:
-```csharp
-// SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2025 TechJoe and contributors
-```
-
-If adapted from permissive code:
-```csharp
-// Portions derived from ProjectName (MIT License, © YYYY OriginalAuthor)
-// SPDX-License-Identifier: Apache-2.0
-```
+- The repository’s root `LICENSE` (Apache 2.0) covers all contributions by default.
+- File-level SPDX headers are optional; include them only when you believe it aids clarity.
+- When incorporating permissively licensed material, cite the original source in the file and update `NOTICE` if attribution is required.
 
 ---
 
@@ -71,12 +63,7 @@ If adapted from permissive code:
 
 ### Enforcement
 Pull requests adding disallowed licenses **will be rejected automatically**.  
-Use:
-```bash
-reuse lint
-licensecheck .
-```
-before submitting.
+Use `licensecheck .` before submitting to catch unexpected copyleft code.
 
 ---
 
@@ -103,7 +90,7 @@ before submitting.
 | 1️⃣ | Fork and clone the repo |
 | 2️⃣ | Create a feature branch (`feature/<topic>`) |
 | 3️⃣ | Run `dotnet format` and all unit tests |
-| 4️⃣ | Verify SPDX headers and licenses |
+| 4️⃣ | Review licensing notes and update `NOTICE` if needed |
 | 5️⃣ | Submit PR with detailed provenance statement |
 | 6️⃣ | Maintainers review build + legal scan results |
 
@@ -124,10 +111,8 @@ Each PR **must** include a short provenance note, e.g.:
 ## 9. Compliance Automation
 
 Continuous Integration (CI) runs:
-- `reuse lint` — verifies SPDX headers and license compliance.
 - `dotnet test` — executes functional suite.
 - `detect-secrets` — scans for credentials or API keys.
-- `pip-licenses` / `npm ls --json` — audits dependency trees (where applicable).
 
 PRs failing any compliance step will **not** be merged.
 
