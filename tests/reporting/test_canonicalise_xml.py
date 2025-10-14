@@ -1,36 +1,54 @@
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
-
-from driftbuster.reporting.diff import canonicalise_xml
+from driftbuster.reporting.diff import canonicalise_text, canonicalise_xml
 
 
-def test_canonicalise_xml_preserves_significant_whitespace() -> None:
-    payload = """
-    <root attr="  padded "><child>  spaced text  </child> tail  <leaf>value</leaf></root>
-    """
+def test_canonicalise_xml_normalises_structure_and_preserves_prolog() -> None:
+    payload = (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<!DOCTYPE note [\n"
+        "<!ELEMENT note ANY>\n"
+        "]>\n"
+        "<note  b=\"2\"   a=\"1\">\n"
+        "    <child other=\"two\" attr=\" value \">  spaced text  </child>  \n\n"
+        "    <selfclosing   beta=\"b\"    alpha=\"a\"/>\n"
+        "</note>\n"
+    )
 
-    result = canonicalise_xml(payload)
-    root = ET.fromstring(result)
+    expected = (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<!DOCTYPE note [\n"
+        "<!ELEMENT note ANY>\n"
+        "]>\n"
+        "<note a=\"1\" b=\"2\"><child attr=\" value \" other=\"two\">  spaced text  </child>"
+        "<selfclosing alpha=\"a\" beta=\"b\" /></note>"
+    )
 
-    assert root.attrib["attr"] == "  padded "
-    child = root.find("child")
-    assert child is not None
-    assert child.text == "  spaced text  "
-    assert child.tail == " tail  "
+    assert canonicalise_xml(payload) == expected
 
 
-def test_canonicalise_xml_discards_whitespace_only_nodes() -> None:
-    payload = """
-    <root>\n      <child>   </child>   \n      <leaf />\n    </root>
-    """
 
-    result = canonicalise_xml(payload)
-    root = ET.fromstring(result)
+def test_canonicalise_xml_cleans_whitespace_only_nodes_and_sorts_attributes() -> None:
+    payload = (
+        "<root attr=' padded ' other='value'>\n"
+        "    <empty>   </empty>   \n"
+        "    <node b='2' a='1'>value</node>\n"
+        "</root>\n"
+    )
 
-    child = root.find("child")
-    assert child is not None
-    assert child.text in {"", None}
-    assert child.tail in {"", None}
+    expected = "<root attr=\" padded \" other=\"value\"><empty /><node a=\"1\" b=\"2\">value</node></root>"
 
-    assert root.text in {"", None}
+    assert canonicalise_xml(payload) == expected
+
+
+
+def test_canonicalise_xml_falls_back_to_text_on_parse_error() -> None:
+    payload = (
+        "<root>   \r\n"
+        "  <child>value</child>   \r\n"
+        "</root"
+    )
+
+    expected = canonicalise_text(payload)
+
+    assert canonicalise_xml(payload) == expected
