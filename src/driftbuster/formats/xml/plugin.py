@@ -29,6 +29,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Dict, List, Optional, Set, Tuple
 
+try:  # pragma: no cover - optional hardened parser
+    from defusedxml import ElementTree as DEFUSED_ET  # type: ignore
+    from defusedxml.common import DefusedXmlException  # type: ignore
+except ImportError:  # pragma: no cover - optional hardened parser
+    DEFUSED_ET = None  # type: ignore[assignment]
+
+    class DefusedXmlException(Exception):
+        """Fallback exception type when defusedxml is unavailable."""
+
 from ..registry import register
 from ...core.types import DetectionMatch
 
@@ -651,14 +660,21 @@ class XmlPlugin:
 
         root_element: Optional[ET.Element] = None
         stripped = text.lstrip()
-        allow_parse = bool(stripped) and len(stripped) <= self._MAX_SAFE_PARSE_BYTES
-        if allow_parse and (_DOCTYPE_DECL.search(snippet) or _ENTITY_DECL.search(snippet)):
+        allow_parse = bool(stripped)
+        if allow_parse and len(stripped) > self._MAX_SAFE_PARSE_BYTES:
             allow_parse = False
         if allow_parse:
+            scan_segment = stripped[: self._MAX_SAFE_PARSE_BYTES]
+            if _DOCTYPE_DECL.search(scan_segment) or _ENTITY_DECL.search(scan_segment):
+                allow_parse = False
+        if allow_parse:
             try:
-                parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-                root_element = ET.fromstring(stripped, parser=parser)
-            except ET.ParseError:
+                if DEFUSED_ET is not None:
+                    root_element = DEFUSED_ET.fromstring(stripped)
+                else:
+                    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+                    root_element = ET.fromstring(stripped, parser=parser)
+            except (ET.ParseError, DefusedXmlException):
                 root_element = None
 
         declaration_match = _XML_DECLARATION.search(snippet)
