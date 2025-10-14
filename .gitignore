@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+.venv/
+bin/
+obj/
+artifacts/
+Releases/

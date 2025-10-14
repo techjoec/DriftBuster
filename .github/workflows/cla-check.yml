@@ -1,0 +1,22 @@
+name: CLA & Provenance Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  verify-cla:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
+    steps:
+      - name: Check PR body for CLA agreement
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || "";
+            const ok = body.includes("[x] I have read and agree to the **Individual or Entity CLA**");
+            if (!ok) {
+              core.setFailed("CLA checkbox not ticked in PR body. Edit the PR description and tick the first checkbox.");
+            }

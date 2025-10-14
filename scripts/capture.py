@@ -1,0 +1,462 @@
+#!/usr/bin/env python3
+"""Manual capture helper coordinating detection, profiles, and hunt scans.
+
+This script is intentionally lightweight so auditors can snapshot driftbuster
+runs without wiring a full CLI yet. It writes a detailed snapshot describing the
+scan plus a compact manifest with the key metrics for logging purposes.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import socket
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable, Mapping, MutableMapping, Sequence
+
+from driftbuster.core import Detector, ProfileStore, ProfiledDetection
+from driftbuster.core.profiles import AppliedProfileConfig, diff_summary_snapshots
+from driftbuster.core.types import DetectionMatch, summarise_metadata
+from driftbuster.hunt import HuntHit, default_rules, hunt_path
+from driftbuster.profile_cli import _load_json as load_json_payload, _store_from_payload
+from driftbuster.reporting.redaction import redact_data, resolve_redactor
+
+
+def _ensure_mapping(data: Mapping[str, Any] | None) -> MutableMapping[str, Any]:
+    return dict(data or {})
+
+
+def _serialise_profile_config(binding: AppliedProfileConfig) -> Mapping[str, Any]:
+    config = binding.config
+    profile = binding.profile
+    return {
+        "profile": {
+            "name": profile.name,
+            "description": profile.description,
+            "tags": sorted(profile.tags),
+            "metadata": _ensure_mapping(profile.metadata),
+        },
+        "config": {
+            "id": config.identifier,
+            "path": config.path,
+            "path_glob": config.path_glob,
+            "application": config.application,
+            "version": config.version,
+            "branch": config.branch,
+            "tags": sorted(config.tags),
+            "expected_format": config.expected_format,
+            "expected_variant": config.expected_variant,
+            "metadata": _ensure_mapping(config.metadata),
+        },
+    }
+
+
+def _relative_path(path: Path, root: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.name
+
+
+def _serialise_detection(entry: ProfiledDetection, root: Path) -> Mapping[str, Any]:
+    detection = entry.detection
+    if detection is None:
+        raise ValueError("Cannot serialise detection for paths without a match.")
+    payload = dict(summarise_metadata(detection))
+    payload.update(
+        {
+            "path": str(entry.path),
+            "relative_path": _relative_path(entry.path, root),
+            "profiles": tuple(_serialise_profile_config(binding) for binding in entry.profiles),
+        }
+    )
+    return payload
+
+
+def _serialise_plain_detection(path: Path, match: DetectionMatch, root: Path) -> Mapping[str, Any]:
+    payload = dict(summarise_metadata(match))
+    payload.update({
+        "path": str(path),
+        "relative_path": _relative_path(path, root),
+        "profiles": tuple(),
+    })
+    return payload
+
+
+def _serialise_hunt_hit(hit: HuntHit, root: Path) -> Mapping[str, Any]:
+    rule = hit.rule
+    return {
+        "rule": {
+            "name": rule.name,
+            "description": rule.description,
+            "token_name": rule.token_name,
+            "keywords": rule.keywords,
+            "patterns": tuple(getattr(pattern, "pattern", pattern) for pattern in rule.patterns),
+        },
+        "path": str(hit.path),
+        "relative_path": _relative_path(hit.path, root),
+        "line_number": hit.line_number,
+        "excerpt": hit.excerpt,
+    }
+
+
+def _normalise_summary(summary: Mapping[str, Any]) -> Mapping[str, Any]:
+    def _normalise(value: Any) -> Any:
+        if isinstance(value, Mapping):
+            return {str(key): _normalise(val) for key, val in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [_normalise(item) for item in value]
+        return value
+
+    return _normalise(dict(summary))
+
+
+def _load_profile_store(path: Path) -> ProfileStore:
+    payload = load_json_payload(path)
+    return _store_from_payload(payload)
+
+
+def _prepare_output_paths(directory: Path, capture_id: str) -> tuple[Path, Path]:
+    directory.mkdir(parents=True, exist_ok=True)
+    snapshot_path = directory / f"{capture_id}-snapshot.json"
+    manifest_path = directory / f"{capture_id}-manifest.json"
+    return snapshot_path, manifest_path
+
+
+def _build_detector(args: argparse.Namespace) -> Detector:
+    return Detector(sample_size=args.sample_size)
+
+
+def run_capture(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    if not root.exists():
+        sys.stderr.write(f"error: capture root does not exist: {root}\n")
+        return 1
+
+    if not args.mask_tokens and not args.allow_unmasked:
+        sys.stderr.write(
+            "error: provide at least one --mask-token or explicitly opt-in with --allow-unmasked\n"
+        )
+        return 1
+
+    profile_store: ProfileStore | None = None
+    profile_summary: Mapping[str, Any] | None = None
+    if args.profiles:
+        try:
+            profile_store = _load_profile_store(Path(args.profiles))
+            profile_summary = _normalise_summary(profile_store.summary())
+        except Exception as exc:  # pragma: no cover - manual script
+            sys.stderr.write(f"error: failed to load profiles: {exc}\n")
+            return 1
+
+    detector = _build_detector(args)
+
+    capture_id = args.capture_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    snapshot_path, manifest_path = _prepare_output_paths(Path(args.output_dir), capture_id)
+
+    start_time = time.monotonic()
+    detection_start = time.monotonic()
+
+    if profile_store is not None:
+        profiled_results = detector.scan_with_profiles(
+            root,
+            profile_store=profile_store,
+            tags=args.profile_tags,
+            glob=args.glob,
+        )
+        detections = [
+            _serialise_detection(entry, root)
+            for entry in profiled_results
+            if entry.detection is not None
+        ]
+    else:
+        raw_results = detector.scan_path(root, glob=args.glob)
+        detections = [
+            _serialise_plain_detection(path, match, root)
+            for path, match in raw_results
+            if match is not None
+        ]
+
+    detection_duration = time.monotonic() - detection_start
+
+    hunt_hits: Sequence[Mapping[str, Any]] = []
+    hunt_duration = 0.0
+    if not args.skip_hunt:
+        hunt_start = time.monotonic()
+        hits = hunt_path(
+            root,
+            rules=default_rules(),
+            glob=args.hunt_glob,
+            sample_size=args.sample_size,
+            exclude_patterns=args.hunt_exclude,
+        )
+        hunt_duration = time.monotonic() - hunt_start
+        hunt_hits = [_serialise_hunt_hit(hit, root) for hit in hits]
+
+    total_duration = time.monotonic() - start_time
+
+    redactor = resolve_redactor(mask_tokens=args.mask_tokens, placeholder=args.placeholder)
+
+    snapshot_payload: dict[str, Any] = {
+        "capture": {
+            "id": capture_id,
+            "root": str(root),
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "operator": args.operator or os.getenv("USER"),
+            "environment": args.environment,
+            "host": socket.gethostname(),
+            "reason": args.reason,
+            "placeholder": args.placeholder,
+            "mask_token_count": len(args.mask_tokens or ()),
+        },
+        "detections": detections,
+        "profile_summary": profile_summary,
+        "hunt_hits": hunt_hits,
+    }
+
+    redacted_snapshot = redact_data(snapshot_payload, redactor) if redactor else snapshot_payload
+
+    snapshot_path.write_text(json.dumps(redacted_snapshot, indent=2, sort_keys=True))
+
+    detection_count = len(detections)
+    profile_match_count = sum(len(entry.get("profiles", ())) for entry in detections)
+    hunt_count = len(hunt_hits)
+
+    total_redactions = 0
+    if redactor:
+        total_redactions = sum(redactor.stats().values())
+
+    manifest_payload = {
+        "capture": {
+            "id": capture_id,
+            "snapshot_path": snapshot_path.name,
+            "manifest_path": manifest_path.name,
+            "captured_at": snapshot_payload["capture"]["captured_at"],
+            "root": str(root),
+            "operator": snapshot_payload["capture"]["operator"],
+            "environment": args.environment,
+            "host": snapshot_payload["capture"]["host"],
+            "reason": args.reason,
+        },
+        "durations": {
+            "detection_seconds": round(detection_duration, 3),
+            "hunt_seconds": round(hunt_duration, 3),
+            "total_seconds": round(total_duration, 3),
+        },
+        "counts": {
+            "detections": detection_count,
+            "profile_matches": profile_match_count,
+            "hunt_hits": hunt_count,
+        },
+        "profile_summary": {
+            "total_profiles": profile_summary.get("total_profiles") if profile_summary else 0,
+            "total_configs": profile_summary.get("total_configs") if profile_summary else 0,
+        },
+        "redaction": {
+            "placeholder": args.placeholder,
+            "mask_token_count": len(args.mask_tokens or ()),
+            "total_redactions": total_redactions,
+        },
+    }
+
+    manifest_path.write_text(json.dumps(manifest_payload, indent=2, sort_keys=True))
+
+    sys.stdout.write(
+        f"Snapshot written to {snapshot_path}\nManifest written to {manifest_path}\n"
+    )
+
+    if redactor and total_redactions == 0:
+        sys.stderr.write("warning: redaction filter configured but no tokens were replaced\n")
+
+    return 0
+
+
+def _load_snapshot(path: Path) -> Mapping[str, Any]:
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        raise
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Failed to parse snapshot {path}: {exc}") from exc
+
+
+def _detection_key(entry: Mapping[str, Any]) -> tuple[str, str | None, str | None]:
+    detection = entry.get("detection", {})
+    return (
+        entry.get("relative_path") or entry.get("path"),
+        detection.get("format"),
+        detection.get("variant"),
+    )
+
+
+def _detection_signature(entry: Mapping[str, Any]) -> str:
+    detection = entry.get("detection", {})
+    return json.dumps(detection, sort_keys=True)
+
+
+def _hunt_token_summary(hits: Iterable[Mapping[str, Any]]) -> tuple[dict[str, int], int]:
+    expected: dict[str, int] = {}
+    unexpected = 0
+    for hit in hits:
+        rule = hit.get("rule", {})
+        token = rule.get("token_name")
+        if token:
+            expected[token] = expected.get(token, 0) + 1
+        else:
+            unexpected += 1
+    return expected, unexpected
+
+
+def compare_snapshots(args: argparse.Namespace) -> int:
+    baseline_path = Path(args.baseline)
+    current_path = Path(args.current)
+
+    if not current_path.exists():
+        sys.stderr.write(f"error: current snapshot not found: {current_path}\n")
+        return 1
+
+    if not baseline_path.exists():
+        sys.stdout.write(
+            "No baseline snapshot found; record this run as the first capture.\n"
+        )
+        return 0
+
+    try:
+        baseline = _load_snapshot(baseline_path)
+        current = _load_snapshot(current_path)
+    except Exception as exc:  # pragma: no cover - manual script
+        sys.stderr.write(f"error: {exc}\n")
+        return 1
+
+    baseline_detections = baseline.get("detections", [])
+    current_detections = current.get("detections", [])
+
+    baseline_map = { _detection_key(entry): entry for entry in baseline_detections }
+    current_map = { _detection_key(entry): entry for entry in current_detections }
+
+    added_keys = sorted(set(current_map) - set(baseline_map))
+    removed_keys = sorted(set(baseline_map) - set(current_map))
+
+    changed_keys = []
+    for key in set(baseline_map) & set(current_map):
+        if _detection_signature(baseline_map[key]) != _detection_signature(current_map[key]):
+            changed_keys.append(key)
+    changed_keys.sort()
+
+    baseline_summary = baseline.get("profile_summary") or {}
+    current_summary = current.get("profile_summary") or {}
+
+    profile_diff = {}
+    if baseline_summary and current_summary:
+        profile_diff = dict(
+            diff_summary_snapshots(baseline_summary, current_summary)  # type: ignore[arg-type]
+        )
+
+    baseline_expected, baseline_unexpected = _hunt_token_summary(baseline.get("hunt_hits", []))
+    current_expected, current_unexpected = _hunt_token_summary(current.get("hunt_hits", []))
+
+    sys.stdout.write("Snapshot comparison summary\n")
+    sys.stdout.write("===========================\n")
+    sys.stdout.write(
+        f"Added detections: {len(added_keys)}\nRemoved detections: {len(removed_keys)}\n"
+    )
+    sys.stdout.write(f"Changed detections: {len(changed_keys)}\n")
+
+    if profile_diff:
+        added_profiles = profile_diff.get("added_profiles", [])
+        removed_profiles = profile_diff.get("removed_profiles", [])
+        changed_profiles = profile_diff.get("changed_profiles", [])
+        sys.stdout.write("\nProfile summary diff:\n")
+        sys.stdout.write(f"  Added profiles: {', '.join(added_profiles) or 'none'}\n")
+        sys.stdout.write(f"  Removed profiles: {', '.join(removed_profiles) or 'none'}\n")
+        sys.stdout.write(f"  Changed profiles: {len(changed_profiles)}\n")
+    else:
+        sys.stdout.write("\nProfile summary diff unavailable (missing summaries).\n")
+
+    sys.stdout.write("\nDynamic token overview:\n")
+    if current_expected:
+        sys.stdout.write("  Expected tokens:\n")
+        for token, count in sorted(current_expected.items()):
+            baseline_count = baseline_expected.get(token, 0)
+            delta = count - baseline_count
+            sys.stdout.write(
+                f"    {token}: {baseline_count} -> {count} (delta {delta:+d})\n"
+            )
+    else:
+        sys.stdout.write("  Expected tokens: none\n")
+
+    sys.stdout.write(
+        f"  Unexpected hits: {baseline_unexpected} -> {current_unexpected}"
+        f" (delta {current_unexpected - baseline_unexpected:+d})\n"
+    )
+
+    if added_keys:
+        sys.stdout.write("\nAdded detection keys:\n")
+        for key in added_keys:
+            sys.stdout.write(f"  {key}\n")
+    if removed_keys:
+        sys.stdout.write("\nRemoved detection keys:\n")
+        for key in removed_keys:
+            sys.stdout.write(f"  {key}\n")
+    if changed_keys:
+        sys.stdout.write("\nChanged detection keys:\n")
+        for key in changed_keys:
+            sys.stdout.write(f"  {key}\n")
+
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Manual capture helper for driftbuster runs.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    capture = subparsers.add_parser("run", help="Capture a snapshot and manifest.")
+    capture.add_argument("root", nargs="?", default=".", help="Directory to scan.")
+    capture.add_argument("--profiles", type=str, help="Path to ProfileStore JSON payload.")
+    capture.add_argument("--profile-tag", dest="profile_tags", action="append", default=[], help="Optional profile tags to activate.")
+    capture.add_argument("--glob", default="**/*", help="Glob used for scanning (defaults to **/*).")
+    capture.add_argument("--hunt-glob", default="**/*", help="Glob pattern for hunt traversal.")
+    capture.add_argument("--hunt-exclude", action="append", default=[], help="Glob patterns to skip during hunt traversal.")
+    capture.add_argument("--skip-hunt", action="store_true", help="Skip hunt scan step.")
+    capture.add_argument("--sample-size", type=int, default=128 * 1024, help="Sample size in bytes for detection and hunt scans.")
+    capture.add_argument("--output-dir", default="captures", help="Directory to store snapshot + manifest.")
+    capture.add_argument("--capture-id", help="Optional capture identifier (defaults to UTC timestamp).")
+    capture.add_argument("--operator", help="Operator name recorded in manifest.")
+    capture.add_argument("--environment", help="Environment label (prod/test/etc).")
+    capture.add_argument("--reason", help="Reason for this capture run.")
+    capture.add_argument("--mask-token", dest="mask_tokens", action="append", default=[], help="Sensitive token to redact (repeatable).")
+    capture.add_argument("--placeholder", default="[REDACTED]", help="Placeholder string used for redaction.")
+    capture.add_argument(
+        "--allow-unmasked",
+        action="store_true",
+        help="Skip the redaction guard when no mask tokens are required.",
+    )
+    capture.set_defaults(func=run_capture)
+
+    compare = subparsers.add_parser("compare", help="Compare two capture snapshots.")
+    compare.add_argument("baseline", help="Baseline snapshot JSON path.")
+    compare.add_argument("current", help="Current snapshot JSON path.")
+    compare.set_defaults(func=compare_snapshots)
+
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        handler = args.func
+    except AttributeError:
+        parser.print_help()
+        return 1
+    return handler(args)
+
+
+if __name__ == "__main__":  # pragma: no cover - manual helper
+    raise SystemExit(main())

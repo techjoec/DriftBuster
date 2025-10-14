@@ -1,0 +1,140 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <Color x:Key="Color.Accent">#FF5AC8FA</Color>
+    <Color x:Key="Color.AccentHover">#FF72D3FF</Color>
+    <Color x:Key="Color.Background">#10131B</Color>
+    <Color x:Key="Color.Surface">#171C27</Color>
+    <Color x:Key="Color.SurfaceAlt">#1F2534</Color>
+    <Color x:Key="Color.SurfaceMuted">#242C3D</Color>
+    <Color x:Key="Color.Border">#2E374A</Color>
+    <Color x:Key="Color.BorderStrong">#3B4760</Color>
+    <Color x:Key="Color.TextPrimary">#FFFFFFFF</Color>
+    <Color x:Key="Color.TextSecondary">#FFC3CAD9</Color>
+
+    <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource Color.Accent}" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="{DynamicResource Color.AccentHover}" />
+    <SolidColorBrush x:Key="Brush.WindowBackground" Color="{DynamicResource Color.Background}" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="{DynamicResource Color.Surface}" />
+    <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="{DynamicResource Color.SurfaceAlt}" />
+    <SolidColorBrush x:Key="Brush.SurfaceMuted" Color="{DynamicResource Color.SurfaceMuted}" />
+    <SolidColorBrush x:Key="Brush.Border" Color="{DynamicResource Color.Border}" />
+    <SolidColorBrush x:Key="Brush.BorderStrong" Color="{DynamicResource Color.BorderStrong}" />
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{DynamicResource Color.TextPrimary}" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="{DynamicResource Color.TextSecondary}" />
+
+    <CornerRadius x:Key="Radius.Small">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Medium">10</CornerRadius>
+    <CornerRadius x:Key="Radius.Large">16</CornerRadius>
+
+    <Thickness x:Key="Thickness.Border">1</Thickness>
+  </Styles.Resources>
+
+  <Style Selector="Window">
+    <Setter Property="FontFamily" Value="Inter" />
+    <Setter Property="Background" Value="{DynamicResource Brush.WindowBackground}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </Style>
+
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </Style>
+
+  <Style Selector="TextBlock.subtitle">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="FontSize" Value="14" />
+  </Style>
+
+  <Style Selector="TextBlock.heading">
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Border}" />
+    <Setter Property="Padding" Value="16,9" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Medium}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+  </Style>
+
+  <Style Selector="Button:pressed">
+    <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+  </Style>
+
+  <Style Selector="ToggleButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Border}" />
+    <Setter Property="Padding" Value="18,10" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Medium}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="ToggleButton:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </Style>
+
+  <Style Selector="ToggleButton:checked">
+    <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="Foreground" Value="#0B1120" />
+  </Style>
+
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Border}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Medium}" />
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource Brush.Accent}" />
+  </Style>
+
+  <Style Selector="TextBox:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+  </Style>
+
+  <Style Selector="ScrollViewer">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Expander">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Border}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Medium}" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
+
+  <Style Selector="Border.dashboard-card">
+    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Large}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Border}" />
+    <Setter Property="Padding" Value="20" />
+  </Style>
+
+  <Style Selector="Border.surface">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Medium}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Border}" />
+  </Style>
+
+  <Style Selector="Separator">
+    <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+  </Style>
+</Styles>
