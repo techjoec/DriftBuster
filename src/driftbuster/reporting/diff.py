@@ -78,16 +78,25 @@ def canonicalise_xml(payload: str) -> str:
         return canonicalise_text(payload)
 
     def _normalise(element: ET.Element) -> None:
-        attributes = {key: value.strip() for key, value in element.attrib.items()}
+        # Sort attributes but only collapse values that are pure whitespace so
+        # intentional padding survives canonicalisation.
+        attribute_items = sorted(element.attrib.items())
         element.attrib.clear()
-        for key in sorted(attributes):
-            element.attrib[key] = attributes[key]
-        if element.text:
-            element.text = element.text.strip()
+        for key, value in attribute_items:
+            stripped = value.strip()
+            element.attrib[key] = value if stripped else stripped
+        if element.text is not None:
+            stripped = element.text.strip()
+            if not stripped:
+                # Whitespace-only text nodes collapse, otherwise padding stays.
+                element.text = stripped
         for child in list(element):
             _normalise(child)
-            if child.tail:
-                child.tail = child.tail.strip()
+            if child.tail is not None:
+                stripped = child.tail.strip()
+                if not stripped:
+                    # Only trim tails that are entirely whitespace.
+                    child.tail = stripped
 
     _normalise(root)
     serialised = ET.tostring(root, encoding="unicode")
