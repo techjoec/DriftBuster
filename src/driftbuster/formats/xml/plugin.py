@@ -27,7 +27,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import ClassVar, Dict, List, Optional, Set, Tuple
 
 from ..registry import register
 from ...core.types import DetectionMatch
@@ -70,6 +70,7 @@ _XMLNS_ATTRIBUTE = re.compile(
     re.DOTALL,
 )
 _DOCTYPE_DECL = re.compile(r"<!DOCTYPE\s+(?P<name>[\w:.-]+)", re.IGNORECASE)
+_ENTITY_DECL = re.compile(r"<!ENTITY", re.IGNORECASE)
 
 
 _VENDOR_CONFIG_ROOTS: Dict[str, Tuple[str, str, str, float]] = {
@@ -107,6 +108,7 @@ class XmlPlugin:
     name: str = "xml"
     priority: int = 100
     version: str = "0.0.4"
+    _MAX_SAFE_PARSE_BYTES: ClassVar[int] = 512 * 1024
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -648,11 +650,16 @@ class XmlPlugin:
         metadata: Dict[str, object] = {}
 
         root_element: Optional[ET.Element] = None
-        try:
-            parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-            root_element = ET.fromstring(text.lstrip(), parser=parser)
-        except ET.ParseError:
-            root_element = None
+        stripped = text.lstrip()
+        allow_parse = bool(stripped) and len(stripped) <= self._MAX_SAFE_PARSE_BYTES
+        if allow_parse and (_DOCTYPE_DECL.search(snippet) or _ENTITY_DECL.search(snippet)):
+            allow_parse = False
+        if allow_parse:
+            try:
+                parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+                root_element = ET.fromstring(stripped, parser=parser)
+            except ET.ParseError:
+                root_element = None
 
         declaration_match = _XML_DECLARATION.search(snippet)
         if declaration_match:
