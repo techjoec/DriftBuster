@@ -7,7 +7,8 @@ most common file types to the detectors that understand them today.
 
 - **`.config` (web/app/machine)** — handled by the XML plugin. Transform files
   such as `web.Release.config` and assembly sidecars (`*.exe.config`) are
-  surfaced with dedicated variants. Namespaces, XML declarations, and
+  surfaced with dedicated variants. Namespaces, XML declarations, hunt-aligned
+  attribute hints (connection strings, endpoints, feature flags), and
   `schema_locations` provenance metadata are captured automatically.
 - **Manifests (`*.manifest`)** — recognised as `app-manifest-xml` with
   confidence bumps when the assembly namespace is present.

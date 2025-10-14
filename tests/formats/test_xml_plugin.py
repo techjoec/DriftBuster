@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from driftbuster.core.types import DetectionMatch
@@ -172,3 +173,67 @@ def test_xml_plugin_extracts_schema_locations() -> None:
         }
     ]
     assert any("Schema http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd declared" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_collects_attribute_hints() -> None:
+    content = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <configuration>
+      <connectionStrings>
+        <add name="DefaultConnection" connectionString="Server=.;Database=App;User Id=app;Password=Pass123!;" />
+      </connectionStrings>
+      <appSettings>
+        <add key="ServiceEndpoint" value="https://api.example.com/v1/" />
+        <add key="FeatureFlag:NewUI" value="true" />
+      </appSettings>
+      <system.serviceModel>
+        <client>
+          <endpoint address="net.tcp://services.example.com:8443/Feed" />
+        </client>
+      </system.serviceModel>
+    </configuration>
+    """
+    match = _detect("web.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    hints = match.metadata.get("attribute_hints")
+    assert isinstance(hints, dict)
+
+    connection_hints = hints.get("connection_strings")
+    assert isinstance(connection_hints, list)
+    assert len(connection_hints) == 1
+    connection_entry = connection_hints[0]
+    expected_connection_hash = hashlib.sha256(
+        "Server=.;Database=App;User Id=app;Password=Pass123!;".encode("utf-8")
+    ).hexdigest()
+    assert connection_entry["hash"] == expected_connection_hash
+    assert connection_entry["key"] == "DefaultConnection"
+
+    endpoint_hints = hints.get("service_endpoints")
+    assert isinstance(endpoint_hints, list)
+    endpoint_hashes = {entry["hash"] for entry in endpoint_hints}
+    assert hashlib.sha256("https://api.example.com/v1/".encode("utf-8")).hexdigest() in endpoint_hashes
+    assert hashlib.sha256("net.tcp://services.example.com:8443/Feed".encode("utf-8")).hexdigest() in endpoint_hashes
+
+    feature_hints = hints.get("feature_flags")
+    assert isinstance(feature_hints, list)
+    assert feature_hints
+    assert feature_hints[0]["key"] == "FeatureFlag:NewUI"
+    assert any("feature flag attribute hints" in reason.lower() for reason in match.reasons)
+
+
+def test_xml_plugin_supports_targets_extension() -> None:
+    content = """
+    <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <ItemGroup>
+        <Content Include="appsettings.json" />
+      </ItemGroup>
+    </Project>
+    """
+    match = _detect("build.targets", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "generic"
+    assert any(".targets" in reason for reason in match.reasons)

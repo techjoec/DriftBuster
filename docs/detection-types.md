@@ -86,6 +86,9 @@ core and XML work stabilise. They are not yet represented in
   payloads even when filenames are ambiguous.
 - ``schema_locations`` metadata now records XSD provenance for XML payloads,
   and `.resx` files include ``resource_keys`` previews for quick auditing.
+- XML detections now attach ``attribute_hints`` metadata so hunt mode can align
+  connection strings, service endpoints, and feature flags with profile
+  expectations.
 - Binary detectors rely on sampling thresholds; large opaque files may need
   increased sample sizes for confident matches.
 - When multiple detectors might claim a file, adjust priorities so the most

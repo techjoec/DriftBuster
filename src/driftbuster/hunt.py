@@ -198,6 +198,31 @@ def default_rules() -> Tuple[HuntRule, ...]:
             keywords=("path", "install"),
             patterns=(r"[A-Za-z]:\\\\[\\w\\-\\.\\s]+", r"/opt/[\w\-\.]+"),
         ),
+        HuntRule(
+            name="connection-string",
+            description="Connection string attribute assignments",
+            token_name="connection_string",
+            patterns=(r"""connectionstring\s*=\s*['"][^'"\n]+['"]""",),
+        ),
+        HuntRule(
+            name="service-endpoint",
+            description="Service endpoint or base address assignments",
+            token_name="service_endpoint",
+            patterns=(
+                r"""<endpoint\b[^>]*\baddress\s*=\s*['"][^'\"]+['"]""",
+                r"""(endpoint|serviceurl|baseaddress)\s*=\s*['"][^'\"]+['"]""",
+                r"""key\s*=\s*['"][^'\"]*(endpoint|serviceurl|baseaddress|address)[^'\"]*['"][^\n]*value\s*=\s*['"][^'\"]+['"]""",
+            ),
+        ),
+        HuntRule(
+            name="feature-flag",
+            description="Feature flag or toggle assignments",
+            token_name="feature_flag",
+            patterns=(
+                r"""key\s*=\s*['"][^'\"]*(feature|flag|toggle)[^'\"]*['"][^\n]*value\s*=\s*['"][^'\"]+['"]""",
+                r"""<feature\b[^>]*\b(enabled|value)\s*=\s*['"][^'\"]+['"]""",
+            ),
+        ),
     )
 
 

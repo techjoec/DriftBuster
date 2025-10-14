@@ -22,11 +22,12 @@ is required.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from ..registry import register
 from ...core.types import DetectionMatch
@@ -101,7 +102,7 @@ def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
 class XmlPlugin:
     name: str = "xml"
     priority: int = 100
-    version: str = "0.0.2"
+    version: str = "0.0.3"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -133,6 +134,7 @@ class XmlPlugin:
                 self._append_namespace_reason(metadata, reasons)
                 self._append_schema_reason(metadata, reasons)
                 self._append_resx_reason(metadata, reasons)
+                self._append_attribute_hint_reasons(metadata, reasons)
                 self._append_doctype_reason(metadata, reasons)
                 variant, base_confidence = self._classify_config_variant(
                     path,
@@ -154,7 +156,16 @@ class XmlPlugin:
                 )
 
         # General XML heuristics.
-        xml_extensions = {".xml", ".manifest", ".resx", ".xaml", ".config", ".xsl", ".xslt"}
+        xml_extensions = {
+            ".xml",
+            ".manifest",
+            ".resx",
+            ".xaml",
+            ".config",
+            ".xsl",
+            ".xslt",
+            ".targets",
+        }
         element_match = _GENERIC_ELEMENT.search(text)
         has_xml_declaration = bool(_XML_DECLARATION.search(text))
         if extension in xml_extensions or has_xml_declaration or element_match:
@@ -174,6 +185,7 @@ class XmlPlugin:
             self._append_namespace_reason(metadata, reasons)
             self._append_schema_reason(metadata, reasons)
             self._append_resx_reason(metadata, reasons)
+            self._append_attribute_hint_reasons(metadata, reasons)
             self._append_doctype_reason(metadata, reasons)
             bonus = self._confidence_bonus(
                 metadata,
@@ -516,6 +528,22 @@ class XmlPlugin:
         else:
             self._add_reason(reasons, "Captured resource keys from .resx payload")
 
+    def _append_attribute_hint_reasons(
+        self, metadata: Dict[str, object], reasons: List[str]
+    ) -> None:
+        hints = metadata.get("attribute_hints")
+        if not hints or not isinstance(hints, dict):
+            return
+        mapping = {
+            "connection_strings": "Captured connection string attribute hints",
+            "service_endpoints": "Captured service endpoint attribute hints",
+            "feature_flags": "Captured feature flag attribute hints",
+        }
+        for key, message in mapping.items():
+            entries = hints.get(key)
+            if entries and isinstance(entries, list):
+                self._add_reason(reasons, message)
+
     def _append_doctype_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
         doctype = metadata.get("doctype")
         if doctype:
@@ -540,6 +568,9 @@ class XmlPlugin:
         if metadata.get("schema_locations"):
             bonus += 0.02
         if metadata.get("resource_keys"):
+            bonus += 0.01
+        hints = metadata.get("attribute_hints")
+        if isinstance(hints, dict) and any(hints.get(category) for category in hints):
             bonus += 0.01
         return bonus
 
@@ -606,6 +637,7 @@ class XmlPlugin:
 
         if root_element is not None:
             self._extract_resx_keys(root_element, metadata)
+            self._extract_attribute_hints(root_element, metadata)
 
         return metadata
 
@@ -696,6 +728,194 @@ class XmlPlugin:
 
             preview = ", ".join(resource_keys[:3])
             metadata.setdefault("resource_keys_preview", preview)
+
+    def _extract_attribute_hints(self, root: ET.Element, metadata: Dict[str, object]) -> None:
+        hints: Dict[str, List[Dict[str, object]]] = {
+            "connection_strings": [],
+            "service_endpoints": [],
+            "feature_flags": [],
+        }
+        seen: Dict[str, Set[tuple[str, str, str, str]]] = {
+            "connection_strings": set(),
+            "service_endpoints": set(),
+            "feature_flags": set(),
+        }
+
+        for element in root.iter():
+            attributes = dict(element.attrib)
+            if not attributes:
+                continue
+            element_name = element.tag.split("}")[-1] if "}" in element.tag else element.tag
+            lower_to_actual = {name.lower(): name for name in attributes}
+
+            key_attr_name: Optional[str] = None
+            key_value: Optional[str] = None
+            for candidate in ("name", "key", "id"):
+                actual = lower_to_actual.get(candidate)
+                if actual:
+                    value = attributes.get(actual, "")
+                    if value:
+                        key_attr_name = actual
+                        key_value = value
+                        break
+
+            connection_attr = lower_to_actual.get("connectionstring")
+            if connection_attr:
+                self._add_attribute_hint(
+                    hints=hints,
+                    seen=seen,
+                    category="connection_strings",
+                    element_name=element_name,
+                    attribute_name=connection_attr,
+                    value=attributes.get(connection_attr, ""),
+                    key_value=key_value,
+                    key_attribute=key_attr_name,
+                )
+
+            for candidate in ("address", "endpoint", "url", "uri", "baseaddress", "serviceurl"):
+                attr_name = lower_to_actual.get(candidate)
+                if not attr_name:
+                    continue
+                value = attributes.get(attr_name, "")
+                if self._looks_like_endpoint(value):
+                    self._add_attribute_hint(
+                        hints=hints,
+                        seen=seen,
+                        category="service_endpoints",
+                        element_name=element_name,
+                        attribute_name=attr_name,
+                        value=value,
+                        key_value=key_value,
+                        key_attribute=key_attr_name,
+                    )
+
+            value_attribute = lower_to_actual.get("value")
+            if value_attribute and key_value and self._contains_endpoint_keyword(key_value):
+                value = attributes.get(value_attribute, "")
+                if self._looks_like_endpoint(value):
+                    self._add_attribute_hint(
+                        hints=hints,
+                        seen=seen,
+                        category="service_endpoints",
+                        element_name=element_name,
+                        attribute_name=value_attribute,
+                        value=value,
+                        key_value=key_value,
+                        key_attribute=key_attr_name,
+                    )
+
+            feature_value: Optional[str] = None
+            feature_attr_name: Optional[str] = None
+            if key_value and self._contains_feature_keyword(key_value):
+                for candidate in ("value", "enabled", "isenabled", "defaultvalue"):
+                    attr_name = lower_to_actual.get(candidate)
+                    if attr_name:
+                        candidate_value = attributes.get(attr_name, "")
+                        if candidate_value:
+                            feature_value = candidate_value
+                            feature_attr_name = attr_name
+                            break
+            elif self._contains_feature_keyword(element_name):
+                for candidate in ("name", "key"):
+                    actual = lower_to_actual.get(candidate)
+                    if actual and not key_value:
+                        key_attr_name = actual
+                        key_value = attributes.get(actual)
+                        break
+                for candidate in ("value", "enabled", "isenabled", "defaultvalue"):
+                    attr_name = lower_to_actual.get(candidate)
+                    if attr_name:
+                        candidate_value = attributes.get(attr_name, "")
+                        if candidate_value:
+                            feature_value = candidate_value
+                            feature_attr_name = attr_name
+                            break
+
+            if feature_value:
+                self._add_attribute_hint(
+                    hints=hints,
+                    seen=seen,
+                    category="feature_flags",
+                    element_name=element_name,
+                    attribute_name=feature_attr_name or "value",
+                    value=feature_value,
+                    key_value=key_value,
+                    key_attribute=key_attr_name,
+                )
+
+        filtered = {category: entries for category, entries in hints.items() if entries}
+        if filtered:
+            metadata["attribute_hints"] = filtered
+
+    def _add_attribute_hint(
+        self,
+        *,
+        hints: Dict[str, List[Dict[str, object]]],
+        seen: Dict[str, Set[tuple[str, str, str, str]]],
+        category: str,
+        element_name: str,
+        attribute_name: str,
+        value: str,
+        key_value: Optional[str],
+        key_attribute: Optional[str],
+    ) -> None:
+        cleaned = value.strip()
+        if not cleaned:
+            return
+        digest = hashlib.sha256(cleaned.encode("utf-8", "ignore")).hexdigest()
+        dedupe_key = (
+            digest,
+            (key_value or "").strip().lower(),
+            attribute_name.lower(),
+            element_name.lower(),
+        )
+        bucket = seen[category]
+        if dedupe_key in bucket:
+            return
+        entry: Dict[str, object] = {
+            "element": element_name,
+            "attribute": attribute_name,
+            "hash": digest,
+            "length": len(cleaned),
+        }
+        if key_value:
+            entry["key"] = key_value
+        if key_attribute:
+            entry["key_attribute"] = key_attribute
+        hints[category].append(entry)
+        bucket.add(dedupe_key)
+
+    @staticmethod
+    def _looks_like_endpoint(value: str) -> bool:
+        cleaned = value.strip()
+        if not cleaned:
+            return False
+        lowered = cleaned.lower()
+        if "://" in cleaned:
+            return True
+        if cleaned.startswith("\\\\"):
+            return True
+        return lowered.startswith("net.tcp://") or lowered.startswith("sb://")
+
+    @staticmethod
+    def _contains_feature_keyword(text: str) -> bool:
+        lowered = text.lower()
+        return any(keyword in lowered for keyword in ("feature", "flag", "toggle"))
+
+    @staticmethod
+    def _contains_endpoint_keyword(text: str) -> bool:
+        lowered = text.lower()
+        return any(
+            keyword in lowered
+            for keyword in (
+                "endpoint",
+                "serviceurl",
+                "baseaddress",
+                "callback",
+                "apiurl",
+                "address",
+            )
+        )
 
 
 

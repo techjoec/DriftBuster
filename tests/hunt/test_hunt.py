@@ -42,3 +42,32 @@ def test_hunt_path_json_format(tmp_path: Path) -> None:
     entry = payload[0]
     assert entry["rule"]["name"] == "server-name"
     assert entry["relative_path"].endswith("config.txt")
+
+
+def test_hunt_rules_capture_xml_attribute_tokens(tmp_path: Path) -> None:
+    target = tmp_path / "settings.config"
+    target.write_text(
+        """
+        <configuration>
+          <connectionStrings>
+            <add name="Primary" connectionString="Server=sql.example.local;Database=App;" />
+          </connectionStrings>
+          <appSettings>
+            <add key="ServiceEndpoint" value="https://api.example.com/v1/" />
+            <add key="FeatureFlag:NewDashboard" value="true" />
+          </appSettings>
+          <system.serviceModel>
+            <client>
+              <endpoint address="net.tcp://svc.example.local:9000/Feed" />
+            </client>
+          </system.serviceModel>
+        </configuration>
+        """,
+        encoding="utf-8",
+    )
+
+    results = hunt_path(target, rules=default_rules())
+
+    assert results
+    rule_names = {hit.rule.name for hit in results}
+    assert {"connection-string", "service-endpoint", "feature-flag"}.issubset(rule_names)

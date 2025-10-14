@@ -8,11 +8,11 @@ aligned.
 
 | Format family            | Variants / focus                                                 | Plugin | Module version | Status       | Notes |
 |--------------------------|------------------------------------------------------------------|--------|----------------|--------------|-------|
-| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.2          | Stabilising  | Transform scope, precedence, and schema provenance metadata now populate automatically. |
-| Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.2          | Stabilising  | Namespace logging and schema provenance land in metadata; `.resx` entries expose resource keys. |
+| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.3          | Stabilising  | Transform scope, precedence, schema provenance, and attribute hint metadata now populate automatically. |
+| Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.3          | Stabilising  | Namespace logging, schema provenance, `.resx` resource keys, and attribute hints surface alongside hunt-aligned tokens. |
 | JSON                     | Generic JSON, comment-friendly `jsonc`, `appsettings*.json`      | json   | 0.0.1          | Preview      | Large-sample validation and sampling guardrails are still being tuned. |
 
-Last updated: 2025-10-15.
+Last updated: 2025-10-16.
 
 ## Version Tracking Guidance
 
