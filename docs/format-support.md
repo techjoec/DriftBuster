@@ -8,11 +8,11 @@ aligned.
 
 | Format family            | Variants / focus                                                 | Plugin | Module version | Status       | Notes |
 |--------------------------|------------------------------------------------------------------|--------|----------------|--------------|-------|
-| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.1          | Stabilising  | Transform precedence and schema provenance work remain on the roadmap. |
-| Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.1          | Stabilising  | Namespace logging lands in metadata; canonical diff tooling still evolving. |
+| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.4          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, and MSBuild metadata now populate automatically. |
+| Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.4          | Stabilising  | Namespace logging, schema provenance, `.resx` resource keys, MSBuild project detection, and attribute hints surface alongside hunt-aligned tokens. |
 | JSON                     | Generic JSON, comment-friendly `jsonc`, `appsettings*.json`      | json   | 0.0.1          | Preview      | Large-sample validation and sampling guardrails are still being tuned. |
 
-Last updated: 2025-10-14.
+Last updated: 2025-10-17.
 
 ## Version Tracking Guidance
 

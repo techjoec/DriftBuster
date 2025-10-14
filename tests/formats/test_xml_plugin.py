@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from driftbuster.core.types import DetectionMatch
@@ -106,6 +107,9 @@ def test_xml_plugin_detects_resx_variant_via_namespace() -> None:
     assert match is not None
     assert match.format_name == "xml"
     assert match.variant == "resource-xml"
+    assert match.metadata is not None
+    assert match.metadata["resource_keys"] == ["Sample"]
+    assert any("Captured resource keys" in reason for reason in match.reasons)
 
 
 def test_xml_plugin_detects_xaml_variant_via_namespace() -> None:
@@ -148,3 +152,122 @@ def test_xml_plugin_canonicalises_root_attributes() -> None:
     assert match is not None
     assert match.metadata is not None
     assert match.metadata["root_attributes"] == {"attrA": "value-a", "attrB": "value-b", "xmlns:xdt": "http://schemas.microsoft.com/XML-Document-Transform"}
+
+
+def test_xml_plugin_extracts_schema_locations() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://schemas.microsoft.com/.NetConfiguration/v2.0 http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd">
+      <appSettings />
+    </configuration>
+    """
+    match = _detect("web.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata["schema_locations"] == [
+        {
+            "namespace": "http://schemas.microsoft.com/.NetConfiguration/v2.0",
+            "location": "http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd",
+        }
+    ]
+    assert any("Schema http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd declared" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_collects_attribute_hints() -> None:
+    content = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <configuration>
+      <connectionStrings>
+        <add name="DefaultConnection" connectionString="Server=.;Database=App;User Id=app;Password=Pass123!;" />
+      </connectionStrings>
+      <appSettings>
+        <add key="ServiceEndpoint" value="https://api.example.com/v1/" />
+        <add key="FeatureFlag:NewUI" value="true" />
+      </appSettings>
+      <system.serviceModel>
+        <client>
+          <endpoint address="net.tcp://services.example.com:8443/Feed" />
+        </client>
+      </system.serviceModel>
+    </configuration>
+    """
+    match = _detect("web.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    hints = match.metadata.get("attribute_hints")
+    assert isinstance(hints, dict)
+
+    connection_hints = hints.get("connection_strings")
+    assert isinstance(connection_hints, list)
+    assert len(connection_hints) == 1
+    connection_entry = connection_hints[0]
+    expected_connection_hash = hashlib.sha256(
+        "Server=.;Database=App;User Id=app;Password=Pass123!;".encode("utf-8")
+    ).hexdigest()
+    assert connection_entry["hash"] == expected_connection_hash
+    assert connection_entry["key"] == "DefaultConnection"
+
+    endpoint_hints = hints.get("service_endpoints")
+    assert isinstance(endpoint_hints, list)
+    endpoint_hashes = {entry["hash"] for entry in endpoint_hints}
+    assert hashlib.sha256("https://api.example.com/v1/".encode("utf-8")).hexdigest() in endpoint_hashes
+    assert hashlib.sha256("net.tcp://services.example.com:8443/Feed".encode("utf-8")).hexdigest() in endpoint_hashes
+
+    feature_hints = hints.get("feature_flags")
+    assert isinstance(feature_hints, list)
+    assert feature_hints
+    assert feature_hints[0]["key"] == "FeatureFlag:NewUI"
+    assert any("feature flag attribute hints" in reason.lower() for reason in match.reasons)
+
+
+def test_xml_plugin_supports_targets_extension() -> None:
+    content = r"""
+    <Project ToolsVersion="Current"
+             DefaultTargets="Build;Publish"
+             xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Import Project="$(VSToolsPath)\WebApplication.targets" Condition="Exists('$(VSToolsPath)')" />
+      <Target Name="Publish">
+        <Message Text="Publishing" />
+      </Target>
+    </Project>
+    """
+    match = _detect("build.targets", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "msbuild-targets"
+    assert match.metadata is not None
+    assert match.metadata["msbuild_default_targets"] == ["Build", "Publish"]
+    assert match.metadata["msbuild_tools_version"] == "Current"
+    assert match.metadata["msbuild_targets"] == ["Publish"]
+    import_hints = match.metadata.get("msbuild_import_hints")
+    assert isinstance(import_hints, list)
+    assert import_hints and import_hints[0]["attribute"] == "Project"
+    assert any("MSBuild default targets" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_msbuild_project_metadata() -> None:
+    content = """
+    <Project Sdk="Microsoft.NET.Sdk">
+      <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+      </PropertyGroup>
+      <Import Sdk="Microsoft.Build.NoTargets/1.0.0" />
+      <Target Name="Pack" />
+    </Project>
+    """
+    match = _detect("App.csproj", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "msbuild-project"
+    assert match.metadata is not None
+    assert match.metadata["msbuild_sdk"] == "Microsoft.NET.Sdk"
+    assert match.metadata["msbuild_targets"] == ["Pack"]
+    import_hints = match.metadata.get("msbuild_import_hints")
+    assert isinstance(import_hints, list)
+    assert import_hints and import_hints[0]["attribute"] == "Sdk"
+    assert any("MSBuild SDK specified" in reason for reason in match.reasons)

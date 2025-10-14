@@ -22,10 +22,21 @@ is required.
 
 from __future__ import annotations
 
+import hashlib
 import re
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import ClassVar, Dict, List, Optional, Set, Tuple
+
+try:  # pragma: no cover - optional hardened parser
+    from defusedxml import ElementTree as DEFUSED_ET  # type: ignore
+    from defusedxml.common import DefusedXmlException  # type: ignore
+except ImportError:  # pragma: no cover - optional hardened parser
+    DEFUSED_ET = None  # type: ignore[assignment]
+
+    class DefusedXmlException(Exception):
+        """Fallback exception type when defusedxml is unavailable."""
 
 from ..registry import register
 from ...core.types import DetectionMatch
@@ -58,12 +69,17 @@ _MANIFEST_NAMESPACE = re.compile(r"urn:schemas-microsoft-com:asm\.v1", re.IGNORE
 _RESX_SCHEMA = re.compile(r"http://schemas\.microsoft\.com/.*resx", re.IGNORECASE)
 _XAML_NAMESPACE = re.compile(r"http://schemas\.microsoft\.com/winfx/2006/xaml", re.IGNORECASE)
 _XSLT_NAMESPACE = re.compile(r"http://www\.w3\.org/1999/XSL/Transform", re.IGNORECASE)
+_MSBUILD_NAMESPACE = re.compile(
+    r"http://schemas\.microsoft\.com/developer/msbuild/2003",
+    re.IGNORECASE,
+)
 _START_TAG = re.compile(r"<(?P<name>[A-Za-z_][\w:.-]*)\b")
 _XMLNS_ATTRIBUTE = re.compile(
     r"xmlns(?::(?P<prefix>[\w.-]+))?\s*=\s*(?P<quote>['\"])(?P<uri>.*?)(?P=quote)",
     re.DOTALL,
 )
 _DOCTYPE_DECL = re.compile(r"<!DOCTYPE\s+(?P<name>[\w:.-]+)", re.IGNORECASE)
+_ENTITY_DECL = re.compile(r"<!ENTITY", re.IGNORECASE)
 
 
 _VENDOR_CONFIG_ROOTS: Dict[str, Tuple[str, str, str, float]] = {
@@ -100,7 +116,8 @@ def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
 class XmlPlugin:
     name: str = "xml"
     priority: int = 100
-    version: str = "0.0.1"
+    version: str = "0.0.4"
+    _MAX_SAFE_PARSE_BYTES: ClassVar[int] = 512 * 1024
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -110,7 +127,7 @@ class XmlPlugin:
         reasons: List[str] = []
 
         # Prefer .config specific detection first.
-        metadata = self._collect_metadata(text)
+        metadata = self._collect_metadata(text, extension=extension)
 
         if extension == ".config":
             config_root = False
@@ -130,6 +147,10 @@ class XmlPlugin:
                     self._add_reason(reasons, f"Detected root element <{root}>")
                 self._append_declaration_reasons(metadata, reasons)
                 self._append_namespace_reason(metadata, reasons)
+                self._append_schema_reason(metadata, reasons)
+                self._append_resx_reason(metadata, reasons)
+                self._append_msbuild_reasons(metadata, reasons)
+                self._append_attribute_hint_reasons(metadata, reasons)
                 self._append_doctype_reason(metadata, reasons)
                 variant, base_confidence = self._classify_config_variant(
                     path,
@@ -151,7 +172,16 @@ class XmlPlugin:
                 )
 
         # General XML heuristics.
-        xml_extensions = {".xml", ".manifest", ".resx", ".xaml", ".config", ".xsl", ".xslt"}
+        xml_extensions = {
+            ".xml",
+            ".manifest",
+            ".resx",
+            ".xaml",
+            ".config",
+            ".xsl",
+            ".xslt",
+            ".targets",
+        }
         element_match = _GENERIC_ELEMENT.search(text)
         has_xml_declaration = bool(_XML_DECLARATION.search(text))
         if extension in xml_extensions or has_xml_declaration or element_match:
@@ -169,6 +199,10 @@ class XmlPlugin:
             if root := metadata.get("root_tag"):
                 reasons.append(f"Detected root element <{root}>")
             self._append_namespace_reason(metadata, reasons)
+            self._append_schema_reason(metadata, reasons)
+            self._append_resx_reason(metadata, reasons)
+            self._append_msbuild_reasons(metadata, reasons)
+            self._append_attribute_hint_reasons(metadata, reasons)
             self._append_doctype_reason(metadata, reasons)
             bonus = self._confidence_bonus(
                 metadata,
@@ -215,6 +249,30 @@ class XmlPlugin:
                 if _XAML_NAMESPACE.search(default_ns):
                     reasons.append("Found XAML namespace declaration")
                     return "xml", "interface-xml", 0.8
+        if self._looks_like_msbuild(extension, metadata):
+            kind = metadata.get("msbuild_kind") or self._classify_msbuild_kind(extension)
+            metadata.setdefault("msbuild_detected", True)
+            metadata.setdefault("msbuild_kind", kind)
+            reason_map = {
+                "targets": "Root element <Project> indicates an MSBuild targets layout",
+                "props": "Root element <Project> indicates an MSBuild props layout",
+                "project": "Root element <Project> indicates an MSBuild project definition",
+            }
+            base_confidence_map = {
+                "targets": 0.83,
+                "props": 0.82,
+                "project": 0.83,
+            }
+            variant_map = {
+                "targets": "msbuild-targets",
+                "props": "msbuild-props",
+                "project": "msbuild-project",
+            }
+            self._add_reason(reasons, reason_map.get(kind, reason_map["project"]))
+            base_confidence = base_confidence_map.get(kind, 0.82)
+            variant = variant_map.get(kind, "msbuild-project")
+            return "xml", variant, base_confidence
+
         manifest_match = _MANIFEST_NAMESPACE.search(text)
         if extension == ".manifest" or manifest_match:
             if manifest_match:
@@ -478,6 +536,85 @@ class XmlPlugin:
         else:
             self._add_reason(reasons, "Detected XML namespace declarations")
 
+    def _append_schema_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+        schema_locations = metadata.get("schema_locations")
+        if not schema_locations or not isinstance(schema_locations, list):
+            return
+        for entry in schema_locations:
+            if not isinstance(entry, dict):
+                continue
+            location = entry.get("location")
+            namespace = entry.get("namespace")
+            if location and namespace:
+                self._add_reason(
+                    reasons,
+                    f"Schema {location} declared for namespace {namespace}",
+                )
+            elif location:
+                self._add_reason(
+                    reasons,
+                    f"Schema {location} declared for default namespace",
+                )
+
+    def _append_resx_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+        resource_keys = metadata.get("resource_keys")
+        if not resource_keys or not isinstance(resource_keys, list):
+            return
+        preview = metadata.get("resource_keys_preview")
+        if isinstance(preview, str) and preview:
+            self._add_reason(
+                reasons,
+                f"Captured resource keys from .resx payload (e.g., {preview})",
+            )
+        else:
+            self._add_reason(reasons, "Captured resource keys from .resx payload")
+
+    def _append_msbuild_reasons(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+        if not metadata.get("msbuild_detected"):
+            return
+        default_targets = metadata.get("msbuild_default_targets")
+        if isinstance(default_targets, list) and default_targets:
+            preview = ", ".join(default_targets[:3])
+            self._add_reason(
+                reasons,
+                f"MSBuild default targets declared ({preview})",
+            )
+        tools_version = metadata.get("msbuild_tools_version")
+        if isinstance(tools_version, str) and tools_version:
+            self._add_reason(
+                reasons,
+                f"MSBuild ToolsVersion set to {tools_version}",
+            )
+        sdk = metadata.get("msbuild_sdk")
+        if isinstance(sdk, str) and sdk:
+            self._add_reason(reasons, f"MSBuild SDK specified ({sdk})")
+        targets = metadata.get("msbuild_targets")
+        if isinstance(targets, list) and targets:
+            preview = ", ".join(targets[:3])
+            self._add_reason(
+                reasons,
+                f"Captured MSBuild target declarations ({preview})",
+            )
+        imports = metadata.get("msbuild_import_hints")
+        if isinstance(imports, list) and imports:
+            self._add_reason(reasons, "Captured MSBuild import references")
+
+    def _append_attribute_hint_reasons(
+        self, metadata: Dict[str, object], reasons: List[str]
+    ) -> None:
+        hints = metadata.get("attribute_hints")
+        if not hints or not isinstance(hints, dict):
+            return
+        mapping = {
+            "connection_strings": "Captured connection string attribute hints",
+            "service_endpoints": "Captured service endpoint attribute hints",
+            "feature_flags": "Captured feature flag attribute hints",
+        }
+        for key, message in mapping.items():
+            entries = hints.get(key)
+            if entries and isinstance(entries, list):
+                self._add_reason(reasons, message)
+
     def _append_doctype_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
         doctype = metadata.get("doctype")
         if doctype:
@@ -499,11 +636,46 @@ class XmlPlugin:
             bonus += 0.01
         if metadata.get("config_transform"):
             bonus += 0.01
+        if metadata.get("schema_locations"):
+            bonus += 0.02
+        if metadata.get("resource_keys"):
+            bonus += 0.01
+        hints = metadata.get("attribute_hints")
+        if isinstance(hints, dict) and any(hints.get(category) for category in hints):
+            bonus += 0.01
+        if metadata.get("msbuild_detected"):
+            if metadata.get("msbuild_default_targets"):
+                bonus += 0.01
+            if metadata.get("msbuild_sdk"):
+                bonus += 0.005
+            if metadata.get("msbuild_import_hints"):
+                bonus += 0.01
+            if metadata.get("msbuild_targets"):
+                bonus += 0.01
         return bonus
 
-    def _collect_metadata(self, text: str) -> Dict[str, object]:
+    def _collect_metadata(self, text: str, *, extension: str) -> Dict[str, object]:
         snippet = text[:4096]
         metadata: Dict[str, object] = {}
+
+        root_element: Optional[ET.Element] = None
+        stripped = text.lstrip()
+        allow_parse = bool(stripped)
+        if allow_parse and len(stripped) > self._MAX_SAFE_PARSE_BYTES:
+            allow_parse = False
+        if allow_parse:
+            scan_segment = stripped[: self._MAX_SAFE_PARSE_BYTES]
+            if _DOCTYPE_DECL.search(scan_segment) or _ENTITY_DECL.search(scan_segment):
+                allow_parse = False
+        if allow_parse:
+            try:
+                if DEFUSED_ET is not None:
+                    root_element = DEFUSED_ET.fromstring(stripped)
+                else:
+                    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+                    root_element = ET.fromstring(stripped, parser=parser)
+            except (ET.ParseError, DefusedXmlException):
+                root_element = None
 
         declaration_match = _XML_DECLARATION.search(snippet)
         if declaration_match:
@@ -553,6 +725,16 @@ class XmlPlugin:
             elif namespace_matches.get("default"):
                 metadata["root_namespace"] = namespace_matches["default"]
 
+        self._extract_schema_locations(metadata)
+
+        if root_element is not None:
+            self._extract_resx_keys(root_element, metadata)
+            self._extract_attribute_hints(root_element, metadata)
+            self._extract_msbuild_metadata(root_element, metadata, extension)
+        elif self._looks_like_msbuild(extension, metadata):
+            metadata["msbuild_detected"] = True
+            metadata["msbuild_kind"] = self._classify_msbuild_kind(extension)
+
         return metadata
 
     def _extract_root_attributes(self, snippet: str, start_index: int) -> Dict[str, str]:
@@ -587,6 +769,392 @@ class XmlPlugin:
             return {}
         items.sort(key=lambda entry: (entry[0].lower(), entry[0]))
         return {name: value for name, value in items}
+
+    def _extract_schema_locations(self, metadata: Dict[str, object]) -> None:
+        attributes = metadata.get("root_attributes")
+        if not attributes or not isinstance(attributes, dict):
+            return
+        schema_entries: List[Dict[str, Optional[str]]] = []
+        for attr_name, raw_value in attributes.items():
+            if not isinstance(raw_value, str):
+                continue
+            local_name = attr_name.split(":", 1)[-1]
+            cleaned_value = " ".join(raw_value.split())
+            if not cleaned_value:
+                continue
+            if local_name == "schemaLocation":
+                tokens = cleaned_value.split()
+                if len(tokens) < 2:
+                    continue
+                for index in range(0, len(tokens) - 1, 2):
+                    namespace = tokens[index]
+                    location = tokens[index + 1]
+                    schema_entries.append({"namespace": namespace, "location": location})
+            elif local_name == "noNamespaceSchemaLocation":
+                schema_entries.append({"namespace": None, "location": cleaned_value})
+        if schema_entries:
+            metadata["schema_locations"] = schema_entries
+
+    def _extract_resx_keys(self, root: ET.Element, metadata: Dict[str, object]) -> None:
+        root_tag = root.tag.split("}")[-1] if "}" in root.tag else root.tag
+        if root_tag.lower() != "root":
+            return
+        namespaces = metadata.get("namespaces")
+        root_namespace = metadata.get("root_namespace")
+        namespace_hint = None
+        if isinstance(root_namespace, str):
+            namespace_hint = root_namespace
+        elif isinstance(namespaces, dict):
+            namespace_hint = namespaces.get("default")
+        if not namespace_hint or not _RESX_SCHEMA.search(namespace_hint):
+            return
+        resource_keys: List[str] = []
+        for element in root.iter():
+            tag_local = element.tag.split("}")[-1] if "}" in element.tag else element.tag
+            if tag_local.lower() != "data":
+                continue
+            name = element.attrib.get("name")
+            if not name:
+                continue
+            resource_keys.append(name)
+            if len(resource_keys) >= 10:
+                break
+        if resource_keys:
+            metadata["resource_keys"] = resource_keys
+
+            preview = ", ".join(resource_keys[:3])
+            metadata.setdefault("resource_keys_preview", preview)
+
+    def _extract_attribute_hints(self, root: ET.Element, metadata: Dict[str, object]) -> None:
+        hints: Dict[str, List[Dict[str, object]]] = {
+            "connection_strings": [],
+            "service_endpoints": [],
+            "feature_flags": [],
+        }
+        seen: Dict[str, Set[tuple[str, str, str, str]]] = {
+            "connection_strings": set(),
+            "service_endpoints": set(),
+            "feature_flags": set(),
+        }
+
+        for element in root.iter():
+            attributes = dict(element.attrib)
+            if not attributes:
+                continue
+            element_name = element.tag.split("}")[-1] if "}" in element.tag else element.tag
+            lower_to_actual = {name.lower(): name for name in attributes}
+
+            key_attr_name: Optional[str] = None
+            key_value: Optional[str] = None
+            for candidate in ("name", "key", "id"):
+                actual = lower_to_actual.get(candidate)
+                if actual:
+                    value = attributes.get(actual, "")
+                    if value:
+                        key_attr_name = actual
+                        key_value = value
+                        break
+
+            connection_attr = lower_to_actual.get("connectionstring")
+            if connection_attr:
+                self._add_attribute_hint(
+                    hints=hints,
+                    seen=seen,
+                    category="connection_strings",
+                    element_name=element_name,
+                    attribute_name=connection_attr,
+                    value=attributes.get(connection_attr, ""),
+                    key_value=key_value,
+                    key_attribute=key_attr_name,
+                )
+
+            for candidate in ("address", "endpoint", "url", "uri", "baseaddress", "serviceurl"):
+                attr_name = lower_to_actual.get(candidate)
+                if not attr_name:
+                    continue
+                value = attributes.get(attr_name, "")
+                if self._looks_like_endpoint(value):
+                    self._add_attribute_hint(
+                        hints=hints,
+                        seen=seen,
+                        category="service_endpoints",
+                        element_name=element_name,
+                        attribute_name=attr_name,
+                        value=value,
+                        key_value=key_value,
+                        key_attribute=key_attr_name,
+                    )
+
+            value_attribute = lower_to_actual.get("value")
+            if value_attribute and key_value and self._contains_endpoint_keyword(key_value):
+                value = attributes.get(value_attribute, "")
+                if self._looks_like_endpoint(value):
+                    self._add_attribute_hint(
+                        hints=hints,
+                        seen=seen,
+                        category="service_endpoints",
+                        element_name=element_name,
+                        attribute_name=value_attribute,
+                        value=value,
+                        key_value=key_value,
+                        key_attribute=key_attr_name,
+                    )
+
+            feature_value: Optional[str] = None
+            feature_attr_name: Optional[str] = None
+            if key_value and self._contains_feature_keyword(key_value):
+                for candidate in ("value", "enabled", "isenabled", "defaultvalue"):
+                    attr_name = lower_to_actual.get(candidate)
+                    if attr_name:
+                        candidate_value = attributes.get(attr_name, "")
+                        if candidate_value:
+                            feature_value = candidate_value
+                            feature_attr_name = attr_name
+                            break
+            elif self._contains_feature_keyword(element_name):
+                for candidate in ("name", "key"):
+                    actual = lower_to_actual.get(candidate)
+                    if actual and not key_value:
+                        key_attr_name = actual
+                        key_value = attributes.get(actual)
+                        break
+                for candidate in ("value", "enabled", "isenabled", "defaultvalue"):
+                    attr_name = lower_to_actual.get(candidate)
+                    if attr_name:
+                        candidate_value = attributes.get(attr_name, "")
+                        if candidate_value:
+                            feature_value = candidate_value
+                            feature_attr_name = attr_name
+                            break
+
+            if feature_value:
+                self._add_attribute_hint(
+                    hints=hints,
+                    seen=seen,
+                    category="feature_flags",
+                    element_name=element_name,
+                    attribute_name=feature_attr_name or "value",
+                    value=feature_value,
+                    key_value=key_value,
+                    key_attribute=key_attr_name,
+                )
+
+        filtered = {category: entries for category, entries in hints.items() if entries}
+        if filtered:
+            metadata["attribute_hints"] = filtered
+
+    def _looks_like_msbuild(self, extension: str, metadata: Dict[str, object]) -> bool:
+        lowered_extension = extension.lower()
+        msbuild_extensions = {
+            ".targets",
+            ".props",
+            ".csproj",
+            ".fsproj",
+            ".vbproj",
+            ".vcxproj",
+            ".vcproj",
+            ".proj",
+            ".msbuildproj",
+        }
+        if lowered_extension in msbuild_extensions:
+            return True
+
+        root_local = metadata.get("root_local_name")
+        if not isinstance(root_local, str) or root_local.lower() != "project":
+            return False
+
+        namespace = metadata.get("root_namespace")
+        if isinstance(namespace, str) and _MSBUILD_NAMESPACE.search(namespace):
+            return True
+
+        namespaces = metadata.get("namespaces")
+        if isinstance(namespaces, dict):
+            default_ns = namespaces.get("default")
+            if isinstance(default_ns, str) and _MSBUILD_NAMESPACE.search(default_ns):
+                return True
+
+        root_attributes = metadata.get("root_attributes")
+        if isinstance(root_attributes, dict):
+            lowered_keys = {name.lower() for name in root_attributes}
+            if {"defaulttargets", "toolsversion", "sdk"} & lowered_keys:
+                return True
+
+        return False
+
+    def _classify_msbuild_kind(self, extension: str) -> str:
+        lowered_extension = extension.lower()
+        if lowered_extension == ".targets":
+            return "targets"
+        if lowered_extension == ".props":
+            return "props"
+        if lowered_extension in {
+            ".csproj",
+            ".fsproj",
+            ".vbproj",
+            ".vcxproj",
+            ".vcproj",
+            ".proj",
+            ".msbuildproj",
+        }:
+            return "project"
+        return "project"
+
+    def _extract_msbuild_metadata(
+        self,
+        root: ET.Element,
+        metadata: Dict[str, object],
+        extension: str,
+    ) -> None:
+        if not self._looks_like_msbuild(extension, metadata):
+            return
+
+        metadata["msbuild_detected"] = True
+        kind = self._classify_msbuild_kind(extension)
+        metadata["msbuild_kind"] = kind
+
+        attr_lookup = {
+            name.lower(): value.strip()
+            for name, value in root.attrib.items()
+            if isinstance(value, str) and value.strip()
+        }
+
+        default_targets = attr_lookup.get("defaulttargets")
+        if default_targets:
+            targets = [token.strip() for token in default_targets.split(";") if token.strip()]
+            if targets:
+                metadata["msbuild_default_targets"] = targets
+
+        tools_version = attr_lookup.get("toolsversion")
+        if tools_version:
+            metadata["msbuild_tools_version"] = tools_version
+
+        sdk = attr_lookup.get("sdk")
+        if sdk:
+            metadata["msbuild_sdk"] = sdk
+
+        target_names: List[str] = []
+        seen_target_names: Set[str] = set()
+        import_hints: List[Dict[str, object]] = []
+        seen_imports: Set[tuple[str, str]] = set()
+
+        for element in root.iter():
+            local_name = element.tag.split("}")[-1] if "}" in element.tag else element.tag
+            if local_name == "Target":
+                name = element.attrib.get("Name")
+                if name:
+                    cleaned_name = name.strip()
+                    lowered_name = cleaned_name.lower()
+                    if cleaned_name and lowered_name not in seen_target_names:
+                        seen_target_names.add(lowered_name)
+                        if len(target_names) < 10:
+                            target_names.append(cleaned_name)
+            if local_name != "Import":
+                continue
+
+            for attribute in ("Project", "Sdk"):
+                raw_value = element.attrib.get(attribute)
+                if not raw_value:
+                    continue
+                cleaned_value = raw_value.strip()
+                if not cleaned_value:
+                    continue
+                digest = hashlib.sha256(cleaned_value.encode("utf-8", "ignore")).hexdigest()
+                dedupe_key = (attribute.lower(), digest)
+                if dedupe_key in seen_imports:
+                    continue
+                seen_imports.add(dedupe_key)
+                entry: Dict[str, object] = {
+                    "attribute": attribute,
+                    "hash": digest,
+                    "length": len(cleaned_value),
+                }
+                condition_value = element.attrib.get("Condition")
+                if condition_value:
+                    cleaned_condition = condition_value.strip()
+                    if cleaned_condition:
+                        entry["condition_hash"] = hashlib.sha256(
+                            cleaned_condition.encode("utf-8", "ignore")
+                        ).hexdigest()
+                        entry["condition_length"] = len(cleaned_condition)
+                import_hints.append(entry)
+                break
+
+        if target_names:
+            metadata["msbuild_targets"] = target_names
+
+        if import_hints:
+            metadata["msbuild_import_hints"] = import_hints
+
+    def _add_attribute_hint(
+        self,
+        *,
+        hints: Dict[str, List[Dict[str, object]]],
+        seen: Dict[str, Set[tuple[str, str, str, str]]],
+        category: str,
+        element_name: str,
+        attribute_name: str,
+        value: str,
+        key_value: Optional[str],
+        key_attribute: Optional[str],
+    ) -> None:
+        cleaned = value.strip()
+        if not cleaned:
+            return
+        digest = hashlib.sha256(cleaned.encode("utf-8", "ignore")).hexdigest()
+        dedupe_key = (
+            digest,
+            (key_value or "").strip().lower(),
+            attribute_name.lower(),
+            element_name.lower(),
+        )
+        bucket = seen[category]
+        if dedupe_key in bucket:
+            return
+        entry: Dict[str, object] = {
+            "element": element_name,
+            "attribute": attribute_name,
+            "hash": digest,
+            "length": len(cleaned),
+        }
+        if key_value:
+            entry["key"] = key_value
+        if key_attribute:
+            entry["key_attribute"] = key_attribute
+        hints[category].append(entry)
+        bucket.add(dedupe_key)
+
+    @staticmethod
+    def _looks_like_endpoint(value: str) -> bool:
+        cleaned = value.strip()
+        if not cleaned:
+            return False
+        lowered = cleaned.lower()
+        if "://" in cleaned:
+            return True
+        if cleaned.startswith("\\\\"):
+            return True
+        return lowered.startswith("net.tcp://") or lowered.startswith("sb://")
+
+    @staticmethod
+    def _contains_feature_keyword(text: str) -> bool:
+        lowered = text.lower()
+        return any(keyword in lowered for keyword in ("feature", "flag", "toggle"))
+
+    @staticmethod
+    def _contains_endpoint_keyword(text: str) -> bool:
+        lowered = text.lower()
+        return any(
+            keyword in lowered
+            for keyword in (
+                "endpoint",
+                "serviceurl",
+                "baseaddress",
+                "callback",
+                "apiurl",
+                "address",
+            )
+        )
+
 
 
 register(XmlPlugin())
