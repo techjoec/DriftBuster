@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace DriftBuster.Gui.Models
+namespace DriftBuster.Backend.Models
 {
     public sealed class RunProfileDefinition
     {

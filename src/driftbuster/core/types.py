@@ -1,10 +1,7 @@
 """Shared data structures and metadata helpers for DriftBuster core.
 
-The :mod:`driftbuster.core.types` module centralises the dataclasses used by the
-detector as well as the utilities that keep match metadata aligned with the
-catalog. The helpers here normalise metadata dictionaries before adapters
-serialise them and expose a typed validation surface that downstream tooling can
-rely on.
+This module centralises the detector dataclasses and the metadata validation
+utilities used by downstream tooling.
 
 Example
 -------
@@ -74,7 +71,9 @@ def _ensure_mapping(metadata: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
         return dict(metadata)
     if isinstance(metadata, Mapping):
         return dict(metadata.items())
-    raise MetadataValidationError("Detection metadata must be a mapping when provided.")
+    raise MetadataValidationError(
+        "Detection metadata must be a mapping when provided."
+    )
 
 
 def _json_safe(value: Any) -> Any:
@@ -93,7 +92,9 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
-def _build_format_lookup(catalog: DetectionCatalog) -> Dict[str, tuple[str, Any]]:
+def _build_format_lookup(
+    catalog: DetectionCatalog,
+) -> Dict[str, tuple[str, Any]]:
     lookup: Dict[str, tuple[str, Any]] = {}
     for fmt in catalog.classes:
         canonical = _CATALOG_FORMAT_IDS.get(fmt.name)
@@ -113,7 +114,8 @@ def _normalise_identifier(raw: str, *, field: str) -> str:
         raise MetadataValidationError(f"{field} cannot be empty.")
     if not _VALID_ID.match(identifier):
         raise MetadataValidationError(
-            f"{field} must be a lowercase slug containing letters, numbers, hyphen, or underscore."
+            f"{field} must be a lowercase slug containing letters, numbers,"
+            " hyphen, or underscore."
         )
     return identifier
 
@@ -146,7 +148,9 @@ def validate_detection_metadata(
 
     format_name = match.format_name
     if not isinstance(format_name, str):
-        raise MetadataValidationError("DetectionMatch.format_name must be a string.")
+        raise MetadataValidationError(
+            "DetectionMatch.format_name must be a string."
+        )
     format_id = _normalise_identifier(format_name, field="format_name")
 
     lookup = _build_format_lookup(catalog)
@@ -164,8 +168,13 @@ def validate_detection_metadata(
     variant = match.variant
     if variant is not None:
         if not isinstance(variant, str):
-            raise MetadataValidationError("DetectionMatch.variant must be a string when provided.")
-        variant_id = _normalise_identifier(variant, field="variant") if strict else variant.strip().lower()
+            raise MetadataValidationError(
+                "DetectionMatch.variant must be a string when provided."
+            )
+        if strict:
+            variant_id = _normalise_identifier(variant, field="variant")
+        else:
+            variant_id = variant.strip().lower()
         if variant_id:
             metadata["catalog_variant"] = variant_id
     else:
@@ -175,10 +184,13 @@ def validate_detection_metadata(
 
 
 def summarise_metadata(match: DetectionMatch) -> Mapping[str, Any]:
-    """Return a JSON-serialisable mapping describing ``match`` and its metadata."""
+    """Return a JSON-ready mapping describing ``match`` and its metadata."""
 
     metadata = _ensure_mapping(match.metadata)
-    normalised_metadata = {str(key): _json_safe(value) for key, value in metadata.items()}
+    normalised_metadata = {
+        str(key): _json_safe(value)
+        for key, value in metadata.items()
+    }
     return {
         "plugin": match.plugin_name,
         "format": match.format_name,
@@ -205,5 +217,7 @@ class DetectionMatch:
             "variant": self.variant,
             "confidence": self.confidence,
             "reasons": list(self.reasons),
-            "metadata": dict(self.metadata) if self.metadata is not None else None,
+            "metadata": (
+                dict(self.metadata) if self.metadata is not None else None
+            ),
         }

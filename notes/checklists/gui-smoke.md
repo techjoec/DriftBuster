@@ -31,7 +31,7 @@ Goal: quick confidence pass before handing the Windows build to reviewers.
 
 6. **Backend lifecycle**
    - Close the window.
-   - (Optional) On a separate shell, run `ps -ef | grep driftbuster.api_server` to confirm the Python helper exited.
+   - Confirm no lingering error dialogs appear; all backend processing now runs in-process.
 
 Record run outcomes and timestamps below when executing manually.
 

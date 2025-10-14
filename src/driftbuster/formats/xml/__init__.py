@@ -3,4 +3,3 @@
 from .plugin import XmlPlugin
 
 __all__ = ["XmlPlugin"]
-

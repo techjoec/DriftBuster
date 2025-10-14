@@ -1,21 +1,35 @@
 # Testing Strategy
 
-Automated coverage now backs the detector, format plugins, hunt helpers, CLI
-entry points, the JSON/STDIO bridge, and Avalonia viewmodels. Manual validation
+Automated coverage now backs the detector, format plugins, hunt helpers, the
+PowerShell/GUI backend library, and Avalonia viewmodels. Manual validation
 continues to play a role for vendor fixtures and pre-HOLD reporting flows.
 
 ## Automated test suite
 
 - `pytest -q` — exercises detector metadata, profile helpers, diff planning,
-  hunt rules, registry utilities, JSON/XML plugins, CLI commands, and the
-  API bridge. The suite injects the `src/` tree via `tests/conftest.py`.
+  hunt rules, registry utilities, JSON/XML plugins, and CLI helpers. The suite
+  injects the `src/` tree via `tests/conftest.py`.
 - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` — runs
   xUnit coverage for `MainWindowViewModel`, diff planner UI, and hunt UI using
   a fake `IDriftbusterService`, so no Python subprocess spawns.
+- `dotnet build` now runs with the latest built-in analyzers and style
+  enforcement (see `Directory.Build.props`). Address any analyzer warnings
+  surfaced during builds before committing.
+- `pwsh scripts/lint_powershell.ps1` — runs PSScriptAnalyzer across the
+  PowerShell module and fails if any warnings or errors are detected.
+- `python -m compileall src` — sanity compiles the entire Python tree.
+- `python -m pycodestyle src` — style-checks all Python modules using the
+  defaults codified in `setup.cfg` (currently 140-character lines).
+- `dotnet format gui/DriftBuster.Backend/DriftBuster.Backend.csproj --verify-no-changes`
+  — validates the backend library formatting against analyzer defaults.
+- `dotnet format gui/DriftBuster.Gui/DriftBuster.Gui.csproj --verify-no-changes`
+  — enforces GUI project code style expectations.
+- `dotnet format gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --verify-no-changes`
+  — keeps test harness formatting aligned with the production projects.
 
-Run both commands before landing changes that touch Python core logic or the
-Avalonia UI. Use `-q`/`--no-build` switches if you need to minimise output or
-skip rebuilds during local iteration.
+Run both commands before landing changes that touch the Python core or the
+Avalonia/PowerShell surfaces. Use `-q`/`--no-build` switches if you need to
+minimise output or skip rebuilds during local iteration.
 
 ## Vendor Sample Acquisition
 

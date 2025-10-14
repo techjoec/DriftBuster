@@ -25,7 +25,10 @@ def _has_magic(pattern: str) -> bool:
 
 
 def _safe_name(text: str) -> str:
-    return "".join(char if char.isalnum() or char in ("-", "_") else "-" for char in text)
+    return "".join(
+        char if char.isalnum() or char in ("-", "_") else "-"
+        for char in text
+    )
 
 
 @dataclass
@@ -98,7 +101,11 @@ def profile_directory(profile_name: str, base_dir: Path | None = None) -> Path:
     return profiles_root(base_dir) / _safe_name(profile_name)
 
 
-def load_profile(profile_name: str, *, base_dir: Path | None = None) -> RunProfile:
+def load_profile(
+    profile_name: str,
+    *,
+    base_dir: Path | None = None,
+) -> RunProfile:
     profile_dir = profile_directory(profile_name, base_dir=base_dir)
     config_path = profile_dir / "profile.json"
     if not config_path.exists():
@@ -180,7 +187,11 @@ def execute_profile(
             {
                 "profile": profile.to_dict(),
                 "timestamp": run_timestamp,
-                "baseline": profile.baseline or source_strings[0] if source_strings else None,
+                "baseline": (
+                    profile.baseline or source_strings[0]
+                    if source_strings
+                    else None
+                ),
                 "files": [
                     {
                         "source": entry.source,
@@ -223,7 +234,10 @@ def _copy_file(
     base: Path,
     destination_root: Path,
 ) -> ProfileFile:
-    relative = file.relative_to(base) if file.is_relative_to(base) else file.name
+    if file.is_relative_to(base):
+        relative = file.relative_to(base)
+    else:
+        relative = file.name
     destination = destination_root / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(file, destination)

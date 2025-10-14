@@ -97,12 +97,14 @@ def _validate_sample_size(sample_size: int) -> int:
 def _titleise_component(component: str) -> str:
     if not component:
         return component
-    index = next((i for i, char in enumerate(component) if char.isalpha()), None)
-    if index is None:
+    for index, char in enumerate(component):
+        if char.isalpha():
+            break
+    else:
         return component
     prefix = component[:index]
     alpha = component[index].upper()
-    suffix = component[index + 1 :]
+    suffix = component[index + 1:]
     return f"{prefix}{alpha}{suffix}"
 
 
@@ -124,7 +126,10 @@ def _normalise_reasons(reasons: Iterable[str]) -> List[str]:
         if not text:
             continue
         collapsed = " ".join(text.split())
-        tokens = [_normalise_reason_token(token) for token in collapsed.split(" ")]
+        tokens = [
+            _normalise_reason_token(token)
+            for token in collapsed.split(" ")
+        ]
         formatted = " ".join(tokens)
         if formatted not in seen:
             seen.add(formatted)
@@ -223,7 +228,10 @@ class Detector:
         for plugin in self._plugins:
             match = plugin.detect(path, sample, text)
             if match is not None:
-                metadata = dict(match.metadata) if match.metadata is not None else {}
+                if match.metadata is not None:
+                    metadata = dict(match.metadata)
+                else:
+                    metadata = {}
                 if "bytes_sampled" not in metadata:
                     metadata["bytes_sampled"] = len(sample)
                 if encoding is not None and "encoding" not in metadata:

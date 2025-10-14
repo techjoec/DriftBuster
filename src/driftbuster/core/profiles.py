@@ -1,34 +1,9 @@
 """Configuration profile utilities for DriftBuster.
 
-Schema overview
-================
-
-``ProfileConfig`` fields:
-    ``identifier`` (str): required stable key for the config entry.
-    ``path`` (str | None): optional POSIX-style relative path (normalised).
-    ``path_glob`` (str | None): optional POSIX glob for matching multiple files.
-    ``application`` / ``version`` / ``branch`` (str | None): helper tags that
-        check for ``"application:<value>"`` style tags when matching.
-    ``tags`` (frozenset[str]): additional required tags beyond helpers (defaults
-        to an empty frozenset when not provided).
-    ``expected_format`` / ``expected_variant`` (str | None): optional hints for
-        catalog alignment.
-    ``metadata`` (Mapping[str, Any]): arbitrary metadata stored as a read-only
-        mapping (defaults to ``{}``).
-
-``ConfigurationProfile`` fields:
-    ``name`` (str): required unique profile identifier.
-    ``description`` (str | None): optional description (defaults to ``None``).
-    ``tags`` (frozenset[str]): activation tags (defaults to an empty frozenset).
-    ``configs`` (tuple[ProfileConfig, ...]): ordered collection of profile
-        configs (defaults to ``()``).
-    ``metadata`` (Mapping[str, Any]): additional profile metadata stored as a
-        read-only mapping (defaults to ``{}``).
-
-``ProfileStore`` responsibilities:
-    maintain immutable profile/config instances, reject duplicate identifiers,
-    provide summary/diff helpers, support copy-on-write updates, and expose
-    targeted removal for configs while keeping lookups deterministic.
+Immutable profile dataclasses and the ``ProfileStore`` registry live here. The
+helpers normalise tag input, guard against duplicate identifiers, and expose
+copy-on-write updates so scan tooling can resolve configuration expectations
+deterministically.
 """
 
 from __future__ import annotations
@@ -37,7 +12,16 @@ from dataclasses import dataclass, field, replace
 from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
-from typing import Any, Callable, FrozenSet, Iterable, Mapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    FrozenSet,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 from .types import DetectionMatch
 
@@ -80,9 +64,18 @@ class ProfileConfig:
         if self.path is not None:
             object.__setattr__(self, "path", _normalize_path(self.path))
         if self.path_glob is not None:
-            object.__setattr__(self, "path_glob", _normalize_path(self.path_glob))
+            object.__setattr__(
+                self,
+                "path_glob",
+                _normalize_path(self.path_glob),
+            )
 
-    def matches(self, *, relative_path: Optional[str], provided_tags: FrozenSet[str]) -> bool:
+    def matches(
+        self,
+        *,
+        relative_path: Optional[str],
+        provided_tags: FrozenSet[str],
+    ) -> bool:
         """Return ``True`` when the config applies to the given path + tags."""
 
         if self.tags and not self.tags.issubset(provided_tags):
@@ -144,7 +137,10 @@ class ConfigurationProfile:
         matches = [
             config
             for config in self.configs
-            if config.matches(relative_path=relative_path, provided_tags=provided_tags)
+            if config.matches(
+                relative_path=relative_path,
+                provided_tags=provided_tags,
+            )
         ]
         return tuple(matches)
 
@@ -177,7 +173,10 @@ class ProfileStore:
     having to export the full profile payload.
     """
 
-    def __init__(self, profiles: Optional[Sequence[ConfigurationProfile]] = None) -> None:
+    def __init__(
+        self,
+        profiles: Optional[Sequence[ConfigurationProfile]] = None,
+    ) -> None:
         self._profiles: dict[str, ConfigurationProfile] = {}
         self._config_index: dict[str, AppliedProfileConfig] = {}
         if profiles:
@@ -193,14 +192,16 @@ class ProfileStore:
             identifier = config.identifier
             if identifier in seen_local:
                 raise ValueError(
-                    f"Duplicate config identifier {identifier!r} within profile {profile.name!r}"
+                    "Duplicate config identifier"
+                    f" {identifier!r} within profile {profile.name!r}"
                 )
             seen_local.add(identifier)
             existing = self._config_index.get(identifier)
             if existing is not None:
                 raise ValueError(
-                    f"Config identifier {identifier!r} already registered under profile "
-                    f"{existing.profile.name!r}"
+                    "Config identifier"
+                    f" {identifier!r} already registered under profile"
+                    f" {existing.profile.name!r}"
                 )
 
     def _index_profile(self, profile: ConfigurationProfile) -> None:
@@ -215,7 +216,7 @@ class ProfileStore:
             self._config_index.pop(config.identifier, None)
 
     def register_profile(self, profile: ConfigurationProfile) -> None:
-        """Register ``profile`` ensuring duplicate names and config IDs are rejected."""
+        """Register ``profile`` and enforce unique names/config IDs."""
 
         self._validate_profile(profile)
         self._profiles[profile.name] = profile
@@ -226,7 +227,7 @@ class ProfileStore:
         name: str,
         mutator: Callable[[ConfigurationProfile], ConfigurationProfile],
     ) -> ConfigurationProfile:
-        """Clone ``name`` via ``mutator`` and replace it while preserving indexes."""
+        """Clone ``name`` via ``mutator`` and keep indexes intact."""
 
         if not callable(mutator):
             raise TypeError("mutator must be callable")
@@ -239,10 +240,17 @@ class ProfileStore:
         candidate_seed = replace(original)
         candidate = mutator(candidate_seed)
         if not isinstance(candidate, ConfigurationProfile):
-            raise TypeError("mutator must return a ConfigurationProfile instance")
+            raise TypeError(
+                "mutator must return a ConfigurationProfile instance"
+            )
 
-        if candidate.name != original.name and candidate.name in self._profiles:
-            raise ValueError(f"Profile {candidate.name!r} is already registered")
+        if (
+            candidate.name != original.name
+            and candidate.name in self._profiles
+        ):
+            raise ValueError(
+                f"Profile {candidate.name!r} is already registered"
+            )
 
         self._drop_profile_index(original)
         self._profiles.pop(name)
@@ -262,23 +270,33 @@ class ProfileStore:
         profile = self._profiles.pop(name)
         self._drop_profile_index(profile)
 
-    def remove_config(self, profile_name: str, config_id: str) -> ConfigurationProfile:
-        """Remove ``config_id`` from ``profile_name`` raising descriptive errors."""
+    def remove_config(
+        self,
+        profile_name: str,
+        config_id: str,
+    ) -> ConfigurationProfile:
+        """Remove ``config_id`` from ``profile_name`` with clear errors."""
 
         def _remove(profile: ConfigurationProfile) -> ConfigurationProfile:
             remaining = tuple(
-                config for config in profile.configs if config.identifier != config_id
+                config
+                for config in profile.configs
+                if config.identifier != config_id
             )
             if len(remaining) == len(profile.configs):
                 raise ValueError(
-                    f"Config identifier {config_id!r} is not registered under profile {profile.name!r}"
+                    "Config identifier"
+                    f" {config_id!r} is not registered under profile"
+                    f" {profile.name!r}"
                 )
             return replace(profile, configs=remaining)
 
         try:
             return self.update_profile(profile_name, _remove)
         except KeyError as exc:
-            raise KeyError(f"Profile {profile_name!r} is not registered") from exc
+            raise KeyError(
+                f"Profile {profile_name!r} is not registered"
+            ) from exc
 
     def get_profile(self, name: str) -> ConfigurationProfile:
         return self._profiles[name]
@@ -316,9 +334,10 @@ class ProfileStore:
         return MappingProxyType(payload)
 
     def applicable_profiles(
-        self, tags: Optional[Iterable[str]]
+        self,
+        tags: Optional[Iterable[str]],
     ) -> Tuple[ConfigurationProfile, ...]:
-        """Return profiles that apply to ``tags`` without mutating store state."""
+        """Return profiles that apply to ``tags`` without touching state."""
 
         tag_set = normalize_tags(tags)
         return tuple(
@@ -328,7 +347,7 @@ class ProfileStore:
         )
 
     def find_config(self, identifier: str) -> Tuple[AppliedProfileConfig, ...]:
-        """Return the registered config matching ``identifier`` (empty when missing)."""
+        """Return the config matching ``identifier`` when present."""
 
         match = self._config_index.get(identifier)
         if match is None:
@@ -341,7 +360,7 @@ class ProfileStore:
         *,
         relative_path: Optional[str],
     ) -> Tuple[AppliedProfileConfig, ...]:
-        """Return profile/config matches for ``relative_path`` under ``tags``."""
+        """Return matches for ``relative_path`` under ``tags``."""
 
         tag_set = normalize_tags(tags)
         matches: list[AppliedProfileConfig] = []
@@ -350,7 +369,9 @@ class ProfileStore:
                 provided_tags=tag_set,
                 relative_path=relative_path,
             ):
-                matches.append(AppliedProfileConfig(profile=profile, config=config))
+                matches.append(
+                    AppliedProfileConfig(profile=profile, config=config)
+                )
         return tuple(matches)
 
 
@@ -358,15 +379,17 @@ def diff_summary_snapshots(
     baseline: Mapping[str, Any],
     current: Mapping[str, Any],
 ) -> Mapping[str, Any]:
-    """Return a read-only diff between two ``ProfileStore.summary`` payloads."""
+    """Return a read-only diff between two summary payloads."""
 
     def _as_int(value: Any, fallback: int) -> int:
         try:
             return int(value)
-        except (TypeError, ValueError):  # pragma: no cover - defensive conversions
+        except (TypeError, ValueError):  # pragma: no cover
             return fallback
 
-    def _profile_map(summary: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, int]]:
+    def _profile_map(
+        summary: Mapping[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, int]]:
         entries: dict[str, Any] = {}
         totals = {
             "profiles": _as_int(summary.get("total_profiles"), 0),
@@ -401,9 +424,17 @@ def diff_summary_snapshots(
     for name in sorted(set(baseline_profiles) & set(current_profiles)):
         base_entry = baseline_profiles[name]
         curr_entry = current_profiles[name]
-        added_ids = tuple(sorted(curr_entry["config_set"] - base_entry["config_set"]))
-        removed_ids = tuple(sorted(base_entry["config_set"] - curr_entry["config_set"]))
-        if added_ids or removed_ids or base_entry["config_count"] != curr_entry["config_count"]:
+        added_ids = tuple(
+            sorted(curr_entry["config_set"] - base_entry["config_set"])
+        )
+        removed_ids = tuple(
+            sorted(base_entry["config_set"] - curr_entry["config_set"])
+        )
+        if (
+            added_ids
+            or removed_ids
+            or base_entry["config_count"] != curr_entry["config_count"]
+        ):
             changed_profiles.append(
                 MappingProxyType(
                     {

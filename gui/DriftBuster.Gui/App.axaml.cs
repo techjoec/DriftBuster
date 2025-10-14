@@ -1,5 +1,3 @@
-using System.Threading.Tasks;
-
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -26,15 +24,9 @@ namespace DriftBuster.Gui
                     DataContext = new MainWindowViewModel(),
                 };
 
-                desktop.Exit += OnDesktopExit;
             }
 
             base.OnFrameworkInitializationCompleted();
-        }
-
-        private static void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
-        {
-            DriftbusterService.ShutdownAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 }

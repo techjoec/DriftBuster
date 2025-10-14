@@ -6,7 +6,7 @@ usage() {
 Usage: scripts/build_velopack_release.sh --version <semver> [options]
 
 Options:
-  -v, --version <value>     Semantic version for this release (required).
+  -v, --version <value>     Semantic version for this release (defaults to versions.yml entry).
   -r, --rid <value>         Runtime identifier to publish (default: win-x64).
   -c, --channel <name>      Optional update channel label written into the feed.
       --pack-id <value>     Override the Velopack pack id (default: com.driftbuster.gui).
@@ -59,6 +59,50 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSIONS_FILE="$ROOT_DIR/versions.yml"
+
+if command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN=python3
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_BIN=python
+else
+  echo "Error: python3/python is required." >&2
+  exit 1
+fi
+
+if [[ -z "$VERSION" ]]; then
+  if [[ ! -f "$VERSIONS_FILE" ]]; then
+    echo "Error: versions file '$VERSIONS_FILE' not found." >&2
+    exit 1
+  fi
+  VERSION="$($PYTHON_BIN - "$VERSIONS_FILE" gui <<'PY'
+import sys
+
+path, key = sys.argv[1:3]
+value = None
+with open(path, encoding='utf-8') as fh:
+    for line in fh:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if ':' not in line:
+            continue
+        k, v = line.split(':', 1)
+        if k.strip() == key:
+            value = v.strip()
+            if value and value[0] in {'"', "'"} and value[-1] == value[0]:
+                value = value[1:-1]
+            break
+
+if not value:
+    print(f"versions.yml missing entry for {key}.", file=sys.stderr)
+    sys.exit(1)
+
+print(value)
+PY')"
+fi
+
 if [[ -z "$VERSION" ]]; then
   echo "Error: --version is required." >&2
   usage >&2
@@ -86,17 +130,17 @@ esac
 case "$RID" in
   win-*)
     DIRECTIVE="[win]"
-    ICON_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/gui/DriftBuster.Gui/Assets/app.ico"
+    ICON_PATH="$ROOT_DIR/gui/DriftBuster.Gui/Assets/app.ico"
     ENTRY_EXE="DriftBuster.Gui.exe"
     ;;
   linux-*)
     DIRECTIVE="[linux]"
-    ICON_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/gui/DriftBuster.Gui/Assets/app.png"
+    ICON_PATH="$ROOT_DIR/gui/DriftBuster.Gui/Assets/app.png"
     ENTRY_EXE="DriftBuster.Gui"
     ;;
   osx-*|macos-*)
     DIRECTIVE="[osx]"
-    ICON_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/gui/DriftBuster.Gui/Assets/app.icns"
+    ICON_PATH="$ROOT_DIR/gui/DriftBuster.Gui/Assets/app.icns"
     ENTRY_EXE="DriftBuster.Gui"
     ;;
   *)
@@ -118,15 +162,6 @@ for SECTION in '## Core' '## Formats' '## GUI' '## Installer' '## Tooling'; do
     exit 1
   fi
 done
-
-if command -v python3 >/dev/null 2>&1; then
-  PYTHON_BIN=python3
-elif command -v python >/dev/null 2>&1; then
-  PYTHON_BIN=python
-else
-  echo "Error: python3/python is required for changelog validation." >&2
-  exit 1
-fi
 
 "$PYTHON_BIN" - "$ABS_NOTES" "$VERSION" <<'PY'
 import os

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from driftbuster.core import run_profiles
+from driftbuster import run_profiles
 
 
 def test_save_and_load_profile(tmp_path: Path) -> None:

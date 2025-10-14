@@ -5,25 +5,24 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 ## Current Base Assets (2025-10 audit)
 
 - **Avalonia shell**: `gui/DriftBuster.Gui` targets `net8.0` with Avalonia 11.2.0, serving a red/black window that swaps Diff/Hunt panes via `CurrentView` bindings.
-- **Python bridge**: `src/driftbuster/api_server.py` exposes `ping`, `diff`, and `hunt` commands, returning JSON so the GUI can pretty-print diff plans and hunt hits.
-- **Process contract**: A pooled Python backend stays warm (idle timeout 3 min) so repeated Diff/Hunt calls reuse the same process; responses surface as `{ "ok": bool, "result": {...} }` envelopes.
+- **Backend library**: `gui/DriftBuster.Backend` hosts shared diff, hunt, and run-profile helpers consumed by both the GUI and the PowerShell module.
+- **Execution contract**: Operations run on background tasks, returning the same JSON payloads previously emitted by the Python helper so the UI bindings stay untouched.
 - **UI snapshot**: Diff view now validates both file pickers, renders plan/metadata tables, and offers a one-click raw JSON copy. Hunt view adds directory picker, status messaging, and a sortable grid of hits with rule metadata.
-- **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists (leveraging `hunt_path(..., return_json=True)`).
+- **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists using the built-in rule set.
 - **Assets**: `Directory.Build.props` centralises net8.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
 
 ## Host Dependencies
 
 - **.NET SDK 8.0.x** installed locally for restore, build, run, and publish steps.
-- **Python 3.10+** discoverable as `python`; repository layout already supports `python -m driftbuster.api_server` without extra packaging.
 - **Optional tooling**: Avalonia preview support in editor (Rider, VS Code extension) improves XAML edits but is not required.
-- **Runtime checks**: Confirm `dotnet --list-sdks` includes 8.x and `python --version` reports ≥3.10 before running the GUI.
+- **Runtime checks**: Confirm `dotnet --list-sdks` includes 8.x before running the GUI.
 - **NuGet footprint**: Restore succeeds with Avalonia 11.2.0 packages (`Avalonia`, `Avalonia.Desktop`, `Avalonia.Fonts.Inter`, `Avalonia.Themes.Fluent`, `Avalonia.Diagnostics`). No FluentAvalonia dependency is required.
 - **Assets**: `Assets/app.ico` already contains the DrB badge; replace it with design-approved artwork before shipping installers.
 
 ## Integration Milestones
 
 1. Port the Avalonia project, bridge module, and build props into the repo while preserving relative paths.
-2. Replace sample bridge handlers with real JSON responses (e.g., wrap `hunt_path(..., return_json=True)` and planned diff helpers).
+2. Replace sample bridge handlers with real JSON responses wired to `Driftbuster.Backend` helpers.
 3. Document GUI launch instructions plus dependency checklist in the main README or companion doc.
 4. Add UX polish: file pickers, status text, and richer result panels driven by the new JSON contract.
 5. Prepare Windows packaging guidance (`dotnet publish -r win-x64 -c Release /p:PublishSingleFile=true`) once features settle.
@@ -36,7 +35,6 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 - Restore & build: `dotnet restore` then `dotnet build -c Release gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 - Portable zip (uses host .NET runtime): `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true`.
 - Self-contained bundle (ships .NET runtime): add `/p:SelfContained=true` and keep `PublishSingleFile=true`. Expect ~120 MB output.
-- Python runtime: drop a vetted CPython build (or venv) next to `DriftBuster.Gui.exe`, or integrate a launcher script that primes `%PATH%` before the GUI starts.
 - Record publish commands + hashes in `notes/dev-host-prep.md` for each distribution flavour.
 
 ## Manual Smoke Checklist
@@ -77,17 +75,16 @@ Active user requirements are tracked in the status log (`notes/status/gui-resear
   - Natural fit for WinUI/Electron bundles; delivers auto-updates and clean install/uninstall.
   - Needs code-signing certificate and explicit capability declarations (file system access, WebView2 runtime).
 - **Portable ZIP**
-  - Provide zip archive with executable + assets for Tkinter/PySimpleGUI builds; supports offline admins.
-  - Must include Python runtime (`python311.dll`, stdlib) when targeting hosts without Python preinstalled.
-- **Bundled Python Runtime**
-  - Use `python -m zipapp`, `pyinstaller`, or `briefcase` depending on framework.
-  - Record PSF licence + third-party notices alongside binaries.
+  - Provide zip archive with executable + assets; supports offline admins.
+- **Bundled runtime**
+  - Ship the .NET runtime when targeting hosts without it (`/p:SelfContained=true`).
+  - Record third-party notices alongside binaries.
 - **Update Channel**
   - Manual updates: publish checksum + version in release notes until automation is approved.
 
 ## Distribution & Licensing Notes
 
-- Maintain a `NOTICE` file covering Python, PySimpleGUI, Electron/Chromium, and any npm/nuget packages.
+- Maintain a `NOTICE` file covering .NET dependencies, Avalonia packages, and any auxiliary tooling.
 - Confirm WebView2 Evergreen redistributable terms when embedding reports.
 - Avoid auto-downloading dependencies at runtime; ship vetted binaries to keep supply chain tight.
 - Require offline activation path so security teams can inspect builds before deployment.

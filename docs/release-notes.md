@@ -49,6 +49,24 @@ packaging script enforces these guards automatically.
 Each file uses the heading pattern `## <version>` followed by bullets. Use one
 file per formatter, keeping names lowercase/kebab-case (e.g. `json.md`).
 
+## Version Matrix
+
+Track package versions in `versions.yml` so downstream packaging scripts stay in
+sync.
+
+| Component  | Source                                  | Version Source                  |
+|------------|-----------------------------------------|---------------------------------|
+| Core       | Python package & `DriftBuster.Backend`  | `Directory.Build.props` / `versions.yml` (`core`) |
+| GUI        | Avalonia desktop app                    | `gui/GuiVersion.props` / `versions.yml` (`gui`)   |
+| PowerShell | `cli/DriftBuster.PowerShell` module     | `DriftBuster.psd1` / `versions.yml` (`powershell`) |
+
+When cutting a release:
+
+1. Update `versions.yml` and the component-specific files above.
+2. Rebuild the backend so the PowerShell module packages the matching DLL.
+3. Mention the backend/core dependency version in GUI release notes and module
+   documentation if it changes.
+
 ## Using the Script
 
 ```

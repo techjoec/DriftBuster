@@ -1,67 +1,58 @@
 # PowerShell Module Plan
 
-Purpose: Capture the plan for a future PowerShell wrapper once the Python core
-and CLI work stabilize.
+Purpose: Track the feature work for the Windows-first PowerShell module that
+wraps the shared .NET backend.
 
 ## Objectives
 
-- Expose a `Get-DriftBusterScan` cmdlet that shells out to the Python CLI (or
-  uses `python -m driftbuster`) and returns structured objects.
-- Provide reporting-focused wrappers (`Export-DriftBusterJson`,
-  `Export-DriftBusterHtml`, `Get-DriftBusterDiff`) that funnel into the JSON,
-  HTML, and diff adapters while reusing the redaction token list.
-- Keep module dependencies minimal—PowerShell 5.1+ on Windows, Python 3.10+
-  available in `PATH`.
-- Preserve manual validation workflow; no automated PS tests.
+- Ship a Windows-friendly `DriftBuster` module that exposes diff, hunt, and
+  run-profile helpers backed by `DriftBuster.Backend`.
+- Return strongly-typed .NET objects while also providing `RawJson` for piping
+  into other tooling.
+- Keep distribution simple: script module that loads the already-built backend
+  assembly; later consider a compiled binary module.
+- Enforce linting via `Invoke-ScriptAnalyzer` (exposed through
+  `scripts/lint_powershell.ps1`) before packaging.
 
 ## Module Sketch
 
-- Module name: `DriftBuster.Tools` (subject to change).
+- Module name: `DriftBuster` (initial script module under `cli/`).
 - Functions:
-  - `Get-DriftBusterScan -Path <string> [-Glob <string>] [-AsJson] [-SampleSize <int>]`
-  - `Invoke-DriftBusterRaw -Arguments <string[]>` (internal helper wrapping
-    the Python CLI).
-  - `Find-DriftBusterDynamic -Path <string> [-Rule <string>]` to surface hunt
-    results (leveraging default rules or custom rule files).
-  - `Export-DriftBusterHtml -Path <string> [-Output <string>] [-MaskToken <string[]>]`
-    to call `--html` behind the scenes and record the generated file for manual
-    review.
-  - `Get-DriftBusterDiff -Baseline <string> -Current <string> [-MaskToken <string[]>]`
-    to proxy the diff helper and emit stats alongside the unified diff text.
-- Implementation options:
-  1. **Preferred:** call the Python CLI command (`driftbuster`) once available.
-  2. **Fallback:** run `python -m driftbuster` while we avoid packaging.
-- Output: by default, emit custom objects with `Path`, `Format`, `Variant`,
-  `Confidence`, `Reasons`, `Metadata`. When `-AsJson` is specified, write raw
-  JSON lines (pass-through).
+  - `Test-DriftBusterPing`
+  - `Invoke-DriftBusterDiff -Versions <string[]>` or `-Left/-Right`
+  - `Invoke-DriftBusterHunt -Directory <string> [-Pattern <string>]`
+  - `Get-DriftBusterRunProfile [-BaseDir <string>]`
+  - `Save-DriftBusterRunProfile -Profile <RunProfileDefinition> [-BaseDir <string>]`
+  - `Invoke-DriftBusterRunProfile -Profile <RunProfileDefinition> [-BaseDir <string>] [-Timestamp <string>] [-NoSave]`
+- Implementation details:
+  - Load the newest `DriftBuster.Backend.dll` from `gui/DriftBuster.Backend/bin/...`.
+  - Hold a module-scoped `DriftbusterBackend` instance; call `.GetAwaiter().GetResult()` for synchronous usage.
+  - Emphasise JSON output (`RawJson`) for diff/hunt commands so workflows can
+    continue to rely on structured payloads.
 
 ## Validation Checklist
 
-- Ensure the module detects Python prerequisites and surfaces friendly errors
-  if missing.
-- Manual scenarios:
-  - `Get-DriftBusterScan -Path C:\configs` — verify table output.
-  - `Get-DriftBusterScan -Path . -Glob "**/*.config" -AsJson` — confirm JSON
-    passthrough.
-  - `Export-DriftBusterHtml -Path C:\configs -Output report.html` — open the
-    HTML file and verify diff, summary, hunt sections display and redaction
-    badges show tracked placeholders.
-  - `Get-DriftBusterDiff -Baseline baseline.json -Current current.json` — check
-    stats and placeholder substitution line up with manual diff expectations.
-  - Error handling: unreadable path, missing Python executable.
-- Record commands + outcomes in `CLOUDTASKS.md` once the module is built.
+- `Test-DriftBusterPing` returns `pong`.
+- `Invoke-DriftBusterDiff` against sample config files returns expected plan
+  metadata and JSON structure.
+- `Invoke-DriftBusterHunt` over `fixtures/` produces hit counts matching the
+  GUI workflow.
+- Run-profile commands save profiles under `Profiles/` and emit `metadata.json`
+  with SHA-256 hashes.
+- Friendly error messaging when the backend assembly is missing (prompting
+  users to run `dotnet build`).
 
 ## Packaging & Distribution Notes
 
-- Initially distribute as a script module in the repo (`powershell/DriftBuster.Tools/`).
-- Later consider publishing to PSGallery after CLI stabilizes.
-- Document installation steps in `README.md` (`Import-Module` instructions,
-  prerequisites) plus references to the reporting cmdlets and masking
-  prerequisites.
+- Script module lives at `cli/DriftBuster.PowerShell/` with `.psm1` + `.psd1`.
+- Document usage in the README (build backend, `Import-Module`, sample diff).
+- Consider a binary module later by targeting `Microsoft.PowerShell.SDK` and
+  publishing to PSGallery once the API stabilises.
 
 ## Outstanding Questions
 
-- Should the module allow inline Python overrides (custom interpreters)?
-- How do we cache or reuse Python processes for large scans? (Default plan:
-  spawn per invocation, revisit once CLI performance is proven.)
-- Do we need digital signing for distribution? (likely yes before PSGallery).
+- Should we add helper cmdlets to construct `RunProfileDefinition` objects from
+  hashtables or JSON payloads?
+- Do we need additional guardrails when the backend adds new commands (version
+  negotiation, capability discovery)?
+- Is signed distribution required before wider sharing?

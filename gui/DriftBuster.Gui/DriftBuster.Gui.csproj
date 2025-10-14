@@ -1,10 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\GuiVersion.props" />
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <Version>$(DriftBusterGuiVersion)</Version>
+    <AssemblyVersion>$(DriftBusterGuiVersion)</AssemblyVersion>
+    <FileVersion>$(DriftBusterGuiVersion)</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,5 +23,9 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DriftBuster.Backend\DriftBuster.Backend.csproj" />
   </ItemGroup>
 </Project>

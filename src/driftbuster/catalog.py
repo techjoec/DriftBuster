@@ -328,7 +328,7 @@ DETECTION_CATALOG = DetectionCatalog(
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
-                    pattern="^#requires|^Param\\(",
+                    pattern=r"^#requires|^Param\(",
                     optional=True,
                 ),
                 ContentSignature(
@@ -344,7 +344,7 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern='CreateObject\("Scripting\\.Dictionary"\)',
+                    pattern=r'CreateObject\("Scripting\.Dictionary"\)',
                     optional=True,
                 ),
             ),

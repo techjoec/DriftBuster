@@ -1,38 +1,21 @@
 """Planning helpers for future diff/patch generation.
 
-The core module does not execute diffs yet, but downstream tooling and
-checklists already reference a dedicated helper that can translate detector
-output into the kwargs consumed by ``driftbuster.reporting.diff``. This module
-captures the expected interface so future implementation work has a concrete
-target while HOLD remains in place.
+The core module does not execute diffs yet, but downstream tooling already
+expects helpers that mirror the future reporting contract. This module
+documents that surface so the eventual implementation can slot in without
+changing call sites while HOLD remains active.
 
-Blueprint summary
-=================
+Helpers
+=======
 
-Two helpers define the intended contract:
+- ``build_diff_plan``: validate inputs and capture kwargs for future diff
+  execution via ``driftbuster.reporting.diff.build_unified_diff``.
+- ``plan_to_kwargs``: convert a :class:`DiffPlan` into a dictionary.
+  Manual scripts can hand the mapping to the reporting layer during
+  validation runs.
 
-``build_diff_plan(before, after, *, content_type="text", label=None, mask_tokens=None, context_lines=3, placeholder="[REDACTED]")``
-    Validates the inputs and returns a :class:`DiffPlan` dataclass capturing the
-    canonical kwargs for ``driftbuster.reporting.diff.build_unified_diff`` once
-    the execution path is allowed to land.
-
-``plan_to_kwargs(plan)``
-    Converts a :class:`DiffPlan` instance into a shallow dictionary that mirrors
-    the keyword arguments used by the reporting layer. Manual scripts can feed
-    that mapping into ``build_unified_diff`` during validation runs without
-    wiring the code path today.
-
-The helpers intentionally avoid importing ``driftbuster.reporting`` so the core
-module stays free of reporting dependencies until HOLD lifts.
-
-Expected usage
-==============
-
-Manual verification scripts (see ``notes/snippets/xml-config-diffs.md``) should
-instantiate a :class:`DiffPlan`, log the resulting mapping, and only execute the
-diff via the reporting module during manual tests. Future work will replace the
-placeholder ``NotImplementedError`` with concrete orchestration once the diff
-design is approved.
+Importing ``driftbuster.reporting`` is intentionally avoided so the core stays
+decoupled from reporting dependencies until the diff runner lands.
 """
 
 from __future__ import annotations
@@ -90,9 +73,9 @@ def build_diff_plan(
 def plan_to_kwargs(plan: DiffPlan) -> Mapping[str, object]:
     """Translate ``plan`` into kwargs for future diff execution.
 
-    The return value mirrors the signature of
-    ``driftbuster.reporting.diff.build_unified_diff`` so manual scripts can pass
-    it along without modification once the diff runner is available.
+    The return value mirrors
+    ``driftbuster.reporting.diff.build_unified_diff`` so manual scripts can
+    forward the mapping unchanged once the diff runner is available.
     """
 
     payload: MutableMapping[str, object] = {
@@ -115,5 +98,9 @@ def execute_diff_plan(plan: DiffPlan) -> None:
     raise NotImplementedError("Diff execution will land after HOLD lifts.")
 
 
-__all__ = ["DiffPlan", "build_diff_plan", "plan_to_kwargs", "execute_diff_plan"]
-
+__all__ = [
+    "DiffPlan",
+    "build_diff_plan",
+    "plan_to_kwargs",
+    "execute_diff_plan",
+]

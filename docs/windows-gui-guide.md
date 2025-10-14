@@ -3,16 +3,15 @@
 This guide explains the capabilities, layout, and operational details of the Avalonia-based Windows shell shipped in `gui/DriftBuster.Gui`.
 
 ## 1. Overview
-- **Purpose:** Provide a Windows-first experience for building diff plans and running hunt scans against the existing Python core.
-- **Architecture:** Avalonia (net8.0) desktop app paired with a pooled Python helper (`python -m driftbuster.api_server`) over JSON/STDIO.
+- **Purpose:** Provide a Windows-first experience for building diff plans and running hunt scans powered by the new .NET backend.
+- **Architecture:** Avalonia (net8.0) desktop app backed by the shared `DriftBuster.Backend` library used by the PowerShell module.
 - **Audience:** Analysts validating configuration drift manually, as well as developers exercising the core engine without the CLI.
 
 ## 2. Prerequisites
 | Dependency | Notes |
 |------------|-------|
 | .NET SDK 8.0.x | Required to restore, run, and publish the GUI. |
-| Python 3.10+  | Must be discoverable as `python` on PATH; the app spawns `python -m driftbuster.api_server`. |
-| DriftBuster repo checkout | The GUI expects the editable `src/driftbuster` layout present. |
+| DriftBuster repo checkout | Required for fixtures and sample data referenced by the UI. |
 | Optional editor tooling | JetBrains Rider, VS Code + Avalonia extension, or equivalent for XAML previews. |
 
 ## 3. Launching the GUI
@@ -60,16 +59,17 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Raw JSON is available in the expander for exporting or analysis.
 
 ## 7. Backend Bridge
-- Single instance of `PythonBackend` maintains a warm `python -m driftbuster.api_server` process.
-- Commands are newline-delimited JSON (e.g., `{ "cmd": "diff", ... }`). Responses follow `{ "ok": bool, "result": {...} }` or `{ "ok": false, "error": "..." }`.
-- Idle timeout (3 minutes) disposes the process automatically; the next command restarts it.
-- App exit sends `{ "cmd": "shutdown" }` to guarantee clean termination.
-- Errors are logged to debugger output via `Process.ErrorDataReceived` while still surfaced to the UI.
+- `DriftbusterService` instantiates the shared `DriftbusterBackend` class and executes diff, hunt, and run-profile operations in-process.
+- Diff calls load file contents, build the same JSON payload exposed to the UI, and reuse the shared models for plan metadata.
+- Hunt scans walk the filesystem locally, apply the default rule set, and surface filtered hits to the view models.
+- Run profile actions persist JSON definitions, copy snapshot files, and emit metadata using the shared library helpers.
+- All work runs asynchronously on background tasks so the UI stays responsive; errors surface through the existing status banners.
 
 ## 8. Packaging Options
 - **Velopack installers:** `dotnet tool restore` then `scripts/build_velopack_release.sh --version <semver> --release-notes notes/releases/<semver>.md [--rid win-x64]`. The script publishes the app self-contained and calls `vpk pack`, dropping installers under `artifacts/velopack/releases/<rid>`. Release notes must follow `docs/release-notes.md`. Run it on the OS you’re targeting (the script switches between `[win]`, `[linux]`, `[osx]` directives automatically). Use `--channel` to label prerelease feeds and `--pack-id` if you need an alternate bundle identifier.
 - **Manual portable publish:** For quick disposable builds, `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true`. (Velopack is the preferred path for anything shipping to users.)
-- Always ship or document the Python runtime expected by the GUI (`python -m driftbuster.api_server`).
+- No external runtimes are required beyond the .NET runtime chosen for your publish target.
+- Cross-check `versions.yml` (`core`, `gui`) before packaging and note the backend/core version in the release notes when it changes.
 
 ## 9. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.
@@ -79,14 +79,13 @@ This guide explains the capabilities, layout, and operational details of the Ava
 ## 10. Troubleshooting
 | Symptom | Suggested Checks |
 |---------|-----------------| 
-| “Backend closed unexpectedly” | Verify Python path, inspect console for stderr output, rerun after ensuring no stale processes remain. |
+| “Backend closed unexpectedly” | Run the GUI from a console and inspect logs; verify the selected files are accessible. |
 | Validation won’t clear | Confirm file/directory exists and is accessible; refresh the path using Browse. |
 | Empty hunt results | Check filter string, increase rule coverage, or drop filter to view raw hits. |
 | Clipboard not working | Ensure the app is running in a desktop session (clipboard APIs require a real user session). |
 
 ## 11. Extensibility Pointers
-- Add new backend commands in `src/driftbuster/api_server.py` and wire equivalent methods in `DriftbusterService`.
+- Extend `Driftbuster.Backend` with new helpers, then wire them into both the GUI service and PowerShell module.
 - New view models should expose observable collections + status fields similar to Diff/Hunt pattern.
-- Reuse `PythonBackend` for future JSON commands to avoid spinning up additional processes.
 
 For deeper implementation notes, refer to `docs/windows-gui-notes.md` (engineering focus) and `notes/dev-host-prep.md` (host setup log).

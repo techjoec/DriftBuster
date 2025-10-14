@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-using DriftBuster.Gui.Models;
+using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.ViewModels

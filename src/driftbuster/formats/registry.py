@@ -22,7 +22,12 @@ class FormatPlugin(Protocol):
     priority: int
     version: str
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(
+        self,
+        path: Path,
+        sample: bytes,
+        text: Optional[str],
+    ) -> Optional[DetectionMatch]:
         ...
 
 
@@ -91,11 +96,14 @@ def registry_summary() -> Tuple[Mapping[str, object], ...]:
 def plugin_versions() -> Dict[str, str]:
     """Return a mapping of plugin names to declared versions."""
 
-    return {plugin.name: getattr(plugin, "version", "0.0.0") for plugin in get_plugins()}
+    return {
+        plugin.name: getattr(plugin, "version", "0.0.0")
+        for plugin in get_plugins()
+    }
 
 
 def _ensure_unique(plugin: FormatPlugin) -> bool:
-    """Validate that ``plugin`` does not duplicate existing registry entries."""
+    """Ensure ``plugin`` does not duplicate existing registry entries."""
 
     for record in _PLUGINS:
         existing = record.plugin
@@ -103,7 +111,8 @@ def _ensure_unique(plugin: FormatPlugin) -> bool:
             return False
         if existing.name == plugin.name:
             raise ValueError(
-                f"A plugin named {plugin.name!r} is already registered: {existing!r}"
+                f"A plugin named {plugin.name!r} is already registered:"
+                f" {existing!r}"
             )
     return True
 
@@ -115,7 +124,7 @@ _ASCII_WHITELIST = {*range(32, 127), 9, 10, 13}
 def _strip_bom(sample: bytes) -> tuple[bytes, bool]:
     for bom in (codecs.BOM_UTF8, codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE):
         if bom and sample.startswith(bom):
-            return sample[len(bom) :], True
+            return sample[len(bom):], True
     return sample, False
 
 
@@ -140,9 +149,15 @@ def looks_text(sample: bytes, thresh: float = 0.90) -> bool:
     if stripped and stripped.count(0) >= len(stripped) // 4:
         even_bytes = stripped[::2]
         odd_bytes = stripped[1::2]
-        if _ascii_ratio(even_bytes) >= thresh and odd_bytes.count(0) / max(len(odd_bytes), 1) >= 0.6:
+        if (
+            _ascii_ratio(even_bytes) >= thresh
+            and odd_bytes.count(0) / max(len(odd_bytes), 1) >= 0.6
+        ):
             return True
-        if _ascii_ratio(odd_bytes) >= thresh and even_bytes.count(0) / max(len(even_bytes), 1) >= 0.6:
+        if (
+            _ascii_ratio(odd_bytes) >= thresh
+            and even_bytes.count(0) / max(len(even_bytes), 1) >= 0.6
+        ):
             return True
 
     return False

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using DriftBuster.Gui.Models;
+using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.Tests.Fakes;

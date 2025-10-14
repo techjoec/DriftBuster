@@ -68,8 +68,20 @@ diffing, or reporting.
 dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj
 ```
 
-The GUI consumes the Python engine through the local API server to show hunts,
-diffs, and profile mismatches interactively.
+The GUI uses the shared .NET backend library to show hunts, diffs, and profile
+mismatches interactively.
+
+### Windows PowerShell module
+
+```powershell
+dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj
+pwsh scripts/lint_powershell.ps1
+Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1
+Invoke-DriftBusterDiff -Versions 'fixtures/config/appsettings.json','fixtures/config/web.config'
+```
+
+The PowerShell module uses the shared `DriftBuster.Backend` library, giving the
+CLI and GUI identical diff, hunt, and run-profile behaviour.
 
 ## Key Concepts
 

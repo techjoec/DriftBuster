@@ -1,99 +1,54 @@
-using System;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using DriftBuster.Gui.Models;
+using DriftBuster.Backend;
+using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Gui.Services
 {
     public sealed class DriftbusterService : IDriftbusterService
     {
-        private static readonly PythonBackend Backend = new();
-        private static readonly JsonSerializerOptions SerializerOptions = new()
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            PropertyNameCaseInsensitive = true,
-        };
+        private readonly IDriftbusterBackend _backend;
 
-        public async Task<string> PingAsync(CancellationToken cancellationToken = default)
+        public DriftbusterService()
+            : this(new DriftbusterBackend())
         {
-            var payload = await Backend.SendAsync(new { cmd = "ping" }, cancellationToken).ConfigureAwait(false);
-            using var document = JsonDocument.Parse(payload);
-            if (document.RootElement.TryGetProperty("status", out var status))
-            {
-                return status.GetString() ?? string.Empty;
-            }
-
-            return payload;
         }
 
-        public async Task<DiffResult> DiffAsync(IEnumerable<string?> versions, CancellationToken cancellationToken = default)
+        public DriftbusterService(IDriftbusterBackend backend)
         {
-            var versionArray = new List<string?>();
-            if (versions is not null)
-            {
-                versionArray.AddRange(versions);
-            }
-
-            var payload = await Backend.SendAsync(new { cmd = "diff", versions = versionArray }, cancellationToken)
-                .ConfigureAwait(false);
-
-            var result = JsonSerializer.Deserialize<DiffResult>(payload, SerializerOptions);
-            if (result is null)
-            {
-                throw new InvalidOperationException("Backend returned an empty diff payload.");
-            }
-
-            result.RawJson = payload;
-            return result;
+            _backend = backend;
         }
 
-        public async Task<HuntResult> HuntAsync(string? directory, string? pattern, CancellationToken cancellationToken = default)
+        public Task<string> PingAsync(CancellationToken cancellationToken = default)
         {
-            var payload = await Backend.SendAsync(new { cmd = "hunt", directory, pattern }, cancellationToken)
-                .ConfigureAwait(false);
-
-            var result = JsonSerializer.Deserialize<HuntResult>(payload, SerializerOptions);
-            if (result is null)
-            {
-                throw new InvalidOperationException("Backend returned an empty hunt payload.");
-            }
-
-            result.RawJson = payload;
-            return result;
+            return _backend.PingAsync(cancellationToken);
         }
 
-        public async Task<RunProfileListResult> ListProfilesAsync(CancellationToken cancellationToken = default)
+        public Task<DiffResult> DiffAsync(IEnumerable<string?> versions, CancellationToken cancellationToken = default)
         {
-            var payload = await Backend.SendAsync(new { cmd = "profile-list" }, cancellationToken)
-                .ConfigureAwait(false);
-
-            return JsonSerializer.Deserialize<RunProfileListResult>(payload, SerializerOptions)
-                   ?? new RunProfileListResult();
+            return _backend.DiffAsync(versions, cancellationToken);
         }
 
-        public async Task SaveProfileAsync(RunProfileDefinition profile, CancellationToken cancellationToken = default)
+        public Task<HuntResult> HuntAsync(string? directory, string? pattern, CancellationToken cancellationToken = default)
         {
-            await Backend.SendAsync(new { cmd = "profile-save", profile }, cancellationToken).ConfigureAwait(false);
+            return _backend.HuntAsync(directory, pattern, cancellationToken);
         }
 
-        public async Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, CancellationToken cancellationToken = default)
+        public Task<RunProfileListResult> ListProfilesAsync(CancellationToken cancellationToken = default)
         {
-            var payload = await Backend.SendAsync(
-                new
-                {
-                    cmd = "profile-run",
-                    profile,
-                    save = saveProfile,
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            return JsonSerializer.Deserialize<RunProfileRunResult>(payload, SerializerOptions)
-                   ?? new RunProfileRunResult();
+            return _backend.ListProfilesAsync(baseDir: null, cancellationToken);
         }
 
-        public static ValueTask ShutdownAsync() => Backend.DisposeAsync();
+        public Task SaveProfileAsync(RunProfileDefinition profile, CancellationToken cancellationToken = default)
+        {
+            return _backend.SaveProfileAsync(profile, baseDir: null, cancellationToken);
+        }
+
+        public Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, CancellationToken cancellationToken = default)
+        {
+            return _backend.RunProfileAsync(profile, saveProfile, baseDir: null, timestamp: null, cancellationToken);
+        }
     }
 }

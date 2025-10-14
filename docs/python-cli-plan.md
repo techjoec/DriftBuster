@@ -1,4 +1,8 @@
-# Python CLI Plan
+# Python CLI Plan (Legacy)
+
+> **Note:** The Windows-first pivot moves CLI work to the PowerShell module
+> backed by the shared .NET backend. This document remains for historical
+> context while the Python CLI stays on hold.
 
 Purpose: Outline how a future Python entry point would wrap the detector once
 core stabilization (A1–A3) finishes.
