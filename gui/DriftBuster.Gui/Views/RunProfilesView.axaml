@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             xmlns:conv="using:DriftBuster.Gui.Converters"
+             x:Class="DriftBuster.Gui.Views.RunProfilesView"
+             x:DataType="vm:RunProfilesViewModel">
+  <Grid ColumnDefinitions="260,*" RowDefinitions="Auto,*">
+    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+      <Button Content="Refresh"
+              Command="{Binding RefreshCommand}" />
+      <TextBlock Text="Saved profiles" FontWeight="SemiBold" VerticalAlignment="Center" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Grid.Column="0" Classes="surface" Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,6,18,0">
+      <StackPanel Spacing="8">
+        <ListBox ItemsSource="{Binding Profiles}"
+                 SelectedItem="{Binding SelectedProfile}"
+                 MinHeight="240">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel>
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Description}" Classes="subtitle" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Load"
+                  Command="{Binding LoadProfileCommand}"
+                  CommandParameter="{Binding SelectedProfile}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}" Margin="0,6,0,0">
+      <ScrollViewer>
+        <StackPanel Spacing="18">
+          <StackPanel Spacing="6">
+            <TextBlock Text="Profile details" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Classes="subtitle" Text="Define paths, baseline, and options for repeatable scans." />
+          </StackPanel>
+
+          <StackPanel Spacing="8">
+            <TextBlock Text="Name" FontWeight="SemiBold" />
+            <TextBox Text="{Binding ProfileName, Mode=TwoWay}" />
+          </StackPanel>
+
+          <StackPanel Spacing="8">
+            <TextBlock Text="Description" FontWeight="SemiBold" />
+            <TextBox Text="{Binding ProfileDescription, Mode=TwoWay}" />
+          </StackPanel>
+
+          <StackPanel Spacing="8">
+            <TextBlock Text="Sources" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding Sources}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,10" Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
+                    <StackPanel Spacing="8">
+                      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <RadioButton Content="Baseline"
+                                     IsChecked="{Binding IsBaseline, Mode=TwoWay}"
+                                     GroupName="BaselineGroup" />
+                        <TextBlock Text="Active baseline"
+                                   Classes="subtitle"
+                                   IsVisible="{Binding IsBaseline}" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox Text="{Binding Path, Mode=TwoWay}"
+                                 Width="360" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <Button Content="File"
+                                  Tag="{Binding}"
+                                  Click="OnBrowseFile" />
+                          <Button Content="Folder"
+                                  Tag="{Binding}"
+                                  Click="OnBrowseFolder" />
+                          <Button Content="Remove"
+                                  Command="{Binding DataContext.RemoveSourceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  CommandParameter="{Binding}" />
+                        </StackPanel>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Error}" Foreground="{DynamicResource Brush.Accent}" Classes="subtitle" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Add source" Command="{Binding AddSourceCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel Spacing="8">
+            <TextBlock Text="Options" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding Options}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                    <TextBox Text="{Binding Key, Mode=TwoWay}" Width="140" Watermark="Key" />
+                    <TextBox Text="{Binding Value, Mode=TwoWay}" Width="220" Watermark="Value" />
+                    <Button Content="Remove"
+                            Command="{Binding DataContext.RemoveOptionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Add option" Command="{Binding AddOptionCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Content="Save profile" Command="{Binding SaveCommand}" />
+            <Button Content="Run profile" Command="{Binding RunCommand}" />
+          </StackPanel>
+
+          <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" />
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

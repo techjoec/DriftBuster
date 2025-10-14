@@ -1,0 +1,148 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             x:Class="DriftBuster.Gui.Views.HuntView"
+             x:DataType="vm:HuntViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="24">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="heading" Text="Hunt explorer" />
+        <TextBlock Classes="subtitle"
+                   Text="Scan directories for dynamic signals and surface contextual metadata." />
+      </StackPanel>
+
+      <Border Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}">
+        <StackPanel Spacing="18">
+          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+            <StackPanel Spacing="8" Margin="0,0,12,0">
+              <TextBlock Text="Target path" FontSize="14" FontWeight="SemiBold" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBox Width="420"
+                         Watermark="Directory or file"
+                         Text="{Binding DirectoryPath, Mode=TwoWay}" />
+                <Button Content="Browse" Click="OnBrowseDirectory" />
+              </StackPanel>
+              <TextBlock Text="{Binding DirectoryError}"
+                         Foreground="{DynamicResource Brush.Accent}"
+                         FontSize="12"
+                         IsVisible="{Binding HasDirectoryError}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="0" Grid.Row="1" Spacing="8" Margin="0,12,12,0">
+              <TextBlock Text="Excerpt filter" FontSize="14" FontWeight="SemiBold" />
+              <TextBox Width="420"
+                       Watermark="Optional excerpt filter"
+                       Text="{Binding Pattern, Mode=TwoWay}" />
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Grid.RowSpan="2"
+                    Content="Scan"
+                    Command="{Binding RunHuntCommand}"
+                    VerticalAlignment="Stretch"
+                    HorizontalAlignment="Stretch" />
+          </Grid>
+
+          <ProgressBar Width="180"
+                       IsVisible="{Binding IsBusy}"
+                       IsIndeterminate="True" />
+
+          <Border Background="#30162128"
+                  CornerRadius="{DynamicResource Radius.Medium}"
+                  Padding="14"
+                  IsVisible="{Binding HasError}">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <TextBlock Text="⚠"
+                         FontSize="16"
+                         VerticalAlignment="Center" />
+              <TextBlock Text="{Binding ErrorMessage}" FontSize="13" />
+            </StackPanel>
+          </Border>
+
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding StatusMessage}"
+                       Classes="subtitle"
+                       IsVisible="{Binding HasStatus}" />
+            <Border Background="{DynamicResource Brush.SurfaceMuted}"
+                    CornerRadius="{DynamicResource Radius.Small}"
+                    Padding="10,4"
+                    IsVisible="{Binding HasHits}">
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="Hits" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding ResultCount}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}">
+        <StackPanel Spacing="18">
+          <TextBlock Text="Findings" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Classes="subtitle"
+                     Text="Each hit surfaces rule metadata, token highlighting, and the captured excerpt." />
+
+          <ItemsControl ItemsSource="{Binding Hits}" IsVisible="{Binding HasHits}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="{DynamicResource Brush.SurfaceMuted}"
+                        BorderBrush="{DynamicResource Brush.Border}"
+                        BorderThickness="{DynamicResource Thickness.Border}"
+                        CornerRadius="{DynamicResource Radius.Medium}"
+                        Padding="18"
+                        Width="300"
+                        Margin="0,0,16,16">
+                  <StackPanel Spacing="10">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding RuleName}" FontWeight="SemiBold" />
+                      <Border Background="{DynamicResource Brush.Accent}"
+                              CornerRadius="{DynamicResource Radius.Small}"
+                              Padding="8,2"
+                              IsVisible="{Binding HasToken}">
+                        <TextBlock Text="{Binding TokenName}" Foreground="#0B1120" FontSize="12" />
+                      </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Description}" Classes="subtitle" TextWrapping="Wrap" />
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="Path" FontSize="12" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding RelativePath}" Classes="subtitle" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <TextBlock Text="Line" FontSize="12" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding LineNumber}" />
+                    </StackPanel>
+                    <Border Background="#22191F2C" CornerRadius="{DynamicResource Radius.Small}" Padding="10">
+                      <TextBlock Text="{Binding Excerpt}" TextWrapping="Wrap" />
+                    </Border>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="No matches yet. Run a scan to populate the findings." 
+                     Classes="subtitle"
+                     HorizontalAlignment="Center"
+                     IsVisible="{Binding HasNoHits}" />
+
+          <Expander Header="Raw JSON"
+                    IsExpanded="False"
+                    IsVisible="{Binding HasRawJson}">
+            <Border Background="{DynamicResource Brush.SurfaceAlt}" Padding="16" CornerRadius="{DynamicResource Radius.Medium}">
+              <ScrollViewer Height="160">
+                <TextBlock Text="{Binding RawJson}"
+                           FontFamily="Consolas"
+                           TextWrapping="Wrap" />
+              </ScrollViewer>
+            </Border>
+          </Expander>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,87 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:DriftBuster.Gui.ViewModels"
+        xmlns:anim="using:Avalonia.Animation"
+        x:Class="DriftBuster.Gui.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        mc:Ignorable="d"
+        Width="1120"
+        Height="720"
+        Title="DrB DriftBuster">
+
+  <Grid RowDefinitions="Auto,*">
+    <Border Padding="24,22" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.BorderStrong}">
+      <Grid ColumnDefinitions="Auto,*">
+        <Border Width="52"
+                Height="52"
+                CornerRadius="26"
+                Background="{DynamicResource Brush.Accent}">
+          <Grid>
+            <TextBlock Text="DrB"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       Foreground="#0B1120" />
+          </Grid>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="DriftBuster"
+                     FontSize="22"
+                     FontWeight="SemiBold" />
+          <TextBlock Classes="subtitle"
+                     Text="Configuration reconnaissance, diff planning &amp; hunt insights"
+                     FontSize="14" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" Margin="24" RowDefinitions="Auto,*">
+      <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto" VerticalAlignment="Center">
+          <ToggleButton Content="Diff planner"
+                        Command="{Binding ShowDiffCommand}"
+                        IsChecked="{Binding IsDiffSelected, Mode=OneWay}" />
+          <ToggleButton Grid.Column="1"
+                        Margin="12,0,0,0"
+                        Content="Hunt explorer"
+                        Command="{Binding ShowHuntCommand}"
+                        IsChecked="{Binding IsHuntSelected, Mode=OneWay}" />
+          <ToggleButton Grid.Column="2"
+                        Margin="12,0,0,0"
+                        Content="Profiles"
+                        Command="{Binding ShowProfilesCommand}"
+                        IsChecked="{Binding IsProfilesSelected, Mode=OneWay}" />
+          <Border Grid.Column="3"
+                  Margin="18,0"
+                  Width="1"
+                  Height="28"
+                  Background="{DynamicResource Brush.Border}" />
+          <TextBlock Grid.Column="4"
+                     Margin="12,0,0,0"
+                     Text="Fast scanning, rich metadata, zero drift surprises."
+                     VerticalAlignment="Center"
+                     Foreground="{DynamicResource Brush.TextSecondary}" />
+          <Button Grid.Column="5"
+                  Margin="12,0,0,0"
+                  Content="Ping core"
+                  Command="{Binding PingCoreCommand}" />
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="1"
+              Classes="dashboard-card"
+              Padding="28"
+              CornerRadius="{DynamicResource Radius.Large}"
+              Margin="0,18,0,0">
+        <TransitioningContentControl Content="{Binding CurrentView}">
+          <TransitioningContentControl.PageTransition>
+            <anim:CrossFade Duration="0:0:0.15" />
+          </TransitioningContentControl.PageTransition>
+        </TransitioningContentControl>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>
