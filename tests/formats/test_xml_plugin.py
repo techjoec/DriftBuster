@@ -65,3 +65,42 @@ def test_xml_plugin_detects_manifest_variant() -> None:
     assert match.variant == "app-manifest-xml"
     assert match.metadata is not None
     assert match.metadata["root_local_name"].lower() == "assembly"
+
+
+def test_xml_plugin_collects_schema_metadata() -> None:
+    content = """
+    <root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="urn:test schema.xsd urn:other other.xsd"
+          xsi:noNamespaceSchemaLocation="default.xsd">
+      <child />
+    </root>
+    """
+
+    match = _detect("schema.xml", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    schemas = match.metadata["schema_locations"]
+    assert isinstance(schemas, list)
+    assert schemas[0]["namespace"] == "urn:test"
+    assert match.metadata["schema_no_namespace_location"] == "default.xsd"
+    assert "urn:test" in match.metadata["schema_location_namespaces"]
+
+
+def test_xml_plugin_records_multi_layer_transform_metadata() -> None:
+    content = """
+    <configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
+      <appSettings>
+        <add key="Example" value="Test" xdt:Transform="Replace" />
+      </appSettings>
+    </configuration>
+    """
+
+    match = _detect("web.Release.Azure.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata["config_transform"] is True
+    assert match.metadata["config_transform_target"] == "Release.Azure"
+    assert match.metadata["config_transform_layers"] == ["Release", "Azure"]
+    assert match.metadata["config_transform_environment"] == "Azure"

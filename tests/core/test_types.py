@@ -58,3 +58,25 @@ def test_summarise_metadata_serialises_values() -> None:
 
     assert summary["plugin"] == "xml"
     assert summary["metadata"]["catalog_format"] == "xml"
+
+
+def test_summarise_metadata_highlights_namespace() -> None:
+    match = DetectionMatch(
+        plugin_name="xml",
+        format_name="xml",
+        variant="resource-xml",
+        confidence=0.8,
+        reasons=["detected"],
+        metadata={
+            "root_namespace": "urn:test",
+            "schema_locations": [{"namespace": "urn:test", "location": "schema.xsd"}],
+            "schema_no_namespace_location": "local.xsd",
+        },
+    )
+
+    summary = summarise_metadata(match)
+
+    assert "highlights" in summary
+    labels = [entry["label"] for entry in summary["highlights"]]
+    assert "root_namespace" in labels
+    assert any(entry["value"] == "urn:test" for entry in summary["highlights"])

@@ -192,6 +192,25 @@ def default_rules() -> Tuple[HuntRule, ...]:
             patterns=(r"\b\d+\.\d+\.\d+(?:\.\d+)?\b",),
         ),
         HuntRule(
+            name="config-appsetting",
+            description="AppSettings key/value pairs inside .config files",
+            token_name="app_setting_value",
+            keywords=("<add", "key=", "value="),
+            patterns=(
+                r"<add\s+[^>]*\bkey\s*=\s*\"[^\"]+\"[^>]*\bvalue\s*=\s*\"[^\"]+\"",
+                r"<add\s+[^>]*\bvalue\s*=\s*\"[^\"]+\"[^>]*\bkey\s*=\s*\"[^\"]+\"",
+            ),
+        ),
+        HuntRule(
+            name="config-connection-string",
+            description="ConnectionString attributes inside .config files",
+            token_name="connection_string",
+            keywords=("connectionstring",),
+            patterns=(
+                r"<add\s+[^>]*\bconnectionString\s*=\s*\"[^\"]+\"",
+            ),
+        ),
+        HuntRule(
             name="install-path",
             description="Suspicious installation or directory paths",
             token_name="install_path",

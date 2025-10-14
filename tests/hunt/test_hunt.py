@@ -42,3 +42,26 @@ def test_hunt_path_json_format(tmp_path: Path) -> None:
     entry = payload[0]
     assert entry["rule"]["name"] == "server-name"
     assert entry["relative_path"].endswith("config.txt")
+
+
+def test_config_attribute_hunt_rules(tmp_path: Path) -> None:
+    sample = tmp_path / "web.config"
+    sample.write_text(
+        """
+        <configuration>
+          <appSettings>
+            <add key=\"ApiUrl\" value=\"https://api.example.com/\" />
+          </appSettings>
+          <connectionStrings>
+            <add name=\"Default\" connectionString=\"Server=db01.internal;Database=main;\" />
+          </connectionStrings>
+        </configuration>
+        """,
+        encoding="utf-8",
+    )
+
+    results = hunt_path(sample, rules=default_rules())
+
+    tokens = {hit.rule.token_name for hit in results if hit.rule.token_name}
+    assert "app_setting_value" in tokens
+    assert "connection_string" in tokens

@@ -23,6 +23,8 @@ _HTML_HEADER = """<!doctype html>
     .meta {{ font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }}
     .warning {{ border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }}
     .badge {{ display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.75rem; margin-left: 0.5rem; background: #f6c744; color: #111; }}
+    .highlights {{ margin: 0.5rem 0; }}
+    .highlights .badge {{ margin-left: 0; margin-right: 0.5rem; }}
     .match, .diff-block, .profile-summary, .hunt-section {{ border: 1px solid #333; padding: 1rem; margin-bottom: 1rem; background: #1a1a1a; }}
     .match h3 {{ margin-top: 0; }}
     table {{ width: 100%; border-collapse: collapse; margin-top: 0.5rem; }}
@@ -51,6 +53,22 @@ def _render_match(match: Mapping[str, object], index: int) -> str:
     metadata_table = ""
     if isinstance(metadata, Mapping):
         metadata_table = f"<table>{_format_metadata(metadata)}</table>"
+    highlight_html = ""
+    highlights = match.get("highlights")
+    if isinstance(highlights, Sequence):
+        badges = []
+        for entry in highlights:
+            if isinstance(entry, Mapping):
+                label = entry.get("label")
+                value = entry.get("value")
+                if label and value is not None:
+                    badges.append(
+                        f"<span class=\"badge\">{escape(str(label))}: {escape(str(value))}</span>"
+                    )
+            else:
+                badges.append(f"<span class=\"badge\">{escape(str(entry))}</span>")
+        if badges:
+            highlight_html = "<div class=\"highlights\">" + "".join(badges) + "</div>"
     reasons_list = "".join(f"<li>{escape(str(reason))}</li>" for reason in match.get("reasons", []))
     return (
         "<section class=\"match\">"
@@ -59,6 +77,7 @@ def _render_match(match: Mapping[str, object], index: int) -> str:
         f"<strong>Variant:</strong> {escape(str(match.get('variant')) or '—')}</p>"
         f"<p><strong>Confidence:</strong> {escape(str(match.get('confidence')))}</p>"
         f"<h4>Reasons</h4><ul>{reasons_list or '<li>None provided</li>'}</ul>"
+        f"{highlight_html}"
         f"<h4>Metadata</h4>{metadata_table}"
         "</section>"
     )

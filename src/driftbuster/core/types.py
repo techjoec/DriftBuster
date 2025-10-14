@@ -179,7 +179,29 @@ def summarise_metadata(match: DetectionMatch) -> Mapping[str, Any]:
 
     metadata = _ensure_mapping(match.metadata)
     normalised_metadata = {str(key): _json_safe(value) for key, value in metadata.items()}
-    return {
+
+    highlights: list[Mapping[str, str]] = []
+    root_namespace = metadata.get("root_namespace")
+    if isinstance(root_namespace, str) and root_namespace.strip():
+        highlights.append({"label": "root_namespace", "value": root_namespace.strip()})
+
+    schema_locations = metadata.get("schema_locations")
+    if isinstance(schema_locations, (list, tuple)):
+        for entry in schema_locations:
+            if not isinstance(entry, Mapping):
+                continue
+            namespace = str(entry.get("namespace") or "default")
+            location = entry.get("location")
+            if not isinstance(location, str) or not location.strip():
+                continue
+            highlights.append({"label": f"schema:{namespace}", "value": location.strip()})
+            break
+
+    no_namespace_schema = metadata.get("schema_no_namespace_location")
+    if isinstance(no_namespace_schema, str) and no_namespace_schema.strip():
+        highlights.append({"label": "schema:no-namespace", "value": no_namespace_schema.strip()})
+
+    summary = {
         "plugin": match.plugin_name,
         "format": match.format_name,
         "variant": match.variant,
@@ -187,6 +209,9 @@ def summarise_metadata(match: DetectionMatch) -> Mapping[str, Any]:
         "reasons": list(match.reasons),
         "metadata": normalised_metadata,
     }
+    if highlights:
+        summary["highlights"] = highlights
+    return summary
 
 
 @dataclass

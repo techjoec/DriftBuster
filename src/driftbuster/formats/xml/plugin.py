@@ -45,7 +45,10 @@ _DOTNET_APP_HINT = re.compile(r"<(startup|supportedRuntime|assemblyBinding)(\s|>
 _DOTNET_WEB_FILENAME = re.compile(r"^web\.config$", re.IGNORECASE)
 _DOTNET_APP_FILENAME = re.compile(r"^app\.config$", re.IGNORECASE)
 _DOTNET_MACHINE_FILENAME = re.compile(r"^machine\.config$", re.IGNORECASE)
-_DOTNET_TRANSFORM_FILENAME = re.compile(r"^(?P<scope>web|app)\.[^/\\]+\.config$", re.IGNORECASE)
+_DOTNET_TRANSFORM_FILENAME = re.compile(
+    r"^(?P<scope>web|app|machine)\.(?P<target>[^/\\]+)\.config$",
+    re.IGNORECASE,
+)
 _DOTNET_ASSEMBLY_CONFIG = re.compile(r"\.(?:exe|dll)\.config$", re.IGNORECASE)
 _XDT_NAMESPACE_DECL = re.compile(
     r"xmlns:xdt\s*=\s*(?P<quote>['\"])(?P<uri>http://schemas\.microsoft\.com/XML-Document-Transform)(?P=quote)",
@@ -64,6 +67,14 @@ _XMLNS_ATTRIBUTE = re.compile(
     re.DOTALL,
 )
 _DOCTYPE_DECL = re.compile(r"<!DOCTYPE\s+(?P<name>[\w:.-]+)", re.IGNORECASE)
+_SCHEMA_LOCATION_ATTR = re.compile(
+    r"(?i)xsi:schemaLocation\s*=\s*(?P<quote>['\"])(?P<value>.*?)(?P=quote)",
+    re.DOTALL,
+)
+_NO_NAMESPACE_SCHEMA_ATTR = re.compile(
+    r"(?i)xsi:noNamespaceSchemaLocation\s*=\s*(?P<quote>['\"])(?P<value>.*?)(?P=quote)",
+    re.DOTALL,
+)
 
 
 _VENDOR_CONFIG_ROOTS: Dict[str, Tuple[str, str, str, float]] = {
@@ -96,11 +107,21 @@ def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
     return None, name
 
 
+def _parse_schema_locations(value: str) -> list[dict[str, str]]:
+    cleaned = [segment for segment in re.split(r"\s+", value.strip()) if segment]
+    pairs: list[dict[str, str]] = []
+    for index in range(0, len(cleaned) - 1, 2):
+        namespace = cleaned[index]
+        location = cleaned[index + 1]
+        pairs.append({"namespace": namespace, "location": location})
+    return pairs
+
+
 @dataclass
 class XmlPlugin:
     name: str = "xml"
     priority: int = 100
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -130,6 +151,7 @@ class XmlPlugin:
                     self._add_reason(reasons, f"Detected root element <{root}>")
                 self._append_declaration_reasons(metadata, reasons)
                 self._append_namespace_reason(metadata, reasons)
+                self._append_schema_reason(metadata, reasons)
                 self._append_doctype_reason(metadata, reasons)
                 variant, base_confidence = self._classify_config_variant(
                     path,
@@ -169,6 +191,7 @@ class XmlPlugin:
             if root := metadata.get("root_tag"):
                 reasons.append(f"Detected root element <{root}>")
             self._append_namespace_reason(metadata, reasons)
+            self._append_schema_reason(metadata, reasons)
             self._append_doctype_reason(metadata, reasons)
             bonus = self._confidence_bonus(
                 metadata,
@@ -299,6 +322,7 @@ class XmlPlugin:
             path,
             text,
             reasons,
+            metadata,
         )
 
         transform_namespace = bool(_XDT_NAMESPACE_DECL.search(text))
@@ -346,16 +370,18 @@ class XmlPlugin:
         path: Optional[Path],
         text: str,
         reasons: List[str],
+        metadata: Dict[str, object],
     ) -> Tuple[str, float, bool, Optional[str]]:
         """Combine filename and section hints to classify `.config` roles.
 
         The helper returns a tuple ``(role, confidence, inferred_transform,
-        transform_scope)``.  Filename patterns such as ``web.config`` or
-        ``app.Release.config`` set the baseline role before content-based hints
-        (``<system.web>`` vs ``<startup>``) adjust the classification.  This
-        ordering ensures transforms inherit the correct scope while generic
-        configuration files fall back to ``"generic"`` when neither filenames
-        nor section hints match.
+        transform_scope)`` while annotating ``metadata`` with filename-derived
+        hints (for example ``config_transform_layers``).  Filename patterns such
+        as ``web.config`` or ``app.Release.config`` set the baseline role before
+        content-based hints (``<system.web>`` vs ``<startup>``) adjust the
+        classification.  This ordering ensures transforms inherit the correct
+        scope while generic configuration files fall back to ``"generic"`` when
+        neither filenames nor section hints match.
         """
 
         role: Optional[str] = None
@@ -392,13 +418,41 @@ class XmlPlugin:
                 scope = transform_match.group("scope").lower()
                 inferred_transform = True
                 transform_scope = scope
+                target = transform_match.group("target")
+                metadata.setdefault("config_transform_target", target)
+                layers = [segment for segment in target.split(".") if segment]
+                if layers:
+                    metadata.setdefault("config_transform_layers", layers)
+                    metadata.setdefault(
+                        "config_transform_layers_normalised",
+                        [segment.lower() for segment in layers],
+                    )
+                    metadata.setdefault("config_transform_environment", layers[-1])
+                    metadata.setdefault(
+                        "config_transform_environment_normalised",
+                        layers[-1].lower(),
+                    )
+                    metadata.setdefault(
+                        "config_transform_precedence",
+                        " -> ".join(layers),
+                    )
                 if scope == "web":
                     role = "web"
                 elif scope == "app":
                     role = "app"
+                elif scope == "machine":
+                    role = "machine"
+                chain = layers if layers else [target]
+                if chain:
+                    readable_chain = " -> ".join(chain)
+                    if len(chain) > 1:
+                        message = f"Transform targets layered environments ({readable_chain})"
+                    else:
+                        message = f"Transform targets environment {readable_chain}"
+                    self._add_reason(reasons, message)
                 self._add_reason(
                     reasons,
-                    "Filename pattern web|app.*.config suggests a build-specific transform",
+                    "Filename pattern web|app|machine.*.config suggests a build-specific transform",
                 )
                 confidence = max(confidence, 0.88 if scope == "app" else 0.89)
             elif _DOTNET_ASSEMBLY_CONFIG.search(lowered):
@@ -456,6 +510,22 @@ class XmlPlugin:
         else:
             self._add_reason(reasons, "Detected XML namespace declarations")
 
+    def _append_schema_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+        schema_locations = metadata.get("schema_locations")
+        if isinstance(schema_locations, list) and schema_locations:
+            count = len(schema_locations)
+            if count == 1:
+                entry = schema_locations[0]
+                namespace = entry.get("namespace") if isinstance(entry, dict) else None
+                if namespace:
+                    self._add_reason(reasons, f"Found schema reference for namespace {namespace}")
+                else:
+                    self._add_reason(reasons, "Found schema reference for default namespace")
+            else:
+                self._add_reason(reasons, f"Found schema references for {count} namespaces")
+        if metadata.get("schema_no_namespace_location"):
+            self._add_reason(reasons, "Detected no-namespace schema reference")
+
     def _append_doctype_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
         doctype = metadata.get("doctype")
         if doctype:
@@ -476,6 +546,10 @@ class XmlPlugin:
         if metadata.get("root_attributes"):
             bonus += 0.01
         if metadata.get("config_transform"):
+            bonus += 0.01
+        if metadata.get("schema_locations"):
+            bonus += 0.01
+        if metadata.get("schema_no_namespace_location"):
             bonus += 0.01
         return bonus
 
@@ -513,6 +587,25 @@ class XmlPlugin:
             if attributes:
                 metadata.setdefault("root_attributes", attributes)
             break
+
+        schema_locations: list[dict[str, str]] = []
+        schema_namespaces: list[str] = []
+        for match in _SCHEMA_LOCATION_ATTR.finditer(snippet):
+            raw_value = match.group("value")
+            parsed = _parse_schema_locations(raw_value)
+            for entry in parsed:
+                namespace = entry.get("namespace", "")
+                if entry not in schema_locations:
+                    schema_locations.append(entry)
+                if namespace and namespace not in schema_namespaces:
+                    schema_namespaces.append(namespace)
+        if schema_locations:
+            metadata["schema_locations"] = schema_locations
+            metadata["schema_location_namespaces"] = schema_namespaces
+
+        no_namespace_match = _NO_NAMESPACE_SCHEMA_ATTR.search(snippet)
+        if no_namespace_match:
+            metadata["schema_no_namespace_location"] = no_namespace_match.group("value").strip()
 
         namespace_matches = {
             (m.group("prefix") or "default"): m.group("uri") for m in _XMLNS_ATTRIBUTE.finditer(snippet)

@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 from .core.profiles import (
     ConfigurationProfile,
@@ -83,6 +83,36 @@ def _normalise_payload(payload: Any) -> Any:
     return payload
 
 
+def _extract_expected_tokens(metadata: Mapping[str, Any]) -> Tuple[str, ...]:
+    """Normalise expected token declarations from configuration metadata."""
+
+    candidates: list[str] = []
+    for key in ("expected_dynamic", "expected_tokens", "tokens"):
+        value = metadata.get(key)
+        if isinstance(value, Mapping):
+            for token, flag in value.items():
+                if isinstance(flag, bool) and not flag:
+                    continue
+                if isinstance(token, str) and token.strip():
+                    candidates.append(token.strip())
+        elif isinstance(value, (list, tuple, set, frozenset)):
+            for item in value:
+                if isinstance(item, str) and item.strip():
+                    candidates.append(item.strip())
+        elif isinstance(value, str) and value.strip():
+            candidates.append(value.strip())
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for token in candidates:
+        lowered = token.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        deduped.append(token)
+    return tuple(deduped)
+
+
 def _write_json(payload: Mapping[str, Any], *, output: Path | None, indent: int, sort_keys: bool) -> None:
     """Serialise ``payload`` to JSON writing to ``output`` (or STDOUT)."""
 
@@ -150,20 +180,40 @@ def _build_bridge_payload(
     for entry in hunts:
         relative = _resolve_relative_path(entry, root=root)
         matches = store.matching_configs(tags, relative_path=relative)
+        token_name: Optional[str] = None
+        rule = entry.get("rule") if isinstance(entry, Mapping) else None
+        if isinstance(rule, Mapping):
+            raw_token = rule.get("token_name")
+            if isinstance(raw_token, str) and raw_token.strip():
+                token_name = raw_token.strip()
+        profile_entries: list[dict[str, Any]] = []
+        for match in matches:
+            profile_entry: dict[str, Any] = {
+                "profile": match.profile.name,
+                "config": match.config.identifier,
+                "profile_tags": sorted(match.profile.tags),
+                "expected_format": match.config.expected_format,
+                "expected_variant": match.config.expected_variant,
+            }
+            tokens = _extract_expected_tokens(match.config.metadata)
+            if tokens:
+                profile_entry["expected_tokens"] = tokens
+                if token_name:
+                    token_lower = token_name.lower()
+                    expected_lower = {token.lower() for token in tokens}
+                    profile_entry["token_match"] = token_lower in expected_lower
+                    remaining = tuple(
+                        token for token in tokens if token.lower() != token_lower
+                    )
+                    if remaining:
+                        profile_entry["remaining_expected_tokens"] = remaining
+            profile_entries.append(profile_entry)
+
         items.append(
             {
                 "hunt": _normalise_payload(entry),
                 "relative_path": relative,
-                "profiles": [
-                    {
-                        "profile": match.profile.name,
-                        "config": match.config.identifier,
-                        "profile_tags": sorted(match.profile.tags),
-                        "expected_format": match.config.expected_format,
-                        "expected_variant": match.config.expected_variant,
-                    }
-                    for match in matches
-                ],
+                "profiles": profile_entries,
             }
         )
     return {"items": items}

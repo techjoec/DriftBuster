@@ -60,6 +60,7 @@ def test_profile_cli_hunt_bridge(tmp_path: Path, capsys: pytest.CaptureFixture[s
                         "path": "configs/appsettings.json",
                         "expected_format": "json",
                         "expected_variant": "structured-settings-json",
+                        "metadata": {"expected_dynamic": ["server_name", "connection_string"]},
                     }
                 ],
             }
@@ -67,7 +68,7 @@ def test_profile_cli_hunt_bridge(tmp_path: Path, capsys: pytest.CaptureFixture[s
     }
     hunts_payload = [
         {
-            "rule": {"name": "server-name", "description": "", "token_name": "server"},
+            "rule": {"name": "server-name", "description": "", "token_name": "server_name"},
             "relative_path": "configs/appsettings.json",
             "path": "dummy",
             "line_number": 1,
@@ -92,3 +93,6 @@ def test_profile_cli_hunt_bridge(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert exit_code == 0
     payload = json.loads(captured.out)
     assert payload["items"][0]["profiles"][0]["profile"] == "prod"
+    profile_info = payload["items"][0]["profiles"][0]
+    assert profile_info["token_match"] is True
+    assert "connection_string" in profile_info["remaining_expected_tokens"]

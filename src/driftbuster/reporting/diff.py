@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher, unified_diff
+from io import StringIO
 import xml.etree.ElementTree as ET
 from typing import Callable, Iterable, Mapping, Sequence
 
@@ -26,31 +27,100 @@ def canonicalise_text(payload: str) -> str:
     return "\n".join(lines)
 
 
+def _attribute_sort_key(name: str) -> tuple[str, str, str]:
+    """Return a namespace-aware sort key for attribute ordering."""
+
+    if name.startswith("{") and "}" in name:
+        namespace, _brace, local = name[1:].partition("}")
+        return (namespace.lower(), local.lower(), name)
+    if ":" in name:
+        prefix, local = name.split(":", 1)
+        return (prefix.lower(), local.lower(), name)
+    return ("", name.lower(), name)
+
+
+def _normalise_element(element: ET.Element) -> None:
+    attributes: list[tuple[str, str]] = []
+    for key, value in element.attrib.items():
+        if isinstance(value, str):
+            attributes.append((key, value.strip()))
+        else:
+            attributes.append((key, value))
+    element.attrib.clear()
+    for key, value in sorted(attributes, key=lambda item: _attribute_sort_key(item[0])):
+        element.attrib[key] = value
+    if element.text:
+        element.text = element.text.strip()
+    for child in list(element):
+        _normalise_element(child)
+        if child.tail:
+            child.tail = child.tail.strip()
+
+
+def _extract_namespaces(payload: str) -> tuple[list[tuple[str, str]], ET.Element]:
+    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    stream = StringIO(payload)
+    namespaces: list[tuple[str, str]] = []
+    try:
+        iterator = ET.iterparse(stream, events=("start", "start-ns"), parser=parser)
+        for event, value in iterator:
+            if event == "start-ns":
+                prefix, uri = value
+                normalised_prefix = prefix or ""
+                if (normalised_prefix, uri) not in namespaces:
+                    namespaces.append((normalised_prefix, uri))
+        root = iterator.root
+    finally:
+        stream.close()
+    return namespaces, root
+
+
+def _preserve_namespace_order(namespaces: list[tuple[str, str]]) -> None:
+    namespace_map = getattr(ET, "_namespace_map", None)
+    if namespace_map is None:
+        return
+    original = dict(namespace_map)
+    namespace_map.clear()
+    seen: set[str] = set()
+    registered: list[str] = []
+    for prefix, uri in namespaces:
+        key = prefix or ""
+        if key in seen:
+            continue
+        try:
+            ET.register_namespace(key, uri)
+            registered.append(key)
+        except ValueError:
+            continue
+        seen.add(key)
+    for key, value in original.items():
+        if key not in namespace_map:
+            namespace_map[key] = value
+
+    def _restore() -> None:
+        namespace_map.clear()
+        namespace_map.update(original)
+
+    return _restore
+
+
 def canonicalise_xml(payload: str) -> str:
     """Return canonical XML with insignificant whitespace stripped."""
 
     if not payload:
         return ""
     try:
-        parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-        root = ET.fromstring(payload, parser=parser)
+        namespaces, root = _extract_namespaces(payload)
     except ET.ParseError:
         return canonicalise_text(payload)
 
-    def _normalise(element: ET.Element) -> None:
-        attributes = {key: value.strip() for key, value in element.attrib.items()}
-        element.attrib.clear()
-        for key in sorted(attributes):
-            element.attrib[key] = attributes[key]
-        if element.text:
-            element.text = element.text.strip()
-        for child in list(element):
-            _normalise(child)
-            if child.tail:
-                child.tail = child.tail.strip()
-
-    _normalise(root)
-    return ET.tostring(root, encoding="unicode")
+    restore = _preserve_namespace_order(namespaces)
+    try:
+        _normalise_element(root)
+        return ET.tostring(root, encoding="unicode")
+    finally:
+        if callable(restore):
+            restore()
 
 
 _NORMALISERS: Mapping[str, Callable[[str], str]] = {

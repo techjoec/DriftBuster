@@ -78,11 +78,12 @@ class DetectionCatalog:
 
 DETECTION_CATALOG = DetectionCatalog(
     version="0.0.1",
-    updated="2025-10-10",
+    updated="2025-10-21",
     notes=(
         "Detection runs in priority order; the first positive match wins.",
         "Heuristics combine filename/extension and lightweight content-signature checks.",
         "Correction: .resx is XML-based resources, not binary.",
+        "StructuredConfigXml metadata now records schema locations, namespace order, and layered transform precedence.",
     ),
     classes=(
         FormatClass(
