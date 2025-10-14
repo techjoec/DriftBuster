@@ -60,6 +60,10 @@ _MANIFEST_NAMESPACE = re.compile(r"urn:schemas-microsoft-com:asm\.v1", re.IGNORE
 _RESX_SCHEMA = re.compile(r"http://schemas\.microsoft\.com/.*resx", re.IGNORECASE)
 _XAML_NAMESPACE = re.compile(r"http://schemas\.microsoft\.com/winfx/2006/xaml", re.IGNORECASE)
 _XSLT_NAMESPACE = re.compile(r"http://www\.w3\.org/1999/XSL/Transform", re.IGNORECASE)
+_MSBUILD_NAMESPACE = re.compile(
+    r"http://schemas\.microsoft\.com/developer/msbuild/2003",
+    re.IGNORECASE,
+)
 _START_TAG = re.compile(r"<(?P<name>[A-Za-z_][\w:.-]*)\b")
 _XMLNS_ATTRIBUTE = re.compile(
     r"xmlns(?::(?P<prefix>[\w.-]+))?\s*=\s*(?P<quote>['\"])(?P<uri>.*?)(?P=quote)",
@@ -102,7 +106,7 @@ def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
 class XmlPlugin:
     name: str = "xml"
     priority: int = 100
-    version: str = "0.0.3"
+    version: str = "0.0.4"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -112,7 +116,7 @@ class XmlPlugin:
         reasons: List[str] = []
 
         # Prefer .config specific detection first.
-        metadata = self._collect_metadata(text)
+        metadata = self._collect_metadata(text, extension=extension)
 
         if extension == ".config":
             config_root = False
@@ -134,6 +138,7 @@ class XmlPlugin:
                 self._append_namespace_reason(metadata, reasons)
                 self._append_schema_reason(metadata, reasons)
                 self._append_resx_reason(metadata, reasons)
+                self._append_msbuild_reasons(metadata, reasons)
                 self._append_attribute_hint_reasons(metadata, reasons)
                 self._append_doctype_reason(metadata, reasons)
                 variant, base_confidence = self._classify_config_variant(
@@ -185,6 +190,7 @@ class XmlPlugin:
             self._append_namespace_reason(metadata, reasons)
             self._append_schema_reason(metadata, reasons)
             self._append_resx_reason(metadata, reasons)
+            self._append_msbuild_reasons(metadata, reasons)
             self._append_attribute_hint_reasons(metadata, reasons)
             self._append_doctype_reason(metadata, reasons)
             bonus = self._confidence_bonus(
@@ -232,6 +238,30 @@ class XmlPlugin:
                 if _XAML_NAMESPACE.search(default_ns):
                     reasons.append("Found XAML namespace declaration")
                     return "xml", "interface-xml", 0.8
+        if self._looks_like_msbuild(extension, metadata):
+            kind = metadata.get("msbuild_kind") or self._classify_msbuild_kind(extension)
+            metadata.setdefault("msbuild_detected", True)
+            metadata.setdefault("msbuild_kind", kind)
+            reason_map = {
+                "targets": "Root element <Project> indicates an MSBuild targets layout",
+                "props": "Root element <Project> indicates an MSBuild props layout",
+                "project": "Root element <Project> indicates an MSBuild project definition",
+            }
+            base_confidence_map = {
+                "targets": 0.83,
+                "props": 0.82,
+                "project": 0.83,
+            }
+            variant_map = {
+                "targets": "msbuild-targets",
+                "props": "msbuild-props",
+                "project": "msbuild-project",
+            }
+            self._add_reason(reasons, reason_map.get(kind, reason_map["project"]))
+            base_confidence = base_confidence_map.get(kind, 0.82)
+            variant = variant_map.get(kind, "msbuild-project")
+            return "xml", variant, base_confidence
+
         manifest_match = _MANIFEST_NAMESPACE.search(text)
         if extension == ".manifest" or manifest_match:
             if manifest_match:
@@ -528,6 +558,36 @@ class XmlPlugin:
         else:
             self._add_reason(reasons, "Captured resource keys from .resx payload")
 
+    def _append_msbuild_reasons(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+        if not metadata.get("msbuild_detected"):
+            return
+        default_targets = metadata.get("msbuild_default_targets")
+        if isinstance(default_targets, list) and default_targets:
+            preview = ", ".join(default_targets[:3])
+            self._add_reason(
+                reasons,
+                f"MSBuild default targets declared ({preview})",
+            )
+        tools_version = metadata.get("msbuild_tools_version")
+        if isinstance(tools_version, str) and tools_version:
+            self._add_reason(
+                reasons,
+                f"MSBuild ToolsVersion set to {tools_version}",
+            )
+        sdk = metadata.get("msbuild_sdk")
+        if isinstance(sdk, str) and sdk:
+            self._add_reason(reasons, f"MSBuild SDK specified ({sdk})")
+        targets = metadata.get("msbuild_targets")
+        if isinstance(targets, list) and targets:
+            preview = ", ".join(targets[:3])
+            self._add_reason(
+                reasons,
+                f"Captured MSBuild target declarations ({preview})",
+            )
+        imports = metadata.get("msbuild_import_hints")
+        if isinstance(imports, list) and imports:
+            self._add_reason(reasons, "Captured MSBuild import references")
+
     def _append_attribute_hint_reasons(
         self, metadata: Dict[str, object], reasons: List[str]
     ) -> None:
@@ -572,9 +632,18 @@ class XmlPlugin:
         hints = metadata.get("attribute_hints")
         if isinstance(hints, dict) and any(hints.get(category) for category in hints):
             bonus += 0.01
+        if metadata.get("msbuild_detected"):
+            if metadata.get("msbuild_default_targets"):
+                bonus += 0.01
+            if metadata.get("msbuild_sdk"):
+                bonus += 0.005
+            if metadata.get("msbuild_import_hints"):
+                bonus += 0.01
+            if metadata.get("msbuild_targets"):
+                bonus += 0.01
         return bonus
 
-    def _collect_metadata(self, text: str) -> Dict[str, object]:
+    def _collect_metadata(self, text: str, *, extension: str) -> Dict[str, object]:
         snippet = text[:4096]
         metadata: Dict[str, object] = {}
 
@@ -638,6 +707,10 @@ class XmlPlugin:
         if root_element is not None:
             self._extract_resx_keys(root_element, metadata)
             self._extract_attribute_hints(root_element, metadata)
+            self._extract_msbuild_metadata(root_element, metadata, extension)
+        elif self._looks_like_msbuild(extension, metadata):
+            metadata["msbuild_detected"] = True
+            metadata["msbuild_kind"] = self._classify_msbuild_kind(extension)
 
         return metadata
 
@@ -846,6 +919,148 @@ class XmlPlugin:
         filtered = {category: entries for category, entries in hints.items() if entries}
         if filtered:
             metadata["attribute_hints"] = filtered
+
+    def _looks_like_msbuild(self, extension: str, metadata: Dict[str, object]) -> bool:
+        lowered_extension = extension.lower()
+        msbuild_extensions = {
+            ".targets",
+            ".props",
+            ".csproj",
+            ".fsproj",
+            ".vbproj",
+            ".vcxproj",
+            ".vcproj",
+            ".proj",
+            ".msbuildproj",
+        }
+        if lowered_extension in msbuild_extensions:
+            return True
+
+        root_local = metadata.get("root_local_name")
+        if not isinstance(root_local, str) or root_local.lower() != "project":
+            return False
+
+        namespace = metadata.get("root_namespace")
+        if isinstance(namespace, str) and _MSBUILD_NAMESPACE.search(namespace):
+            return True
+
+        namespaces = metadata.get("namespaces")
+        if isinstance(namespaces, dict):
+            default_ns = namespaces.get("default")
+            if isinstance(default_ns, str) and _MSBUILD_NAMESPACE.search(default_ns):
+                return True
+
+        root_attributes = metadata.get("root_attributes")
+        if isinstance(root_attributes, dict):
+            lowered_keys = {name.lower() for name in root_attributes}
+            if {"defaulttargets", "toolsversion", "sdk"} & lowered_keys:
+                return True
+
+        return False
+
+    def _classify_msbuild_kind(self, extension: str) -> str:
+        lowered_extension = extension.lower()
+        if lowered_extension == ".targets":
+            return "targets"
+        if lowered_extension == ".props":
+            return "props"
+        if lowered_extension in {
+            ".csproj",
+            ".fsproj",
+            ".vbproj",
+            ".vcxproj",
+            ".vcproj",
+            ".proj",
+            ".msbuildproj",
+        }:
+            return "project"
+        return "project"
+
+    def _extract_msbuild_metadata(
+        self,
+        root: ET.Element,
+        metadata: Dict[str, object],
+        extension: str,
+    ) -> None:
+        if not self._looks_like_msbuild(extension, metadata):
+            return
+
+        metadata["msbuild_detected"] = True
+        kind = self._classify_msbuild_kind(extension)
+        metadata["msbuild_kind"] = kind
+
+        attr_lookup = {
+            name.lower(): value.strip()
+            for name, value in root.attrib.items()
+            if isinstance(value, str) and value.strip()
+        }
+
+        default_targets = attr_lookup.get("defaulttargets")
+        if default_targets:
+            targets = [token.strip() for token in default_targets.split(";") if token.strip()]
+            if targets:
+                metadata["msbuild_default_targets"] = targets
+
+        tools_version = attr_lookup.get("toolsversion")
+        if tools_version:
+            metadata["msbuild_tools_version"] = tools_version
+
+        sdk = attr_lookup.get("sdk")
+        if sdk:
+            metadata["msbuild_sdk"] = sdk
+
+        target_names: List[str] = []
+        seen_target_names: Set[str] = set()
+        import_hints: List[Dict[str, object]] = []
+        seen_imports: Set[tuple[str, str]] = set()
+
+        for element in root.iter():
+            local_name = element.tag.split("}")[-1] if "}" in element.tag else element.tag
+            if local_name == "Target":
+                name = element.attrib.get("Name")
+                if name:
+                    cleaned_name = name.strip()
+                    lowered_name = cleaned_name.lower()
+                    if cleaned_name and lowered_name not in seen_target_names:
+                        seen_target_names.add(lowered_name)
+                        if len(target_names) < 10:
+                            target_names.append(cleaned_name)
+            if local_name != "Import":
+                continue
+
+            for attribute in ("Project", "Sdk"):
+                raw_value = element.attrib.get(attribute)
+                if not raw_value:
+                    continue
+                cleaned_value = raw_value.strip()
+                if not cleaned_value:
+                    continue
+                digest = hashlib.sha256(cleaned_value.encode("utf-8", "ignore")).hexdigest()
+                dedupe_key = (attribute.lower(), digest)
+                if dedupe_key in seen_imports:
+                    continue
+                seen_imports.add(dedupe_key)
+                entry: Dict[str, object] = {
+                    "attribute": attribute,
+                    "hash": digest,
+                    "length": len(cleaned_value),
+                }
+                condition_value = element.attrib.get("Condition")
+                if condition_value:
+                    cleaned_condition = condition_value.strip()
+                    if cleaned_condition:
+                        entry["condition_hash"] = hashlib.sha256(
+                            cleaned_condition.encode("utf-8", "ignore")
+                        ).hexdigest()
+                        entry["condition_length"] = len(cleaned_condition)
+                import_hints.append(entry)
+                break
+
+        if target_names:
+            metadata["msbuild_targets"] = target_names
+
+        if import_hints:
+            metadata["msbuild_import_hints"] = import_hints
 
     def _add_attribute_hint(
         self,

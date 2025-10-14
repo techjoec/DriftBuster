@@ -224,16 +224,50 @@ def test_xml_plugin_collects_attribute_hints() -> None:
 
 
 def test_xml_plugin_supports_targets_extension() -> None:
-    content = """
-    <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-      <ItemGroup>
-        <Content Include="appsettings.json" />
-      </ItemGroup>
+    content = r"""
+    <Project ToolsVersion="Current"
+             DefaultTargets="Build;Publish"
+             xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Import Project="$(VSToolsPath)\WebApplication.targets" Condition="Exists('$(VSToolsPath)')" />
+      <Target Name="Publish">
+        <Message Text="Publishing" />
+      </Target>
     </Project>
     """
     match = _detect("build.targets", content)
 
     assert match is not None
     assert match.format_name == "xml"
-    assert match.variant == "generic"
-    assert any(".targets" in reason for reason in match.reasons)
+    assert match.variant == "msbuild-targets"
+    assert match.metadata is not None
+    assert match.metadata["msbuild_default_targets"] == ["Build", "Publish"]
+    assert match.metadata["msbuild_tools_version"] == "Current"
+    assert match.metadata["msbuild_targets"] == ["Publish"]
+    import_hints = match.metadata.get("msbuild_import_hints")
+    assert isinstance(import_hints, list)
+    assert import_hints and import_hints[0]["attribute"] == "Project"
+    assert any("MSBuild default targets" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_msbuild_project_metadata() -> None:
+    content = """
+    <Project Sdk="Microsoft.NET.Sdk">
+      <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+      </PropertyGroup>
+      <Import Sdk="Microsoft.Build.NoTargets/1.0.0" />
+      <Target Name="Pack" />
+    </Project>
+    """
+    match = _detect("App.csproj", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "msbuild-project"
+    assert match.metadata is not None
+    assert match.metadata["msbuild_sdk"] == "Microsoft.NET.Sdk"
+    assert match.metadata["msbuild_targets"] == ["Pack"]
+    import_hints = match.metadata.get("msbuild_import_hints")
+    assert isinstance(import_hints, list)
+    assert import_hints and import_hints[0]["attribute"] == "Sdk"
+    assert any("MSBuild SDK specified" in reason for reason in match.reasons)

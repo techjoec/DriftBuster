@@ -1,5 +1,13 @@
 # DriftBuster XML Format Changelog
 
+# 0.0.4 — 2025-10-17
+- Recognise MSBuild project, props, and targets payloads with dedicated variants
+  plus metadata covering default targets, SDK declarations, and import hashes.
+- Surface MSBuild-derived reasons (default targets, SDK, imports) and boost
+  confidence for matches enriched with project metadata.
+- Extend XML plugin tests to validate MSBuild metadata hashing and variant
+  classification for both legacy and SDK-style project files.
+
 # 0.0.3 — 2025-10-16
 - Surface ``attribute_hints`` metadata covering connection strings, service
   endpoints, and feature flags with hashed values for drift tracking.

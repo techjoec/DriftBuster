@@ -89,6 +89,9 @@ core and XML work stabilise. They are not yet represented in
 - XML detections now attach ``attribute_hints`` metadata so hunt mode can align
   connection strings, service endpoints, and feature flags with profile
   expectations.
+- MSBuild `.targets`, `.props`, and project payloads emit ``msbuild_*``
+  metadata fields summarising default targets, SDK declarations, and hashed
+  import references to help diff tooling track build graph drift.
 - Binary detectors rely on sampling thresholds; large opaque files may need
   increased sample sizes for confident matches.
 - When multiple detectors might claim a file, adjust priorities so the most
