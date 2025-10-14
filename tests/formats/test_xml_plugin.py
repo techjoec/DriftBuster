@@ -106,6 +106,9 @@ def test_xml_plugin_detects_resx_variant_via_namespace() -> None:
     assert match is not None
     assert match.format_name == "xml"
     assert match.variant == "resource-xml"
+    assert match.metadata is not None
+    assert match.metadata["resource_keys"] == ["Sample"]
+    assert any("Captured resource keys" in reason for reason in match.reasons)
 
 
 def test_xml_plugin_detects_xaml_variant_via_namespace() -> None:
@@ -148,3 +151,24 @@ def test_xml_plugin_canonicalises_root_attributes() -> None:
     assert match is not None
     assert match.metadata is not None
     assert match.metadata["root_attributes"] == {"attrA": "value-a", "attrB": "value-b", "xmlns:xdt": "http://schemas.microsoft.com/XML-Document-Transform"}
+
+
+def test_xml_plugin_extracts_schema_locations() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://schemas.microsoft.com/.NetConfiguration/v2.0 http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd">
+      <appSettings />
+    </configuration>
+    """
+    match = _detect("web.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata["schema_locations"] == [
+        {
+            "namespace": "http://schemas.microsoft.com/.NetConfiguration/v2.0",
+            "location": "http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd",
+        }
+    ]
+    assert any("Schema http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd declared" in reason for reason in match.reasons)

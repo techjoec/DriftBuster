@@ -19,7 +19,7 @@ The backlog remains on HOLD, but we now have a ready-to-run outline covering heu
   - Extensions: `.config`, `.xml`, `.resx`, `.targets`.
   - Patterns: XML declaration, `<configuration>` roots, schemaLocation attributes, namespace URIs.
   - Hunt tokens: attribute drift for connection strings, endpoints, feature flags.
-  - Catalog updates: add schema provenance + namespace confidence weighting fields.
+  - Catalog updates: schema provenance now emitted in ``schema_locations`` metadata; namespace confidence weighting remains on the roadmap.
 - **Sample and testing needs:**
   - Public samples: generic runtime configs, orchestration manifests, open-source application templates.
   - Manual pass: scan well-formed, minified, and malformed XML; confirm metadata tags round-trip.

@@ -23,6 +23,7 @@ is required.
 from __future__ import annotations
 
 import re
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -100,7 +101,7 @@ def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
 class XmlPlugin:
     name: str = "xml"
     priority: int = 100
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -130,6 +131,8 @@ class XmlPlugin:
                     self._add_reason(reasons, f"Detected root element <{root}>")
                 self._append_declaration_reasons(metadata, reasons)
                 self._append_namespace_reason(metadata, reasons)
+                self._append_schema_reason(metadata, reasons)
+                self._append_resx_reason(metadata, reasons)
                 self._append_doctype_reason(metadata, reasons)
                 variant, base_confidence = self._classify_config_variant(
                     path,
@@ -169,6 +172,8 @@ class XmlPlugin:
             if root := metadata.get("root_tag"):
                 reasons.append(f"Detected root element <{root}>")
             self._append_namespace_reason(metadata, reasons)
+            self._append_schema_reason(metadata, reasons)
+            self._append_resx_reason(metadata, reasons)
             self._append_doctype_reason(metadata, reasons)
             bonus = self._confidence_bonus(
                 metadata,
@@ -478,6 +483,39 @@ class XmlPlugin:
         else:
             self._add_reason(reasons, "Detected XML namespace declarations")
 
+    def _append_schema_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+        schema_locations = metadata.get("schema_locations")
+        if not schema_locations or not isinstance(schema_locations, list):
+            return
+        for entry in schema_locations:
+            if not isinstance(entry, dict):
+                continue
+            location = entry.get("location")
+            namespace = entry.get("namespace")
+            if location and namespace:
+                self._add_reason(
+                    reasons,
+                    f"Schema {location} declared for namespace {namespace}",
+                )
+            elif location:
+                self._add_reason(
+                    reasons,
+                    f"Schema {location} declared for default namespace",
+                )
+
+    def _append_resx_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+        resource_keys = metadata.get("resource_keys")
+        if not resource_keys or not isinstance(resource_keys, list):
+            return
+        preview = metadata.get("resource_keys_preview")
+        if isinstance(preview, str) and preview:
+            self._add_reason(
+                reasons,
+                f"Captured resource keys from .resx payload (e.g., {preview})",
+            )
+        else:
+            self._add_reason(reasons, "Captured resource keys from .resx payload")
+
     def _append_doctype_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
         doctype = metadata.get("doctype")
         if doctype:
@@ -499,11 +537,22 @@ class XmlPlugin:
             bonus += 0.01
         if metadata.get("config_transform"):
             bonus += 0.01
+        if metadata.get("schema_locations"):
+            bonus += 0.02
+        if metadata.get("resource_keys"):
+            bonus += 0.01
         return bonus
 
     def _collect_metadata(self, text: str) -> Dict[str, object]:
         snippet = text[:4096]
         metadata: Dict[str, object] = {}
+
+        root_element: Optional[ET.Element] = None
+        try:
+            parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+            root_element = ET.fromstring(text.lstrip(), parser=parser)
+        except ET.ParseError:
+            root_element = None
 
         declaration_match = _XML_DECLARATION.search(snippet)
         if declaration_match:
@@ -553,6 +602,11 @@ class XmlPlugin:
             elif namespace_matches.get("default"):
                 metadata["root_namespace"] = namespace_matches["default"]
 
+        self._extract_schema_locations(metadata)
+
+        if root_element is not None:
+            self._extract_resx_keys(root_element, metadata)
+
         return metadata
 
     def _extract_root_attributes(self, snippet: str, start_index: int) -> Dict[str, str]:
@@ -587,6 +641,62 @@ class XmlPlugin:
             return {}
         items.sort(key=lambda entry: (entry[0].lower(), entry[0]))
         return {name: value for name, value in items}
+
+    def _extract_schema_locations(self, metadata: Dict[str, object]) -> None:
+        attributes = metadata.get("root_attributes")
+        if not attributes or not isinstance(attributes, dict):
+            return
+        schema_entries: List[Dict[str, Optional[str]]] = []
+        for attr_name, raw_value in attributes.items():
+            if not isinstance(raw_value, str):
+                continue
+            local_name = attr_name.split(":", 1)[-1]
+            cleaned_value = " ".join(raw_value.split())
+            if not cleaned_value:
+                continue
+            if local_name == "schemaLocation":
+                tokens = cleaned_value.split()
+                if len(tokens) < 2:
+                    continue
+                for index in range(0, len(tokens) - 1, 2):
+                    namespace = tokens[index]
+                    location = tokens[index + 1]
+                    schema_entries.append({"namespace": namespace, "location": location})
+            elif local_name == "noNamespaceSchemaLocation":
+                schema_entries.append({"namespace": None, "location": cleaned_value})
+        if schema_entries:
+            metadata["schema_locations"] = schema_entries
+
+    def _extract_resx_keys(self, root: ET.Element, metadata: Dict[str, object]) -> None:
+        root_tag = root.tag.split("}")[-1] if "}" in root.tag else root.tag
+        if root_tag.lower() != "root":
+            return
+        namespaces = metadata.get("namespaces")
+        root_namespace = metadata.get("root_namespace")
+        namespace_hint = None
+        if isinstance(root_namespace, str):
+            namespace_hint = root_namespace
+        elif isinstance(namespaces, dict):
+            namespace_hint = namespaces.get("default")
+        if not namespace_hint or not _RESX_SCHEMA.search(namespace_hint):
+            return
+        resource_keys: List[str] = []
+        for element in root.iter():
+            tag_local = element.tag.split("}")[-1] if "}" in element.tag else element.tag
+            if tag_local.lower() != "data":
+                continue
+            name = element.attrib.get("name")
+            if not name:
+                continue
+            resource_keys.append(name)
+            if len(resource_keys) >= 10:
+                break
+        if resource_keys:
+            metadata["resource_keys"] = resource_keys
+
+            preview = ", ".join(resource_keys[:3])
+            metadata.setdefault("resource_keys_preview", preview)
+
 
 
 register(XmlPlugin())

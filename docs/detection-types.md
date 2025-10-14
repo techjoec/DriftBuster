@@ -84,6 +84,8 @@ core and XML work stabilise. They are not yet represented in
 - XML matches expose ``root_local_name`` and ``root_namespace`` metadata to
   help downstream tools differentiate between manifest, resource, and XAML
   payloads even when filenames are ambiguous.
+- ``schema_locations`` metadata now records XSD provenance for XML payloads,
+  and `.resx` files include ``resource_keys`` previews for quick auditing.
 - Binary detectors rely on sampling thresholds; large opaque files may need
   increased sample sizes for confident matches.
 - When multiple detectors might claim a file, adjust priorities so the most

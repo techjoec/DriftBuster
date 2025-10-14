@@ -7,12 +7,12 @@ most common file types to the detectors that understand them today.
 
 - **`.config` (web/app/machine)** — handled by the XML plugin. Transform files
   such as `web.Release.config` and assembly sidecars (`*.exe.config`) are
-  surfaced with dedicated variants. Namespaces and XML declaration metadata are
-  captured automatically.
+  surfaced with dedicated variants. Namespaces, XML declarations, and
+  `schema_locations` provenance metadata are captured automatically.
 - **Manifests (`*.manifest`)** — recognised as `app-manifest-xml` with
   confidence bumps when the assembly namespace is present.
-- **Resources (`*.resx`)** — classified as `resource-xml` and include resource
-  key metadata in the detection payload.
+- **Resources (`*.resx`)** — classified as `resource-xml` and include captured
+  resource key previews (`resource_keys`) in the detection payload.
 - **XAML (`*.xaml`)** — flagged as `interface-xml` whenever UI namespaces are
   discovered.
 - **JSON (`*.json`, `*.jsonc`)** — the JSON plugin highlights structured
