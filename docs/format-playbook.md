@@ -4,6 +4,11 @@ This playbook captures the default workflow for introducing or refining a
 format detector. Follow these steps unless the roadmap calls out a
 format-specific exception.
 
+> **Quick reference:** Use `docs/format-addition-guide.md` for the canonical
+> checklist covering catalog updates, package layout, testing, and validation.
+> The remainder of this playbook provides the deeper context and background for
+> those steps.
+
 ## 1. Prep & Scoping
 
 - Confirm the format appears in `src/driftbuster/catalog.py` (`FORMAT_SURVEY`
