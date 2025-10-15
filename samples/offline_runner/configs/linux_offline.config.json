@@ -1,0 +1,81 @@
+{
+  "schema": "https://driftbuster.dev/offline-runner/config/v1",
+  "version": "1.0.0",
+  "profile": {
+    "name": "linux_services",
+    "description": "Collect key Linux service definitions and log files.",
+    "tags": ["linux", "offline"],
+    "sources": [
+      {
+        "path": "/etc/systemd/system",
+        "alias": "systemd_units",
+        "exclude": ["*.wants/*", "*.requires/*"]
+      },
+      {
+        "path": "/etc/ssh/sshd_config",
+        "alias": "ssh_config"
+      },
+      {
+        "path": "/var/log/*.log",
+        "alias": "logs",
+        "optional": true,
+        "exclude": ["*.gz"]
+      },
+      {
+        "path": "/var/log/journal",
+        "alias": "journal",
+        "optional": true
+      }
+    ],
+    "options": {
+      "collector": "shell-offline",
+      "notes": "generated for Linux service review"
+    },
+    "secret_scanner": {
+      "ignore_rules": [],
+      "ignore_patterns": [],
+      "ruleset": {
+        "version": "2024-06-01",
+        "rules": [
+          {
+            "name": "PasswordAssignment",
+            "description": "Matches common password assignment patterns in configuration files.",
+            "pattern": "(?i)password\\s*[:=]\\s*['\"]?[A-Za-z0-9\\-_/+=]{8,}",
+            "flags": ""
+          },
+          {
+            "name": "GenericApiToken",
+            "description": "Detects API key or token style strings with obvious labels.",
+            "pattern": "(?i)(api|auth|token)[-_ ]?(key|token)\\s*[:=]\\s*['\"]?[A-Za-z0-9]{16,}",
+            "flags": ""
+          },
+          {
+            "name": "AwsAccessKeyId",
+            "description": "AWS-style access key identifiers.",
+            "pattern": "AKIA[0-9A-Z]{16}",
+            "flags": ""
+          }
+        ]
+      }
+    }
+  },
+  "runner": {
+    "output_directory": "~/driftbuster_offline",
+    "package_name": "linux-services-offline",
+    "compress": true,
+    "include_config": true,
+    "include_logs": true,
+    "include_manifest": true,
+    "manifest_name": "manifest.json",
+    "log_name": "runner.log",
+    "data_directory_name": "payload",
+    "logs_directory_name": "logs",
+    "max_total_bytes": 268435456,
+    "cleanup_staging": true
+  },
+  "metadata": {
+    "request_id": "linux-services-demo",
+    "requested_by": "analyst",
+    "notes": "Collect Linux service footprint for offline triage"
+  }
+}

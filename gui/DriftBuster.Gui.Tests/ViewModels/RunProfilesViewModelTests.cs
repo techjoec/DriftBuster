@@ -116,4 +116,66 @@ public class RunProfilesViewModelTests
             Directory.Delete(output.FullName, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task PrepareOfflineCollector_saves_profile_and_invokes_backend()
+    {
+        var baseline = Path.GetTempFileName();
+        var packagePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.zip");
+
+        try
+        {
+            var service = new FakeDriftbusterService();
+            RunProfileDefinition? savedProfile = null;
+            OfflineCollectorRequest? capturedRequest = null;
+
+            service.SaveProfileHandler = (profile, _) =>
+            {
+                savedProfile = profile;
+                return Task.CompletedTask;
+            };
+
+            service.PrepareOfflineCollectorHandler = (profile, request, _) =>
+            {
+                capturedRequest = request;
+                Assert.Equal("collector", profile.Name);
+                Assert.Single(profile.SecretScanner.IgnoreRules);
+                Assert.Equal("rule-ignore", profile.SecretScanner.IgnoreRules[0]);
+                return Task.FromResult(new OfflineCollectorResult
+                {
+                    PackagePath = request.PackagePath,
+                    ConfigFileName = "collector.offline.config.json",
+                    ScriptFileName = "driftbuster-offline-runner.ps1",
+                });
+            };
+
+            var viewModel = new RunProfilesViewModel(service)
+            {
+                ProfileName = "collector",
+            };
+
+            viewModel.Sources[0].Path = baseline;
+            viewModel.ApplySecretScanner(new SecretScannerOptions
+            {
+                IgnoreRules = new[] { "rule-ignore" },
+                IgnorePatterns = new[] { "ALLOW_ME" },
+            });
+
+            await viewModel.PrepareOfflineCollectorAsync(packagePath);
+
+            Assert.NotNull(savedProfile);
+            Assert.NotNull(capturedRequest);
+            Assert.Equal(packagePath, capturedRequest?.PackagePath);
+            Assert.Contains("collector", viewModel.StatusMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.False(viewModel.IsBusy);
+        }
+        finally
+        {
+            File.Delete(baseline);
+            if (File.Exists(packagePath))
+            {
+                File.Delete(packagePath);
+            }
+        }
+    }
 }

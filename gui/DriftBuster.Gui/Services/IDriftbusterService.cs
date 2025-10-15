@@ -19,5 +19,7 @@ namespace DriftBuster.Gui.Services
         Task SaveProfileAsync(RunProfileDefinition profile, CancellationToken cancellationToken = default);
 
         Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, CancellationToken cancellationToken = default);
+
+        Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, CancellationToken cancellationToken = default);
     }
 }

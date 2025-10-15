@@ -22,6 +22,8 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
 
     public Func<RunProfileDefinition, bool, CancellationToken, Task<RunProfileRunResult>>? RunProfileHandler { get; set; }
 
+    public Func<RunProfileDefinition, OfflineCollectorRequest, CancellationToken, Task<OfflineCollectorResult>>? PrepareOfflineCollectorHandler { get; set; }
+
     public string PingResponse { get; set; } = "pong";
 
     public DiffResult DiffResponse { get; set; } = new();
@@ -86,5 +88,15 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
         }
 
         return Task.FromResult(new RunProfileRunResult());
+    }
+
+    public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, CancellationToken cancellationToken = default)
+    {
+        if (PrepareOfflineCollectorHandler is not null)
+        {
+            return PrepareOfflineCollectorHandler(profile, request, cancellationToken);
+        }
+
+        return Task.FromResult(new OfflineCollectorResult());
     }
 }

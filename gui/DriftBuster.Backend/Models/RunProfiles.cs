@@ -19,6 +19,36 @@ namespace DriftBuster.Backend.Models
 
         [JsonPropertyName("options")]
         public Dictionary<string, string> Options { get; set; } = new();
+
+        [JsonPropertyName("secret_scanner")]
+        public SecretScannerOptions SecretScanner { get; set; } = new();
+    }
+
+    public sealed class SecretScannerOptions
+    {
+        [JsonPropertyName("ignore_rules")]
+        public string[] IgnoreRules { get; set; } = System.Array.Empty<string>();
+
+        [JsonPropertyName("ignore_patterns")]
+        public string[] IgnorePatterns { get; set; } = System.Array.Empty<string>();
+    }
+
+    public sealed class OfflineCollectorRequest
+    {
+        public string PackagePath { get; set; } = string.Empty;
+
+        public Dictionary<string, string> Metadata { get; set; } = new();
+
+        public string? ConfigFileName { get; set; }
+    }
+
+    public sealed class OfflineCollectorResult
+    {
+        public string PackagePath { get; set; } = string.Empty;
+
+        public string ConfigFileName { get; set; } = string.Empty;
+
+        public string ScriptFileName { get; set; } = string.Empty;
     }
 
     public sealed class RunProfileListResult
