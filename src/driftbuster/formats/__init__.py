@@ -1,6 +1,7 @@
 """Format plugins package."""
 
-from .registry import (
+from . import format_registry as registry
+from .format_registry import (
     FormatPlugin,
     get_plugins,
     plugin_versions,
@@ -19,4 +20,5 @@ __all__ = [
     "plugin_versions",
     "register",
     "registry_summary",
+    "registry",
 ]

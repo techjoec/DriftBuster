@@ -33,8 +33,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from .registry import register
-from ..core.types import DetectionMatch
+from ..format_registry import register
+from ...core.types import DetectionMatch
 
 _STRUCTURED_FILENAMES: Sequence[str] = (
     "appsettings.json",

@@ -4,7 +4,7 @@ Examples
 --------
 >>> from pathlib import Path
 >>> from driftbuster.core.types import DetectionMatch
->>> from driftbuster.formats import registry
+>>> from driftbuster.formats import format_registry as registry
 >>> class StaticPlugin:
 ...     name = "static-fixture"
 ...     priority = 0
@@ -50,7 +50,7 @@ from pathlib import Path
 from typing import Callable, Iterable, List, Optional, Sequence
 
 from ..catalog import DETECTION_CATALOG
-from ..formats import registry
+from ..formats import format_registry as registry
 from .profiles import ProfileStore, ProfiledDetection, normalize_tags
 from .types import DetectionMatch, validate_detection_metadata
 
@@ -143,7 +143,7 @@ class Detector:
     Example
     -------
     >>> from pathlib import Path
-    >>> from driftbuster.formats import registry
+    >>> from driftbuster.formats import format_registry as registry
     >>> class DummyPlugin(registry.FormatPlugin):
     ...     name = "dummy"
     ...     priority = 10

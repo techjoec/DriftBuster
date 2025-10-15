@@ -7,7 +7,7 @@ from textwrap import dedent
 import pytest
 
 from driftbuster.core.types import DetectionMatch
-from driftbuster.formats.registry import decode_text
+from driftbuster.formats.format_registry import decode_text
 from driftbuster.formats.ini import IniPlugin
 
 

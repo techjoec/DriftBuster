@@ -38,7 +38,7 @@ except ImportError:  # pragma: no cover - optional hardened parser
     class DefusedXmlException(Exception):
         """Fallback exception type when defusedxml is unavailable."""
 
-from ..registry import register
+from ..format_registry import register
 from ...core.types import DetectionMatch
 
 _XML_DECLARATION = re.compile(r"^\s*<\?xml\b(?P<attrs>[^?>]*)\?>", re.IGNORECASE)

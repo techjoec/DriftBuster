@@ -202,6 +202,20 @@ def test_xml_plugin_detects_manifest_variant() -> None:
     assert match.metadata["root_local_name"].lower() == "assembly"
 
 
+def test_xml_plugin_detects_manifest_by_extension_without_namespace() -> None:
+    content = """
+    <assembly>
+      <assemblyIdentity name="Bare" version="1.0.0.0" />
+    </assembly>
+    """
+    match = _detect("Bare.manifest", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "app-manifest-xml"
+    assert any("File extension .manifest" in reason for reason in match.reasons)
+
+
 def test_xml_plugin_detects_resx_variant_via_namespace() -> None:
     content = """
     <?xml version="1.0" encoding="utf-8"?>
@@ -221,6 +235,22 @@ def test_xml_plugin_detects_resx_variant_via_namespace() -> None:
     assert any("Captured resource keys" in reason for reason in match.reasons)
 
 
+def test_xml_plugin_detects_resx_by_extension_without_namespace() -> None:
+    content = """
+    <root>
+      <data name="Sample">
+        <value>Hello</value>
+      </data>
+    </root>
+    """
+    match = _detect("Strings.resx", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "resource-xml"
+    assert any("File extension .resx" in reason for reason in match.reasons)
+
+
 def test_xml_plugin_detects_xaml_variant_via_namespace() -> None:
     content = """
     <?xml version="1.0"?>
@@ -234,6 +264,20 @@ def test_xml_plugin_detects_xaml_variant_via_namespace() -> None:
     assert match is not None
     assert match.format_name == "xml"
     assert match.variant == "interface-xml"
+
+
+def test_xml_plugin_detects_xaml_by_extension_without_namespace() -> None:
+    content = """
+    <UserControl>
+      <Grid />
+    </UserControl>
+    """
+    match = _detect("View.xaml", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "interface-xml"
+    assert any("File extension .xaml" in reason for reason in match.reasons)
 
 
 def test_xml_plugin_detects_xslt_variant() -> None:
@@ -349,6 +393,23 @@ def test_xml_plugin_collects_attribute_hints() -> None:
     assert any("feature flag attribute hints" in reason.lower() for reason in match.reasons)
 
 
+def test_xml_plugin_collects_feature_toggle_attribute_hints() -> None:
+    content = """
+    <configuration>
+      <FeatureToggle name="NewUI" value="enabled" />
+    </configuration>
+    """
+    match = _detect("feature.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    hints = match.metadata.get("attribute_hints")
+    assert isinstance(hints, dict)
+    feature_hints = hints.get("feature_flags")
+    assert feature_hints
+    assert feature_hints[0]["key"] == "NewUI"
+
+
 def test_xml_plugin_supports_targets_extension() -> None:
     content = r"""
     <Project ToolsVersion="Current"
@@ -391,6 +452,27 @@ def test_xml_plugin_detects_msbuild_props_variant() -> None:
     assert match.metadata.get("msbuild_detected") is True
 
 
+def test_xml_plugin_detects_msbuild_with_doctype_and_attributes() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <!DOCTYPE Project>
+    <Project DefaultTargets="Build" ToolsVersion="Current">
+      <Target Name="Pack" />
+    </Project>
+    """
+    plugin = XmlPlugin()
+    path = Path("Example.csproj")
+    match = plugin.detect(path, content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "msbuild-project"
+    assert match.metadata is not None
+    assert match.metadata.get("msbuild_detected") is True
+    assert match.metadata.get("doctype") == "Project"
+    assert any("DOCTYPE" in reason for reason in match.reasons)
+
+
 def test_xml_plugin_detects_msbuild_project_metadata() -> None:
     content = """
     <Project Sdk="Microsoft.NET.Sdk">
@@ -428,6 +510,23 @@ def test_xml_plugin_detects_generic_xml_variant() -> None:
     assert match.variant == "generic"
     assert match.metadata is not None
     assert match.metadata.get("root_tag") == "notes"
+
+
+def test_xml_plugin_detects_extensionless_xml_payload() -> None:
+    content = """
+    <root>
+      <item>Hello</item>
+    </root>
+    """
+    plugin = XmlPlugin()
+    path = Path("CONFIG")
+    match = plugin.detect(path, content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "generic"
+    assert match.metadata is not None
+    assert match.metadata.get("root_tag") == "root"
 
 
 def test_xml_plugin_rejects_plain_text() -> None:

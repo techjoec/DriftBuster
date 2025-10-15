@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Tuple
 
-from .formats import registry
+from .formats import format_registry as registry
 
 
 @dataclass(frozen=True)

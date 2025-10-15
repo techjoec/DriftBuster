@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from ..registry import decode_text, register
+from ..format_registry import decode_text, register
 from ...core.types import DetectionMatch
 
 
