@@ -267,12 +267,12 @@ def test_execute_offline_run_scrubs_secret_lines(tmp_path: Path) -> None:
     result = offline_runner.execute_config_path(config_path)
 
     log_contents = _read_runner_log_from_package(result.package_path)
-    assert "secret candidate removed" in log_contents
+    assert "secret candidate redacted" in log_contents
 
     collected_file = next(entry for entry in result.files if entry.source == str(secret_file))
     collected_text = _read_collected_file_from_package(result.package_path, collected_file.relative_path)
     assert "SUPERSECRET123456" not in collected_text
-    assert "password" not in collected_text.lower()
+    assert collected_text.splitlines() == ["safe line", "[SECRET]", "keep me"]
 
     manifest = _read_manifest_from_package(result.package_path)
     assert "secret_scanner" in manifest["profile"]
@@ -315,7 +315,7 @@ def test_execute_offline_run_honours_secret_ignore_patterns(tmp_path: Path) -> N
     result = offline_runner.execute_config_path(config_path)
 
     log_contents = _read_runner_log_from_package(result.package_path)
-    assert "secret candidate removed" not in log_contents
+    assert "secret candidate redacted" not in log_contents
 
     collected_file = next(entry for entry in result.files if entry.source == str(secret_file))
     collected_text = _read_collected_file_from_package(result.package_path, collected_file.relative_path)

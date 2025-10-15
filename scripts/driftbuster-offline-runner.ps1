@@ -425,7 +425,7 @@ function Copy-DbFileWithSecretScrub {
                         rule    = $rule.name
                         snippet = $masked
                     })
-                Write-DbLog "secret candidate removed ($($rule.name)) from $DisplayPath:$lineNumber -> $preview"
+                Write-DbLog "secret candidate redacted ($($rule.name)) from $DisplayPath:$lineNumber -> $preview"
                 $matched = $true
                 break
             }

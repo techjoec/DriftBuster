@@ -299,21 +299,23 @@ def _copy_with_secret_filter(
                     sanitized_lines = list(buffered_lines)
                 sanitized_matches += 1
                 start, end = match_obj.span()
-                masked = (line[:start] + "[SECRET]" + line[end:]).rstrip("\n\r")
-                masked_preview = masked[:120]
-                if len(masked) > 120:
-                    masked_preview = masked[:117] + "..."
+                redacted_line = line[:start] + "[SECRET]" + line[end:]
+                preview_line = redacted_line.rstrip("\n\r")
+                masked_preview = preview_line[:120]
+                if len(preview_line) > 120:
+                    masked_preview = preview_line[:117] + "..."
                 context.findings.append(
                     SecretFinding(
                         path=display_path,
                         rule=triggered_rule.name,
                         line=lineno,
-                        snippet=masked[:200],
+                        snippet=preview_line[:200],
                     )
                 )
                 log(
-                    f"secret candidate removed ({triggered_rule.name}) from {display_path}:{lineno} -> {masked_preview}"
+                    f"secret candidate redacted ({triggered_rule.name}) from {display_path}:{lineno} -> {masked_preview}"
                 )
+                sanitized_lines.append(redacted_line)
                 continue
 
             if sanitized_lines is not None:
