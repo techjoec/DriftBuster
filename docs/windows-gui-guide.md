@@ -69,7 +69,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - **Velopack installers:** `dotnet tool restore` then `scripts/build_velopack_release.sh --version <semver> --release-notes notes/releases/<semver>.md [--rid win-x64]`. The script publishes the app self-contained and calls `vpk pack`, dropping installers under `artifacts/velopack/releases/<rid>`. Release notes must follow `docs/release-notes.md`. Run it on the OS you’re targeting (the script switches between `[win]`, `[linux]`, `[osx]` directives automatically). Use `--channel` to label prerelease feeds and `--pack-id` if you need an alternate bundle identifier.
 - **Manual portable publish:** For quick disposable builds, `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true`. (Velopack is the preferred path for anything shipping to users.)
 - No external runtimes are required beyond the .NET runtime chosen for your publish target.
-- Cross-check `versions.yml` (`core`, `gui`) before packaging and note the backend/core version in the release notes when it changes.
+- Cross-check `versions.json` (`core`, `gui`) before packaging and run `python scripts/sync_versions.py` to propagate changes prior to publishing.
 
 ## 9. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.

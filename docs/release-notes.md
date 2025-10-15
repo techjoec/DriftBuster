@@ -51,18 +51,18 @@ file per formatter, keeping names lowercase/kebab-case (e.g. `json.md`).
 
 ## Version Matrix
 
-Track package versions in `versions.yml` so downstream packaging scripts stay in
+Track package versions in `versions.json` so downstream packaging scripts stay in
 sync.
 
 | Component  | Source                                  | Version Source                  |
 |------------|-----------------------------------------|---------------------------------|
-| Core       | Python package & `DriftBuster.Backend`  | `Directory.Build.props` / `versions.yml` (`core`) |
-| GUI        | Avalonia desktop app                    | `gui/GuiVersion.props` / `versions.yml` (`gui`)   |
-| PowerShell | `cli/DriftBuster.PowerShell` module     | `DriftBuster.psd1` / `versions.yml` (`powershell`) |
+| Core       | Python package & `DriftBuster.Backend`  | `Directory.Build.props` / `versions.json` (`core`) |
+| GUI        | Avalonia desktop app                    | `gui/GuiVersion.props` / `versions.json` (`gui`)   |
+| PowerShell | `cli/DriftBuster.PowerShell` module     | `DriftBuster.psd1` / `versions.json` (`powershell`) |
 
 When cutting a release:
 
-1. Update `versions.yml` and the component-specific files above.
+1. Update `versions.json` and run `python scripts/sync_versions.py`.
 2. Rebuild the backend so the PowerShell module packages the matching DLL.
 3. Mention the backend/core dependency version in GUI release notes and module
    documentation if it changes.

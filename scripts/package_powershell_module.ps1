@@ -8,31 +8,22 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Resolve-Path (Join-Path $PSScriptRoot '..')
-$versionsPath = Join-Path $root 'versions.yml'
+$versionsPath = Join-Path $root 'versions.json'
 
 if (-not (Test-Path -LiteralPath $versionsPath)) {
-    throw "versions.yml not found at $versionsPath"
+    throw "versions.json not found at $versionsPath"
 }
 
-$versions = @{}
-Get-Content -LiteralPath $versionsPath | ForEach-Object {
-    $line = $_.Trim()
-    if (-not $line -or $line.StartsWith('#')) { return }
-    if ($line -notmatch ':') { return }
-    $parts = $line.Split(':', 2)
-    $key = $parts[0].Trim()
-    $value = $parts[1].Trim().Trim('"').Trim("'")
-    if ($key) { $versions[$key] = $value }
-}
+$versions = Get-Content -LiteralPath $versionsPath -Raw | ConvertFrom-Json
 
-$moduleVersion = $versions['powershell']
+$moduleVersion = $versions.powershell
 if (-not $moduleVersion) {
-    throw "powershell version entry missing from versions.yml"
+    throw "powershell version entry missing from versions.json"
 }
 
-$backendVersion = $versions['core']
+$backendVersion = $versions.core
 if (-not $backendVersion) {
-    throw "core version entry missing from versions.yml"
+    throw "core version entry missing from versions.json"
 }
 
 $moduleRoot = Join-Path $root 'cli/DriftBuster.PowerShell'
@@ -46,7 +37,7 @@ $manifestData = Import-PowerShellDataFile -Path $manifestPath
 $manifest = Test-ModuleManifest -Path $manifestPath
 
 if ($manifestData.ModuleVersion.ToString() -ne $moduleVersion) {
-    throw "ModuleVersion in manifest ($($manifestData.ModuleVersion)) does not match versions.yml entry ($moduleVersion)."
+    throw "ModuleVersion in manifest ($($manifestData.ModuleVersion)) does not match versions.json entry ($moduleVersion)."
 }
 
 $manifestBackendVersion = $manifestData.PrivateData.BackendVersion

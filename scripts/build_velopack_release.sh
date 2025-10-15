@@ -6,7 +6,7 @@ usage() {
 Usage: scripts/build_velopack_release.sh --version <semver> [options]
 
 Options:
-  -v, --version <value>     Semantic version for this release (defaults to versions.yml entry).
+  -v, --version <value>     Semantic version for this release (defaults to versions.json entry).
   -r, --rid <value>         Runtime identifier to publish (default: win-x64).
   -c, --channel <name>      Optional update channel label written into the feed.
       --pack-id <value>     Override the Velopack pack id (default: com.driftbuster.gui).
@@ -60,7 +60,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSIONS_FILE="$ROOT_DIR/versions.yml"
+VERSIONS_FILE="$ROOT_DIR/versions.json"
 
 if command -v python3 >/dev/null 2>&1; then
   PYTHON_BIN=python3
@@ -76,31 +76,22 @@ if [[ -z "$VERSION" ]]; then
     echo "Error: versions file '$VERSIONS_FILE' not found." >&2
     exit 1
   fi
-  VERSION="$($PYTHON_BIN - "$VERSIONS_FILE" gui <<'PY'
+  VERSION="$($PYTHON_BIN <<'PY'
+import json
 import sys
+from pathlib import Path
 
-path, key = sys.argv[1:3]
-value = None
-with open(path, encoding='utf-8') as fh:
-    for line in fh:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        if ':' not in line:
-            continue
-        k, v = line.split(':', 1)
-        if k.strip() == key:
-            value = v.strip()
-            if value and value[0] in {'"', "'"} and value[-1] == value[0]:
-                value = value[1:-1]
-            break
-
-if not value:
-    print(f"versions.yml missing entry for {key}.", file=sys.stderr)
+path = Path(sys.argv[1])
+key = sys.argv[2]
+data = json.loads(path.read_text(encoding='utf-8'))
+value = data.get(key)
+if value is None:
+    print(f"versions.json missing entry for {key}.", file=sys.stderr)
     sys.exit(1)
 
 print(value)
-PY')"
+PY
+"$VERSIONS_FILE" gui)"
 fi
 
 if [[ -z "$VERSION" ]]; then

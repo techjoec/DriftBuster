@@ -11,8 +11,8 @@ Current registry order (`driftbuster.formats.registry_summary()`):
 | Order | Plugin | Module | Priority | Version |
 |-------|--------|--------|----------|---------|
 | 0 | `xml` | `driftbuster.formats.xml.plugin.XmlPlugin` | 100 | 0.0.4 |
-| 1 | `json` | `driftbuster.formats.json.JsonPlugin` | 200 | 0.0.2 |
-| 2 | `ini` | `driftbuster.formats.ini.IniPlugin` | 170 | 0.0.2 |
+| 1 | `json` | `driftbuster.formats.json.JsonPlugin` | 200 | 0.0.1 |
+| 2 | `ini` | `driftbuster.formats.ini.IniPlugin` | 170 | 0.0.1 |
 
 Use the same structure for new plugins so the registry report stays predictable.
 

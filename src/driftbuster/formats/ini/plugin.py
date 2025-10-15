@@ -59,7 +59,7 @@ class IniPlugin:
 
     name: str = "ini"
     priority: int = 170
-    version: str = "0.0.2"
+    version: str = "0.0.1"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
