@@ -669,6 +669,28 @@ namespace DriftBuster.Backend
                     var configFileName = string.IsNullOrWhiteSpace(request.ConfigFileName)
                         ? $"{SafeName(clean.Name)}.offline.config.json"
                         : request.ConfigFileName.Trim();
+
+                    if (!string.IsNullOrWhiteSpace(request.ConfigFileName))
+                    {
+                        var fileNameOnly = Path.GetFileName(configFileName);
+                        if (!string.Equals(configFileName, fileNameOnly, StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException("Config file name must not include path separators.");
+                        }
+
+                        if (fileNameOnly.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                        {
+                            throw new InvalidOperationException("Config file name contains invalid characters.");
+                        }
+
+                        if (string.IsNullOrWhiteSpace(fileNameOnly))
+                        {
+                            throw new InvalidOperationException("Config file name is required.");
+                        }
+
+                        configFileName = fileNameOnly;
+                    }
+
                     if (!configFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                     {
                         configFileName += ".json";
