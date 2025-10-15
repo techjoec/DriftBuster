@@ -283,11 +283,44 @@ class IniPlugin:
         )
         brace_token_count = sum(line.count("{") + line.count("}") for line in brace_lines)
 
+        inline_json_assignment = any(
+            "}" in line
+            and re.search(r"=\s*\{[^{}]*\"[^\"]+\"\s*:", line)
+            for line in non_empty_lines
+        )
+
+        block_json_assignment = False
+        for idx, line in enumerate(non_empty_lines):
+            if "{" not in line or "=" not in line:
+                continue
+            if not re.search(r"=\s*\{", line):
+                continue
+
+            colon_hits = len(re.findall(r'"[^"\n]+"\s*:', line.split("{", 1)[1]))
+            closing_found = "}" in line
+
+            for offset in range(1, min(len(non_empty_lines) - idx, 20)):
+                candidate = non_empty_lines[idx + offset]
+                if _SECTION_PATTERN.match(candidate):
+                    break
+                colon_hits += len(re.findall(r'"[^"\n]+"\s*:', candidate))
+                if "}" in candidate:
+                    closing_found = True
+                    break
+                if "{" in candidate and "=" in candidate:
+                    break
+
+            if closing_found and colon_hits:
+                block_json_assignment = True
+                break
+
         brace_signal = bool(
             brace_lines
             and (
                 standalone_brace_line
                 or json_like_brace_line
+                or inline_json_assignment
+                or block_json_assignment
                 or (structured_brace_lines >= 2 and brace_token_count >= 4)
             )
         )
