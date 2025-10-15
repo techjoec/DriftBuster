@@ -38,6 +38,9 @@ detector = Detector(plugins=get_plugins(), sort_plugins=True)
 
 - `register` enforces unique plugin names. Declare a `version` string for
   documentation (`docs/format-support.md`).
+- Keep the canonical value in `versions.json` and run
+  `python scripts/sync_versions.py` so docs and manifests stay aligned when you
+  change plugin versions.
 - `sort_plugins=True` respects priority values; `False` keeps the order passed
   to the detector, which is useful when experimenting with overrides.
 - Call `driftbuster.formats.registry_summary()` to confirm the final ordering

@@ -15,6 +15,9 @@ Current registry order (`driftbuster.formats.registry_summary()`):
 | 2 | `ini` | `driftbuster.formats.ini.IniPlugin` | 170 | 0.0.1 |
 
 Use the same structure for new plugins so the registry report stays predictable.
+When you update or add a plugin, bump only its entry in `versions.json` and run
+`python scripts/sync_versions.py` so the version string propagates to the docs
+and manifests automatically.
 
 ## 2. Prep Work
 

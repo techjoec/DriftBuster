@@ -101,6 +101,7 @@ Check `docs/` for deeper dives:
 - `docs/customization.md` – configuration flags, sampling tweaks, and plugin
   lifecycles.
 - `docs/testing-strategy.md` – how we validate detectors and reporting.
+- `docs/versioning.md` – component version workflow and sync tooling.
 
 ## Running Tests
 
