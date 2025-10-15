@@ -190,3 +190,84 @@ def test_execute_offline_run_enforces_max_total_bytes(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="max_total_bytes"):
         offline_runner.execute_config_path(config_path)
+
+
+def test_execute_offline_run_scrubs_secret_lines(tmp_path: Path) -> None:
+    secret_file = tmp_path / "secrets.txt"
+    secret_file.write_text(
+        "safe line\npassword = SUPERSECRET123456\nkeep me\n",
+        encoding="utf-8",
+    )
+
+    config_payload = {
+        "profile": {
+            "name": "secret-scan",
+            "sources": [str(secret_file)],
+        },
+        "runner": {
+            "output_directory": str(tmp_path / "out"),
+            "include_logs": True,
+            "include_manifest": True,
+        },
+    }
+    config_path = _write_config(tmp_path, config_payload)
+
+    result = offline_runner.execute_config_path(config_path)
+
+    assert result.log_path is not None
+    log_contents = result.log_path.read_text(encoding="utf-8")
+    assert "secret candidate removed" in log_contents
+
+    collected_file = next(entry for entry in result.files if entry.source == str(secret_file))
+    collected_text = collected_file.destination.read_text(encoding="utf-8")
+    assert "SUPERSECRET123456" not in collected_text
+    assert "password" not in collected_text.lower()
+
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    secrets = manifest["secrets"]
+    assert secrets["ruleset_version"] == "2024-06-01"
+    assert secrets["ignored_rules"] == []
+    assert secrets["ignored_patterns"] == []
+    assert len(secrets["findings"]) == 1
+    finding = secrets["findings"][0]
+    assert finding["rule"] in {"PasswordAssignment", "GenericApiToken"}
+    assert finding["snippet"].endswith("[SECRET]") or "[SECRET]" in finding["snippet"]
+
+
+def test_execute_offline_run_honours_secret_ignore_patterns(tmp_path: Path) -> None:
+    secret_file = tmp_path / "allowlist.txt"
+    secret_file.write_text(
+        "password = ALLOW_ME",
+        encoding="utf-8",
+    )
+
+    config_payload = {
+        "profile": {
+            "name": "secret-ignore",
+            "sources": [str(secret_file)],
+            "options": {
+                "secret_ignore_patterns": ["ALLOW_ME"],
+            },
+        },
+        "runner": {
+            "output_directory": str(tmp_path / "out"),
+            "include_logs": True,
+            "include_manifest": True,
+        },
+    }
+    config_path = _write_config(tmp_path, config_payload)
+
+    result = offline_runner.execute_config_path(config_path)
+
+    assert result.log_path is not None
+    log_contents = result.log_path.read_text(encoding="utf-8")
+    assert "secret candidate removed" not in log_contents
+
+    collected_file = next(entry for entry in result.files if entry.source == str(secret_file))
+    collected_text = collected_file.destination.read_text(encoding="utf-8")
+    assert "ALLOW_ME" in collected_text
+
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    secrets = manifest["secrets"]
+    assert secrets["findings"] == []
+    assert "ALLOW_ME" in secrets["ignored_patterns"]

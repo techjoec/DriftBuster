@@ -170,6 +170,70 @@ function Test-DbExclude {
     return $false
 }
 
+function Get-DbOptionList {
+    param($Value)
+    if (-not $Value) { return @() }
+    if ($Value -is [string]) { return @([string]$Value) }
+    if ($Value -is [System.Collections.IEnumerable]) {
+        $result = @()
+        foreach ($item in $Value) {
+            if ($item -eq $null) { continue }
+            $text = [string]$item
+            if (-not [string]::IsNullOrWhiteSpace($text)) {
+                $result += $text
+            }
+        }
+        return $result
+    }
+    return @()
+}
+
+function Get-DbSecretRules {
+    if ($script:DbSecretRules) { return $script:DbSecretRules }
+
+    $candidates = @(
+        (Join-Path -Path $PSScriptRoot -ChildPath 'secret-detection-rules.json'),
+        (Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '..\src\driftbuster') -ChildPath 'secret_rules.json')
+    )
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path -LiteralPath $candidate)) { continue }
+        try {
+            $content = Get-Content -Path $candidate -Raw -Encoding UTF8
+            $script:DbSecretRules = $content | ConvertFrom-Json -Depth 6
+            $script:DbSecretRulesPath = $candidate
+            return $script:DbSecretRules
+        }
+        catch {
+            continue
+        }
+    }
+
+    $script:DbSecretRules = [pscustomobject]@{ version = 'none'; rules = @() }
+    return $script:DbSecretRules
+}
+
+function Test-DbBinaryFile {
+    param([string]$Path)
+    try {
+        $fs = [System.IO.File]::OpenRead($Path)
+        try {
+            $buffer = New-Object byte[] 1024
+            $read = $fs.Read($buffer, 0, $buffer.Length)
+            for ($i = 0; $i -lt $read; $i++) {
+                if ($buffer[$i] -eq 0) { return $true }
+            }
+        }
+        finally {
+            $fs.Dispose()
+        }
+    }
+    catch {
+        return $false
+    }
+    return $false
+}
+
 $configFile = Get-Item -LiteralPath $ConfigPath -ErrorAction Stop
 $configContent = Get-Content -Path $configFile.FullName -Raw -Encoding UTF8
 $config = $configContent | ConvertFrom-Json -Depth 12
@@ -217,11 +281,177 @@ function Write-DbLog {
     $logEntries.Add("[{0}] {1}" -f (Get-DbIsoTimestamp), $Message)
 }
 
+function New-DbSecretContext {
+    param($Options)
+
+    $payload = Get-DbSecretRules
+    $rulesList = New-Object System.Collections.Generic.List[pscustomobject]
+
+    foreach ($entry in @($payload.rules)) {
+        if (-not $entry.name -or -not $entry.pattern) { continue }
+        $name = [string]$entry.name
+        $patternText = [string]$entry.pattern
+        $options = [System.Text.RegularExpressions.RegexOptions]::None
+        if ($entry.flags) {
+            $flagText = ([string]$entry.flags).ToLowerInvariant()
+            if ($flagText.Contains('i')) {
+                $options = $options -bor [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+            }
+        }
+        try {
+            $regex = [System.Text.RegularExpressions.Regex]::new($patternText, $options)
+            $rulesList.Add([pscustomobject]@{ name = $name; regex = $regex; description = $entry.description })
+        }
+        catch {
+            Write-DbLog "failed to compile secret rule $name: $_"
+        }
+    }
+
+    $ignoreRuleSet = New-Object System.Collections.Generic.HashSet[string]
+    $ignoreRuleValues = if ($Options -and $Options.secret_ignore_rules) { Get-DbOptionList $Options.secret_ignore_rules } else { @() }
+    foreach ($ruleName in $ignoreRuleValues) { $null = $ignoreRuleSet.Add([string]$ruleName) }
+
+    $ignorePatternTexts = if ($Options -and $Options.secret_ignore_patterns) { Get-DbOptionList $Options.secret_ignore_patterns } else { @() }
+    $ignorePatternObjects = New-Object System.Collections.Generic.List[System.Text.RegularExpressions.Regex]
+    foreach ($patternText in $ignorePatternTexts) {
+        try {
+            $ignorePatternObjects.Add([System.Text.RegularExpressions.Regex]::new([string]$patternText))
+        }
+        catch {
+            Write-DbLog "failed to compile secret ignore pattern '$patternText': $_"
+        }
+    }
+
+    return [pscustomobject]@{
+        version             = if ($payload.version) { [string]$payload.version } else { 'unknown' }
+        rules               = $rulesList
+        ignoreRules         = $ignoreRuleSet
+        ignorePatternTexts  = $ignorePatternTexts
+        ignorePatterns      = $ignorePatternObjects
+        findings            = New-Object System.Collections.Generic.List[pscustomobject]
+        enabled             = ($rulesList.Count -gt 0)
+    }
+}
+
+function Copy-DbFileWithSecretScrub {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [pscustomobject]$Context,
+        [string]$DisplayPath
+    )
+
+    $destinationParent = Split-Path -Path $DestinationPath -Parent
+    if ($destinationParent -and -not (Test-Path -LiteralPath $destinationParent)) {
+        New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
+    }
+
+    if (-not $Context -or -not $Context.enabled) {
+        Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath -Force
+        $size = (Get-Item -LiteralPath $DestinationPath).Length
+        $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $DestinationPath).Hash.ToLowerInvariant()
+        return [pscustomobject]@{ Size = $size; Hash = $hash }
+    }
+
+    if (Test-DbBinaryFile $SourcePath) {
+        Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath -Force
+        $size = (Get-Item -LiteralPath $DestinationPath).Length
+        $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $DestinationPath).Hash.ToLowerInvariant()
+        return [pscustomobject]@{ Size = $size; Hash = $hash }
+    }
+
+    $buffer = New-Object System.Collections.Generic.List[string]
+    $sanitized = $null
+    $sanitizedCount = 0
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    $reader = [System.IO.StreamReader]::new($SourcePath, $utf8NoBom, $true)
+    try {
+        $lineNumber = 0
+        while (-not $reader.EndOfStream) {
+            $line = $reader.ReadLine()
+            $lineNumber++
+            $matched = $false
+            foreach ($rule in $Context.rules) {
+                if ($Context.ignoreRules.Contains($rule.name)) { continue }
+                $match = $rule.regex.Match($line)
+                if (-not $match.Success) { continue }
+                $ignored = $false
+                foreach ($pattern in $Context.ignorePatterns) {
+                    if ($pattern.IsMatch($line)) { $ignored = $true; break }
+                }
+                if ($ignored) { continue }
+                if (-not $sanitized) {
+                    $sanitized = New-Object System.Collections.Generic.List[string]
+                    if ($buffer.Count -gt 0) { [void]$sanitized.AddRange($buffer) }
+                }
+                $sanitizedCount++
+                $prefix = $line.Substring(0, $match.Index)
+                $suffix = $line.Substring($match.Index + $match.Length)
+                $masked = ($prefix + '[SECRET]' + $suffix).Trim()
+                if ($masked.Length -gt 200) { $masked = $masked.Substring(0, 200) }
+                $preview = if ($masked.Length -le 120) { $masked } else { $masked.Substring(0, 117) + '...' }
+                $Context.findings.Add([pscustomobject]@{
+                        file    = $DisplayPath
+                        line    = $lineNumber
+                        rule    = $rule.name
+                        snippet = $masked
+                    })
+                Write-DbLog "secret candidate removed ($($rule.name)) from $DisplayPath:$lineNumber -> $preview"
+                $matched = $true
+                break
+            }
+            if ($matched) { continue }
+            if ($sanitized) { $sanitized.Add($line) }
+            else { $buffer.Add($line) }
+        }
+    }
+    finally {
+        $reader.Dispose()
+    }
+
+    if (-not $sanitized) {
+        Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath -Force
+        $size = (Get-Item -LiteralPath $DestinationPath).Length
+        $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $DestinationPath).Hash.ToLowerInvariant()
+        return [pscustomobject]@{ Size = $size; Hash = $hash }
+    }
+
+    $writer = New-Object System.IO.StreamWriter($DestinationPath, $false, $utf8NoBom)
+    try {
+        for ($i = 0; $i -lt $sanitized.Count; $i++) {
+            $writer.WriteLine($sanitized[$i])
+        }
+    }
+    finally {
+        $writer.Dispose()
+    }
+
+    try {
+        $sourceInfo = Get-Item -LiteralPath $SourcePath
+        $destInfo = Get-Item -LiteralPath $DestinationPath
+        $destInfo.CreationTimeUtc = $sourceInfo.CreationTimeUtc
+        $destInfo.LastWriteTimeUtc = $sourceInfo.LastWriteTimeUtc
+    }
+    catch { }
+
+    Write-DbLog "scrubbed $sanitizedCount potential secret line(s) from $DisplayPath"
+
+    $finalSize = (Get-Item -LiteralPath $DestinationPath).Length
+    $finalHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $DestinationPath).Hash.ToLowerInvariant()
+    return [pscustomobject]@{ Size = $finalSize; Hash = $finalHash }
+}
+
 $collectedFiles = New-Object System.Collections.Generic.List[pscustomobject]
 $sourceSummaries = New-Object System.Collections.Generic.List[pscustomobject]
 $totalBytes = [int64]0
 
 Write-DbLog 'offline collection started'
+
+$secretContext = New-DbSecretContext (if ($config.profile.options) { $config.profile.options } else { $null })
+if (-not $secretContext.enabled) {
+    Write-DbLog 'secret detection rules unavailable; copying files without scrubbing'
+}
 
 $sources = @()
 if ($config.profile.sources) {
@@ -323,26 +553,23 @@ for ($index = 0; $index -lt $sources.Count; $index++) {
                     Write-DbLog "excluded $($file.FullName) by pattern"
                     continue
                 }
-                $size = $file.Length
-                if ($maxTotalBytes -and ($totalBytes + $size) -gt $maxTotalBytes) {
+                $originalSize = $file.Length
+                if ($maxTotalBytes -and ($totalBytes + $originalSize) -gt $maxTotalBytes) {
                     throw 'Collection exceeds configured max_total_bytes limit.'
                 }
                 $destination = Join-Path -Path $destinationRoot -ChildPath ($relative -replace '/', '\\')
-                $destParent = Split-Path -Path $destination -Parent
-                if (-not (Test-Path -LiteralPath $destParent)) { New-Item -ItemType Directory -Path $destParent -Force | Out-Null }
-                Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
-                $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
                 $relativeToData = Get-DbRelativePath $dataRoot $destination
+                $scrubResult = Copy-DbFileWithSecretScrub -SourcePath $file.FullName -DestinationPath $destination -Context $secretContext -DisplayPath $relativeToData
                 $collectedFiles.Add([pscustomobject]@{
                         alias         = $alias
                         source        = $sourcePath
                         destination   = $destination
                         relative_path = $relativeToData
-                        size          = $size
-                        sha256        = $hash
+                        size          = [int64]$scrubResult.Size
+                        sha256        = [string]$scrubResult.Hash
                     })
                 $collected.Add($relative)
-                $totalBytes += $size
+                $totalBytes += [int64]$scrubResult.Size
             }
         }
         elseif (Test-Path -LiteralPath $match -PathType Leaf) {
@@ -351,24 +578,23 @@ for ($index = 0; $index -lt $sources.Count; $index++) {
                 Write-DbLog "excluded $match by pattern"
                 continue
             }
-            $size = (Get-Item -LiteralPath $match).Length
-            if ($maxTotalBytes -and ($totalBytes + $size) -gt $maxTotalBytes) {
+            $originalSize = (Get-Item -LiteralPath $match).Length
+            if ($maxTotalBytes -and ($totalBytes + $originalSize) -gt $maxTotalBytes) {
                 throw 'Collection exceeds configured max_total_bytes limit.'
             }
             $destination = Join-Path -Path $destinationRoot -ChildPath $relative
-            Copy-Item -LiteralPath $match -Destination $destination -Force
-            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
             $relativeToData = Get-DbRelativePath $dataRoot $destination
+            $scrubResult = Copy-DbFileWithSecretScrub -SourcePath $match -DestinationPath $destination -Context $secretContext -DisplayPath $relativeToData
             $collectedFiles.Add([pscustomobject]@{
                     alias         = $alias
                     source        = $sourcePath
                     destination   = $destination
                     relative_path = $relativeToData
-                    size          = $size
-                    sha256        = $hash
+                    size          = [int64]$scrubResult.Size
+                    sha256        = [string]$scrubResult.Hash
                 })
             $collected.Add($relative)
-            $totalBytes += $size
+            $totalBytes += [int64]$scrubResult.Size
         }
     }
 
@@ -427,6 +653,12 @@ if ($includeManifest) {
                 size          = $_.size
                 sha256        = $_.sha256
             }
+        }
+        secrets      = [ordered]@{
+            ruleset_version = $secretContext.version
+            findings        = if ($secretContext.findings.Count -gt 0) { @($secretContext.findings.ToArray()) } else { @() }
+            ignored_rules   = if ($secretContext.ignoreRules) { @($secretContext.ignoreRules.ToArray()) } else { @() }
+            ignored_patterns = if ($secretContext.ignorePatternTexts) { @($secretContext.ignorePatternTexts) } else { @() }
         }
         metadata     = if ($config.metadata) { $config.metadata } else { @{} }
         package      = [ordered]@{

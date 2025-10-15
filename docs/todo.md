@@ -4,7 +4,7 @@
 See docs/encryption.md for the crypto plan; hook the offline config loader into the DPAPI/AES flow before packaging.
 
 ## Realtime secret scanning
-TODO: plug streaming detectors into the manifest generator so credential leaks are flagged during collection.
+TODO: mirror the offline scrubber by loading `src/driftbuster/secret_rules.json`, masking suspect lines before persistence, logging masked context, and exposing "ignore" controls for acknowledged matches.
 
 ## Scheduled tasks & notification channels
 TODO: design a lightweight scheduler that can issue drift alerts and produce recurring backups.

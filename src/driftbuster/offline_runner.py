@@ -27,23 +27,241 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import fnmatch
 import getpass
+import importlib.resources as resources
 import json
 import os
 import platform
+import re
 from hashlib import sha256
 from pathlib import Path
 import shutil
-from typing import Any, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
 import zipfile
 from glob import glob
 
 
 MANIFEST_SCHEMA = "https://driftbuster.dev/offline-runner/manifest/v1"
 CONFIG_SCHEMA = "https://driftbuster.dev/offline-runner/config/v1"
+SECRET_RULES_RESOURCE = "secret_rules.json"
+
+
+@dataclass(frozen=True)
+class SecretDetectionRule:
+    name: str
+    pattern: re.Pattern[str]
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class SecretFinding:
+    path: str
+    rule: str
+    line: int
+    snippet: str
+
+
+@dataclass
+class SecretDetectionContext:
+    rules: Sequence[SecretDetectionRule]
+    version: str
+    ignore_rules: frozenset[str]
+    ignore_patterns: Sequence[re.Pattern[str]]
+    ignore_pattern_text: Sequence[str]
+    findings: list[SecretFinding]
+    rules_loaded: bool
+
+
+_SECRET_RULE_CACHE: tuple[SecretDetectionRule, ...] | None = None
+_SECRET_RULE_VERSION: str | None = None
 
 
 def _timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
+    global _SECRET_RULE_CACHE, _SECRET_RULE_VERSION
+    if _SECRET_RULE_CACHE is not None and _SECRET_RULE_VERSION is not None:
+        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
+
+    try:
+        resource = resources.files(__package__).joinpath(SECRET_RULES_RESOURCE)
+    except FileNotFoundError:
+        _SECRET_RULE_CACHE = ()
+        _SECRET_RULE_VERSION = "none"
+        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
+
+    try:
+        with resource.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except FileNotFoundError:
+        _SECRET_RULE_CACHE = ()
+        _SECRET_RULE_VERSION = "none"
+        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
+
+    version = str(payload.get("version", "unknown"))
+    rules_payload = payload.get("rules", [])
+    compiled_rules: list[SecretDetectionRule] = []
+    for entry in rules_payload or ():
+        if not isinstance(entry, Mapping):
+            continue
+        name = str(entry.get("name") or "").strip()
+        pattern_text = entry.get("pattern")
+        if not name or not pattern_text:
+            continue
+        flags_text = str(entry.get("flags") or "").lower()
+        flags = 0
+        if "i" in flags_text:
+            flags |= re.IGNORECASE
+        try:
+            pattern = re.compile(str(pattern_text), flags)
+        except re.error:
+            continue
+        compiled_rules.append(
+            SecretDetectionRule(
+                name=name,
+                pattern=pattern,
+                description=str(entry.get("description")) if entry.get("description") else None,
+            )
+        )
+
+    _SECRET_RULE_CACHE = tuple(compiled_rules)
+    _SECRET_RULE_VERSION = version
+    return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
+
+
+def _secret_option_values(value: Any) -> tuple[str, ...]:
+    if not value:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, Sequence):
+        result: list[str] = []
+        for item in value:
+            if item is None:
+                continue
+            text = str(item).strip()
+            if text:
+                result.append(text)
+        return tuple(result)
+    return ()
+
+
+def _build_secret_context(options: Mapping[str, Any]) -> SecretDetectionContext:
+    rules, version, loaded = _load_secret_rules()
+    ignore_rule_names = frozenset(_secret_option_values(options.get("secret_ignore_rules")))
+    ignore_pattern_text = _secret_option_values(options.get("secret_ignore_patterns"))
+    ignore_patterns: list[re.Pattern[str]] = []
+    for pattern_text in ignore_pattern_text:
+        try:
+            ignore_patterns.append(re.compile(pattern_text))
+        except re.error:
+            continue
+
+    return SecretDetectionContext(
+        rules=rules,
+        version=version,
+        ignore_rules=ignore_rule_names,
+        ignore_patterns=tuple(ignore_patterns),
+        ignore_pattern_text=ignore_pattern_text,
+        findings=[],
+        rules_loaded=loaded and bool(rules),
+    )
+
+
+def _looks_binary(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            chunk = handle.read(1024)
+    except OSError:
+        return False
+    return b"\0" in chunk
+
+
+def _copy_with_secret_filter(
+    source: Path,
+    destination: Path,
+    *,
+    display_path: str,
+    context: SecretDetectionContext,
+    log: Callable[[str], None],
+) -> tuple[int, str]:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    if not context.rules_loaded or not context.rules:
+        shutil.copy2(source, destination)
+        size = destination.stat().st_size
+        return size, _hash_file(destination)
+
+    if _looks_binary(source):
+        shutil.copy2(source, destination)
+        size = destination.stat().st_size
+        return size, _hash_file(destination)
+
+    buffered_lines: list[str] = []
+    sanitized_lines: list[str] | None = None
+    sanitized_matches = 0
+
+    with source.open("r", encoding="utf-8", errors="replace") as input_handle:
+        for lineno, line in enumerate(input_handle, 1):
+            triggered_rule: SecretDetectionRule | None = None
+            match_obj: re.Match[str] | None = None
+            for rule in context.rules:
+                if rule.name in context.ignore_rules:
+                    continue
+                match = rule.pattern.search(line)
+                if not match:
+                    continue
+                if any(pattern.search(line) for pattern in context.ignore_patterns):
+                    continue
+                triggered_rule = rule
+                match_obj = match
+                break
+
+            if triggered_rule is not None and match_obj is not None:
+                if sanitized_lines is None:
+                    sanitized_lines = list(buffered_lines)
+                sanitized_matches += 1
+                start, end = match_obj.span()
+                masked = (line[:start] + "[SECRET]" + line[end:]).rstrip("\n\r")
+                masked_preview = masked[:120]
+                if len(masked) > 120:
+                    masked_preview = masked[:117] + "..."
+                context.findings.append(
+                    SecretFinding(
+                        path=display_path,
+                        rule=triggered_rule.name,
+                        line=lineno,
+                        snippet=masked[:200],
+                    )
+                )
+                log(
+                    f"secret candidate removed ({triggered_rule.name}) from {display_path}:{lineno} -> {masked_preview}"
+                )
+                continue
+
+            if sanitized_lines is not None:
+                sanitized_lines.append(line)
+            else:
+                buffered_lines.append(line)
+
+    if sanitized_lines is None:
+        shutil.copy2(source, destination)
+        size = destination.stat().st_size
+        return size, _hash_file(destination)
+
+    destination.write_text("".join(sanitized_lines), encoding="utf-8")
+    try:
+        shutil.copystat(source, destination, follow_symlinks=False)
+    except OSError:
+        pass
+
+    log(
+        f"scrubbed {sanitized_matches} potential secret line(s) from {display_path}"
+    )
+
+    size = destination.stat().st_size
+    return size, _hash_file(destination)
 
 
 def _expand_path(text: str) -> Path:
@@ -354,6 +572,10 @@ def execute_config(
 
     log("offline collection started")
 
+    secret_context = _build_secret_context(config.profile.options)
+    if not secret_context.rules_loaded:
+        log("secret detection rules unavailable; copying files without scrubbing")
+
     files: list[CollectedFile] = []
     total_bytes = 0
     source_summaries: list[MutableMapping[str, Any]] = []
@@ -418,20 +640,28 @@ def execute_config(
                     if _should_exclude(relative, source.exclude):
                         log(f"excluded {file} by pattern")
                         continue
-                    size = file.stat().st_size
-                    if settings.max_total_bytes is not None and total_bytes + size > settings.max_total_bytes:
+                    original_size = file.stat().st_size
+                    if (
+                        settings.max_total_bytes is not None
+                        and total_bytes + original_size > settings.max_total_bytes
+                    ):
                         raise ValueError("Collection exceeds configured max_total_bytes limit.")
                     destination = destination_root / relative
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(file, destination)
-                    digest = _hash_file(destination)
+                    relative_to_data = _relative_path(data_root, destination)
+                    size, digest = _copy_with_secret_filter(
+                        file,
+                        destination,
+                        display_path=relative_to_data.as_posix(),
+                        context=secret_context,
+                        log=log,
+                    )
                     total_bytes += size
                     files.append(
                         CollectedFile(
                             alias=alias,
                             source=source.path,
                             destination=destination,
-                            relative_path=_relative_path(data_root, destination),
+                            relative_path=relative_to_data,
                             size=size,
                             sha256=digest,
                         )
@@ -442,20 +672,28 @@ def execute_config(
                 if _should_exclude(relative, source.exclude):
                     log(f"excluded {match} by pattern")
                     continue
-                size = match.stat().st_size
-                if settings.max_total_bytes is not None and total_bytes + size > settings.max_total_bytes:
+                original_size = match.stat().st_size
+                if (
+                    settings.max_total_bytes is not None
+                    and total_bytes + original_size > settings.max_total_bytes
+                ):
                     raise ValueError("Collection exceeds configured max_total_bytes limit.")
                 destination = destination_root / relative
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(match, destination)
-                digest = _hash_file(destination)
+                relative_to_data = _relative_path(data_root, destination)
+                size, digest = _copy_with_secret_filter(
+                    match,
+                    destination,
+                    display_path=relative_to_data.as_posix(),
+                    context=secret_context,
+                    log=log,
+                )
                 total_bytes += size
                 files.append(
                     CollectedFile(
                         alias=alias,
                         source=source.path,
                         destination=destination,
-                        relative_path=_relative_path(data_root, destination),
+                        relative_path=relative_to_data,
                         size=size,
                         sha256=digest,
                     )
@@ -515,6 +753,20 @@ def execute_config(
                 }
                 for entry in files
             ],
+            "secrets": {
+                "ruleset_version": secret_context.version,
+                "findings": [
+                    {
+                        "path": finding.path,
+                        "rule": finding.rule,
+                        "line": finding.line,
+                        "snippet": finding.snippet,
+                    }
+                    for finding in secret_context.findings
+                ],
+                "ignored_rules": sorted(secret_context.ignore_rules),
+                "ignored_patterns": list(secret_context.ignore_pattern_text),
+            },
             "metadata": dict(config.metadata),
             "package": {
                 "staging_directory": str(staging_dir),
