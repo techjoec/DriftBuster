@@ -36,6 +36,17 @@ def _read_collected_file_from_package(
             return handle.read().decode("utf-8")
 
 
+def test_secret_rules_resource_available() -> None:
+    offline_runner._SECRET_RULE_CACHE = None
+    offline_runner._SECRET_RULE_VERSION = None
+
+    rules, version, loaded = offline_runner._load_secret_rules()
+
+    assert loaded is True
+    assert rules, "expected packaged secret rules to be available"
+    assert isinstance(version, str) and version
+
+
 def test_load_config_accepts_string_and_object_sources(tmp_path: Path) -> None:
     config_payload = {
         "schema": offline_runner.CONFIG_SCHEMA,
