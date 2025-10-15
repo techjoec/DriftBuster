@@ -273,7 +273,24 @@ class IniPlugin:
 
         confidence = min(confidence, 0.95)
 
-        brace_signal = bool(re.search(r"[{}]", text))
+        brace_lines = [line for line in non_empty_lines if "{" in line or "}" in line]
+        standalone_brace_line = any(re.match(r"^\s*[{}]+\s*$", line) for line in brace_lines)
+        json_like_brace_line = any(
+            re.search(r"\{\s*\"[^\"]+\"\s*:", line) for line in brace_lines
+        )
+        structured_brace_lines = sum(
+            1 for line in brace_lines if ":" in line and ("{" in line or "}" in line)
+        )
+        brace_token_count = sum(line.count("{") + line.count("}") for line in brace_lines)
+
+        brace_signal = bool(
+            brace_lines
+            and (
+                standalone_brace_line
+                or json_like_brace_line
+                or (structured_brace_lines >= 2 and brace_token_count >= 4)
+            )
+        )
         directive_density = len(directive_lines) / max(len(non_empty_lines), 1) if non_empty_lines else 0.0
 
         format_name = "ini"

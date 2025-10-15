@@ -218,6 +218,28 @@ def test_ini_plugin_detects_ini_json_hybrids(
     assert any("hybrid" in reason.lower() for reason in match.reasons)
 
 
+def test_ini_plugin_does_not_flag_placeholder_braces_as_hybrid(
+    ini_plugin: IniPlugin,
+) -> None:
+    match = _detect(
+        ini_plugin,
+        "placeholders.ini",
+        dedent(
+            """
+            [template]
+            pattern={value}
+            include={% include %}
+            path={HOME}/bin
+            """
+        ).strip(),
+    )
+
+    assert match is not None
+    assert match.format_name == "ini"
+    assert match.variant == "sectioned-ini"
+    assert all("hybrid" not in reason.lower() for reason in match.reasons)
+
+
 def test_ini_plugin_classifies_directive_conf_variant(
     ini_plugin: IniPlugin, directive_conf_sample: str
 ) -> None:
