@@ -11,6 +11,7 @@ aligned.
 | Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.4          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, and MSBuild metadata now populate automatically. |
 | Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.4          | Stabilising  | Namespace logging, schema provenance, `.resx` resource keys, MSBuild project detection, and attribute hints surface alongside hunt-aligned tokens. |
 | JSON                     | Generic JSON, comment-friendly `jsonc`, `appsettings*.json`      | json   | 0.0.1          | Preview      | Large-sample validation and sampling guardrails are still being tuned. |
+| INI                       | Classic/sectionless, dotenv gating, directive spillover metadata | ini    | 0.0.1          | Preview     | Records encoding, comment style, and sensitive key hints for remediation planning. |
 
 Last updated: 2025-10-17.
 
