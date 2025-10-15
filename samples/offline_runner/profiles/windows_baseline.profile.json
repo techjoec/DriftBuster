@@ -1,0 +1,26 @@
+{
+  "name": "windows_baseline",
+  "description": "Collect baseline system logs from Windows endpoints.",
+  "sources": [
+    {
+      "path": "C:\\Windows\\System32\\winevt\\Logs\\System.evtx",
+      "alias": "event_system"
+    },
+    {
+      "path": "C:\\Windows\\System32\\winevt\\Logs\\Application.evtx",
+      "alias": "event_application"
+    },
+    {
+      "path": "C:\\ProgramData\\DriftBuster\\configs\\*.json",
+      "alias": "drift_configs",
+      "optional": true,
+      "exclude": ["*.bak", "*.old"]
+    }
+  ],
+  "baseline": "C:\\Windows\\System32\\winevt\\Logs\\System.evtx",
+  "tags": ["windows", "baseline", "offline"],
+  "options": {
+    "collector": "powershell-portable",
+    "notes": "default windows offline capture"
+  }
+}

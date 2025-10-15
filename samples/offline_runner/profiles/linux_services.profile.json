@@ -1,0 +1,26 @@
+{
+  "name": "linux_services",
+  "description": "Collect service definitions and system logs from Linux hosts.",
+  "sources": [
+    {
+      "path": "/etc/systemd/system",
+      "alias": "systemd_units",
+      "exclude": ["*.wants/*", "*.requires/*"]
+    },
+    {
+      "path": "/var/log/*.log",
+      "alias": "logs",
+      "optional": true
+    },
+    {
+      "path": "/var/log/journal",
+      "alias": "journal",
+      "optional": true
+    }
+  ],
+  "tags": ["linux", "services", "offline"],
+  "options": {
+    "collector": "tarball",
+    "notes": "baseline linux services snapshot"
+  }
+}

@@ -1,16 +1,16 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <Color x:Key="Color.Accent">#FF5AC8FA</Color>
-    <Color x:Key="Color.AccentHover">#FF72D3FF</Color>
-    <Color x:Key="Color.Background">#10131B</Color>
-    <Color x:Key="Color.Surface">#171C27</Color>
-    <Color x:Key="Color.SurfaceAlt">#1F2534</Color>
-    <Color x:Key="Color.SurfaceMuted">#242C3D</Color>
-    <Color x:Key="Color.Border">#2E374A</Color>
-    <Color x:Key="Color.BorderStrong">#3B4760</Color>
+    <Color x:Key="Color.Accent">#FFE53935</Color>
+    <Color x:Key="Color.AccentHover">#FFFF6F61</Color>
+    <Color x:Key="Color.Background">#FF050506</Color>
+    <Color x:Key="Color.Surface">#FF0C0C10</Color>
+    <Color x:Key="Color.SurfaceAlt">#FF141418</Color>
+    <Color x:Key="Color.SurfaceMuted">#FF1E1B1F</Color>
+    <Color x:Key="Color.Border">#FF2A1B1D</Color>
+    <Color x:Key="Color.BorderStrong">#FF4B2024</Color>
     <Color x:Key="Color.TextPrimary">#FFFFFFFF</Color>
-    <Color x:Key="Color.TextSecondary">#FFC3CAD9</Color>
+    <Color x:Key="Color.TextSecondary">#FFE9B0B0</Color>
 
     <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource Color.Accent}" />
     <SolidColorBrush x:Key="Brush.AccentHover" Color="{DynamicResource Color.AccentHover}" />
@@ -90,7 +90,7 @@
   <Style Selector="ToggleButton:checked">
     <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-    <Setter Property="Foreground" Value="#0B1120" />
+    <Setter Property="Foreground" Value="#FFFFFFFF" />
   </Style>
 
   <Style Selector="TextBox">

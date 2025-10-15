@@ -20,6 +20,7 @@ from .core import (
 )
 from .formats import FormatPlugin, get_plugins, register, registry_summary
 from .hunt import HuntHit, HuntRule, default_rules, hunt_path
+from . import offline_runner
 __all__ = [
     "AppliedProfileConfig",
     "ConfigurationProfile",
@@ -40,4 +41,5 @@ __all__ = [
     "hunt_path",
     "scan_file",
     "scan_path",
+    "offline_runner",
 ]
