@@ -57,3 +57,27 @@ def test_looks_text_and_decode_text() -> None:
     text, encoding = registry.decode_text(utf16)
     assert text == "value"
     assert encoding in {"utf-16", "utf-16-le"}
+
+
+def test_get_plugins_mutable_snapshot_and_versions() -> None:
+    snapshot = registry.get_plugins(readonly=False)
+    assert isinstance(snapshot, tuple)
+    versions = registry.plugin_versions()
+    assert all(name in versions for name in (plugin.name for plugin in snapshot))
+
+
+def test_strip_bom_and_even_odd_heuristic() -> None:
+    data = codecs.BOM_UTF8 + b"payload"
+    stripped, had_bom = registry._strip_bom(data)
+    assert had_bom is True and stripped == b"payload"
+
+    # Alternating ASCII and null bytes should pass via even/odd heuristic.
+    alternating = b"A\x00B\x00C\x00D\x00"
+    assert registry.looks_text(alternating)
+
+
+def test_decode_text_fallback_to_latin1() -> None:
+    binary = bytes(range(256))
+    text, encoding = registry.decode_text(binary)
+    assert encoding == "latin-1"
+    assert len(text) == 256

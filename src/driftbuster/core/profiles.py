@@ -374,6 +374,68 @@ class ProfileStore:
                 )
         return tuple(matches)
 
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "ProfileStore":
+        profiles: list[ConfigurationProfile] = []
+        for entry in payload.get("profiles", []):
+            configs = []
+            for cfg in entry.get("configs", []):
+                configs.append(
+                    ProfileConfig(
+                        identifier=cfg["id"],
+                        path=cfg.get("path"),
+                        path_glob=cfg.get("path_glob"),
+                        application=cfg.get("application"),
+                        version=cfg.get("version"),
+                        branch=cfg.get("branch"),
+                        tags=cfg.get("tags"),
+                        expected_format=cfg.get("expected_format"),
+                        expected_variant=cfg.get("expected_variant"),
+                        metadata=cfg.get("metadata", {}),
+                    )
+                )
+            profiles.append(
+                ConfigurationProfile(
+                    name=entry["name"],
+                    description=entry.get("description"),
+                    tags=entry.get("tags"),
+                    configs=tuple(configs),
+                    metadata=entry.get("metadata", {}),
+                )
+            )
+        return cls(profiles)
+
+    def to_dict(self) -> Mapping[str, Any]:
+        """Return a serialisable snapshot of stored profiles."""
+
+        payload = {
+            "profiles": [
+                {
+                    "name": profile.name,
+                    "description": profile.description,
+                    "tags": sorted(profile.tags),
+                    "metadata": dict(profile.metadata),
+                    "configs": [
+                        {
+                            "id": config.identifier,
+                            "path": config.path,
+                            "path_glob": config.path_glob,
+                            "application": config.application,
+                            "version": config.version,
+                            "branch": config.branch,
+                            "tags": sorted(config.tags),
+                            "expected_format": config.expected_format,
+                            "expected_variant": config.expected_variant,
+                            "metadata": dict(config.metadata),
+                        }
+                        for config in profile.configs
+                    ],
+                }
+                for profile in self._profiles.values()
+            ]
+        }
+        return MappingProxyType(payload)
+
 
 def diff_summary_snapshots(
     baseline: Mapping[str, Any],
@@ -459,68 +521,6 @@ def diff_summary_snapshots(
         "changed_profiles": tuple(changed_profiles),
     }
     return MappingProxyType(payload)
-
-    @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "ProfileStore":
-        profiles: list[ConfigurationProfile] = []
-        for entry in payload.get("profiles", []):
-            configs = []
-            for cfg in entry.get("configs", []):
-                configs.append(
-                    ProfileConfig(
-                        identifier=cfg["id"],
-                        path=cfg.get("path"),
-                        path_glob=cfg.get("path_glob"),
-                        application=cfg.get("application"),
-                        version=cfg.get("version"),
-                        branch=cfg.get("branch"),
-                        tags=cfg.get("tags"),
-                        expected_format=cfg.get("expected_format"),
-                        expected_variant=cfg.get("expected_variant"),
-                        metadata=cfg.get("metadata", {}),
-                    )
-                )
-            profiles.append(
-                ConfigurationProfile(
-                    name=entry["name"],
-                    description=entry.get("description"),
-                    tags=entry.get("tags"),
-                    configs=tuple(configs),
-                    metadata=entry.get("metadata", {}),
-                )
-            )
-        return cls(profiles)
-
-    def to_dict(self) -> Mapping[str, Any]:
-        """Return a serialisable snapshot of stored profiles."""
-
-        payload = {
-            "profiles": [
-                {
-                    "name": profile.name,
-                    "description": profile.description,
-                    "tags": sorted(profile.tags),
-                    "metadata": dict(profile.metadata),
-                    "configs": [
-                        {
-                            "id": config.identifier,
-                            "path": config.path,
-                            "path_glob": config.path_glob,
-                            "application": config.application,
-                            "version": config.version,
-                            "branch": config.branch,
-                            "tags": sorted(config.tags),
-                            "expected_format": config.expected_format,
-                            "expected_variant": config.expected_variant,
-                            "metadata": dict(config.metadata),
-                        }
-                        for config in profile.configs
-                    ],
-                }
-                for profile in self._profiles.values()
-            ]
-        }
-        return MappingProxyType(payload)
 
 
 __all__ = [

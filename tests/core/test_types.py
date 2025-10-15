@@ -58,3 +58,49 @@ def test_summarise_metadata_serialises_values() -> None:
 
     assert summary["plugin"] == "xml"
     assert summary["metadata"]["catalog_format"] == "xml"
+
+
+def test_validate_detection_metadata_handles_strict_false() -> None:
+    match = DetectionMatch(
+        plugin_name="custom",
+        format_name="Custom-Format",
+        variant=" CustomVariant ",
+        confidence=0.5,
+        reasons=[],
+        metadata={"bytes": b"data", "path": Path("/tmp/obj")},
+    )
+
+    metadata = validate_detection_metadata(match, DETECTION_CATALOG, strict=False)
+
+    # Variant is lowercased when strict is disabled and bytes become text.
+    assert metadata["catalog_format"] == "custom-format"
+    assert metadata["catalog_variant"] == "customvariant"
+    assert metadata["bytes"] == "data"
+    assert metadata["path"] == "/tmp/obj"
+
+
+def test_validate_detection_metadata_rejects_bad_metadata_type() -> None:
+    match = DetectionMatch(
+        plugin_name="json",
+        format_name="json",
+        variant="generic",
+        confidence=0.1,
+        reasons=[],
+        metadata=[("key", "value")],
+    )
+
+    with pytest.raises(MetadataValidationError):
+        validate_detection_metadata(match, DETECTION_CATALOG)
+
+
+def test_validate_detection_metadata_requires_string_variant() -> None:
+    match = DetectionMatch(
+        plugin_name="json",
+        format_name="json",
+        variant=123,  # type: ignore[arg-type]
+        confidence=0.3,
+        reasons=[],
+    )
+
+    with pytest.raises(MetadataValidationError):
+        validate_detection_metadata(match, DETECTION_CATALOG)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from driftbuster.hunt import default_rules, hunt_path
+from driftbuster.hunt import _matches_keywords, _should_exclude, default_rules, hunt_path
 
 
 def test_hunt_path_returns_hits(tmp_path: Path) -> None:
@@ -71,3 +71,22 @@ def test_hunt_rules_capture_xml_attribute_tokens(tmp_path: Path) -> None:
     assert results
     rule_names = {hit.rule.name for hit in results}
     assert {"connection-string", "service-endpoint", "feature-flag"}.issubset(rule_names)
+
+
+def test_hunt_path_skips_binary_files(tmp_path: Path) -> None:
+    target = tmp_path / "binary.dat"
+    target.write_bytes(b"\x00\xff\x00\xff")
+
+    results = hunt_path(target, rules=default_rules())
+    assert results == []
+
+
+def test_keyword_and_exclusion_helpers(tmp_path: Path) -> None:
+    assert _matches_keywords("Server host", ["server"])
+    assert not _matches_keywords("host", ["server"])
+
+    candidate = tmp_path / "dir" / "file.txt"
+    candidate.parent.mkdir()
+    candidate.write_text("data", encoding="utf-8")
+    relative = candidate.relative_to(tmp_path / "dir")
+    assert _should_exclude(candidate, relative=relative, patterns=["*.txt"])

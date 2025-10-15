@@ -10,6 +10,7 @@ from driftbuster.core.profiles import (
     ProfileConfig,
     ProfileStore,
     diff_summary_snapshots,
+    normalize_tags,
 )
 
 
@@ -104,3 +105,61 @@ def test_profile_store_summary_and_diff() -> None:
     assert changed[0]["name"] == "prod"
     assert changed[0]["added_config_ids"] == ("cfg2",)
 
+
+def test_profile_store_update_remove_and_serialisation() -> None:
+    profile = ConfigurationProfile(
+        name="default",
+        configs=(
+            ProfileConfig(identifier="cfg1"),
+            ProfileConfig(identifier="cfg2"),
+        ),
+    )
+    store = ProfileStore([profile])
+
+    with pytest.raises(TypeError):
+        store.update_profile("default", mutator="not-callable")  # type: ignore[arg-type]
+
+    def mutate(original: ConfigurationProfile) -> ConfigurationProfile:
+        return ConfigurationProfile(
+            name=original.name,
+            configs=original.configs[:-1],
+        )
+
+    updated = store.update_profile("default", mutate)
+    assert len(updated.configs) == 1
+
+    with pytest.raises(ValueError):
+        store.remove_config("default", "cfg-missing")
+
+    store.remove_config("default", "cfg1")
+    assert store.find_config("cfg1") == ()
+
+    payload = store.to_dict()
+    assert len(payload["profiles"]) == 1
+    exported = payload["profiles"][0]
+    assert exported["configs"] == []
+
+    rebuilt = ProfileStore.from_dict(
+        {
+            "profiles": [
+                {
+                    "name": "imported",
+                    "configs": [
+                        {"id": "cfg", "path": "path\\file.txt", "tags": [" prod "]}
+                    ],
+                }
+            ]
+        }
+    )
+    assert rebuilt.find_config("cfg")
+
+
+def test_applicable_profiles_and_normalise_tags() -> None:
+    profile = ConfigurationProfile(name="tagged", tags={"prod"})
+    store = ProfileStore([profile])
+
+    matches = store.applicable_profiles(["prod"])  # Tag matched
+    assert matches[0].name == "tagged"
+
+    assert store.applicable_profiles(["dev"]) == ()
+    assert normalize_tags([" prod ", ""]) == frozenset({"prod"})

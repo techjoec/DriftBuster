@@ -46,3 +46,46 @@ def test_json_plugin_rejects_non_json_payloads() -> None:
     match = _detect(plugin, "notes.txt", "Just some text without braces")
 
     assert match is None
+
+
+def test_json_plugin_handles_comment_only_payload() -> None:
+    plugin = JsonPlugin()
+    match = _detect(plugin, "config.json", "// comment only\n/* block */")
+    assert match is None
+
+
+def test_json_plugin_detects_generic_without_extension() -> None:
+    plugin = JsonPlugin()
+    match = _detect(plugin, "config.settings", '{"key": 1, "list": [1, 2, 3]}')
+    assert match is not None
+    assert match.variant == "generic"
+    assert match.metadata is not None
+    assert "top_level_keys" in match.metadata
+
+
+def test_json_plugin_attempt_parse_array_metadata() -> None:
+    plugin = JsonPlugin()
+    match = _detect(plugin, "data.json", "[{\"value\": 1}, {\"value\": 2}]")
+    assert match is not None
+    assert match.metadata is not None
+    assert "top_level_sample_types" in match.metadata
+
+
+def test_json_plugin_requires_signals_for_custom_extension() -> None:
+    plugin = JsonPlugin()
+    match = _detect(plugin, "config.settings", "[1, 2")
+    assert match is None
+
+
+def test_json_plugin_detect_returns_none_for_missing_text() -> None:
+    plugin = JsonPlugin()
+    path = Path("config.json")
+    assert plugin.detect(path, b"{}", None) is None
+
+
+def test_json_plugin_comment_helpers() -> None:
+    plugin = JsonPlugin()
+    stripped, consumed = plugin._strip_leading_comments("/*unterminated")
+    assert stripped == "" and consumed is True
+
+    assert plugin._contains_comments('{"value": "// comment"}') is False

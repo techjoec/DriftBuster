@@ -1,12 +1,21 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 import zipfile
+import json
+import re
+from pathlib import Path
 
 import pytest
 
 from driftbuster import offline_runner
+from driftbuster.offline_runner import (
+    SecretDetectionContext,
+    SecretDetectionRule,
+    _build_secret_context,
+    _compile_ruleset_from_mapping,
+    _manifest_secret_scanner,
+    _secret_option_values,
+)
 
 
 def _write_config(tmp_path: Path, payload: dict) -> Path:
@@ -409,3 +418,65 @@ def test_execute_offline_run_retains_staging_when_cleanup_disabled(tmp_path: Pat
     assert result.manifest_path.exists()
     assert result.log_path is not None
     assert result.log_path.exists()
+
+
+def test_compile_ruleset_from_mapping_handles_invalid_entries() -> None:
+    assert _compile_ruleset_from_mapping(None) is None
+    assert _compile_ruleset_from_mapping({"rules": "invalid"}) is None
+
+    payload = {
+        "version": "custom",
+        "rules": [
+            {"name": "Valid", "pattern": "secret", "flags": "i"},
+            {"name": "Broken", "pattern": "["},
+        ],
+    }
+    compiled = _compile_ruleset_from_mapping(payload)
+    assert compiled is not None
+    rules, version = compiled
+    assert version == "custom"
+    assert len(rules) == 1
+    assert isinstance(rules[0], SecretDetectionRule)
+
+
+def test_secret_option_values_and_manifest_helpers() -> None:
+    assert _secret_option_values("a, b ; c") == ("a", "b", "c")
+    assert _secret_option_values(["x", None, " y "]) == ("x", "y")
+
+    context = SecretDetectionContext(
+        rules=(),
+        version="v1",
+        ignore_rules=frozenset({"Skip"}),
+        ignore_patterns=(re.compile("SKIP"),),
+        ignore_pattern_text=("SKIP",),
+        findings=[],
+        rules_loaded=True,
+    )
+    manifest = _manifest_secret_scanner(
+        {"secret_ignore_rules": "Skip"},
+        {"ignore_patterns": ["SKIP"]},
+        context,
+    )
+    assert manifest["ruleset_version"] == "v1"
+    assert manifest["ignore_rules"] == ["Skip"]
+    assert manifest["ignore_patterns"] == ["SKIP"]
+
+
+def test_build_secret_context_prefers_inline_rules(tmp_path: Path) -> None:
+    payload = {
+        "ruleset": {
+            "version": "inline",
+            "rules": [
+                {"name": "Token", "pattern": "VALUE"},
+            ],
+        },
+        "ignore_rules": ["Token"],
+    }
+    context = _build_secret_context(
+        {"secret_ignore_patterns": ["ALLOW"]},
+        payload,
+    )
+    assert context.version == "inline"
+    assert context.rules_loaded is True
+    assert context.ignore_rules == frozenset({"Token"})
+    assert "ALLOW" in context.ignore_pattern_text
