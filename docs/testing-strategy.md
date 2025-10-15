@@ -220,3 +220,4 @@ grounded in reproducible fixtures.
   inventory once detector support becomes available.
 - Draft placeholder mutation recipes for future binary formats (e.g., firmware
   slices) while keeping them manual-only.
+- For INI/CONF updates, log manual checks that preserve key ordering, comment markers (inline vs line), mixed newline handling, and encoding detection (UTF BOMs vs Latin-1) in `notes/checklists/manual-tests.md` to mirror backlog expectations.
