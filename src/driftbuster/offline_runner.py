@@ -280,30 +280,39 @@ def _copy_with_secret_filter(
 
     with source.open("r", encoding="utf-8", errors="replace") as input_handle:
         for lineno, line in enumerate(input_handle, 1):
-            triggered_rule: SecretDetectionRule | None = None
-            match_obj: re.Match[str] | None = None
-            for rule in context.rules:
-                if rule.name in context.ignore_rules:
-                    continue
-                match = rule.pattern.search(line)
-                if not match:
-                    continue
-                if any(pattern.search(line) for pattern in context.ignore_patterns):
-                    continue
-                triggered_rule = rule
-                match_obj = match
-                break
+            working_line = line
+            match_found = False
 
-            if triggered_rule is not None and match_obj is not None:
+            while True:
+                triggered_rule: SecretDetectionRule | None = None
+                match_obj: re.Match[str] | None = None
+                for rule in context.rules:
+                    if rule.name in context.ignore_rules:
+                        continue
+                    match = rule.pattern.search(working_line)
+                    if not match:
+                        continue
+                    if any(pattern.search(line) for pattern in context.ignore_patterns):
+                        continue
+                    triggered_rule = rule
+                    match_obj = match
+                    break
+
+                if triggered_rule is None or match_obj is None:
+                    break
+
                 if sanitized_lines is None:
                     sanitized_lines = list(buffered_lines)
-                sanitized_matches += 1
+
                 start, end = match_obj.span()
-                redacted_line = line[:start] + "[SECRET]" + line[end:]
+                redacted_line = working_line[:start] + "[SECRET]" + working_line[end:]
                 preview_line = redacted_line.rstrip("\n\r")
                 masked_preview = preview_line[:120]
                 if len(preview_line) > 120:
                     masked_preview = preview_line[:117] + "..."
+
+                sanitized_matches += 1
+                match_found = True
                 context.findings.append(
                     SecretFinding(
                         path=display_path,
@@ -315,11 +324,14 @@ def _copy_with_secret_filter(
                 log(
                     f"secret candidate redacted ({triggered_rule.name}) from {display_path}:{lineno} -> {masked_preview}"
                 )
-                sanitized_lines.append(redacted_line)
-                continue
+
+                working_line = redacted_line
+
+                if start == end:
+                    break
 
             if sanitized_lines is not None:
-                sanitized_lines.append(line)
+                sanitized_lines.append(working_line if match_found else line)
             else:
                 buffered_lines.append(line)
 
