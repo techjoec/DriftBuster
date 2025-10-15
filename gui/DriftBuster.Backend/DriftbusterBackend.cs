@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -44,6 +45,7 @@ namespace DriftBuster.Backend
     {
         private const int HuntSampleSize = 128 * 1024;
         private const string RedactedPlaceholder = "[REDACTED]";
+        private const string SecretRulesResourceName = "DriftBuster.Backend.Resources.secret_rules.json";
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
@@ -755,6 +757,14 @@ namespace DriftBuster.Backend
 
             private static JsonElement LoadSecretRules(string? baseDir)
             {
+                var assembly = typeof(DriftbusterBackend).Assembly;
+                using var resource = assembly.GetManifestResourceStream(SecretRulesResourceName);
+                if (resource is not null)
+                {
+                    using var embedded = JsonDocument.Parse(resource);
+                    return embedded.RootElement.Clone();
+                }
+
                 var path = ResolveRequiredFile(baseDir, "src", "driftbuster", "secret_rules.json");
                 using var stream = File.OpenRead(path);
                 using var document = JsonDocument.Parse(stream);
