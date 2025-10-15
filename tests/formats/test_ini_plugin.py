@@ -93,6 +93,24 @@ def test_ini_plugin_classifies_env_files() -> None:
     assert any("dotenv" in reason.lower() for reason in match.reasons)
 
 
+def test_ini_plugin_preserves_java_properties_classification() -> None:
+    plugin = IniPlugin()
+    match = _detect(
+        plugin,
+        "application.properties",
+        """
+        spring.main.banner-mode=off
+        server.port=8080
+        management.endpoints.enabled=true
+        """.strip(),
+    )
+
+    assert match is not None
+    assert match.format_name == "ini"
+    assert match.variant == "java-properties"
+    assert any("java properties" in reason.lower() for reason in match.reasons)
+
+
 def test_ini_plugin_classifies_unix_conf_variants() -> None:
     plugin = IniPlugin()
     match = _detect(

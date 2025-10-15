@@ -285,6 +285,7 @@ class IniPlugin:
             and key_pair_count
             and (equals_pairs > 0 or export_lines > 0)
             and not directive_signal
+            and extension != ".properties"
         )
 
         if sections and brace_signal:
