@@ -195,6 +195,35 @@ def test_execute_offline_run_respects_exclude_patterns(tmp_path: Path) -> None:
     assert any(path.endswith("keep.log") for path in paths)
 
 
+def test_execute_offline_run_deduplicates_recursive_glob_matches(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    source_root.mkdir()
+    nested_dir = source_root / "nested"
+    nested_dir.mkdir()
+    (source_root / "root.log").write_text("root", encoding="utf-8")
+    (nested_dir / "child.log").write_text("child", encoding="utf-8")
+
+    config_payload = {
+        "profile": {
+            "name": "recursive-glob",
+            "sources": [
+                {"path": f"{source_root}/**/*"},
+            ],
+        },
+        "runner": {
+            "output_directory": str(tmp_path / "out"),
+        },
+    }
+    config_path = _write_config(tmp_path, config_payload)
+
+    result = offline_runner.execute_config_path(config_path)
+
+    collected_paths = [file.relative_path.as_posix() for file in result.files]
+    assert len(collected_paths) == len(set(collected_paths))
+    assert any(path.endswith("root.log") for path in collected_paths)
+    assert any(path.endswith("child.log") for path in collected_paths)
+
+
 def test_execute_offline_run_enforces_max_total_bytes(tmp_path: Path) -> None:
     source = tmp_path / "large.bin"
     source.write_bytes(b"0" * 1024)

@@ -365,6 +365,14 @@ def _relative_path(base: Path, target: Path) -> Path:
         return Path(target.name)
 
 
+def _path_within(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
 @dataclass(frozen=True)
 class OfflineCollectionSource:
     path: str
@@ -710,12 +718,24 @@ def execute_config(
                 continue
             raise FileNotFoundError(f"Path does not exist: {source.path}")
 
+        processed_directories: list[Path] = []
+
         for match in sorted(matches, key=lambda item: item.as_posix()):
             if match.is_symlink():
                 log(f"skipping symlink: {match}")
                 continue
 
+            try:
+                resolved_match = match.resolve()
+            except FileNotFoundError:
+                resolved_match = match
+
+            if any(_path_within(resolved_match, processed) for processed in processed_directories):
+                log(f"skipping already collected: {match}")
+                continue
+
             if match.is_dir():
+                processed_directories.append(resolved_match)
                 walker = sorted(
                     (candidate for candidate in match.rglob("*") if candidate.is_file()),
                     key=lambda item: item.as_posix(),
