@@ -171,13 +171,86 @@ class IniPlugin:
 
         confidence = min(confidence, 0.95)
 
+        brace_signal = bool(re.search(r"[{}]", text))
+        directive_density = len(directive_lines) / max(len(non_empty_lines), 1) if non_empty_lines else 0.0
+
+        format_name = "ini"
         variant: Optional[str] = None
+        classification_reasons: List[str] = []
+
+        env_style = (
+            not sections
+            and key_pair_count
+            and (equals_pairs > 0 or export_lines > 0)
+            and not directive_signal
+        )
+
+        if sections and brace_signal:
+            format_name = "ini-json-hybrid"
+            variant = "section-json-hybrid"
+            classification_reasons.append(
+                "Detected JSON-style braces alongside [section] headers indicating hybrid structure"
+            )
+        elif env_style:
+            format_name = "env-file"
+            variant = "dotenv"
+            classification_reasons.append(
+                "Sectionless KEY=VALUE or export assignments resemble dotenv env files"
+            )
+        elif directive_signal and (not sections or len(directive_lines) >= 2 or directive_density >= 0.3):
+            format_name = "unix-conf"
+            variant = "directive-conf"
+            classification_reasons.append(
+                "Directive-heavy configuration without sections classified as Unix-style conf"
+            )
+
+            apache_hint = re.search(
+                r"^\s*(?:LoadModule|SetEnv|<VirtualHost|<Directory|ServerName)\b",
+                text,
+                re.IGNORECASE | re.MULTILINE,
+            )
+            nginx_hint = re.search(
+                r"^\s*(?:server\s*\{|location\s+|upstream\s+)",
+                text,
+                re.IGNORECASE | re.MULTILINE,
+            )
+            if apache_hint:
+                variant = "apache-conf"
+                classification_reasons.append(
+                    "Matched Apache directive keywords such as LoadModule/SetEnv"
+                )
+            elif nginx_hint:
+                variant = "nginx-conf"
+                classification_reasons.append(
+                    "Detected nginx-style server/location blocks"
+                )
+        else:
+            if sections:
+                variant = "sectioned-ini"
+                classification_reasons.append("Section headers confirm classic INI layout")
+            else:
+                if extension == ".properties":
+                    variant = "java-properties"
+                    classification_reasons.append(
+                        "File extension .properties with key/value pairs suggests Java properties"
+                    )
+                else:
+                    variant = "sectionless-ini"
+                    classification_reasons.append(
+                        "Key/value pairs without sections default to sectionless INI interpretation"
+                    )
+
         if lower_name == "desktop.ini":
             variant = "desktop-ini"
+            classification_reasons.append(
+                "Recognized Windows desktop.ini profile file name"
+            )
+
+        reasons.extend(classification_reasons)
 
         return DetectionMatch(
             plugin_name=self.name,
-            format_name="ini",
+            format_name=format_name,
             variant=variant,
             confidence=confidence,
             reasons=reasons,

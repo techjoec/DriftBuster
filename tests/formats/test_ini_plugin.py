@@ -28,10 +28,11 @@ def test_ini_plugin_detects_sections_and_keys() -> None:
 
     assert match is not None
     assert match.format_name == "ini"
-    assert match.variant is None
+    assert match.variant == "sectioned-ini"
     assert match.metadata is not None
     assert match.metadata["section_count"] == 2
     assert match.metadata["key_value_pairs"] >= 3
+    assert any("Section headers" in reason for reason in match.reasons)
 
 
 def test_ini_plugin_detects_desktop_ini_variant() -> None:
@@ -50,6 +51,64 @@ def test_ini_plugin_detects_desktop_ini_variant() -> None:
     assert match.variant == "desktop-ini"
     assert match.metadata is not None
     assert ".ShellClassInfo" in match.metadata.get("sections", [])
+
+
+def test_ini_plugin_classifies_env_files() -> None:
+    plugin = IniPlugin()
+    match = _detect(
+        plugin,
+        ".env",
+        """
+        DATABASE_URL=postgres://localhost/app
+        export LOG_LEVEL=info
+        FEATURE_FLAG=1
+        """.strip(),
+    )
+
+    assert match is not None
+    assert match.format_name == "env-file"
+    assert match.variant == "dotenv"
+    assert any("dotenv" in reason.lower() for reason in match.reasons)
+
+
+def test_ini_plugin_classifies_unix_conf_variants() -> None:
+    plugin = IniPlugin()
+    match = _detect(
+        plugin,
+        "httpd.conf",
+        """
+        LoadModule authz_core_module modules/mod_authz_core.so
+        ServerName example.com
+        <Directory "/var/www/html">
+            AllowOverride None
+        </Directory>
+        """.strip(),
+    )
+
+    assert match is not None
+    assert match.format_name == "unix-conf"
+    assert match.variant == "apache-conf"
+    assert any("apache" in reason.lower() for reason in match.reasons)
+
+
+def test_ini_plugin_detects_ini_json_hybrids() -> None:
+    plugin = IniPlugin()
+    match = _detect(
+        plugin,
+        "hybrid.conf",
+        """
+        [general]
+        enabled=true
+        {
+            "extra": true
+        }
+        """.strip(),
+    )
+
+    assert match is not None
+    assert match.format_name == "ini-json-hybrid"
+    assert match.variant == "section-json-hybrid"
+    assert any("hybrid" in reason.lower() for reason in match.reasons)
 
 
 def test_ini_plugin_rejects_plain_text() -> None:
