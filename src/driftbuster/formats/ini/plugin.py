@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from .registry import decode_text, register
-from ..core.types import DetectionMatch
+from ..registry import decode_text, register
+from ...core.types import DetectionMatch
 
 
 _SECTION_PATTERN = re.compile(r"^\s*\[([^\]\n]+)\]\s*$", re.MULTILINE)

@@ -7,6 +7,9 @@ positive match wins. The tables below blend the shipped class definitions from
 `DETECTION_CATALOG` (v0.0.1) with the usage insights from the format survey data
 (v0.0.1).
 
+For the definitive detector expectations, refer to
+`docs/coverage-golden-standard.md`.
+
 ## Active Detection Classes
 
 | Priority | Class Name              | Catalog Format        | Primary Variant                | Key Extensions                     | Usage % | Detection Cues                |
@@ -17,7 +20,7 @@ positive match wins. The tables below blend the shipped class definitions from
 | 40       | Json                   | json                  | generic                 | `.json`, `.jsonc`                  | 22      | bracket balance + parse       |
 | 50       | Yaml                   | yaml                  | —                      | `.yml`, `.yaml`                    | 8       | key/colon indentation         |
 | 60       | Toml                   | toml                  | —                      | `.toml`                            | 4       | bracketed sections + `=`      |
-| 70       | Ini                    | ini                   | sectioned-ini (sectionless/desktop/java variants) | `.ini`, `.cfg`, `.cnf`             | 15     | section headers + key density + extension hints |
+| 70       | Ini                    | ini                   | sectioned-ini + env/dotenv/hybrid/unix-conf variants | `.ini`, `.cfg`, `.cnf`             | 15     | section headers + key density + extension hints |
 | 80       | KeyValueProperties     | properties            | java-properties         | `.properties`                      | 3      | extension + `=`/`:` pairs + continuations |
 | 90       | UnixConf               | unix-conf             | directive-conf (apache/nginx variants) | `.conf`                            | 2     | directive keywords + comment markers |
 | 100      | ScriptConfig           | script-config         | shell-automation        | `.ps1`, `.bat`, `.cmd`, `.vbs`     | 4       | shebang/keyword scan          |
@@ -55,12 +58,14 @@ core and XML work stabilise. They are not yet represented in
 |------------------------|-----------------------------|----------------|---------|-----------------------------|
 | markdown-config        | embedded-yaml-frontmatter   | `.md`          | 0.5     | YAML front matter           |
 | property-list          | xml-or-binary               | `.plist`       | 0.5     | header magic + XML decl     |
-| ini-json-hybrid        | section-json-hybrid         | `.ini`         | 0.5     | section headers + JSON braces |
-| env-file               | dotenv                      | `.env`         | 1       | dotenv filenames + export/`=` lines |
 
 > Meta note: the survey reports `total_formats = 17`, but the `formats` array
 > currently enumerates 16 entries. Keep that discrepancy in mind if the data
 > source refreshes.
+
+`env-file` and `ini-json-hybrid` graduated from this backlog and are now
+surfaced by the INI plugin as dedicated variants alongside the classic
+sectioned coverage.
 
 ## Implementation Order
 

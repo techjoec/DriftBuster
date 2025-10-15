@@ -32,6 +32,44 @@ def test_xml_plugin_detects_framework_config() -> None:
     assert match.metadata["config_role"] == "web"
 
 
+def test_xml_plugin_detects_app_config_variant() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <configuration>
+      <startup>
+        <supportedRuntime version="v4.0" />
+      </startup>
+    </configuration>
+    """
+    match = _detect("App.config", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+    assert match.variant == "app-config"
+    assert match.metadata is not None
+    assert match.metadata["config_role"] == "app"
+    assert any("app.config" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_machine_config_variant() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <configuration>
+      <system.web>
+        <trust level="Full" />
+      </system.web>
+    </configuration>
+    """
+    match = _detect("machine.config", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+    assert match.variant == "machine-config"
+    assert match.metadata is not None
+    assert match.metadata["config_role"] == "machine"
+    assert any("machine.config" in reason for reason in match.reasons)
+
+
 def test_xml_plugin_detects_config_transform_scope() -> None:
     content = """
     <?xml version="1.0"?>
@@ -75,6 +113,77 @@ def test_xml_plugin_records_multi_stage_transform_metadata() -> None:
     assert match.metadata["config_transform_primary_stage"] == "QA"
     assert match.metadata["config_transform_stage_count"] == 2
     assert any("Release -> QA" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_app_config_transform_variant() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
+      <startup>
+        <supportedRuntime xdt:Transform="Replace" />
+      </startup>
+    </configuration>
+    """
+    match = _detect("app.Release.config", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+    assert match.variant == "app-config-transform"
+    assert match.metadata is not None
+    assert match.metadata["config_transform"] is True
+    assert match.metadata["config_transform_scope"] == "app"
+    assert match.metadata["config_transform_stages"] == ["Release"]
+    assert match.metadata["config_transform_stage_count"] == 1
+
+
+def test_xml_plugin_detects_generic_config_transform_variant() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
+      <appSettings>
+        <add key="Feature" value="true" />
+      </appSettings>
+    </configuration>
+    """
+    match = _detect("service.Stage.config", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+    assert match.variant == "config-transform"
+    assert match.metadata is not None
+    assert match.metadata["config_transform"] is True
+    assert "config_transform_scope" not in match.metadata
+
+
+def test_xml_plugin_classifies_generic_web_or_app_config() -> None:
+    content = """
+    <?xml version="1.0"?>
+    <configuration>
+      <appSettings />
+    </configuration>
+    """
+    match = _detect("generic.config", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+    assert match.variant == "web-or-app-config"
+    assert match.metadata is not None
+    assert match.metadata["config_role"] == "generic"
+
+
+def test_xml_plugin_identifies_custom_config_xml() -> None:
+    content = """
+    <settings>
+      <item key="a" value="1" />
+    </settings>
+    """
+    match = _detect("custom.config", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+    assert match.variant == "custom-config-xml"
+    assert match.metadata is not None
+    assert match.metadata.get("root_tag") == "settings"
 
 
 def test_xml_plugin_detects_manifest_variant() -> None:
@@ -125,6 +234,23 @@ def test_xml_plugin_detects_xaml_variant_via_namespace() -> None:
     assert match is not None
     assert match.format_name == "xml"
     assert match.variant == "interface-xml"
+
+
+def test_xml_plugin_detects_xslt_variant() -> None:
+    content = """
+    <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:template match="/">
+        <root />
+      </xsl:template>
+    </xsl:stylesheet>
+    """
+    match = _detect("layout.xslt", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "xslt-xml"
+    assert match.metadata is not None
+    assert match.metadata.get("xslt_stylesheet") is True
 
 
 def test_xml_plugin_detects_vendor_config_roots() -> None:
@@ -249,6 +375,22 @@ def test_xml_plugin_supports_targets_extension() -> None:
     assert any("MSBuild default targets" in reason for reason in match.reasons)
 
 
+def test_xml_plugin_detects_msbuild_props_variant() -> None:
+    content = """
+    <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Import Project="shared.targets" />
+    </Project>
+    """
+    match = _detect("common.props", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "msbuild-props"
+    assert match.metadata is not None
+    assert match.metadata.get("msbuild_kind") == "props"
+    assert match.metadata.get("msbuild_detected") is True
+
+
 def test_xml_plugin_detects_msbuild_project_metadata() -> None:
     content = """
     <Project Sdk="Microsoft.NET.Sdk">
@@ -271,3 +413,24 @@ def test_xml_plugin_detects_msbuild_project_metadata() -> None:
     assert isinstance(import_hints, list)
     assert import_hints and import_hints[0]["attribute"] == "Sdk"
     assert any("MSBuild SDK specified" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_generic_xml_variant() -> None:
+    content = """
+    <notes>
+      <note>Hello</note>
+    </notes>
+    """
+    match = _detect("notes.xml", content)
+
+    assert match is not None
+    assert match.format_name == "xml"
+    assert match.variant == "generic"
+    assert match.metadata is not None
+    assert match.metadata.get("root_tag") == "notes"
+
+
+def test_xml_plugin_rejects_plain_text() -> None:
+    match = _detect("plain.txt", "Just text without any XML markers")
+
+    assert match is None

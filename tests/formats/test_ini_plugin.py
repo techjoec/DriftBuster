@@ -203,6 +203,26 @@ def test_ini_plugin_classifies_unix_conf_variants(ini_plugin: IniPlugin) -> None
     assert any("apache" in reason.lower() for reason in match.reasons)
 
 
+def test_ini_plugin_classifies_sectionless_ini_variant(ini_plugin: IniPlugin) -> None:
+    match = _detect(
+        ini_plugin,
+        "plain.ini",
+        dedent(
+            """
+            setting: true
+            path: /etc/example
+            """
+        ).strip(),
+    )
+
+    assert match is not None
+    assert match.format_name == "ini"
+    assert match.variant == "sectionless-ini"
+    assert match.metadata is not None
+    assert match.metadata.get("colon_separator_pairs") == 2
+    assert any("sectionless" in reason.lower() for reason in match.reasons)
+
+
 def test_ini_plugin_detects_ini_json_hybrids(
     ini_plugin: IniPlugin, hybrid_ini_json_sample: str
 ) -> None:
@@ -277,6 +297,31 @@ def test_ini_plugin_classifies_directive_conf_variant(
     assert match.metadata is not None
     assert match.metadata.get("directive_line_count") == 3
     assert any("directive" in reason.lower() for reason in match.reasons)
+
+
+def test_ini_plugin_classifies_nginx_conf_variant(ini_plugin: IniPlugin) -> None:
+    match = _detect(
+        ini_plugin,
+        "nginx.conf",
+        dedent(
+            """
+            include /etc/nginx/mime.types;
+            server {
+                listen 80;
+                location / {
+                    proxy_pass http://app;
+                }
+            }
+            """
+        ).strip(),
+    )
+
+    assert match is not None
+    assert match.format_name == "unix-conf"
+    assert match.variant == "nginx-conf"
+    assert match.metadata is not None
+    assert match.metadata.get("directive_line_count") == 1
+    assert any("nginx" in reason.lower() for reason in match.reasons)
 
 
 def test_ini_plugin_records_bom_and_sensitive_hints(ini_plugin: IniPlugin) -> None:
