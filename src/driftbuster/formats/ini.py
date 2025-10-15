@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import codecs
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 
-from .registry import register
+from .registry import decode_text, register
 from ..core.types import DetectionMatch
 
 
@@ -32,6 +33,25 @@ _DIRECTIVE_PATTERN = re.compile(
 )
 _MAX_SECTION_SNAPSHOT = 10
 
+_INLINE_COMMENT_PATTERN = re.compile(r"\s([;#!])")
+
+_SENSITIVE_KEY_PATTERNS: Sequence[Tuple[str, re.Pattern[str]]] = (
+    ("password", re.compile(r"password", re.IGNORECASE)),
+    ("passphrase", re.compile(r"passphrase", re.IGNORECASE)),
+    ("secret", re.compile(r"secret", re.IGNORECASE)),
+    ("token", re.compile(r"token", re.IGNORECASE)),
+    ("api-key", re.compile(r"api[-_]?key", re.IGNORECASE)),
+    ("client-id", re.compile(r"client[-_]?id", re.IGNORECASE)),
+    ("client-secret", re.compile(r"client[-_]?secret", re.IGNORECASE)),
+    ("private-key", re.compile(r"private[-_]?key", re.IGNORECASE)),
+    ("public-key", re.compile(r"public[-_]?key", re.IGNORECASE)),
+    ("access-key", re.compile(r"access[-_]?key", re.IGNORECASE)),
+    ("secret-key", re.compile(r"secret[-_]?key", re.IGNORECASE)),
+    ("credential", re.compile(r"cred(ent|)ial", re.IGNORECASE)),
+    ("auth", re.compile(r"auth(ent|)", re.IGNORECASE)),
+    ("key", re.compile(r"(^|[^a-z0-9])key([^a-z0-9]|$)", re.IGNORECASE)),
+)
+
 
 @dataclass
 class IniPlugin:
@@ -50,6 +70,31 @@ class IniPlugin:
 
         reasons: List[str] = []
         metadata: Dict[str, object] = {}
+
+        detected_codec: Optional[str] = None
+        bom_present = False
+        for bom, codec_name in (
+            (codecs.BOM_UTF8, "utf-8-sig"),
+            (codecs.BOM_UTF16_LE, "utf-16-le"),
+            (codecs.BOM_UTF16_BE, "utf-16-be"),
+        ):
+            if bom and sample.startswith(bom):
+                bom_present = True
+                detected_codec = codec_name
+                break
+
+        if detected_codec is None:
+            _decoded, detected_codec = decode_text(sample)
+
+        metadata["encoding_info"] = {
+            "codec": detected_codec,
+            "bom_present": bom_present,
+        }
+        metadata.setdefault("encoding", detected_codec)
+        encoding_reason = (
+            f"Detected {detected_codec} codec{' with BOM' if bom_present else ''}"
+        )
+        reasons.append(encoding_reason)
 
         sections = [section.strip() for section in _SECTION_PATTERN.findall(text) if section.strip()]
         if sections:
@@ -83,6 +128,25 @@ class IniPlugin:
         comment_lines = [line for line in non_empty_lines if _COMMENT_PATTERN.match(line)]
         directive_lines = [line for line in non_empty_lines if _DIRECTIVE_PATTERN.match(line)]
 
+        comment_markers = set()
+        for line in comment_lines:
+            stripped = line.lstrip()
+            if not stripped:
+                continue
+            marker = stripped[0]
+            if marker in ";#!":
+                comment_markers.add(marker)
+
+        inline_comment_markers = set()
+        for match in key_matches:
+            value = match.group("value")
+            if not value:
+                continue
+            for inline_match in _INLINE_COMMENT_PATTERN.finditer(value):
+                inline_marker = inline_match.group(1)
+                if inline_marker in ";#!":
+                    inline_comment_markers.add(inline_marker)
+
         continuation_lines = sum(1 for match in key_matches if match.group("continued"))
         export_lines = sum(1 for match in key_matches if match.group("export"))
         if export_lines:
@@ -91,6 +155,44 @@ class IniPlugin:
 
         if continuation_lines:
             metadata["continuations"] = continuation_lines
+
+        supports_inline_comments = bool(inline_comment_markers)
+        comment_markers.update(inline_comment_markers)
+        metadata["comment_style"] = {
+            "markers": sorted(comment_markers),
+            "supports_inline_comments": supports_inline_comments,
+            "uses_export_prefix": bool(export_lines),
+        }
+        if supports_inline_comments:
+            reasons.append("Found inline comment markers following assignments")
+
+        sensitive_hints: List[Dict[str, str]] = []
+        seen_sensitive: set[tuple[str, str]] = set()
+        for match in key_matches:
+            key_name = match.group("key")
+            key_lower = key_name.lower()
+            for keyword, pattern in _SENSITIVE_KEY_PATTERNS:
+                if pattern.search(key_lower):
+                    hint_key = (key_name, keyword)
+                    if hint_key in seen_sensitive:
+                        continue
+                    seen_sensitive.add(hint_key)
+                    sensitive_hints.append({"key": key_name, "keyword": keyword})
+                    reasons.append(
+                        f"Sensitive key '{key_name}' matched keyword '{keyword}'"
+                    )
+
+        if sensitive_hints:
+            metadata["sensitive_key_hints"] = sensitive_hints
+
+        remediations: List[str] = []
+        if sensitive_hints:
+            remediations.append(
+                "Rotate credentials referenced in sensitive_key_hints."
+            )
+
+        if remediations:
+            metadata["remediations"] = remediations
 
         directive_signal = bool(directive_lines)
         if directive_signal:
@@ -171,13 +273,87 @@ class IniPlugin:
 
         confidence = min(confidence, 0.95)
 
+        brace_signal = bool(re.search(r"[{}]", text))
+        directive_density = len(directive_lines) / max(len(non_empty_lines), 1) if non_empty_lines else 0.0
+
+        format_name = "ini"
         variant: Optional[str] = None
+        classification_reasons: List[str] = []
+
+        env_style = (
+            not sections
+            and key_pair_count
+            and (equals_pairs > 0 or export_lines > 0)
+            and not directive_signal
+            and extension != ".properties"
+        )
+
+        if sections and brace_signal:
+            format_name = "ini-json-hybrid"
+            variant = "section-json-hybrid"
+            classification_reasons.append(
+                "Detected JSON-style braces alongside [section] headers indicating hybrid structure"
+            )
+        elif env_style:
+            format_name = "env-file"
+            variant = "dotenv"
+            classification_reasons.append(
+                "Sectionless KEY=VALUE or export assignments resemble dotenv env files"
+            )
+        elif directive_signal and (not sections or len(directive_lines) >= 2 or directive_density >= 0.3):
+            format_name = "unix-conf"
+            variant = "directive-conf"
+            classification_reasons.append(
+                "Directive-heavy configuration without sections classified as Unix-style conf"
+            )
+
+            apache_hint = re.search(
+                r"^\s*(?:LoadModule|SetEnv|<VirtualHost|<Directory|ServerName)\b",
+                text,
+                re.IGNORECASE | re.MULTILINE,
+            )
+            nginx_hint = re.search(
+                r"^\s*(?:server\s*\{|location\s+|upstream\s+)",
+                text,
+                re.IGNORECASE | re.MULTILINE,
+            )
+            if apache_hint:
+                variant = "apache-conf"
+                classification_reasons.append(
+                    "Matched Apache directive keywords such as LoadModule/SetEnv"
+                )
+            elif nginx_hint:
+                variant = "nginx-conf"
+                classification_reasons.append(
+                    "Detected nginx-style server/location blocks"
+                )
+        else:
+            if sections:
+                variant = "sectioned-ini"
+                classification_reasons.append("Section headers confirm classic INI layout")
+            else:
+                if extension == ".properties":
+                    variant = "java-properties"
+                    classification_reasons.append(
+                        "File extension .properties with key/value pairs suggests Java properties"
+                    )
+                else:
+                    variant = "sectionless-ini"
+                    classification_reasons.append(
+                        "Key/value pairs without sections default to sectionless INI interpretation"
+                    )
+
         if lower_name == "desktop.ini":
             variant = "desktop-ini"
+            classification_reasons.append(
+                "Recognized Windows desktop.ini profile file name"
+            )
+
+        reasons.extend(classification_reasons)
 
         return DetectionMatch(
             plugin_name=self.name,
-            format_name="ini",
+            format_name=format_name,
             variant=variant,
             confidence=confidence,
             reasons=reasons,
