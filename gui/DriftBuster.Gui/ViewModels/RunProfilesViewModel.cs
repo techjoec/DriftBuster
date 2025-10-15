@@ -28,6 +28,9 @@ public partial class RunProfilesViewModel : ObservableObject
     public ObservableCollection<RunResultEntry> RunResults { get; } = new();
 
     [ObservableProperty]
+    private SecretScannerOptions _secretScanner = new();
+
+    [ObservableProperty]
     private string _profileName = string.Empty;
 
     [ObservableProperty]
@@ -57,6 +60,21 @@ public partial class RunProfilesViewModel : ObservableObject
 
     public bool HasRunResults => RunResults.Count > 0;
 
+    public string SecretScannerSummary
+    {
+        get
+        {
+            var ruleCount = SecretScanner.IgnoreRules?.Length ?? 0;
+            var patternCount = SecretScanner.IgnorePatterns?.Length ?? 0;
+            if (ruleCount == 0 && patternCount == 0)
+            {
+                return "Secret scanner active. No ignores configured.";
+            }
+
+            return $"Secret scanner active. Ignored rules: {ruleCount}, patterns: {patternCount}.";
+        }
+    }
+
     public RunProfilesViewModel(IDriftbusterService service)
     {
         _service = service;
@@ -82,10 +100,14 @@ public partial class RunProfilesViewModel : ObservableObject
         ValidateSources();
     }
 
+    partial void OnSecretScannerChanged(SecretScannerOptions value)
+    {
+        OnPropertyChanged(nameof(SecretScannerSummary));
+    }
+
     partial void OnProfileNameChanged(string value)
     {
-        SaveCommand.NotifyCanExecuteChanged();
-        RunCommand.NotifyCanExecuteChanged();
+        NotifyCommands();
     }
 
     partial void OnOutputDirectoryChanged(string? value)
@@ -260,6 +282,63 @@ public partial class RunProfilesViewModel : ObservableObject
         }
     }
 
+    public async Task PrepareOfflineCollectorAsync(string packagePath)
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(packagePath))
+        {
+            StatusMessage = "Select an output path for the offline collector.";
+            return;
+        }
+
+        if (!CanSave())
+        {
+            StatusMessage = "Configure a valid profile before preparing an offline collector.";
+            return;
+        }
+
+        var profile = BuildCurrentProfile();
+
+        try
+        {
+            IsBusy = true;
+            await _service.SaveProfileAsync(profile).ConfigureAwait(false);
+
+            var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["prepared_at"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                ["profile_name"] = profile.Name,
+            };
+
+            var user = Environment.UserName;
+            if (!string.IsNullOrWhiteSpace(user))
+            {
+                metadata["prepared_by"] = user;
+            }
+
+            var request = new OfflineCollectorRequest
+            {
+                PackagePath = packagePath,
+                Metadata = metadata,
+            };
+
+            var result = await _service.PrepareOfflineCollectorAsync(profile, request).ConfigureAwait(false);
+            StatusMessage = $"Offline collector saved to '{result.PackagePath}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private RunProfileDefinition BuildCurrentProfile()
     {
         var baseline = Sources.FirstOrDefault(entry => entry.IsBaseline && !string.IsNullOrWhiteSpace(entry.Path));
@@ -284,7 +363,13 @@ public partial class RunProfilesViewModel : ObservableObject
             Options = Options
                 .Where(option => !string.IsNullOrWhiteSpace(option.Key))
                 .ToDictionary(option => option.Key.Trim(), option => option.Value ?? string.Empty),
+            SecretScanner = CloneSecretScannerOptions(SecretScanner),
         };
+    }
+
+    public void ApplySecretScanner(SecretScannerOptions? options)
+    {
+        SecretScanner = CloneSecretScannerOptions(options);
     }
 
     private void LoadProfile(RunProfileDefinition? profile)
@@ -319,6 +404,8 @@ public partial class RunProfilesViewModel : ObservableObject
             Options.Add(new KeyValueEntry { Key = option.Key, Value = option.Value });
         }
 
+        ApplySecretScanner(profile.SecretScanner);
+
         SelectedProfile = profile;
         StatusMessage = $"Loaded profile '{profile.Name}'.";
         NotifyCommands();
@@ -352,6 +439,30 @@ public partial class RunProfilesViewModel : ObservableObject
     {
         SaveCommand.NotifyCanExecuteChanged();
         RunCommand.NotifyCanExecuteChanged();
+    }
+
+    private static SecretScannerOptions CloneSecretScannerOptions(SecretScannerOptions? options)
+    {
+        var clone = new SecretScannerOptions();
+        if (options?.IgnoreRules is not null)
+        {
+            clone.IgnoreRules = options.IgnoreRules
+                .Where(rule => !string.IsNullOrWhiteSpace(rule))
+                .Select(rule => rule.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        if (options?.IgnorePatterns is not null)
+        {
+            clone.IgnorePatterns = options.IgnorePatterns
+                .Where(pattern => !string.IsNullOrWhiteSpace(pattern))
+                .Select(pattern => pattern.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        return clone;
     }
 
     private void PopulateRunResults(RunProfileRunResult result)

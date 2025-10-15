@@ -106,11 +106,19 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Button Content="Add option" Command="{Binding AddOptionCommand}" HorizontalAlignment="Left" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Button Content="Secret scanner settings"
+                      Click="OnSecretScannerSettings"
+                      HorizontalAlignment="Left" />
+              <TextBlock Text="{Binding SecretScannerSummary}" Classes="subtitle" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
           </StackPanel>
 
           <StackPanel Orientation="Horizontal" Spacing="12">
             <Button Content="Save profile" Command="{Binding SaveCommand}" />
             <Button Content="Run profile" Command="{Binding RunCommand}" />
+            <Button Content="Prepare offline collector"
+                    Click="OnPrepareOfflineCollector" />
           </StackPanel>
 
           <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" />

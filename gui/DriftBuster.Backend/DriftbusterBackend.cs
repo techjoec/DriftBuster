@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -31,6 +32,12 @@ namespace DriftBuster.Backend
         Task SaveProfileAsync(RunProfileDefinition profile, string? baseDir = null, CancellationToken cancellationToken = default);
 
         Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default);
+
+        Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(
+            RunProfileDefinition profile,
+            OfflineCollectorRequest request,
+            string? baseDir = null,
+            CancellationToken cancellationToken = default);
     }
 
     public sealed class DriftbusterBackend : IDriftbusterBackend
@@ -118,6 +125,11 @@ namespace DriftBuster.Backend
         public Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default)
         {
             return Task.Run(() => RunProfileManager.RunProfile(profile, saveProfile, baseDir, timestamp, cancellationToken), cancellationToken);
+        }
+
+        public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir = null, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => RunProfileManager.PrepareOfflineCollector(profile, request, baseDir, cancellationToken), cancellationToken);
         }
 
         private static DiffResult BuildDiffResult(IEnumerable<string?> versions, CancellationToken cancellationToken)
@@ -618,6 +630,85 @@ namespace DriftBuster.Backend
                 };
             }
 
+            public static OfflineCollectorResult PrepareOfflineCollector(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir, CancellationToken cancellationToken)
+            {
+                if (request is null)
+                {
+                    throw new ArgumentNullException(nameof(request));
+                }
+
+                var clean = CloneProfile(profile);
+                if (string.IsNullOrWhiteSpace(clean.Name))
+                {
+                    throw new InvalidOperationException("Profile name is required.");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.PackagePath))
+                {
+                    throw new InvalidOperationException("Package path is required.");
+                }
+
+                var packagePath = ResolvePath(request.PackagePath);
+                var packageDirectory = Path.GetDirectoryName(packagePath);
+                if (string.IsNullOrWhiteSpace(packageDirectory))
+                {
+                    throw new InvalidOperationException("Unable to resolve package directory.");
+                }
+
+                Directory.CreateDirectory(packageDirectory);
+
+                var tempRoot = Path.Combine(Path.GetTempPath(), "DriftBusterOfflineCollector", Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
+                Directory.CreateDirectory(tempRoot);
+
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var configFileName = string.IsNullOrWhiteSpace(request.ConfigFileName)
+                        ? $"{SafeName(clean.Name)}.offline.config.json"
+                        : request.ConfigFileName.Trim();
+                    if (!configFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        configFileName += ".json";
+                    }
+
+                    var configPath = Path.Combine(tempRoot, configFileName);
+                    var ruleset = LoadSecretRules(baseDir);
+                    var payload = BuildOfflineConfigPayload(clean, request.Metadata, ruleset);
+                    var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions(SerializerOptions)
+                    {
+                        WriteIndented = true,
+                    });
+                    File.WriteAllText(configPath, json + Environment.NewLine);
+
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var scriptFileName = "driftbuster-offline-runner.ps1";
+                    var scriptSource = ResolveRequiredFile(baseDir, "scripts", scriptFileName);
+                    File.Copy(scriptSource, Path.Combine(tempRoot, scriptFileName), overwrite: true);
+
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (File.Exists(packagePath))
+                    {
+                        File.Delete(packagePath);
+                    }
+
+                    ZipFile.CreateFromDirectory(tempRoot, packagePath, CompressionLevel.Optimal, includeBaseDirectory: false);
+
+                    return new OfflineCollectorResult
+                    {
+                        PackagePath = packagePath,
+                        ConfigFileName = configFileName,
+                        ScriptFileName = scriptFileName,
+                    };
+                }
+                finally
+                {
+                    TryDeleteDirectory(tempRoot);
+                }
+            }
+
             private static RunProfileDefinition CloneProfile(RunProfileDefinition profile)
             {
                 NormaliseProfile(profile);
@@ -626,15 +717,191 @@ namespace DriftBuster.Backend
                     Name = profile.Name,
                     Description = profile.Description,
                     Baseline = profile.Baseline,
-                    Sources = profile.Sources is null ? Array.Empty<string>() : profile.Sources.Where(source => !string.IsNullOrWhiteSpace(source)).ToArray(),
+                    Sources = profile.Sources is null ? Array.Empty<string>() : profile.Sources.Where(source => !string.IsNullOrWhiteSpace(source)).Select(source => source.Trim()).ToArray(),
                     Options = new Dictionary<string, string>(profile.Options ?? new Dictionary<string, string>(), StringComparer.Ordinal),
+                    SecretScanner = CloneSecretScanner(profile.SecretScanner),
                 };
+            }
+
+            private static SecretScannerOptions CloneSecretScanner(SecretScannerOptions? options)
+            {
+                var clone = new SecretScannerOptions();
+                if (options?.IgnoreRules is not null)
+                {
+                    clone.IgnoreRules = options.IgnoreRules
+                        .Where(rule => !string.IsNullOrWhiteSpace(rule))
+                        .Select(rule => rule.Trim())
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray();
+                }
+                if (options?.IgnorePatterns is not null)
+                {
+                    clone.IgnorePatterns = options.IgnorePatterns
+                        .Where(pattern => !string.IsNullOrWhiteSpace(pattern))
+                        .Select(pattern => pattern.Trim())
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray();
+                }
+
+                return clone;
             }
 
             private static void NormaliseProfile(RunProfileDefinition profile)
             {
                 profile.Sources ??= Array.Empty<string>();
                 profile.Options ??= new Dictionary<string, string>(StringComparer.Ordinal);
+                profile.SecretScanner = CloneSecretScanner(profile.SecretScanner);
+            }
+
+            private static JsonElement LoadSecretRules(string? baseDir)
+            {
+                var path = ResolveRequiredFile(baseDir, "src", "driftbuster", "secret_rules.json");
+                using var stream = File.OpenRead(path);
+                using var document = JsonDocument.Parse(stream);
+                return document.RootElement.Clone();
+            }
+
+            private static object BuildOfflineConfigPayload(
+                RunProfileDefinition profile,
+                Dictionary<string, string>? metadata,
+                JsonElement secretRules)
+            {
+                var sources = profile.Sources
+                    .Where(source => !string.IsNullOrWhiteSpace(source))
+                    .Select(source => new { path = source })
+                    .ToArray();
+
+                var baseline = profile.Baseline;
+                if (string.IsNullOrWhiteSpace(baseline) && sources.Length > 0)
+                {
+                    baseline = sources[0].path;
+                }
+
+                var meta = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["profile_name"] = profile.Name,
+                    ["prepared_at"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                };
+
+                var user = Environment.UserName;
+                if (!string.IsNullOrWhiteSpace(user))
+                {
+                    meta["prepared_by"] = user;
+                }
+
+                if (metadata is not null)
+                {
+                    foreach (var entry in metadata)
+                    {
+                        if (string.IsNullOrWhiteSpace(entry.Key))
+                        {
+                            continue;
+                        }
+
+                        meta[entry.Key.Trim()] = entry.Value ?? string.Empty;
+                    }
+                }
+
+                var secretScanner = profile.SecretScanner ?? new SecretScannerOptions();
+
+                return new
+                {
+                    schema = "https://driftbuster.dev/offline-runner/config/v1",
+                    version = "1",
+                    profile = new
+                    {
+                        name = profile.Name,
+                        description = profile.Description,
+                        baseline,
+                        sources,
+                        tags = new[] { "offline" },
+                        options = profile.Options,
+                        secret_scanner = new
+                        {
+                            ignore_rules = secretScanner.IgnoreRules ?? Array.Empty<string>(),
+                            ignore_patterns = secretScanner.IgnorePatterns ?? Array.Empty<string>(),
+                            ruleset = secretRules,
+                        },
+                    },
+                    runner = new
+                    {
+                        compress = true,
+                        include_config = true,
+                        include_logs = true,
+                        include_manifest = true,
+                        manifest_name = "manifest.json",
+                        log_name = "runner.log",
+                        data_directory_name = "data",
+                        logs_directory_name = "logs",
+                        package_name = $"{SafeName(profile.Name)}-offline-results",
+                        cleanup_staging = true,
+                    },
+                    metadata = meta,
+                };
+            }
+
+            private static string ResolveRequiredFile(string? baseDir, params string[] segments)
+            {
+                var relative = Path.Combine(segments);
+
+                static bool Exists(string? candidate) => !string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate);
+
+                if (!string.IsNullOrWhiteSpace(baseDir))
+                {
+                    var fromBase = Path.Combine(baseDir, relative);
+                    if (Exists(fromBase))
+                    {
+                        return Path.GetFullPath(fromBase);
+                    }
+                }
+
+                var fromCurrent = Path.Combine(Environment.CurrentDirectory, relative);
+                if (Exists(fromCurrent))
+                {
+                    return Path.GetFullPath(fromCurrent);
+                }
+
+                var fromApp = Path.Combine(AppContext.BaseDirectory, relative);
+                if (Exists(fromApp))
+                {
+                    return Path.GetFullPath(fromApp);
+                }
+
+                var current = new DirectoryInfo(AppContext.BaseDirectory);
+                while (current is not null)
+                {
+                    var candidate = Path.Combine(current.FullName, relative);
+                    if (Exists(candidate))
+                    {
+                        return Path.GetFullPath(candidate);
+                    }
+
+                    current = current.Parent;
+                }
+
+                throw new FileNotFoundException($"Unable to locate required asset '{relative}'.");
+            }
+
+            private static void TryDeleteDirectory(string? path)
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (Directory.Exists(path))
+                    {
+                        Directory.Delete(path, recursive: true);
+                    }
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
             }
 
             private static string SafeName(string text)

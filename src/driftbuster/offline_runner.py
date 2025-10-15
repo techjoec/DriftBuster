@@ -79,30 +79,20 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def _load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
-    global _SECRET_RULE_CACHE, _SECRET_RULE_VERSION
-    if _SECRET_RULE_CACHE is not None and _SECRET_RULE_VERSION is not None:
-        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
+def _compile_ruleset_from_mapping(
+    payload: Mapping[str, Any] | None,
+) -> tuple[tuple[SecretDetectionRule, ...], str] | None:
+    if not payload:
+        return None
+    if not isinstance(payload, Mapping):
+        return None
 
-    try:
-        resource = resources.files(__package__).joinpath(SECRET_RULES_RESOURCE)
-    except FileNotFoundError:
-        _SECRET_RULE_CACHE = ()
-        _SECRET_RULE_VERSION = "none"
-        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
+    rules_payload = payload.get("rules")
+    if not isinstance(rules_payload, Sequence):
+        return None
 
-    try:
-        with resource.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-    except FileNotFoundError:
-        _SECRET_RULE_CACHE = ()
-        _SECRET_RULE_VERSION = "none"
-        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
-
-    version = str(payload.get("version", "unknown"))
-    rules_payload = payload.get("rules", [])
     compiled_rules: list[SecretDetectionRule] = []
-    for entry in rules_payload or ():
+    for entry in rules_payload:
         if not isinstance(entry, Mapping):
             continue
         name = str(entry.get("name") or "").strip()
@@ -125,8 +115,43 @@ def _load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
             )
         )
 
-    _SECRET_RULE_CACHE = tuple(compiled_rules)
-    _SECRET_RULE_VERSION = version
+    if not compiled_rules:
+        return None
+
+    version = str(payload.get("version", "embedded"))
+    return tuple(compiled_rules), version
+
+
+def _load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
+    global _SECRET_RULE_CACHE, _SECRET_RULE_VERSION
+    if _SECRET_RULE_CACHE is not None and _SECRET_RULE_VERSION is not None:
+        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
+
+    try:
+        resource = resources.files(__package__).joinpath(SECRET_RULES_RESOURCE)
+    except FileNotFoundError:
+        _SECRET_RULE_CACHE = ()
+        _SECRET_RULE_VERSION = "none"
+        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
+
+    try:
+        with resource.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except FileNotFoundError:
+        _SECRET_RULE_CACHE = ()
+        _SECRET_RULE_VERSION = "none"
+        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
+
+    version = str(payload.get("version", "unknown"))
+    compiled = _compile_ruleset_from_mapping(payload)
+    if compiled is None:
+        _SECRET_RULE_CACHE = ()
+        _SECRET_RULE_VERSION = version
+        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
+
+    rules, compiled_version = compiled
+    _SECRET_RULE_CACHE = rules
+    _SECRET_RULE_VERSION = compiled_version or version
     return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
 
 
@@ -134,7 +159,8 @@ def _secret_option_values(value: Any) -> tuple[str, ...]:
     if not value:
         return ()
     if isinstance(value, str):
-        return (value,)
+        parts = re.split(r"[\s,;]+", value)
+        return tuple(part.strip() for part in parts if part and part.strip())
     if isinstance(value, Sequence):
         result: list[str] = []
         for item in value:
@@ -147,12 +173,42 @@ def _secret_option_values(value: Any) -> tuple[str, ...]:
     return ()
 
 
-def _build_secret_context(options: Mapping[str, Any]) -> SecretDetectionContext:
-    rules, version, loaded = _load_secret_rules()
-    ignore_rule_names = frozenset(_secret_option_values(options.get("secret_ignore_rules")))
-    ignore_pattern_text = _secret_option_values(options.get("secret_ignore_patterns"))
+def _build_secret_context(
+    options: Mapping[str, Any] | None,
+    secret_scanner: Mapping[str, Any] | None,
+) -> SecretDetectionContext:
+    ruleset_payload = None
+    if secret_scanner and isinstance(secret_scanner, Mapping):
+        ruleset_payload = secret_scanner.get("ruleset")
+
+    compiled_from_config = _compile_ruleset_from_mapping(
+        ruleset_payload if isinstance(ruleset_payload, Mapping) else None
+    )
+    if compiled_from_config is not None:
+        rules, version = compiled_from_config
+        loaded = bool(rules)
+    else:
+        rules, version, loaded = _load_secret_rules()
+    ignore_rule_values: set[str] = set()
+    if options:
+        ignore_rule_values.update(_secret_option_values(options.get("secret_ignore_rules")))
+    if secret_scanner:
+        ignore_rule_values.update(_secret_option_values(secret_scanner.get("ignore_rules")))
+
+    pattern_sources: list[str] = []
+    if options:
+        pattern_sources.extend(_secret_option_values(options.get("secret_ignore_patterns")))
+    if secret_scanner:
+        pattern_sources.extend(_secret_option_values(secret_scanner.get("ignore_patterns")))
+
+    ignore_pattern_text: list[str] = []
     ignore_patterns: list[re.Pattern[str]] = []
-    for pattern_text in ignore_pattern_text:
+    seen_patterns: set[str] = set()
+    for pattern_text in pattern_sources:
+        if pattern_text in seen_patterns:
+            continue
+        seen_patterns.add(pattern_text)
+        ignore_pattern_text.append(pattern_text)
         try:
             ignore_patterns.append(re.compile(pattern_text))
         except re.error:
@@ -161,12 +217,32 @@ def _build_secret_context(options: Mapping[str, Any]) -> SecretDetectionContext:
     return SecretDetectionContext(
         rules=rules,
         version=version,
-        ignore_rules=ignore_rule_names,
+        ignore_rules=frozenset(ignore_rule_values),
         ignore_patterns=tuple(ignore_patterns),
-        ignore_pattern_text=ignore_pattern_text,
+        ignore_pattern_text=tuple(ignore_pattern_text),
         findings=[],
         rules_loaded=loaded and bool(rules),
     )
+
+
+def _manifest_secret_scanner(
+    options: Mapping[str, Any],
+    secret_scanner: Mapping[str, Any],
+    context: SecretDetectionContext,
+) -> Mapping[str, Any]:
+    ignore_rules: set[str] = set()
+    ignore_rules.update(_secret_option_values(options.get("secret_ignore_rules")))
+    ignore_rules.update(_secret_option_values(secret_scanner.get("ignore_rules")))
+
+    ignore_patterns: set[str] = set()
+    ignore_patterns.update(_secret_option_values(options.get("secret_ignore_patterns")))
+    ignore_patterns.update(_secret_option_values(secret_scanner.get("ignore_patterns")))
+
+    return {
+        "ignore_rules": sorted(ignore_rules),
+        "ignore_patterns": sorted(ignore_patterns),
+        "ruleset_version": context.version,
+    }
 
 
 def _looks_binary(path: Path) -> bool:
@@ -333,6 +409,7 @@ class OfflineRunnerProfile:
     baseline: str | None
     tags: Sequence[str]
     options: Mapping[str, Any]
+    secret_scanner: Mapping[str, Any]
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineRunnerProfile":
@@ -372,6 +449,11 @@ class OfflineRunnerProfile:
             raise ValueError("Profile 'options' must be a mapping if provided.")
         options = {str(key): options_payload[key] for key in options_payload}
 
+        secret_scanner_payload = payload.get("secret_scanner", {})
+        if secret_scanner_payload and not isinstance(secret_scanner_payload, Mapping):
+            raise ValueError("Profile 'secret_scanner' must be a mapping if provided.")
+        secret_scanner = {str(key): secret_scanner_payload[key] for key in secret_scanner_payload} if isinstance(secret_scanner_payload, Mapping) else {}
+
         description = payload.get("description")
         if description is not None:
             description = str(description)
@@ -383,6 +465,7 @@ class OfflineRunnerProfile:
             baseline=baseline,
             tags=tags,
             options=options,
+            secret_scanner=secret_scanner,
         )
 
 
@@ -399,6 +482,7 @@ class OfflineRunnerSettings:
     data_directory_name: str = "data"
     logs_directory_name: str = "logs"
     max_total_bytes: int | None = None
+    cleanup_staging: bool = True
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any] | None) -> "OfflineRunnerSettings":
@@ -435,6 +519,7 @@ class OfflineRunnerSettings:
             data_directory_name=str(data_directory_name),
             logs_directory_name=str(logs_directory_name),
             max_total_bytes=max_total_bytes,
+            cleanup_staging=bool(payload.get("cleanup_staging", True)),
         )
 
 
@@ -493,7 +578,7 @@ class CollectedFile:
 @dataclass(frozen=True)
 class OfflineRunnerResult:
     config: OfflineRunnerConfig
-    staging_dir: Path
+    staging_dir: Path | None
     manifest_path: Path | None
     log_path: Path | None
     package_path: Path | None
@@ -572,7 +657,7 @@ def execute_config(
 
     log("offline collection started")
 
-    secret_context = _build_secret_context(config.profile.options)
+    secret_context = _build_secret_context(config.profile.options, config.profile.secret_scanner)
     if not secret_context.rules_loaded:
         log("secret detection rules unavailable; copying files without scrubbing")
 
@@ -737,6 +822,11 @@ def execute_config(
                 "baseline": config.profile.baseline,
                 "tags": list(config.profile.tags),
                 "options": dict(config.profile.options),
+                "secret_scanner": _manifest_secret_scanner(
+                    config.profile.options,
+                    config.profile.secret_scanner,
+                    secret_context,
+                ),
             },
             "runner": {
                 "version": config.version,
@@ -773,6 +863,7 @@ def execute_config(
                 "data_directory": str(data_root),
                 "logs_directory": str(logs_root),
                 "compressed": settings.compress,
+                "cleanup_staging": settings.cleanup_staging,
             },
         }
 
@@ -792,6 +883,9 @@ def execute_config(
         shutil.copy2(config_path, staging_dir / Path(config_path.name))
 
     package_path: Path | None = None
+    staging_dir_on_disk: Path | None = staging_dir
+    manifest_on_disk = manifest_path
+    log_on_disk = log_path
     if settings.compress:
         package_name = settings.package_name or f"{_safe_name(config.profile.name)}-{run_timestamp}.zip"
         if not package_name.lower().endswith(".zip"):
@@ -804,11 +898,17 @@ def execute_config(
                 arcname = path.relative_to(staging_dir).as_posix()
                 zf.write(path, arcname)
 
+        if settings.cleanup_staging:
+            shutil.rmtree(staging_dir, ignore_errors=True)
+            staging_dir_on_disk = None
+            manifest_on_disk = None
+            log_on_disk = None
+
     return OfflineRunnerResult(
         config=config,
-        staging_dir=staging_dir,
-        manifest_path=manifest_path,
-        log_path=log_path,
+        staging_dir=staging_dir_on_disk,
+        manifest_path=manifest_on_disk,
+        log_path=log_on_disk,
         package_path=package_path,
         files=tuple(files),
         timestamp=run_timestamp,

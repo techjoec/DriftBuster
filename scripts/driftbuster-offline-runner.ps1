@@ -173,7 +173,10 @@ function Test-DbExclude {
 function Get-DbOptionList {
     param($Value)
     if (-not $Value) { return @() }
-    if ($Value -is [string]) { return @([string]$Value) }
+    if ($Value -is [string]) {
+        $parts = [regex]::Split([string]$Value, '[\s,;]+')
+        return @($parts | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
     if ($Value -is [System.Collections.IEnumerable]) {
         $result = @()
         foreach ($item in $Value) {
@@ -189,6 +192,22 @@ function Get-DbOptionList {
 }
 
 function Get-DbSecretRules {
+    param($SecretScanner)
+
+    if ($SecretScanner -and $SecretScanner.ruleset -and $SecretScanner.ruleset.rules) {
+        $ruleset = $SecretScanner.ruleset
+        $rules = @()
+        foreach ($entry in @($ruleset.rules)) {
+            if ($null -eq $entry) { continue }
+            $rules += $entry
+        }
+
+        return [pscustomobject]@{
+            version = if ($ruleset.version) { [string]$ruleset.version } else { 'embedded' }
+            rules   = $rules
+        }
+    }
+
     if ($script:DbSecretRules) { return $script:DbSecretRules }
 
     $candidates = @(
@@ -251,6 +270,7 @@ $manifestName = if ($runnerSettings -and $runnerSettings.manifest_name) { [strin
 $logName = if ($runnerSettings -and $runnerSettings.log_name) { [string]$runnerSettings.log_name } else { 'runner.log' }
 $dataDirName = if ($runnerSettings -and $runnerSettings.data_directory_name) { [string]$runnerSettings.data_directory_name } else { 'data' }
 $logsDirName = if ($runnerSettings -and $runnerSettings.logs_directory_name) { [string]$runnerSettings.logs_directory_name } else { 'logs' }
+$cleanupStaging = if ($runnerSettings -and $runnerSettings.cleanup_staging -ne $null) { [bool]$runnerSettings.cleanup_staging } else { $true }
 $maxTotalBytes = $null
 if ($runnerSettings -and $runnerSettings.max_total_bytes) {
     $maxTotalBytes = [int64]$runnerSettings.max_total_bytes
@@ -282,9 +302,9 @@ function Write-DbLog {
 }
 
 function New-DbSecretContext {
-    param($Options)
+    param($Options, $SecretScanner)
 
-    $payload = Get-DbSecretRules
+    $payload = Get-DbSecretRules $SecretScanner
     $rulesList = New-Object System.Collections.Generic.List[pscustomobject]
 
     foreach ($entry in @($payload.rules)) {
@@ -308,12 +328,20 @@ function New-DbSecretContext {
     }
 
     $ignoreRuleSet = New-Object System.Collections.Generic.HashSet[string]
-    $ignoreRuleValues = if ($Options -and $Options.secret_ignore_rules) { Get-DbOptionList $Options.secret_ignore_rules } else { @() }
+    $ignoreRuleValues = @()
+    if ($Options -and $Options.secret_ignore_rules) { $ignoreRuleValues += Get-DbOptionList $Options.secret_ignore_rules }
+    if ($SecretScanner -and $SecretScanner.ignore_rules) { $ignoreRuleValues += Get-DbOptionList $SecretScanner.ignore_rules }
     foreach ($ruleName in $ignoreRuleValues) { $null = $ignoreRuleSet.Add([string]$ruleName) }
 
-    $ignorePatternTexts = if ($Options -and $Options.secret_ignore_patterns) { Get-DbOptionList $Options.secret_ignore_patterns } else { @() }
+    $ignorePatternTexts = New-Object System.Collections.Generic.List[string]
     $ignorePatternObjects = New-Object System.Collections.Generic.List[System.Text.RegularExpressions.Regex]
-    foreach ($patternText in $ignorePatternTexts) {
+    $patternValues = @()
+    if ($Options -and $Options.secret_ignore_patterns) { $patternValues += Get-DbOptionList $Options.secret_ignore_patterns }
+    if ($SecretScanner -and $SecretScanner.ignore_patterns) { $patternValues += Get-DbOptionList $SecretScanner.ignore_patterns }
+    foreach ($patternText in $patternValues) {
+        if ([string]::IsNullOrWhiteSpace($patternText)) { continue }
+        if ($ignorePatternTexts.Contains([string]$patternText)) { continue }
+        $ignorePatternTexts.Add([string]$patternText) | Out-Null
         try {
             $ignorePatternObjects.Add([System.Text.RegularExpressions.Regex]::new([string]$patternText))
         }
@@ -448,7 +476,10 @@ $totalBytes = [int64]0
 
 Write-DbLog 'offline collection started'
 
-$secretContext = New-DbSecretContext (if ($config.profile.options) { $config.profile.options } else { $null })
+$secretContext = New-DbSecretContext (
+    (if ($config.profile.options) { $config.profile.options } else { $null }),
+    (if ($config.profile.secret_scanner) { $config.profile.secret_scanner } else { $null })
+)
 if (-not $secretContext.enabled) {
     Write-DbLog 'secret detection rules unavailable; copying files without scrubbing'
 }
@@ -624,6 +655,16 @@ if ($includeLogs) {
 
 $manifestPath = $null
 if ($includeManifest) {
+    $manifestIgnoreRules = @()
+    if ($secretContext.ignoreRules -and $secretContext.ignoreRules.Count -gt 0) {
+        $manifestIgnoreRules = @($secretContext.ignoreRules.ToArray() | Sort-Object -Unique)
+    }
+
+    $manifestIgnorePatterns = @()
+    if ($secretContext.ignorePatternTexts -and $secretContext.ignorePatternTexts.Count -gt 0) {
+        $manifestIgnorePatterns = @($secretContext.ignorePatternTexts | Sort-Object -Unique)
+    }
+
     $manifest = [ordered]@{
         schema       = 'https://driftbuster.dev/offline-runner/manifest/v1'
         generated_at = Get-DbIsoTimestamp
@@ -639,6 +680,11 @@ if ($includeManifest) {
             baseline    = $config.profile.baseline
             tags        = @($config.profile.tags)
             options     = if ($config.profile.options) { $config.profile.options } else { @{} }
+            secret_scanner = [ordered]@{
+                ignore_rules    = $manifestIgnoreRules
+                ignore_patterns = $manifestIgnorePatterns
+                ruleset_version = $secretContext.version
+            }
         }
         runner       = [ordered]@{
             version = if ($config.version) { [string]$config.version } else { '1' }
@@ -666,6 +712,7 @@ if ($includeManifest) {
             data_directory    = $dataRoot
             logs_directory    = $logsRoot
             compressed        = $compress
+            cleanup_staging   = $cleanupStaging
         }
     }
 
@@ -695,6 +742,13 @@ if ($compress) {
     if (Test-Path -LiteralPath $packagePath) { Remove-Item -LiteralPath $packagePath -Force }
     Compress-Archive -Path (Join-Path -Path $stagingDir -ChildPath '*') -DestinationPath $packagePath -Force
     Write-DbLog "package created at $packagePath"
+
+    if ($cleanupStaging) {
+        Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+        $stagingDir = $null
+        $manifestPath = $null
+        $logPath = $null
+    }
 }
 else {
     Write-DbLog "staging directory ready at $stagingDir"

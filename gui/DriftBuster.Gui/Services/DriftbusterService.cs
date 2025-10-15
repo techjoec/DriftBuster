@@ -50,5 +50,10 @@ namespace DriftBuster.Gui.Services
         {
             return _backend.RunProfileAsync(profile, saveProfile, baseDir: null, timestamp: null, cancellationToken);
         }
+
+        public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, CancellationToken cancellationToken = default)
+        {
+            return _backend.PrepareOfflineCollectorAsync(profile, request, baseDir: null, cancellationToken);
+        }
     }
 }

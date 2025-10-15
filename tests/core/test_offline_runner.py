@@ -15,6 +15,27 @@ def _write_config(tmp_path: Path, payload: dict) -> Path:
     return config_path
 
 
+def _read_manifest_from_package(package_path: Path) -> dict:
+    with zipfile.ZipFile(package_path, "r") as archive:
+        with archive.open("manifest.json") as handle:
+            return json.load(handle)
+
+
+def _read_runner_log_from_package(package_path: Path) -> str:
+    with zipfile.ZipFile(package_path, "r") as archive:
+        with archive.open("logs/runner.log") as handle:
+            return handle.read().decode("utf-8")
+
+
+def _read_collected_file_from_package(
+    package_path: Path, relative_path: Path
+) -> str:
+    archive_path = f"data/{relative_path.as_posix()}"
+    with zipfile.ZipFile(package_path, "r") as archive:
+        with archive.open(archive_path) as handle:
+            return handle.read().decode("utf-8")
+
+
 def test_load_config_accepts_string_and_object_sources(tmp_path: Path) -> None:
     config_payload = {
         "schema": offline_runner.CONFIG_SCHEMA,
@@ -73,10 +94,9 @@ def test_execute_offline_run_collects_files(tmp_path: Path) -> None:
 
     assert result.package_path is not None
     assert result.package_path.exists()
-    assert result.manifest_path is not None
-    assert result.manifest_path.exists()
-    assert result.log_path is not None
-    assert result.log_path.exists()
+    assert result.manifest_path is None
+    assert result.log_path is None
+    assert result.staging_dir is None
     assert len(result.files) >= 2
 
     archive_contents: set[str] = set()
@@ -89,11 +109,14 @@ def test_execute_offline_run_collects_files(tmp_path: Path) -> None:
         name.endswith("config.json") for name in archive_contents
     )
 
-    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    manifest = _read_manifest_from_package(result.package_path)
+    log_contents = _read_runner_log_from_package(result.package_path)
     assert manifest["schema"] == offline_runner.MANIFEST_SCHEMA
     assert manifest["profile"]["name"] == "windows_baseline"
     assert manifest["metadata"]["request_id"] == "abc-123"
     assert any(entry["relative_path"].endswith("firewall.log") for entry in manifest["files"])
+    assert manifest["package"]["cleanup_staging"] is True
+    assert "offline collection finished" in log_contents
 
 
 def test_execute_offline_run_handles_optional_source(tmp_path: Path) -> None:
@@ -121,8 +144,8 @@ def test_execute_offline_run_handles_optional_source(tmp_path: Path) -> None:
     result = offline_runner.execute_config_path(config_path)
 
     assert any(file.alias == "missing" for file in result.files) is False
-    assert result.manifest_path is not None
-    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    assert result.manifest_path is None
+    manifest = _read_manifest_from_package(result.package_path)
     summary = next(entry for entry in manifest["sources"] if entry["alias"] == "missing")
     assert summary["skipped"] is True
     assert summary["reason"] == "no-matches"
@@ -214,16 +237,19 @@ def test_execute_offline_run_scrubs_secret_lines(tmp_path: Path) -> None:
 
     result = offline_runner.execute_config_path(config_path)
 
-    assert result.log_path is not None
-    log_contents = result.log_path.read_text(encoding="utf-8")
+    log_contents = _read_runner_log_from_package(result.package_path)
     assert "secret candidate removed" in log_contents
 
     collected_file = next(entry for entry in result.files if entry.source == str(secret_file))
-    collected_text = collected_file.destination.read_text(encoding="utf-8")
+    collected_text = _read_collected_file_from_package(result.package_path, collected_file.relative_path)
     assert "SUPERSECRET123456" not in collected_text
     assert "password" not in collected_text.lower()
 
-    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    manifest = _read_manifest_from_package(result.package_path)
+    assert "secret_scanner" in manifest["profile"]
+    profile_scanner = manifest["profile"]["secret_scanner"]
+    assert profile_scanner["ruleset_version"] == "2024-06-01"
+    assert "rules" not in profile_scanner
     secrets = manifest["secrets"]
     assert secrets["ruleset_version"] == "2024-06-01"
     assert secrets["ignored_rules"] == []
@@ -245,8 +271,8 @@ def test_execute_offline_run_honours_secret_ignore_patterns(tmp_path: Path) -> N
         "profile": {
             "name": "secret-ignore",
             "sources": [str(secret_file)],
-            "options": {
-                "secret_ignore_patterns": ["ALLOW_ME"],
+            "secret_scanner": {
+                "ignore_patterns": ["ALLOW_ME"],
             },
         },
         "runner": {
@@ -259,15 +285,87 @@ def test_execute_offline_run_honours_secret_ignore_patterns(tmp_path: Path) -> N
 
     result = offline_runner.execute_config_path(config_path)
 
-    assert result.log_path is not None
-    log_contents = result.log_path.read_text(encoding="utf-8")
+    log_contents = _read_runner_log_from_package(result.package_path)
     assert "secret candidate removed" not in log_contents
 
     collected_file = next(entry for entry in result.files if entry.source == str(secret_file))
-    collected_text = collected_file.destination.read_text(encoding="utf-8")
+    collected_text = _read_collected_file_from_package(result.package_path, collected_file.relative_path)
     assert "ALLOW_ME" in collected_text
 
-    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    manifest = _read_manifest_from_package(result.package_path)
     secrets = manifest["secrets"]
     assert secrets["findings"] == []
     assert "ALLOW_ME" in secrets["ignored_patterns"]
+    assert "ALLOW_ME" in manifest["profile"]["secret_scanner"]["ignore_patterns"]
+    assert "rules" not in manifest["profile"]["secret_scanner"]
+
+
+def test_execute_offline_run_prefers_ruleset_from_config(tmp_path: Path) -> None:
+    secret_file = tmp_path / "custom.txt"
+    secret_file.write_text(
+        "token = TOTALLY_CUSTOM_SECRET",
+        encoding="utf-8",
+    )
+
+    config_payload = {
+        "profile": {
+            "name": "secret-config",
+            "sources": [str(secret_file)],
+            "secret_scanner": {
+                "ruleset": {
+                    "version": "custom-1",
+                    "rules": [
+                        {
+                            "name": "CustomToken",
+                            "pattern": "TOTALLY_CUSTOM_SECRET",
+                            "flags": "",
+                        }
+                    ],
+                }
+            },
+        },
+        "runner": {
+            "output_directory": str(tmp_path / "out"),
+            "include_logs": True,
+            "include_manifest": True,
+        },
+    }
+    config_path = _write_config(tmp_path, config_payload)
+
+    result = offline_runner.execute_config_path(config_path)
+
+    manifest = _read_manifest_from_package(result.package_path)
+    secrets = manifest["secrets"]
+    assert secrets["ruleset_version"] == "custom-1"
+    assert secrets["findings"]
+    profile_scanner = manifest["profile"]["secret_scanner"]
+    assert profile_scanner["ruleset_version"] == "custom-1"
+    assert "rules" not in profile_scanner
+
+
+def test_execute_offline_run_retains_staging_when_cleanup_disabled(tmp_path: Path) -> None:
+    sample = tmp_path / "artifact.txt"
+    sample.write_text("data", encoding="utf-8")
+
+    config_payload = {
+        "profile": {
+            "name": "no-cleanup",
+            "sources": [str(sample)],
+        },
+        "runner": {
+            "output_directory": str(tmp_path / "out"),
+            "cleanup_staging": False,
+            "include_manifest": True,
+            "include_logs": True,
+        },
+    }
+    config_path = _write_config(tmp_path, config_payload)
+
+    result = offline_runner.execute_config_path(config_path)
+
+    assert result.staging_dir is not None
+    assert result.staging_dir.exists()
+    assert result.manifest_path is not None
+    assert result.manifest_path.exists()
+    assert result.log_path is not None
+    assert result.log_path.exists()
