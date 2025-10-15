@@ -44,6 +44,7 @@ public partial class SecretScannerSettingsViewModel : ObservableObject
         return entries
             .Select(entry => entry.Value?.Trim())
             .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
     }

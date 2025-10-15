@@ -65,15 +65,12 @@ public partial class RunProfilesView : UserControl
         };
 
         var owner = TopLevel.GetTopLevel(this) as Window;
-        bool? result;
-        if (owner is not null)
+        if (owner is null)
         {
-            result = await window.ShowDialog<bool?>(owner).ConfigureAwait(true);
+            return;
         }
-        else
-        {
-            result = await window.ShowDialog<bool?>().ConfigureAwait(true);
-        }
+
+        var result = await window.ShowDialog<bool?>(owner).ConfigureAwait(true);
 
         if (result == true && window.DataContext is SecretScannerSettingsViewModel settingsViewModel)
         {
