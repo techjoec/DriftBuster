@@ -2,7 +2,7 @@
 
 **Project:** DriftBuster  
 **License:** Apache License, Version 2.0  
-**Version:** 0.0.1 (2025-10-13)
+**Version:** 0.0.2 (2025-10-13)
 
 This Entity Contributor License Agreement is made between the entity listed below
 (“Entity”) and the DriftBuster project.

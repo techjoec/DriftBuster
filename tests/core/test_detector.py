@@ -43,7 +43,7 @@ def test_scan_file_enriches_metadata(tmp_path: Path) -> None:
     assert match is not None
     assert match.plugin_name == "test-xml-recorder"
     assert match.metadata is not None
-    assert match.metadata["catalog_version"] == "0.0.1"
+    assert match.metadata["catalog_version"] == "0.0.2"
     assert match.metadata["catalog_format"] == "xml"
     assert match.metadata["catalog_variant"] == "generic"
     assert match.metadata["bytes_sampled"] == 4

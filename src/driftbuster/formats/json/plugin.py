@@ -50,7 +50,7 @@ class JsonPlugin:
 
     name: str = "json"
     priority: int = 200
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:

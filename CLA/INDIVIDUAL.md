@@ -2,7 +2,7 @@
 
 **Project:** DriftBuster  
 **License:** Apache License, Version 2.0  
-**Version:** 0.0.1 (2025-10-13)
+**Version:** 0.0.2 (2025-10-13)
 
 By submitting a contribution to the project, you agree to the following terms:
 

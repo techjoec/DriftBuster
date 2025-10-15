@@ -16,7 +16,7 @@ runs. Paste JSON fragments only—no raw secrets or proprietary content.
   "config_verified_at": "2025-10-14T11:24:12Z",
   "catalog_format": "structured-config-xml",
   "catalog_variant": "web-config",
-  "catalog_version": "0.0.1",
+  "catalog_version": "0.0.2",
   "bytes_sampled": 240,
   "encoding": "utf-8",
   "xml_declaration": {
@@ -41,7 +41,7 @@ runs. Paste JSON fragments only—no raw secrets or proprietary content.
   "config_verified_at": "2025-10-14T11:23:58Z",
   "catalog_format": "structured-config-xml",
   "catalog_variant": "app-config",
-  "catalog_version": "0.0.1",
+  "catalog_version": "0.0.2",
   "bytes_sampled": 246,
   "encoding": "utf-8",
   "xml_declaration": {
@@ -66,7 +66,7 @@ runs. Paste JSON fragments only—no raw secrets or proprietary content.
   "config_verified_at": "2025-10-14T11:24:40Z",
   "catalog_format": "structured-config-xml",
   "catalog_variant": "machine-config",
-  "catalog_version": "0.0.1",
+  "catalog_version": "0.0.2",
   "bytes_sampled": 203,
   "encoding": "utf-8",
   "xml_declaration": {
@@ -93,7 +93,7 @@ runs. Paste JSON fragments only—no raw secrets or proprietary content.
   "config_verified_at": "2025-10-14T11:25:21Z",
   "catalog_format": "structured-config-xml",
   "catalog_variant": "web-config-transform",
-  "catalog_version": "0.0.1",
+  "catalog_version": "0.0.2",
   "bytes_sampled": 239,
   "encoding": "utf-8",
   "namespaces": {

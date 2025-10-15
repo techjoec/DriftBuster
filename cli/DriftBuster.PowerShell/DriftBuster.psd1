@@ -1,6 +1,6 @@
 @{
     RootModule        = 'DriftBuster.psm1'
-    ModuleVersion     = '0.0.1'
+    ModuleVersion     = '0.0.2'
     GUID              = 'f5bd9648-0c2a-4b6e-87fc-43a69d61af1d'
     Author            = 'DriftBuster'
     CompanyName       = 'DriftBuster'
@@ -18,6 +18,6 @@
     CmdletsToExport   = @()
     AliasesToExport   = @()
     PrivateData       = @{
-        BackendVersion = '0.0.1'
+        BackendVersion = '0.0.2'
     }
 }

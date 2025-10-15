@@ -5,9 +5,9 @@ typed Python module so the rest of the project can import structured metadata
 without juggling file I/O. Two data sets are represented:
 
 * ``DETECTION_CATALOG`` — the priority-ordered detection class definitions used
-  by the core detector (formerly ``TYPES.json`` v0.0.1).
+  by the core detector (formerly ``TYPES.json`` v0.0.2).
 * ``FORMAT_SURVEY`` — usage-oriented estimates for future planning (the format
-  survey v0.0.1 provided by the user).
+  survey v0.0.2 provided by the user).
 
 Nothing consumes these structures directly yet, but storing them in code keeps
 the source of truth close to the implementation and makes refactors easier down
@@ -77,7 +77,7 @@ class DetectionCatalog:
 
 
 DETECTION_CATALOG = DetectionCatalog(
-    version="0.0.1",
+    version="0.0.2",
     updated="2025-10-10",
     notes=(
         "Detection runs in priority order; the first positive match wins.",
@@ -426,7 +426,7 @@ class FormatSurvey:
 
 
 FORMAT_SURVEY = FormatSurvey(
-    version="0.0.1",
+    version="0.0.2",
     updated="2025-10-10",
     formats=(
         FormatUsage(

@@ -4,8 +4,8 @@
 core detector (`DETECTION_CATALOG`) alongside usage-oriented estimates
 (`FORMAT_SURVEY`). Detection runs in ascending priority order; the first
 positive match wins. The tables below blend the shipped class definitions from
-`DETECTION_CATALOG` (v0.0.1) with the usage insights from the format survey data
-(v0.0.1).
+`DETECTION_CATALOG` (v0.0.2) with the usage insights from the format survey data
+(v0.0.2).
 
 For the definitive detector expectations, refer to
 `docs/coverage-golden-standard.md`.
@@ -118,7 +118,7 @@ lowercase slugs to remain JSON friendly and arrive pre-sanitised for adapters.
 
 | Key               | Description                                                   | Example Value |
 |-------------------|---------------------------------------------------------------|---------------|
-| ``catalog_version`` | Detection catalog version embedded in the match payload.     | ``0.0.1``     |
+| ``catalog_version`` | Detection catalog version embedded in the match payload.     | ``0.0.2``     |
 | ``catalog_format``  | Canonical catalog identifier resolved from ``format_name``.   | ``xml``       |
 | ``catalog_variant`` | Optional variant slug derived from ``DetectionMatch.variant``.| ``resource-xml``  |
 | ``bytes_sampled``   | Number of bytes the detector analysed for the match.         | ``65536``     |
@@ -128,7 +128,7 @@ lowercase slugs to remain JSON friendly and arrive pre-sanitised for adapters.
 Sample metadata payload::
 
     {
-        "catalog_version": "0.0.1",
+        "catalog_version": "0.0.2",
         "catalog_format": "xml",
         "catalog_variant": "resource-xml",
         "bytes_sampled": 65536,

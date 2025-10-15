@@ -27,7 +27,7 @@ from driftbuster.formats.registry import get_plugins
 class MyPlugin:
     name = "my-plugin"
     priority = 50
-    version = "0.0.1"
+    version = "0.0.2"
 
     def detect(self, path, sample, text):
         return None
