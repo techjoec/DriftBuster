@@ -13,7 +13,7 @@ from ..core.types import DetectionMatch
 
 _SECTION_PATTERN = re.compile(r"^\s*\[([^\]\n]+)\]\s*$", re.MULTILINE)
 _KEY_VALUE_PATTERN = re.compile(
-    r"^\s*(?P<export>export\s+)?(?P<key>[A-Za-z0-9_.\-]+)\s*(?:=|:)\s*(?P<value>.*?)(?P<continued>\\\s*)?$",
+    r"^\s*(?P<export>export\s+)?(?P<key>[A-Za-z0-9_.\-]+)\s*(?P<separator>=|:)\s*(?P<value>.*?)(?P<continued>\\\s*)?$",
     re.MULTILINE,
 )
 _COMMENT_PATTERN = re.compile(r"^\s*[;#!]", re.MULTILINE)
@@ -71,6 +71,13 @@ class IniPlugin:
             reasons.append("Detected key/value assignments typical of INI-style configuration")
             metadata["key_value_pairs"] = key_pair_count
 
+        equals_pairs = sum(1 for match in key_matches if match.group("separator") == "=")
+        colon_pairs = key_pair_count - equals_pairs
+        if equals_pairs:
+            metadata["equals_separator_pairs"] = equals_pairs
+        if colon_pairs:
+            metadata["colon_separator_pairs"] = colon_pairs
+
         lines = text.splitlines()
         non_empty_lines = [line for line in lines if line.strip()]
         comment_lines = [line for line in non_empty_lines if _COMMENT_PATTERN.match(line)]
@@ -118,6 +125,12 @@ class IniPlugin:
             return None
 
         if not sections and not key_density_strong and not directive_signal and not extension_hint:
+            return None
+
+        colon_only_assignments = colon_pairs > 0 and equals_pairs == 0
+        if colon_only_assignments and not (
+            sections or extension_hint or dotenv_hint or directive_signal or export_lines
+        ):
             return None
 
         signals = 0

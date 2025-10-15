@@ -57,3 +57,17 @@ def test_ini_plugin_rejects_plain_text() -> None:
     match = _detect(plugin, "notes.txt", "This is just a paragraph of text without configuration cues.")
 
     assert match is None
+
+
+def test_ini_plugin_rejects_yaml_with_colons() -> None:
+    plugin = IniPlugin()
+    match = _detect(
+        plugin,
+        "config.yaml",
+        """
+        foo: bar
+        bar: baz
+        """.strip(),
+    )
+
+    assert match is None
