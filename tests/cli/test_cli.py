@@ -42,3 +42,49 @@ def test_cli_reports_missing_path(capsys: pytest.CaptureFixture[str]) -> None:
 
     assert exc.value.code == 2
     assert "Path does not exist" in capsys.readouterr().err
+
+
+def test_relative_path_falls_back_when_outside_root(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    outside = tmp_path / "other" / "config.json"
+    outside.parent.mkdir()
+    outside.write_text("{}", encoding="utf-8")
+
+    result = cli._relative_path(root, outside)
+
+    assert result == outside.as_posix()
+
+
+def test_ellipsize_handles_small_limits() -> None:
+    assert cli._ellipsize("abcdef", 1) == "a"
+    assert cli._ellipsize("abcdef", 0) == ""
+
+
+def test_main_returns_code_when_parser_error_is_suppressed(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorded: dict[str, str] = {}
+
+    class DummyArgs:
+        path = Path("/missing/path")
+        glob = "**/*"
+        sample_size = None
+        json = False
+
+    class DummyParser:
+        def parse_args(self, _argv: list[str] | None = None) -> DummyArgs:
+            return DummyArgs()
+
+        def error(self, message: str) -> None:  # noqa: D401 - stub for testing
+            recorded["message"] = message
+
+    monkeypatch.setattr(cli, "_build_parser", lambda: DummyParser())
+
+    def raise_missing(*_args: object, **_kwargs: object) -> list[tuple[Path, None]]:
+        raise FileNotFoundError("Path does not exist: /missing/path")
+
+    monkeypatch.setattr(cli, "_iter_scan_results", raise_missing)
+
+    exit_code = cli.main(["/missing/path"])
+
+    assert exit_code == 2
+    assert recorded["message"].startswith("Path does not exist")

@@ -53,7 +53,8 @@ function Invoke-DriftBusterDiff {
     )
 
     $paths = if ($PSCmdlet.ParameterSetName -eq 'Pair') { @($Left, $Right) } else { $Versions }
-    $result = $script:DriftBusterBackend.DiffAsync($paths).GetAwaiter().GetResult()
+    $typedPaths = [string[]]$paths
+    $result = $script:DriftBusterBackend.DiffAsync($typedPaths).GetAwaiter().GetResult()
     $result.RawJson | ConvertFrom-Json
 }
 

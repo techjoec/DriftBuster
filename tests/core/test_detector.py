@@ -8,6 +8,7 @@ from driftbuster.core.detector import (
     Detector,
     DetectorIOError,
     _normalise_reasons,
+    _titleise_component,
     scan_file,
     scan_path,
 )
@@ -166,6 +167,12 @@ def test_scan_with_profiles_requires_store(tmp_path: Path) -> None:
         detector.scan_with_profiles(tmp_path / "file", profile_store=None)  # type: ignore[arg-type]
 
 
+def test_scan_path_rejects_unknown_root(tmp_path: Path) -> None:
+    with pytest.raises(DetectorIOError) as exc:
+        Detector().scan_path(tmp_path / "missing" / "dir")
+    assert "Path does not exist" in str(exc.value)
+
+
 def test_scan_path_convenience_with_file(tmp_path: Path) -> None:
     target = tmp_path / "file.txt"
     target.write_text("content", encoding="utf-8")
@@ -208,3 +215,143 @@ def test_handle_error_without_cause(tmp_path: Path) -> None:
     with pytest.raises(DetectorIOError) as exc:
         detector._handle_error(tmp_path, error)
     assert exc.value is error
+
+
+def test_titleise_component_handles_edge_cases() -> None:
+    assert _titleise_component("") == ""
+    assert _titleise_component("12345") == "12345"
+
+
+def test_scan_path_swallows_glob_errors_when_handler_suppresses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class TolerantDetector(Detector):
+        def __init__(self) -> None:
+            super().__init__(plugins=(), sort_plugins=False)
+            self.errors: list[tuple[Path, Exception]] = []
+
+        def _handle_error(
+            self,
+            path: Path,
+            error: DetectorIOError,
+            *,
+            cause: Exception | None = None,
+        ) -> None:  # type: ignore[override]
+            self.errors.append((path, error))
+
+    root = tmp_path / "root"
+    root.mkdir()
+
+    detector = TolerantDetector()
+
+    original_glob = Path.glob
+
+    def failing_glob(self: Path, pattern: str = "**/*"):
+        if self == root:
+            raise OSError("boom")
+        return original_glob(self, pattern)
+
+    monkeypatch.setattr(Path, "glob", failing_glob)
+
+    results = detector.scan_path(root)
+
+    assert results == []
+    assert detector.errors and detector.errors[0][0] == root
+
+
+def test_scan_path_continues_when_individual_file_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class TolerantDetector(Detector):
+        def __init__(self) -> None:
+            super().__init__(plugins=(), sort_plugins=False)
+            self.errors: list[tuple[Path, Exception]] = []
+
+        def _handle_error(
+            self,
+            path: Path,
+            error: DetectorIOError,
+            *,
+            cause: Exception | None = None,
+        ) -> None:  # type: ignore[override]
+            self.errors.append((path, error))
+
+    root = tmp_path / "root"
+    root.mkdir()
+    bad_file = root / "bad.txt"
+    bad_file.write_text("bad", encoding="utf-8")
+    good_file = root / "good.txt"
+    good_file.write_text("good", encoding="utf-8")
+
+    detector = TolerantDetector()
+
+    original_is_file = Path.is_file
+
+    def flaky_is_file(self: Path) -> bool:
+        if self == bad_file:
+            raise OSError("unreadable")
+        return original_is_file(self)
+
+    monkeypatch.setattr(Path, "is_file", flaky_is_file)
+
+    results = detector.scan_path(root)
+
+    assert (good_file, None) in results
+    assert detector.errors and detector.errors[0][0] == bad_file
+
+
+def test_scan_with_profiles_falls_back_to_filename(tmp_path: Path) -> None:
+    class DummyDetector(Detector):
+        def __init__(self, paths: list[tuple[Path, None]]) -> None:
+            super().__init__(plugins=(), sort_plugins=False)
+            self._paths = paths
+
+        def scan_path(self, root: Path, glob: str = "**/*") -> list[tuple[Path, None]]:
+            return self._paths
+
+    class RecordingStore:
+        def __init__(self) -> None:
+            self.paths: list[str | None] = []
+
+        def matching_configs(self, tags: tuple[str, ...], *, relative_path: str | None) -> list[object]:
+            self.paths.append(relative_path)
+            return []
+
+    store = RecordingStore()
+
+    outside = tmp_path.parent / "external.txt"
+    outside.write_text("content", encoding="utf-8")
+
+    detector = DummyDetector([(outside, None)])
+    detector.scan_with_profiles(tmp_path, profile_store=store, tags=None)
+
+    assert store.paths == [outside.name]
+
+    store.paths.clear()
+    source_file = tmp_path / "file.txt"
+    source_file.write_text("data", encoding="utf-8")
+
+    detector = DummyDetector([(source_file, None)])
+    detector.scan_with_profiles(source_file, profile_store=store, tags=None)
+
+    assert store.paths == [source_file.name]
+
+
+def test_scan_file_returns_none_when_handler_suppresses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = tmp_path / "data.txt"
+    target.write_text("content", encoding="utf-8")
+
+    class SuppressingDetector(Detector):
+        def __init__(self) -> None:
+            super().__init__(plugins=(), sort_plugins=False)
+            self.errors: list[Exception] = []
+
+        def _handle_error(self, path: Path, error: DetectorIOError, *, cause: Exception | None = None) -> None:  # type: ignore[override]
+            self.errors.append(error)
+
+    detector = SuppressingDetector()
+
+    def explode_open(self, *args, **kwargs):  # type: ignore[override]
+        raise OSError("boom")
+
+    monkeypatch.setattr(Path, "open", explode_open)
+
+    result = detector.scan_file(target)
+    assert result is None
+    assert detector.errors

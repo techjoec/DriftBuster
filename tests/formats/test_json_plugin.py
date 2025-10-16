@@ -88,4 +88,45 @@ def test_json_plugin_comment_helpers() -> None:
     stripped, consumed = plugin._strip_leading_comments("/*unterminated")
     assert stripped == "" and consumed is True
 
+    stripped, consumed = plugin._strip_leading_comments("// no newline")
+    assert stripped == "" and consumed is True
+
     assert plugin._contains_comments('{"value": "// comment"}') is False
+    assert plugin._contains_comments('{"value": true}// trailing') is True
+    assert plugin._contains_comments('{"path": "C\\\\Temp"}') is False
+
+    assert plugin._has_key_value_marker('{"text": "escaped \"quote\""}') is True
+    assert plugin._has_key_value_marker('{"items": [1, 2]}') is True
+
+    truncated = plugin._truncate_to_structural_boundary('{"path": "C\\\\Temp"} // trailing')
+    assert truncated.startswith('{"path": "C\\\\Temp"}')
+
+    assert plugin._is_structured_settings("config.json", '"ConnectionStrings": {}') == "content"
+    parse = plugin._attempt_parse('{"unterminated": }', allow_comments=False)
+    assert parse.success is False
+
+
+def test_json_plugin_unknown_top_level_with_extension() -> None:
+    plugin = JsonPlugin()
+    match = _detect(plugin, "sample.json", '"text"')
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata["top_level_type"] == "unknown"
+
+
+def test_json_plugin_signals_guard_for_custom_extension() -> None:
+    plugin = JsonPlugin()
+    match = _detect(plugin, "data.custom", "{{")
+    assert match is None
+
+
+def test_json_plugin_internal_helpers() -> None:
+    plugin = JsonPlugin()
+    stripped, consumed = plugin._strip_leading_comments("// comment\n/* block */\n{\"key\": 1}")
+    assert consumed is True and stripped.startswith("{\"key\"")
+
+    assert plugin._contains_comments('{"text": "escape \\"quote\\""}') is False
+    assert plugin._contains_comments('{"roll": true}// trailing') is True
+
+    assert plugin._has_key_value_marker('{"text": "escaped \\"quote\\""}') is True
+    assert plugin._has_key_value_marker('[]') is False

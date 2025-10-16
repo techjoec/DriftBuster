@@ -3,7 +3,10 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+import pytest
+
 from driftbuster.core.types import DetectionMatch
+import driftbuster.formats.xml.plugin as xml_plugin_module
 from driftbuster.formats.xml.plugin import XmlPlugin
 
 
@@ -533,3 +536,148 @@ def test_xml_plugin_rejects_plain_text() -> None:
     match = _detect("plain.txt", "Just text without any XML markers")
 
     assert match is None
+
+
+def test_xml_plugin_returns_none_without_text() -> None:
+    plugin = XmlPlugin()
+    assert plugin.detect(Path("config.xml"), b"", None) is None
+
+
+def test_xml_plugin_handles_namespaced_configuration_root() -> None:
+    content = """
+    <ns:configuration xmlns:ns="urn:custom">
+      <ns:appSettings />
+    </ns:configuration>
+    """
+    match = _detect("web.config", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+
+
+def test_xml_plugin_manifest_with_prefixed_root() -> None:
+    content = """
+    <asm:assembly xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:asm="urn:custom">
+      <assemblyIdentity name="Prefixed" version="1.0.0.0" />
+    </asm:assembly>
+    """
+    match = _detect("Prefixed.manifest", content)
+
+    assert match is not None
+    assert match.variant == "app-manifest-xml"
+
+
+def test_xml_plugin_configuration_without_config_extension() -> None:
+    content = """
+    <configuration>
+      <system.web />
+    </configuration>
+    """
+    match = _detect("settings.xml", content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+
+
+def test_xml_plugin_identifies_exe_config_role() -> None:
+    content = """
+    <configuration>
+      <startup>
+        <supportedRuntime version="v4.0" />
+      </startup>
+    </configuration>
+    """
+    match = _detect("client.exe.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata.get("config_role") == "app"
+    assert any(".exe.config" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_schema_location_reasons() -> None:
+    content = """
+    <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="urn:custom schema.xsd">
+      <appSettings />
+    </configuration>
+    """
+    match = _detect("schema.config", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    schema_locations = match.metadata.get("schema_locations")
+    assert isinstance(schema_locations, list)
+    assert schema_locations and schema_locations[0]["location"] == "schema.xsd"
+    assert any("Schema schema.xsd" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_msbuild_metadata_dedupes_imports() -> None:
+    content = """
+    <Project DefaultTargets="Build;Pack"
+             ToolsVersion="15.0"
+             xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Import Project="shared.props" />
+      <Import Project="shared.props" />
+      <Target Name="Build" />
+      <Target Name="Pack" />
+    </Project>
+    """
+    match = _detect("duplicate.targets", content)
+
+    assert match is not None
+    hints = match.metadata.get("msbuild_import_hints")
+    assert isinstance(hints, list)
+    assert len(hints) == 1
+    targets = match.metadata.get("msbuild_targets")
+    assert targets == ["Build", "Pack"]
+
+
+def test_xml_plugin_attribute_hint_dedupes_entries() -> None:
+    content = """
+    <configuration>
+      <connectionStrings>
+        <add name="Default" connectionString="Server=tcp://sql" />
+        <add name="Default" connectionString="Server=tcp://sql" />
+      </connectionStrings>
+      <serviceEndpoints>
+        <endpoint name="FileShare" address="\\\\server\\share" />
+      </serviceEndpoints>
+      <features>
+        <feature name="NewUI" value="true" />
+        <feature name="NewUI" value="true" />
+      </features>
+    </configuration>
+    """
+    match = _detect("hints.config", content)
+
+    assert match is not None
+    hints = match.metadata.get("attribute_hints")
+    assert isinstance(hints, dict)
+    assert len(hints.get("connection_strings", [])) == 1
+    assert len(hints.get("feature_flags", [])) == 1
+    assert xml_plugin_module.XmlPlugin._looks_like_endpoint("\\\\server\\share") is True
+    assert xml_plugin_module.XmlPlugin._looks_like_endpoint("net.tcp://service") is True
+
+
+def test_xml_plugin_parse_limit_blocks_large_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    plugin = XmlPlugin()
+    monkeypatch.setattr(plugin, "_MAX_SAFE_PARSE_BYTES", 10)
+    metadata = plugin._collect_metadata("<root>" + "a" * 50 + "</root>", extension=".xml")
+    assert metadata.get("root_tag") == "root"
+
+
+def test_xml_plugin_fallback_parser_without_defused(monkeypatch: pytest.MonkeyPatch) -> None:
+    plugin = XmlPlugin()
+    monkeypatch.setattr(xml_plugin_module, "DEFUSED_ET", None)
+    calls: dict[str, object] = {}
+
+    original = xml_plugin_module.ET.fromstring
+
+    def fake_fromstring(text: str, parser=None):
+        calls["parser"] = parser
+        return original(text, parser=parser)
+
+    monkeypatch.setattr(xml_plugin_module.ET, "fromstring", fake_fromstring)
+    plugin._collect_metadata("<root />", extension=".xml")
+    assert calls.get("parser") is not None

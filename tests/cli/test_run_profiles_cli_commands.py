@@ -18,6 +18,13 @@ def test_parse_options_validates_format() -> None:
         _parse_options(["invalid"])
 
 
+def test_list_profiles_reports_empty(tmp_path, capsys) -> None:
+    args = argparse.Namespace(base_dir=tmp_path)
+    exit_code = _list_profiles(args)
+    assert exit_code == 0
+    assert "No profiles" in capsys.readouterr().out
+
+
 def test_create_list_show_and_run(tmp_path, capsys) -> None:
     source = tmp_path / "config.ini"
     source.write_text("content", encoding="utf-8")
@@ -103,6 +110,14 @@ def test_main_entrypoint_dispatches(tmp_path, monkeypatch, capsys) -> None:
     result = main(["ignored"])
     assert result == 0
     capsys.readouterr()  # drain stdout
+
+
+def test_main_returns_error_when_no_command(tmp_path, monkeypatch) -> None:
+    parser = build_parser()
+    empty_args = argparse.Namespace(func=None)
+    monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda self, _: empty_args)
+    exit_code = main([])
+    assert exit_code == 1
 
 
 def test_run_profiles_module_main(tmp_path, monkeypatch) -> None:

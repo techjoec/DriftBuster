@@ -50,8 +50,12 @@ def test_registry_summary_returns_plugin_metadata() -> None:
 
 
 def test_looks_text_and_decode_text() -> None:
+    assert registry.looks_text(b"")
+    assert registry.looks_text(codecs.BOM_UTF8 + b"payload")
     assert registry.looks_text(b"Plain ASCII text")
     assert not registry.looks_text(b"\x00\xff\x10\x80")
+
+    assert registry._ascii_ratio(b"") == 1.0
 
     utf16 = codecs.BOM_UTF16_LE + "value".encode("utf-16-le")
     text, encoding = registry.decode_text(utf16)
@@ -74,6 +78,17 @@ def test_strip_bom_and_even_odd_heuristic() -> None:
     # Alternating ASCII and null bytes should pass via even/odd heuristic.
     alternating = b"A\x00B\x00C\x00D\x00"
     assert registry.looks_text(alternating)
+
+
+def test_decode_text_handles_duplicate_candidates() -> None:
+    sample = codecs.BOM_UTF16_BE + "value".encode("utf-16-be")
+    text, encoding = registry.decode_text(sample)
+    assert text == "value"
+    assert encoding.endswith("be")
+
+    truncated = codecs.BOM_UTF16_LE + b"\x00"
+    text, encoding = registry.decode_text(truncated)
+    assert encoding == "latin-1"
 
 
 def test_decode_text_fallback_to_latin1() -> None:

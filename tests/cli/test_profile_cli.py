@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 from pathlib import Path
 
 import pytest
@@ -92,3 +93,62 @@ def test_profile_cli_hunt_bridge(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert exit_code == 0
     payload = json.loads(captured.out)
     assert payload["items"][0]["profiles"][0]["profile"] == "prod"
+
+
+def test_store_from_payload_ignores_invalid_entries(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_from_dict = getattr(profile_cli.ProfileStore, "from_dict", None)
+
+    if original_from_dict is not None:
+        def boom(_payload):
+            raise ValueError("fallback")
+
+        monkeypatch.setattr(profile_cli.ProfileStore, "from_dict", boom)
+
+    payload = {
+        "profiles": [
+            "invalid",
+            {
+                "name": "demo",
+                "configs": ["skip", {"id": "cfg", "path": "config.json"}],
+            },
+        ]
+    }
+    store = profile_cli._store_from_payload(payload)
+    summary = store.summary()
+    assert summary["total_profiles"] == 1
+
+    if original_from_dict is not None:
+        monkeypatch.setattr(profile_cli.ProfileStore, "from_dict", original_from_dict)
+
+
+def test_handle_hunt_bridge_validates_payload(tmp_path: Path) -> None:
+    store_path = tmp_path / "store.json"
+    store_path.write_text(json.dumps({"profiles": []}), encoding="utf-8")
+    args = argparse.Namespace(
+        store=store_path,
+        hunt=store_path,
+        tags=None,
+        root=tmp_path,
+        output=None,
+        indent=2,
+        sort_keys=False,
+    )
+
+    with pytest.raises(ValueError):
+        profile_cli._handle_hunt_bridge(args)
+    hunt_path = tmp_path / "hunts.json"
+    hunt_payload = [
+        {
+            "rule": {"name": "server", "description": ""},
+            "path": str(tmp_path.parent / "outside.txt"),
+            "line_number": 1,
+            "excerpt": "server",
+        },
+        {"rule": {"name": "missing", "description": ""}, "line_number": 2, "excerpt": "data"},
+    ]
+    hunt_path.write_text(json.dumps(hunt_payload), encoding="utf-8")
+    args.hunt = hunt_path
+    args.store.write_text(json.dumps({"profiles": []}), encoding="utf-8")
+
+    result_code = profile_cli._handle_hunt_bridge(args)
+    assert result_code == 0

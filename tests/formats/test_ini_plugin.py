@@ -9,6 +9,7 @@ import pytest
 from driftbuster.core.types import DetectionMatch
 from driftbuster.formats.format_registry import decode_text
 from driftbuster.formats.ini import IniPlugin
+import driftbuster.formats.ini.plugin as ini_plugin_module
 
 
 def _detect(
@@ -410,3 +411,96 @@ def test_ini_plugin_rejects_yaml_with_colons(ini_plugin: IniPlugin) -> None:
     )
 
     assert match is None
+
+
+def test_ini_plugin_returns_none_without_text(ini_plugin: IniPlugin) -> None:
+    assert ini_plugin.detect(Path("empty.ini"), b"", None) is None
+
+
+def test_ini_plugin_handles_duplicates_and_sensitive_keys(ini_plugin: IniPlugin) -> None:
+    content = dedent(
+        """
+        [General]
+        password = hunter2
+        client-secret = value1
+        client-secret = another
+        [general]
+        empty=
+        ;   
+        key=
+        inline = value ; comment
+        export FLAG=true
+        """
+    ).strip()
+
+    match = _detect(ini_plugin, "config.ini", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata["section_count"] == 1
+    hints = match.metadata.get("sensitive_key_hints", [])
+    assert any(hint["key"].lower() == "client-secret" for hint in hints)
+    comment_style = match.metadata["comment_style"]
+    assert comment_style["supports_inline_comments"] is True
+
+
+def test_ini_plugin_extension_hint_without_registered_extension(
+    ini_plugin: IniPlugin, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ini_plugin_module, "_INI_EXTENSIONS", {".cfg", ".conf"})
+    match = _detect(ini_plugin, "settings.ini", "key=value")
+    assert match is not None
+    assert any("suffix .ini" in reason for reason in match.reasons)
+
+
+def test_ini_plugin_returns_none_when_structure_weak(ini_plugin: IniPlugin) -> None:
+    content = "\n".join(["foo: bar", "alpha", "beta", "gamma", "delta"])
+    assert _detect(ini_plugin, "notes.txt", content) is None
+
+
+def test_ini_plugin_requires_multiple_signals(ini_plugin: IniPlugin) -> None:
+    content = "Include conf.d/*.conf\n"
+    assert _detect(ini_plugin, "rules.txt", content) is None
+
+
+def test_ini_plugin_confidence_boost_for_many_pairs(ini_plugin: IniPlugin) -> None:
+    lines = [f"key{i}=value{i}" for i in range(6)]
+    match = _detect(ini_plugin, "bulk.ini", "\n".join(lines))
+    assert match is not None
+    assert match.confidence >= 0.7
+
+
+def test_ini_plugin_detects_block_json_assignments(ini_plugin: IniPlugin) -> None:
+    content = dedent(
+        """
+        foo = value {
+        bar = 1
+        also = { "inner": true }
+        }
+        [Next]
+        setting=true
+        json = { "key": "value" }
+        """
+    ).strip()
+
+    match = _detect(ini_plugin, "hybrid.ini", content)
+    assert match is not None
+    assert match.metadata is not None
+    assert "section_count" in match.metadata
+
+
+def test_ini_plugin_handles_blank_comments_and_inline_markers(ini_plugin: IniPlugin) -> None:
+    content = dedent(
+        """
+        # comment
+           
+        key = value ; inline # extra
+        """
+    ).strip()
+
+    match = _detect(ini_plugin, "markers.ini", content)
+    assert match is not None
+    assert match.metadata is not None
+    comment_style = match.metadata["comment_style"]
+    assert set(comment_style["markers"]) == {";", "#"}
+    assert comment_style["supports_inline_comments"] is True

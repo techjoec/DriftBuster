@@ -31,6 +31,11 @@ def test_build_diff_plan_rejects_negative_context() -> None:
         build_diff_plan("before", "after", context_lines=-1)
 
 
+def test_build_diff_plan_requires_content_type() -> None:
+    with pytest.raises(ValueError):
+        build_diff_plan("before", "after", content_type="")
+
+
 def test_plan_to_kwargs_reflects_plan() -> None:
     plan = build_diff_plan("a", "b")
     payload = plan_to_kwargs(plan)

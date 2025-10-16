@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using DriftBuster.Backend;
@@ -138,5 +141,67 @@ public sealed class DriftbusterBackendTests
     {
         var profile = new RunProfileDefinition { Name = "" };
         await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.SaveProfileAsync(profile, baseDir: Path.GetTempPath()));
+    }
+
+    [Fact]
+    public void EnumerateFilesSafely_returns_nested_files()
+    {
+        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriftbusterTests", Guid.NewGuid().ToString("N")));
+        var nested = Directory.CreateDirectory(Path.Combine(root.FullName, "nested"));
+        var file = Path.Combine(nested.FullName, "entry.txt");
+        File.WriteAllText(file, "content");
+
+        try
+        {
+            var method = typeof(DriftbusterBackend).GetMethod("EnumerateFilesSafely", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(method);
+
+            var results = ((IEnumerable<string>)method!.Invoke(null, new object[] { root.FullName, CancellationToken.None })! ).ToArray();
+
+            Assert.Contains(file, results);
+        }
+        finally
+        {
+            if (Directory.Exists(root.FullName))
+            {
+                Directory.Delete(root.FullName, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ListProfilesAsync_ignores_invalid_entries()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), "DriftbusterTests", Guid.NewGuid().ToString("N"));
+        var profilesRoot = Path.Combine(baseDir, "Profiles");
+        Directory.CreateDirectory(profilesRoot);
+
+        var validDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Valid"));
+        var invalidDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Broken"));
+
+        var profileDefinition = new RunProfileDefinition
+        {
+            Name = "Valid Profile",
+            Sources = new[] { "config.json" },
+        };
+
+        var json = JsonSerializer.Serialize(profileDefinition, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(Path.Combine(validDir.FullName, "profile.json"), json);
+        File.WriteAllText(Path.Combine(invalidDir.FullName, "profile.json"), "{ invalid json");
+
+        try
+        {
+            var result = await _backend.ListProfilesAsync(baseDir);
+
+            Assert.Single(result.Profiles);
+            Assert.Equal("Valid Profile", result.Profiles[0].Name);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir))
+            {
+                Directory.Delete(baseDir, recursive: true);
+            }
+        }
     }
 }
