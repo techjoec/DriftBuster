@@ -23,7 +23,7 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 
 1. Port the Avalonia project, bridge module, and build props into the repo while preserving relative paths.
 2. Replace sample bridge handlers with real JSON responses wired to `Driftbuster.Backend` helpers.
-3. Document GUI launch instructions plus dependency checklist in the main README or companion doc.
+3. Document GUI launch instructions plus dependency checklist in the main README or companion doc. Include how registry scan outputs (`registry_scan.json`) appear alongside file-based results when present.
 4. Add UX polish: file pickers, status text, and richer result panels driven by the new JSON contract.
 5. Prepare Windows packaging guidance (`dotnet publish -r win-x64 -c Release /p:PublishSingleFile=true`) once features settle.
 6. Compiled bindings remain disabled (`AvaloniaUseCompiledBindingsByDefault=false`); add `x:DataType` hints later if we re-enable them.

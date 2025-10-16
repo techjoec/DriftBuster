@@ -13,6 +13,7 @@ from .format_registry import (
 from . import xml  # noqa: F401
 from . import json as _json_plugin  # noqa: F401
 from . import ini as _ini_plugin  # noqa: F401
+from . import registry_live as _registry_live  # noqa: F401
 
 __all__ = [
     "FormatPlugin",

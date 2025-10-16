@@ -35,7 +35,7 @@ import re
 from hashlib import sha256
 from pathlib import Path
 import shutil
-from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence, Tuple, Union
 import zipfile
 from glob import glob
 
@@ -424,10 +424,56 @@ class OfflineCollectionSource:
 
 
 @dataclass(frozen=True)
+class OfflineRegistryScanSource:
+    token: str
+    keywords: Tuple[str, ...] = ()
+    patterns: Tuple[str, ...] = ()
+    max_depth: int = 12
+    max_hits: int = 200
+    time_budget_s: float = 10.0
+    alias: str | None = None
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineRegistryScanSource":
+        spec = payload.get("registry_scan")
+        if not isinstance(spec, Mapping):
+            raise ValueError("registry_scan source requires an object payload")
+        token_raw = spec.get("token")
+        if not token_raw or not str(token_raw).strip():
+            raise ValueError("registry_scan requires non-empty 'token'.")
+        def _norm_seq(value: Any) -> Tuple[str, ...]:
+            if not value:
+                return ()
+            if isinstance(value, str):
+                return tuple(part for part in re.split(r"[\s,;]+", value) if part)
+            if isinstance(value, Sequence):
+                return tuple(str(x).strip() for x in value if str(x).strip())
+            return ()
+        alias = payload.get("alias")
+        if alias is not None and not str(alias).strip():
+            alias = None
+        return cls(
+            token=str(token_raw).strip(),
+            keywords=_norm_seq(spec.get("keywords")),
+            patterns=_norm_seq(spec.get("patterns")),
+            max_depth=int(spec.get("max_depth", 12)),
+            max_hits=int(spec.get("max_hits", 200)),
+            time_budget_s=float(spec.get("time_budget_s", 10.0)),
+            alias=str(alias) if alias else None,
+        )
+
+    def destination_name(self, *, fallback_index: int) -> str:
+        if self.alias:
+            return _safe_name(self.alias)
+        base = self.token if self.token else f"registry_{fallback_index:02d}"
+        return _safe_name(f"registry_{base}")
+
+
+@dataclass(frozen=True)
 class OfflineRunnerProfile:
     name: str
     description: str | None
-    sources: Sequence[OfflineCollectionSource]
+    sources: Sequence[Union[OfflineCollectionSource, OfflineRegistryScanSource]]
     baseline: str | None
     tags: Sequence[str]
     options: Mapping[str, Any]
@@ -446,16 +492,18 @@ class OfflineRunnerProfile:
         sources: list[OfflineCollectionSource] = []
         for entry in raw_sources:
             if isinstance(entry, Mapping):
-                sources.append(OfflineCollectionSource.from_dict(entry))
+                if "registry_scan" in entry:
+                    sources.append(OfflineRegistryScanSource.from_dict(entry))
+                else:
+                    sources.append(OfflineCollectionSource.from_dict(entry))
             else:
-                sources.append(
-                    OfflineCollectionSource.from_dict({"path": str(entry)})
-                )
+                sources.append(OfflineCollectionSource.from_dict({"path": str(entry)}))
 
         baseline = payload.get("baseline")
         if baseline is not None:
             baseline = str(baseline)
-            if baseline not in {source.path for source in sources}:
+            file_paths = {s.path for s in sources if isinstance(s, OfflineCollectionSource)}
+            if baseline not in file_paths:
                 raise ValueError(
                     "Profile baseline must reference one of the declared sources."
                 )
@@ -693,26 +741,104 @@ def execute_config(
         destination_root.mkdir(parents=True, exist_ok=True)
 
         matches: list[Path] = []
-        try:
-            for candidate in _iter_source_matches(source.path):
-                matches.append(candidate)
-        except FileNotFoundError:
-            if source.optional:
-                log(f"optional source skipped: {source.path}")
-                source_summaries.append(
-                    {
-                        "path": source.path,
-                        "alias": alias,
-                        "optional": True,
-                        "matched": [],
-                        "skipped": True,
-                        "reason": "missing",
-                        "exclude": list(source.exclude),
-                    }
-                )
+        if isinstance(source, OfflineCollectionSource):
+            try:
+                for candidate in _iter_source_matches(source.path):
+                    matches.append(candidate)
+            except FileNotFoundError:
+                if source.optional:
+                    log(f"optional source skipped: {source.path}")
+                    source_summaries.append(
+                        {
+                            "type": "file",
+                            "path": source.path,
+                            "alias": alias,
+                            "optional": True,
+                            "matched": [],
+                            "skipped": True,
+                            "reason": "missing",
+                            "exclude": list(source.exclude),
+                        }
+                    )
+                    continue
+                log(f"required source missing: {source.path}")
+                raise
+        else:
+            # Registry scan source
+            from .registry import (
+                is_windows,
+                enumerate_installed_apps,
+                find_app_registry_roots,
+                search_registry,
+                SearchSpec,
+            )
+            if not is_windows():
+                log("registry scan skipped: non-Windows platform")
+                summary = {
+                    "type": "registry_scan",
+                    "token": source.token,
+                    "keywords": list(source.keywords),
+                    "patterns": list(source.patterns),
+                    "skipped": True,
+                    "reason": "not-windows",
+                }
+                source_summaries.append(summary)
                 continue
-            log(f"required source missing: {source.path}")
-            raise
+            log(f"registry scan started for token: {source.token}")
+            apps = enumerate_installed_apps()
+            roots = find_app_registry_roots(source.token, installed=apps)
+            spec = SearchSpec(
+                keywords=tuple(source.keywords),
+                patterns=tuple(re.compile(p) for p in source.patterns),
+                max_depth=source.max_depth,
+                max_hits=source.max_hits,
+                time_budget_s=source.time_budget_s,
+            )
+            hits = search_registry(roots, spec)
+            # Persist results
+            result_path = destination_root / "registry_scan.json"
+            result_payload = {
+                "token": source.token,
+                "keywords": list(source.keywords),
+                "patterns": list(source.patterns),
+                "roots": [
+                    {"hive": h, "path": p, "view": v} for (h, p, v) in roots
+                ],
+                "hits": [
+                    {
+                        "hive": h.hive,
+                        "path": h.path,
+                        "value_name": h.value_name,
+                        "data_preview": h.data_preview,
+                        "reason": h.reason,
+                    }
+                    for h in hits
+                ],
+            }
+            result_path.write_text(json.dumps(result_payload, indent=2), encoding="utf-8")
+            files.append(
+                CollectedFile(
+                    alias=alias,
+                    source=f"registry:{source.token}",
+                    destination=result_path,
+                    relative_path=result_path.relative_to(destination_root),
+                    size=result_path.stat().st_size,
+                    sha256=_hash_file(result_path),
+                )
+            )
+            source_summaries.append(
+                {
+                    "type": "registry_scan",
+                    "token": source.token,
+                    "keywords": list(source.keywords),
+                    "patterns": list(source.patterns),
+                    "roots": [f"{h} \\ {p}" for (h, p, _v) in roots],
+                    "hits": len(hits),
+                    "output": result_path.as_posix(),
+                }
+            )
+            # Done with this source
+            continue
 
         collected: list[str] = []
         if not matches:
@@ -720,6 +846,7 @@ def execute_config(
                 log(f"optional source skipped: {source.path}")
                 source_summaries.append(
                     {
+                        "type": "file",
                         "path": source.path,
                         "alias": alias,
                         "optional": True,

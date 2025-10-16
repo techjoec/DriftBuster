@@ -211,7 +211,8 @@ grounded in reproducible fixtures.
   dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj
   python -m compileall src
   python -m pycodestyle src/driftbuster/core
-  python -m pycodestyle src/driftbuster/formats/registry.py
+  python -m pycodestyle src/driftbuster/formats/registry_live
+  python -m pycodestyle src/driftbuster/registry
   ```
 
 - `pytest` and `dotnet test` confirm behaviour across detector, plugins, hunt,
@@ -220,15 +221,18 @@ grounded in reproducible fixtures.
   `_validate_sample_size`) remain syntax safe across Python versions.
 - `python -m pycodestyle src/driftbuster/core` — spot-checks detector style
   before pushing shared guardrails wider.
-- `python -m pycodestyle src/driftbuster/formats/registry.py` — confirms
-  registry helpers follow the same conventions as the detector module.
+- `python -m pycodestyle src/driftbuster/formats/registry_live` — confirms the
+  registry-live plugin follows the same conventions as the detector module.
+- `python -m pycodestyle src/driftbuster/registry` — confirms runtime registry
+  helpers follow the same conventions.
 - Capture results in `notes/checklists/core-scan.md` along with fixture
   metadata so the troubleshooting table in `README.md` stays trustworthy.
 
 ### Deferred automation backlog
 
 - `mypy src/driftbuster/core` to lock down callback typing.
-- `mypy src/driftbuster/formats/registry.py` for registry type invariants.
+- `mypy src/driftbuster/formats/registry_live` for registry-live type invariants.
+- `mypy src/driftbuster/registry` for registry scan backend invariants.
 
 ## Open Items
 

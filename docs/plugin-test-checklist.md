@@ -35,8 +35,13 @@ Recommended test cases:
   - No unhandled exceptions for expected bad inputs.
 
 - Redaction (if applicable)
-  - Sensitive values detected by the plugin are represented with placeholders
-    (or integration tests verify redaction during reporting).
+- Sensitive values detected by the plugin are represented with placeholders
+  (or integration tests verify redaction during reporting).
+
+- Definition manifests (if applicable)
+  - For plugins that detect definition files (e.g., `registry-live`), include
+    tests that parse minimal JSON and heuristic YAML, validate extracted
+    metadata keys (token/keywords/patterns), and reject unrelated inputs.
 
 Test scaffolding tips:
 
@@ -55,4 +60,3 @@ Verification targets:
 - Negative tests are present (not just “happy path”).
 - Sampling limits are explicitly tested once.
 - At least one security/robustness test (malformed input) is included.
-

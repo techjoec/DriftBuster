@@ -37,6 +37,7 @@ class MetadataValidationError(ValueError):
 
 _CATALOG_FORMAT_IDS: Dict[str, str] = {
     "RegistryExport": "registry-export",
+    "RegistryLive": "registry-live",
     "StructuredConfigXml": "structured-config-xml",
     "XmlGeneric": "xml",
     "Json": "json",

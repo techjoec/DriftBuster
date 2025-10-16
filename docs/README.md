@@ -21,8 +21,11 @@ Docs are grouped so you can jump straight to the guide you need.
   data.
 - [`format-support.md`](format-support.md) — current formats, versions, and
   maturity status.
+- [`registry.md`](registry.md) — Windows Registry live scans (API, offline
+  runner, and GUI notes).
 - [`hunt-mode.md`](hunt-mode.md) — dynamic value detection workflow.
 - [`multi-server-demo.md`](multi-server-demo.md) — sample workflow scanning 10 servers with drift and generating a report.
+- [`release-notes.md`](release-notes.md) — how to write per-release notes and component changelogs; see `CHANGELOG.md` and `notes/releases/`.
 - [`day0-baseline.md`](day0-baseline.md) — build a Day 0 baseline across many servers.
 - [`format-playbook.md`](format-playbook.md) — steps for shipping new format
   detectors.

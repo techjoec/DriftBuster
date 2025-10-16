@@ -16,7 +16,8 @@ log the run.
 ```text
 compileall: python -m compileall src
 pycodestyle(core): python -m pycodestyle src/driftbuster/core
-pycodestyle(registry): python -m pycodestyle src/driftbuster/formats/registry.py
+pycodestyle(formats/registry_live): python -m pycodestyle src/driftbuster/formats/registry_live
+pycodestyle(registry helpers): python -m pycodestyle src/driftbuster/registry
 ```
 
 Check off each line once you've read the output and confirmed no surprises.

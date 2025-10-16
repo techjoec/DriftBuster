@@ -1,4 +1,3 @@
-# DriftBuster JSON Format Changelog
+## 0.0.2
+- JSON: generic + `jsonc` (comments) + `structured-settings-json` variant.
 
-## 0.0.0
-- Bootstrap entry (no changes tracked yet).

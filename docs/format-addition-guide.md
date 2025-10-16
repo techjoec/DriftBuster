@@ -6,13 +6,14 @@ checklist whenever you introduce a new format or refresh an existing one.
 
 ## 1. Inventory Snapshot
 
-Current registry order (`driftbuster.formats.registry_summary()`):
+Current registry order example (`driftbuster.formats.registry_summary()`; actual order may change as plugins evolve):
 
 | Order | Plugin | Module | Priority | Version |
 |-------|--------|--------|----------|---------|
-| 0 | `xml` | `driftbuster.formats.xml.plugin.XmlPlugin` | 100 | 0.0.4 |
-| 1 | `json` | `driftbuster.formats.json.JsonPlugin` | 200 | 0.0.1 |
+| 0 | `registry-live` | `driftbuster.formats.registry_live.plugin.RegistryLivePlugin` | 30 | 0.0.1 |
+| 1 | `xml` | `driftbuster.formats.xml.plugin.XmlPlugin` | 100 | 0.0.4 |
 | 2 | `ini` | `driftbuster.formats.ini.IniPlugin` | 170 | 0.0.1 |
+| 3 | `json` | `driftbuster.formats.json.plugin.JsonPlugin` | 200 | 0.0.1 |
 
 Use the same structure for new plugins so the registry report stays predictable.
 When you update or add a plugin, bump only its entry in `versions.json` and run
@@ -44,7 +45,7 @@ src/driftbuster/formats/
 * `__init__.py` should import and re-export the plugin class (`from .plugin
   import <PluginClass>`).
 * `plugin.py` must expose a dataclass (or simple class) implementing the
-  `FormatPlugin` protocol defined in `src/driftbuster/formats/registry.py`.
+  `FormatPlugin` protocol defined in `src/driftbuster/formats/format_registry.py`.
 * Keep module-level helpers private to the format package. Shared helpers belong
   in `registry.py` so other detectors can reuse them.
 
@@ -98,6 +99,8 @@ existing style.
    dedicated appendix if the heuristics introduce new manual review steps.
 3. Refresh `notes/checklists/` entries referenced by the playbook (registry
    snapshot, manual diff log, hunt review) after running the detector locally.
+4. If the detector introduces a definition format (e.g., registry live scan
+   manifests), update `docs/registry.md` with usage guidance.
 
 ## 7. Validation Checklist
 

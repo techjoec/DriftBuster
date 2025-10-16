@@ -4,6 +4,10 @@ DriftBuster inspects configuration trees, recognises familiar formats, and
 describes the differences so you can rein in infrastructure drift before it
 becomes an outage.
 
+Note: The primary experience is a .NET 8 Windows GUI backed by a shared
+backend. The Python engine provides the detection core, offline runner, and
+developer tooling used by the GUI and PowerShell module.
+
 ## Highlights
 
 - **Precise format detection** – pluggable analyzers use bounded sampling to
@@ -16,6 +20,8 @@ becomes an outage.
   JSON/text/HTML ready for hand-off or automation, with optional redaction.
 - **Cross-platform UI** – the Avalonia desktop front-end ships alongside the
   Python engine for quick triage and demo flows.
+ - **Windows Registry live scans** – enumerate apps, suggest likely registry
+   roots, and search values by keyword/regex (see `docs/registry.md`).
 
 ## Requirements
 
@@ -105,6 +111,7 @@ Check `docs/` for deeper dives:
 - `docs/day0-baseline.md` – create a Day 0 baseline across many servers without an existing reference.
 - `docs/DEMO.md` – GUI walkthrough using the bundled demo data.
 - `docs/versioning.md` – component version workflow and sync tooling.
+- `docs/registry.md` – Windows Registry live scan overview and API usage.
 
 ## Running Tests
 

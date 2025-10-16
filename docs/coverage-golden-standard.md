@@ -105,5 +105,19 @@ metadata path covered:
 | XML | MSBuild surfaces | `test_xml_plugin_supports_targets_extension`, `test_xml_plugin_detects_msbuild_props_variant`, `test_xml_plugin_detects_msbuild_project_metadata` |
 | XML | Generic fallback & rejection | `test_xml_plugin_detects_generic_xml_variant`, `test_xml_plugin_rejects_plain_text` |
 
+## Registry Live Coverage Baseline
+- **Format:** `registry-live` detects JSON/YAML manifests with a top-level
+  `registry_scan` object describing a Windows Registry hunt (token, keywords,
+  patterns, limits).
+- **Tests:** `tests/formats/test_registry_live_plugin.py` must cover JSON and
+  YAML matches, metadata extraction, and negative cases.
+- **Docs:** `docs/detection-types.md` and `docs/format-support.md` include the
+  catalog entry; `docs/registry.md` documents API and offline runner usage.
+
+### Test Coverage Map (extended)
+| Surface | Variant / Feature | Test Function |
+|---------|-------------------|---------------|
+| Registry | Live scan definition | `test_detects_json_manifest_with_metadata`, `test_detects_yaml_manifest_heuristically` |
+
 When you add a new variant or metadata field, extend this table and introduce a
 matching test so the map remains exhaustive.

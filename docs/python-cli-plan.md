@@ -3,6 +3,8 @@
 > **Note:** The Windows-first pivot moves CLI work to the PowerShell module
 > backed by the shared .NET backend. This document remains for historical
 > context while the Python CLI stays on hold.
+> Registry scans are handled by the offline runner and optional Python helper
+> (`driftbuster.registry_cli`) rather than the main CLI.
 
 Purpose: Outline how a future Python entry point would wrap the detector once
 core stabilization (A1–A3) finishes.
@@ -45,6 +47,7 @@ core stabilization (A1–A3) finishes.
 | `--plugins module:Class,...` | Optional plugin override list for power users |
 | `--hunt` | Enable hunt mode using default rules (writes to STDOUT/JSON) |
 | `--hunt-rule PATH` | Load additional hunt rule definitions (TOML/JSON) |
+| `--registry` | (Out of scope) Prefer the offline runner or `registry_cli` for live registry hunts |
 
 ## Packaging Checklist
 

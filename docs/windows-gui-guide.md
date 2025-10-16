@@ -21,6 +21,8 @@ This guide explains the capabilities, layout, and operational details of the Ava
 4. A red/black “DrB DriftBuster” window appears with Diff view selected by default.
 5. Demo data is bundled with the app under a `Samples/` directory in the output folder.
    See `docs/DEMO.md` for a guided walkthrough using these files.
+6. Registry scan results collected by the offline runner (JSON under `data/<alias>/registry_scan.json`)
+   are displayed alongside file-based findings when present.
 
 ## 4. Layout Walkthrough
 - **Header strip:** DrB badge, title, Diff/Hunt navigation buttons, and a “Ping Core” shortcut.

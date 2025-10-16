@@ -106,6 +106,33 @@ DETECTION_CATALOG = DetectionCatalog(
             ),
         ),
         FormatClass(
+            name="RegistryLive",
+            priority=15,
+            extensions=(".json", ".yml", ".yaml"),
+            filename_patterns=(
+                "(?i)^.*\\.(regscan\\.json|registry\\.json)$",
+                "(?i)^(registry|reg).*\\.(json|ya?ml)$",
+            ),
+            content_signatures=(
+                ContentSignature(
+                    type="contains_regex",
+                    pattern='\"registry_scan\"\s*:\\s*\{',
+                    optional=True,
+                ),
+                ContentSignature(
+                    type="contains_regex",
+                    pattern="^\\s*registry_scan\\s*:\\s*$",
+                    multiline=True,
+                    optional=True,
+                ),
+            ),
+            mime_hints=("application/json", "text/yaml", "text/plain"),
+            examples=(
+                '{"registry_scan": {"token": "Vendor App", "keywords": ["server"]}}',
+                'registry_scan:\n  token: Vendor App\n  keywords: [server]',
+            ),
+        ),
+        FormatClass(
             name="StructuredConfigXml",
             priority=20,
             extensions=(".config",),
@@ -679,7 +706,7 @@ FORMAT_SURVEY = FormatSurvey(
     meta=SurveyMeta(
         primary_key="format",
         secondary_key="variant",
-        total_formats=17,
+        total_formats=18,
         usage_sum_percent=100,
         notes=(
             "Usage shares are approximate and rounded to 0.5%.",

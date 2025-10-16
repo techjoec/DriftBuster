@@ -39,4 +39,6 @@ Tips
 - The sample content is neutral and safe for demos (corp.local/example paths).
 - Use the file pickers’ last-used directory to move quickly between servers.
 - For reporting, use the CLI helpers to render HTML/JSON outside the GUI.
-
+ - Registry: If you collect registry scans with the offline runner (Windows),
+   the GUI will list them alongside file-based findings when you open the
+   packaged results.

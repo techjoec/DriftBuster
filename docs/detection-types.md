@@ -15,6 +15,7 @@ For the definitive detector expectations, refer to
 | Priority | Class Name              | Catalog Format        | Primary Variant                | Key Extensions                     | Usage % | Detection Cues                |
 |----------|------------------------|-----------------------|--------------------------------|------------------------------------|---------|-------------------------------|
 | 10       | RegistryExport         | registry-export       | —                              | `.reg`                             | 10      | signature + prefix            |
+| 15       | RegistryLive           | registry-live         | scan-definition                | `.json`, `.yml`, `.yaml`           | —       | `registry_scan` manifest key  |
 | 20       | StructuredConfigXml    | structured-config-xml | web/app/machine + transforms   | `.config`                          | 12      | filename + section hints      |
 | 30       | XmlGeneric             | xml                   | namespace-driven               | `.xml`, `.manifest`, `.resx`, `.xaml` | 14      | namespace + root metadata     |
 | 40       | Json                   | json                  | generic                 | `.json`, `.jsonc`                  | 22      | bracket balance + parse       |
@@ -59,9 +60,9 @@ core and XML work stabilise. They are not yet represented in
 | markdown-config        | embedded-yaml-frontmatter   | `.md`          | 0.5     | YAML front matter           |
 | property-list          | xml-or-binary               | `.plist`       | 0.5     | header magic + XML decl     |
 
-> Meta note: the survey reports `total_formats = 17`, but the `formats` array
-> currently enumerates 16 entries. Keep that discrepancy in mind if the data
-> source refreshes.
+> Note: The active catalog now includes `registry-live` definition files in
+> addition to the original survey families. The survey totals may lag until the
+> next refresh.
 
 `env-file` and `ini-json-hybrid` graduated from this backlog and are now
 surfaced by the INI plugin as dedicated variants alongside the classic

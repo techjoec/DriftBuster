@@ -7,6 +7,7 @@ The backlog remains on HOLD, but we now have a ready-to-run outline covering heu
 | Priority | Format focus | Key rationale | Readiness notes |
 | --- | --- | --- | --- |
 | 1 | XML family | Lock reliable `.config` and schema-backed parsing before downstream adapters inherit inconsistent metadata. | Schema provenance metadata and attribute-aligned hunt tokens shipped; diff tooling remains future follow-up. |
+| 1a | Registry live definitions | Prefer live Windows Registry hunts via definition files to `.reg` exports for GUI-first workflows. | `registry-live` plugin + offline runner integration landed; exports remain optional for later. |
 | 2 | JSON | Harden parsing across `json`, `jsonc`, and structured settings JSON (`appsettings.json`) to stabilise variant tagging for reports. | Needs large-sample validation against new sampling guardrails. |
 | 3 | INI lineage | Unify INI, key/value properties, directive conf, and dotenv handling to prevent duplicate catalog entries. | Requires remediation guidance, secret detection hints, and encoding audit. |
 | 4 | Structured text | Deliver YAML/TOML detectors with tiered confidence to bridge structured/unstructured coverage. | Must define indentation tolerance policy before surfacing matches. |

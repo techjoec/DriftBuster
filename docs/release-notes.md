@@ -49,6 +49,11 @@ packaging script enforces these guards automatically.
 Each file uses the heading pattern `## <version>` followed by bullets. Use one
 file per formatter, keeping names lowercase/kebab-case (e.g. `json.md`).
 
+## Top-Level Changelog
+
+- A repository-wide `CHANGELOG.md` summarizes notable changes by version. Keep
+  it concise and link to component changelogs for details.
+
 ## Version Matrix
 
 Track package versions in `versions.json` so downstream packaging scripts stay in

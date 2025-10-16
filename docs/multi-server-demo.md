@@ -15,11 +15,14 @@ Goals
 - Highlight dynamic values with hunt rules (hostnames, versions, paths).
 - Produce an HTML report for sharing in demos.
 
-Step 1 — Detect formats
+Step 1 — Detect formats (and optional registry definitions)
 - Table output (all servers):
   - `python -m driftbuster.cli samples/multi-server`
 - JSON (for programmatic inspection):
   - `python -m driftbuster.cli samples/multi-server --json`
+- If you include a small `registry_scan` manifest under `samples/multi-server`,
+  the detector will classify it as `registry-live` so the GUI can surface it;
+  use the offline runner on Windows to execute those scans.
 
 Step 2 — Hunt for dynamic values
 - Use the built-in rules (server names, versions, install paths):
@@ -44,4 +47,3 @@ Tips
 - Change the baseline: `--baseline server05`.
 - Limit diff scope by editing the script to include other files (e.g., `.config`).
 - Redaction: pass `mask_tokens` to `render_html_report` if adding sensitive tokens.
-
