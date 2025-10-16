@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:DriftBuster.Gui.ViewModels"
+        xmlns:conv="using:DriftBuster.Gui.Converters"
         xmlns:anim="using:Avalonia.Animation"
         x:Class="DriftBuster.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -13,7 +14,7 @@
 
   <Grid RowDefinitions="Auto,*">
     <Border Padding="24,22" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.BorderStrong}">
-      <Grid ColumnDefinitions="Auto,*">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
         <Border Width="52"
                 Height="52"
                 CornerRadius="26"
@@ -34,6 +35,23 @@
           <TextBlock Classes="subtitle"
                      Text="Configuration reconnaissance, diff planning &amp; hunt insights"
                      FontSize="14" />
+        </StackPanel>
+
+        <!-- Backend status -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Border Width="10" Height="10" CornerRadius="5"
+                  Background="{Binding IsBackendHealthy, Converter={x:Static conv:BoolToBrushConverter.Instance}, ConverterParameter='#21C55D;#EF4444'}">
+            <ToolTip.Tip>
+              <TextBlock Text="{Binding BackendStatusText}" />
+            </ToolTip.Tip>
+          </Border>
+          <Button Classes="outline" Content="Check core" Command="{Binding CheckHealthCommand}" />
+        </StackPanel>
+
+        <!-- Theme toggle -->
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="Theme" Classes="subtitle" VerticalAlignment="Center" />
+          <ToggleSwitch IsCheckedChanged="OnThemeToggled" />
         </StackPanel>
       </Grid>
     </Border>
@@ -66,10 +84,12 @@
                      Foreground="{DynamicResource Brush.TextSecondary}" />
           <Button Grid.Column="5"
                   Margin="12,0,0,0"
+                  Classes="outline"
                   Content="Ping core"
+                  ToolTip.Tip="Send ping and show reply in Hunt"
                   Command="{Binding PingCoreCommand}" />
-        </Grid>
-      </Border>
+      </Grid>
+    </Border>
 
       <Border Grid.Row="1"
               Classes="dashboard-card"

@@ -16,6 +16,7 @@ by Added, Changed, Fixed, and Docs.
 
 ### Changed
 - Catalog includes `RegistryLive` class; validation maps `registry-live`.
+ - GUI: Sharper theme palette, accent/outline button variants, larger defaults (buttons/inputs), refined card/table styling, backend health indicator, and header theme toggle.
 
 ### Fixed
 - Test import collision for the `scripts` package during collection.
@@ -23,6 +24,7 @@ by Added, Changed, Fixed, and Docs.
 ### Docs
 - Comprehensive registry docs: API, offline runner, and GUI notes.
 - Updated detection types and format support matrices to include registry-live.
+ - Updated GUI guide/notes and README to cover theme toggle, health indicator, button variants, and table/settings refinements.
 
 ## [0.0.2] - 2025-10-16
 

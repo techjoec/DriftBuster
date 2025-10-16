@@ -77,6 +77,11 @@ dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj
 The GUI uses the shared .NET backend library to show hunts, diffs, and profile
 mismatches interactively.
 
+Tips:
+- Use the header theme toggle to switch Dark/Light.
+- Click “Check core” to verify backend health (status dot shows green/red).
+- Primary actions are accent-filled; secondary are outline for quick scanning.
+
 ### Windows PowerShell module
 
 ```powershell

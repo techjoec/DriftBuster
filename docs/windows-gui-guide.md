@@ -18,16 +18,16 @@ This guide explains the capabilities, layout, and operational details of the Ava
 1. Ensure prerequisites are installed (`dotnet --list-sdks`, `python --version`).
 2. Restore + build: `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` then `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-4. A red/black “DrB DriftBuster” window appears with Diff view selected by default.
+4. The “DrB DriftBuster” window opens with Diff view selected by default. The header includes a backend health dot (green/red), a “Check core” action, and a theme toggle (Dark/Light).
 5. Demo data is bundled with the app under a `Samples/` directory in the output folder.
    See `docs/DEMO.md` for a guided walkthrough using these files.
 6. Registry scan results collected by the offline runner (JSON under `data/<alias>/registry_scan.json`)
    are displayed alongside file-based findings when present.
 
 ## 4. Layout Walkthrough
-- **Header strip:** DrB badge, title, Diff/Hunt navigation buttons, and a “Ping Core” shortcut.
-- **Diff view:** Focused on building diff plans from two files. Includes file pickers, validation, results table, raw JSON expander, and a copy-to-clipboard control.
-- **Hunt view:** Targets directories/files, runs the hunt pipeline, and displays results in a sortable grid with rule metadata, counts, and status messaging.
+- **Header strip:** DrB badge, title, Diff/Hunt/Profile navigation, backend health indicator + “Check core”, theme toggle (Dark/Light), and a “Ping core” shortcut.
+- **Diff view:** Build diff plans from multiple snapshots. Primary action uses accent fill; secondary actions use outline style. Includes validation, plan/metadata cards, raw JSON expander, and copy control.
+- **Hunt view:** Targets directories/files, runs the hunt pipeline, and displays results as cards with rule metadata, counts, and status messaging.
 
 ## 5. Diff Planner Details
 ### Inputs & Validation
@@ -39,8 +39,8 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Clicking **Build Plan** triggers an async request to the backend.
 - While running, a progress bar animates and the button remains disabled.
 - On success:
-  - **Plan table** lists before/after snapshots, content type, labels, masks, and context lines.
-  - **Metadata table** reflects resolved paths and diff settings.
+  - **Plan cards** list before/after snapshots, content type, labels, masks, and context lines.
+  - **Metadata cards** reflect resolved paths and diff settings.
   - **Raw JSON** expander contains the untouched backend payload.
   - **Copy raw JSON** copies the payload for downstream tooling or manual inspection.
 - Errors (e.g., missing files, permission issues) bubble into the red message banner.
@@ -54,12 +54,8 @@ This guide explains the capabilities, layout, and operational details of the Ava
 ### Execution & Results
 - A progress bar appears during scans; results persist until the next run.
 - **Status banner** reports success (hit count) or “No matches found”.
-- **Hits table** columns:
-  - Rule name & description
-  - Token (if supplied by the rule; `—` otherwise)
-  - Relative path and full path
-  - Line number and trimmed excerpt
-- Rows are sortable by clicking column headers; hover tooltips provide full text when truncated.
+- **Findings** are shown as cards that surface rule name/description, token badges, path, line number, and a trimmed excerpt.
+- Hover tooltips provide full text when truncated.
 - Raw JSON is available in the expander for exporting or analysis.
 
 ## 7. Backend Bridge
@@ -85,8 +81,8 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - `HeadlessFixture` calls `Program.EnsureHeadless(...)`, which guards against duplicate `AppBuilder.Setup` calls in repeated test execution.
 - Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
 - Full coverage expectations:
-  - Debug: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
-  - Release: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`
+  - Debug: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
+  - Release: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
   - XAML compilation gate: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:EnableAvaloniaXamlCompilation=true`
 - Diagnostic harness: set `AVALONIA_INSPECT=1` and run `--filter FullyQualifiedName=DriftBuster.Gui.Tests.Ui.AvaloniaSetupInspection.LogSetupState` to capture resource/style registration in `artifacts/codexcli-inspect.log`.
 

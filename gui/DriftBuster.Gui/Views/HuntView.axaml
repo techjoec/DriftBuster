@@ -20,7 +20,7 @@
                 <TextBox Width="420"
                          Watermark="Directory or file"
                          Text="{Binding DirectoryPath, Mode=TwoWay}" />
-                <Button Content="Browse" Click="OnBrowseDirectory" />
+                <Button Content="Browse" Classes="outline" Click="OnBrowseDirectory" />
               </StackPanel>
               <TextBlock Text="{Binding DirectoryError}"
                          Foreground="{DynamicResource Brush.Accent}"
@@ -35,7 +35,7 @@
                        Text="{Binding Pattern, Mode=TwoWay}" />
             </StackPanel>
 
-            <Button Grid.Column="1"
+            <Button Grid.Column="1" Classes="primary"
                     Grid.RowSpan="2"
                     Content="Scan"
                     Command="{Binding RunHuntCommand}"
@@ -64,8 +64,7 @@
                        Classes="subtitle"
                        IsVisible="{Binding HasStatus}" />
             <Border Background="{DynamicResource Brush.SurfaceMuted}"
-                    CornerRadius="{DynamicResource Radius.Small}"
-                    Padding="10,4"
+                    Classes="chip"
                     IsVisible="{Binding HasHits}">
               <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                 <TextBlock Text="Hits" FontWeight="SemiBold" />

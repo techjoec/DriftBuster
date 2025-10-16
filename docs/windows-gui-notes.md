@@ -4,10 +4,10 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 
 ## Current Base Assets (2025-10 audit)
 
-- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net8.0` with Avalonia 11.2.0, serving a red/black window that swaps Diff/Hunt panes via `CurrentView` bindings.
+- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net8.0` with Avalonia 11.2.0. The header includes a backend health indicator and a theme toggle; views swap via `CurrentView` bindings.
 - **Backend library**: `gui/DriftBuster.Backend` hosts shared diff, hunt, and run-profile helpers consumed by both the GUI and the PowerShell module.
 - **Execution contract**: Operations run on background tasks, returning the same JSON payloads previously emitted by the Python helper so the UI bindings stay untouched.
-- **UI snapshot**: Diff view now validates both file pickers, renders plan/metadata tables, and offers a one-click raw JSON copy. Hunt view adds directory picker, status messaging, and a sortable grid of hits with rule metadata.
+- **UI snapshot**: Diff view validates inputs, renders plan/metadata cards, and offers a copy-raw-JSON action. Hunt view adds directory picker, status messaging, and card-like findings with token badges.
 - **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists using the built-in rule set.
 - **Assets**: `Directory.Build.props` centralises net8.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
 
@@ -24,7 +24,7 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 1. Port the Avalonia project, bridge module, and build props into the repo while preserving relative paths.
 2. Replace sample bridge handlers with real JSON responses wired to `Driftbuster.Backend` helpers.
 3. Document GUI launch instructions plus dependency checklist in the main README or companion doc. Include how registry scan outputs (`registry_scan.json`) appear alongside file-based results when present.
-4. Add UX polish: file pickers, status text, and richer result panels driven by the new JSON contract.
+4. Add UX polish: accent/outline button variants, larger hit targets, table/card refinements, backend status dot, and theme switching.
 5. Prepare Windows packaging guidance (`dotnet publish -r win-x64 -c Release /p:PublishSingleFile=true`) once features settle.
 6. Compiled bindings remain disabled (`AvaloniaUseCompiledBindingsByDefault=false`); add `x:DataType` hints later if we re-enable them.
 

@@ -28,9 +28,16 @@ namespace DriftBuster.Gui.ViewModels
         private MainViewSection _activeView;
 
         public IAsyncRelayCommand PingCoreCommand { get; }
+        public IAsyncRelayCommand CheckHealthCommand { get; }
         public IRelayCommand ShowDiffCommand { get; }
         public IRelayCommand ShowHuntCommand { get; }
         public IRelayCommand ShowProfilesCommand { get; }
+
+        [ObservableProperty]
+        private bool _isBackendHealthy;
+
+        [ObservableProperty]
+        private string _backendStatusText = "Checking…";
 
         public MainWindowViewModel()
             : this(new DriftbusterService())
@@ -49,10 +56,12 @@ namespace DriftBuster.Gui.ViewModels
             _profilesViewFactory = profilesViewFactory ?? CreateProfilesView;
 
             PingCoreCommand = new AsyncRelayCommand(PingCoreAsync);
+            CheckHealthCommand = new AsyncRelayCommand(CheckHealthAsync);
             ShowDiffCommand = new RelayCommand(ShowDiff);
             ShowHuntCommand = new RelayCommand(() => ShowHunt());
             ShowProfilesCommand = new RelayCommand(ShowProfiles);
             ShowDiff();
+            _ = CheckHealthCommand.ExecuteAsync(null);
         }
 
         public bool IsDiffSelected => ActiveView == MainViewSection.Diff;
@@ -89,6 +98,21 @@ namespace DriftBuster.Gui.ViewModels
             catch (Exception ex)
             {
                 ShowHunt($"Ping failed: {ex.Message}");
+            }
+        }
+
+        private async Task CheckHealthAsync()
+        {
+            try
+            {
+                var response = await _service.PingAsync();
+                IsBackendHealthy = true;
+                BackendStatusText = $"Core OK: {response}";
+            }
+            catch (Exception ex)
+            {
+                IsBackendHealthy = false;
+                BackendStatusText = $"Core unavailable: {ex.Message}";
             }
         }
 
