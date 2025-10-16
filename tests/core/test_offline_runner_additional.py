@@ -44,6 +44,7 @@ def _create_text_file(path: Path, content: str) -> None:
 def test_compile_ruleset_from_mapping_handles_invalid_entries() -> None:
     assert _compile_ruleset_from_mapping("not-a-mapping") is None
     assert _compile_ruleset_from_mapping({"rules": "not-sequence"}) is None
+    assert _compile_ruleset_from_mapping({"rules": 123}) is None
 
     payload = {
         "rules": [
@@ -349,6 +350,9 @@ def test_offline_runner_config_metadata_validation() -> None:
     with pytest.raises(ValueError):
         OfflineRunnerConfig.from_dict(payload)
 
+    with pytest.raises(ValueError):
+        OfflineRunnerConfig.from_dict({})
+
     with pytest.raises(TypeError):
         OfflineRunnerConfig.from_dict("invalid")  # type: ignore[arg-type]
 
@@ -450,7 +454,7 @@ def test_execute_config_handles_resolve_failure(monkeypatch: pytest.MonkeyPatch,
     original_resolve = Path.resolve
 
     def fake_resolve(self: Path) -> Path:
-        if self == nested:
+        if self in {nested, source_dir}:
             raise FileNotFoundError("gone")
         return original_resolve(self)
 
@@ -470,6 +474,19 @@ def test_execute_config_respects_max_total_bytes(tmp_path: Path) -> None:
     _create_text_file(file_path, "content")
 
     profile = {"name": "limit", "sources": [str(file_path)]}
+    settings = {"output_directory": str(tmp_path / "out"), "max_total_bytes": 1}
+    config = _build_config(tmp_path, profile=profile, runner=settings)
+
+    with pytest.raises(ValueError):
+        offline_runner.execute_config(config, base_dir=tmp_path)
+
+
+def test_execute_config_directory_respects_max_total_bytes(tmp_path: Path) -> None:
+    directory = tmp_path / "payload"
+    directory.mkdir()
+    _create_text_file(directory / "data.txt", "content")
+
+    profile = {"name": "limit-dir", "sources": [str(directory)]}
     settings = {"output_directory": str(tmp_path / "out"), "max_total_bytes": 1}
     config = _build_config(tmp_path, profile=profile, runner=settings)
 

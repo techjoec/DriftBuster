@@ -55,6 +55,9 @@ def test_looks_text_and_decode_text() -> None:
     assert registry.looks_text(b"Plain ASCII text")
     assert not registry.looks_text(b"\x00\xff\x10\x80")
 
+    mirrored = b"\x00A\x00B\x00C\x00D"
+    assert registry.looks_text(mirrored)
+
     assert registry._ascii_ratio(b"") == 1.0
 
     utf16 = codecs.BOM_UTF16_LE + "value".encode("utf-16-le")
@@ -96,3 +99,21 @@ def test_decode_text_fallback_to_latin1() -> None:
     text, encoding = registry.decode_text(binary)
     assert encoding == "latin-1"
     assert len(text) == 256
+
+
+def test_decode_text_prefers_utf8_sig_and_fallback_replace() -> None:
+    utf8_sample = codecs.BOM_UTF8 + "value".encode("utf-8")
+    text, encoding = registry.decode_text(utf8_sample)
+    assert text == "value"
+    assert encoding == "utf-8-sig"
+
+    class FussyBytes(bytes):
+        def decode(self, encoding: str, errors: str | None = None) -> str:
+            if errors == "replace":
+                return "fallback"
+            raise UnicodeDecodeError(encoding, b"", 0, 1, "fail")
+
+    sample = FussyBytes(b"\xff\xfe")
+    text, encoding = registry.decode_text(sample)
+    assert text == "fallback"
+    assert encoding == "latin-1"

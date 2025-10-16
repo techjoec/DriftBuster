@@ -161,6 +161,32 @@ def test_scan_path_handles_errors(tmp_path: Path, monkeypatch) -> None:
     assert calls and calls[-1] == root
 
 
+def test_scan_path_swallows_os_error_when_handler_returns(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+
+    detector = Detector()
+    captured: list[tuple[Path, Exception, OSError]] = []
+
+    def swallow(path: Path, error: DetectorIOError, *, cause: OSError | None = None) -> None:
+        captured.append((path, error, cause if cause is not None else OSError("missing")))
+
+    monkeypatch.setattr(detector, "_handle_error", swallow)
+
+    original_is_file = Path.is_file
+
+    def flaky_is_file(self: Path) -> bool:
+        if self == root:
+            raise OSError("blocked")
+        return original_is_file(self)
+
+    monkeypatch.setattr(Path, "is_file", flaky_is_file)
+
+    result = detector.scan_path(root)
+
+    assert result == []
+    assert captured and isinstance(captured[0][1], DetectorIOError)
+
 def test_scan_with_profiles_requires_store(tmp_path: Path) -> None:
     detector = Detector()
     with pytest.raises(ValueError):

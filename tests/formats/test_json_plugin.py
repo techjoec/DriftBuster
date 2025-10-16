@@ -130,3 +130,20 @@ def test_json_plugin_internal_helpers() -> None:
 
     assert plugin._has_key_value_marker('{"text": "escaped \\"quote\\""}') is True
     assert plugin._has_key_value_marker('[]') is False
+
+
+def test_json_plugin_key_marker_handles_nested_objects() -> None:
+    plugin = JsonPlugin()
+    payload = '{"outer": {"inner": "quoted \\"value\\""}}'
+    assert plugin._has_key_value_marker(payload) is True
+
+
+def test_json_plugin_key_marker_handles_escape_without_objects() -> None:
+    plugin = JsonPlugin()
+    payload = '"escaped \\"quote\\" string"'
+    assert plugin._has_key_value_marker(payload) is False
+
+
+def test_json_plugin_key_marker_tracks_closing_braces() -> None:
+    plugin = JsonPlugin()
+    assert plugin._has_key_value_marker("{{}}") is False

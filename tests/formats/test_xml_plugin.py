@@ -681,3 +681,117 @@ def test_xml_plugin_fallback_parser_without_defused(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(xml_plugin_module.ET, "fromstring", fake_fromstring)
     plugin._collect_metadata("<root />", extension=".xml")
     assert calls.get("parser") is not None
+
+
+def test_xml_plugin_detects_config_when_regex_misses_root() -> None:
+    content = """
+    <?xml version='1.0'?>
+    <configuration/>
+    """.strip()
+    plugin = XmlPlugin()
+    match = plugin.detect(Path("custom.config"), content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.format_name == "structured-config-xml"
+    assert match.variant == "web-or-app-config"
+    assert any("framework configuration layout" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_manifest_namespace_without_extension() -> None:
+    content = """
+    <asm:assembly xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:asm="urn:custom">
+      <assemblyIdentity name="Prefixed" version="1.0.0.0" />
+    </asm:assembly>
+    """.strip()
+    plugin = XmlPlugin()
+    match = plugin.detect(Path("assembly.xml"), content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.variant == "app-manifest-xml"
+    assert any("assembly manifest namespace" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_manifest_by_content_scan() -> None:
+    content = """
+    <root>
+      urn:schemas-microsoft-com:asm.v1
+    </root>
+    """.strip()
+    plugin = XmlPlugin()
+    match = plugin.detect(Path("manifest.txt"), content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.variant == "app-manifest-xml"
+    assert any("assembly manifest namespace" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_resx_by_content_scan() -> None:
+    content = """
+    <root>
+      http://schemas.microsoft.com/VisualStudio/2005/ResXSchema
+    </root>
+    """.strip()
+    plugin = XmlPlugin()
+    match = plugin.detect(Path("resources.txt"), content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.variant == "resource-xml"
+    assert any("resx schema" in reason.lower() for reason in match.reasons)
+
+
+def test_xml_plugin_detects_xaml_namespace_by_content() -> None:
+    content = """
+    <root>
+      http://schemas.microsoft.com/winfx/2006/xaml/presentation
+    </root>
+    """.strip()
+    plugin = XmlPlugin()
+    match = plugin.detect(Path("view.txt"), content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.variant == "interface-xml"
+    assert any("xaml" in reason.lower() for reason in match.reasons)
+
+
+def test_xml_plugin_records_xml_declaration_details() -> None:
+    content = """
+    <?xml version="1.1" encoding="UTF-16" standalone="no"?>
+    <configuration>
+      <appSettings />
+    </configuration>
+    """.strip()
+    match = _detect("details.config", content)
+
+    assert match is not None
+    assert any("encoding" in reason.lower() for reason in match.reasons)
+    assert any("standalone" in reason.lower() for reason in match.reasons)
+
+
+def test_xml_plugin_schema_reason_without_namespace() -> None:
+    content = """
+    <?xml version='1.0'?>
+    <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:noNamespaceSchemaLocation="local.xsd">
+      <appSettings />
+    </configuration>
+    """.strip()
+    match = _detect("schema.config", content)
+
+    assert match is not None
+    assert any("default namespace" in reason for reason in match.reasons)
+
+
+def test_xml_plugin_detects_app_hint_without_filename() -> None:
+    content = """
+    <configuration>
+      <startup>
+        <supportedRuntime version="v4.0" />
+      </startup>
+    </configuration>
+    """.strip()
+    plugin = XmlPlugin()
+    match = plugin.detect(Path("settings.config"), content.encode("utf-8"), content)
+
+    assert match is not None
+    assert match.variant == "app-config"
+    assert any("application configuration sections" in reason for reason in match.reasons)

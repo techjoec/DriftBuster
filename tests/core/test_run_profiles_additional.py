@@ -51,6 +51,15 @@ def test_normalise_options_and_validation_errors(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         run_profiles._validate_profile(profile)
 
+    absolute_missing = tmp_path / "absolute.txt"
+    profile = run_profiles.RunProfile(
+        name="absent-baseline",
+        sources=[str(existing), str(absolute_missing)],
+        baseline=str(absolute_missing),
+    )
+    with pytest.raises(FileNotFoundError):
+        run_profiles._validate_profile(profile)
+
 
 def test_collect_matches_and_copy_file(tmp_path: Path) -> None:
     sample = tmp_path / "sample.txt"
@@ -75,6 +84,22 @@ def test_collect_matches_and_copy_file(tmp_path: Path) -> None:
     )
     assert copied.destination.exists()
     assert copied.sha256
+
+
+def test_validate_profile_baseline_glob_missing(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    data = tmp_path / "data.txt"
+    data.write_text("value", encoding="utf-8")
+
+    baseline_pattern = str(tmp_path / "missing" / "*.cfg")
+    profile = run_profiles.RunProfile(
+        name="glob",
+        sources=[str(data), baseline_pattern],
+        baseline=baseline_pattern,
+    )
+
+    with pytest.raises(FileNotFoundError):
+        run_profiles._validate_profile(profile)
 
 
 def test_execute_profile_orders_baseline_first(tmp_path: Path, monkeypatch) -> None:

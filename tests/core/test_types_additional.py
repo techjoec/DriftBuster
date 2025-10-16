@@ -156,8 +156,18 @@ def test_internal_helpers_cover_edge_cases(tmp_path: Path) -> None:
     with pytest.raises(MetadataValidationError):
         _ensure_mapping([("invalid", "value")])  # type: ignore[list-as-mapping]
 
+    proxy = MappingProxyType({"key": "value"})
+    assert _ensure_mapping(proxy) == {"key": "value"}
+
     assert _json_safe((item for item in [1, 2, 3])) == [1, 2, 3]
     assert _json_safe({tmp_path}) == [str(tmp_path)]
+    class Custom:
+        def __str__(self) -> str:
+            return "custom-object"
+
+    assert _json_safe(Custom()) == "custom-object"
 
     with pytest.raises(MetadataValidationError):
         _normalise_identifier("Invalid Name", field="variant")
+    with pytest.raises(MetadataValidationError):
+        _normalise_identifier("  ", field="variant")
