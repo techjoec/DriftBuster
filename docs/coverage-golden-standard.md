@@ -4,6 +4,38 @@ This note captures the minimum expectations the detectors must meet before we
 consider INI and XML coverage complete. Treat it as the canonical reference
 when adding new heuristics, fixtures, or documentation.
 
+## How We Measure Coverage
+
+- Python detectors/engine/reporting use `coverage.py` with the source root
+  pinned to `src/driftbuster`. Generate reports with:
+
+  ```sh
+  coverage run --source=src/driftbuster -m pytest -q
+  coverage report -m
+  coverage json -o coverage.json
+  ```
+
+- The .NET GUI test project (`gui/DriftBuster.Gui.Tests`) collects coverage via
+  the built‑in coverlet collector using:
+
+  ```sh
+  dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj \
+    --collect:"XPlat Code Coverage" \
+    --results-directory artifacts/coverage-dotnet
+  ```
+
+  This produces Cobertura XML under
+  `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml`.
+
+- To summarise both surfaces, run:
+
+  ```sh
+  python -m scripts.coverage_report
+  ```
+
+  The script prints Python percentage, .NET percentage, and the top
+  under‑covered GUI classes to focus further tests.
+
 ## INI Coverage Baseline
 - **Variants:** Must classify `sectioned-ini`, `sectionless-ini`, `desktop-ini`,
   `java-properties`, `env-file`/`dotenv`, `ini-json-hybrid`, and
@@ -41,6 +73,11 @@ when adding new heuristics, fixtures, or documentation.
   `pytest tests/formats/test_xml_plugin.py` is mandatory after changes.
 - Manual checklists under `notes/checklists/` capture any supplemental runs
   (e.g., XML transform verification) before accepting the detector updates.
+
+Recommended local thresholds (optional, non‑blocking):
+
+- Python: `coverage report --fail-under=100`
+- .NET: `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
 
 ## Test Coverage Map
 

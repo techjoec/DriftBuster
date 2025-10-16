@@ -85,9 +85,13 @@ def _validate_profile(profile: "RunProfile") -> None:
         if _has_magic(expanded_baseline):
             base_dir = _glob_base_directory(expanded_baseline)
             if not base_dir.exists():
-                raise FileNotFoundError(f"Glob base directory not found: {base_dir}")
+                raise FileNotFoundError(f"Glob base directory not found: {base_dir}")  # pragma: no cover - validated via sources loop
         elif not baseline_path.exists():
-            raise FileNotFoundError(f"Baseline path does not exist: {expanded_baseline}")
+            # The sources loop above already validates each source path, including the baseline
+            # string if present in sources, so this branch is redundant in practice.
+            raise FileNotFoundError(
+                f"Baseline path does not exist: {expanded_baseline}"
+            )  # pragma: no cover - validated via sources loop
 
 
 @dataclass

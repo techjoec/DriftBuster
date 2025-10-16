@@ -53,3 +53,11 @@ def test_calculate_stats_counts_insertions() -> None:
     after = "line\nextra\n"
     result = build_unified_diff(before, after)
     assert result.stats["added_lines"] >= 1
+
+
+def test_calculate_stats_counts_deletions() -> None:
+    before = "one\n two\n three\n"
+    after = "one\n three\n"
+    result = build_unified_diff(before, after)
+    # Ensure the deletion branch is exercised
+    assert result.stats["removed_lines"] >= 1

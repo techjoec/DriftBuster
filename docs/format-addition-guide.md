@@ -82,7 +82,13 @@ existing style.
    * One negative test proving the detector declines unrelated content.
 2. Use small inline payloads when possible. Larger fixtures should live under
    `fixtures/<area>/` and be loaded during the test.
-3. Run `pytest tests/formats/test_<format>_plugin.py` before sending the patch.
+3. Maintain a minimal coverage baseline of 90%+ for the new plugin file(s).
+   - Quick check:
+     - `coverage run --source=src/driftbuster -m pytest -q tests/formats/test_<format>_plugin.py`
+     - `coverage report --fail-under=90`
+   - Add edge-case tests (negative samples, variant boundaries) until the
+     detector stays above the threshold.
+4. Run `pytest tests/formats/test_<format>_plugin.py` before sending the patch.
 
 ## 6. Documentation and Notes
 

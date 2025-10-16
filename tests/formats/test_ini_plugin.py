@@ -489,6 +489,59 @@ def test_ini_plugin_detects_block_json_assignments(ini_plugin: IniPlugin) -> Non
     assert "section_count" in match.metadata
 
 
+def test_ini_plugin_breaks_block_json_on_section_header(ini_plugin: IniPlugin) -> None:
+    # JSON block starts, then a new section header appears before a closing brace.
+    content = dedent(
+        """
+        options = {
+        "a": 1
+        [Next]
+        afterwards=true
+        """
+    ).strip()
+
+    match = _detect(ini_plugin, "section-before-close.ini", content)
+    assert match is not None
+    # Should still be classified as INI due to key/value pairs and signals
+    assert match.format_name in {"ini", "ini-json-hybrid"}
+
+
+def test_ini_plugin_breaks_block_json_on_nested_assignment(ini_plugin: IniPlugin) -> None:
+    # A nested assignment with `{` and `=` appears before the original JSON block closes.
+    content = dedent(
+        """
+        data = {
+        "a": 1
+        nested = {
+            "b": 2
+        }
+        key=value
+        """
+    ).strip()
+
+    match = _detect(ini_plugin, "nested-json-before-close.ini", content)
+    assert match is not None
+    # Depending on signal balance, this may classify as INI or env-file.
+    assert match.format_name in {"ini", "ini-json-hybrid", "env-file"}
+
+
+def test_ini_plugin_inline_comment_loop_skips_empty_values(ini_plugin: IniPlugin) -> None:
+    # Ensure a key with an empty value is present to exercise the continue branch.
+    content = dedent(
+        """
+        empty=
+        key=value ; comment
+        """
+    ).strip()
+
+    match = _detect(ini_plugin, "empty-value.ini", content)
+    assert match is not None
+    assert match.metadata is not None
+    # Confirm inline comment detection still works overall
+    style = match.metadata["comment_style"]
+    assert style["supports_inline_comments"] is True
+
+
 def test_ini_plugin_handles_blank_comments_and_inline_markers(ini_plugin: IniPlugin) -> None:
     content = dedent(
         """

@@ -110,8 +110,29 @@ dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --configurati
 python -m pytest
 ```
 
-The GitHub workflow also performs secret scanning (`detect-secrets`) and license
-audits (`pip-licenses`).
+Optional local checks:
+- Secret scanning: `detect-secrets scan`
+- License audit: `pip-licenses`
+
+### Test Coverage
+
+Two coverage surfaces exist: Python (engine, detectors, reporting) and .NET (GUI + backend).
+
+- Python
+  - Quick: `coverage run --source=src/driftbuster -m pytest -q && coverage report -m`
+  - JSON: `coverage json -o coverage.json`
+  - HTML (optional): `coverage html` → open `htmlcov/index.html`
+- .NET GUI
+  - Cobertura XML: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
+  - The XML lands under `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml`.
+
+Repo‑wide summary:
+
+```sh
+python -m scripts.coverage_report
+```
+
+This prints Python percent, .NET Cobertura percent, and the most under‑covered GUI classes to guide test additions.
 
 ## Project Layout
 

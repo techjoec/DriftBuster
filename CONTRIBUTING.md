@@ -62,8 +62,8 @@ Do **not** submit code, snippets, or data from:
 - GPL, AGPL, SSPL, Elastic License, or any code that restricts linking or distribution.
 
 ### Enforcement
-Pull requests adding disallowed licenses **will be rejected automatically**.  
-Use `licensecheck .` before submitting to catch unexpected copyleft code.
+Pull requests adding disallowed licenses **will be rejected**.  
+Use `licensecheck .` locally before submitting to catch unexpected copyleft code.
 
 ---
 
@@ -89,14 +89,44 @@ Use `licensecheck .` before submitting to catch unexpected copyleft code.
 |------|--------------|
 | 1️⃣ | Fork and clone the repo |
 | 2️⃣ | Create a feature branch (`feature/<topic>`) |
-| 3️⃣ | Run `dotnet format` and all unit tests |
+| 3️⃣ | Run `dotnet format`, all unit tests, and coverage checks |
 | 4️⃣ | Review licensing notes and update `NOTICE` if needed |
 | 5️⃣ | Submit PR with detailed provenance statement |
-| 6️⃣ | Maintainers review build + legal scan results |
+| 6️⃣ | Maintainers review your build output and legal scan notes |
 
 Each PR **must** include a short provenance note, e.g.:
 > “All changes are original or derived from Apache-2.0 sources.  
 > No third-party proprietary material included.”
+
+---
+
+## 7.1 Coverage Baseline (90%+)
+
+Keep line coverage at 90% or higher for:
+
+- All modified Python files under `src/driftbuster`
+- All modified .NET GUI/Backend files under `gui/`
+- Any new format plugin(s) and helpers
+
+Enforce locally (no CI hooks). Suggested commands:
+
+- Python
+  - `coverage run --source=src/driftbuster -m pytest -q`
+  - `coverage report --fail-under=90`
+  - Optional: `coverage json -o coverage.json` and `coverage html`
+- .NET
+  - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
+  - Threshold (local): `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
+- Repo‑wide summary
+  - `python -m scripts.coverage_report`
+
+When adding a new format:
+
+- Add `tests/formats/test_<format>_plugin.py` mirroring existing detectors.
+- Cover primary variant(s), negative cases, and edge heuristics to keep the
+  plugin at ≥90% coverage.
+- Update docs in `docs/detection-types.md`, `docs/format-support.md`, and
+  `docs/coverage-golden-standard.md` as needed.
 
 ---
 
@@ -108,13 +138,18 @@ Each PR **must** include a short provenance note, e.g.:
 
 ---
 
-## 9. Compliance Automation
+## 9. Local Compliance Checks
 
-Continuous Integration (CI) runs:
+Run locally before submitting:
 - `dotnet test` — executes functional suite.
 - `detect-secrets` — scans for credentials or API keys.
 
-PRs failing any compliance step will **not** be merged.
+Submissions failing these local checks will be sent back for fixes.
+
+### Tooling Guardrails
+
+- No GitHub Actions/Runners for this repository. Do not add workflows, runners,
+  or pipeline descriptors. Keep all checks local and documented in the PR.
 
 ---
 

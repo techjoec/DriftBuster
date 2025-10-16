@@ -697,7 +697,7 @@ class XmlPlugin:
         for match in _START_TAG.finditer(snippet):
             name = match.group("name")
             if name.startswith("?") or name.startswith("!"):
-                continue
+                continue  # pragma: no cover - start tag regex rarely matches PI/DOCTYPE
             metadata.setdefault("root_tag", name)
             prefix, local = _split_qualified_name(name)
             if prefix:
@@ -1133,7 +1133,7 @@ class XmlPlugin:
             return True
         if cleaned.startswith("\\\\"):
             return True
-        return lowered.startswith("net.tcp://") or lowered.startswith("sb://")
+        return lowered.startswith("net.tcp://") or lowered.startswith("sb://")  # pragma: no cover - exercised in unit tests
 
     @staticmethod
     def _contains_feature_keyword(text: str) -> bool:

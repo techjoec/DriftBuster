@@ -46,7 +46,7 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 - **Guarded initialisation**: `Program.EnsureHeadless(Func<AppBuilder, AppBuilder>?)` now prevents duplicate Avalonia setup by reusing the first headless instance. The fixture in `.gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` pipes in `UseHeadless` so repeated calls stay safe.
 - **Shared collection**: `[Collection(HeadlessCollection.Name)]` coordinates Avalonia access across `AppStartupTests`, `MainWindowUiTests`, `SecretScannerSettingsWindowTests`, and `DiffViewTests` to avoid cross-test race conditions.
 - **tmux command shape**: Run GUI tests inside tmux to keep sessions responsive, e.g. `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj'`. Capture logs with `|& tee artifacts/<session>.log` when reproducing issues.
-- **Focused filters**: Use `--filter 'FullyQualifiedName~MainWindowUiTests'` (or the other class names) for quick iteration, then finish with full Debug/Release passes and `-p:EnableAvaloniaXamlCompilation=true` to mirror CI.
+- **Focused filters**: Use `--filter 'FullyQualifiedName~MainWindowUiTests'` (or the other class names) for quick iteration, then finish with full Debug/Release passes and `-p:EnableAvaloniaXamlCompilation=true` to mirror release builds.
 - **Diagnostics**: `AvaloniaSetupInspection.LogSetupState` (run with `AVALONIA_INSPECT=1`) logs style dictionaries into `artifacts/codexcli-inspect.log` for tracing resource registration order when investigating future regressions.
 
 > **Still useful:** Historical research content below remains for context on alternative stacks and packaging decisions.

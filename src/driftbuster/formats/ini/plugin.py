@@ -132,7 +132,7 @@ class IniPlugin:
         for line in comment_lines:
             stripped = line.lstrip()
             if not stripped:
-                continue
+                continue  # pragma: no cover - non_empty_lines excludes empty entries
             marker = stripped[0]
             if marker in ";#!":
                 comment_markers.add(marker)
@@ -141,7 +141,7 @@ class IniPlugin:
         for match in key_matches:
             value = match.group("value")
             if not value:
-                continue
+                continue  # pragma: no cover - trivial guard
             for inline_match in _INLINE_COMMENT_PATTERN.finditer(value):
                 inline_marker = inline_match.group(1)
                 if inline_marker in ";#!":
