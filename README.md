@@ -124,6 +124,13 @@ Optional local checks:
 - Secret scanning: `detect-secrets scan`
 - License audit: `pip-licenses`
 
+### Coverage Policy
+
+- Maintain ≥ 90% line coverage for Python sources under `src/` and for the .NET
+  surface (GUI + backend). Enforce locally with:
+  - Python: `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`
+  - .NET: `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
+
 ### Coverage Enforcement
 
 - Quick all-in-one: `./scripts/verify_coverage.sh`

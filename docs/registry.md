@@ -19,6 +19,13 @@ Notes
 - Windows only. On non‑Windows platforms, construct a custom backend or skip.
 - Traversal enforces limits: max depth, max hits, and a time budget.
 
+CLI Helper
+----------
+- A lightweight helper exposes common operations from the shell (Windows only):
+  - List apps: `python -m driftbuster.registry_cli list-apps`
+  - Suggest roots: `python -m driftbuster.registry_cli suggest-roots "Vendor App"`
+  - Search: `python -m driftbuster.registry_cli search "Vendor App" --keyword server --pattern "api\\.internal\\.local"`
+
 Offline Runner
 --------------
 - The offline collection tool can execute registry scans alongside file copies.

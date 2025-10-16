@@ -116,12 +116,12 @@ DETECTION_CATALOG = DetectionCatalog(
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern='\"registry_scan\"\s*:\\s*\{',
+                    pattern=r'\"registry_scan\"\s*:\\s*\{',
                     optional=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\\s*registry_scan\\s*:\\s*$",
+                    pattern=r"^\\s*registry_scan\\s*:\\s*$",
                     multiline=True,
                     optional=True,
                 ),

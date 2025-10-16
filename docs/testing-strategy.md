@@ -4,6 +4,10 @@ Automated coverage now backs the detector, format plugins, hunt helpers, the
 PowerShell/GUI backend library, and Avalonia viewmodels. Manual validation
 continues to play a role for vendor fixtures and pre-HOLD reporting flows.
 
+Policy: Maintain ≥ 90% line coverage across Python source (under `src/`) and
+≥ 90% total line coverage for the .NET surface. Treat this as a hard baseline
+for new and modified components.
+
 ## Automated test suite
 
 - `pytest -q` — exercises detector metadata, profile helpers, diff planning,

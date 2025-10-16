@@ -18,6 +18,8 @@ compileall: python -m compileall src
 pycodestyle(core): python -m pycodestyle src/driftbuster/core
 pycodestyle(formats/registry_live): python -m pycodestyle src/driftbuster/formats/registry_live
 pycodestyle(registry helpers): python -m pycodestyle src/driftbuster/registry
+coverage(py): coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90
+coverage(net): dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj
 ```
 
 Check off each line once you've read the output and confirmed no surprises.

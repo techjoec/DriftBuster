@@ -50,7 +50,7 @@ public class DriftbusterBackendOfflineCollectorTests
                 PackagePath = packagePath,
             };
 
-            var result = await backend.PrepareOfflineCollectorAsync(profile, request, baseDir: tempBase).ConfigureAwait(false);
+            var result = await backend.PrepareOfflineCollectorAsync(profile, request, baseDir: tempBase);
 
             Assert.Equal(packagePath, result.PackagePath);
             Assert.True(File.Exists(packagePath));

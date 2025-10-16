@@ -59,7 +59,7 @@ class _WinRegBackend(_Backend):
             "HKCU": winreg.HKEY_CURRENT_USER,
         }
 
-    def _open(self, hive: str, path: str, view: Optional[str]):
+    def _open(self, hive: str, path: str, view: Optional[str]):  # pragma: no cover - integration on Windows only
         reg = self._reg
         access = reg.KEY_READ
         if view == "64":
@@ -68,7 +68,7 @@ class _WinRegBackend(_Backend):
             access |= getattr(reg, "KEY_WOW64_32KEY", 0)
         return reg.OpenKeyEx(self._hives[hive], path, 0, access)
 
-    def enum_subkeys(self, hive: str, path: str, view: Optional[str]) -> List[str]:
+    def enum_subkeys(self, hive: str, path: str, view: Optional[str]) -> List[str]:  # pragma: no cover - integration on Windows only
         reg = self._reg
         try:
             handle = self._open(hive, path, view)
@@ -88,7 +88,7 @@ class _WinRegBackend(_Backend):
             reg.CloseKey(handle)
         return results
 
-    def enum_values(self, hive: str, path: str, view: Optional[str]) -> List[Tuple[str, object]]:
+    def enum_values(self, hive: str, path: str, view: Optional[str]) -> List[Tuple[str, object]]:  # pragma: no cover - integration on Windows only
         reg = self._reg
         try:
             handle = self._open(hive, path, view)

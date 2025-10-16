@@ -3,10 +3,13 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Tuple
 
+import pytest
+
 from driftbuster.registry.scan import (
     RegistryApp,
     RegistryHit,
     SearchSpec,
+    is_windows,
     enumerate_installed_apps,
     find_app_registry_roots,
     search_registry,
@@ -91,6 +94,10 @@ def test_enumerate_installed_apps_collects_from_multiple_hives():
     assert "TinyTool" in names
 
 
+def test_is_windows_function_runs():
+    assert isinstance(is_windows(), bool)
+
+
 def test_find_app_registry_roots_uses_installed_list():
     fb = build_fake_registry()
     apps = enumerate_installed_apps(backend=fb)
@@ -134,3 +141,39 @@ def test_search_registry_depth_limit():
     hits = search_registry(roots, spec, backend=fb)
     # With depth=2, we should not reach the leaf at depth 5
     assert not hits
+
+
+def test_search_registry_limits_and_name_matches():
+    fb = build_fake_registry()
+    roots = (("HKLM", r"Software\VendorA\AppA", None),)
+    # Add multiple values to trigger max_hits
+    fb.add_key("HKLM", r"Software\VendorA\AppA\Many")
+    for i in range(10):
+        fb.add_key("HKLM", r"Software\VendorA\AppA\Many", values={f"Key{i}": f"value-{i}"})
+
+    # Limit hits to 3
+    spec = SearchSpec(patterns=(re.compile(r"value-\d+"),), max_hits=3)
+    hits = search_registry(roots, spec, backend=fb)
+    assert len(hits) == 3
+
+    # Name-based keyword match: look for Server by name even if value doesn't contain keyword
+    fb.add_key("HKLM", r"Software\VendorA\AppA\Names", values={"Server": "something"})
+    spec2 = SearchSpec(keywords=("server",))
+    hits2 = search_registry(roots, spec2, backend=fb)
+    assert any(h.path.endswith(r"Names") and h.value_name == "Server" for h in hits2)
+
+
+def test_find_app_registry_roots_fallback_when_no_installed_match():
+    # No installed apps; ensure broad fallback candidates exist
+    roots = find_app_registry_roots("Acme Product", installed=())
+    # Expect HKCU/HKLM Software and Wow6432Node entries based on token
+    assert any(r[0] == "HKCU" and r[1].startswith("Software\\Acme Product") for r in roots)
+    assert any(r[0] == "HKLM" and r[1].startswith("Software\\Wow6432Node\\Acme Product") for r in roots)
+
+
+def test_default_backend_guard(monkeypatch: pytest.MonkeyPatch):
+    # Calling enumerate_installed_apps without a backend on non-Windows raises
+    import driftbuster.registry.scan as scan
+    monkeypatch.setattr(scan, "is_windows", lambda: False)
+    with pytest.raises(RuntimeError):
+        scan.enumerate_installed_apps(backend=None)

@@ -9,10 +9,10 @@ description = "Core detection engine for DriftBuster"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = []
+license = "Apache-2.0"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
 ]
 

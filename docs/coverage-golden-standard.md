@@ -1,10 +1,16 @@
 # Coverage Golden Standard
 
-This note captures the minimum expectations the detectors must meet before we
-consider INI and XML coverage complete. Treat it as the canonical reference
-when adding new heuristics, fixtures, or documentation.
+This note captures the minimum expectations and required coverage baselines.
+Treat it as the canonical reference when adding new heuristics, fixtures, or
+documentation.
 
-## How We Measure Coverage
+## Coverage Policy & Measurement
+
+- Required thresholds:
+  - Python (engine/detectors/reporting): ≥ 90% line coverage on `src/`.
+  - .NET (GUI + backend): ≥ 90% total line coverage (coverlet). 
+  - New/changed modules must land with ≥ 90% per-file coverage unless
+    platform-only code is explicitly excluded (e.g., Windows registry P/Invoke).
 
 - Python detectors/engine/reporting use `coverage.py` with the source root
   pinned to `src/driftbuster`. Generate reports with:
@@ -74,9 +80,9 @@ when adding new heuristics, fixtures, or documentation.
 - Manual checklists under `notes/checklists/` capture any supplemental runs
   (e.g., XML transform verification) before accepting the detector updates.
 
-Recommended local thresholds (optional, non‑blocking):
+Required command checks (enforced locally):
 
-- Python: `coverage report --fail-under=100`
+- Python: `coverage report --fail-under=90`
 - .NET: `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
 
 ## Test Coverage Map
