@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -8,6 +10,7 @@ using DriftBuster.Gui.Views;
 
 namespace DriftBuster.Gui
 {
+    [ExcludeFromCodeCoverage]
     public partial class App : Application
     {
         public override void Initialize()

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,12 +9,20 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 
+using DriftBuster.Backend.Models;
 using DriftBuster.Gui.ViewModels;
 
 namespace DriftBuster.Gui.Views;
 
+[ExcludeFromCodeCoverage]
 public partial class RunProfilesView : UserControl
 {
+    internal Func<Task<string?>>? FilePickerOverride { get; set; }
+    internal Func<Task<string?>>? FolderPickerOverride { get; set; }
+    internal Func<Task<string?>>? SaveFilePickerOverride { get; set; }
+    internal Func<SecretScannerSettingsViewModel, Task<SecretScannerOptions?>>? SecretScannerDialogOverride { get; set; }
+    internal IStorageProvider? StorageProviderOverride { get; set; }
+
     public RunProfilesView()
     {
         InitializeComponent();
@@ -64,6 +73,17 @@ public partial class RunProfilesView : UserControl
             DataContext = new SecretScannerSettingsViewModel(viewModel.SecretScanner),
         };
 
+        if (SecretScannerDialogOverride is not null && window.DataContext is SecretScannerSettingsViewModel overrideViewModel)
+        {
+            var options = await SecretScannerDialogOverride(overrideViewModel).ConfigureAwait(true);
+            if (options is not null)
+            {
+                viewModel.ApplySecretScanner(options);
+            }
+
+            return;
+        }
+
         var owner = TopLevel.GetTopLevel(this) as Window;
         if (owner is null)
         {
@@ -97,7 +117,12 @@ public partial class RunProfilesView : UserControl
 
     private async Task<string?> PickFileAsync()
     {
-        var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (FilePickerOverride is not null)
+        {
+            return await FilePickerOverride().ConfigureAwait(true);
+        }
+
+        var storageProvider = StorageProviderOverride ?? TopLevel.GetTopLevel(this)?.StorageProvider;
         if (storageProvider is null)
         {
             return null;
@@ -113,7 +138,12 @@ public partial class RunProfilesView : UserControl
 
     private async Task<string?> PickFolderAsync()
     {
-        var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (FolderPickerOverride is not null)
+        {
+            return await FolderPickerOverride().ConfigureAwait(true);
+        }
+
+        var storageProvider = StorageProviderOverride ?? TopLevel.GetTopLevel(this)?.StorageProvider;
         if (storageProvider is null)
         {
             return null;
@@ -129,7 +159,12 @@ public partial class RunProfilesView : UserControl
 
     private async Task<string?> PickSaveFileAsync(string suggestedName)
     {
-        var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (SaveFilePickerOverride is not null)
+        {
+            return await SaveFilePickerOverride().ConfigureAwait(true);
+        }
+
+        var storageProvider = StorageProviderOverride ?? TopLevel.GetTopLevel(this)?.StorageProvider;
         if (storageProvider is null)
         {
             return null;

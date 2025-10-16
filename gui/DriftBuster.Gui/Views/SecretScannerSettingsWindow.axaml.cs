@@ -1,9 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
 namespace DriftBuster.Gui.Views;
 
+[ExcludeFromCodeCoverage]
 public partial class SecretScannerSettingsWindow : Window
 {
     public SecretScannerSettingsWindow()

@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -101,6 +102,43 @@ public class HuntViewModelTests
         finally
         {
             File.Delete(file);
+        }
+    }
+
+    [Fact]
+    public async Task RunHuntCommand_handles_empty_results()
+    {
+        var service = new FakeDriftbusterService
+        {
+            HuntResponse = new HuntResult
+            {
+                Directory = "dir",
+                Pattern = "pattern",
+                Count = 0,
+                Hits = Array.Empty<HuntHit>(),
+                RawJson = "{}",
+            },
+        };
+
+        var directory = Directory.CreateTempSubdirectory();
+        try
+        {
+            var viewModel = new HuntViewModel(service)
+            {
+                DirectoryPath = directory.FullName,
+                Pattern = "pattern",
+            };
+
+            await viewModel.RunHuntCommand.ExecuteAsync(null);
+
+            Assert.True(viewModel.HasNoHits);
+            Assert.False(viewModel.HasHits);
+            Assert.Equal("No matches found", viewModel.StatusMessage);
+            Assert.True(viewModel.HasRawJson);
+        }
+        finally
+        {
+            directory.Delete(true);
         }
     }
 }

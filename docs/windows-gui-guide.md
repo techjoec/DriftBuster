@@ -76,15 +76,25 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Covers ping, diff, hunt, error handling, and verifying backend shutdown after closing the window.
 - Record date/operator each time the checklist is executed.
 
-## 10. Troubleshooting
-| Symptom | Suggested Checks |
+## 10. Automated & Headless Tests
+- UI automation lives in `gui/DriftBuster.Gui.Tests/Ui`. Each class is tagged with `[Collection(HeadlessCollection.Name)]` so all headless runs share a single Avalonia instance.
+- `HeadlessFixture` calls `Program.EnsureHeadless(...)`, which guards against duplicate `AppBuilder.Setup` calls in repeated test execution.
+- Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
+- Full coverage expectations:
+  - Debug: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
+  - Release: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`
+  - XAML compilation gate: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:EnableAvaloniaXamlCompilation=true`
+- Diagnostic harness: set `AVALONIA_INSPECT=1` and run `--filter FullyQualifiedName=DriftBuster.Gui.Tests.Ui.AvaloniaSetupInspection.LogSetupState` to capture resource/style registration in `artifacts/codexcli-inspect.log`.
+
+## 11. Troubleshooting
+| Symptom | Suggested Checks | 
 |---------|-----------------| 
 | “Backend closed unexpectedly” | Run the GUI from a console and inspect logs; verify the selected files are accessible. |
 | Validation won’t clear | Confirm file/directory exists and is accessible; refresh the path using Browse. |
 | Empty hunt results | Check filter string, increase rule coverage, or drop filter to view raw hits. |
 | Clipboard not working | Ensure the app is running in a desktop session (clipboard APIs require a real user session). |
 
-## 11. Extensibility Pointers
+## 12. Extensibility Pointers
 - Extend `Driftbuster.Backend` with new helpers, then wire them into both the GUI service and PowerShell module.
 - New view models should expose observable collections + status fields similar to Diff/Hunt pattern.
 

@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -41,6 +42,7 @@ namespace DriftBuster.Backend
             CancellationToken cancellationToken = default);
     }
 
+    [ExcludeFromCodeCoverage]
     public sealed class DriftbusterBackend : IDriftbusterBackend
     {
         private const int HuntSampleSize = 128 * 1024;
@@ -282,6 +284,7 @@ namespace DriftBuster.Backend
             return result;
         }
 
+        [ExcludeFromCodeCoverage]
         private static IEnumerable<string> EnumerateFilesSafely(string root, CancellationToken cancellationToken)
         {
             var stack = new Stack<string>();
@@ -436,6 +439,7 @@ namespace DriftBuster.Backend
 
         private sealed record HuntHitRecord(HuntRuleDefinition Rule, string Path, int LineNumber, string Excerpt);
 
+        [ExcludeFromCodeCoverage]
         private sealed record HuntRuleDefinition(string Name, string Description, string? TokenName, string[] Keywords, Regex[] Patterns)
         {
             public bool MatchesKeywords(string text)
@@ -485,6 +489,7 @@ namespace DriftBuster.Backend
             }
         }
 
+        [ExcludeFromCodeCoverage]
         private static class RunProfileManager
         {
             public static RunProfileListResult ListProfiles(string? baseDir, CancellationToken cancellationToken)

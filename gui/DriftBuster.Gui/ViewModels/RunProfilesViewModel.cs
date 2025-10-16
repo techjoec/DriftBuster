@@ -20,6 +20,8 @@ public partial class RunProfilesViewModel : ObservableObject
 {
     private readonly IDriftbusterService _service;
 
+    internal Func<ProcessStartInfo, Process?>? ProcessStarterOverride { get; set; }
+
     private static readonly char[] GlobCharacters = { '*', '?', '[' };
 
     public ObservableCollection<RunProfileDefinition> Profiles { get; } = new();
@@ -493,7 +495,7 @@ public partial class RunProfilesViewModel : ObservableObject
         {
             if (OperatingSystem.IsWindows())
             {
-                Process.Start(new ProcessStartInfo
+                StartProcess(new ProcessStartInfo
                 {
                     FileName = "explorer.exe",
                     Arguments = $"\"{OutputDirectory}\"",
@@ -504,7 +506,7 @@ public partial class RunProfilesViewModel : ObservableObject
 
             if (OperatingSystem.IsMacOS())
             {
-                Process.Start(new ProcessStartInfo
+                StartProcess(new ProcessStartInfo
                 {
                     FileName = "open",
                     Arguments = $"\"{OutputDirectory}\"",
@@ -515,7 +517,7 @@ public partial class RunProfilesViewModel : ObservableObject
 
             if (OperatingSystem.IsLinux())
             {
-                Process.Start(new ProcessStartInfo
+                StartProcess(new ProcessStartInfo
                 {
                     FileName = "xdg-open",
                     Arguments = OutputDirectory,
@@ -524,7 +526,7 @@ public partial class RunProfilesViewModel : ObservableObject
                 return;
             }
 
-            Process.Start(new ProcessStartInfo
+            StartProcess(new ProcessStartInfo
             {
                 FileName = OutputDirectory,
                 UseShellExecute = true,
@@ -534,6 +536,16 @@ public partial class RunProfilesViewModel : ObservableObject
         {
             StatusMessage = ex.Message;
         }
+    }
+
+    private Process? StartProcess(ProcessStartInfo startInfo)
+    {
+        if (ProcessStarterOverride is not null)
+        {
+            return ProcessStarterOverride(startInfo);
+        }
+
+        return Process.Start(startInfo);
     }
 
     private void ValidateSources()

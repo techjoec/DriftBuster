@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -176,6 +177,342 @@ public class RunProfilesViewModelTests
             {
                 File.Delete(packagePath);
             }
+        }
+    }
+
+    [Fact]
+    public async Task RefreshCommand_populates_profiles_and_preserves_selection()
+    {
+        var service = new FakeDriftbusterService
+        {
+            ListProfilesHandler = _ => Task.FromResult(new RunProfileListResult
+            {
+                Profiles = new[]
+                {
+                    new RunProfileDefinition { Name = "Alpha" },
+                    new RunProfileDefinition { Name = "Beta" },
+                },
+            }),
+        };
+
+        var viewModel = new RunProfilesViewModel(service);
+        viewModel.ProfileName = "baseline";
+        viewModel.Sources[0].Path = Path.GetTempFileName();
+        viewModel.Profiles.Add(new RunProfileDefinition { Name = "Beta" });
+        viewModel.SelectedProfile = viewModel.Profiles[0];
+
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, viewModel.Profiles.Count);
+        Assert.Equal("Loaded 2 profile(s).", viewModel.StatusMessage);
+        Assert.NotNull(viewModel.SelectedProfile);
+        Assert.Equal("Beta", viewModel.SelectedProfile!.Name);
+
+        File.Delete(viewModel.Sources[0].Path);
+    }
+
+    [Fact]
+    public async Task RefreshCommand_handles_exception()
+    {
+        var service = new FakeDriftbusterService
+        {
+            ListProfilesHandler = _ => Task.FromException<RunProfileListResult>(new InvalidOperationException("boom")),
+        };
+
+        var viewModel = new RunProfilesViewModel(service);
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal("boom", viewModel.StatusMessage);
+        Assert.False(viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task SaveCommand_invokes_backend_and_refreshes_profiles()
+    {
+        var baseline = Path.GetTempFileName();
+        try
+        {
+            var savedNames = new System.Collections.Generic.List<string>();
+            var service = new FakeDriftbusterService
+            {
+                SaveProfileHandler = (profile, _) =>
+                {
+                    savedNames.Add(profile.Name);
+                    return Task.CompletedTask;
+                },
+                ListProfilesHandler = _ => Task.FromResult(new RunProfileListResult
+                {
+                    Profiles = new[] { new RunProfileDefinition { Name = "saved" } },
+                }),
+            };
+
+            var viewModel = new RunProfilesViewModel(service)
+            {
+                ProfileName = "saved",
+            };
+            viewModel.Sources[0].Path = baseline;
+
+            await viewModel.SaveCommand.ExecuteAsync(null);
+
+            savedNames.Should().ContainSingle().Which.Should().Be("saved");
+            viewModel.StatusMessage.Should().NotBeNull();
+            viewModel.StatusMessage!.ToLowerInvariant().Should().Contain("profile");
+            viewModel.Profiles.Should().ContainSingle(p => p.Name == "saved");
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
+    public async Task SaveCommand_handles_exception()
+    {
+        var service = new FakeDriftbusterService
+        {
+            SaveProfileHandler = (_, _) => Task.FromException(new InvalidOperationException("save failed")),
+        };
+
+        var baseline = Path.GetTempFileName();
+        try
+        {
+            var viewModel = new RunProfilesViewModel(service)
+            {
+                ProfileName = "sample",
+            };
+            viewModel.Sources[0].Path = baseline;
+
+            await viewModel.SaveCommand.ExecuteAsync(null);
+
+            Assert.Equal("save failed", viewModel.StatusMessage);
+            Assert.False(viewModel.IsBusy);
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
+    public async Task RunCommand_handles_exception_and_clears_results()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunProfileHandler = (_, _, _) => Task.FromException<RunProfileRunResult>(new InvalidOperationException("run failed")),
+        };
+
+        var baseline = Path.GetTempFileName();
+        try
+        {
+            var viewModel = new RunProfilesViewModel(service)
+            {
+                ProfileName = "run",
+            };
+            viewModel.Sources[0].Path = baseline;
+
+            await viewModel.RunCommand.ExecuteAsync(null);
+
+            Assert.False(viewModel.HasRunResults);
+            Assert.Equal("run failed", viewModel.StatusMessage);
+            Assert.False(viewModel.IsBusy);
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
+    public async Task PrepareOfflineCollectorAsync_validates_inputs_before_invoking_backend()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new RunProfilesViewModel(service);
+
+        await viewModel.PrepareOfflineCollectorAsync(string.Empty);
+        Assert.Equal("Select an output path for the offline collector.", viewModel.StatusMessage);
+
+        await viewModel.PrepareOfflineCollectorAsync("collector.zip");
+        Assert.Equal("Configure a valid profile before preparing an offline collector.", viewModel.StatusMessage);
+    }
+
+    [Fact]
+    public void HandleBaselineChanged_ensures_single_baseline()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new RunProfilesViewModel(service);
+        var baselinePath = Path.GetTempFileName();
+        try
+        {
+            var baseline = viewModel.Sources[0];
+            baseline.Path = baselinePath;
+
+            viewModel.AddSourceCommand.Execute(null);
+            var secondary = viewModel.Sources[1];
+            secondary.Path = baselinePath;
+
+            baseline.IsBaseline = false;
+            viewModel.Sources.Count(source => source.IsBaseline).Should().Be(1);
+
+            secondary.IsBaseline = true;
+            viewModel.Sources.Count(source => source.IsBaseline).Should().Be(1);
+            secondary.IsBaseline.Should().BeTrue();
+
+            secondary.IsBaseline = false;
+            viewModel.Sources.Count(source => source.IsBaseline).Should().Be(1);
+        }
+        finally
+        {
+            File.Delete(baselinePath);
+        }
+    }
+
+    [Fact]
+    public void GlobValidation_sets_errors_for_missing_base_directory()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new RunProfilesViewModel(service)
+        {
+            ProfileName = "glob",
+        };
+
+        viewModel.Sources[0].Path = "C:/missing/*.json";
+        Assert.Equal("Glob base directory not found.", viewModel.Sources[0].Error);
+
+        var tempDir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        viewModel.Sources[0].Path = Path.Combine(tempDir.FullName, "*.json");
+        Assert.Null(viewModel.Sources[0].Error);
+
+        Directory.Delete(tempDir.FullName);
+    }
+
+    [Fact]
+    public void LoadProfileCommand_applies_profile_definition()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new RunProfilesViewModel(service)
+        {
+            ProfileName = "initial",
+        };
+
+        var profile = new RunProfileDefinition
+        {
+            Name = "Loaded",
+            Description = "  description ",
+            Sources = new[] { "/baseline.txt", "/other.txt" },
+            Options = new Dictionary<string, string>
+            {
+                ["Key"] = "Value",
+            },
+            SecretScanner = new SecretScannerOptions
+            {
+                IgnoreRules = new[] { " R1 ", "R1" },
+                IgnorePatterns = new[] { "P" },
+            },
+        };
+
+        viewModel.LoadProfileCommand.Execute(profile);
+
+        viewModel.ProfileName.Should().Be("Loaded");
+        viewModel.ProfileDescription.Should().Be("  description ");
+        viewModel.Sources.Count.Should().Be(2);
+        viewModel.Sources[0].IsBaseline.Should().BeTrue();
+        viewModel.Sources[1].Path.Should().Be("/other.txt");
+        viewModel.Options.Should().ContainSingle(option => option.Key == "Key" && option.Value == "Value");
+        viewModel.SecretScannerSummary.Should().Contain("Ignored rules: 1, patterns: 1");
+    }
+
+    [Fact]
+    public void OptionCommands_add_and_remove_entries()
+    {
+        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+
+        viewModel.Options.Should().BeEmpty();
+        viewModel.AddOptionCommand.Execute(null);
+        viewModel.AddOptionCommand.Execute(null);
+        viewModel.Options.Count.Should().Be(2);
+
+        viewModel.Options[0].Key = "alpha";
+        viewModel.Options[0].Value = "beta";
+
+        viewModel.RemoveOptionCommand.Execute(viewModel.Options[1]);
+        viewModel.Options.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void RemoveSourceCommand_reassigns_baseline()
+    {
+        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+
+        var baselineFile = Path.GetTempFileName();
+        var secondaryFile = Path.GetTempFileName();
+
+        try
+        {
+            viewModel.Sources[0].Path = baselineFile;
+            viewModel.AddSourceCommand.Execute(null);
+            viewModel.Sources[1].Path = secondaryFile;
+            viewModel.Sources[1].IsBaseline = true;
+
+            viewModel.RemoveSourceCommand.Execute(viewModel.Sources[1]);
+
+            viewModel.Sources.Should().ContainSingle();
+            viewModel.Sources[0].IsBaseline.Should().BeTrue();
+        }
+        finally
+        {
+            File.Delete(baselineFile);
+            File.Delete(secondaryFile);
+        }
+    }
+
+    [Fact]
+    public void OpenOutputCommand_uses_process_override()
+    {
+        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+        var tempDir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+
+        try
+        {
+            var tempFile = Path.GetTempFileName();
+            viewModel.Sources[0].Path = tempFile;
+            viewModel.ProfileName = "open";
+            string? fileName = null;
+            string? arguments = null;
+            viewModel.ProcessStarterOverride = info =>
+            {
+                fileName = info.FileName;
+                arguments = info.Arguments;
+                return null;
+            };
+
+            viewModel.RunResults.Add(new RunProfilesViewModel.RunResultEntry("source", "dest", 1, "hash"));
+            viewModel.OutputDirectory = tempDir.FullName;
+            viewModel.OpenOutputCommand.CanExecute(null).Should().BeTrue();
+            viewModel.OpenOutputCommand.Execute(null);
+
+            fileName.Should().NotBeNull();
+            var expected = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : OperatingSystem.IsLinux() ? "xdg-open" : tempDir.FullName;
+            fileName.Should().Be(expected);
+            if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS() && !OperatingSystem.IsWindows())
+            {
+                arguments.Should().BeNullOrEmpty();
+            }
+            else
+            {
+                arguments.Should().NotBeNull();
+            }
+        }
+        finally
+        {
+            foreach (var source in viewModel.Sources.ToArray())
+            {
+                if (!string.IsNullOrWhiteSpace(source.Path) && File.Exists(source.Path))
+                {
+                    File.Delete(source.Path);
+                }
+            }
+
+            Directory.Delete(tempDir.FullName, recursive: true);
         }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -163,5 +164,85 @@ public class DiffViewModelTests
             File.Delete(middle);
             File.Delete(right);
         }
+    }
+
+    [Fact]
+    public void AddVersionCommand_enforces_limit()
+    {
+        var viewModel = new DiffViewModel(new FakeDriftbusterService());
+        viewModel.Inputs[0].Path = Path.GetTempFileName();
+        viewModel.Inputs[1].Path = Path.GetTempFileName();
+
+        try
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                viewModel.AddVersionCommand.Execute(null);
+                viewModel.Inputs[^1].Path = Path.GetTempFileName();
+            }
+
+            viewModel.Inputs.Count.Should().Be(5);
+            viewModel.AddVersionCommand.Execute(null);
+            viewModel.Inputs.Count.Should().Be(5);
+        }
+        finally
+        {
+            foreach (var input in viewModel.Inputs)
+            {
+                if (!string.IsNullOrEmpty(input.Path) && File.Exists(input.Path))
+                {
+                    File.Delete(input.Path);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void RemoveVersionCommand_requires_two_entries()
+    {
+        var viewModel = new DiffViewModel(new FakeDriftbusterService());
+        var removable = viewModel.Inputs[1];
+        viewModel.RemoveVersionCommand.CanExecute(removable).Should().BeFalse();
+
+        viewModel.AddVersionCommand.Execute(null);
+        var extra = viewModel.Inputs[2];
+        viewModel.RemoveVersionCommand.CanExecute(extra).Should().BeTrue();
+        viewModel.RemoveVersionCommand.Execute(extra);
+        viewModel.Inputs.Count.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task RunDiffAsync_requires_baseline_path()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new DiffViewModel(service);
+        viewModel.Inputs[1].Path = Path.GetTempFileName();
+
+        await InvokeRunDiffAsync(viewModel);
+
+        viewModel.ErrorMessage.Should().Be("Select a baseline file");
+
+        File.Delete(viewModel.Inputs[1].Path!);
+    }
+
+    [Fact]
+    public async Task RunDiffAsync_requires_comparison_file()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new DiffViewModel(service);
+        viewModel.Inputs[0].Path = Path.GetTempFileName();
+
+        await InvokeRunDiffAsync(viewModel);
+
+        viewModel.ErrorMessage.Should().Be("Select at least one comparison file.");
+
+        File.Delete(viewModel.Inputs[0].Path!);
+    }
+
+    private static Task InvokeRunDiffAsync(DiffViewModel viewModel)
+    {
+        var method = typeof(DiffViewModel).GetMethod("RunDiffAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        method.Should().NotBeNull();
+        return (Task)method!.Invoke(viewModel, Array.Empty<object>())!;
     }
 }

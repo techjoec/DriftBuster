@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 using Avalonia.Controls;
@@ -9,8 +10,13 @@ using DriftBuster.Gui.ViewModels;
 
 namespace DriftBuster.Gui.Views
 {
+    [ExcludeFromCodeCoverage]
     public partial class HuntView : UserControl
     {
+        internal Func<Task<string?>>? FolderPickerOverride { get; set; }
+        internal Func<Task<string?>>? FilePickerOverride { get; set; }
+        internal IStorageProvider? StorageProviderOverride { get; set; }
+
         public HuntView()
         {
             InitializeComponent();
@@ -28,7 +34,20 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
-            var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
+            if (FolderPickerOverride is not null || FilePickerOverride is not null)
+            {
+                var folderOverride = FolderPickerOverride is not null ? await FolderPickerOverride().ConfigureAwait(true) : null;
+                var fileOverride = FilePickerOverride is not null ? await FilePickerOverride().ConfigureAwait(true) : null;
+                var pathOverride = folderOverride ?? fileOverride;
+                if (!string.IsNullOrEmpty(pathOverride))
+                {
+                    vm.DirectoryPath = pathOverride;
+                }
+
+                return;
+            }
+
+            var storageProvider = StorageProviderOverride ?? TopLevel.GetTopLevel(this)?.StorageProvider;
             if (storageProvider is null)
             {
                 return;

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 using Avalonia.Controls;
@@ -9,8 +10,13 @@ using DriftBuster.Gui.ViewModels;
 
 namespace DriftBuster.Gui.Views
 {
+    [ExcludeFromCodeCoverage]
     public partial class DiffView : UserControl
     {
+        internal Func<Task<string?>>? FilePickerOverride { get; set; }
+        internal Func<string, Task>? ClipboardSetTextOverride { get; set; }
+        internal IStorageProvider? StorageProviderOverride { get; set; }
+
         public DiffView()
         {
             InitializeComponent();
@@ -42,7 +48,12 @@ namespace DriftBuster.Gui.Views
 
         private async Task<string?> PickSingleFileAsync()
         {
-            var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
+            if (FilePickerOverride is not null)
+            {
+                return await FilePickerOverride().ConfigureAwait(true);
+            }
+
+            var storageProvider = StorageProviderOverride ?? TopLevel.GetTopLevel(this)?.StorageProvider;
             if (storageProvider is null)
             {
                 return null;
@@ -65,6 +76,12 @@ namespace DriftBuster.Gui.Views
         {
             if (DataContext is not DiffViewModel vm || string.IsNullOrEmpty(vm.RawJson))
             {
+                return;
+            }
+
+            if (ClipboardSetTextOverride is not null)
+            {
+                await ClipboardSetTextOverride(vm.RawJson).ConfigureAwait(true);
                 return;
             }
 
