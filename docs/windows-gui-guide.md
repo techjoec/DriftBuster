@@ -19,6 +19,8 @@ This guide explains the capabilities, layout, and operational details of the Ava
 2. Restore + build: `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` then `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 4. A red/black “DrB DriftBuster” window appears with Diff view selected by default.
+5. Demo data is bundled with the app under a `Samples/` directory in the output folder.
+   See `docs/DEMO.md` for a guided walkthrough using these files.
 
 ## 4. Layout Walkthrough
 - **Header strip:** DrB badge, title, Diff/Hunt navigation buttons, and a “Ping Core” shortcut.

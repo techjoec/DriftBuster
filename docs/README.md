@@ -5,6 +5,7 @@ Docs are grouped so you can jump straight to the guide you need.
 ## Start Here
 
 - [`../README.md`](../README.md) — project overview and quick start.
+- [`DEMO.md`](DEMO.md) — GUI walkthrough using the bundled demo data.
 - [`config-files.md`](config-files.md) — how DriftBuster interprets common
   configuration files.
 - [`profile-usage.md`](profile-usage.md) — quick primer on configuration
@@ -21,10 +22,13 @@ Docs are grouped so you can jump straight to the guide you need.
 - [`format-support.md`](format-support.md) — current formats, versions, and
   maturity status.
 - [`hunt-mode.md`](hunt-mode.md) — dynamic value detection workflow.
+- [`multi-server-demo.md`](multi-server-demo.md) — sample workflow scanning 10 servers with drift and generating a report.
+- [`day0-baseline.md`](day0-baseline.md) — build a Day 0 baseline across many servers.
 - [`format-playbook.md`](format-playbook.md) — steps for shipping new format
   detectors.
 - [`legal-safeguards.md`](legal-safeguards.md) — sample/redaction guardrails.
 - [`testing-strategy.md`](testing-strategy.md) — manual lint/test expectations.
+- [`plugin-test-checklist.md`](plugin-test-checklist.md) — standard tests for new/updated format plugins.
 - [`reviewer-checklist.md`](reviewer-checklist.md) — per-change verification log.
 
 ## Plans & Notes

@@ -89,7 +89,7 @@ Use `licensecheck .` locally before submitting to catch unexpected copyleft code
 |------|--------------|
 | 1️⃣ | Fork and clone the repo |
 | 2️⃣ | Create a feature branch (`feature/<topic>`) |
-| 3️⃣ | Run `dotnet format`, all unit tests, and coverage checks |
+| 3️⃣ | Run `dotnet format`, all unit tests, and coverage checks (`./scripts/verify_coverage.sh`) |
 | 4️⃣ | Review licensing notes and update `NOTICE` if needed |
 | 5️⃣ | Submit PR with detailed provenance statement |
 | 6️⃣ | Maintainers review your build output and legal scan notes |
@@ -120,13 +120,15 @@ Enforce locally (no CI hooks). Suggested commands:
 - Repo‑wide summary
   - `python -m scripts.coverage_report`
 
+Shortcut: run `./scripts/verify_coverage.sh` to execute both suites with thresholds and print the summary.
+
 When adding a new format:
 
 - Add `tests/formats/test_<format>_plugin.py` mirroring existing detectors.
 - Cover primary variant(s), negative cases, and edge heuristics to keep the
   plugin at ≥90% coverage.
-- Update docs in `docs/detection-types.md`, `docs/format-support.md`, and
-  `docs/coverage-golden-standard.md` as needed.
+- Follow `docs/plugin-test-checklist.md` to ensure consistent coverage and cases.
+- Update docs in `docs/detection-types.md` and `docs/format-support.md` as needed.
 
 ---
 

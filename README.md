@@ -101,6 +101,9 @@ Check `docs/` for deeper dives:
 - `docs/customization.md` – configuration flags, sampling tweaks, and plugin
   lifecycles.
 - `docs/testing-strategy.md` – how we validate detectors and reporting.
+- `docs/multi-server-demo.md` – sample workflow scanning 10 servers, hunting drift, and generating an HTML report.
+- `docs/day0-baseline.md` – create a Day 0 baseline across many servers without an existing reference.
+- `docs/DEMO.md` – GUI walkthrough using the bundled demo data.
 - `docs/versioning.md` – component version workflow and sync tooling.
 
 ## Running Tests
@@ -113,6 +116,13 @@ python -m pytest
 Optional local checks:
 - Secret scanning: `detect-secrets scan`
 - License audit: `pip-licenses`
+
+### Coverage Enforcement
+
+- Quick all-in-one: `./scripts/verify_coverage.sh`
+  - Runs Python tests with `coverage report --fail-under=90`
+  - Runs .NET tests with `-p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
+  - Prints a combined summary via `python -m scripts.coverage_report`
 
 ### Test Coverage
 
@@ -131,6 +141,11 @@ Repo‑wide summary:
 ```sh
 python -m scripts.coverage_report
 ```
+
+### New Format Plugins
+
+- Follow the checklist in `docs/plugin-test-checklist.md`.
+- Add plugin tests under `tests/formats/` and keep the plugin module’s per-file coverage ≥ 90%.
 
 This prints Python percent, .NET Cobertura percent, and the most under‑covered GUI classes to guide test additions.
 

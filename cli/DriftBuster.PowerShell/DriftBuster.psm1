@@ -8,7 +8,19 @@ function Get-DriftBusterBackendAssembly {
         throw "Backend assembly not found. Run 'dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj' first."
     }
 
-    $assembly = Get-ChildItem -LiteralPath $root -Filter 'DriftBuster.Backend.dll' -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $candidates = Get-ChildItem -LiteralPath $root -Filter 'DriftBuster.Backend.dll' -Recurse
+    if (-not $candidates) {
+        throw "Unable to locate DriftBuster.Backend.dll under $root. Build the project before importing the module."
+    }
+
+    # Prefer assemblies from a 'published' output (which includes dependencies)
+    $published = $candidates | Where-Object { $_.FullName -match "[/\\]published[/\\]" } | Sort-Object LastWriteTime -Descending
+    if ($published) {
+        $assembly = $published | Select-Object -First 1
+    }
+    else {
+        $assembly = $candidates | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    }
     if (-not $assembly) {
         throw "Unable to locate DriftBuster.Backend.dll under $root. Build the project before importing the module."
     }

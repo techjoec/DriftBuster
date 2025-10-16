@@ -28,4 +28,14 @@
   <ItemGroup>
     <ProjectReference Include="..\DriftBuster.Backend\DriftBuster.Backend.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\samples\demo\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Samples\Demo\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\samples\multi-server\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Samples\MultiServer\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
 </Project>

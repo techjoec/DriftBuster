@@ -35,7 +35,7 @@ minimise output or skip rebuilds during local iteration.
 
 - Python (engine/detectors/reporting)
   - `coverage run --source=src/driftbuster -m pytest -q`
-  - `coverage report -m` and/or `coverage json -o coverage.json`
+  - `coverage report --fail-under=90` and/or `coverage json -o coverage.json`
   - Optional HTML: `coverage html` → open `htmlcov/index.html`
 - .NET GUI (xUnit + coverlet collector)
   - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
@@ -44,10 +44,12 @@ minimise output or skip rebuilds during local iteration.
   - `python -m scripts.coverage_report` prints Python percent, .NET percent, and
     the most under‑covered GUI classes to prioritise tests.
 
-Local guardrails (optional):
+Local guardrails:
 
-- Python threshold: `coverage report --fail-under=100`
+- Python threshold: `coverage report --fail-under=90`
 - .NET threshold (coverlet): `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
+
+Shortcut: `scripts/verify_coverage.sh` runs Python and .NET tests with the thresholds and prints the combined summary.
 
 ## Vendor Sample Acquisition
 
