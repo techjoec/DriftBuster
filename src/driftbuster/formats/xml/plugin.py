@@ -116,7 +116,7 @@ def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
 class XmlPlugin:
     name: str = "xml"
     priority: int = 100
-    version: str = "0.0.4"
+    version: str = "0.0.5"
     _MAX_SAFE_PARSE_BYTES: ClassVar[int] = 512 * 1024
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
@@ -196,6 +196,21 @@ class XmlPlugin:
                 reasons,
                 metadata,
             )
+            # Optional well-formedness check within safe bounds
+            try:
+                sample_text = text if len(text) <= self._MAX_SAFE_PARSE_BYTES else text[: self._MAX_SAFE_PARSE_BYTES]
+                if DEFUSED_ET is not None:
+                    DEFUSED_ET.fromstring(sample_text)
+                else:
+                    ET.fromstring(sample_text)
+                metadata["xml_well_formed"] = True
+            except Exception:
+                metadata["xml_well_formed"] = False
+                reasons.append("XML appears not well-formed within sampled content")
+                metadata.setdefault("needs_review", True)
+                rr = metadata.setdefault("review_reasons", [])
+                if isinstance(rr, list):
+                    rr.append("XML not well-formed")
             if root := metadata.get("root_tag"):
                 reasons.append(f"Detected root element <{root}>")
             self._append_namespace_reason(metadata, reasons)

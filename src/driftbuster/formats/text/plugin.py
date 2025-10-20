@@ -39,7 +39,7 @@ def _line_kind(line: str) -> str:
 class TextPlugin:
     name: str = "text"
     priority: int = 1000
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -53,6 +53,7 @@ class TextPlugin:
 
         reasons: List[str] = []
         metadata: Dict[str, object] = {}
+        review_reasons: List[str] = []
 
         lower = path.name.lower()
         content = "\n".join(lines)
@@ -87,6 +88,14 @@ class TextPlugin:
             metadata["directive_lines"] = min(len(directive_lines), 50)
             if comment_lines:
                 metadata["comment_lines"] = min(len(comment_lines), 50)
+
+            # Oddities: detect obvious nonstandard marker tokens
+            if any(ln.lstrip().startswith('<<<') for ln in lines[:100]):
+                review_reasons.append("Nonstandard marker tokens present (e.g., '<<<')")
+
+            if review_reasons:
+                metadata["needs_review"] = True
+                metadata["review_reasons"] = review_reasons
 
             return DetectionMatch(
                 plugin_name=self.name,

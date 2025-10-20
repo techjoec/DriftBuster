@@ -60,7 +60,7 @@ class IniPlugin:
 
     name: str = "ini"
     priority: int = 170
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -71,6 +71,7 @@ class IniPlugin:
 
         reasons: List[str] = []
         metadata: Dict[str, object] = {}
+        review_reasons: List[str] = []
 
         detected_codec: Optional[str] = None
         bom_present = False
@@ -216,6 +217,12 @@ class IniPlugin:
         comment_signal = bool(comment_lines)
         if comment_signal:
             reasons.append("Detected comment markers (;, #, !) used by INI variants")
+
+        # Oddities: bad section headers or colon-only assignments without .properties
+        if any(re.match(r"^\s*\[[^\]]*$", ln) for ln in lines[:1000]):
+            review_reasons.append("Malformed section header without closing bracket")
+        if colon_pairs > 0 and equals_pairs == 0 and extension != ".properties":
+            review_reasons.append("Colon-only assignments outside .properties context")
 
         effective_lines = max(len(non_empty_lines) - len(comment_lines), 1)
         key_density = key_pair_count / effective_lines
@@ -446,6 +453,10 @@ class IniPlugin:
             )
 
         reasons.extend(classification_reasons)
+
+        if review_reasons:
+            metadata["needs_review"] = True
+            metadata["review_reasons"] = review_reasons
 
         return DetectionMatch(
             plugin_name=self.name,

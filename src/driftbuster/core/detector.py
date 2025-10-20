@@ -324,6 +324,18 @@ class Detector:
                 normalized_tags,
                 relative_path=relative,
             )
+            # If any matching config sets metadata flag to ignore review, annotate detection
+            if detection and detection.metadata:
+                try:
+                    ignore = any(
+                        bool(getattr(cfg.config, "metadata", {}).get("ignore_review_flags"))
+                        for cfg in applied
+                    )
+                except Exception:
+                    ignore = False
+                if ignore and detection.metadata.get("needs_review"):
+                    detection.metadata["review_ignored"] = True
+                    detection.metadata["needs_review"] = False
             profiled.append(
                 ProfiledDetection(
                     path=path,

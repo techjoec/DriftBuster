@@ -50,7 +50,7 @@ class JsonPlugin:
 
     name: str = "json"
     priority: int = 200
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -61,6 +61,7 @@ class JsonPlugin:
         extension = path.suffix.lower()
         reasons: List[str] = []
         metadata: Dict[str, Any] = {}
+        review_reasons: List[str] = []
 
         is_json_extension = extension in {".json", ".jsonc"} or lower_name.endswith(".json")
         if is_json_extension:
@@ -102,6 +103,11 @@ class JsonPlugin:
         if parse_result.success:
             metadata.update(parse_result.metadata)
             reasons.append("Parsed JSON payload without errors within sample")
+        else:
+            # Parsing failed despite JSON-like signals; flag for review.
+            if (first_char in "[{" or key_signal or balanced) and not has_comments:
+                metadata["parse_failed"] = True
+                review_reasons.append("JSON parse failed under sample")
 
         # Gate detection on content signals only; extension is a confidence hint, not a gate.
         content_signals = sum(
@@ -153,6 +159,10 @@ class JsonPlugin:
             confidence += 0.03
 
         confidence = min(0.95, confidence)
+
+        if review_reasons:
+            metadata["needs_review"] = True
+            metadata["review_reasons"] = review_reasons
 
         return DetectionMatch(
             plugin_name=self.name,

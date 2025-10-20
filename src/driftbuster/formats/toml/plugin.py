@@ -30,7 +30,7 @@ _ARRAY_VALUE = re.compile(r"=\s*\[.*?\]", re.DOTALL)
 class TomlPlugin:
     name: str = "toml"
     priority: int = 165
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -39,6 +39,7 @@ class TomlPlugin:
         ext = path.suffix.lower()
         reasons: List[str] = []
         metadata: Dict[str, object] = {}
+        review_reasons: List[str] = []
 
         if ext == _EXT:
             reasons.append("File extension .toml suggests TOML content")
@@ -78,6 +79,14 @@ class TomlPlugin:
 
         variant = "array-of-tables" if has_array_tables else "generic"
 
+        # Oddities: suspect trailing commas in arrays or lines missing '=' where expected
+        if re.search(r",\s*\]", text):
+            review_reasons.append("Array with trailing comma before closing bracket")
+        # lines that look like bare keys without '=' (risky, keep conservative)
+        bare_key_lines = [ln for ln in text.splitlines()[:500] if ln.strip() and not ln.lstrip().startswith(('#',';','[')) and ('=' not in ln) and (':' not in ln)]
+        if len(bare_key_lines) >= 3 and has_table_headers is False:
+            review_reasons.append("Multiple bare key lines without '=' suggest malformed TOML")
+
         confidence = 0.5
         # Extension contributes as a hint only.
         if ext == _EXT:
@@ -91,6 +100,10 @@ class TomlPlugin:
         if quoted_pairs or array_pairs:
             confidence += 0.05
         confidence = min(0.95, confidence)
+
+        if review_reasons:
+            metadata["needs_review"] = True
+            metadata["review_reasons"] = review_reasons
 
         return DetectionMatch(
             plugin_name=self.name,

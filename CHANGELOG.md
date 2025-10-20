@@ -19,12 +19,17 @@ by Added, Changed, Fixed, and Docs.
 - `dockerfile` plugin (filename hint, first-line FROM, common directives).
 - Windows Registry live scan utilities (enumerate apps, suggest roots, search).
 - Offline runner support for `registry_scan` sources; writes `registry_scan.json`.
+ - Review flags in format plugins: detectors now annotate `needs_review` with `review_reasons` for suspicious or malformed inputs (e.g., JSON parse failures, XML not well-formed, YAML tabs, TOML suspect patterns, INI malformed sections). Profiles can opt-out per config via `metadata.ignore_review_flags`.
 
 ### Changed
 - Catalog includes `RegistryLive` class; validation maps `registry-live`.
  - YAML/INI ordering updated (YAML before INI). YAML skips heavy comment prologs; INI avoids YAML extensions and tolerates colon-only `.preferences` files.
  - Normalized plugin aliases in metadata validation (`dockerfile`→`script-config`, `hcl`→`ini`).
- - GUI: Sharper theme palette, accent/outline button variants, larger defaults (buttons/inputs), refined card/table styling, backend health indicator, and header theme toggle.
+- GUI: Sharper theme palette, accent/outline button variants, larger defaults (buttons/inputs), refined card/table styling, backend health indicator, and header theme toggle.
+ - Detection heuristics tightened to treat file extensions as hints for confidence rather than gates; content signals drive detection.
+ - YAML/INI gating strengthened to avoid extension-only classification; YAML requires structural signals; INI avoids extension-based shortcuts.
+ - JSON and TOML now surface oddity hints (e.g., parse failures, trailing commas, bare keys) via metadata for manual review.
+ - XML plugin adds an optional well-formedness check (bounded sample) and marks malformed samples for review while still reporting structure cues.
 
 ### Fixed
 - Test import collision for the `scripts` package during collection.

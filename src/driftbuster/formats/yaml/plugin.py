@@ -41,7 +41,7 @@ class YamlPlugin:
     name: str = "yaml"
     # Run before INI to avoid unix-conf/env-file stealing YAML payloads
     priority: int = 160
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -51,6 +51,7 @@ class YamlPlugin:
         lower_name = path.name.lower()
         reasons: List[str] = []
         metadata: Dict[str, object] = {}
+        review_reasons: List[str] = []
 
         if extension in _EXTENSIONS:
             reasons.append(f"File extension {extension} suggests YAML content")
@@ -72,6 +73,10 @@ class YamlPlugin:
         has_doc = bool(_DOC_START.search(scan_text))
         has_list = bool(_LIST_MARKER.search(scan_text))
         has_indented = bool(_INDENTED_BLOCK.search(scan_text))
+
+        # Oddities: tabs for indentation are suspicious
+        if "\t" in text:
+            review_reasons.append("Tab indentation present in YAML-like content")
 
         # Guard against common false positives like inline URLs with ':'
         # by requiring either indentation-based maps or multiple key: lines.
@@ -153,6 +158,10 @@ class YamlPlugin:
                 break
         if tops:
             metadata["top_level_keys_preview"] = tops
+
+        if review_reasons:
+            metadata["needs_review"] = True
+            metadata["review_reasons"] = review_reasons
 
         return DetectionMatch(
             plugin_name=self.name,
