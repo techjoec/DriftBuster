@@ -1,7 +1,7 @@
 {
   "core": "0.0.2",
   "catalog": "0.0.2",
-  "gui": "0.0.1",
+  "gui": "0.0.2",
   "powershell": "0.0.1",
   "formats": {
     "xml": "0.0.5",

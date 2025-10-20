@@ -70,6 +70,44 @@ def build_gui(runtime: str | None, self_contained: bool) -> None:
     run(command)
 
 
+def _read_versions_json() -> dict:
+    import json
+    path = REPO_ROOT / "versions.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def build_installer(*, rid: str, release_notes: Path, channel: str | None = None, pack_id: str | None = None) -> None:
+    """Build a Velopack installer for the GUI.
+
+    Requires: dotnet tool 'vpk' restored; release notes file per docs/release-notes.md.
+    """
+    if not release_notes.exists():
+        raise SystemExit(f"Release notes not found: {release_notes}")
+
+    versions = _read_versions_json()
+    gui_version = str(versions.get("gui", "0.0.0"))
+
+    script = REPO_ROOT / "scripts" / "build_velopack_release.sh"
+    if not script.exists():
+        raise SystemExit(f"Installer script not found: {script}")
+
+    cmd = [
+        "bash",
+        str(script),
+        "--version",
+        gui_version,
+        "--rid",
+        rid,
+        "--release-notes",
+        str(release_notes),
+    ]
+    if channel:
+        cmd.extend(["--channel", channel])
+    if pack_id:
+        cmd.extend(["--pack-id", pack_id])
+    run(cmd)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare DriftBuster release artifacts.")
     parser.add_argument(
@@ -86,6 +124,28 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Produce a self-contained GUI publish when a runtime is specified.",
     )
+    parser.add_argument(
+        "--no-installer",
+        action="store_true",
+        help="Do not build a Velopack installer (default builds installer).",
+    )
+    parser.add_argument(
+        "--installer-rid",
+        default="win-x64",
+        help="RID for installer packaging (default: win-x64).",
+    )
+    parser.add_argument(
+        "--release-notes",
+        help="Path to release notes markdown (required for installer packaging).",
+    )
+    parser.add_argument(
+        "--channel",
+        help="Optional installer update channel label.",
+    )
+    parser.add_argument(
+        "--pack-id",
+        help="Override installer pack id (defaults to com.driftbuster.gui).",
+    )
     return parser.parse_args()
 
 
@@ -100,10 +160,25 @@ def main() -> int:
     build_python_package()
     build_gui(runtime=args.runtime, self_contained=args.self_contained)
 
+    # Build installer when explicitly supported by parsed args; fall back to
+    # skipping in legacy test harnesses that don't pass new flags.
+    if not getattr(args, "no_installer", True):
+        release_notes_arg = getattr(args, "release_notes", None)
+        if not release_notes_arg:
+            raise SystemExit("--release-notes is required to build the installer. Use --no-installer to skip.")
+        build_installer(
+            rid=getattr(args, "installer_rid", "win-x64"),
+            release_notes=Path(release_notes_arg),
+            channel=getattr(args, "channel", None),
+            pack_id=getattr(args, "pack_id", None),
+        )
+
     print("\nRelease artifacts ready:")
     print(f" - Python dist: {PY_ARTIFACT_DIR}")
     gui_dir = GUI_ARTIFACT_DIR / (args.runtime if args.runtime else "framework")
     print(f" - GUI publish: {gui_dir}")
+    if not getattr(args, "no_installer", True):
+        print(f" - Installer: artifacts/velopack/releases/{getattr(args, 'installer_rid', 'win-x64')}")
     return 0
 
 

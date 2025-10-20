@@ -66,10 +66,16 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - All work runs asynchronously on background tasks so the UI stays responsive; errors surface through the existing status banners.
 
 ## 8. Packaging Options
-- **Velopack installers:** `dotnet tool restore` then `scripts/build_velopack_release.sh --version <semver> --release-notes notes/releases/<semver>.md [--rid win-x64]`. The script publishes the app self-contained and calls `vpk pack`, dropping installers under `artifacts/velopack/releases/<rid>`. Release notes must follow `docs/release-notes.md`. Run it on the OS you’re targeting (the script switches between `[win]`, `[linux]`, `[osx]` directives automatically). Use `--channel` to label prerelease feeds and `--pack-id` if you need an alternate bundle identifier.
-- **Manual portable publish:** For quick disposable builds, `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true`. (Velopack is the preferred path for anything shipping to users.)
-- No external runtimes are required beyond the .NET runtime chosen for your publish target.
-- Cross-check `versions.json` (`core`, `gui`) before packaging and run `python scripts/sync_versions.py` to propagate changes prior to publishing.
+- Default release builds produce an installer:
+  - `python scripts/release_build.py --release-notes notes/releases/<semver>.md --installer-rid win-x64`
+  - Installer artifacts: `artifacts/velopack/releases/<rid>`.
+- Direct Velopack usage:
+  - `dotnet tool restore`
+  - `scripts/build_velopack_release.sh --version <semver> --release-notes notes/releases/<semver>.md [--rid win-x64]`
+  - Use `--channel` (prereleases) and `--pack-id` (bundle id) as needed.
+- Manual portable publish (for quick local runs):
+  - `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true`
+- Before packaging, sync versions: `python scripts/sync_versions.py`.
 
 ## 9. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.

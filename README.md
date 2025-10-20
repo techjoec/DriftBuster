@@ -82,6 +82,13 @@ Tips:
 - Click “Check core” to verify backend health (status dot shows green/red).
 - Primary actions are accent-filled; secondary are outline for quick scanning.
 
+### Release Build
+
+- Python + .NET installer (default):
+  - `python scripts/release_build.py --release-notes notes/releases/<semver>.md --installer-rid win-x64`
+  - Installer artifacts: `artifacts/velopack/releases/<rid>`
+- Portable GUI publish only: `python scripts/release_build.py --no-installer`
+
 ### Windows PowerShell module
 
 ```powershell
