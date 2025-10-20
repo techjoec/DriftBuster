@@ -11,11 +11,19 @@ by Added, Changed, Fixed, and Docs.
 
 ### Added
 - `registry-live` format plugin for registry scan definition manifests (JSON/YAML).
+- `yaml` format plugin (heuristic, no parser dep) with Kubernetes manifest hinting.
+- `conf` DSL plugin for Logstash pipeline configs.
+- `text` directive plugin for OpenSSH/OpenVPN and generic directive-style configs.
+- `toml` format plugin (tables, arrays-of-tables, dotted keys, quoted/array values).
+- `hcl` format plugin (Nomad/Vault/Consul block detection + key assignments).
+- `dockerfile` plugin (filename hint, first-line FROM, common directives).
 - Windows Registry live scan utilities (enumerate apps, suggest roots, search).
 - Offline runner support for `registry_scan` sources; writes `registry_scan.json`.
 
 ### Changed
 - Catalog includes `RegistryLive` class; validation maps `registry-live`.
+ - YAML/INI ordering updated (YAML before INI). YAML skips heavy comment prologs; INI avoids YAML extensions and tolerates colon-only `.preferences` files.
+ - Normalized plugin aliases in metadata validation (`dockerfile`→`script-config`, `hcl`→`ini`).
  - GUI: Sharper theme palette, accent/outline button variants, larger defaults (buttons/inputs), refined card/table styling, backend health indicator, and header theme toggle.
 
 ### Fixed

@@ -8,12 +8,18 @@ checklist whenever you introduce a new format or refresh an existing one.
 
 Current registry order example (`driftbuster.formats.registry_summary()`; actual order may change as plugins evolve):
 
-| Order | Plugin | Module | Priority | Version |
-|-------|--------|--------|----------|---------|
-| 0 | `registry-live` | `driftbuster.formats.registry_live.plugin.RegistryLivePlugin` | 30 | 0.0.1 |
-| 1 | `xml` | `driftbuster.formats.xml.plugin.XmlPlugin` | 100 | 0.0.4 |
-| 2 | `ini` | `driftbuster.formats.ini.IniPlugin` | 170 | 0.0.1 |
-| 3 | `json` | `driftbuster.formats.json.plugin.JsonPlugin` | 200 | 0.0.1 |
+| Order | Plugin         | Module                                                        | Priority | Version |
+|-------|----------------|---------------------------------------------------------------|----------|---------|
+| 0     | `registry-live`| `driftbuster.formats.registry_live.plugin.RegistryLivePlugin`| 30       | 0.0.1   |
+| 1     | `xml`          | `driftbuster.formats.xml.plugin.XmlPlugin`                    | 100      | 0.0.4   |
+| 2     | `dockerfile`   | `driftbuster.formats.dockerfile.plugin.DockerfilePlugin`      | 120      | 0.0.1   |
+| 3     | `conf`         | `driftbuster.formats.conf.plugin.ConfPlugin`                  | 150      | 0.0.1   |
+| 4     | `hcl`          | `driftbuster.formats.hcl.plugin.HclPlugin`                    | 158      | 0.0.1   |
+| 5     | `yaml`         | `driftbuster.formats.yaml.plugin.YamlPlugin`                  | 160      | 0.0.1   |
+| 6     | `toml`         | `driftbuster.formats.toml.plugin.TomlPlugin`                  | 165      | 0.0.1   |
+| 7     | `ini`          | `driftbuster.formats.ini.plugin.IniPlugin`                    | 170      | 0.0.1   |
+| 8     | `json`         | `driftbuster.formats.json.plugin.JsonPlugin`                  | 200      | 0.0.1   |
+| 9     | `text`         | `driftbuster.formats.text.plugin.TextPlugin`                  | 1000     | 0.0.1   |
 
 Use the same structure for new plugins so the registry report stays predictable.
 When you update or add a plugin, bump only its entry in `versions.json` and run

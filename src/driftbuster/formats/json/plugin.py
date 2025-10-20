@@ -103,10 +103,10 @@ class JsonPlugin:
             metadata.update(parse_result.metadata)
             reasons.append("Parsed JSON payload without errors within sample")
 
-        signals = sum(
+        # Gate detection on content signals only; extension is a confidence hint, not a gate.
+        content_signals = sum(
             1
             for flag in (
-                is_json_extension,
                 metadata.get("top_level_type") in {"object", "array"},
                 key_signal,
                 balanced,
@@ -115,10 +115,16 @@ class JsonPlugin:
             if flag
         )
 
-        if signals < 2:
-            return None
+        if content_signals < 2:
+            # Allow minimal detection for known JSON extensions even if content
+            # signals are weak, to align with real-world appsettings-style files
+            # that may be tiny or truncated in samples.
+            if not (is_json_extension and stripped):
+                return None
 
-        if not is_json_extension and not parse_result.success and not key_signal:
+        # For non-JSON extensions, require at least a key/value marker or a
+        # successful parse to avoid over-eager matches on brace-like text.
+        if not is_json_extension and not (parse_result.success or key_signal):
             return None
 
         variant: Optional[str] = None
@@ -130,8 +136,9 @@ class JsonPlugin:
             variant = "generic"
 
         confidence = 0.55
+        # Extension contributes as a hint only.
         if is_json_extension:
-            confidence += 0.15
+            confidence += 0.1
         if metadata.get("top_level_type") in {"object", "array"}:
             confidence += 0.1
         if key_signal:

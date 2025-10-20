@@ -29,7 +29,8 @@ _DOTENV_FILENAMES = {
     ".env.sample",
 }
 _DIRECTIVE_PATTERN = re.compile(
-    r"^\s*(?:include|loadmodule|setenv|option|alias)\b", re.IGNORECASE | re.MULTILINE
+    r"^\s*(?:Include|LoadModule|SetEnv|Option|Alias)\s+\S+",
+    re.IGNORECASE | re.MULTILINE,
 )
 _MAX_SECTION_SNAPSHOT = 10
 
@@ -226,14 +227,27 @@ class IniPlugin:
         if not (key_pair_count or directive_signal):
             return None
 
-        if not sections and not key_density_strong and not directive_signal and not extension_hint:
+        # Require substantive content signals even when an extension hint is present.
+        # Previously, an INI-like extension could bypass the stronger key/count
+        # requirement, which allowed misleading extensions to improve detection.
+        # Keep dotenv/export and .preferences allowances, but do not let the
+        # extension alone relax gating.
+        if (
+            not sections
+            and not directive_signal
+            and not (key_pair_count >= 1 or dotenv_hint or export_lines or extension == ".preferences")
+        ):
             return None
 
         colon_only_assignments = colon_pairs > 0 and equals_pairs == 0
         if colon_only_assignments and not (
             sections or extension_hint or dotenv_hint or directive_signal or export_lines
         ):
-            return None
+            # Allow colon-only preferences files used by some tools
+            if extension == ".preferences":
+                pass
+            else:
+                return None
 
         signals = 0
         if sections:
@@ -252,7 +266,33 @@ class IniPlugin:
             signals += 1
 
         if signals < 2:
-            return None
+            if extension == ".preferences" and key_pair_count >= 2:
+                variant = "sectionless-ini"
+                reasons.append("Preferences file with colon assignments treated as INI")
+                confidence = max(confidence, 0.6)
+                return DetectionMatch(
+                    plugin_name=self.name,
+                    format_name="ini",
+                    variant=variant,
+                    confidence=confidence,
+                    reasons=reasons,
+                    metadata=metadata or None,
+                )
+            # Fallback: commented Java properties exemplars
+            if extension == ".properties":
+                commented_pairs = 0
+                for line in lines[:1000]:
+                    s = line.lstrip()
+                    if s.startswith(('#',';')) and ("=" in s or ":" in s):
+                        commented_pairs += 1
+                if commented_pairs >= 10:
+                    reasons.append("Found numerous commented key/value examples in .properties file")
+                    variant = "java-properties"
+                    confidence = max(confidence, 0.56)
+                else:
+                    return None
+            else:
+                return None
 
         confidence = 0.4
         confidence += min(key_density, 0.6) * 0.25
@@ -351,6 +391,9 @@ class IniPlugin:
                 "Sectionless KEY=VALUE or export assignments resemble dotenv env files"
             )
         elif directive_signal and (not sections or len(directive_lines) >= 2 or directive_density >= 0.3):
+            # Avoid stealing YAML payloads; let the YAML plugin classify .yml/.yaml
+            if extension in {".yml", ".yaml"}:
+                return None
             format_name = "unix-conf"
             variant = "directive-conf"
             classification_reasons.append(
@@ -388,6 +431,9 @@ class IniPlugin:
                         "File extension .properties with key/value pairs suggests Java properties"
                     )
                 else:
+                    # Avoid env-file misclassification for YAML
+                    if extension in {".yml", ".yaml"}:
+                        return None
                     variant = "sectionless-ini"
                     classification_reasons.append(
                         "Key/value pairs without sections default to sectionless INI interpretation"
