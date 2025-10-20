@@ -50,7 +50,7 @@ class JsonPlugin:
 
     name: str = "json"
     priority: int = 200
-    version: str = "0.0.1"
+    version: str = "0.0.2"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -61,6 +61,7 @@ class JsonPlugin:
         extension = path.suffix.lower()
         reasons: List[str] = []
         metadata: Dict[str, Any] = {}
+        review_reasons: List[str] = []
 
         is_json_extension = extension in {".json", ".jsonc"} or lower_name.endswith(".json")
         if is_json_extension:
@@ -102,11 +103,16 @@ class JsonPlugin:
         if parse_result.success:
             metadata.update(parse_result.metadata)
             reasons.append("Parsed JSON payload without errors within sample")
+        else:
+            # Parsing failed despite JSON-like signals; flag for review.
+            if (first_char in "[{" or key_signal or balanced) and not has_comments:
+                metadata["parse_failed"] = True
+                review_reasons.append("JSON parse failed under sample")
 
-        signals = sum(
+        # Gate detection on content signals only; extension is a confidence hint, not a gate.
+        content_signals = sum(
             1
             for flag in (
-                is_json_extension,
                 metadata.get("top_level_type") in {"object", "array"},
                 key_signal,
                 balanced,
@@ -115,10 +121,16 @@ class JsonPlugin:
             if flag
         )
 
-        if signals < 2:
-            return None
+        if content_signals < 2:
+            # Allow minimal detection for known JSON extensions even if content
+            # signals are weak, to align with real-world appsettings-style files
+            # that may be tiny or truncated in samples.
+            if not (is_json_extension and stripped):
+                return None
 
-        if not is_json_extension and not parse_result.success and not key_signal:
+        # For non-JSON extensions, require at least a key/value marker or a
+        # successful parse to avoid over-eager matches on brace-like text.
+        if not is_json_extension and not (parse_result.success or key_signal):
             return None
 
         variant: Optional[str] = None
@@ -130,8 +142,9 @@ class JsonPlugin:
             variant = "generic"
 
         confidence = 0.55
+        # Extension contributes as a hint only.
         if is_json_extension:
-            confidence += 0.15
+            confidence += 0.1
         if metadata.get("top_level_type") in {"object", "array"}:
             confidence += 0.1
         if key_signal:
@@ -146,6 +159,10 @@ class JsonPlugin:
             confidence += 0.03
 
         confidence = min(0.95, confidence)
+
+        if review_reasons:
+            metadata["needs_review"] = True
+            metadata["review_reasons"] = review_reasons
 
         return DetectionMatch(
             plugin_name=self.name,

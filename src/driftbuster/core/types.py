@@ -56,6 +56,11 @@ _FORMAT_ALIASES: Dict[str, str] = {
     "registry-export": "registry-export",
     "structured-config": "structured-config-xml",
     "structured-config-xml": "structured-config-xml",
+    # Normalise plugin family names used by detectors to canonical catalog ids
+    "env-file": "ini",
+    "ini-json-hybrid": "ini",
+    "dockerfile": "script-config",
+    "hcl": "ini",
     "embedded-sql": "embedded-sql-db",
     "embedded-sqlite": "embedded-sql-db",
     "sqlite": "embedded-sql-db",

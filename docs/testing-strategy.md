@@ -35,7 +35,7 @@ Run both commands before landing changes that touch the Python core or the
 Avalonia/PowerShell surfaces. Use `-q`/`--no-build` switches if you need to
 minimise output or skip rebuilds during local iteration.
 
-### Coverage measurement
+### Coverage measurement (quick commands)
 
 - Python (engine/detectors/reporting)
   - `coverage run --source=src/driftbuster -m pytest -q`
@@ -44,9 +44,14 @@ minimise output or skip rebuilds during local iteration.
 - .NET GUI (xUnit + coverlet collector)
   - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
   - Inspect `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml`
-- Repo‑wide summary
-  - `python -m scripts.coverage_report` prints Python percent, .NET percent, and
-    the most under‑covered GUI classes to prioritise tests.
+- Repo‑wide summary: `python -m scripts.coverage_report`
+  - Prints Python %, .NET %, and the most under‑covered GUI classes.
+
+### Review flags and profile ignores
+- Plugins may mark oddities with `metadata.needs_review` and `review_reasons`.
+- Profiles can suppress review flags per config via
+  `metadata.ignore_review_flags = true`.
+- Tests should cover: flag emission and profile‑based suppression.
 
 Local guardrails:
 

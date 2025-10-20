@@ -31,6 +31,13 @@ For the definitive detector expectations, refer to
 
 INI-family detectors now rank structural evidence (section headers, directive blocks, brace hybrids) ahead of extension-only cues so shared `.conf` and `.properties` suffixes keep their dedicated variants. Dotenv matches remain gated by known filenames and export/`=` density, allowing Java properties to retain the `java-properties` variant even when sections are absent.
 
+### Plugin Families and Aliases
+
+Some format plugins expose families that normalise to existing catalog classes to keep reporting stable while we trial heuristics:
+
+- `dockerfile` → catalog `script-config` (shared “script-like” detection family). Metadata and reasons remain Dockerfile-specific.
+- `hcl` → catalog `ini` (temporary mapping during preview). Reports identify the plugin, and detected blocks/keys surface under metadata; mapping may receive a dedicated catalog family in a later catalog revision.
+
 ### Embedded Variants
 
 - **XmlGeneric** — variants `app-manifest-xml`, `resource-xml`, and `interface-xml`

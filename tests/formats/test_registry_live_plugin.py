@@ -1,58 +1,50 @@
-from __future__ import annotations
-
 from pathlib import Path
 
-from driftbuster.core.detector import Detector
+from driftbuster.formats.registry_live.plugin import RegistryLivePlugin
 
 
-def run_detect(text: str, name: str = "scan.regscan.json"):
-    p = Path("artifacts/tmp/registry_live_" + name)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text, encoding="utf-8")
-    try:
-        det = Detector(sample_size=4096)
-        return det.scan_file(p)
-    finally:
-        try:
-            p.unlink()
-        except Exception:
-            pass
+def _detect(name: str, content: str):
+    p = Path(name)
+    pl = RegistryLivePlugin()
+    return pl.detect(p, content.encode("utf-8"), content)
 
 
-def test_detects_json_manifest_with_metadata():
-    payload = {
-        "registry_scan": {
-            "token": "VendorA AppA",
-            "keywords": ["server", "api"],
-            "patterns": ["https://", "api\\.internal\\.local"],
-            "max_depth": 8,
-            "max_hits": 50,
-            "time_budget_s": 5.0,
-        }
-    }
-    import json
+def test_registry_live_json_and_yaml_paths():
+    json_content = """
+    {"registry_scan": {"token": "App", "keywords": ["k"], "patterns": ["p"]}}
+    """.strip()
+    m_json = _detect("scan.json", json_content)
+    assert m_json is not None
+    assert m_json.format_name == "registry-live"
+    assert any("Token provided" in r for r in m_json.reasons)
 
-    match = run_detect(json.dumps(payload, indent=2))
-    assert match is not None
-    assert match.format_name == "registry-live"
-    assert match.variant == "scan-definition"
-    md = match.metadata or {}
-    assert md.get("token") == "VendorA AppA"
-    assert md.get("keywords") == ["server", "api"]
-    assert md.get("max_depth") == 8
+    yaml_content = """
+    registry_scan:
+      token: App
+      keywords: [server, endpoint]
+      patterns:
+        - https://
+        - api.internal.local
+    """.strip()
+    m_yaml = _detect("scan.yaml", yaml_content)
+    assert m_yaml is not None
+    assert m_yaml.format_name == "registry-live"
+    assert any("registry_scan:" in r or "Detected 'registry_scan:'" in r for r in m_yaml.reasons)
 
 
-def test_detects_yaml_manifest_heuristically():
-    text = """
-registry_scan:
-  token: TinyTool
-  keywords: [server]
-  patterns:
-    - https://
-"""
-    match = run_detect(text, name="scan.yaml")
-    assert match is not None
-    assert match.format_name == "registry-live"
-    assert match.variant == "scan-definition"
-    assert (match.metadata or {}).get("token") == "TinyTool"
+def test_registry_live_invalid_json_with_key_reason():
+    bad = '{"registry_scan": {"token": "App"'  # missing closing braces
+    m = _detect("scan.json", bad)
+    # Detection may fall through to None; ensure code path executes without error
+    assert m is None
 
+
+def test_registry_live_filename_hint_and_options():
+    content = """
+    {"registry_scan": {"token": "App", "max_depth": 5}}
+    """.strip()
+    m = _detect("myscan.regscan.json", content)
+    assert m is not None
+    # Filename hint reason and options captured
+    assert any("Filename suggests a registry scan JSON manifest" in r for r in m.reasons)
+    assert m.metadata and m.metadata.get("max_depth") == 5

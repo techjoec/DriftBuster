@@ -11,6 +11,10 @@ Recommended test cases:
   - Returns `DetectionMatch` with: `format`, `variant` (if any), `reason`.
   - Score is within expected range and stable across typical inputs.
 
+- Extension as hint (not a gate)
+  - Extension alone must not trigger detection. Content signals should gate.
+  - Cover with-and-without-extension cases (confidence nudge vs content-only).
+
 - Negative/near‑miss cases
   - Similar but invalid or malformed input does NOT produce a match.
   - Inputs that look like the format but contain sentinel blockers (e.g.
@@ -24,6 +28,11 @@ Recommended test cases:
 - Metadata extraction
   - Extracted metadata keys are present and correct for typical inputs.
   - Namespaces/prefixes and root element attributes (where applicable).
+
+- Review flags (if applicable)
+  - Plugins surface oddities via `metadata.needs_review` and
+    `metadata.review_reasons` (e.g., JSON parse failed, XML not well-formed,
+    YAML tabs, TOML trailing commas, INI malformed sections).
 
 - Security‑safe parsing
   - If a “defused” parser is supported (e.g. defusedxml), cover the secure

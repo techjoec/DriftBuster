@@ -82,7 +82,7 @@ documentation.
 
 Required command checks (enforced locally):
 
-- Python: `coverage report --fail-under=90`
+- Python: `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`
 - .NET: `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
 
 ## Test Coverage Map
@@ -110,6 +110,16 @@ metadata path covered:
 | XML | Attribute/schema metadata | `test_xml_plugin_canonicalises_root_attributes`, `test_xml_plugin_extracts_schema_locations`, `test_xml_plugin_collects_attribute_hints` |
 | XML | MSBuild surfaces | `test_xml_plugin_supports_targets_extension`, `test_xml_plugin_detects_msbuild_props_variant`, `test_xml_plugin_detects_msbuild_project_metadata` |
 | XML | Generic fallback & rejection | `test_xml_plugin_detects_generic_xml_variant`, `test_xml_plugin_rejects_plain_text` |
+
+### Review Flag Coverage
+
+- JSON parse failures: `tests/formats/test_json_flags.py::test_json_parse_failed_flag`
+- XML well‑formedness: `tests/formats/test_xml_wellformed_flag.py::test_xml_well_formed_true_and_false`
+- YAML tabs and gating: `tests/formats/test_yaml_flags_and_gating.py`
+- TOML trailing commas / bare keys: `tests/formats/test_toml_flags.py`
+- INI malformed sections / colon-only: `tests/formats/test_ini_flags.py`
+- Unix‑conf marker oddities: `tests/formats/test_text_flags.py`
+- Profile review ignore: `tests/core/test_detector_profile_review_ignore.py`
 
 ## Registry Live Coverage Baseline
 - **Format:** `registry-live` detects JSON/YAML manifests with a top-level
