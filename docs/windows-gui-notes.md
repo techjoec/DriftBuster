@@ -4,10 +4,10 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 
 ## Current Base Assets (2025-10 audit)
 
-- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net8.0` with Avalonia 11.2.0. The header includes a backend health indicator and a theme toggle; views swap via `CurrentView` bindings.
+- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net8.0` with Avalonia 11.2.0. The refined header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
 - **Backend library**: `gui/DriftBuster.Backend` hosts shared diff, hunt, and run-profile helpers consumed by both the GUI and the PowerShell module.
 - **Execution contract**: Operations run on background tasks, returning the same JSON payloads previously emitted by the Python helper so the UI bindings stay untouched.
-- **UI snapshot**: Diff view validates inputs, renders plan/metadata cards, and offers a copy-raw-JSON action. Hunt view adds directory picker, status messaging, and card-like findings with token badges.
+- **UI snapshot**: Diff view validates inputs, renders plan/metadata cards, and offers a copy-raw-JSON action. Hunt view adds directory picker, status messaging, and card-style findings with token badges. The multi-server screen now uses tidy host cards, side-by-side execution/timeline panels, and a lean guidance banner to keep the orchestration workflow focused.
 - **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists using the built-in rule set.
 - **Assets**: `Directory.Build.props` centralises net8.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
 
@@ -44,7 +44,7 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 ## Headless UI Testing (2025-10 refresh)
 
 - **Guarded initialisation**: `Program.EnsureHeadless(Func<AppBuilder, AppBuilder>?)` now prevents duplicate Avalonia setup by reusing the first headless instance. The fixture in `.gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` pipes in `UseHeadless` so repeated calls stay safe.
-- **Shared collection**: `[Collection(HeadlessCollection.Name)]` coordinates Avalonia access across `AppStartupTests`, `MainWindowUiTests`, `SecretScannerSettingsWindowTests`, and `DiffViewTests` to avoid cross-test race conditions.
+- **Shared collection & dispatcher facts**: `[Collection(HeadlessCollection.Name)]` still coordinates Avalonia access, while `[AvaloniaFact]` ensures dispatcher-bound tests (navigation, drilldown, converters, session cache, compact view instantiation) run on the UI thread.
 - **tmux command shape**: Run GUI tests inside tmux to keep sessions responsive, e.g. `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj'`. Capture logs with `|& tee artifacts/<session>.log` when reproducing issues.
 - **Focused filters**: Use `--filter 'FullyQualifiedName~MainWindowUiTests'` (or the other class names) for quick iteration, then finish with full Debug/Release passes and `-p:EnableAvaloniaXamlCompilation=true` to mirror release builds.
 - **Diagnostics**: `AvaloniaSetupInspection.LogSetupState` (run with `AVALONIA_INSPECT=1`) logs style dictionaries into `artifacts/codexcli-inspect.log` for tracing resource registration order when investigating future regressions.

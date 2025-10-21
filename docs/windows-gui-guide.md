@@ -18,17 +18,17 @@ This guide explains the capabilities, layout, and operational details of the Ava
 1. Ensure prerequisites are installed (`dotnet --list-sdks`, `python --version`).
 2. Restore + build: `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` then `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-4. The “DrB DriftBuster” window opens with Diff view selected by default. The header includes a backend health dot (green/red), a “Check core” action, and a theme toggle (Dark/Light).
+4. The “DrB DriftBuster” window opens with Diff view selected by default. The compact header presents the DrB badge, navigation summary, a live backend health dot with **Check core**, and a theme toggle (Dark/Light). A pillbox banner beneath the header shows the current view context and shortcuts.
 5. Demo data is bundled with the app under a `Samples/` directory in the output folder.
    See `docs/DEMO.md` for a guided walkthrough using these files.
 6. Registry scan results collected by the offline runner (JSON under `data/<alias>/registry_scan.json`)
    are displayed alongside file-based findings when present.
 
 ## 4. Layout Walkthrough
-- **Header strip:** DrB badge, title, Diff/Hunt/Profile navigation, backend health indicator + “Check core”, theme toggle (Dark/Light), and a “Ping core” shortcut. Contextual toast notifications appear in the top-right overlay any time commands succeed, fail, or require attention; copy actions inside the toast make sharing error details quick.
+- **Header strip:** DrB badge + title stack, navigation toggle group (Diff / Hunt / Profiles / Multi-server), backend health indicator with **Check core**, theme toggle, and a **Ping core** shortcut. Status messages from the active view flow into the headline banner so you can see scan progress even while switching tabs. Contextual toast notifications appear in the top-right overlay; each toast exposes copy actions for quick sharing of error details.
 - **Diff view:** Build diff plans from multiple snapshots. Primary action uses accent fill; secondary actions use outline style. Includes validation, plan/metadata cards, raw JSON expander, and copy control.
 - **Hunt view:** Targets directories/files, runs the hunt pipeline, and displays results as cards with rule metadata, counts, and status messaging.
-- **Multi-server view:** Configure up to six hosts, validate roots, and orchestrate runs. Toasts surface scan status (success, attention, failure). The right-hand activity timeline records root edits, run phases, exports, and errors with per-entry copy shortcuts for audit trails. Inline guidance panels at the top highlight best practices when first landing on the view.
+- **Multi-server view:** Configure up to six hosts, validate roots, and orchestrate runs. The refreshed layout moves host management, execution controls, and the activity audit feed into balanced columns, so you can compare hosts without scrolling. Toasts surface scan status (success, attention, failure) and each timeline card exposes copy shortcuts for rapid sharing.
 
 ## 5. Diff Planner Details
 ### Inputs & Validation
@@ -85,7 +85,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Record date/operator each time the checklist is executed.
 
 ## 10. Automated & Headless Tests
-- UI automation lives in `gui/DriftBuster.Gui.Tests/Ui`. Each class is tagged with `[Collection(HeadlessCollection.Name)]` so all headless runs share a single Avalonia instance.
+- UI automation lives in `gui/DriftBuster.Gui.Tests/Ui` and complementary view-model suites under `gui/DriftBuster.Gui.Tests/ViewModels`. Headless UI tests are attributed with `[AvaloniaFact]`, ensuring each case runs on the Avalonia dispatcher (navigation, drilldown exports, hunt flows, converters, session cache, and theme toggles).
 - `HeadlessFixture` calls `Program.EnsureHeadless(...)`, which guards against duplicate `AppBuilder.Setup` calls in repeated test execution.
 - Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
 - Full coverage expectations:

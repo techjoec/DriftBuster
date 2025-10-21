@@ -6,208 +6,211 @@
              x:Class="DriftBuster.Gui.Views.ServerSelectionView"
              x:DataType="vm:ServerSelectionViewModel">
   <ScrollViewer>
-    <StackPanel Spacing="24">
-      <StackPanel Orientation="Horizontal" Spacing="12">
+    <StackPanel Margin="0,0,0,24" Spacing="18">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="12" VerticalAlignment="Center">
         <Button Content="Setup"
                 Classes="outline"
                 Command="{Binding ShowSetupCommand}"
                 IsEnabled="{Binding IsViewingCatalog}" />
-        <Button Content="Results"
+        <Button Grid.Column="1"
+                Content="Results"
                 Classes="outline"
                 Command="{Binding ShowCatalogCommand}"
                 IsEnabled="{Binding CatalogViewModel.HasEntries}" />
-        <Button Content="Drilldown"
+        <Button Grid.Column="2"
+                Content="Drilldown"
                 Classes="outline"
                 Command="{Binding ShowDrilldownCommand}" />
-      </StackPanel>
+        <TextBlock Grid.Column="3"
+                   HorizontalAlignment="Right"
+                   TextWrapping="Wrap"
+                   Classes="subtitle"
+                   Text="{Binding StatusBanner}" />
+      </Grid>
 
-      <StackPanel Spacing="24"
+      <StackPanel Spacing="16"
                   IsVisible="{Binding IsViewingCatalog, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
-      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="16">
-          <ToggleSwitch Content="Remember setup this session"
-                        IsChecked="{Binding PersistSessionState}" />
-          <Button Content="Save session"
-                  Classes="outline"
-                  IsEnabled="{Binding PersistSessionState}"
-                  Command="{Binding SaveSessionCommand}" />
-          <Button Content="Clear history"
-                  Classes="outline"
-                  Command="{Binding ClearHistoryCommand}" />
-          <TextBlock Text="{Binding StatusBanner}" Classes="subtitle" VerticalAlignment="Center" />
-        </StackPanel>
-      </Border>
+        <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+              <ToggleSwitch Content="Remember session" IsChecked="{Binding PersistSessionState}" />
+              <Button Content="Save"
+                      Classes="outline"
+                      Command="{Binding SaveSessionCommand}"
+                      IsEnabled="{Binding PersistSessionState}" />
+              <Button Content="Clear"
+                      Classes="outline"
+                      Command="{Binding ClearHistoryCommand}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+              <TextBlock Text="{Binding CatalogViewModel.FilteredEntries.Count, StringFormat='Catalog entries: {0}'}"
+                         Classes="subtitle" HorizontalAlignment="Right" />
+            </StackPanel>
+          </Grid>
+        </Border>
 
-      <Border Padding="18"
-              CornerRadius="{DynamicResource Radius.Large}"
-              Background="#1E293B"
-              Opacity="0.95">
-        <StackPanel Spacing="8">
-          <TextBlock Text="Guidance"
-                     FontSize="16"
-                     FontWeight="SemiBold"
-                     Foreground="#E2E8F0" />
-          <TextBlock TextWrapping="Wrap"
-                     Foreground="#E2E8F0"
-                     Text="Run scans to populate the catalog, watch toast notifications for retry and copy options, and review the activity timeline for a chronological breakdown of roots, runs, and exports." />
-        </StackPanel>
-      </Border>
+        <Border Padding="18" CornerRadius="{DynamicResource Radius.Large}" Background="#1E293B" Opacity="0.95">
+          <StackPanel Spacing="6">
+            <TextBlock Text="Planning guidance" FontSize="16" FontWeight="SemiBold" Foreground="#E2E8F0" />
+            <TextBlock TextWrapping="Wrap"
+                       Foreground="#E2E8F0"
+                       Text="Enable the hosts you want to scan, add absolute root paths, then run all or fill in gaps with the partial rerun buttons. Activity history keeps a concise trail of exports, retries, and errors." />
+          </StackPanel>
+        </Border>
 
-      <ItemsControl ItemsSource="{Binding Servers}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <WrapPanel ItemWidth="360" MinWidth="360" />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Border Width="340"
-                    Margin="0,0,20,20"
-                    Padding="18"
-                    Classes="surface"
-                    CornerRadius="{DynamicResource Radius.Large}">
-              <StackPanel Spacing="12">
-                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                  <ToggleSwitch IsChecked="{Binding IsEnabled}" Content="Enabled" />
-                  <TextBlock Text="{Binding StatusText}" Classes="subtitle" VerticalAlignment="Center" />
-                  <TextBlock Text="{Binding LastRunAt, StringFormat='Last run: {0:G}'}"
-                             Classes="subtitle"
-                             IsVisible="{Binding LastRunAt}" />
-                </StackPanel>
+        <ItemsControl ItemsSource="{Binding Servers}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel ItemWidth="360" MinWidth="320" Margin="0,0,0,4" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Width="340"
+                      Margin="0,0,16,16"
+                      Padding="16"
+                      Classes="surface"
+                      CornerRadius="{DynamicResource Radius.Large}">
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                    <ToggleSwitch IsChecked="{Binding IsEnabled}" Content="Enabled" />
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="2">
+                      <TextBlock Text="{Binding StatusText}" Classes="subtitle" HorizontalAlignment="Right" />
+                      <TextBlock Text="{Binding LastRunAt, StringFormat='Last run: {0:G}'}"
+                                 Classes="subtitle"
+                                 IsVisible="{Binding LastRunAt}" HorizontalAlignment="Right" />
+                    </StackPanel>
+                  </Grid>
 
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock Text="Label" Classes="subtitle" Width="48" />
-                  <TextBox Text="{Binding Label, Mode=TwoWay}" Width="220" />
-                </StackPanel>
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Label" Classes="subtitle" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Label, Mode=TwoWay}"
+                             MinWidth="180"
+                             HorizontalAlignment="Stretch" />
+                  </Grid>
 
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock Text="Scope" Classes="subtitle" Width="48" />
-                  <ComboBox Width="220"
-                            ItemsSource="{Binding DataContext.ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            SelectedValue="{Binding Scope, Mode=TwoWay}"
-                            SelectedValueBinding="{Binding Value}">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate>
-                        <TextBlock Text="{Binding DisplayName}" />
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                </StackPanel>
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Scope" Classes="subtitle" />
+                    <ComboBox Grid.Column="1"
+                              ItemsSource="{Binding DataContext.ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              SelectedValue="{Binding Scope, Mode=TwoWay}"
+                              SelectedValueBinding="{Binding Value}"
+                              HorizontalAlignment="Stretch" />
+                  </Grid>
 
-                <StackPanel Spacing="6">
-                  <TextBlock Text="Roots" FontWeight="SemiBold" />
-                  <ItemsControl ItemsSource="{Binding Roots}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,8">
-                          <StackPanel Spacing="4">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                              <TextBlock Text="{Binding Path}" FontFamily="Consolas" TextWrapping="Wrap" />
-                              <Border Padding="4,2"
-                                      CornerRadius="{DynamicResource Radius.Small}"
-                                      Background="{Binding ValidationState, Converter={x:Static conv:RootStatusToBrushConverter.Instance}}">
-                                <TextBlock Text="{Binding ValidationState}" FontSize="12" />
-                              </Border>
-                              <Button Content="Remove"
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="Roots" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding Roots}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,6">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                              <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="{Binding Path}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" />
+                              </StackPanel>
+                              <Button Grid.Column="1"
+                                      Content="Remove"
                                       Classes="outline"
                                       Command="{Binding DataContext.RemoveRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                       CommandParameter="{Binding}" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" />
-                          </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox Width="220"
-                             Watermark="Add root path"
-                             Text="{Binding NewRootPath, Mode=TwoWay}" />
-                    <Button Content="Add root"
-                            Classes="outline"
-                            Command="{Binding DataContext.AddRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}" />
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBox Grid.Column="0"
+                               Text="{Binding NewRootPath, Mode=TwoWay}"
+                               Watermark="Add absolute root"
+                               HorizontalAlignment="Stretch" />
+                      <Button Grid.Column="1"
+                              Content="Add"
+                              Classes="outline"
+                              Command="{Binding DataContext.AddRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}" />
+                    </Grid>
+                    <TextBlock Text="{Binding RootInputError}" Classes="subtitle" Foreground="{DynamicResource Brush.Accent}" />
                   </StackPanel>
-                  <TextBlock Text="{Binding RootInputError}" Classes="subtitle" Foreground="{DynamicResource Brush.Accent}" />
-                </StackPanel>
 
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <TextBlock Text="State:" Classes="subtitle" />
-                  <TextBlock Text="{Binding RunState}" FontWeight="SemiBold" />
-                  <Button Content="Retry"
-                          Classes="outline"
-                          IsVisible="{Binding CanRetry}"
-                          Command="{Binding DataContext.RunMissingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                </StackPanel>
-              </StackPanel>
-            </Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-
-      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="12">
-          <TextBlock Text="Execution" FontSize="18" FontWeight="SemiBold" />
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <Button Content="Run all" Classes="primary" Command="{Binding RunAllCommand}" IsEnabled="{Binding HasActiveServers}" />
-            <Button Content="Run missing only" Classes="outline" Command="{Binding RunMissingCommand}" />
-            <Button Content="Cancel" Classes="outline" Command="{Binding CancelRunsCommand}" IsEnabled="{Binding IsBusy}" />
-          </StackPanel>
-          <ItemsControl ItemsSource="{Binding Servers}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <TextBlock Text="{Binding Label}" Width="140" />
-                  <TextBlock Text="{Binding RunState}" Width="80" />
-                  <TextBlock Text="{Binding StatusText}" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </Border>
-
-      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="12">
-          <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-            <TextBlock Text="Activity timeline" FontSize="18" FontWeight="SemiBold" />
-            <ComboBox Width="180"
-                      ItemsSource="{Binding ActivityFilterOptions}"
-                      SelectedItem="{Binding ActivityFilter}" />
-          </StackPanel>
-          <TextBlock Text="No activity recorded yet."
-                     Classes="subtitle"
-                     IsVisible="{Binding HasActivityEntries, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
-          <ItemsControl ItemsSource="{Binding FilteredActivityEntries}"
-                        IsVisible="{Binding HasActivityEntries}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Padding="12"
-                        Margin="0,0,0,10"
-                        CornerRadius="{DynamicResource Radius.Medium}"
-                        Classes="surface">
-                  <StackPanel Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBlock Text="{Binding TimestampText}" Classes="subtitle" />
-                      <TextBlock Text="{Binding SeverityLabel}" Classes="subtitle" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding Detail}"
-                               TextWrapping="Wrap"
-                               IsVisible="{Binding Detail, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
-                    <Button Content="Copy entry"
+                  <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Text="State:" Classes="subtitle" />
+                    <TextBlock Text="{Binding RunState}" FontWeight="SemiBold" />
+                    <Button Content="Retry"
                             Classes="outline"
-                            Command="{Binding DataContext.CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}"
-                            HorizontalAlignment="Right"
-                            Width="120" />
+                            IsVisible="{Binding CanRetry}"
+                            Command="{Binding DataContext.RunMissingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding HostId}" />
                   </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </Border>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Grid ColumnDefinitions="2*,3*" ColumnSpacing="16">
+          <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
+            <StackPanel Spacing="10">
+              <TextBlock Text="Execution" FontSize="18" FontWeight="SemiBold" />
+              <WrapPanel Spacing="10">
+                <Button Content="Run all" Classes="primary" Command="{Binding RunAllCommand}" IsEnabled="{Binding HasActiveServers}" />
+                <Button Content="Run missing" Classes="outline" Command="{Binding RunMissingCommand}" />
+                <Button Content="Cancel" Classes="outline" Command="{Binding CancelRunsCommand}" IsEnabled="{Binding IsBusy}" />
+              </WrapPanel>
+              <ItemsControl ItemsSource="{Binding Servers}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="12">
+                      <TextBlock Text="{Binding Label}" />
+                      <TextBlock Text="{Binding RunState}" />
+                      <TextBlock Text="{Binding StatusText}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <TextBlock Text="Activity timeline" FontSize="18" FontWeight="SemiBold" />
+                <ComboBox Grid.Column="1"
+                          Width="160"
+                          ItemsSource="{Binding ActivityFilterOptions}"
+                          SelectedItem="{Binding ActivityFilter}" />
+              </Grid>
+              <TextBlock Text="No activity recorded yet."
+                         Classes="subtitle"
+                         HorizontalAlignment="Center"
+                         IsVisible="{Binding HasActivityEntries, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
+              <ItemsControl ItemsSource="{Binding FilteredActivityEntries}"
+                            IsVisible="{Binding HasActivityEntries}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Padding="12" Margin="0,0,0,10" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
+                      <StackPanel Spacing="4">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                          <TextBlock Text="{Binding TimestampText}" Classes="subtitle" />
+                          <TextBlock Grid.Column="1" Text="{Binding SeverityLabel}" Classes="subtitle" />
+                        </Grid>
+                        <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
+                                   IsVisible="{Binding Detail, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
+                        <Button Content="Copy entry"
+                                HorizontalAlignment="Right"
+                                Classes="outline"
+                                Command="{Binding DataContext.CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </Grid>
       </StackPanel>
 
       <ContentControl Content="{Binding CatalogViewModel}"

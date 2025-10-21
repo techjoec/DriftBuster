@@ -5,161 +5,132 @@
              x:Class="DriftBuster.Gui.Views.ConfigDrilldownView"
              x:DataType="vm:ConfigDrilldownViewModel">
   <ScrollViewer>
-    <StackPanel Spacing="18">
-      <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-        <Button Content="Back"
-                Classes="outline"
-                Command="{Binding BackCommand}" />
-        <TextBlock Text="{Binding DisplayName}"
-                   FontSize="20"
-                   FontWeight="SemiBold"
-                   VerticalAlignment="Center" />
-        <Border Background="#4B5563"
-                Padding="6,2"
-                CornerRadius="6"
-                Margin="6,0,0,0">
-          <TextBlock Text="{Binding Format}" FontSize="12" />
-        </Border>
-        <Border Background="#7C3AED"
-                Padding="6,2"
-                CornerRadius="6"
-                Margin="6,0,0,0"
-                IsVisible="{Binding HasSecrets}">
-          <TextBlock Text="Secrets" FontSize="12" />
-        </Border>
-        <Border Background="#FB923C"
-                Padding="6,2"
-                CornerRadius="6"
-                Margin="6,0,0,0"
-                IsVisible="{Binding HasMaskedTokens}">
-          <TextBlock Text="Masked" FontSize="12" />
-        </Border>
-        <Border Background="#F59E0B"
-                Padding="6,2"
-                CornerRadius="6"
-                Margin="6,0,0,0"
-                IsVisible="{Binding HasValidationIssues}">
-          <TextBlock Text="Validation" FontSize="12" />
-        </Border>
-      </StackPanel>
-
-      <StackPanel Orientation="Horizontal" Spacing="12">
-        <Button Content="Export HTML"
-                Classes="outline"
-                Command="{Binding ExportHtmlCommand}" />
-        <Button Content="Export JSON"
-                Classes="outline"
-                Command="{Binding ExportJsonCommand}" />
-        <Button Content="Re-scan selected"
-                Classes="primary"
-                Command="{Binding ReScanSelectedCommand}" />
-        <Button Content="Select all"
-                Classes="outline"
-                Command="{Binding SelectAllCommand}" />
-        <Button Content="Select none"
-                Classes="outline"
-                Command="{Binding SelectNoneCommand}" />
-        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="12,0,0,0">
-          <TextBlock Text="Diff mode" Classes="subtitle" />
-          <ComboBox Width="140"
-                    ItemsSource="{Binding DiffModes}"
-                    SelectedItem="{Binding DiffMode}" />
+    <StackPanel Margin="0,0,0,24" Spacing="18">
+      <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12" VerticalAlignment="Center">
+        <Button Content="Back" Classes="outline" Command="{Binding BackCommand}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Content="Export HTML" Classes="outline" Command="{Binding ExportHtmlCommand}" />
+          <Button Content="Export JSON" Classes="outline" Command="{Binding ExportJsonCommand}" />
+          <Button Content="Re-scan selected" Classes="primary" Command="{Binding ReScanSelectedCommand}" />
         </StackPanel>
-      </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+          <TextBlock Text="Diff mode" Classes="subtitle" VerticalAlignment="Center" />
+          <ComboBox Width="140" ItemsSource="{Binding DiffModes}" SelectedItem="{Binding DiffMode}" />
+        </StackPanel>
+      </Grid>
 
-      <Border Padding="16"
-              CornerRadius="{DynamicResource Radius.Large}"
-              Background="#0F172A"
-              Opacity="0.93">
-        <StackPanel Spacing="6">
-          <TextBlock Text="Drilldown guidance"
+      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8">
+          <TextBlock Text="{Binding DisplayName}"
+                     FontSize="20"
                      FontWeight="SemiBold"
-                     Foreground="#F8FAFC" />
-          <TextBlock TextWrapping="Wrap"
-                     Foreground="#E2E8F0"
-                     Text="Select the servers to re-scan, export diffs for sharing, and watch the right-hand metadata for provenance and validation issues. Any toast warnings link back here so you can correct drift quickly." />
-        </StackPanel>
-      </Border>
-
-      <Grid ColumnDefinitions="2*,3*,1.5*" RowDefinitions="Auto,*">
-        <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,16,0">
-          <TextBlock Text="Servers" FontSize="18" FontWeight="SemiBold" />
-          <ItemsControl ItemsSource="{Binding Servers}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,8">
-                  <StackPanel Spacing="6">
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                      <CheckBox IsChecked="{Binding IsSelected}" />
-                      <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                      <Border Background="#16A34A" Padding="4,2" CornerRadius="5" IsVisible="{Binding Present}">
-                        <TextBlock Text="Present" FontSize="11" />
-                      </Border>
-                      <Border Background="#B91C1C" Padding="4,2" CornerRadius="5" IsVisible="{Binding Present, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
-                        <TextBlock Text="Missing" FontSize="11" />
-                      </Border>
-                      <Border Background="#2563EB" Padding="4,2" CornerRadius="5" IsVisible="{Binding IsBaseline}">
-                        <TextBlock Text="Baseline" FontSize="11" />
-                      </Border>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <TextBlock Text="Status:" Classes="subtitle" />
-                      <TextBlock Text="{Binding Status}" />
-                      <TextBlock Text="Drift lines:" Classes="subtitle" />
-                      <TextBlock Text="{Binding DriftLineCount}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <TextBlock Text="Redaction:" Classes="subtitle" />
-                      <TextBlock Text="{Binding RedactionStatus}" />
-                      <TextBlock Text="Last seen:" Classes="subtitle" />
-                      <TextBlock Text="{Binding LastSeenText}" />
-                    </StackPanel>
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-
-        <StackPanel Grid.Column="1" Spacing="10" Margin="0,0,16,0">
-          <TextBlock Text="Diff preview" FontSize="18" FontWeight="SemiBold" />
-          <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding IsSideBySide}">
-            <StackPanel Width="200">
-              <TextBlock Text="Baseline" Classes="subtitle" />
-              <ScrollViewer Height="220">
-                <TextBlock Text="{Binding DiffBefore}" FontFamily="Consolas" TextWrapping="Wrap" />
-              </ScrollViewer>
-            </StackPanel>
-            <StackPanel Width="200">
-              <TextBlock Text="Comparison" Classes="subtitle" />
-              <ScrollViewer Height="220">
-                <TextBlock Text="{Binding DiffAfter}" FontFamily="Consolas" TextWrapping="Wrap" />
-              </ScrollViewer>
-            </StackPanel>
-          </StackPanel>
-          <Border Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface" IsVisible="{Binding IsUnified}">
-            <ScrollViewer Height="240">
-              <TextBlock Text="{Binding UnifiedDiff}" FontFamily="Consolas" TextWrapping="Wrap" />
-            </ScrollViewer>
+                     VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="{Binding Format}" Classes="subtitle" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Border Background="#7C3AED" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasSecrets}">
+            <TextBlock Text="Secrets" FontSize="12" />
+          </Border>
+          <Border Background="#FB923C" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasMaskedTokens}">
+            <TextBlock Text="Masked" FontSize="12" />
+          </Border>
+          <Border Background="#F59E0B" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasValidationIssues}">
+            <TextBlock Text="Validation" FontSize="12" />
           </Border>
         </StackPanel>
+          <TextBlock Grid.Column="3" Text="{Binding LastUpdatedText}" Classes="subtitle" HorizontalAlignment="Right" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
 
-        <StackPanel Grid.Column="2" Spacing="10">
-          <TextBlock Text="Metadata" FontSize="18" FontWeight="SemiBold" />
-          <TextBlock Text="Last updated" Classes="subtitle" />
-          <TextBlock Text="{Binding LastUpdatedText}" />
-          <TextBlock Text="Provenance" Classes="subtitle" Margin="0,8,0,0" />
-          <TextBlock Text="{Binding Provenance}" TextWrapping="Wrap" />
-          <TextBlock Text="Notes" Classes="subtitle" Margin="0,8,0,0" />
-          <ItemsControl ItemsSource="{Binding Notes}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Padding="6" Margin="0,0,0,6" CornerRadius="{DynamicResource Radius.Small}" Classes="surface">
-                  <TextBlock Text="{Binding}" TextWrapping="Wrap" />
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+      <Grid ColumnDefinitions="2*,3*" ColumnSpacing="16">
+        <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Servers" FontSize="18" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding Servers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+                      <CheckBox IsChecked="{Binding IsSelected}" />
+                      <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="Status:" Classes="subtitle" />
+                          <TextBlock Text="{Binding Status}" />
+                          <TextBlock Text="Drift lines:" Classes="subtitle" />
+                          <TextBlock Text="{Binding DriftLineCount}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="Redaction:" Classes="subtitle" />
+                          <TextBlock Text="{Binding RedactionStatus}" />
+                          <TextBlock Text="Last seen:" Classes="subtitle" />
+                          <TextBlock Text="{Binding LastSeenText}" />
+                        </StackPanel>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Border Background="#2563EB" Padding="6,2" CornerRadius="6" IsVisible="{Binding IsBaseline}">
+                          <TextBlock Text="Baseline" FontSize="12" />
+                        </Border>
+                        <Border Background="#B91C1C" Padding="6,2" CornerRadius="6" IsVisible="{Binding Present, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
+                          <TextBlock Text="Missing" FontSize="12" />
+                        </Border>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Content="Select all" Classes="outline" Command="{Binding SelectAllCommand}" />
+              <Button Content="Select none" Classes="outline" Command="{Binding SelectNoneCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <StackPanel Spacing="16">
+          <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="Diff preview" FontSize="18" FontWeight="SemiBold" />
+              <Grid ColumnDefinitions="1*,1*" ColumnSpacing="12" IsVisible="{Binding IsSideBySide}">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Baseline" Classes="subtitle" />
+                  <ScrollViewer Height="220">
+                    <TextBlock Text="{Binding DiffBefore}" FontFamily="Consolas" TextWrapping="Wrap" />
+                  </ScrollViewer>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="Comparison" Classes="subtitle" />
+                  <ScrollViewer Height="220">
+                    <TextBlock Text="{Binding DiffAfter}" FontFamily="Consolas" TextWrapping="Wrap" />
+                  </ScrollViewer>
+                </StackPanel>
+              </Grid>
+              <Border Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface" IsVisible="{Binding IsUnified}">
+                <ScrollViewer Height="260">
+                  <TextBlock Text="{Binding UnifiedDiff}" FontFamily="Consolas" TextWrapping="Wrap" />
+                </ScrollViewer>
+              </Border>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Metadata" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="Last updated" Classes="subtitle" />
+              <TextBlock Text="{Binding LastUpdatedText}" />
+              <TextBlock Text="Provenance" Classes="subtitle" Margin="0,6,0,0" />
+              <TextBlock Text="{Binding Provenance}" TextWrapping="Wrap" />
+              <TextBlock Text="Notes" Classes="subtitle" Margin="0,6,0,0" />
+              <ItemsControl ItemsSource="{Binding Notes}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Padding="6" Margin="0,0,0,6" CornerRadius="{DynamicResource Radius.Small}" Classes="surface">
+                      <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
         </StackPanel>
       </Grid>
     </StackPanel>

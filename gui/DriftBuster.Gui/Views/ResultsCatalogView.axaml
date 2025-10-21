@@ -5,102 +5,73 @@
              x:Class="DriftBuster.Gui.Views.ResultsCatalogView"
              x:DataType="vm:ResultsCatalogViewModel">
   <ScrollViewer>
-    <StackPanel Spacing="20">
-      <Border Padding="18"
-              CornerRadius="{DynamicResource Radius.Large}"
-              Background="#0F172A"
-              Opacity="0.93">
-        <StackPanel Spacing="6">
-          <TextBlock Text="Catalog guidance"
-                     FontWeight="SemiBold"
-                     Foreground="#E2E8F0" />
-          <TextBlock TextWrapping="Wrap"
-                     Foreground="#E2E8F0"
-                     Text="Filter by coverage and severity to narrow re-runs. Missing artifacts surface in the panel below—use the quick actions to investigate or trigger targeted scans without leaving the grid." />
-        </StackPanel>
-      </Border>
-      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
-        <WrapPanel VerticalAlignment="Center">
-          <StackPanel Width="180" Margin="0,0,16,0">
+    <StackPanel Margin="0,0,0,24" Spacing="18">
+      <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
+        <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto">
+          <StackPanel Grid.Column="0" Spacing="4">
             <TextBlock Text="Baseline" Classes="subtitle" />
-            <ComboBox ItemsSource="{Binding BaselineOptions}"
-                      SelectedItem="{Binding SelectedBaseline}" />
+            <ComboBox ItemsSource="{Binding BaselineOptions}" SelectedItem="{Binding SelectedBaseline}" />
           </StackPanel>
-          <StackPanel Width="200" Margin="0,0,16,0">
+          <StackPanel Grid.Column="1" Spacing="4">
             <TextBlock Text="Coverage" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding CoverageFilterOptions}"
                       SelectedValue="{Binding SelectedCoverageFilter}"
-                      SelectedValueBinding="{Binding Value}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Display}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
+                      SelectedValueBinding="{Binding Value}" />
           </StackPanel>
-          <StackPanel Width="200" Margin="0,0,16,0">
+          <StackPanel Grid.Column="2" Spacing="4">
             <TextBlock Text="Severity" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding SeverityFilterOptions}"
                       SelectedValue="{Binding SelectedSeverityFilter}"
-                      SelectedValueBinding="{Binding Value}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Display}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
+                      SelectedValueBinding="{Binding Value}" />
           </StackPanel>
-          <StackPanel Width="200" Margin="0,0,16,0">
+          <StackPanel Grid.Column="3" Spacing="4">
             <TextBlock Text="Format" Classes="subtitle" />
-            <ComboBox ItemsSource="{Binding FormatOptions}"
-                      SelectedItem="{Binding SelectedFormat}" />
+            <ComboBox ItemsSource="{Binding FormatOptions}" SelectedItem="{Binding SelectedFormat}" />
           </StackPanel>
-          <StackPanel Width="240" Margin="0,0,16,0">
+          <StackPanel Grid.Column="4" Spacing="4">
             <TextBlock Text="Search" Classes="subtitle" />
-            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Search configs" />
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Config name or ID" />
           </StackPanel>
-        </WrapPanel>
+          <TextBlock Grid.Row="1" Grid.ColumnSpan="5"
+                     Margin="0,8,0,0"
+                     Classes="subtitle"
+                     Text="Use filters to focus on the highest-risk configs. Partial coverage cards expose quick actions for missing hosts." />
+        </Grid>
       </Border>
 
-      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="14">
-          <TextBlock Text="Config catalog" FontSize="18" FontWeight="SemiBold" />
+      <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Configuration catalog" FontSize="18" FontWeight="SemiBold" />
           <DataGrid ItemsSource="{Binding FilteredEntries}"
                     AutoGenerateColumns="False"
                     IsReadOnly="True"
-                    HeadersVisibility="All"
+                    HeadersVisibility="Column"
                     GridLinesVisibility="All"
-                    CanUserReorderColumns="False"
-                    CanUserSortColumns="True"
-                    Height="320">
+                    MinHeight="280">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Config" Binding="{Binding DisplayName}" Width="2*" />
               <DataGridTextColumn Header="Drift" Binding="{Binding DriftSummary}" Width="*" />
-              <DataGridTextColumn Header="Presence" Binding="{Binding CoverageText}" Width="*" />
+              <DataGridTextColumn Header="Coverage" Binding="{Binding CoverageText}" Width="*" />
               <DataGridTextColumn Header="Format" Binding="{Binding Format}" Width="*" />
               <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="*" />
               <DataGridTextColumn Header="Updated" Binding="{Binding LastUpdatedText}" Width="1.5*" />
               <DataGridTemplateColumn Header="Tags" Width="2*">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Border Background="#4C1D95" Padding="4,2" CornerRadius="6"
-                              IsVisible="{Binding HasDrift}">
+                    <WrapPanel Spacing="6">
+                      <Border Background="#4C1D95" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasDrift}">
                         <TextBlock Text="Drift" FontSize="12" />
                       </Border>
-                      <Border Background="#991B1B" Padding="4,2" CornerRadius="6"
-                              IsVisible="{Binding HasSecrets}">
+                      <Border Background="#991B1B" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasSecrets}">
                         <TextBlock Text="Secrets" FontSize="12" />
                       </Border>
-                      <Border Background="#9A3412" Padding="4,2" CornerRadius="6"
-                              IsVisible="{Binding HasMaskedTokens}">
+                      <Border Background="#9A3412" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasMaskedTokens}">
                         <TextBlock Text="Masked" FontSize="12" />
                       </Border>
-                      <Border Background="#92400E" Padding="4,2" CornerRadius="6"
-                              IsVisible="{Binding HasValidationIssues}">
+                      <Border Background="#92400E" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasValidationIssues}">
                         <TextBlock Text="Validation" FontSize="12" />
                       </Border>
-                    </StackPanel>
+                    </WrapPanel>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
@@ -123,13 +94,14 @@
 
       <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}"
               IsVisible="{Binding HasPartialCoverage}">
-        <StackPanel Spacing="12">
-          <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-            <TextBlock Text="Missing artifacts detected" FontWeight="SemiBold" />
-            <Button Content="Re-scan all missing"
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+            <TextBlock Text="Missing artifacts" FontSize="18" FontWeight="SemiBold" />
+            <Button Grid.Column="1"
+                    Content="Re-scan all missing"
                     Classes="outline"
                     Command="{Binding ReScanAllPartialCommand}" />
-          </StackPanel>
+          </Grid>
           <ItemsControl ItemsSource="{Binding PartialCoverageEntries}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
@@ -139,11 +111,11 @@
                     <TextBlock Text="{Binding CoverageText}" Classes="subtitle" />
                     <TextBlock Text="{Binding MissingHostsSummary}" Classes="subtitle" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                      <Button Content="Investigate"
+                      <Button Content="Drilldown"
                               Classes="outline"
                               Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                               CommandParameter="{Binding}" />
-                      <Button Content="Re-scan affected"
+                      <Button Content="Re-scan missing"
                               Classes="outline"
                               Command="{Binding DataContext.ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                               CommandParameter="{Binding}" />

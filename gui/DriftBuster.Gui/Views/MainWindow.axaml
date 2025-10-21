@@ -14,31 +14,23 @@
         Title="DrB DriftBuster">
 
   <Grid RowDefinitions="Auto,*">
-    <Border Padding="24,22" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.BorderStrong}">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
-        <Border Width="52"
-                Height="52"
-                CornerRadius="26"
+    <Border Padding="20,16" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.BorderStrong}">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="16" VerticalAlignment="Center">
+        <Border Width="48"
+                Height="48"
+                CornerRadius="24"
                 Background="{DynamicResource Brush.Accent}">
-          <Grid>
-            <TextBlock Text="DrB"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       FontSize="20"
-                       FontWeight="Bold"
-                       Foreground="#0B1120" />
-          </Grid>
+          <TextBlock Text="DrB"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     FontSize="18"
+                     FontWeight="Bold"
+                     Foreground="#0B1120" />
         </Border>
-        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="2">
-          <TextBlock Text="DriftBuster"
-                     FontSize="22"
-                     FontWeight="SemiBold" />
-          <TextBlock Classes="subtitle"
-                     Text="Configuration reconnaissance, diff planning &amp; hunt insights"
-                     FontSize="14" />
+        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+          <TextBlock Text="DriftBuster" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Configuration reconnaissance, diff planning &amp; hunt insights" Classes="subtitle" />
         </StackPanel>
-
-        <!-- Backend status -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Border Width="10" Height="10" CornerRadius="5"
                   Background="{Binding IsBackendHealthy, Converter={x:Static conv:BoolToBrushConverter.Instance}, ConverterParameter='#21C55D;#EF4444'}">
@@ -48,60 +40,45 @@
           </Border>
           <Button Classes="outline" Content="Check core" Command="{Binding CheckHealthCommand}" />
         </StackPanel>
-
-        <!-- Theme toggle -->
-        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
           <TextBlock Text="Theme" Classes="subtitle" VerticalAlignment="Center" />
           <ToggleSwitch IsCheckedChanged="OnThemeToggled" />
         </StackPanel>
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" Margin="24" RowDefinitions="Auto,*">
-      <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
-        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" VerticalAlignment="Center">
+    <Grid Grid.Row="1" Margin="20" RowDefinitions="Auto,*" RowSpacing="16">
+      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
+        <WrapPanel Spacing="12" VerticalAlignment="Center">
           <ToggleButton Content="Diff planner"
+                        MinWidth="120"
                         Command="{Binding ShowDiffCommand}"
                         IsChecked="{Binding IsDiffSelected, Mode=OneWay}" />
-          <ToggleButton Grid.Column="1"
-                        Margin="12,0,0,0"
-                        Content="Hunt explorer"
+          <ToggleButton Content="Hunt explorer"
+                        MinWidth="120"
                         Command="{Binding ShowHuntCommand}"
                         IsChecked="{Binding IsHuntSelected, Mode=OneWay}" />
-          <ToggleButton Grid.Column="2"
-                        Margin="12,0,0,0"
-                        Content="Profiles"
+          <ToggleButton Content="Profiles"
+                        MinWidth="120"
                         Command="{Binding ShowProfilesCommand}"
                         IsChecked="{Binding IsProfilesSelected, Mode=OneWay}" />
-          <ToggleButton Grid.Column="3"
-                        Margin="12,0,0,0"
-                        Content="Multi-server"
+          <ToggleButton Content="Multi-server"
+                        MinWidth="120"
                         Command="{Binding ShowMultiServerCommand}"
                         IsChecked="{Binding IsMultiServerSelected, Mode=OneWay}" />
-          <Border Grid.Column="4"
-                  Margin="18,0"
-                  Width="1"
-                  Height="28"
-                  Background="{DynamicResource Brush.Border}" />
-          <TextBlock Grid.Column="5"
-                     Margin="12,0,0,0"
-                     Text="Fast scanning, rich metadata, zero drift surprises."
-                     VerticalAlignment="Center"
-                     Foreground="{DynamicResource Brush.TextSecondary}" />
-          <Button Grid.Column="6"
-                  Margin="12,0,0,0"
+          <Border Width="1" Height="26" Background="{DynamicResource Brush.Border}" Margin="12,0" />
+          <TextBlock Text="Fast scanning, rich metadata, zero drift surprises." VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" />
+          <Button Content="Ping core"
                   Classes="outline"
-                  Content="Ping core"
-                  ToolTip.Tip="Send ping and show reply in Hunt"
-                  Command="{Binding PingCoreCommand}" />
-      </Grid>
-    </Border>
+                  Command="{Binding PingCoreCommand}"
+                  ToolTip.Tip="Send ping and show reply in Hunt" />
+        </WrapPanel>
+      </Border>
 
       <Border Grid.Row="1"
               Classes="dashboard-card"
-              Padding="28"
-              CornerRadius="{DynamicResource Radius.Large}"
-              Margin="0,18,0,0">
+              Padding="24"
+              CornerRadius="{DynamicResource Radius.Large}">
         <TransitioningContentControl Content="{Binding CurrentView}">
           <TransitioningContentControl.PageTransition>
             <anim:CrossFade Duration="0:0:0.15" />
@@ -109,7 +86,6 @@
         </TransitioningContentControl>
       </Border>
     </Grid>
-    <views:ToastHost Grid.RowSpan="2"
-                     DataContext="{Binding Toasts}" />
+    <views:ToastHost Grid.RowSpan="2" DataContext="{Binding Toasts}" />
   </Grid>
 </Window>
