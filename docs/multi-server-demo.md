@@ -1,63 +1,98 @@
-## Multi-Server Sampling Demo
+## Multi-Server Orchestration Walkthrough
 
-This walkthrough shows how to scan 10 servers in varied states, hunt for
-dynamic values, and compare drift against a baseline — all locally with the
-repo’s sample data.
+The multi-server flow configures up to six hosts, shares progress with live toasts, and produces catalog/drilldown exports without leaving the GUI. This guide walks through the end-to-end experience using the bundled sample data plus equivalent CLI commands so you can automate the same orchestration.
 
-Sample layout
-- Root: `samples/multi-server/`
-- Servers: `server01` … `server10`
-- Configs: `app/appsettings.json` per server (with minor variations)
+### Scenario Overview
 
-Goals
-- See format detection at scale on a small tree.
-- Surface common drift (log levels, feature flags, endpoints, versions).
-- Highlight dynamic values with hunt rules (hostnames, versions, paths).
-- Produce an HTML report for sharing in demos.
+- Demo dataset: `samples/multi-server/`
+- Hosts: `server01` … `server06` (feel free to add more copies)
+- Roots: each server folder acts as an independent root
+- Baseline: `server01` ships with the expected config snapshot
 
-Step 1 — Detect formats (and optional registry definitions)
-- Table output (all servers):
-  - `python -m driftbuster.cli samples/multi-server`
-- JSON (for programmatic inspection):
-  - `python -m driftbuster.cli samples/multi-server --json`
-- If you include a small `registry_scan` manifest under `samples/multi-server`,
-  the detector will classify it as `registry-live` so the GUI can surface it;
-  use the offline runner on Windows to execute those scans.
+### 1. Configure Hosts in the GUI
 
-Step 2 — Hunt for dynamic values
-- Use the built-in rules (server names, versions, install paths):
-  - `python - << 'PY'
-from pathlib import Path
-from driftbuster.hunt import default_rules, hunt_path
-hits = hunt_path(Path('samples/multi-server'), rules=default_rules(), glob='**/*.json', return_json=True)
-print('Total hits:', len(hits))
-print('Examples:')
-for h in hits[:12]:
-    print(h['relative_path'], '->', h['rule']['name'], '::', h['excerpt'])
-PY`
+Open the desktop preview (`dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`) and switch to the **Multi-server** tab. Each slot can point at a different root, baseline, and scope.
 
-Step 3 — Diff against a baseline
-- Quick diff script (server01 baseline by default):
-  - `python -m scripts.demo_multi_server --root samples/multi-server --baseline server01 --html artifacts/demo-multi-server.html`
-- Outputs:
-  - Text summary to stdout with server count, diff count, hunt hits.
-  - `artifacts/demo-multi-server.html` with unified diffs and hunt highlights.
+```
++-------------------------------------------------------------------+
+| Multi-server Tab                                                  |
+|                                                                   |
+| [1] Host cards      [2] Scope chips         [3] Roots list        |
+|     ┌─────────┐         ┌───────────────┐      ┌───────────────┐ |
+|     │ Label   │         │ Baseline ▶︎  │      │ C:\programs  │ |
+|     │ Toggle  │         │ Custom ▲     │      │ D:\configs    │ |
+|     └─────────┘         └───────────────┘      └───────────────┘ |
+|                                                                   |
+| [4] Session cache toggle     [5] Guidance footer + Run buttons   |
++-------------------------------------------------------------------+
+```
 
-Step 4 — Exercise the GUI/backend orchestrator
-- The Avalonia GUI now shells out to `python -m driftbuster.multi_server` for real
-  multi-host runs. You can invoke the same pipeline from the .NET tests or from
-  a REPL by instantiating `DriftbusterBackend` and calling
-  `RunServerScansAsync(...)` with plans that point at `samples/multi-server`.
-- Results are cached per `(host, config, root)` signature under
-  `artifacts/cache/diffs/`. Delete that directory to force a cold run when
-  you change sample content.
-- Progress messages stream over stdout; when troubleshooting, set
-  `PYTHONUNBUFFERED=0` and watch the console for per-host status updates.
-- Review the activity timeline in the Multi-server tab to audit root changes,
-  run outcomes, and exports. Use the copy action beside any entry to grab a
-  shareable summary when triaging drift.
+Callout notes:
+- **[1] Host cards** – enable a slot, edit the label, and pick a baseline preference for reruns.
+- **[2] Scope chips** – switch between predefined scopes (e.g., `Program Files`, `AppData`) or stay with custom roots.
+- **[3] Roots list** – add, remove, or reorder roots. Inline badges show `pending`, `ok`, or `error` as validation completes.
+- **[4] Session cache toggle** – opt-in to save labels, scopes, and roots into `artifacts/cache/multi-server.json` when you click **Save session**.
+- **[5] Guidance footer** – explains why a scan is blocked (missing roots, failed validation) and surfaces **Run all** and **Run missing only** actions.
 
-Tips
-- Change the baseline: `--baseline server05`.
-- Limit diff scope by editing the script to include other files (e.g., `.config`).
-- Redaction: pass `mask_tokens` to `render_html_report` if adding sensitive tokens.
+### 2. Launch and Monitor a Scan
+
+- Click **Run all** once every active host shows a green root badge.
+- Progress appears next to each host. Statuses cycle through `queued`, `running`, `succeeded`, `failed`, or `skipped`.
+- Toasts summarize completed runs, permission warnings, and retry hints. Open the activity timeline on the right to view a durable log of root changes, exports, and reruns.
+- Successful results are cached by `(host, root, config)` so rerunning only missing hosts is instant; the view reuses existing catalog entries while new work finishes.
+
+### 3. Explore Results
+
+1. **Results catalog** – shows coverage counts, drift totals, and color-tagged severity per config. Use the filter tray for coverage/severity/type, or search by config name.
+2. **Drilldown** – select a catalog entry to open side-by-side and unified diffs. Toggle servers on/off from the checklist to compare subsets. Export HTML/JSON snapshots with the inline buttons.
+3. **Selective reruns** – the catalog’s **Re-scan affected servers** button issues targeted plans so you can validate fresh drift without losing context.
+
+### 4. CLI Parity
+
+The GUI invokes `python -m driftbuster.multi_server` with a JSON request over stdin. Try the same flow from the repo root:
+
+```sh
+python -m driftbuster.multi_server <<'JSON'
+{
+  "cache_dir": "artifacts/cache/diffs",
+  "plans": [
+    {
+      "host_id": "server01",
+      "label": "Baseline",
+      "scope": "custom_roots",
+      "roots": ["samples/multi-server/server01"],
+      "baseline": {"is_preferred": true, "priority": 1},
+      "export": {"include_catalog": true, "include_drilldown": true}
+    },
+    {
+      "host_id": "server02",
+      "label": "Drift sample",
+      "scope": "custom_roots",
+      "roots": ["samples/multi-server/server02"]
+    }
+  ]
+}
+JSON
+```
+
+- Progress messages stream as JSON objects with `type: "progress"`. Pipe the output through `jq` to watch updates: `python -m driftbuster.multi_server <<<"…" | jq`.
+- To rerun only missing hosts, send a smaller plan containing the failed host IDs; cached hosts can be left out.
+- Export helpers write HTML/JSON to `artifacts/exports/<config>-<timestamp>.{html,json}`. Combine with `python -m scripts.coverage_report` to summarise multi-host metrics after a batch.
+
+### 5. Optional Single-Host CLI Recipes
+
+- Detect and classify formats: `python -m driftbuster.cli samples/multi-server/server02` (add `--json` for machine output).
+- Generate a diff report with a chosen baseline: `python -m scripts.demo_multi_server --root samples/multi-server --baseline server01 --html artifacts/demo-multi-server.html`.
+
+### Troubleshooting
+
+- **Root validation errors** – Hover the badge for the failing path. Fix permissions or edit the root, then click **Retry validation**; the toast system also reports the OS error text.
+- **Permission denied hosts** – The activity timeline logs the failure with the host ID. Use **Run missing only** after adjusting credentials or running the CLI with elevated access.
+- **Missing hosts** – Disable unused slots to silence warnings. If a host disconnects mid-run, the toast will point to **Re-scan affected servers** while leaving successful outputs intact.
+- **Cache clean-up** – Remove `artifacts/cache/diffs/` or `artifacts/cache/multi-server.json` to start fresh. The GUI will prompt before writing a new session snapshot.
+
+### Next Steps
+
+- Capture annotated exports from the drilldown for handoff using the HTML/JSON buttons.
+- Check in a sanitized JSON plan under `artifacts/plans/` so you can rerun the same batch later.
+- Keep an eye on the activity feed for upcoming toast enhancements that annotate remediation steps directly inside the feed.

@@ -82,6 +82,37 @@ Tips:
 - Click “Check core” to verify backend health (status dot shows green/red).
 - Primary actions are accent-filled; secondary are outline for quick scanning.
 
+### Multi-server quickstart
+
+- Start the GUI from the repo root: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
+- Switch to the Multi-server tab, enable the host slots you need, and add roots or pick scope chips. Turn on the session cache toggle if you want to reuse labels and roots next time.
+- Click **Run all** to queue every active host. Use **Run missing only** for retries; toasts and the activity timeline record progress, warnings, and exports.
+- Review the catalog filters, open drilldown diffs, and export HTML/JSON snapshots (they land in `artifacts/exports/<config>-<timestamp>.{html,json}`).
+
+Run the same plan from the shell:
+
+```sh
+python -m driftbuster.multi_server <<'JSON'
+{
+  "cache_dir": "artifacts/cache/diffs",
+  "plans": [
+    {
+      "host_id": "server01",
+      "label": "Baseline",
+      "roots": ["samples/multi-server/server01"]
+    },
+    {
+      "host_id": "server02",
+      "label": "Drift sample",
+      "roots": ["samples/multi-server/server02"]
+    }
+  ]
+}
+JSON
+```
+
+`driftbuster.multi_server` ships with the Python package; ensure you have installed the repo in editable mode (`python -m pip install -e .`) and that `artifacts/cache` is writable before running the orchestrator. See `docs/multi-server-demo.md` for annotated callouts, filter usage, and rerun tips.
+
 ### Release Build
 
 - Python + .NET installer (default):
@@ -119,7 +150,7 @@ Check `docs/` for deeper dives:
 - `docs/customization.md` – configuration flags, sampling tweaks, and plugin
   lifecycles.
 - `docs/testing-strategy.md` – how we validate detectors and reporting.
-- `docs/multi-server-demo.md` – sample workflow scanning 10 servers, hunting drift, and generating an HTML report.
+- `docs/multi-server-demo.md` – multi-server orchestration walkthrough covering GUI callouts, CLI parity, and troubleshooting.
 - `docs/day0-baseline.md` – create a Day 0 baseline across many servers without an existing reference.
 - `docs/DEMO.md` – GUI walkthrough using the bundled demo data.
 - `docs/versioning.md` – component version workflow and sync tooling.
