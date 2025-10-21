@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import os
+from unittest import mock
+
+from driftbuster.core.detector import DetectorIOError
 from driftbuster.multi_server import (
     BaselinePreference,
     ExportOptions,
@@ -84,3 +88,39 @@ def test_config_ids_are_deterministic(tmp_path) -> None:
     first_ids = sorted(entry["config_id"] for entry in first["catalog"])
     second_ids = sorted(entry["config_id"] for entry in second["catalog"])
     assert first_ids == second_ids
+
+
+def test_missing_roots_marked_not_found(tmp_path) -> None:
+    cache_dir = tmp_path / "cache"
+    runner = MultiServerRunner(cache_dir)
+    missing_plan = Plan(
+        host_id="missing",
+        label="Missing host",
+        scope="custom_roots",
+        roots=(Path("/does/not/exist"),),
+    )
+
+    response = runner.run([missing_plan])
+
+    result = response["results"][0]
+    assert result["availability"] == "not_found"
+    assert result["status"] == "failed"
+    assert response["catalog"] == []
+
+
+def test_detector_permission_errors_are_reported(tmp_path, monkeypatch) -> None:
+    cache_dir = tmp_path / "cache"
+    runner = MultiServerRunner(cache_dir)
+    plan = _sample_plan("server01", priority=1)
+
+    class FakeDetector:
+        def scan_path(self, *_args, **_kwargs):
+            raise DetectorIOError(path=SAMPLES_ROOT / "server01" / "appsettings.json", reason="denied")
+
+    monkeypatch.setattr(runner, "_detector", FakeDetector())
+
+    response = runner.run([plan])
+    result = response["results"][0]
+    assert result["status"] == "failed"
+    assert result["availability"] == "permission_denied"
+    assert "Permission denied" in result["message"]

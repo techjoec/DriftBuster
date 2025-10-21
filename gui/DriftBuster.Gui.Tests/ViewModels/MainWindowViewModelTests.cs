@@ -78,4 +78,25 @@ public class MainWindowViewModelTests
         Assert.Equal("Ping failed: boom", capturedInitial);
         Assert.True(viewModel.IsHuntSelected);
     }
+
+    [Fact]
+    public async Task Check_health_sets_status_and_toasts()
+    {
+        var service = new FakeDriftbusterService { PingResponse = "healthy" };
+        var toastService = new ToastService(action => action());
+        var viewModel = new MainWindowViewModel(service, toastService, _ => new object(), (_, _) => new object(), _ => new object());
+
+        await viewModel.CheckHealthCommand.ExecuteAsync(null);
+
+        viewModel.IsBackendHealthy.Should().BeTrue();
+        viewModel.BackendStatusText.Should().Contain("Core OK");
+        toastService.ActiveToasts.Should().NotBeEmpty();
+
+        toastService.DismissAll();
+        service.PingAsyncHandler = _ => Task.FromException<string>(new InvalidOperationException("offline"));
+        await viewModel.CheckHealthCommand.ExecuteAsync(null);
+        viewModel.IsBackendHealthy.Should().BeFalse();
+        viewModel.BackendStatusText.Should().Contain("Core unavailable");
+        toastService.ActiveToasts.Should().NotBeEmpty();
+    }
 }

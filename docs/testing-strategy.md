@@ -17,8 +17,15 @@ for new and modified components.
   bridge, ensuring cache reuse, catalog aggregation, and drilldown payloads
   stay deterministic across runs.
 - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` — runs
-  xUnit coverage for `MainWindowViewModel`, diff planner UI, and hunt UI using
-  a fake `IDriftbusterService`, so no Python subprocess spawns.
+  the Avalonia headless suite (`[AvaloniaFact]`) covering MainWindow
+  navigation, drilldown export/rescan, hunt mode flows, profile interactions,
+  GUI converters, and the dispatcher-backed toast/session services. Launch
+  this inside a tmux session (`tmux new -s codexcli-<pid>-tests 'dotnet test …'`)
+  so long-running GUI runs don’t block your shell.
+- `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter MainWindowUserJourneyTests`
+  drives the end-to-end multi-server journey (catalog + drilldown + hunt +
+  profiles) against the fake backend and should pass before claiming GUI
+  parity with multi-host plans.
 - `dotnet build` now runs with the latest built-in analyzers and style
   enforcement (see `Directory.Build.props`). Address any analyzer warnings
   surfaced during builds before committing.
@@ -45,8 +52,10 @@ minimise output or skip rebuilds during local iteration.
   - `coverage report --fail-under=90` and/or `coverage json -o coverage.json`
   - Optional HTML: `coverage html` → open `htmlcov/index.html`
 - .NET GUI (xUnit + coverlet collector)
-  - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
-  - Inspect `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml`
+  - `tmux new -s codexcli-<pid>-coverage 'dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect="XPlat Code Coverage" --results-directory artifacts/coverage-dotnet'`
+  - Inspect `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml` for
+    per-viewmodel coverage and ensure the heavy UI surfaces (catalog,
+    drilldown, multi-server orchestration) stay at or above the 90% line-baseline.
 - Repo‑wide summary: `python -m scripts.coverage_report`
   - Prints Python %, .NET %, and the most under‑covered GUI classes.
 
