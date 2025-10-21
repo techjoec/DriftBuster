@@ -8,6 +8,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -21,6 +24,12 @@ namespace DriftBuster.Gui.ViewModels
         Pending,
         Valid,
         Invalid,
+    }
+
+    public enum ActivityFilterOption
+    {
+        All,
+        Errors,
     }
 
     public sealed class ScanScopeOption
@@ -221,14 +230,20 @@ namespace DriftBuster.Gui.ViewModels
         };
 
         private readonly IDriftbusterService _service;
+        private readonly IToastService _toastService;
         private readonly ISessionCacheService _cacheService;
         private readonly Dictionary<string, RootValidationResult> _validationCache = new(StringComparer.OrdinalIgnoreCase);
         private CancellationTokenSource? _runCancellation;
         private ServerScanResponse? _lastResponse;
+        private readonly ObservableCollection<ActivityEntryViewModel> _activityEntries = new();
+        private readonly ReadOnlyObservableCollection<ActivityEntryViewModel> _activityEntriesReadonly;
 
-        public ServerSelectionViewModel(IDriftbusterService service, ISessionCacheService? cacheService = null)
+        private const int MaxActivityItems = 200;
+
+        public ServerSelectionViewModel(IDriftbusterService service, IToastService toastService, ISessionCacheService? cacheService = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
+            _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
             _cacheService = cacheService ?? new SessionCacheService();
 
             ScopeOptions = new ReadOnlyCollection<ScanScopeOption>(new[]
@@ -245,12 +260,16 @@ namespace DriftBuster.Gui.ViewModels
             CancelRunsCommand = new RelayCommand(OnCancelRuns, () => IsBusy);
             ClearHistoryCommand = new RelayCommand(OnClearHistory);
             SaveSessionCommand = new AsyncRelayCommand(SaveSessionAsync, () => PersistSessionState && !IsBusy);
+            CopyActivityCommand = new RelayCommand<ActivityEntryViewModel>(OnCopyActivity, entry => entry is not null);
 
             Servers = new ObservableCollection<ServerSlotViewModel>(CreateDefaultServers());
             CatalogViewModel = new ResultsCatalogViewModel();
             CatalogViewModel.ReScanRequested += (_, hosts) => _ = RunScopedAsync(hosts);
             CatalogViewModel.DrilldownRequested += (_, entry) => LoadDrilldown(entry.ConfigId);
             CatalogViewModel.PropertyChanged += OnCatalogPropertyChanged;
+
+            _activityEntriesReadonly = new ReadOnlyObservableCollection<ActivityEntryViewModel>(_activityEntries);
+            FilteredActivityEntries = new ObservableCollection<ActivityEntryViewModel>();
 
             ShowSetupCommand = new RelayCommand(() =>
             {
@@ -271,12 +290,19 @@ namespace DriftBuster.Gui.ViewModels
                 }
             }, () => DrilldownViewModel is not null);
 
+            RefreshActivityFilter();
             _ = LoadSessionAsync();
         }
 
         public ObservableCollection<ServerSlotViewModel> Servers { get; }
 
         public IReadOnlyList<ScanScopeOption> ScopeOptions { get; }
+
+        public IReadOnlyList<ActivityFilterOption> ActivityFilterOptions { get; } = new ReadOnlyCollection<ActivityFilterOption>(new[]
+        {
+            ActivityFilterOption.All,
+            ActivityFilterOption.Errors,
+        });
 
         [ObservableProperty]
         private bool _persistSessionState;
@@ -318,6 +344,19 @@ namespace DriftBuster.Gui.ViewModels
 
         public ResultsCatalogViewModel CatalogViewModel { get; }
 
+        public ReadOnlyObservableCollection<ActivityEntryViewModel> ActivityEntries => _activityEntriesReadonly;
+
+        public ObservableCollection<ActivityEntryViewModel> FilteredActivityEntries { get; }
+
+        public bool HasActivityEntries => _activityEntries.Count > 0;
+
+        [ObservableProperty]
+        private ActivityFilterOption _activityFilter = ActivityFilterOption.All;
+
+        public event EventHandler<string>? CopyActivityRequested;
+
+        public IRelayCommand<ActivityEntryViewModel> CopyActivityCommand { get; }
+
         internal Func<ConfigDrilldownExportRequest, Task>? ExportCallback { get; set; }
 
         partial void OnDrilldownViewModelChanging(ConfigDrilldownViewModel? value)
@@ -346,6 +385,8 @@ namespace DriftBuster.Gui.ViewModels
                 IsViewingDrilldown = false;
             }
         }
+
+        partial void OnActivityFilterChanged(ActivityFilterOption value) => RefreshActivityFilter();
 
         public bool HasActiveServers => Servers.Any(slot => slot.IsEnabled);
 
@@ -403,6 +444,23 @@ namespace DriftBuster.Gui.ViewModels
 
                 PersistSessionState = snapshot.PersistSession;
 
+                _activityEntries.Clear();
+                if (snapshot.Activities is { Count: > 0 })
+                {
+                    foreach (var activity in snapshot.Activities.OrderBy(entry => entry.Timestamp))
+                    {
+                        if (!Enum.TryParse(activity.Severity, true, out ActivitySeverity severity))
+                        {
+                            severity = ActivitySeverity.Info;
+                        }
+
+                        var entryVm = new ActivityEntryViewModel(severity, activity.Summary, activity.Detail ?? string.Empty, activity.Timestamp);
+                        _activityEntries.Insert(0, entryVm);
+                    }
+                    RefreshActivityFilter();
+                    OnPropertyChanged(nameof(HasActivityEntries));
+                }
+
                 foreach (var entry in snapshot.Servers)
                 {
                     var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, entry.HostId, StringComparison.OrdinalIgnoreCase));
@@ -423,10 +481,18 @@ namespace DriftBuster.Gui.ViewModels
 
                 StatusBanner = "Loaded saved session.";
                 ShowCatalogCommand.NotifyCanExecuteChanged();
+                LogActivity(ActivitySeverity.Success, "Loaded saved session", $"Restored {snapshot.Servers.Count} servers.");
             }
             catch (Exception ex)
             {
                 StatusBanner = $"Failed to load session: {ex.Message}";
+                _toastService.Show(
+                    "Session load failed",
+                    ex.Message,
+                    ToastLevel.Warning,
+                    TimeSpan.FromSeconds(6),
+                    new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
+                LogActivity(ActivitySeverity.Error, "Failed to load session", ex.ToString());
             }
         }
 
@@ -441,18 +507,21 @@ namespace DriftBuster.Gui.ViewModels
             if (string.IsNullOrEmpty(candidate))
             {
                 slot.RootInputError = "Enter a root path.";
+                LogActivity(ActivitySeverity.Warning, $"Ignored blank root for {slot.Label}.");
                 return;
             }
 
             if (slot.Roots.Any(root => string.Equals(root.Path, candidate, StringComparison.OrdinalIgnoreCase)))
             {
                 slot.RootInputError = "Root already added.";
+                LogActivity(ActivitySeverity.Warning, $"Duplicate root '{candidate}' ignored for {slot.Label}.");
                 return;
             }
 
             slot.RootInputError = null;
             var entry = new RootEntryViewModel(candidate);
             slot.AddRoot(entry);
+            LogActivity(ActivitySeverity.Info, $"Added root '{candidate}' to {slot.Label}.");
             slot.NewRootPath = string.Empty;
             var result = ValidateRoot(slot, entry);
             entry.ValidationState = result.State;
@@ -476,11 +545,13 @@ namespace DriftBuster.Gui.ViewModels
             {
                 entry.StatusMessage = "At least one root is required.";
                 entry.ValidationState = RootValidationState.Invalid;
+                LogActivity(ActivitySeverity.Warning, $"Skipped removing last root from {slot.Label}.");
                 return;
             }
 
             slot.RemoveRoot(entry);
             RevalidateRoots(slot);
+            LogActivity(ActivitySeverity.Info, $"Removed root '{entry.Path}' from {slot.Label}.");
         }
 
         private async Task RunAllAsync()
@@ -526,6 +597,7 @@ namespace DriftBuster.Gui.ViewModels
                 StatusBanner = cachedCount > 0
                     ? "All active hosts already have cached results."
                     : "No servers ready to run.";
+                LogActivity(ActivitySeverity.Info, "No servers queued", cachedCount > 0 ? "All hosts served from cache." : "Enable or configure servers before running.");
                 return;
             }
 
@@ -534,6 +606,7 @@ namespace DriftBuster.Gui.ViewModels
             StatusBanner = retryOnly ? "Re-running missing hosts…" : "Running multi-server scan…";
             IsViewingCatalog = false;
             IsViewingDrilldown = false;
+            LogActivity(ActivitySeverity.Info, retryOnly ? "Re-running missing hosts" : "Running multi-server scan", $"Hosts queued: {plans.Count}, cached reused: {cachedCount}.");
 
             try
             {
@@ -541,14 +614,29 @@ namespace DriftBuster.Gui.ViewModels
                 var response = await _service.RunServerScansAsync(plans, progress, _runCancellation.Token).ConfigureAwait(false);
                 ApplyResults(response);
                 StatusBanner = "Scan complete.";
+                _toastService.Show(
+                    "Multi-server scan complete",
+                    $"Processed {plans.Count} host(s).",
+                    ToastLevel.Success,
+                    TimeSpan.FromSeconds(4));
+                LogActivity(ActivitySeverity.Success, "Scan complete", $"Processed {plans.Count} host(s). Cached reused: {cachedCount}.");
             }
             catch (OperationCanceledException)
             {
                 StatusBanner = "Scan cancelled.";
+                _toastService.Show("Scan cancelled", "Active scan was cancelled.", ToastLevel.Info, TimeSpan.FromSeconds(3));
+                LogActivity(ActivitySeverity.Info, "Scan cancelled.");
             }
             catch (Exception ex)
             {
                 StatusBanner = $"Scan failed: {ex.Message}";
+                _toastService.Show(
+                    "Multi-server scan failed",
+                    ex.Message,
+                    ToastLevel.Error,
+                    TimeSpan.FromSeconds(10),
+                    new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
+                LogActivity(ActivitySeverity.Error, "Scan failed", ex.ToString());
             }
             finally
             {
@@ -577,6 +665,11 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             StatusBanner = "Session history cleared.";
+            _toastService.Show("History cleared", "Session cache removed for this view.", ToastLevel.Info, TimeSpan.FromSeconds(3));
+            _activityEntries.Clear();
+            FilteredActivityEntries.Clear();
+            OnPropertyChanged(nameof(HasActivityEntries));
+            LogActivity(ActivitySeverity.Info, "Cleared session history.");
             CatalogViewModel.Reset();
             ShowCatalogCommand.NotifyCanExecuteChanged();
             DrilldownViewModel = null;
@@ -605,14 +698,31 @@ namespace DriftBuster.Gui.ViewModels
                         Scope = server.Scope,
                         Roots = server.Roots.Select(root => root.Path).ToArray(),
                     }).ToList(),
+                    Activities = _activityEntries
+                        .Select(entry => new ActivityCacheEntry
+                        {
+                            Timestamp = entry.Timestamp,
+                            Severity = entry.Severity.ToString(),
+                            Summary = entry.Summary,
+                            Detail = entry.Detail,
+                        })
+                        .ToList(),
                 };
 
                 await _cacheService.SaveAsync(snapshot).ConfigureAwait(false);
                 StatusBanner = "Session saved.";
+                LogActivity(ActivitySeverity.Success, "Session saved", $"Cached {snapshot.Servers.Count} servers.");
             }
             catch (Exception ex)
             {
                 StatusBanner = $"Failed to save session: {ex.Message}";
+                _toastService.Show(
+                    "Session save failed",
+                    ex.Message,
+                    ToastLevel.Error,
+                    TimeSpan.FromSeconds(6),
+                    new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
+                LogActivity(ActivitySeverity.Error, "Failed to save session", ex.ToString());
             }
         }
 
@@ -686,6 +796,15 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             server.MarkState(progress.Status, progress.Message, progress.Timestamp);
+
+            if (progress.Status == ServerScanStatus.Running)
+            {
+                LogActivity(ActivitySeverity.Info, $"Running {server.Label}", progress.Message);
+            }
+            else if (progress.Status == ServerScanStatus.Failed)
+            {
+                LogActivity(ActivitySeverity.Error, $"Failed {server.Label}", progress.Message);
+            }
         }
 
         private void ApplyResults(ServerScanResponse? response)
@@ -709,6 +828,30 @@ namespace DriftBuster.Gui.ViewModels
                         message = $"{message} ({result.Availability})";
                     }
                     server.MarkState(status, message, result.Timestamp);
+
+                    var severity = status switch
+                    {
+                        ServerScanStatus.Succeeded => ActivitySeverity.Success,
+                        ServerScanStatus.Cached => ActivitySeverity.Success,
+                        ServerScanStatus.Failed => ActivitySeverity.Error,
+                        ServerScanStatus.Skipped => ActivitySeverity.Warning,
+                        _ => ActivitySeverity.Info,
+                    };
+                    LogActivity(severity, $"{server.Label}: {status}", message);
+                }
+
+                var attention = response.Results
+                    .Where(result => result.Availability is ServerAvailabilityStatus.NotFound or ServerAvailabilityStatus.PermissionDenied or ServerAvailabilityStatus.Offline)
+                    .ToList();
+                if (attention.Count > 0)
+                {
+                    var summary = string.Join(", ", attention.Select(entry => $"{entry.Label}: {entry.Availability}"));
+                    _toastService.Show(
+                        "Hosts require attention",
+                        summary,
+                        ToastLevel.Warning,
+                        TimeSpan.FromSeconds(8));
+                    LogActivity(ActivitySeverity.Warning, "Hosts require attention", summary);
                 }
             }
 
@@ -756,6 +899,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
+            LogActivity(ActivitySeverity.Info, "Requested targeted re-scan", string.Join(", ", hosts));
             _ = RunScopedAsync(hosts);
         }
 
@@ -770,6 +914,7 @@ namespace DriftBuster.Gui.ViewModels
             {
                 await ExportCallback(request).ConfigureAwait(false);
                 StatusBanner = $"Exported {request.DisplayName} ({request.Format}).";
+                LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName} ({request.Format})", request.Payload);
                 return;
             }
 
@@ -781,6 +926,7 @@ namespace DriftBuster.Gui.ViewModels
             var path = Path.Combine(directory, fileName);
             await File.WriteAllTextAsync(path, request.Payload).ConfigureAwait(false);
             StatusBanner = $"Exported {request.DisplayName} to {path}.";
+            LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName}", path);
         }
 
         private static string SanitizeFileName(string name)
@@ -793,6 +939,61 @@ namespace DriftBuster.Gui.ViewModels
             var invalid = Path.GetInvalidFileNameChars();
             var cleaned = new string(name.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray());
             return cleaned.Length == 0 ? "export" : cleaned;
+        }
+
+        private void OnCopyActivity(ActivityEntryViewModel? entry)
+        {
+            if (entry is null)
+            {
+                return;
+            }
+
+            CopyActivityRequested?.Invoke(this, entry.ClipboardText);
+        }
+
+        private void LogActivity(ActivitySeverity severity, string summary, string? detail = null)
+        {
+            var entry = new ActivityEntryViewModel(severity, summary, detail ?? string.Empty, DateTimeOffset.UtcNow);
+            _activityEntries.Insert(0, entry);
+            while (_activityEntries.Count > MaxActivityItems)
+            {
+                _activityEntries.RemoveAt(_activityEntries.Count - 1);
+            }
+
+            RefreshActivityFilter();
+            OnPropertyChanged(nameof(HasActivityEntries));
+        }
+
+        private void RefreshActivityFilter()
+        {
+            FilteredActivityEntries.Clear();
+
+            foreach (var entry in _activityEntries)
+            {
+                if (ActivityFilter == ActivityFilterOption.Errors && !entry.IsError)
+                {
+                    continue;
+                }
+
+                FilteredActivityEntries.Add(entry);
+            }
+        }
+
+        private static async Task CopyToClipboardAsync(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return;
+            }
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+            {
+                var clipboard = lifetime.MainWindow?.Clipboard;
+                if (clipboard is not null)
+                {
+                    await clipboard.SetTextAsync(content).ConfigureAwait(false);
+                }
+            }
         }
 
         private bool HasValidRoots(ServerSlotViewModel slot)

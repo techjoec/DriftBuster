@@ -67,6 +67,20 @@
         </StackPanel>
       </StackPanel>
 
+      <Border Padding="16"
+              CornerRadius="{DynamicResource Radius.Large}"
+              Background="#0F172A"
+              Opacity="0.93">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Drilldown guidance"
+                     FontWeight="SemiBold"
+                     Foreground="#F8FAFC" />
+          <TextBlock TextWrapping="Wrap"
+                     Foreground="#E2E8F0"
+                     Text="Select the servers to re-scan, export diffs for sharing, and watch the right-hand metadata for provenance and validation issues. Any toast warnings link back here so you can correct drift quickly." />
+        </StackPanel>
+      </Border>
+
       <Grid ColumnDefinitions="2*,3*,1.5*" RowDefinitions="Auto,*">
         <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,16,0">
           <TextBlock Text="Servers" FontSize="18" FontWeight="SemiBold" />

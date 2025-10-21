@@ -6,6 +6,19 @@
              x:DataType="vm:ResultsCatalogViewModel">
   <ScrollViewer>
     <StackPanel Spacing="20">
+      <Border Padding="18"
+              CornerRadius="{DynamicResource Radius.Large}"
+              Background="#0F172A"
+              Opacity="0.93">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Catalog guidance"
+                     FontWeight="SemiBold"
+                     Foreground="#E2E8F0" />
+          <TextBlock TextWrapping="Wrap"
+                     Foreground="#E2E8F0"
+                     Text="Filter by coverage and severity to narrow re-runs. Missing artifacts surface in the panel below—use the quick actions to investigate or trigger targeted scans without leaving the grid." />
+        </StackPanel>
+      </Border>
       <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
         <WrapPanel VerticalAlignment="Center">
           <StackPanel Width="180" Margin="0,0,16,0">

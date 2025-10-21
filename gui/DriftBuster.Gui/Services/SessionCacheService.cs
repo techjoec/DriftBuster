@@ -75,6 +75,9 @@ namespace DriftBuster.Gui.Services
 
         [JsonPropertyName("servers")]
         public List<ServerSelectionCacheEntry> Servers { get; set; } = new();
+
+        [JsonPropertyName("activities")]
+        public List<ActivityCacheEntry> Activities { get; set; } = new();
     }
 
     public sealed class ServerSelectionCacheEntry
@@ -93,5 +96,20 @@ namespace DriftBuster.Gui.Services
 
         [JsonPropertyName("roots")]
         public string[] Roots { get; set; } = Array.Empty<string>();
+    }
+
+    public sealed class ActivityCacheEntry
+    {
+        [JsonPropertyName("timestamp")]
+        public DateTimeOffset Timestamp { get; set; }
+
+        [JsonPropertyName("severity")]
+        public string Severity { get; set; } = string.Empty;
+
+        [JsonPropertyName("summary")]
+        public string Summary { get; set; } = string.Empty;
+
+        [JsonPropertyName("detail")]
+        public string? Detail { get; set; }
     }
 }

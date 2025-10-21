@@ -1,9 +1,14 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using DriftBuster.Gui.Services;
-using DriftBuster.Gui.Views;
 using System;
 using System.Threading.Tasks;
+
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+using DriftBuster.Gui.Services;
+using DriftBuster.Gui.Views;
 
 namespace DriftBuster.Gui.ViewModels
 {
@@ -18,10 +23,11 @@ namespace DriftBuster.Gui.ViewModels
         }
 
         private readonly IDriftbusterService _service;
+        private readonly IToastService _toastService;
         private readonly Func<IDriftbusterService, object> _diffViewFactory;
         private readonly Func<IDriftbusterService, string?, object> _huntViewFactory;
         private readonly Func<IDriftbusterService, object> _profilesViewFactory;
-        private readonly Func<IDriftbusterService, object> _serverSelectionFactory;
+        private readonly Func<IDriftbusterService, IToastService, object> _serverSelectionFactory;
 
         [ObservableProperty]
         private object? _currentView;
@@ -36,6 +42,8 @@ namespace DriftBuster.Gui.ViewModels
         public IRelayCommand ShowProfilesCommand { get; }
         public IRelayCommand ShowMultiServerCommand { get; }
 
+        public IToastService Toasts => _toastService;
+
         [ObservableProperty]
         private bool _isBackendHealthy;
 
@@ -43,18 +51,20 @@ namespace DriftBuster.Gui.ViewModels
         private string _backendStatusText = "Checking…";
 
         public MainWindowViewModel()
-            : this(new DriftbusterService())
+            : this(new DriftbusterService(), new ToastService())
         {
         }
 
         public MainWindowViewModel(
             IDriftbusterService service,
+            IToastService toastService,
             Func<IDriftbusterService, object>? diffViewFactory = null,
             Func<IDriftbusterService, string?, object>? huntViewFactory = null,
             Func<IDriftbusterService, object>? profilesViewFactory = null,
-            Func<IDriftbusterService, object>? serverSelectionFactory = null)
+            Func<IDriftbusterService, IToastService, object>? serverSelectionFactory = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
+            _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
             _diffViewFactory = diffViewFactory ?? CreateDiffView;
             _huntViewFactory = huntViewFactory ?? CreateHuntView;
             _profilesViewFactory = profilesViewFactory ?? CreateProfilesView;
@@ -99,7 +109,7 @@ namespace DriftBuster.Gui.ViewModels
         public void ShowMultiServer()
         {
             ActiveView = MainViewSection.MultiServer;
-            CurrentView = _serverSelectionFactory(_service);
+            CurrentView = _serverSelectionFactory(_service, _toastService);
         }
 
         private async Task PingCoreAsync()
@@ -108,10 +118,17 @@ namespace DriftBuster.Gui.ViewModels
             {
                 var response = await _service.PingAsync();
                 ShowHunt($"Ping reply: {response}");
+                _toastService.Show("Ping succeeded", "Core responded successfully.", ToastLevel.Success, TimeSpan.FromSeconds(3));
             }
             catch (Exception ex)
             {
                 ShowHunt($"Ping failed: {ex.Message}");
+                _toastService.Show(
+                    "Ping failed",
+                    ex.Message,
+                    ToastLevel.Error,
+                    TimeSpan.FromSeconds(8),
+                    new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
             }
         }
 
@@ -122,11 +139,35 @@ namespace DriftBuster.Gui.ViewModels
                 var response = await _service.PingAsync();
                 IsBackendHealthy = true;
                 BackendStatusText = $"Core OK: {response}";
+                _toastService.Show("Core healthy", "Health check succeeded.", ToastLevel.Success, TimeSpan.FromSeconds(3));
             }
             catch (Exception ex)
             {
                 IsBackendHealthy = false;
                 BackendStatusText = $"Core unavailable: {ex.Message}";
+                _toastService.Show(
+                    "Core unavailable",
+                    ex.Message,
+                    ToastLevel.Error,
+                    TimeSpan.FromSeconds(8),
+                    new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
+            }
+        }
+
+        private async Task CopyToClipboardAsync(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return;
+            }
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+            {
+                var clipboard = lifetime.MainWindow?.Clipboard;
+                if (clipboard is not null)
+                {
+                    await clipboard.SetTextAsync(content).ConfigureAwait(false);
+                }
             }
         }
 
@@ -150,9 +191,9 @@ namespace DriftBuster.Gui.ViewModels
             };
         }
 
-        private static object CreateServerSelectionView(IDriftbusterService service) => new ServerSelectionView
+        private static object CreateServerSelectionView(IDriftbusterService service, IToastService toastService) => new ServerSelectionView
         {
-            DataContext = new ServerSelectionViewModel(service),
+            DataContext = new ServerSelectionViewModel(service, toastService),
         };
 
         partial void OnActiveViewChanged(MainViewSection value)

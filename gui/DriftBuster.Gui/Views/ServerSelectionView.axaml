@@ -38,6 +38,21 @@
         </StackPanel>
       </Border>
 
+      <Border Padding="18"
+              CornerRadius="{DynamicResource Radius.Large}"
+              Background="#1E293B"
+              Opacity="0.95">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Guidance"
+                     FontSize="16"
+                     FontWeight="SemiBold"
+                     Foreground="#E2E8F0" />
+          <TextBlock TextWrapping="Wrap"
+                     Foreground="#E2E8F0"
+                     Text="Run scans to populate the catalog, watch toast notifications for retry and copy options, and review the activity timeline for a chronological breakdown of roots, runs, and exports." />
+        </StackPanel>
+      </Border>
+
       <ItemsControl ItemsSource="{Binding Servers}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
@@ -146,6 +161,48 @@
                   <TextBlock Text="{Binding RunState}" Width="80" />
                   <TextBlock Text="{Binding StatusText}" />
                 </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
+        <StackPanel Spacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+            <TextBlock Text="Activity timeline" FontSize="18" FontWeight="SemiBold" />
+            <ComboBox Width="180"
+                      ItemsSource="{Binding ActivityFilterOptions}"
+                      SelectedItem="{Binding ActivityFilter}" />
+          </StackPanel>
+          <TextBlock Text="No activity recorded yet."
+                     Classes="subtitle"
+                     IsVisible="{Binding HasActivityEntries, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
+          <ItemsControl ItemsSource="{Binding FilteredActivityEntries}"
+                        IsVisible="{Binding HasActivityEntries}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Padding="12"
+                        Margin="0,0,0,10"
+                        CornerRadius="{DynamicResource Radius.Medium}"
+                        Classes="surface">
+                  <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding TimestampText}" Classes="subtitle" />
+                      <TextBlock Text="{Binding SeverityLabel}" Classes="subtitle" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Detail}"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding Detail, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
+                    <Button Content="Copy entry"
+                            Classes="outline"
+                            Command="{Binding DataContext.CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"
+                            HorizontalAlignment="Right"
+                            Width="120" />
+                  </StackPanel>
+                </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

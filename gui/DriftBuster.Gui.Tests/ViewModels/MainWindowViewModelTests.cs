@@ -30,7 +30,8 @@ public class MainWindowViewModelTests
 
         object ProfilesFactory(IDriftbusterService _) => profilesView;
 
-        var viewModel = new MainWindowViewModel(service, DiffFactory, HuntFactory, ProfilesFactory);
+        var toastService = new ToastService(action => action());
+        var viewModel = new MainWindowViewModel(service, toastService, DiffFactory, HuntFactory, ProfilesFactory);
 
         Assert.Same(diffView, viewModel.CurrentView);
         Assert.True(viewModel.IsDiffSelected);
@@ -64,7 +65,8 @@ public class MainWindowViewModelTests
             return new object();
         }
 
-        var viewModel = new MainWindowViewModel(service, _ => new object(), HuntFactory, _ => new object());
+        var toastService = new ToastService(action => action());
+        var viewModel = new MainWindowViewModel(service, toastService, _ => new object(), HuntFactory, _ => new object());
 
         await viewModel.PingCoreCommand.ExecuteAsync(null);
 

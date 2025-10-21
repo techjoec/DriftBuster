@@ -53,6 +53,9 @@ Step 4 — Exercise the GUI/backend orchestrator
   you change sample content.
 - Progress messages stream over stdout; when troubleshooting, set
   `PYTHONUNBUFFERED=0` and watch the console for per-host status updates.
+- Review the activity timeline in the Multi-server tab to audit root changes,
+  run outcomes, and exports. Use the copy action beside any entry to grab a
+  shareable summary when triaging drift.
 
 Tips
 - Change the baseline: `--baseline server05`.

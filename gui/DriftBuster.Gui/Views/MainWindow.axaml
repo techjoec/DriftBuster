@@ -5,6 +5,7 @@
         xmlns:vm="using:DriftBuster.Gui.ViewModels"
         xmlns:conv="using:DriftBuster.Gui.Converters"
         xmlns:anim="using:Avalonia.Animation"
+        xmlns:views="using:DriftBuster.Gui.Views"
         x:Class="DriftBuster.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         mc:Ignorable="d"
@@ -108,5 +109,7 @@
         </TransitioningContentControl>
       </Border>
     </Grid>
+    <views:ToastHost Grid.RowSpan="2"
+                     DataContext="{Binding Toasts}" />
   </Grid>
 </Window>

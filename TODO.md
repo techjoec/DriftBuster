@@ -69,18 +69,18 @@
   - [x] Document local test recipes in `docs/testing-strategy.md` for multi-server flows.
 
 ## Section 5 — UX Feedback & Resilience
-- [ ] Introduce consistent toast and inline feedback mechanisms.
-  - [ ] Design a reusable `ToastHost` component with queueing, severity styling, and auto-dismiss; add to main window overlay.
-  - [ ] Map backend exceptions (permission denied, host unreachable, authentication failure) to friendly messages with retry, copy logs, and drilldown shortcuts.
-  - [ ] Provide inline guidance blocks (e.g., on drilldown, catalog) that surface contextual remediation steps alongside toast notifications.
-- [ ] Record session activity timeline for auditability.
-  - [ ] Implement an observable timeline model capturing events (root added, scan started/completed, exports, errors) with timestamps and metadata.
-  - [ ] Render the feed in the results pane sidebar with filtering (all events vs errors); allow copying entries for troubleshooting.
-  - [ ] Persist recent activity in the session cache when opted-in, with a “clear history” action.
-- [ ] Harden the GUI with resilience tests.
-  - [ ] Add headless tests verifying toast display logic, retry flows (e.g., permission failures raising toasts and allowing rerun), and activity feed updates.
-  - [ ] Stress test cancellation + rerun cycles to ensure the UI resets progress states cleanly.
-  - [ ] Maintain ≥90% coverage for touched modules (`ServerSelectionViewModel`, toast services, activity feed viewmodel) by adding focused unit tests.
+- [x] Introduce consistent toast and inline feedback mechanisms.
+  - [x] Design a reusable `ToastHost` component with queueing, severity styling, and auto-dismiss; add to main window overlay.
+  - [x] Map backend exceptions (permission denied, host unreachable, authentication failure) to friendly messages with retry, copy logs, and drilldown shortcuts.
+  - [x] Provide inline guidance blocks (e.g., on drilldown, catalog) that surface contextual remediation steps alongside toast notifications.
+- [x] Record session activity timeline for auditability.
+  - [x] Implement an observable timeline model capturing events (root added, scan started/completed, exports, errors) with timestamps and metadata.
+  - [x] Render the feed in the results pane sidebar with filtering (all events vs errors); allow copying entries for troubleshooting.
+  - [x] Persist recent activity in the session cache when opted-in, with a “clear history” action.
+- [x] Harden the GUI with resilience tests.
+  - [x] Add headless tests verifying toast display logic, retry flows (e.g., permission failures raising toasts and allowing rerun), and activity feed updates.
+  - [x] Stress test cancellation + rerun cycles to ensure the UI resets progress states cleanly.
+  - [x] Maintain ≥90% coverage for touched modules (`ServerSelectionViewModel`, toast services, activity feed viewmodel) by adding focused unit tests.
 
 ## Section 6 — Documentation & Follow-Up
 - [ ] Refresh multi-server documentation.

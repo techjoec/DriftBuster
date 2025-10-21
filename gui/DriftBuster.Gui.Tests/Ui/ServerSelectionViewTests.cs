@@ -402,9 +402,65 @@ public sealed class ServerSelectionViewTests
         rescanned.Should().ContainSingle(plan => plan.HostId == viewModel.DrilldownViewModel.Servers.First().HostId);
     }
 
+    [Fact]
+    public async Task RunAllProducesTimelineAndToast()
+    {
+        var toast = new ToastService(action => action());
+        var viewModel = CreateViewModel(toast: toast);
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.FilteredActivityEntries.Should().NotBeEmpty();
+        toast.ActiveToasts.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task CopyActivityCommandRaisesClipboardEvent()
+    {
+        var toast = new ToastService(action => action());
+        var viewModel = CreateViewModel(toast: toast);
+        string? copied = null;
+        viewModel.CopyActivityRequested += (_, text) => copied = text;
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        var firstEntry = viewModel.FilteredActivityEntries.FirstOrDefault();
+        firstEntry.Should().NotBeNull();
+        viewModel.CopyActivityCommand.Execute(firstEntry!);
+
+        copied.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task CancelRunsEmitsActivityAndToast()
+    {
+        var tcs = new TaskCompletionSource<ServerScanResponse>();
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, progress, token) =>
+            {
+                token.Register(() => tcs.TrySetCanceled(token));
+                return tcs.Task;
+            },
+        };
+
+        var toast = new ToastService(action => action());
+        var viewModel = CreateViewModel(service, toast: toast);
+
+        var runTask = viewModel.RunAllCommand.ExecuteAsync(null);
+        viewModel.CancelRunsCommand.Execute(null);
+
+        await runTask;
+
+        toast.ActiveToasts.Should().NotBeEmpty();
+        viewModel.FilteredActivityEntries.Should().Contain(entry => entry.Summary.Contains("cancelled", StringComparison.OrdinalIgnoreCase));
+        viewModel.IsBusy.Should().BeFalse();
+    }
+
     private static ServerSelectionViewModel CreateViewModel(
         FakeDriftbusterService? service = null,
-        InMemorySessionCacheService? cache = null)
+        InMemorySessionCacheService? cache = null,
+        ToastService? toast = null)
     {
         service ??= new FakeDriftbusterService
         {
@@ -481,6 +537,7 @@ public sealed class ServerSelectionViewTests
             },
         };
 
-        return new ServerSelectionViewModel(service, cache);
+        toast ??= new ToastService(action => action());
+        return new ServerSelectionViewModel(service, toast, cache);
     }
 }
