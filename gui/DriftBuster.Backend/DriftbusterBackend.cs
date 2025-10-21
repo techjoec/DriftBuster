@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
@@ -53,14 +54,21 @@ namespace DriftBuster.Backend
         private const int HuntSampleSize = 128 * 1024;
         private const string RedactedPlaceholder = "[REDACTED]";
         private const string SecretRulesResourceName = "DriftBuster.Backend.Resources.secret_rules.json";
+        private const string MultiServerModule = "driftbuster.multi_server";
+        private const string MultiServerSchemaVersion = "multi-server.v1";
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             PropertyNameCaseInsensitive = true,
+            Converters =
+            {
+                new JsonStringEnumMemberConverter()
+            },
         };
 
         private static readonly Encoding Utf8 = new UTF8Encoding(false, false);
+        private static readonly string DiffCacheDirectory = Path.Combine("artifacts", "cache", "diffs");
 
         private static readonly IReadOnlyList<HuntRuleDefinition> HuntRules = new[]
         {
@@ -141,12 +149,78 @@ namespace DriftBuster.Backend
             return Task.Run(() => RunProfileManager.PrepareOfflineCollector(profile, request, baseDir, cancellationToken), cancellationToken);
         }
 
-        public Task<ServerScanResponse> RunServerScansAsync(
+        public async Task<ServerScanResponse> RunServerScansAsync(
             IEnumerable<ServerScanPlan> plans,
             IProgress<ScanProgress>? progress = null,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => SimulateServerScans(plans, progress, cancellationToken), cancellationToken);
+            if (plans is null)
+            {
+                throw new ArgumentNullException(nameof(plans));
+            }
+
+            var planList = plans.Select(ClonePlan).ToList();
+            if (planList.Count == 0)
+            {
+                return new ServerScanResponse
+                {
+                    Version = MultiServerSchemaVersion,
+                    Results = Array.Empty<ServerScanResult>(),
+                    Catalog = Array.Empty<ConfigCatalogEntry>(),
+                    Drilldown = Array.Empty<ConfigDrilldown>(),
+                    Summary = new ServerScanSummary
+                    {
+                        BaselineHostId = string.Empty,
+                        TotalHosts = 0,
+                        ConfigsEvaluated = 0,
+                        DriftingConfigs = 0,
+                        GeneratedAt = DateTimeOffset.UtcNow,
+                    },
+                };
+            }
+
+            foreach (var plan in planList)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.IsNullOrWhiteSpace(plan.HostId))
+                {
+                    plan.HostId = Guid.NewGuid().ToString("N");
+                }
+
+                if (string.IsNullOrWhiteSpace(plan.Label))
+                {
+                    plan.Label = plan.HostId;
+                }
+
+                plan.Baseline ??= new ServerScanBaselinePreference();
+                plan.Export ??= new ServerScanExportOptions();
+
+                progress?.Report(new ScanProgress
+                {
+                    HostId = plan.HostId,
+                    Status = ServerScanStatus.Queued,
+                    Message = "Queued",
+                    Timestamp = DateTimeOffset.UtcNow,
+                });
+            }
+
+            var repositoryRoot = ResolveRepositoryRoot();
+            var request = BuildMultiServerRequest(planList, repositoryRoot);
+            var response = await ExecuteMultiServerAsync(request, progress, cancellationToken, repositoryRoot).ConfigureAwait(false);
+
+            if (response is null)
+            {
+                throw new InvalidOperationException("Multi-server runner returned no payload.");
+            }
+
+            if (string.IsNullOrWhiteSpace(response.Version))
+            {
+                response.Version = MultiServerSchemaVersion;
+            }
+
+            ValidateMultiServerResponse(response);
+            return response;
         }
 
         private static DiffResult BuildDiffResult(IEnumerable<string?> versions, CancellationToken cancellationToken)
@@ -210,215 +284,377 @@ namespace DriftBuster.Backend
             return result;
         }
 
-        private static ServerScanResponse SimulateServerScans(
-            IEnumerable<ServerScanPlan> plans,
-            IProgress<ScanProgress>? progress,
-            CancellationToken cancellationToken)
+
+        private static ServerScanPlan ClonePlan(ServerScanPlan plan)
         {
-            var planList = (plans ?? Array.Empty<ServerScanPlan>()).ToList();
-            var results = new List<ServerScanResult>();
-
-            foreach (var plan in planList)
+            if (plan is null)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var hostId = string.IsNullOrWhiteSpace(plan.HostId) ? Guid.NewGuid().ToString("N") : plan.HostId;
-                plan.HostId = hostId;
-                var label = string.IsNullOrWhiteSpace(plan.Label) ? hostId : plan.Label;
-
-                progress?.Report(new ScanProgress
-                {
-                    HostId = hostId,
-                    Status = ServerScanStatus.Queued,
-                    Message = "Queued",
-                    Timestamp = DateTimeOffset.UtcNow,
-                });
-
-                progress?.Report(new ScanProgress
-                {
-                    HostId = hostId,
-                    Status = ServerScanStatus.Running,
-                    Message = "Simulating scan",
-                    Timestamp = DateTimeOffset.UtcNow,
-                });
-
-                results.Add(new ServerScanResult
-                {
-                    HostId = hostId,
-                    Label = label,
-                    Status = ServerScanStatus.Succeeded,
-                    Message = "Simulated result",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Roots = plan.Roots,
-                    UsedCache = plan.CachedAt.HasValue,
-                });
-
-                progress?.Report(new ScanProgress
-                {
-                    HostId = hostId,
-                    Status = ServerScanStatus.Succeeded,
-                    Message = "Completed",
-                    Timestamp = DateTimeOffset.UtcNow,
-                });
+                return new ServerScanPlan();
             }
 
-            return new ServerScanResponse
+            return new ServerScanPlan
             {
-                Results = results.ToArray(),
-                Catalog = BuildSampleCatalog(planList),
-                Drilldown = BuildSampleDrilldown(planList),
+                HostId = plan.HostId,
+                Label = plan.Label,
+                Scope = plan.Scope,
+                Roots = plan.Roots?.ToArray() ?? Array.Empty<string>(),
+                Baseline = plan.Baseline is null
+                    ? new ServerScanBaselinePreference()
+                    : new ServerScanBaselinePreference
+                    {
+                        IsPreferred = plan.Baseline.IsPreferred,
+                        Priority = plan.Baseline.Priority,
+                        Role = string.IsNullOrWhiteSpace(plan.Baseline.Role) ? "auto" : plan.Baseline.Role,
+                    },
+                Export = plan.Export is null
+                    ? new ServerScanExportOptions()
+                    : new ServerScanExportOptions
+                    {
+                        IncludeCatalog = plan.Export.IncludeCatalog,
+                        IncludeDrilldown = plan.Export.IncludeDrilldown,
+                        IncludeDiffs = plan.Export.IncludeDiffs,
+                        IncludeSummary = plan.Export.IncludeSummary,
+                    },
+                ThrottleSeconds = plan.ThrottleSeconds,
+                CachedAt = plan.CachedAt,
             };
         }
 
-        private static ConfigCatalogEntry[] BuildSampleCatalog(IReadOnlyList<ServerScanPlan> plans)
+        private static string ResolveRepositoryRoot()
         {
-            if (plans.Count == 0)
+            var current = new DirectoryInfo(Environment.CurrentDirectory);
+            while (current is not null)
             {
-                return Array.Empty<ConfigCatalogEntry>();
-            }
-
-            var labels = plans
-                .Select(plan => string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label)
-                .Where(label => !string.IsNullOrWhiteSpace(label))
-                .Cast<string>()
-                .ToArray();
-
-            var now = DateTimeOffset.UtcNow;
-            var catalog = new List<ConfigCatalogEntry>
-            {
-                new ConfigCatalogEntry
+                if (File.Exists(Path.Combine(current.FullName, "pyproject.toml")))
                 {
-                    ConfigId = "appsettings.json",
-                    DisplayName = "appsettings.json",
-                    Format = "json",
-                    DriftCount = Math.Max(1, labels.Length / 2),
-                    Severity = labels.Length > 3 ? "high" : "medium",
-                    PresentHosts = labels,
-                    MissingHosts = Array.Empty<string>(),
-                    LastUpdated = now,
-                    HasMaskedTokens = true,
-                    CoverageStatus = "full",
+                    return current.FullName;
                 }
-            };
 
-            if (labels.Length > 1)
-            {
-                var missing = labels.Length >= 1 ? labels[^1] : string.Empty;
-                catalog.Add(new ConfigCatalogEntry
-                {
-                    ConfigId = "plugins.conf",
-                    DisplayName = "plugins.conf",
-                    Format = "ini",
-                    DriftCount = 0,
-                    Severity = "low",
-                    PresentHosts = labels.Take(Math.Max(1, labels.Length - 1)).ToArray(),
-                    MissingHosts = string.IsNullOrEmpty(missing) ? Array.Empty<string>() : new[] { missing },
-                    LastUpdated = now.AddMinutes(-5),
-                    HasValidationIssues = true,
-                    CoverageStatus = "partial",
-                });
+                current = current.Parent;
             }
 
-            if (labels.Length > 2)
+            current = new DirectoryInfo(AppContext.BaseDirectory);
+            while (current is not null)
             {
-                catalog.Add(new ConfigCatalogEntry
+                if (File.Exists(Path.Combine(current.FullName, "pyproject.toml")))
                 {
-                    ConfigId = "registry.json",
-                    DisplayName = "registry.json",
-                    Format = "registry",
-                    DriftCount = 0,
-                    Severity = "none",
-                    PresentHosts = labels.Take(Math.Max(1, labels.Length - 2)).ToArray(),
-                    MissingHosts = labels.Skip(labels.Length - 2).ToArray(),
-                    LastUpdated = now.AddMinutes(-15),
-                    HasSecrets = true,
-                    CoverageStatus = "partial",
-                });
+                    return current.FullName;
+                }
+
+                current = current.Parent;
             }
 
-            return catalog.ToArray();
+            return Environment.CurrentDirectory;
         }
 
-        private static ConfigDrilldown[] BuildSampleDrilldown(IReadOnlyList<ServerScanPlan> plans)
+        private static MultiServerRequest BuildMultiServerRequest(List<ServerScanPlan> plans, string repositoryRoot)
         {
-            if (plans.Count == 0)
+            if (plans is null)
             {
-                return Array.Empty<ConfigDrilldown>();
+                throw new ArgumentNullException(nameof(plans));
             }
 
-            var now = DateTimeOffset.UtcNow;
-            var hosts = plans.Select(plan => (
-                Id: string.IsNullOrWhiteSpace(plan.HostId) ? Guid.NewGuid().ToString("N") : plan.HostId,
-                Label: string.IsNullOrWhiteSpace(plan.Label) ? (plan.HostId ?? string.Empty) : plan.Label)).ToArray();
-
-            var baselineHost = hosts.First();
-
-            ConfigServerDetail CreateDetail((string Id, string Label) host, bool present, int driftLines, bool secrets, bool masked, bool isBaseline)
+            var cacheDirectory = Path.Combine(repositoryRoot, DiffCacheDirectory);
+            Directory.CreateDirectory(cacheDirectory);
+            return new MultiServerRequest
             {
-                return new ConfigServerDetail
+                Plans = plans,
+                CacheDirectory = cacheDirectory,
+                SchemaVersion = MultiServerSchemaVersion,
+            };
+        }
+
+        private async Task<ServerScanResponse> ExecuteMultiServerAsync(
+            MultiServerRequest request,
+            IProgress<ScanProgress>? progress,
+            CancellationToken cancellationToken,
+            string repositoryRoot)
+        {
+            if (request is null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            var pythonExecutable = ResolvePythonExecutable();
+            var startInfo = CreatePythonStartInfo(pythonExecutable, repositoryRoot);
+            var pythonPath = ResolvePythonPath(repositoryRoot);
+
+            if (!string.IsNullOrWhiteSpace(pythonPath))
+            {
+                if (startInfo.Environment.TryGetValue("PYTHONPATH", out var configured) && !string.IsNullOrWhiteSpace(configured))
                 {
-                    HostId = host.Id,
-                    Label = host.Label,
-                    Present = present,
-                    DriftLineCount = driftLines,
-                    HasSecrets = secrets,
-                    Masked = masked,
-                    IsBaseline = isBaseline,
-                    Status = present ? (driftLines > 0 ? "Drift" : "Match") : "Missing",
-                    RedactionStatus = masked ? "Masked" : (secrets ? "Secrets" : "Visible"),
-                    LastSeen = present ? now.AddMinutes(-driftLines - 1) : DateTimeOffset.MinValue,
-                };
+                    if (!configured.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries).Contains(pythonPath, StringComparer.Ordinal))
+                    {
+                        startInfo.Environment["PYTHONPATH"] = string.Join(Path.PathSeparator, pythonPath, configured);
+                    }
+                }
+                else
+                {
+                    var inherited = Environment.GetEnvironmentVariable("PYTHONPATH");
+                    startInfo.Environment["PYTHONPATH"] = string.IsNullOrWhiteSpace(inherited)
+                        ? pythonPath
+                        : string.Join(Path.PathSeparator, pythonPath, inherited);
+                }
             }
 
-            var drilldowns = new List<ConfigDrilldown>();
+            startInfo.Environment["PYTHONUNBUFFERED"] = "1";
 
-            var appsettingsServers = hosts.Select((host, index) =>
-                CreateDetail(host, present: true, driftLines: index, secrets: index % 2 == 0, masked: index % 3 == 0, isBaseline: host.Id == baselineHost.Id)).ToArray();
+            var requestJson = JsonSerializer.Serialize(request, SerializerOptions);
 
-            drilldowns.Add(new ConfigDrilldown
+            using var process = new Process { StartInfo = startInfo };
+            using var cancellationRegistration = cancellationToken.Register(() =>
             {
-                ConfigId = "appsettings.json",
-                DisplayName = "appsettings.json",
-                Format = "json",
-                Servers = appsettingsServers,
-                BaselineHostId = baselineHost.Id,
-                DiffBefore = "{\n  \"LogLevel\": \"Information\"\n}",
-                DiffAfter = "{\n  \"LogLevel\": \"Warning\"\n}",
-                UnifiedDiff = "- LogLevel: Information\n+ LogLevel: Warning",
-                HasSecrets = appsettingsServers.Any(detail => detail.HasSecrets),
-                HasMaskedTokens = appsettingsServers.Any(detail => detail.Masked),
-                HasValidationIssues = false,
-                Notes = new[] { "Mask tokens before sharing externally." },
-                Provenance = "Simulated sample data",
-                DriftCount = appsettingsServers.Sum(detail => detail.DriftLineCount),
-                LastUpdated = now,
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch
+                {
+                }
             });
 
-            if (hosts.Length > 1)
+            try
             {
-                var missingHost = hosts.Last();
-                var partialServers = hosts.Select((host, index) => CreateDetail(host, present: host.Id != missingHost.Id, driftLines: index % 2, secrets: false, masked: false, isBaseline: host.Id == baselineHost.Id)).ToArray();
-
-                drilldowns.Add(new ConfigDrilldown
+                if (!process.Start())
                 {
-                    ConfigId = "plugins.conf",
-                    DisplayName = "plugins.conf",
-                    Format = "ini",
-                    Servers = partialServers,
-                    BaselineHostId = baselineHost.Id,
-                    DiffBefore = "[plugins]\ncore=true",
-                    DiffAfter = "[plugins]\ncore=false",
-                    UnifiedDiff = "- core=true\n+ core=false",
-                    HasSecrets = false,
-                    HasMaskedTokens = false,
-                    HasValidationIssues = true,
-                    Notes = new[] { "plugins.conf missing on one host" },
-                    Provenance = "Simulated sample data",
-                    DriftCount = partialServers.Sum(detail => detail.DriftLineCount),
-                    LastUpdated = now.AddMinutes(-5),
-                });
+                    throw new InvalidOperationException("Failed to launch Python process for multi-server runner.");
+                }
+
+                await process.StandardInput.WriteAsync(requestJson).ConfigureAwait(false);
+                await process.StandardInput.WriteAsync(Environment.NewLine).ConfigureAwait(false);
+                await process.StandardInput.FlushAsync().ConfigureAwait(false);
+                process.StandardInput.Close();
+
+                var stderrTask = Task.Run(() => process.StandardError.ReadToEnd());
+
+                ServerScanResponse? response = null;
+                string? line;
+
+                while ((line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) is not null)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+
+                    JsonDocument document;
+                    try
+                    {
+                        document = JsonDocument.Parse(line);
+                    }
+                    catch (JsonException ex)
+                    {
+                        throw new InvalidOperationException($"Invalid JSON from multi-server runner: {line}", ex);
+                    }
+
+                    using (document)
+                    {
+                        var root = document.RootElement;
+                        if (!root.TryGetProperty("type", out var typeElement))
+                        {
+                            continue;
+                        }
+
+                        var type = typeElement.GetString();
+                        if (string.Equals(type, "progress", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (progress is not null && root.TryGetProperty("payload", out var payloadElement))
+                            {
+                                var update = payloadElement.Deserialize<ScanProgress>(SerializerOptions);
+                                if (update is not null)
+                                {
+                                    progress.Report(update);
+                                }
+                            }
+                        }
+                        else if (string.Equals(type, "result", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (root.TryGetProperty("payload", out var payloadElement))
+                            {
+                                response = payloadElement.Deserialize<ServerScanResponse>(SerializerOptions);
+                            }
+                        }
+                        else if (string.Equals(type, "error", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var message = root.TryGetProperty("message", out var messageElement)
+                                ? messageElement.GetString()
+                                : "Multi-server runner reported an error.";
+                            throw new InvalidOperationException(message ?? "Multi-server runner reported an error.");
+                        }
+                    }
+                }
+
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                if (process.ExitCode != 0)
+                {
+                    var stderr = await stderrTask.ConfigureAwait(false);
+                    throw new InvalidOperationException($"Python runner failed with exit code {process.ExitCode}: {stderr}");
+                }
+
+                return response ?? new ServerScanResponse
+                {
+                    Version = MultiServerSchemaVersion,
+                    Results = Array.Empty<ServerScanResult>(),
+                    Catalog = Array.Empty<ConfigCatalogEntry>(),
+                    Drilldown = Array.Empty<ConfigDrilldown>(),
+                };
+            }
+            finally
+            {
+                if (!process.HasExited)
+                {
+                    try
+                    {
+                        process.Kill(entireProcessTree: true);
+                        process.WaitForExit();
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+
+        private static string ResolvePythonExecutable()
+        {
+            var overridePath = Environment.GetEnvironmentVariable("DRIFTBUSTER_PYTHON");
+            if (!string.IsNullOrWhiteSpace(overridePath))
+            {
+                return overridePath;
             }
 
-            return drilldowns.ToArray();
+            if (TryLocateExecutable("python3", out var python3))
+            {
+                return python3;
+            }
+
+            if (TryLocateExecutable("python", out var python))
+            {
+                return python;
+            }
+
+            return OperatingSystem.IsWindows() ? "python.exe" : "python3";
+        }
+
+        private static bool TryLocateExecutable(string name, out string fullPath)
+        {
+            if (Path.IsPathRooted(name))
+            {
+                fullPath = name;
+                return File.Exists(name);
+            }
+
+            var entries = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var entry in entries)
+            {
+                var candidate = Path.Combine(entry, name);
+                if (File.Exists(candidate))
+                {
+                    fullPath = candidate;
+                    return true;
+                }
+
+                if (OperatingSystem.IsWindows())
+                {
+                    var exeCandidate = candidate.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                        ? candidate
+                        : candidate + ".exe";
+                    if (File.Exists(exeCandidate))
+                    {
+                        fullPath = exeCandidate;
+                        return true;
+                    }
+                }
+            }
+
+            fullPath = name;
+            return false;
+        }
+
+        private static string ResolvePythonPath(string repositoryRoot)
+        {
+            var candidate = Path.Combine(repositoryRoot, "src");
+            return Directory.Exists(candidate) ? candidate : string.Empty;
+        }
+
+        private static ProcessStartInfo CreatePythonStartInfo(string pythonExecutable, string workingDirectory)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = pythonExecutable,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = workingDirectory,
+                StandardOutputEncoding = Utf8,
+                StandardErrorEncoding = Utf8,
+            };
+
+            startInfo.ArgumentList.Add("-m");
+            startInfo.ArgumentList.Add(MultiServerModule);
+            return startInfo;
+        }
+
+        private static void ValidateMultiServerResponse(ServerScanResponse response)
+        {
+            if (response is null)
+            {
+                throw new ArgumentNullException(nameof(response));
+            }
+
+            if (!string.Equals(response.Version, MultiServerSchemaVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Unsupported multi-server schema version '{response.Version}'. Expected '{MultiServerSchemaVersion}'.");
+            }
+
+            response.Results ??= Array.Empty<ServerScanResult>();
+            response.Catalog ??= Array.Empty<ConfigCatalogEntry>();
+            response.Drilldown ??= Array.Empty<ConfigDrilldown>();
+            response.Summary ??= new ServerScanSummary
+            {
+                BaselineHostId = string.Empty,
+                TotalHosts = response.Results.Length,
+                ConfigsEvaluated = response.Catalog.Length,
+                DriftingConfigs = response.Catalog.Count(entry => entry.DriftCount > 0),
+                GeneratedAt = DateTimeOffset.UtcNow,
+            };
+
+            foreach (var result in response.Results)
+            {
+                result.Roots ??= Array.Empty<string>();
+            }
+
+            foreach (var entry in response.Catalog)
+            {
+                entry.PresentHosts ??= Array.Empty<string>();
+                entry.MissingHosts ??= Array.Empty<string>();
+            }
+
+            foreach (var drilldown in response.Drilldown)
+            {
+                drilldown.Servers ??= Array.Empty<ConfigServerDetail>();
+                drilldown.Notes ??= Array.Empty<string>();
+            }
+        }
+
+        private sealed class MultiServerRequest
+        {
+            [JsonPropertyName("plans")]
+            public List<ServerScanPlan> Plans { get; set; } = new();
+
+            [JsonPropertyName("cache_dir")]
+            public string CacheDirectory { get; set; } = string.Empty;
+
+            [JsonPropertyName("schema_version")]
+            public string SchemaVersion { get; set; } = MultiServerSchemaVersion;
         }
 
         private static string EnsureFile(string path, bool isBaseline)

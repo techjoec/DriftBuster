@@ -51,22 +51,22 @@
 - [x] Add coverage-focused tests exercising diff mode toggles, export commands, and selective re-run flows in headless UI suites.
 
 ## Section 4 — Backend/API Support
-- [ ] Upgrade the .NET backend bridge to orchestrate multi-server scans end-to-end.
-  - [ ] Replace the simulated scan pipeline with a concrete implementation that shells out to the Python engine, streams progress updates, and respects cancellation tokens.
-  - [ ] Introduce persisted diff caching (per host/config/root hash) in a temp store (`artifacts/cache/diffs/`) with invalidation hooks when roots or file hashes change.
-  - [ ] Extend `ServerScanPlan` to carry baseline preferences, export toggles, and per-host throttling; mirror updates through `DriftbusterService` and update tests/fakes accordingly.
-  - [ ] Add structured status enums (`found`, `not_found`, `permission_denied`, `offline`) and wire them through the bridge so the UI can differentiate failure modes.
-- [ ] Extend Python engine capabilities for multi-server orchestration.
-  - [ ] Create `src/driftbuster/multi_server.py` exposing a function that accepts server metadata + roots, invokes existing detection/diff routines, and returns normalized catalog/drilldown records.
-  - [ ] Implement config key normalization using detector logical identifiers first, falling back to relative paths and hashed fallbacks; add unit tests to guarantee determinism.
-  - [ ] Add intelligent diff caching leveraging file mtimes + content hashes; ensure cache invalidates when scan scope or baselines change.
-- [ ] Bridge Python outputs back to .NET via JSON contracts.
-  - [ ] Define JSON schemas for catalog/drilldown/summary payloads with versioning; validate incoming payloads and surface descriptive errors.
-  - [ ] Include provenance metadata (detector name, rule IDs), timestamps, and explicit secret exposure indicators so the UI can render badges and audit trails.
-- [ ] Strengthen Python test coverage.
-  - [ ] Add multi-host regression tests under `tests/` covering full coverage, partial coverage, missing files, permission errors, and cached reruns.
-  - [ ] Ensure `coverage report` maintains ≥90% by adding targeted tests for new orchestration and normalization helpers.
-  - [ ] Document local test recipes in `docs/testing-strategy.md` for multi-server flows.
+- [x] Upgrade the .NET backend bridge to orchestrate multi-server scans end-to-end.
+  - [x] Replace the simulated scan pipeline with a concrete implementation that shells out to the Python engine, streams progress updates, and respects cancellation tokens.
+  - [x] Introduce persisted diff caching (per host/config/root hash) in a temp store (`artifacts/cache/diffs/`) with invalidation hooks when roots or file hashes change.
+  - [x] Extend `ServerScanPlan` to carry baseline preferences, export toggles, and per-host throttling; mirror updates through `DriftbusterService` and update tests/fakes accordingly.
+  - [x] Add structured status enums (`found`, `not_found`, `permission_denied`, `offline`) and wire them through the bridge so the UI can differentiate failure modes.
+- [x] Extend Python engine capabilities for multi-server orchestration.
+  - [x] Create `src/driftbuster/multi_server.py` exposing a function that accepts server metadata + roots, invokes existing detection/diff routines, and returns normalized catalog/drilldown records.
+  - [x] Implement config key normalization using detector logical identifiers first, falling back to relative paths and hashed fallbacks; add unit tests to guarantee determinism.
+  - [x] Add intelligent diff caching leveraging file mtimes + content hashes; ensure cache invalidates when scan scope or baselines change.
+- [x] Bridge Python outputs back to .NET via JSON contracts.
+  - [x] Define JSON schemas for catalog/drilldown/summary payloads with versioning; validate incoming payloads and surface descriptive errors.
+  - [x] Include provenance metadata (detector name, rule IDs), timestamps, and explicit secret exposure indicators so the UI can render badges and audit trails.
+- [x] Strengthen Python test coverage.
+  - [x] Add multi-host regression tests under `tests/` covering full coverage, partial coverage, missing files, permission errors, and cached reruns.
+  - [x] Ensure `coverage report` maintains ≥90% by adding targeted tests for new orchestration and normalization helpers.
+  - [x] Document local test recipes in `docs/testing-strategy.md` for multi-server flows.
 
 ## Section 5 — UX Feedback & Resilience
 - [ ] Introduce consistent toast and inline feedback mechanisms.

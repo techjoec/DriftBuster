@@ -13,6 +13,9 @@ for new and modified components.
 - `pytest -q` — exercises detector metadata, profile helpers, diff planning,
   hunt rules, registry utilities, JSON/XML plugins, and CLI helpers. The suite
   injects the `src/` tree via `tests/conftest.py`.
+- `pytest tests/multi_server -q` — validates the multi-server orchestration
+  bridge, ensuring cache reuse, catalog aggregation, and drilldown payloads
+  stay deterministic across runs.
 - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` — runs
   xUnit coverage for `MainWindowViewModel`, diff planner UI, and hunt UI using
   a fake `IDriftbusterService`, so no Python subprocess spawns.

@@ -71,6 +71,7 @@ public sealed class ServerSelectionViewTests
                     Status = ServerScanStatus.Succeeded,
                     Message = "Completed",
                     Timestamp = DateTimeOffset.UtcNow,
+                    Availability = ServerAvailabilityStatus.Found,
                 }).ToArray();
 
                 var catalog = new[]
@@ -230,6 +231,7 @@ public sealed class ServerSelectionViewTests
                     Status = ServerScanStatus.Succeeded,
                     Message = "Completed",
                     Timestamp = DateTimeOffset.UtcNow,
+                    Availability = ServerAvailabilityStatus.Found,
                 }).ToArray();
 
                 var drilldown = new[]
@@ -308,6 +310,7 @@ public sealed class ServerSelectionViewTests
                     Status = ServerScanStatus.Succeeded,
                     Message = "Completed",
                     Timestamp = DateTimeOffset.UtcNow,
+                    Availability = ServerAvailabilityStatus.Found,
                 }).ToArray();
 
                 var catalog = new[]
@@ -417,6 +420,7 @@ public sealed class ServerSelectionViewTests
                     Status = ServerScanStatus.Succeeded,
                     Message = "Completed",
                     Timestamp = DateTimeOffset.UtcNow,
+                    Availability = ServerAvailabilityStatus.Found,
                 }).ToArray();
 
                 var catalog = new[]

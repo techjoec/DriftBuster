@@ -204,4 +204,44 @@ public sealed class DriftbusterBackendTests
             }
         }
     }
+
+    [Fact]
+    public async Task RunServerScansAsync_executes_multi_server_runner()
+    {
+        var backend = new DriftbusterBackend();
+        var sampleRoot = Path.Combine("samples", "multi-server");
+
+        var plans = new[]
+        {
+            new ServerScanPlan
+            {
+                HostId = "baseline",
+                Label = "server01",
+                Scope = ServerScanScope.CustomRoots,
+                Roots = new[] { Path.Combine(sampleRoot, "server01") },
+                Baseline = new ServerScanBaselinePreference { IsPreferred = true, Priority = 10, Role = "auto" },
+                Export = new ServerScanExportOptions(),
+            },
+            new ServerScanPlan
+            {
+                HostId = "drift",
+                Label = "server02",
+                Scope = ServerScanScope.CustomRoots,
+                Roots = new[] { Path.Combine(sampleRoot, "server02") },
+                Baseline = new ServerScanBaselinePreference { IsPreferred = false, Priority = 5, Role = "auto" },
+                Export = new ServerScanExportOptions(),
+            },
+        };
+
+        var response = await backend.RunServerScansAsync(plans, progress: null, CancellationToken.None);
+
+        Assert.Equal("multi-server.v1", response.Version);
+        Assert.Equal(2, response.Results.Length);
+        Assert.Contains(response.Results, result => result.HostId == "baseline" && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);
+        Assert.Contains(response.Results, result => result.HostId == "drift" && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);
+        Assert.NotEmpty(response.Catalog);
+        var appEntry = response.Catalog.First(entry => entry.DisplayName.EndsWith("appsettings.json", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(2, appEntry.PresentHosts.Length);
+        Assert.NotEmpty(response.Drilldown);
+    }
 }

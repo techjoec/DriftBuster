@@ -654,6 +654,19 @@ namespace DriftBuster.Gui.ViewModels
                     Roots = server.Scope == ServerScanScope.CustomRoots
                         ? server.Roots.Select(root => root.Path).ToArray()
                         : Array.Empty<string>(),
+                    Baseline = new ServerScanBaselinePreference
+                    {
+                        IsPreferred = server.Index == 0,
+                        Priority = server.Index,
+                        Role = "auto",
+                    },
+                    Export = new ServerScanExportOptions
+                    {
+                        IncludeCatalog = true,
+                        IncludeDrilldown = true,
+                        IncludeDiffs = true,
+                        IncludeSummary = true,
+                    },
                     CachedAt = server.LastRunAt,
                 };
 
@@ -691,6 +704,10 @@ namespace DriftBuster.Gui.ViewModels
 
                     var status = result.UsedCache ? ServerScanStatus.Cached : result.Status;
                     var message = string.IsNullOrWhiteSpace(result.Message) ? status.ToString() : result.Message;
+                    if (result.Status == ServerScanStatus.Failed && result.Availability != ServerAvailabilityStatus.Unknown)
+                    {
+                        message = $"{message} ({result.Availability})";
+                    }
                     server.MarkState(status, message, result.Timestamp);
                 }
             }

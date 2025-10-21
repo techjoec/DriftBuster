@@ -43,6 +43,17 @@ Step 3 — Diff against a baseline
   - Text summary to stdout with server count, diff count, hunt hits.
   - `artifacts/demo-multi-server.html` with unified diffs and hunt highlights.
 
+Step 4 — Exercise the GUI/backend orchestrator
+- The Avalonia GUI now shells out to `python -m driftbuster.multi_server` for real
+  multi-host runs. You can invoke the same pipeline from the .NET tests or from
+  a REPL by instantiating `DriftbusterBackend` and calling
+  `RunServerScansAsync(...)` with plans that point at `samples/multi-server`.
+- Results are cached per `(host, config, root)` signature under
+  `artifacts/cache/diffs/`. Delete that directory to force a cold run when
+  you change sample content.
+- Progress messages stream over stdout; when troubleshooting, set
+  `PYTHONUNBUFFERED=0` and watch the console for per-host status updates.
+
 Tips
 - Change the baseline: `--baseline server05`.
 - Limit diff scope by editing the script to include other files (e.g., `.config`).
