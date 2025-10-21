@@ -24,6 +24,10 @@ public sealed class DriftbusterServiceTests
         await service.SaveProfileAsync(new RunProfileDefinition { Name = "profile" });
         await service.RunProfileAsync(new RunProfileDefinition { Name = "profile" }, saveProfile: true);
         await service.PrepareOfflineCollectorAsync(new RunProfileDefinition { Name = "profile" }, new OfflineCollectorRequest());
+        await service.RunServerScansAsync(new[]
+        {
+            new ServerScanPlan { HostId = "host-01", Label = "Primary" },
+        });
 
         backend.PingCalled.Should().BeTrue();
         backend.DiffVersions.Should().Equal("a", "b");
@@ -32,6 +36,7 @@ public sealed class DriftbusterServiceTests
         backend.SavedProfileNames.Should().ContainSingle().Which.Should().Be("profile");
         backend.RunInvocations.Should().Be(1);
         backend.OfflineCollectorCalls.Should().Be(1);
+        backend.ScanPlans.Should().ContainSingle(plan => plan.HostId == "host-01");
     }
 
     private sealed class RecordingBackend : IDriftbusterBackend
@@ -43,6 +48,7 @@ public sealed class DriftbusterServiceTests
         public List<string> SavedProfileNames { get; } = new();
         public int RunInvocations { get; private set; }
         public int OfflineCollectorCalls { get; private set; }
+        public List<ServerScanPlan> ScanPlans { get; private set; } = new();
 
         public Task<string> PingAsync(CancellationToken cancellationToken = default)
         {
@@ -84,6 +90,12 @@ public sealed class DriftbusterServiceTests
         {
             OfflineCollectorCalls++;
             return Task.FromResult(new OfflineCollectorResult());
+        }
+
+        public Task<ServerScanResponse> RunServerScansAsync(IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
+        {
+            ScanPlans = plans.ToList();
+            return Task.FromResult(new ServerScanResponse());
         }
     }
 }

@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             xmlns:views="using:DriftBuster.Gui.Views"
+             xmlns:conv="using:DriftBuster.Gui.Converters"
+             x:Class="DriftBuster.Gui.Views.ServerSelectionView"
+             x:DataType="vm:ServerSelectionViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="24">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <Button Content="Setup"
+                Classes="outline"
+                Command="{Binding ShowSetupCommand}"
+                IsEnabled="{Binding IsViewingCatalog}" />
+        <Button Content="Results"
+                Classes="outline"
+                Command="{Binding ShowCatalogCommand}"
+                IsEnabled="{Binding CatalogViewModel.HasEntries}" />
+      </StackPanel>
+
+      <StackPanel Spacing="24"
+                  IsVisible="{Binding IsViewingCatalog, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
+      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="16">
+          <ToggleSwitch Content="Remember setup this session"
+                        IsChecked="{Binding PersistSessionState}" />
+          <Button Content="Save session"
+                  Classes="outline"
+                  IsEnabled="{Binding PersistSessionState}"
+                  Command="{Binding SaveSessionCommand}" />
+          <Button Content="Clear history"
+                  Classes="outline"
+                  Command="{Binding ClearHistoryCommand}" />
+          <TextBlock Text="{Binding StatusBanner}" Classes="subtitle" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <ItemsControl ItemsSource="{Binding Servers}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel ItemWidth="360" MinWidth="360" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Width="340"
+                    Margin="0,0,20,20"
+                    Padding="18"
+                    Classes="surface"
+                    CornerRadius="{DynamicResource Radius.Large}">
+              <StackPanel Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <ToggleSwitch IsChecked="{Binding IsEnabled}" Content="Enabled" />
+                  <TextBlock Text="{Binding StatusText}" Classes="subtitle" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding LastRunAt, StringFormat='Last run: {0:G}'}"
+                             Classes="subtitle"
+                             IsVisible="{Binding LastRunAt}" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Text="Label" Classes="subtitle" Width="48" />
+                  <TextBox Text="{Binding Label, Mode=TwoWay}" Width="220" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Text="Scope" Classes="subtitle" Width="48" />
+                  <ComboBox Width="220"
+                            ItemsSource="{Binding DataContext.ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            SelectedValue="{Binding Scope, Mode=TwoWay}"
+                            SelectedValueBinding="{Binding Value}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Roots" FontWeight="SemiBold" />
+                  <ItemsControl ItemsSource="{Binding Roots}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,8">
+                          <StackPanel Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Path}" FontFamily="Consolas" TextWrapping="Wrap" />
+                              <Border Padding="4,2"
+                                      CornerRadius="{DynamicResource Radius.Small}"
+                                      Background="{Binding ValidationState, Converter={x:Static conv:RootStatusToBrushConverter.Instance}}">
+                                <TextBlock Text="{Binding ValidationState}" FontSize="12" />
+                              </Border>
+                              <Button Content="Remove"
+                                      Classes="outline"
+                                      Command="{Binding DataContext.RemoveRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="{Binding}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="220"
+                             Watermark="Add root path"
+                             Text="{Binding NewRootPath, Mode=TwoWay}" />
+                    <Button Content="Add root"
+                            Classes="outline"
+                            Command="{Binding DataContext.AddRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding RootInputError}" Classes="subtitle" Foreground="{DynamicResource Brush.Accent}" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="State:" Classes="subtitle" />
+                  <TextBlock Text="{Binding RunState}" FontWeight="SemiBold" />
+                  <Button Content="Retry"
+                          Classes="outline"
+                          IsVisible="{Binding CanRetry}"
+                          Command="{Binding DataContext.RunMissingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Execution" FontSize="18" FontWeight="SemiBold" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Content="Run all" Classes="primary" Command="{Binding RunAllCommand}" IsEnabled="{Binding HasActiveServers}" />
+            <Button Content="Run missing only" Classes="outline" Command="{Binding RunMissingCommand}" />
+            <Button Content="Cancel" Classes="outline" Command="{Binding CancelRunsCommand}" IsEnabled="{Binding IsBusy}" />
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Servers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <TextBlock Text="{Binding Label}" Width="140" />
+                  <TextBlock Text="{Binding RunState}" Width="80" />
+                  <TextBlock Text="{Binding StatusText}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+      </StackPanel>
+
+      <ContentControl Content="{Binding CatalogViewModel}"
+                      IsVisible="{Binding IsViewingCatalog}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate>
+            <views:ResultsCatalogView DataContext="{Binding}" />
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

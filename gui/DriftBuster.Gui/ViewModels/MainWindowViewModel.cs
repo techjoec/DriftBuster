@@ -14,12 +14,14 @@ namespace DriftBuster.Gui.ViewModels
             Diff,
             Hunt,
             Profiles,
+            MultiServer,
         }
 
         private readonly IDriftbusterService _service;
         private readonly Func<IDriftbusterService, object> _diffViewFactory;
         private readonly Func<IDriftbusterService, string?, object> _huntViewFactory;
         private readonly Func<IDriftbusterService, object> _profilesViewFactory;
+        private readonly Func<IDriftbusterService, object> _serverSelectionFactory;
 
         [ObservableProperty]
         private object? _currentView;
@@ -32,6 +34,7 @@ namespace DriftBuster.Gui.ViewModels
         public IRelayCommand ShowDiffCommand { get; }
         public IRelayCommand ShowHuntCommand { get; }
         public IRelayCommand ShowProfilesCommand { get; }
+        public IRelayCommand ShowMultiServerCommand { get; }
 
         [ObservableProperty]
         private bool _isBackendHealthy;
@@ -48,18 +51,21 @@ namespace DriftBuster.Gui.ViewModels
             IDriftbusterService service,
             Func<IDriftbusterService, object>? diffViewFactory = null,
             Func<IDriftbusterService, string?, object>? huntViewFactory = null,
-            Func<IDriftbusterService, object>? profilesViewFactory = null)
+            Func<IDriftbusterService, object>? profilesViewFactory = null,
+            Func<IDriftbusterService, object>? serverSelectionFactory = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _diffViewFactory = diffViewFactory ?? CreateDiffView;
             _huntViewFactory = huntViewFactory ?? CreateHuntView;
             _profilesViewFactory = profilesViewFactory ?? CreateProfilesView;
+            _serverSelectionFactory = serverSelectionFactory ?? CreateServerSelectionView;
 
             PingCoreCommand = new AsyncRelayCommand(PingCoreAsync);
             CheckHealthCommand = new AsyncRelayCommand(CheckHealthAsync);
             ShowDiffCommand = new RelayCommand(ShowDiff);
             ShowHuntCommand = new RelayCommand(() => ShowHunt());
             ShowProfilesCommand = new RelayCommand(ShowProfiles);
+            ShowMultiServerCommand = new RelayCommand(ShowMultiServer);
             ShowDiff();
             _ = CheckHealthCommand.ExecuteAsync(null);
         }
@@ -69,6 +75,8 @@ namespace DriftBuster.Gui.ViewModels
         public bool IsHuntSelected => ActiveView == MainViewSection.Hunt;
 
         public bool IsProfilesSelected => ActiveView == MainViewSection.Profiles;
+
+        public bool IsMultiServerSelected => ActiveView == MainViewSection.MultiServer;
 
         public void ShowDiff()
         {
@@ -86,6 +94,12 @@ namespace DriftBuster.Gui.ViewModels
         {
             ActiveView = MainViewSection.Profiles;
             CurrentView = _profilesViewFactory(_service);
+        }
+
+        public void ShowMultiServer()
+        {
+            ActiveView = MainViewSection.MultiServer;
+            CurrentView = _serverSelectionFactory(_service);
         }
 
         private async Task PingCoreAsync()
@@ -136,11 +150,17 @@ namespace DriftBuster.Gui.ViewModels
             };
         }
 
+        private static object CreateServerSelectionView(IDriftbusterService service) => new ServerSelectionView
+        {
+            DataContext = new ServerSelectionViewModel(service),
+        };
+
         partial void OnActiveViewChanged(MainViewSection value)
         {
             OnPropertyChanged(nameof(IsDiffSelected));
             OnPropertyChanged(nameof(IsHuntSelected));
             OnPropertyChanged(nameof(IsProfilesSelected));
+            OnPropertyChanged(nameof(IsMultiServerSelected));
         }
     }
 }

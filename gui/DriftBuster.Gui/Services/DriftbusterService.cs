@@ -55,5 +55,10 @@ namespace DriftBuster.Gui.Services
         {
             return _backend.PrepareOfflineCollectorAsync(profile, request, baseDir: null, cancellationToken);
         }
+
+        public Task<ServerScanResponse> RunServerScansAsync(IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
+        {
+            return _backend.RunServerScansAsync(plans, progress, cancellationToken);
+        }
     }
 }

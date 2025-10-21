@@ -40,6 +40,11 @@ namespace DriftBuster.Backend
             OfflineCollectorRequest request,
             string? baseDir = null,
             CancellationToken cancellationToken = default);
+
+        Task<ServerScanResponse> RunServerScansAsync(
+            IEnumerable<ServerScanPlan> plans,
+            IProgress<ScanProgress>? progress = null,
+            CancellationToken cancellationToken = default);
     }
 
     [ExcludeFromCodeCoverage]
@@ -136,6 +141,14 @@ namespace DriftBuster.Backend
             return Task.Run(() => RunProfileManager.PrepareOfflineCollector(profile, request, baseDir, cancellationToken), cancellationToken);
         }
 
+        public Task<ServerScanResponse> RunServerScansAsync(
+            IEnumerable<ServerScanPlan> plans,
+            IProgress<ScanProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => SimulateServerScans(plans, progress, cancellationToken), cancellationToken);
+        }
+
         private static DiffResult BuildDiffResult(IEnumerable<string?> versions, CancellationToken cancellationToken)
         {
             var versionList = versions?.ToList() ?? new List<string?>();
@@ -195,6 +208,133 @@ namespace DriftBuster.Backend
 
             result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
             return result;
+        }
+
+        private static ServerScanResponse SimulateServerScans(
+            IEnumerable<ServerScanPlan> plans,
+            IProgress<ScanProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            var planList = (plans ?? Array.Empty<ServerScanPlan>()).ToList();
+            var results = new List<ServerScanResult>();
+
+            foreach (var plan in planList)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var hostId = string.IsNullOrWhiteSpace(plan.HostId) ? Guid.NewGuid().ToString("N") : plan.HostId;
+                plan.HostId = hostId;
+                var label = string.IsNullOrWhiteSpace(plan.Label) ? hostId : plan.Label;
+
+                progress?.Report(new ScanProgress
+                {
+                    HostId = hostId,
+                    Status = ServerScanStatus.Queued,
+                    Message = "Queued",
+                    Timestamp = DateTimeOffset.UtcNow,
+                });
+
+                progress?.Report(new ScanProgress
+                {
+                    HostId = hostId,
+                    Status = ServerScanStatus.Running,
+                    Message = "Simulating scan",
+                    Timestamp = DateTimeOffset.UtcNow,
+                });
+
+                results.Add(new ServerScanResult
+                {
+                    HostId = hostId,
+                    Label = label,
+                    Status = ServerScanStatus.Succeeded,
+                    Message = "Simulated result",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Roots = plan.Roots,
+                    UsedCache = plan.CachedAt.HasValue,
+                });
+
+                progress?.Report(new ScanProgress
+                {
+                    HostId = hostId,
+                    Status = ServerScanStatus.Succeeded,
+                    Message = "Completed",
+                    Timestamp = DateTimeOffset.UtcNow,
+                });
+            }
+
+            return new ServerScanResponse
+            {
+                Results = results.ToArray(),
+                Catalog = BuildSampleCatalog(planList),
+            };
+        }
+
+        private static ConfigCatalogEntry[] BuildSampleCatalog(IReadOnlyList<ServerScanPlan> plans)
+        {
+            if (plans.Count == 0)
+            {
+                return Array.Empty<ConfigCatalogEntry>();
+            }
+
+            var labels = plans
+                .Select(plan => string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label)
+                .Where(label => !string.IsNullOrWhiteSpace(label))
+                .Cast<string>()
+                .ToArray();
+
+            var now = DateTimeOffset.UtcNow;
+            var catalog = new List<ConfigCatalogEntry>
+            {
+                new ConfigCatalogEntry
+                {
+                    ConfigId = "appsettings.json",
+                    DisplayName = "appsettings.json",
+                    Format = "json",
+                    DriftCount = Math.Max(1, labels.Length / 2),
+                    Severity = labels.Length > 3 ? "high" : "medium",
+                    PresentHosts = labels,
+                    MissingHosts = Array.Empty<string>(),
+                    LastUpdated = now,
+                    HasMaskedTokens = true,
+                    CoverageStatus = "full",
+                }
+            };
+
+            if (labels.Length > 1)
+            {
+                var missing = labels.Length >= 1 ? labels[^1] : string.Empty;
+                catalog.Add(new ConfigCatalogEntry
+                {
+                    ConfigId = "plugins.conf",
+                    DisplayName = "plugins.conf",
+                    Format = "ini",
+                    DriftCount = 0,
+                    Severity = "low",
+                    PresentHosts = labels.Take(Math.Max(1, labels.Length - 1)).ToArray(),
+                    MissingHosts = string.IsNullOrEmpty(missing) ? Array.Empty<string>() : new[] { missing },
+                    LastUpdated = now.AddMinutes(-5),
+                    HasValidationIssues = true,
+                    CoverageStatus = "partial",
+                });
+            }
+
+            if (labels.Length > 2)
+            {
+                catalog.Add(new ConfigCatalogEntry
+                {
+                    ConfigId = "registry.json",
+                    DisplayName = "registry.json",
+                    Format = "registry",
+                    DriftCount = 0,
+                    Severity = "none",
+                    PresentHosts = labels.Take(Math.Max(1, labels.Length - 2)).ToArray(),
+                    MissingHosts = labels.Skip(labels.Length - 2).ToArray(),
+                    LastUpdated = now.AddMinutes(-15),
+                    HasSecrets = true,
+                    CoverageStatus = "partial",
+                });
+            }
+
+            return catalog.ToArray();
         }
 
         private static string EnsureFile(string path, bool isBaseline)

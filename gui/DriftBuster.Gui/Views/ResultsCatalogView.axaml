@@ -1,0 +1,147 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             xmlns:conv="using:DriftBuster.Gui.Converters"
+             x:Class="DriftBuster.Gui.Views.ResultsCatalogView"
+             x:DataType="vm:ResultsCatalogViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="20">
+      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
+        <WrapPanel VerticalAlignment="Center">
+          <StackPanel Width="180" Margin="0,0,16,0">
+            <TextBlock Text="Baseline" Classes="subtitle" />
+            <ComboBox ItemsSource="{Binding BaselineOptions}"
+                      SelectedItem="{Binding SelectedBaseline}" />
+          </StackPanel>
+          <StackPanel Width="200" Margin="0,0,16,0">
+            <TextBlock Text="Coverage" Classes="subtitle" />
+            <ComboBox ItemsSource="{Binding CoverageFilterOptions}"
+                      SelectedValue="{Binding SelectedCoverageFilter}"
+                      SelectedValueBinding="{Binding Value}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Display}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Width="200" Margin="0,0,16,0">
+            <TextBlock Text="Severity" Classes="subtitle" />
+            <ComboBox ItemsSource="{Binding SeverityFilterOptions}"
+                      SelectedValue="{Binding SelectedSeverityFilter}"
+                      SelectedValueBinding="{Binding Value}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Display}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Width="200" Margin="0,0,16,0">
+            <TextBlock Text="Format" Classes="subtitle" />
+            <ComboBox ItemsSource="{Binding FormatOptions}"
+                      SelectedItem="{Binding SelectedFormat}" />
+          </StackPanel>
+          <StackPanel Width="240" Margin="0,0,16,0">
+            <TextBlock Text="Search" Classes="subtitle" />
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Search configs" />
+          </StackPanel>
+        </WrapPanel>
+      </Border>
+
+      <Border Classes="surface" Padding="20" CornerRadius="{DynamicResource Radius.Large}">
+        <StackPanel Spacing="14">
+          <TextBlock Text="Config catalog" FontSize="18" FontWeight="SemiBold" />
+          <DataGrid ItemsSource="{Binding FilteredEntries}"
+                    AutoGenerateColumns="False"
+                    IsReadOnly="True"
+                    HeadersVisibility="All"
+                    GridLinesVisibility="All"
+                    CanUserReorderColumns="False"
+                    CanUserSortColumns="True"
+                    Height="320">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Config" Binding="{Binding DisplayName}" Width="2*" />
+              <DataGridTextColumn Header="Drift" Binding="{Binding DriftSummary}" Width="*" />
+              <DataGridTextColumn Header="Presence" Binding="{Binding CoverageText}" Width="*" />
+              <DataGridTextColumn Header="Format" Binding="{Binding Format}" Width="*" />
+              <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="*" />
+              <DataGridTextColumn Header="Updated" Binding="{Binding LastUpdatedText}" Width="1.5*" />
+              <DataGridTemplateColumn Header="Tags" Width="2*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Border Background="#4C1D95" Padding="4,2" CornerRadius="6"
+                              IsVisible="{Binding HasDrift}">
+                        <TextBlock Text="Drift" FontSize="12" />
+                      </Border>
+                      <Border Background="#991B1B" Padding="4,2" CornerRadius="6"
+                              IsVisible="{Binding HasSecrets}">
+                        <TextBlock Text="Secrets" FontSize="12" />
+                      </Border>
+                      <Border Background="#9A3412" Padding="4,2" CornerRadius="6"
+                              IsVisible="{Binding HasMaskedTokens}">
+                        <TextBlock Text="Masked" FontSize="12" />
+                      </Border>
+                      <Border Background="#92400E" Padding="4,2" CornerRadius="6"
+                              IsVisible="{Binding HasValidationIssues}">
+                        <TextBlock Text="Validation" FontSize="12" />
+                      </Border>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Actions" Width="1.5*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button Content="Drilldown"
+                              Classes="outline"
+                              Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                              CommandParameter="{Binding}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}"
+              IsVisible="{Binding HasPartialCoverage}">
+        <StackPanel Spacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+            <TextBlock Text="Missing artifacts detected" FontWeight="SemiBold" />
+            <Button Content="Re-scan all missing"
+                    Classes="outline"
+                    Command="{Binding ReScanAllPartialCommand}" />
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding PartialCoverageEntries}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface" Margin="0,0,0,10">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding CoverageText}" Classes="subtitle" />
+                    <TextBlock Text="{Binding MissingHostsSummary}" Classes="subtitle" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button Content="Investigate"
+                              Classes="outline"
+                              Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              CommandParameter="{Binding}" />
+                      <Button Content="Re-scan affected"
+                              Classes="outline"
+                              Command="{Binding DataContext.ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              CommandParameter="{Binding}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

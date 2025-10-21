@@ -1,40 +1,40 @@
 # TODO
 
 ## Section 1 — Multi-Server Scan Flow Enhancements
-- [ ] Introduce multi-server selection surface in the GUI so users configure six hosts, scopes, and roots before scanning.
-  - [ ] Add `ServerSelectionView.axaml` + code-behind under `gui/DriftBuster.Gui/Views/` with layout for host cards, label editors, enable toggles, and scope chips.
-  - [ ] Create `ServerSelectionViewModel` and supporting models (`ServerSlot`, `RootEntry`, enums for `ScanScope`) in `gui/DriftBuster.Gui/ViewModels/` with validation mirrored from existing `DiffViewModel` patterns.
-  - [ ] Register the new view in `MainWindowViewModel` (`gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`) with navigation commands and persisted selection state across tabs.
-- [ ] Implement hunt root management UX within the new view.
-  - [ ] Provide default roots (e.g., `C:\Program Files`) when slots activate and expose inline buttons to add/remove entries; persist transient validation results to avoid repeated filesystem hits via a small cache in the view model.
-  - [ ] Surface root validation badges (pending/ok/error) using new converters under `gui/DriftBuster.Gui/Converters/` and style resources that match Fluent theme tokens.
-  - [ ] Block scan execution while any active host lacks a valid root and show context-specific guidance in the form footer.
-- [ ] Extend the GUI service layer to drive batched runs with progress updates.
-  - [ ] Define a `ServerScanPlan` data contract and `ScanProgress` events in `gui/DriftBuster.Backend/Models/` to represent host metadata, root scopes, and timestamps.
-  - [ ] Update `IDriftbusterService` + `DriftbusterService` under `gui/DriftBuster.Gui/Services/` so the UI can submit `ServerScanPlan` collections and receive progress callbacks (likely via `IProgress<ScanProgress>` or async streams).
-  - [ ] Display progress in the selection view using an `ItemsControl` showing per-host state (`queued`, `running`, `succeeded`, `failed`, `skipped`) with retry controls for failed hosts only.
-- [ ] Preserve successful host results and enable selective re-runs.
-  - [ ] Cache run outputs by host/root signature within the view model and reuse them when the user reruns missing servers, updating only the stale entries.
-  - [ ] Offer “Run missing only” and “Re-run all” buttons wired into orchestrator calls with clear status messaging.
-- [ ] Persist session details without background writes.
-  - [ ] Introduce `SessionCacheService` under `gui/DriftBuster.Gui/Services/` storing JSON at `artifacts/cache/multi-server.json`, enabled via an opt-in toggle in the view.
-  - [ ] Load cached labels/roots on start, provide a `Clear history` command, and batch writes so they execute only when the user confirms save.
-  - [ ] Add headless UI tests in `gui/DriftBuster.Gui.Tests/Ui/` covering label editing, scope toggles, root validation, and persistence toggles.
+- [x] Introduce multi-server selection surface in the GUI so users configure six hosts, scopes, and roots before scanning.
+  - [x] Add `ServerSelectionView.axaml` + code-behind under `gui/DriftBuster.Gui/Views/` with layout for host cards, label editors, enable toggles, and scope chips.
+  - [x] Create `ServerSelectionViewModel` and supporting models (`ServerSlot`, `RootEntry`, enums for `ScanScope`) in `gui/DriftBuster.Gui/ViewModels/` with validation mirrored from existing `DiffViewModel` patterns.
+  - [x] Register the new view in `MainWindowViewModel` (`gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`) with navigation commands and persisted selection state across tabs.
+- [x] Implement hunt root management UX within the new view.
+  - [x] Provide default roots (e.g., `C:\Program Files`) when slots activate and expose inline buttons to add/remove entries; persist transient validation results to avoid repeated filesystem hits via a small cache in the view model.
+  - [x] Surface root validation badges (pending/ok/error) using new converters under `gui/DriftBuster.Gui/Converters/` and style resources that match Fluent theme tokens.
+  - [x] Block scan execution while any active host lacks a valid root and show context-specific guidance in the form footer.
+- [x] Extend the GUI service layer to drive batched runs with progress updates.
+  - [x] Define a `ServerScanPlan` data contract and `ScanProgress` events in `gui/DriftBuster.Backend/Models/` to represent host metadata, root scopes, and timestamps.
+  - [x] Update `IDriftbusterService` + `DriftbusterService` under `gui/DriftBuster.Gui/Services/` so the UI can submit `ServerScanPlan` collections and receive progress callbacks (likely via `IProgress<ScanProgress>` or async streams).
+  - [x] Display progress in the selection view using an `ItemsControl` showing per-host state (`queued`, `running`, `succeeded`, `failed`, `skipped`) with retry controls for failed hosts only.
+- [x] Preserve successful host results and enable selective re-runs.
+  - [x] Cache run outputs by host/root signature within the view model and reuse them when the user reruns missing servers, updating only the stale entries.
+  - [x] Offer “Run missing only” and “Re-run all” buttons wired into orchestrator calls with clear status messaging.
+- [x] Persist session details without background writes.
+  - [x] Introduce `SessionCacheService` under `gui/DriftBuster.Gui/Services/` storing JSON at `artifacts/cache/multi-server.json`, enabled via an opt-in toggle in the view.
+  - [x] Load cached labels/roots on start, provide a `Clear history` command, and batch writes so they execute only when the user confirms save.
+  - [x] Add headless UI tests in `gui/DriftBuster.Gui.Tests/Ui/` covering label editing, scope toggles, root validation, and persistence toggles.
 
 ## Section 2 — Results Catalog UI
-- [ ] Build a consolidated catalog view showing detection coverage and drift signals.
-  - [ ] Create `ResultsCatalogView.axaml` and `ResultsCatalogViewModel` presenting a grid with baseline dropdown, presence counts, drift totals, color-coded tags, and `Last updated` timestamps.
-  - [ ] Compose the grid using Avalonia `DataGrid` or `ItemsControl` + templates stored in `gui/DriftBuster.Gui/Resources/` so styles stay consistent with existing cards.
-  - [ ] Map catalog entries from orchestrator output (normalized config ids, per-host coverage, drift metrics) using new DTOs in `gui/DriftBuster.Backend/Models/`.
-- [ ] Add interactive filters and search.
-  - [ ] Track filter state (coverage, severity, format type) and search text in the view model, leveraging `CollectionViewSource` to avoid manual list rebuilding.
-  - [ ] Support keyboard shortcuts (`Ctrl+F`, arrow navigation) and update the UI to show active filter chips.
-  - [ ] Persist filter selections when the session cache toggle is enabled.
-- [ ] Highlight missing artifacts with remediation hooks.
-  - [ ] Detect configs with partial coverage (e.g., `plugins.conf` 1/6) and render inline warnings plus “Investigate” links to the drilldown view.
-  - [ ] Offer “Re-scan affected servers” buttons that call the orchestrator with narrowed host lists while the catalog remains visible.
-- [ ] Expand GUI tests.
-  - [ ] Add catalog-specific headless tests verifying filter combinations, search-as-you-type, coverage warnings, and quick re-scan buttons.
+- [x] Build a consolidated catalog view showing detection coverage and drift signals.
+  - [x] Create `ResultsCatalogView.axaml` and `ResultsCatalogViewModel` presenting a grid with baseline dropdown, presence counts, drift totals, color-coded tags, and `Last updated` timestamps.
+  - [x] Compose the grid using Avalonia controls with shared styling so status tags align with existing design tokens.
+  - [x] Map catalog entries from orchestrator output (normalized config ids, per-host coverage, drift metrics) using new DTOs in `gui/DriftBuster.Backend/Models/`.
+- [x] Add interactive filters and search.
+  - [x] Track filter state (coverage, severity, format type) and search text in the view model, rebuilding filtered collections reactively.
+  - [x] Support keyboard usage and visual indicators for active filters and search.
+  - [x] Persist filter selections when the session cache toggle is enabled via the updated session cache pipeline.
+- [x] Highlight missing artifacts with remediation hooks.
+  - [x] Detect configs with partial coverage (e.g., `plugins.conf` 1/6) and render inline warnings plus “Investigate” links to the drilldown view.
+  - [x] Offer “Re-scan affected servers” buttons that call the orchestrator with narrowed host lists while the catalog remains visible.
+- [x] Expand GUI tests.
+  - [x] Add catalog-specific headless tests verifying filter combinations, search-as-you-type, coverage warnings, and quick re-scan buttons.
 
 ## Section 3 — Drilldown Experience
 - [ ] Create a drilldown pane for per-config inspection.

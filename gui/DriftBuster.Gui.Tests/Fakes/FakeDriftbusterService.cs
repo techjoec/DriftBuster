@@ -24,11 +24,15 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
 
     public Func<RunProfileDefinition, OfflineCollectorRequest, CancellationToken, Task<OfflineCollectorResult>>? PrepareOfflineCollectorHandler { get; set; }
 
+    public Func<IEnumerable<ServerScanPlan>, IProgress<ScanProgress>?, CancellationToken, Task<ServerScanResponse>>? RunServerScansHandler { get; set; }
+
     public string PingResponse { get; set; } = "pong";
 
     public DiffResult DiffResponse { get; set; } = new();
 
     public HuntResult HuntResponse { get; set; } = new();
+
+    public ServerScanResponse ServerScanResponse { get; set; } = new();
 
     public Task<string> PingAsync(CancellationToken cancellationToken = default)
     {
@@ -98,5 +102,15 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
         }
 
         return Task.FromResult(new OfflineCollectorResult());
+    }
+
+    public Task<ServerScanResponse> RunServerScansAsync(IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        if (RunServerScansHandler is not null)
+        {
+            return RunServerScansHandler(plans, progress, cancellationToken);
+        }
+
+        return Task.FromResult(ServerScanResponse);
     }
 }
