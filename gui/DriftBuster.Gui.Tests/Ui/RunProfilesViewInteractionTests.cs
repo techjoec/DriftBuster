@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 
 using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
 
 using DriftBuster.Backend.Models;
@@ -10,12 +11,14 @@ using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
 
+using Xunit;
+
 namespace DriftBuster.Gui.Tests.Ui;
 
 [Collection(HeadlessCollection.Name)]
 public sealed class RunProfilesViewInteractionTests
 {
-    [Fact]
+    [AvaloniaFact]
     public void BrowseFile_without_storage_provider_keeps_existing_path()
     {
         var viewModel = CreateViewModel();
@@ -32,7 +35,7 @@ public sealed class RunProfilesViewInteractionTests
         entry.Path.Should().Be("original");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void BrowseFile_with_override_updates_path()
     {
         var viewModel = CreateViewModel();
@@ -49,7 +52,7 @@ public sealed class RunProfilesViewInteractionTests
         entry.Path.Should().Be("/tmp/data.json");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void BrowseFolder_without_storage_provider_keeps_existing_path()
     {
         var viewModel = CreateViewModel();
@@ -66,7 +69,7 @@ public sealed class RunProfilesViewInteractionTests
         entry.Path.Should().Be("directory");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void BrowseFolder_with_override_updates_path()
     {
         var viewModel = CreateViewModel();
@@ -83,7 +86,7 @@ public sealed class RunProfilesViewInteractionTests
         entry.Path.Should().Be("/tmp/folder");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void PrepareOfflineCollector_without_storage_provider_skips_backend_call()
     {
         var service = new FakeDriftbusterService();
@@ -109,7 +112,7 @@ public sealed class RunProfilesViewInteractionTests
         invoked.Should().BeFalse();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void PrepareOfflineCollector_with_override_invokes_backend()
     {
         var service = new FakeDriftbusterService();
@@ -142,7 +145,7 @@ public sealed class RunProfilesViewInteractionTests
         File.Delete(tempFile);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void SecretScannerSettings_without_owner_exits_cleanly()
     {
         var viewModel = CreateViewModel();
@@ -162,7 +165,7 @@ public sealed class RunProfilesViewInteractionTests
         viewModel.SecretScannerSummary.Should().Contain("Ignored rules: 1, patterns: 1");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void SecretScannerSettings_with_override_applies_changes()
     {
         var viewModel = CreateViewModel();
@@ -183,7 +186,7 @@ public sealed class RunProfilesViewInteractionTests
         viewModel.SecretScanner.IgnorePatterns.Should().Contain("pattern-y");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void BuildOfflineCollectorName_sanitizes_profile_name()
     {
         var method = typeof(RunProfilesView).GetMethod("BuildOfflineCollectorName", BindingFlags.Static | BindingFlags.NonPublic);

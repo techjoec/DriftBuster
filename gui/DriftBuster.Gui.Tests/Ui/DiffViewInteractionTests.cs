@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
+using Avalonia.Headless.XUnit;
 
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -14,7 +15,7 @@ namespace DriftBuster.Gui.Tests.Ui;
 [Collection(HeadlessCollection.Name)]
 public sealed class DiffViewInteractionTests
 {
-    [Fact]
+    [AvaloniaFact]
     public void BrowseFile_without_storage_provider_leaves_path_unset()
     {
         var viewModel = new DiffViewModel(new FakeDriftbusterService());
@@ -31,7 +32,7 @@ public sealed class DiffViewInteractionTests
         input.Path.Should().BeNull();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void BrowseFile_with_override_updates_path()
     {
         var viewModel = new DiffViewModel(new FakeDriftbusterService());
@@ -47,7 +48,7 @@ public sealed class DiffViewInteractionTests
         input.Path.Should().Be("/tmp/sample.json");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void CopyRawJson_without_clipboard_keeps_value()
     {
         var service = new FakeDriftbusterService();
@@ -66,7 +67,7 @@ public sealed class DiffViewInteractionTests
         viewModel.RawJson.Should().Be("{\"value\":42}");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void CopyRawJson_with_override_captures_text()
     {
         var captured = new List<string>();

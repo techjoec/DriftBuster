@@ -1,11 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Headless.XUnit;
 
 using DriftBuster.Gui;
 
 using FluentAssertions;
-
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
@@ -23,7 +23,7 @@ public sealed class AppStartupTests
         Application.Current.Should().BeOfType<App>();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void FrameworkInitialization_assigns_main_window()
     {
         var app = new App();

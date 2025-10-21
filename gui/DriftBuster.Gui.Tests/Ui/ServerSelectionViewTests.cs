@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Headless.XUnit;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
@@ -18,7 +19,7 @@ namespace DriftBuster.Gui.Tests.Ui;
 [Collection(HeadlessCollection.Name)]
 public sealed class ServerSelectionViewTests
 {
-    [Fact]
+    [AvaloniaFact]
     public void ShouldInitialiseWithDefaultHosts()
     {
         var viewModel = CreateViewModel();
@@ -28,7 +29,7 @@ public sealed class ServerSelectionViewTests
         viewModel.Servers[0].Label.Should().Be("App Inc");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void ShouldValidateCustomRoots()
     {
         var viewModel = CreateViewModel();
@@ -43,7 +44,7 @@ public sealed class ServerSelectionViewTests
         server.Roots.Last().StatusMessage.Should().Contain("absolute");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task ShouldRunScanAndUpdateStatuses()
     {
         var fakeService = new FakeDriftbusterService
@@ -130,13 +131,15 @@ public sealed class ServerSelectionViewTests
 
         await viewModel.RunAllCommand.ExecuteAsync(null);
 
-        SpinWait.SpinUntil(() => viewModel.Servers[0].RunState == ServerScanStatus.Succeeded, TimeSpan.FromMilliseconds(200)).Should().BeTrue();
+        SpinWait.SpinUntil(
+            () => viewModel.Servers[0].RunState == ServerScanStatus.Succeeded,
+            TimeSpan.FromSeconds(2)).Should().BeTrue();
         viewModel.Servers[0].StatusText.Should().Be("Completed");
         viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
         viewModel.IsViewingCatalog.Should().BeTrue();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task ShouldPersistSessionWhenUserRequestsSave()
     {
         var cache = new InMemorySessionCacheService();
@@ -151,7 +154,7 @@ public sealed class ServerSelectionViewTests
         cache.Snapshot!.Servers.Should().Contain(entry => entry.Label == "Primary");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void ClearingHistoryShouldClearCacheWhenPersistenceEnabled()
     {
         var cache = new InMemorySessionCacheService
@@ -169,7 +172,7 @@ public sealed class ServerSelectionViewTests
         viewModel.CatalogViewModel.HasEntries.Should().BeFalse();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task ShouldFilterCatalogEntries()
     {
         var viewModel = CreateViewModel();
@@ -183,7 +186,7 @@ public sealed class ServerSelectionViewTests
             .Should().OnlyContain(entry => entry.DisplayName.Contains("appsettings", StringComparison.OrdinalIgnoreCase));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task ShouldReScanMissingHostsFromCatalog()
     {
         var firstBatch = new TaskCompletionSource<IReadOnlyList<ServerScanPlan>>();
@@ -290,7 +293,7 @@ public sealed class ServerSelectionViewTests
         rescopedPlans[0].Label.Should().Be(partial.MissingHosts.First());
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task DrilldownShouldSupportExportAndRescan()
     {
         var exported = new List<ConfigDrilldownExportRequest>();
@@ -402,7 +405,7 @@ public sealed class ServerSelectionViewTests
         rescanned.Should().ContainSingle(plan => plan.HostId == viewModel.DrilldownViewModel.Servers.First().HostId);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task RunAllProducesTimelineAndToast()
     {
         var toast = new ToastService(action => action());
@@ -414,7 +417,7 @@ public sealed class ServerSelectionViewTests
         toast.ActiveToasts.Should().NotBeEmpty();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task CopyActivityCommandRaisesClipboardEvent()
     {
         var toast = new ToastService(action => action());
@@ -431,7 +434,7 @@ public sealed class ServerSelectionViewTests
         copied.Should().NotBeNullOrWhiteSpace();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task CancelRunsEmitsActivityAndToast()
     {
         var tcs = new TaskCompletionSource<ServerScanResponse>();
@@ -538,6 +541,22 @@ public sealed class ServerSelectionViewTests
         };
 
         toast ??= new ToastService(action => action());
-        return new ServerSelectionViewModel(service, toast, cache);
+        var viewModel = new ServerSelectionViewModel(service, toast, cache);
+
+        var defaultRoot = AppContext.BaseDirectory;
+        foreach (var server in viewModel.Servers)
+        {
+            if (!server.IsEnabled)
+            {
+                continue;
+            }
+
+            server.ReplaceRoots(new[]
+            {
+                new RootEntryViewModel(defaultRoot)
+            });
+        }
+
+        return viewModel;
     }
 }

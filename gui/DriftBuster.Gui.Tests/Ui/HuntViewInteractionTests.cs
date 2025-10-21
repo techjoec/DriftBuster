@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Avalonia.Headless.XUnit;
 
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -12,7 +13,7 @@ namespace DriftBuster.Gui.Tests.Ui;
 [Collection(HeadlessCollection.Name)]
 public sealed class HuntViewInteractionTests
 {
-    [Fact]
+    [AvaloniaFact]
     public void BrowseDirectory_without_provider_keeps_value()
     {
         var viewModel = new HuntViewModel(new FakeDriftbusterService());
@@ -27,7 +28,7 @@ public sealed class HuntViewInteractionTests
         viewModel.DirectoryPath.Should().Be("existing");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void BrowseDirectory_with_overrides_sets_directory()
     {
         var viewModel = new HuntViewModel(new FakeDriftbusterService());

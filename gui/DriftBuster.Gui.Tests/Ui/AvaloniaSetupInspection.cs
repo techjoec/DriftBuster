@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using Avalonia.Headless.XUnit;
 
 using Avalonia;
 using Avalonia.Headless;
@@ -21,7 +22,7 @@ public sealed class AvaloniaSetupInspection
         _output = output;
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void LogSetupState()
     {
         if (!string.Equals(Environment.GetEnvironmentVariable("AVALONIA_INSPECT"), "1", StringComparison.Ordinal))

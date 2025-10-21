@@ -2,11 +2,11 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 
 using DriftBuster.Backend.Models;
+using Avalonia.Headless.XUnit;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
 
 using FluentAssertions;
-
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
@@ -14,7 +14,7 @@ namespace DriftBuster.Gui.Tests.Ui;
 [Collection(HeadlessCollection.Name)]
 public sealed class SecretScannerSettingsWindowTests
 {
-    [Fact]
+    [AvaloniaFact]
     public void Should_Bind_SecretScanner_ViewModel()
     {
         var options = new SecretScannerOptions
@@ -32,14 +32,14 @@ public sealed class SecretScannerSettingsWindowTests
         window.Title.Should().Be("Secret scanner settings");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Confirm_closes_window()
     {
         var window = new SecretScannerSettingsWindow();
         Invoke(window, "OnConfirm", new Button(), new RoutedEventArgs(Button.ClickEvent));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Cancel_closes_window()
     {
         var window = new SecretScannerSettingsWindow();
