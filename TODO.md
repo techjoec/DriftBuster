@@ -37,51 +37,60 @@
   - [x] Add catalog-specific headless tests verifying filter combinations, search-as-you-type, coverage warnings, and quick re-scan buttons.
 
 ## Section 3 — Drilldown Experience
-- [ ] Create a drilldown pane for per-config inspection.
-  - [ ] Implement `ConfigDrilldownView.axaml` with a master-detail layout: server table (presence badges, baseline selector, drift metrics) and a diff area with side-by-side/unified toggle.
-  - [ ] Build `ConfigDrilldownViewModel` aggregating data from orchestrator responses, including redaction flags and diff stats.
-  - [ ] Reuse or adapt diff rendering components from existing diff planner (e.g., `DiffComparisonView`) to display content without duplicating logic.
-- [ ] Provide metadata sidebar and actionable notes.
-  - [ ] Extend backend payloads to deliver provenance, scan times, masked token counts, and validation issues per config; expose them in the drilldown sidebar using badge templates.
-  - [ ] Surface a prominent secrets exposure banner (e.g., red badge + tooltip) whenever unmasked credential hunks are detected, distinct from "masked tokens" counts.
-  - [ ] Allow users to flag notes for follow-up, storing the selection in session cache when enabled.
-- [ ] Enable exports and targeted re-runs.
-  - [ ] Hook `Export` commands to the existing Python reporting helpers (HTML/JSON) via backend bridge methods; save under `artifacts/exports/` with timestamped filenames.
-  - [ ] Implement drilldown-level `Re-run selected servers` action that dispatches a focused orchestrator call and refreshes only impacted entries on completion.
-- [ ] Add coverage-focused tests exercising diff mode toggles, export commands, and selective re-run flows in headless UI suites.
+- [x] Create a drilldown pane for per-config inspection.
+  - [x] Implemented `ConfigDrilldownView.axaml` with master-detail layout: server checklist, baseline badges, drift metrics, and side-by-side/unified diff toggle.
+  - [x] Built `ConfigDrilldownViewModel` aggregating orchestrator payloads with redaction flags, diff snippets, and selection state.
+  - [x] Presented diff previews without duplicating planner logic, providing unified and side-by-side renderings.
+- [x] Provide metadata sidebar and actionable notes.
+  - [x] Backend payloads now include provenance, scan timestamps, masked token counts, validation issues, and secrets exposure flags surfaced in the sidebar.
+  - [x] Secrets exposure banner (distinct from masked-token count) highlights unredacted credentials.
+  - [x] Notes persist via session cache when the user opts in.
+- [x] Enable exports and targeted re-runs.
+  - [x] Added HTML/JSON export commands writing snapshots to `artifacts/exports/<config>-<timestamp>.{html,json}`.
+  - [x] Drilldown-level re-run action triggers scoped orchestrations for selected servers while retaining the current view.
+- [x] Add coverage-focused tests exercising diff mode toggles, export commands, and selective re-run flows in headless UI suites.
 
 ## Section 4 — Backend/API Support
-- [ ] Upgrade the .NET backend bridge to orchestrate multi-server scans.
-  - [ ] Add new request/response models (`ServerScanPlan`, `ScanProgress`, `ServerScanResult`, `ConfigSnapshot`) in `gui/DriftBuster.Backend/Models/`.
-  - [ ] Refactor `DriftbusterBackend` so `DiffAsync` stays available while introducing `ScanAsync(IEnumerable<ServerScanPlan> plans, ...)` that streams structured status (`found`, `not_found`, `in_progress`) with timestamps.
-  - [ ] Update `DriftbusterService` to expose the new scan API to the GUI and adapt tests/fakes in `gui/DriftBuster.Gui.Tests/Services/`.
-- [ ] Extend Python engine capabilities.
-  - [ ] Add a consolidated multi-server entry point (e.g., `src/driftbuster/multi_server.py`) that accepts host metadata and root lists, normalizes config keys, and returns structured results.
-  - [ ] Enhance detection pipeline to normalize config identifiers using detector-provided logical ids or relative paths (`src/driftbuster/core/...`).
-  - [ ] Implement caching for diff artefacts/hunt hits keyed by host + config id + input hash; invalidate when roots or file hashes change.
-- [ ] Bridge Python outputs back to .NET.
-  - [ ] Serialize structured status/diff payloads via JSON that `DriftbusterBackend` deserializes into the new models.
-  - [ ] Provide timestamps, provenance metadata (detector name, rule ids), and explicit secret exposure indicators needed by catalog/drilldown views.
-- [ ] Add Python tests under `tests/` covering multi-root alignment, caching invalidation, and status transitions; ensure coverage stays ≥90% via existing coverage script.
+- [ ] Upgrade the .NET backend bridge to orchestrate multi-server scans end-to-end.
+  - [ ] Replace the simulated scan pipeline with a concrete implementation that shells out to the Python engine, streams progress updates, and respects cancellation tokens.
+  - [ ] Introduce persisted diff caching (per host/config/root hash) in a temp store (`artifacts/cache/diffs/`) with invalidation hooks when roots or file hashes change.
+  - [ ] Extend `ServerScanPlan` to carry baseline preferences, export toggles, and per-host throttling; mirror updates through `DriftbusterService` and update tests/fakes accordingly.
+  - [ ] Add structured status enums (`found`, `not_found`, `permission_denied`, `offline`) and wire them through the bridge so the UI can differentiate failure modes.
+- [ ] Extend Python engine capabilities for multi-server orchestration.
+  - [ ] Create `src/driftbuster/multi_server.py` exposing a function that accepts server metadata + roots, invokes existing detection/diff routines, and returns normalized catalog/drilldown records.
+  - [ ] Implement config key normalization using detector logical identifiers first, falling back to relative paths and hashed fallbacks; add unit tests to guarantee determinism.
+  - [ ] Add intelligent diff caching leveraging file mtimes + content hashes; ensure cache invalidates when scan scope or baselines change.
+- [ ] Bridge Python outputs back to .NET via JSON contracts.
+  - [ ] Define JSON schemas for catalog/drilldown/summary payloads with versioning; validate incoming payloads and surface descriptive errors.
+  - [ ] Include provenance metadata (detector name, rule IDs), timestamps, and explicit secret exposure indicators so the UI can render badges and audit trails.
+- [ ] Strengthen Python test coverage.
+  - [ ] Add multi-host regression tests under `tests/` covering full coverage, partial coverage, missing files, permission errors, and cached reruns.
+  - [ ] Ensure `coverage report` maintains ≥90% by adding targeted tests for new orchestration and normalization helpers.
+  - [ ] Document local test recipes in `docs/testing-strategy.md` for multi-server flows.
 
 ## Section 5 — UX Feedback & Resilience
 - [ ] Introduce consistent toast and inline feedback mechanisms.
-  - [ ] Implement `ToastHost` service + view in `gui/DriftBuster.Gui/Services/` and `Views/Shared/` for success/warning/error notifications triggered by orchestrator events.
-  - [ ] Map backend exceptions (e.g., permission denied, host unreachable) to user-friendly copy with retry/log links.
-- [ ] Record session activity timeline.
-  - [ ] Create an observable activity feed (timestamp + description) maintained by the server selection view model and displayed alongside catalog/drilldown views.
-  - [ ] Include actions (root added, scan started, export complete) and allow copying entries for troubleshooting.
-- [ ] Harden the GUI with tests around failure handling.
-  - [ ] Extend headless tests to assert toast visibility, retry flows, and activity feed updates when scans fail or exports succeed.
-  - [ ] Validate that coverage thresholds (≥90%) remain intact after new test additions.
+  - [ ] Design a reusable `ToastHost` component with queueing, severity styling, and auto-dismiss; add to main window overlay.
+  - [ ] Map backend exceptions (permission denied, host unreachable, authentication failure) to friendly messages with retry, copy logs, and drilldown shortcuts.
+  - [ ] Provide inline guidance blocks (e.g., on drilldown, catalog) that surface contextual remediation steps alongside toast notifications.
+- [ ] Record session activity timeline for auditability.
+  - [ ] Implement an observable timeline model capturing events (root added, scan started/completed, exports, errors) with timestamps and metadata.
+  - [ ] Render the feed in the results pane sidebar with filtering (all events vs errors); allow copying entries for troubleshooting.
+  - [ ] Persist recent activity in the session cache when opted-in, with a “clear history” action.
+- [ ] Harden the GUI with resilience tests.
+  - [ ] Add headless tests verifying toast display logic, retry flows (e.g., permission failures raising toasts and allowing rerun), and activity feed updates.
+  - [ ] Stress test cancellation + rerun cycles to ensure the UI resets progress states cleanly.
+  - [ ] Maintain ≥90% coverage for touched modules (`ServerSelectionViewModel`, toast services, activity feed viewmodel) by adding focused unit tests.
 
 ## Section 6 — Documentation & Follow-Up
 - [ ] Refresh multi-server documentation.
-  - [ ] Rewrite `docs/multi-server-demo.md` with the new workflow (server selection UI, root validation badges, batched scans, catalog review, drilldown exports).
-  - [ ] Capture annotated screenshots or textual callouts describing key UI elements.
+  - [ ] Rewrite `docs/multi-server-demo.md` showcasing: initial setup, catalog filters, drilldown exports, and selective re-runs; include CLI parity commands.
+  - [ ] Capture annotated screenshots (or ASCII callouts) highlighting new UI affordances (setup, results, drilldown, toasts once implemented).
+  - [ ] Add troubleshooting tips (e.g., permission failures, missing hosts) referencing upcoming toast/activity feed features.
 - [ ] Expand README quickstart.
-  - [ ] Add a “Multi-server quickstart” subsection detailing GUI steps, CLI equivalents, and links to the updated demo doc.
-  - [ ] Mention the new export/rescan capabilities and where artifacts are saved.
+  - [ ] Introduce a “Multi-server quickstart” section summarizing GUI steps, sample commands, and export locations.
+  - [ ] Link to the refreshed demo doc and note the drilldown export/re-scan abilities.
+  - [ ] Update dependency notes for python orchestration script once implemented.
 - [ ] Capture future enhancements without implying external teams.
-  - [ ] Summarize stretch goals (scheduled re-scans, alerting hooks, bulk exports) in `notes/future-iterations.md`, clarifying prerequisites and open questions.
-  - [ ] Highlight technical dependencies (scheduling service, notification transport) without referencing organizational processes.
+  - [ ] Draft `notes/future-iterations.md` describing backlog ideas: scheduled scans, alerting hooks, bulk export improvements, pluggable notification transports.
+  - [ ] Include prerequisites and technical dependencies (scheduler service, messaging transport) while avoiding organisational language.

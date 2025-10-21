@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -88,7 +89,38 @@ public sealed class ServerSelectionViewTests
                     },
                 };
 
-                return Task.FromResult(new ServerScanResponse { Results = results, Catalog = catalog });
+                var drilldown = new[]
+                {
+                    new ConfigDrilldown
+                    {
+                        ConfigId = "appsettings.json",
+                        DisplayName = "appsettings.json",
+                        Format = "json",
+                        BaselineHostId = list.FirstOrDefault()?.HostId ?? "baseline",
+                        DiffBefore = "{\"LogLevel\":\"Information\"}",
+                        DiffAfter = "{\"LogLevel\":\"Warning\"}",
+                        UnifiedDiff = "- LogLevel: Information\n+ LogLevel: Warning",
+                        LastUpdated = DateTimeOffset.UtcNow,
+                        DriftCount = 1,
+                        Servers = list.Select((plan, index) => new ConfigServerDetail
+                        {
+                            HostId = plan.HostId,
+                            Label = string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label,
+                            Present = true,
+                            IsBaseline = index == 0,
+                            Status = index == 0 ? "Baseline" : "Drift",
+                            DriftLineCount = index,
+                            HasSecrets = false,
+                            Masked = false,
+                            RedactionStatus = "Visible",
+                            LastSeen = DateTimeOffset.UtcNow.AddMinutes(-index),
+                        }).ToArray(),
+                        Notes = new[] { "Sample drilldown" },
+                        Provenance = "Unit test",
+                    }
+                };
+
+                return Task.FromResult(new ServerScanResponse { Results = results, Catalog = catalog, Drilldown = drilldown });
             },
         };
 
@@ -200,10 +232,43 @@ public sealed class ServerSelectionViewTests
                     Timestamp = DateTimeOffset.UtcNow,
                 }).ToArray();
 
+                var drilldown = new[]
+                {
+                    new ConfigDrilldown
+                    {
+                        ConfigId = "plugins.conf",
+                        DisplayName = "plugins.conf",
+                        Format = "ini",
+                        BaselineHostId = batch.FirstOrDefault()?.HostId ?? "baseline",
+                        DiffBefore = "[plugins]\ncore=true",
+                        DiffAfter = "[plugins]\ncore=false",
+                        UnifiedDiff = "- core=true\n+ core=false",
+                        LastUpdated = DateTimeOffset.UtcNow,
+                        DriftCount = 0,
+                        HasValidationIssues = missing.Length > 0,
+                        Servers = batch.Select(plan => new ConfigServerDetail
+                        {
+                            HostId = plan.HostId,
+                            Label = string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label,
+                            Present = !missing.Contains(string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label, StringComparer.OrdinalIgnoreCase),
+                            IsBaseline = plan.HostId == (batch.FirstOrDefault()?.HostId ?? string.Empty),
+                            Status = missing.Contains(plan.Label ?? plan.HostId, StringComparer.OrdinalIgnoreCase) ? "Missing" : "Match",
+                            DriftLineCount = 0,
+                            HasSecrets = false,
+                            Masked = false,
+                            RedactionStatus = "Visible",
+                            LastSeen = DateTimeOffset.UtcNow,
+                        }).ToArray(),
+                        Notes = new[] { "plugins.conf missing on one host" },
+                        Provenance = "Unit test",
+                    }
+                };
+
                 return Task.FromResult(new ServerScanResponse
                 {
                     Results = results,
                     Catalog = catalog,
+                    Drilldown = drilldown,
                 });
             },
         };
@@ -221,6 +286,117 @@ public sealed class ServerSelectionViewTests
         var rescopedPlans = await secondBatch.Task;
         rescopedPlans.Should().HaveCount(1);
         rescopedPlans[0].Label.Should().Be(partial.MissingHosts.First());
+    }
+
+    [Fact]
+    public async Task DrilldownShouldSupportExportAndRescan()
+    {
+        var exported = new List<ConfigDrilldownExportRequest>();
+        var rescans = new TaskCompletionSource<IReadOnlyList<ServerScanPlan>>();
+        var invocation = 0;
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, progress, token) =>
+            {
+                var list = plans.ToList();
+                var labels = list.Select(plan => string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label).ToArray();
+
+                var results = list.Select(plan => new ServerScanResult
+                {
+                    HostId = plan.HostId,
+                    Label = plan.Label,
+                    Status = ServerScanStatus.Succeeded,
+                    Message = "Completed",
+                    Timestamp = DateTimeOffset.UtcNow,
+                }).ToArray();
+
+                var catalog = new[]
+                {
+                    new ConfigCatalogEntry
+                    {
+                        ConfigId = "appsettings.json",
+                        DisplayName = "appsettings.json",
+                        Format = "json",
+                        DriftCount = 2,
+                        Severity = "high",
+                        PresentHosts = labels,
+                        MissingHosts = Array.Empty<string>(),
+                        LastUpdated = DateTimeOffset.UtcNow,
+                        CoverageStatus = "full",
+                    },
+                };
+
+                var drilldown = new[]
+                {
+                    new ConfigDrilldown
+                    {
+                        ConfigId = "appsettings.json",
+                        DisplayName = "appsettings.json",
+                        Format = "json",
+                        BaselineHostId = list.First().HostId,
+                        DiffBefore = "{\"LogLevel\":\"Information\"}",
+                        DiffAfter = "{\"LogLevel\":\"Warning\"}",
+                        UnifiedDiff = "- LogLevel: Information\n+ LogLevel: Warning",
+                        LastUpdated = DateTimeOffset.UtcNow,
+                        DriftCount = 2,
+                        Notes = new[] { "Investigate log level drift" },
+                        Provenance = "Unit test",
+                        HasMaskedTokens = true,
+                        Servers = list.Select((plan, index) => new ConfigServerDetail
+                        {
+                            HostId = plan.HostId,
+                            Label = string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label,
+                            Present = true,
+                            IsBaseline = index == 0,
+                            Status = index == 0 ? "Baseline" : "Drift",
+                            DriftLineCount = index + 1,
+                            HasSecrets = index == 1,
+                            Masked = index % 2 == 0,
+                            RedactionStatus = index % 2 == 0 ? "Masked" : "Visible",
+                            LastSeen = DateTimeOffset.UtcNow,
+                        }).ToArray(),
+                    }
+                };
+
+                if (invocation++ > 0)
+                {
+                    rescans.TrySetResult(list);
+                }
+
+                return Task.FromResult(new ServerScanResponse
+                {
+                    Results = results,
+                    Catalog = catalog,
+                    Drilldown = drilldown,
+                });
+            },
+        };
+
+        var cache = new InMemorySessionCacheService();
+        var viewModel = CreateViewModel(service, cache);
+        viewModel.ExportCallback = request =>
+        {
+            exported.Add(request);
+            return Task.CompletedTask;
+        };
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        var item = viewModel.CatalogViewModel.FilteredEntries.First();
+        viewModel.CatalogViewModel.DrilldownCommand.Execute(item);
+
+        viewModel.DrilldownViewModel.Should().NotBeNull();
+        viewModel.IsViewingDrilldown.Should().BeTrue();
+
+        await viewModel.DrilldownViewModel!.ExportHtmlCommand.ExecuteAsync(null);
+        exported.Should().ContainSingle(req => req.Format == ConfigDrilldownViewModel.ExportFormat.Html);
+
+        viewModel.DrilldownViewModel.SelectNoneCommand.Execute(null);
+        viewModel.DrilldownViewModel.Servers.First().IsSelected = true;
+        viewModel.DrilldownViewModel.ReScanSelectedCommand.Execute(null);
+
+        var rescanned = await rescans.Task;
+        rescanned.Should().ContainSingle(plan => plan.HostId == viewModel.DrilldownViewModel.Servers.First().HostId);
     }
 
     private static ServerSelectionViewModel CreateViewModel(
@@ -260,10 +436,43 @@ public sealed class ServerSelectionViewTests
                     },
                 };
 
+                var drilldown = new[]
+                {
+                    new ConfigDrilldown
+                    {
+                        ConfigId = "appsettings.json",
+                        DisplayName = "appsettings.json",
+                        Format = "json",
+                        BaselineHostId = list.FirstOrDefault()?.HostId ?? "baseline",
+                        DiffBefore = "{\"LogLevel\":\"Information\"}",
+                        DiffAfter = "{\"LogLevel\":\"Warning\"}",
+                        UnifiedDiff = "- LogLevel: Information\n+ LogLevel: Warning",
+                        HasMaskedTokens = true,
+                        LastUpdated = DateTimeOffset.UtcNow,
+                        DriftCount = 1,
+                        Servers = list.Select((plan, index) => new ConfigServerDetail
+                        {
+                            HostId = plan.HostId,
+                            Label = string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label,
+                            Present = true,
+                            IsBaseline = index == 0,
+                            Status = index == 0 ? "Baseline" : "Drift",
+                            DriftLineCount = index,
+                            HasSecrets = index % 2 == 0,
+                            Masked = index % 3 == 0,
+                            RedactionStatus = index % 3 == 0 ? "Masked" : "Visible",
+                            LastSeen = DateTimeOffset.UtcNow.AddMinutes(-index),
+                        }).ToArray(),
+                        Notes = new[] { "Sample drilldown export" },
+                        Provenance = "Unit test",
+                    }
+                };
+
                 return Task.FromResult(new ServerScanResponse
                 {
                     Results = results,
                     Catalog = catalog,
+                    Drilldown = drilldown,
                 });
             },
         };

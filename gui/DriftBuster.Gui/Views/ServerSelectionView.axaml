@@ -16,6 +16,9 @@
                 Classes="outline"
                 Command="{Binding ShowCatalogCommand}"
                 IsEnabled="{Binding CatalogViewModel.HasEntries}" />
+        <Button Content="Drilldown"
+                Classes="outline"
+                Command="{Binding ShowDrilldownCommand}" />
       </StackPanel>
 
       <StackPanel Spacing="24"

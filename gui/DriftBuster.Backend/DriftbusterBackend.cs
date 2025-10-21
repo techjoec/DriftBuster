@@ -265,6 +265,7 @@ namespace DriftBuster.Backend
             {
                 Results = results.ToArray(),
                 Catalog = BuildSampleCatalog(planList),
+                Drilldown = BuildSampleDrilldown(planList),
             };
         }
 
@@ -335,6 +336,89 @@ namespace DriftBuster.Backend
             }
 
             return catalog.ToArray();
+        }
+
+        private static ConfigDrilldown[] BuildSampleDrilldown(IReadOnlyList<ServerScanPlan> plans)
+        {
+            if (plans.Count == 0)
+            {
+                return Array.Empty<ConfigDrilldown>();
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var hosts = plans.Select(plan => (
+                Id: string.IsNullOrWhiteSpace(plan.HostId) ? Guid.NewGuid().ToString("N") : plan.HostId,
+                Label: string.IsNullOrWhiteSpace(plan.Label) ? (plan.HostId ?? string.Empty) : plan.Label)).ToArray();
+
+            var baselineHost = hosts.First();
+
+            ConfigServerDetail CreateDetail((string Id, string Label) host, bool present, int driftLines, bool secrets, bool masked, bool isBaseline)
+            {
+                return new ConfigServerDetail
+                {
+                    HostId = host.Id,
+                    Label = host.Label,
+                    Present = present,
+                    DriftLineCount = driftLines,
+                    HasSecrets = secrets,
+                    Masked = masked,
+                    IsBaseline = isBaseline,
+                    Status = present ? (driftLines > 0 ? "Drift" : "Match") : "Missing",
+                    RedactionStatus = masked ? "Masked" : (secrets ? "Secrets" : "Visible"),
+                    LastSeen = present ? now.AddMinutes(-driftLines - 1) : DateTimeOffset.MinValue,
+                };
+            }
+
+            var drilldowns = new List<ConfigDrilldown>();
+
+            var appsettingsServers = hosts.Select((host, index) =>
+                CreateDetail(host, present: true, driftLines: index, secrets: index % 2 == 0, masked: index % 3 == 0, isBaseline: host.Id == baselineHost.Id)).ToArray();
+
+            drilldowns.Add(new ConfigDrilldown
+            {
+                ConfigId = "appsettings.json",
+                DisplayName = "appsettings.json",
+                Format = "json",
+                Servers = appsettingsServers,
+                BaselineHostId = baselineHost.Id,
+                DiffBefore = "{\n  \"LogLevel\": \"Information\"\n}",
+                DiffAfter = "{\n  \"LogLevel\": \"Warning\"\n}",
+                UnifiedDiff = "- LogLevel: Information\n+ LogLevel: Warning",
+                HasSecrets = appsettingsServers.Any(detail => detail.HasSecrets),
+                HasMaskedTokens = appsettingsServers.Any(detail => detail.Masked),
+                HasValidationIssues = false,
+                Notes = new[] { "Mask tokens before sharing externally." },
+                Provenance = "Simulated sample data",
+                DriftCount = appsettingsServers.Sum(detail => detail.DriftLineCount),
+                LastUpdated = now,
+            });
+
+            if (hosts.Length > 1)
+            {
+                var missingHost = hosts.Last();
+                var partialServers = hosts.Select((host, index) => CreateDetail(host, present: host.Id != missingHost.Id, driftLines: index % 2, secrets: false, masked: false, isBaseline: host.Id == baselineHost.Id)).ToArray();
+
+                drilldowns.Add(new ConfigDrilldown
+                {
+                    ConfigId = "plugins.conf",
+                    DisplayName = "plugins.conf",
+                    Format = "ini",
+                    Servers = partialServers,
+                    BaselineHostId = baselineHost.Id,
+                    DiffBefore = "[plugins]\ncore=true",
+                    DiffAfter = "[plugins]\ncore=false",
+                    UnifiedDiff = "- core=true\n+ core=false",
+                    HasSecrets = false,
+                    HasMaskedTokens = false,
+                    HasValidationIssues = true,
+                    Notes = new[] { "plugins.conf missing on one host" },
+                    Provenance = "Simulated sample data",
+                    DriftCount = partialServers.Sum(detail => detail.DriftLineCount),
+                    LastUpdated = now.AddMinutes(-5),
+                });
+            }
+
+            return drilldowns.ToArray();
         }
 
         private static string EnsureFile(string path, bool isBaseline)

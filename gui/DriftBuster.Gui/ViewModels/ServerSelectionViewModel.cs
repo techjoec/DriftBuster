@@ -224,6 +224,7 @@ namespace DriftBuster.Gui.ViewModels
         private readonly ISessionCacheService _cacheService;
         private readonly Dictionary<string, RootValidationResult> _validationCache = new(StringComparer.OrdinalIgnoreCase);
         private CancellationTokenSource? _runCancellation;
+        private ServerScanResponse? _lastResponse;
 
         public ServerSelectionViewModel(IDriftbusterService service, ISessionCacheService? cacheService = null)
         {
@@ -248,11 +249,27 @@ namespace DriftBuster.Gui.ViewModels
             Servers = new ObservableCollection<ServerSlotViewModel>(CreateDefaultServers());
             CatalogViewModel = new ResultsCatalogViewModel();
             CatalogViewModel.ReScanRequested += (_, hosts) => _ = RunScopedAsync(hosts);
-            CatalogViewModel.DrilldownRequested += (_, entry) => StatusBanner = $"Drilldown ready for {entry.DisplayName}.";
+            CatalogViewModel.DrilldownRequested += (_, entry) => LoadDrilldown(entry.ConfigId);
             CatalogViewModel.PropertyChanged += OnCatalogPropertyChanged;
 
-            ShowSetupCommand = new RelayCommand(() => IsViewingCatalog = false);
-            ShowCatalogCommand = new RelayCommand(() => IsViewingCatalog = true, () => CatalogViewModel.HasEntries);
+            ShowSetupCommand = new RelayCommand(() =>
+            {
+                IsViewingCatalog = false;
+                IsViewingDrilldown = false;
+            });
+            ShowCatalogCommand = new RelayCommand(() =>
+            {
+                IsViewingCatalog = true;
+                IsViewingDrilldown = false;
+            }, () => CatalogViewModel.HasEntries);
+            ShowDrilldownCommand = new RelayCommand(() =>
+            {
+                if (DrilldownViewModel is not null)
+                {
+                    IsViewingCatalog = false;
+                    IsViewingDrilldown = true;
+                }
+            }, () => DrilldownViewModel is not null);
 
             _ = LoadSessionAsync();
         }
@@ -273,6 +290,12 @@ namespace DriftBuster.Gui.ViewModels
         [ObservableProperty]
         private bool _isViewingCatalog;
 
+        [ObservableProperty]
+        private bool _isViewingDrilldown;
+
+        [ObservableProperty]
+        private ConfigDrilldownViewModel? _drilldownViewModel;
+
         public IRelayCommand<ServerSlotViewModel> AddRootCommand { get; }
 
         public IRelayCommand<RootEntryViewModel> RemoveRootCommand { get; }
@@ -291,7 +314,38 @@ namespace DriftBuster.Gui.ViewModels
 
         public IRelayCommand ShowCatalogCommand { get; }
 
+        public IRelayCommand ShowDrilldownCommand { get; }
+
         public ResultsCatalogViewModel CatalogViewModel { get; }
+
+        internal Func<ConfigDrilldownExportRequest, Task>? ExportCallback { get; set; }
+
+        partial void OnDrilldownViewModelChanging(ConfigDrilldownViewModel? value)
+        {
+            var current = DrilldownViewModel;
+            if (current is not null)
+            {
+                current.BackRequested -= OnDrilldownBackRequested;
+                current.ReScanRequested -= OnDrilldownReScanRequested;
+                current.ExportRequested -= OnDrilldownExportRequested;
+            }
+        }
+
+        partial void OnDrilldownViewModelChanged(ConfigDrilldownViewModel? value)
+        {
+            if (value is not null)
+            {
+                value.BackRequested += OnDrilldownBackRequested;
+                value.ReScanRequested += OnDrilldownReScanRequested;
+                value.ExportRequested += OnDrilldownExportRequested;
+            }
+
+            ShowDrilldownCommand.NotifyCanExecuteChanged();
+            if (value is null)
+            {
+                IsViewingDrilldown = false;
+            }
+        }
 
         public bool HasActiveServers => Servers.Any(slot => slot.IsEnabled);
 
@@ -446,8 +500,16 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
+            var wasDrilldown = IsViewingDrilldown;
             await ExecuteRunAsync(retryOnly: false, scopedHostIds: hostIds);
-            IsViewingCatalog = CatalogViewModel.HasEntries;
+            if (wasDrilldown && DrilldownViewModel is not null)
+            {
+                LoadDrilldown(DrilldownViewModel.ConfigId);
+            }
+            else
+            {
+                IsViewingCatalog = CatalogViewModel.HasEntries;
+            }
         }
 
         private async Task ExecuteRunAsync(bool retryOnly, IReadOnlyCollection<string>? scopedHostIds = null)
@@ -471,6 +533,7 @@ namespace DriftBuster.Gui.ViewModels
             IsBusy = true;
             StatusBanner = retryOnly ? "Re-running missing hosts…" : "Running multi-server scan…";
             IsViewingCatalog = false;
+            IsViewingDrilldown = false;
 
             try
             {
@@ -516,7 +579,9 @@ namespace DriftBuster.Gui.ViewModels
             StatusBanner = "Session history cleared.";
             CatalogViewModel.Reset();
             ShowCatalogCommand.NotifyCanExecuteChanged();
+            DrilldownViewModel = null;
             IsViewingCatalog = false;
+            IsViewingDrilldown = false;
         }
 
         private async Task SaveSessionAsync()
@@ -612,27 +677,105 @@ namespace DriftBuster.Gui.ViewModels
 
         private void ApplyResults(ServerScanResponse? response)
         {
-            if (response?.Results is null)
-            {
-                return;
-            }
+            _lastResponse = response;
 
-            foreach (var result in response.Results)
+            if (response?.Results is not null)
             {
-                var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, result.HostId, StringComparison.OrdinalIgnoreCase));
-                if (server is null)
+                foreach (var result in response.Results)
                 {
-                    continue;
-                }
+                    var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, result.HostId, StringComparison.OrdinalIgnoreCase));
+                    if (server is null)
+                    {
+                        continue;
+                    }
 
-                var status = result.UsedCache ? ServerScanStatus.Cached : result.Status;
-                var message = string.IsNullOrWhiteSpace(result.Message) ? status.ToString() : result.Message;
-                server.MarkState(status, message, result.Timestamp);
+                    var status = result.UsedCache ? ServerScanStatus.Cached : result.Status;
+                    var message = string.IsNullOrWhiteSpace(result.Message) ? status.ToString() : result.Message;
+                    server.MarkState(status, message, result.Timestamp);
+                }
             }
 
             CatalogViewModel.LoadFromResponse(response, ActiveServers.Count());
             ShowCatalogCommand.NotifyCanExecuteChanged();
+            ShowDrilldownCommand.NotifyCanExecuteChanged();
+
+            if (!IsViewingDrilldown)
+            {
+                IsViewingCatalog = CatalogViewModel.HasEntries;
+            }
+        }
+
+        private void LoadDrilldown(string configId)
+        {
+            if (_lastResponse?.Drilldown is not { Length: > 0 })
+            {
+                StatusBanner = "Drilldown details unavailable for this scan.";
+                return;
+            }
+
+            var detail = _lastResponse.Drilldown.FirstOrDefault(entry => string.Equals(entry.ConfigId, configId, StringComparison.OrdinalIgnoreCase));
+            if (detail is null)
+            {
+                StatusBanner = $"No drilldown data for {configId}.";
+                return;
+            }
+
+            DrilldownViewModel = new ConfigDrilldownViewModel(detail);
+            IsViewingCatalog = false;
+            IsViewingDrilldown = true;
+            StatusBanner = $"Drilldown ready for {DrilldownViewModel.DisplayName}.";
+        }
+
+        private void OnDrilldownBackRequested(object? sender, EventArgs e)
+        {
+            IsViewingDrilldown = false;
             IsViewingCatalog = CatalogViewModel.HasEntries;
+        }
+
+        private void OnDrilldownReScanRequested(object? sender, IReadOnlyList<string> hosts)
+        {
+            if (hosts is null || hosts.Count == 0)
+            {
+                return;
+            }
+
+            _ = RunScopedAsync(hosts);
+        }
+
+        private void OnDrilldownExportRequested(object? sender, ConfigDrilldownExportRequest request)
+        {
+            _ = HandleExportAsync(request);
+        }
+
+        private async Task HandleExportAsync(ConfigDrilldownExportRequest request)
+        {
+            if (ExportCallback is not null)
+            {
+                await ExportCallback(request).ConfigureAwait(false);
+                StatusBanner = $"Exported {request.DisplayName} ({request.Format}).";
+                return;
+            }
+
+            var directory = Path.Combine("artifacts", "exports");
+            Directory.CreateDirectory(directory);
+            var safeName = SanitizeFileName(string.IsNullOrWhiteSpace(request.DisplayName) ? request.ConfigId : request.DisplayName);
+            var extension = request.Format == ConfigDrilldownViewModel.ExportFormat.Html ? "html" : "json";
+            var fileName = $"{safeName}-{DateTime.UtcNow:yyyyMMddHHmmss}.{extension}";
+            var path = Path.Combine(directory, fileName);
+            await File.WriteAllTextAsync(path, request.Payload).ConfigureAwait(false);
+            StatusBanner = $"Exported {request.DisplayName} to {path}.";
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return "export";
+            }
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var cleaned = new string(name.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray());
+            return cleaned.Length == 0 ? "export" : cleaned;
         }
 
         private bool HasValidRoots(ServerSlotViewModel slot)
