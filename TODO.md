@@ -1,32 +1,87 @@
 # TODO
 
-## Multi-Server Scan Flow Enhancements
-- [ ] Build server selection screen capturing six hosts with editable labels (`App Inc`, `Supporting App`, `FreakyFriday`) and search scope toggles (all drives, single drive, custom roots).
-- [ ] Implement hunt root management: default to `C:\Program Files`, show status badges per root, allow adding/removing entries like `D:\Program Files` with validation.
-- [ ] Add run orchestration that executes scans in parallel batches, surfaces per-server progress, and preserves successful results when re-running missing hosts only.
-- [ ] Persist last-used roots and server-label mapping for the session (memory cache/config file) while avoiding background writes unless user opts in.
+## Section 1 — Multi-Server Scan Flow Enhancements
+- [ ] Introduce multi-server selection surface in the GUI so users configure six hosts, scopes, and roots before scanning.
+  - [ ] Add `ServerSelectionView.axaml` + code-behind under `gui/DriftBuster.Gui/Views/` with layout for host cards, label editors, enable toggles, and scope chips.
+  - [ ] Create `ServerSelectionViewModel` and supporting models (`ServerSlot`, `RootEntry`, enums for `ScanScope`) in `gui/DriftBuster.Gui/ViewModels/` with validation mirrored from existing `DiffViewModel` patterns.
+  - [ ] Register the new view in `MainWindowViewModel` (`gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`) with navigation commands and persisted selection state across tabs.
+- [ ] Implement hunt root management UX within the new view.
+  - [ ] Provide default roots (e.g., `C:\Program Files`) when slots activate and expose inline buttons to add/remove entries; persist transient validation results to avoid repeated filesystem hits via a small cache in the view model.
+  - [ ] Surface root validation badges (pending/ok/error) using new converters under `gui/DriftBuster.Gui/Converters/` and style resources that match Fluent theme tokens.
+  - [ ] Block scan execution while any active host lacks a valid root and show context-specific guidance in the form footer.
+- [ ] Extend the GUI service layer to drive batched runs with progress updates.
+  - [ ] Define a `ServerScanPlan` data contract and `ScanProgress` events in `gui/DriftBuster.Backend/Models/` to represent host metadata, root scopes, and timestamps.
+  - [ ] Update `IDriftbusterService` + `DriftbusterService` under `gui/DriftBuster.Gui/Services/` so the UI can submit `ServerScanPlan` collections and receive progress callbacks (likely via `IProgress<ScanProgress>` or async streams).
+  - [ ] Display progress in the selection view using an `ItemsControl` showing per-host state (`queued`, `running`, `succeeded`, `failed`, `skipped`) with retry controls for failed hosts only.
+- [ ] Preserve successful host results and enable selective re-runs.
+  - [ ] Cache run outputs by host/root signature within the view model and reuse them when the user reruns missing servers, updating only the stale entries.
+  - [ ] Offer “Run missing only” and “Re-run all” buttons wired into orchestrator calls with clear status messaging.
+- [ ] Persist session details without background writes.
+  - [ ] Introduce `SessionCacheService` under `gui/DriftBuster.Gui/Services/` storing JSON at `artifacts/cache/multi-server.json`, enabled via an opt-in toggle in the view.
+  - [ ] Load cached labels/roots on start, provide a `Clear history` command, and batch writes so they execute only when the user confirms save.
+  - [ ] Add headless UI tests in `gui/DriftBuster.Gui.Tests/Ui/` covering label editing, scope toggles, root validation, and persistence toggles.
 
-## Results Catalog UI
-- [ ] Design consolidated config catalog grid mirroring mock: baseline dropdown (`Match/Drift`), presence counts, drift totals with color tags, last updated timestamp, detected format per config artifact.
-- [ ] Provide filters for coverage (all servers vs partial), drift severity, format type, and search-as-you-type on config names.
-- [ ] Highlight missing artifacts (e.g., `plugins.conf` 1/6) with investigation links and quick re-scan shortcut scoped to affected servers.
+## Section 2 — Results Catalog UI
+- [ ] Build a consolidated catalog view showing detection coverage and drift signals.
+  - [ ] Create `ResultsCatalogView.axaml` and `ResultsCatalogViewModel` presenting a grid with baseline dropdown, presence counts, drift totals, color-coded tags, and `Last updated` timestamps.
+  - [ ] Compose the grid using Avalonia `DataGrid` or `ItemsControl` + templates stored in `gui/DriftBuster.Gui/Resources/` so styles stay consistent with existing cards.
+  - [ ] Map catalog entries from orchestrator output (normalized config ids, per-host coverage, drift metrics) using new DTOs in `gui/DriftBuster.Backend/Models/`.
+- [ ] Add interactive filters and search.
+  - [ ] Track filter state (coverage, severity, format type) and search text in the view model, leveraging `CollectionViewSource` to avoid manual list rebuilding.
+  - [ ] Support keyboard shortcuts (`Ctrl+F`, arrow navigation) and update the UI to show active filter chips.
+  - [ ] Persist filter selections when the session cache toggle is enabled.
+- [ ] Highlight missing artifacts with remediation hooks.
+  - [ ] Detect configs with partial coverage (e.g., `plugins.conf` 1/6) and render inline warnings plus “Investigate” links to the drilldown view.
+  - [ ] Offer “Re-scan affected servers” buttons that call the orchestrator with narrowed host lists while the catalog remains visible.
+- [ ] Expand GUI tests.
+  - [ ] Add catalog-specific headless tests verifying filter combinations, search-as-you-type, coverage warnings, and quick re-scan buttons.
 
-## Drilldown Experience
-- [ ] When a config (e.g., `config.ini`) is selected, render detailed pane with server list, presence badges, baseline selector, drift metrics, redaction status, and side-by-side/unified diff toggle.
-- [ ] Include metadata sidebar summarising last scan time, detector provenance, change counts, and actionable notes (masked tokens, validation issues).
-- [ ] Enable exporting per-config reports (HTML/JSON) and launching targeted re-scan for specific servers directly from the drilldown.
+## Section 3 — Drilldown Experience
+- [ ] Create a drilldown pane for per-config inspection.
+  - [ ] Implement `ConfigDrilldownView.axaml` with a master-detail layout: server table (presence badges, baseline selector, drift metrics) and a diff area with side-by-side/unified toggle.
+  - [ ] Build `ConfigDrilldownViewModel` aggregating data from orchestrator responses, including redaction flags and diff stats.
+  - [ ] Reuse or adapt diff rendering components from existing diff planner (e.g., `DiffComparisonView`) to display content without duplicating logic.
+- [ ] Provide metadata sidebar and actionable notes.
+  - [ ] Extend backend payloads to deliver provenance, scan times, masked token counts, and validation issues per config; expose them in the drilldown sidebar using badge templates.
+  - [ ] Surface a prominent secrets exposure banner (e.g., red badge + tooltip) whenever unmasked credential hunks are detected, distinct from "masked tokens" counts.
+  - [ ] Allow users to flag notes for follow-up, storing the selection in session cache when enabled.
+- [ ] Enable exports and targeted re-runs.
+  - [ ] Hook `Export` commands to the existing Python reporting helpers (HTML/JSON) via backend bridge methods; save under `artifacts/exports/` with timestamped filenames.
+  - [ ] Implement drilldown-level `Re-run selected servers` action that dispatches a focused orchestrator call and refreshes only impacted entries on completion.
+- [ ] Add coverage-focused tests exercising diff mode toggles, export commands, and selective re-run flows in headless UI suites.
 
-## Backend/API Support
-- [ ] Extend scan API to accept multiple root paths per server and return structured status (`found`, `not_found`, `in_progress`) with timestamps.
-- [ ] Normalise config keys by logical identifier so files on different drives align across servers; fall back to relative path heuristics when identifiers are absent.
-- [ ] Cache diff artefacts between runs to avoid recomputation when underlying files unchanged; invalidate intelligently when hunt roots change.
+## Section 4 — Backend/API Support
+- [ ] Upgrade the .NET backend bridge to orchestrate multi-server scans.
+  - [ ] Add new request/response models (`ServerScanPlan`, `ScanProgress`, `ServerScanResult`, `ConfigSnapshot`) in `gui/DriftBuster.Backend/Models/`.
+  - [ ] Refactor `DriftbusterBackend` so `DiffAsync` stays available while introducing `ScanAsync(IEnumerable<ServerScanPlan> plans, ...)` that streams structured status (`found`, `not_found`, `in_progress`) with timestamps.
+  - [ ] Update `DriftbusterService` to expose the new scan API to the GUI and adapt tests/fakes in `gui/DriftBuster.Gui.Tests/Services/`.
+- [ ] Extend Python engine capabilities.
+  - [ ] Add a consolidated multi-server entry point (e.g., `src/driftbuster/multi_server.py`) that accepts host metadata and root lists, normalizes config keys, and returns structured results.
+  - [ ] Enhance detection pipeline to normalize config identifiers using detector-provided logical ids or relative paths (`src/driftbuster/core/...`).
+  - [ ] Implement caching for diff artefacts/hunt hits keyed by host + config id + input hash; invalidate when roots or file hashes change.
+- [ ] Bridge Python outputs back to .NET.
+  - [ ] Serialize structured status/diff payloads via JSON that `DriftbusterBackend` deserializes into the new models.
+  - [ ] Provide timestamps, provenance metadata (detector name, rule ids), and explicit secret exposure indicators needed by catalog/drilldown views.
+- [ ] Add Python tests under `tests/` covering multi-root alignment, caching invalidation, and status transitions; ensure coverage stays ≥90% via existing coverage script.
 
-## UX Feedback & Resilience
-- [ ] Surface toast/inline guidance when scans fail (permissions, offline server) with retry guidance and log links.
-- [ ] Add session activity feed capturing root updates, scan triggers, and export events for quick troubleshooting.
-- [ ] Write headless UI tests covering the new result grid filters and drilldown diff toggles; ensure coverage stays above 90% per project policy.
+## Section 5 — UX Feedback & Resilience
+- [ ] Introduce consistent toast and inline feedback mechanisms.
+  - [ ] Implement `ToastHost` service + view in `gui/DriftBuster.Gui/Services/` and `Views/Shared/` for success/warning/error notifications triggered by orchestrator events.
+  - [ ] Map backend exceptions (e.g., permission denied, host unreachable) to user-friendly copy with retry/log links.
+- [ ] Record session activity timeline.
+  - [ ] Create an observable activity feed (timestamp + description) maintained by the server selection view model and displayed alongside catalog/drilldown views.
+  - [ ] Include actions (root added, scan started, export complete) and allow copying entries for troubleshooting.
+- [ ] Harden the GUI with tests around failure handling.
+  - [ ] Extend headless tests to assert toast visibility, retry flows, and activity feed updates when scans fail or exports succeed.
+  - [ ] Validate that coverage thresholds (≥90%) remain intact after new test additions.
 
-## Documentation & Follow-Up
-- [ ] Update `docs/multi-server-demo.md` to reflect new workflow (initial C drive scan, subsequent D drive addition, diff catalog and drilldown).
-- [ ] Add quickstart snippet to README outlining server selection, root management, and drilldown usage.
-- [ ] Plan future iteration notes: scheduled re-scans, alerting hooks, and bulk export improvements.
+## Section 6 — Documentation & Follow-Up
+- [ ] Refresh multi-server documentation.
+  - [ ] Rewrite `docs/multi-server-demo.md` with the new workflow (server selection UI, root validation badges, batched scans, catalog review, drilldown exports).
+  - [ ] Capture annotated screenshots or textual callouts describing key UI elements.
+- [ ] Expand README quickstart.
+  - [ ] Add a “Multi-server quickstart” subsection detailing GUI steps, CLI equivalents, and links to the updated demo doc.
+  - [ ] Mention the new export/rescan capabilities and where artifacts are saved.
+- [ ] Capture future enhancements without implying external teams.
+  - [ ] Summarize stretch goals (scheduled re-scans, alerting hooks, bulk exports) in `notes/future-iterations.md`, clarifying prerequisites and open questions.
+  - [ ] Highlight technical dependencies (scheduling service, notification transport) without referencing organizational processes.
