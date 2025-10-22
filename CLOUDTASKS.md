@@ -74,6 +74,10 @@ Schema reference
 **ACCEPT GATES:** Release + Debug GUI tests rerun; coverage report generated; docs updated with persistence flow; status notes summarise the guardrail work.
 
 **REQUIRED RELATED WORK:**
+- [ ] 1.0 Headless font bootstrap remediation.
+  - [ ] 1.0.1 Resolve `fonts:SystemFonts` lookup failures blocking Avalonia window construction during Release GUI tests.
+  - [ ] 1.0.2 Bind a deterministic headless `IFontManagerImpl` (Inter fallback) and cover it via `HeadlessFixture` smoke asserts.
+  - [ ] 1.0.3 Capture the remediation notes and stack trace context in `notes/status/gui-research.md#headless-font-issues`.
 - [ ] 1.1 Validation & coverage.
   - [ ] 1.1.1 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`.
   - [ ] 1.1.2 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable.
