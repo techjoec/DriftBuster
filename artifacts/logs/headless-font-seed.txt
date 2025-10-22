@@ -1,0 +1,1 @@
+[headless-bootstrap] UTC=2025-10-22T09:50:36Z fonts:SystemFonts seeded with Inter fallback.

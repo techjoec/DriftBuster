@@ -44,12 +44,14 @@ namespace DriftBuster.Gui
             if (app.Resources.TryGetValue(key, out var value) && value is ConcurrentDictionary<string, FontFamily> existing)
             {
                 existing.TryAdd("Inter", new FontFamily("Inter"));
+                existing.TryAdd(key, new FontFamily("Inter"));
                 return;
             }
 
             var dictionary = new ConcurrentDictionary<string, FontFamily>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Inter"] = new FontFamily("Inter"),
+                [key] = new FontFamily("Inter"),
             };
 
             app.Resources[key] = dictionary;

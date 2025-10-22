@@ -23,13 +23,13 @@ Schema reference
 **ACCEPT GATES:** Headless fixtures pass font assertions; new bootstrap instructions live under `docs/windows-gui-guide.md#headless-bootstrap`; seed logs archived for regression evidence.
 
 **REQUIRED RELATED WORK:**
-- [ ] 1.1 Seed Avalonia headless fonts in `gui/DriftBuster.Gui/App.axaml.cs`.
-  - [ ] 1.1.1 Inject `fonts:SystemFonts` preload inside `BuildAvaloniaApp()` to eliminate `KeyNotFoundException` on headless startup.
-  - [ ] 1.1.2 Extend `gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` to assert the font dictionary is populated before windows instantiate.
-- [ ] 1.2 Document headless bootstrap guardrails.
-  - [ ] 1.2.1 Document the headless font preload requirement in `docs/windows-gui-guide.md#headless-bootstrap`.
-- [ ] 1.3 Capture headless boot evidence.
-  - [ ] 1.3.1 Capture headless boot logs in `artifacts/logs/headless-font-seed.txt`.
+- [x] 1.1 Seed Avalonia headless fonts in `gui/DriftBuster.Gui/App.axaml.cs`.
+  - [x] 1.1.1 Inject `fonts:SystemFonts` preload inside `BuildAvaloniaApp()` to eliminate `KeyNotFoundException` on headless startup.
+  - [x] 1.1.2 Extend `gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` to assert the font dictionary is populated before windows instantiate.
+- [x] 1.2 Document headless bootstrap guardrails.
+  - [x] 1.2.1 Document the headless font preload requirement in `docs/windows-gui-guide.md#headless-bootstrap`.
+- [x] 1.3 Capture headless boot evidence.
+  - [x] 1.3.1 Capture headless boot logs in `artifacts/logs/headless-font-seed.txt`.
 
 ## A1b. Drilldown Command Determinism [deps=A1a]
 

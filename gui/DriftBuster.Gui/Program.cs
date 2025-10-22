@@ -33,6 +33,13 @@ namespace DriftBuster.Gui
                     }
                 })
                 .WithInterFont()
+                .AfterSetup(_ =>
+                {
+                    if (Application.Current is App app)
+                    {
+                        App.EnsureFontResources(app);
+                    }
+                })
                 .LogToTrace();
 
         private static readonly object HeadlessSync = new();
