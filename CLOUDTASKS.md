@@ -58,10 +58,10 @@ Schema reference
 **ACCEPT GATES:** Concurrent migration tests in place; in-memory fake covers concurrent upgrades; migration counters and sample output logged in `notes/status/gui-research.md`.
 
 **REQUIRED RELATED WORK:**
-- [ ] 1.1 Make cache migration awaitable in `gui/DriftBuster.Gui/Services/SessionCacheService.cs`.
-  - [ ] 1.1.1 Expand `gui/DriftBuster.Gui.Tests/Services/SessionCacheServiceTests.cs` to cover multi-threaded migrations and legacy cache discovery.
-  - [ ] 1.1.2 Update `gui/DriftBuster.Gui.Tests/Fakes/InMemorySessionCacheService.cs` to simulate concurrent cache upgrades.
-  - [ ] 1.1.3 Add migration success/failure counters and capture sample output in `notes/status/gui-research.md`.
+- [x] 1.1 Make cache migration awaitable in `gui/DriftBuster.Gui/Services/SessionCacheService.cs`.
+  - [x] 1.1.1 Expand `gui/DriftBuster.Gui.Tests/Services/SessionCacheServiceTests.cs` to cover multi-threaded migrations and legacy cache discovery.
+  - [x] 1.1.2 Update `gui/DriftBuster.Gui.Tests/Fakes/InMemorySessionCacheService.cs` to simulate concurrent cache upgrades.
+  - [x] 1.1.3 Add migration success/failure counters and capture sample output in `notes/status/gui-research.md`.
 
 ## A1d. Multi-Server Validation Rollup [deps=A1c]
 

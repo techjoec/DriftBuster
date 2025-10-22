@@ -12,6 +12,19 @@
 - Readiness transitions are written to `artifacts/logs/drilldown-ready.json` via the new file-backed `ILogger` implementation, capturing stages like `results-applied`, `drilldown-opened`, and denial reasons (`busy`, `host-disabled`, `no-drilldown`).
 - Status banner strings mirror the telemetry reasons so headless fixtures and manual operators can correlate UI state with log entries without replaying runs.
 
+### Session cache migration awaitables (A1c)
+
+- The session cache loader now awaits the legacy migration task so concurrent `LoadAsync` and `SaveAsync` calls queue behind a single copy instead of racing the filesystem.
+- Test coverage drives concurrent load/save flows plus a forced failure path, and the in-memory fake exposes `SimulateConcurrentUpgrade()` to coordinate multi-threaded upgrades during view-model exercises.
+- Migration counters surface via `SessionCacheMigrationCounters` (`Successes`/`Failures`) to give deterministic signals during stress runs.
+- Sample output captured after a passing migration sweep:
+
+  ```text
+  session-cache-migration:
+    success-count: 1
+    failure-count: 0
+  ```
+
 ## Open Questions
 
 - Which framework aligns best with the eventual reporting pipeline timeline?

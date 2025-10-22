@@ -30,21 +30,40 @@ namespace DriftBuster.Gui.Services
         };
 
         private readonly string _cachePath;
+        private readonly Task _migrationTask;
 
         public SessionCacheService(string? rootDirectory = null)
+            : this(
+                rootDirectory,
+                rootDirectory is null ? Path.Combine("artifacts", "cache", "multi-server.json") : null,
+                null)
+        {
+        }
+
+        internal SessionCacheService(
+            string? rootDirectory,
+            string? legacyCachePath,
+            Func<string, string, CancellationToken, Task>? migrationHandler)
         {
             var basePath = rootDirectory ?? DriftbusterPaths.GetSessionDirectory();
-            if (rootDirectory is null)
-            {
-                MigrateLegacyCache(Path.Combine("artifacts", "cache", "multi-server.json"), Path.Combine(basePath, "multi-server.json"));
-            }
 
             Directory.CreateDirectory(basePath);
             _cachePath = Path.Combine(basePath, "multi-server.json");
+
+            if (legacyCachePath is null)
+            {
+                _migrationTask = Task.CompletedTask;
+                return;
+            }
+
+            var migrate = migrationHandler ?? MigrateLegacyCacheAsync;
+            _migrationTask = migrate(legacyCachePath, _cachePath, CancellationToken.None);
         }
 
         public async Task<ServerSelectionCache?> LoadAsync(CancellationToken cancellationToken = default)
         {
+            await _migrationTask.ConfigureAwait(false);
+
             if (!File.Exists(_cachePath))
             {
                 return null;
@@ -61,6 +80,8 @@ namespace DriftBuster.Gui.Services
                 throw new ArgumentNullException(nameof(snapshot));
             }
 
+            await _migrationTask.ConfigureAwait(false);
+
             Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
             await using var stream = new FileStream(_cachePath, FileMode.Create, FileAccess.Write, FileShare.None);
             await JsonSerializer.SerializeAsync(stream, snapshot, SerializerOptions, cancellationToken).ConfigureAwait(false);
@@ -68,13 +89,18 @@ namespace DriftBuster.Gui.Services
 
         public void Clear()
         {
+            if (!_migrationTask.IsCompleted)
+            {
+                _migrationTask.GetAwaiter().GetResult();
+            }
+
             if (File.Exists(_cachePath))
             {
                 File.Delete(_cachePath);
             }
         }
 
-        private static void MigrateLegacyCache(string legacyPath, string destination)
+        private static async Task MigrateLegacyCacheAsync(string legacyPath, string destination, CancellationToken cancellationToken)
         {
             try
             {
@@ -89,12 +115,42 @@ namespace DriftBuster.Gui.Services
                 }
 
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                File.Copy(legacyPath, destination);
+                await using var source = new FileStream(legacyPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+                await using var target = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
+                await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+                SessionCacheMigrationCounters.RecordSuccess();
             }
             catch
             {
+                SessionCacheMigrationCounters.RecordFailure();
                 // Best-effort migration for developer caches; ignore failures.
             }
+        }
+    }
+
+    internal static class SessionCacheMigrationCounters
+    {
+        private static int _migrationSuccessCount;
+        private static int _migrationFailureCount;
+
+        public static int Successes => Volatile.Read(ref _migrationSuccessCount);
+
+        public static int Failures => Volatile.Read(ref _migrationFailureCount);
+
+        public static void RecordSuccess()
+        {
+            Interlocked.Increment(ref _migrationSuccessCount);
+        }
+
+        public static void RecordFailure()
+        {
+            Interlocked.Increment(ref _migrationFailureCount);
+        }
+
+        public static void Reset()
+        {
+            Volatile.Write(ref _migrationSuccessCount, 0);
+            Volatile.Write(ref _migrationFailureCount, 0);
         }
     }
 
