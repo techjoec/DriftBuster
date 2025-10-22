@@ -12,37 +12,75 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
-## A1. Multi-Server Guardrails (Phase 1) [deps=]
+## A1a. Headless Font Guardrails [deps=]
 
-**REASON:** Locks the remaining P4 guardrails so multi-server sessions stay deterministic across Avalonia UI and Python runners, clearing the only open failures in `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`.
+**REASON:** Remove the font bootstrap gap that currently breaks headless Avalonia runs, letting existing GUI test fixtures boot without manual font installs.
 
-**MUST NOT:** Introduce new async deadlocks; regress drag/drop order or RunAll safety; allow headless boot to rely on unavailable system fonts.
+**MUST NOT:** Alter drag/drop ordering or async run coordination while touching the App bootstrapper.
 
-**MUST:** Preload Avalonia fonts for headless runs, stabilize `ShowDrilldownForHostCommand` gating, and make cache migration awaitable with observable logging.
+**MUST:** Preload Avalonia fonts in the headless startup path, verify the font dictionary exists during tests, and document the bootstrap expectation for Windows operators.
 
-**ACCEPT GATES:** Headless fixtures green in Release; migration logs captured in `notes/status/gui-research.md`; updated docs (`docs/multi-server-demo.md`, `docs/windows-gui-guide.md`) describe persistence flow.
+**ACCEPT GATES:** Headless fixtures pass font assertions; new bootstrap instructions live under `docs/windows-gui-guide.md#headless-bootstrap`; seed logs archived for regression evidence.
 
 **REQUIRED RELATED WORK:**
 - [ ] 1.1 Seed Avalonia headless fonts in `gui/DriftBuster.Gui/App.axaml.cs`.
   - [ ] 1.1.1 Inject `fonts:SystemFonts` preload inside `BuildAvaloniaApp()` to eliminate `KeyNotFoundException` on headless startup.
   - [ ] 1.1.2 Extend `gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` to assert the font dictionary is populated before windows instantiate.
-  - [ ] 1.1.3 Document the headless font preload requirement in `docs/windows-gui-guide.md#headless-bootstrap`.
-- [ ] 1.2 Stabilise `ShowDrilldownForHostCommand` gating within `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs`.
-  - [ ] 1.2.1 Add deterministic `CanExecute` coverage to `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
-  - [ ] 1.2.2 Log drilldown transitions to `notes/status/gui-research.md` for regression evidence.
-  - [ ] 1.2.3 Emit structured telemetry for drilldown readiness via `ILogger` into `artifacts/logs/drilldown-ready.json`.
-- [ ] 1.3 Make cache migration awaitable in `gui/DriftBuster.Gui/Services/SessionCacheService.cs`.
-  - [ ] 1.3.1 Expand `gui/DriftBuster.Gui.Tests/Services/SessionCacheServiceTests.cs` to cover multi-threaded migrations and legacy cache discovery.
-  - [ ] 1.3.2 Update `gui/DriftBuster.Gui.Tests/Fakes/InMemorySessionCacheService.cs` to simulate concurrent cache upgrades.
-  - [ ] 1.3.3 Add migration success/failure counters and capture sample output in `notes/status/gui-research.md`.
-- [ ] 1.4 Validation & coverage.
-  - [ ] 1.4.1 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`.
-  - [ ] 1.4.2 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable.
-  - [ ] 1.4.3 Execute `python -m scripts.coverage_report` after GUI tests to keep shared coverage reporting in sync.
-- [ ] 1.5 Evidence & documentation.
-  - [ ] 1.5.1 Capture headless boot logs in `artifacts/logs/headless-font-seed.txt`.
-  - [ ] 1.5.2 Update `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` with persistence walkthrough + font preload notes.
-  - [ ] 1.5.3 Summarise findings in `notes/status/gui-research.md` under the multi-server guardrails section.
+- [ ] 1.2 Document headless bootstrap guardrails.
+  - [ ] 1.2.1 Document the headless font preload requirement in `docs/windows-gui-guide.md#headless-bootstrap`.
+- [ ] 1.3 Capture headless boot evidence.
+  - [ ] 1.3.1 Capture headless boot logs in `artifacts/logs/headless-font-seed.txt`.
+
+## A1b. Drilldown Command Determinism [deps=A1a]
+
+**REASON:** `ShowDrilldownForHostCommand` remains flaky without deterministic gating, blocking multi-server drilldowns in headless validation runs.
+
+**MUST NOT:** Introduce async deadlocks or regress RunAll command safety while updating the command flow.
+
+**MUST:** Tighten `CanExecute` gating, log drilldown transitions, and emit structured telemetry so readiness can be audited.
+
+**ACCEPT GATES:** Deterministic tests exist in `ServerSelectionViewModelAdditionalTests`; telemetry captured to `artifacts/logs/drilldown-ready.json`; transition logs land in `notes/status/gui-research.md`.
+
+**REQUIRED RELATED WORK:**
+- [ ] 1.1 Stabilise `ShowDrilldownForHostCommand` gating within `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs`.
+  - [ ] 1.1.1 Add deterministic `CanExecute` coverage to `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
+  - [ ] 1.1.2 Log drilldown transitions to `notes/status/gui-research.md` for regression evidence.
+  - [ ] 1.1.3 Emit structured telemetry for drilldown readiness via `ILogger` into `artifacts/logs/drilldown-ready.json`.
+
+## A1c. Awaitable Session Cache Migration [deps=A1b]
+
+**REASON:** Cache migration still blocks shutdown when kicked from multi-server runs; making it awaitable prevents race-induced corruption.
+
+**MUST NOT:** Regress legacy cache discovery or introduce untracked background threads.
+
+**MUST:** Await cache migration, stress it with concurrent tests, and document outcomes within status notes.
+
+**ACCEPT GATES:** Concurrent migration tests in place; in-memory fake covers concurrent upgrades; migration counters and sample output logged in `notes/status/gui-research.md`.
+
+**REQUIRED RELATED WORK:**
+- [ ] 1.1 Make cache migration awaitable in `gui/DriftBuster.Gui/Services/SessionCacheService.cs`.
+  - [ ] 1.1.1 Expand `gui/DriftBuster.Gui.Tests/Services/SessionCacheServiceTests.cs` to cover multi-threaded migrations and legacy cache discovery.
+  - [ ] 1.1.2 Update `gui/DriftBuster.Gui.Tests/Fakes/InMemorySessionCacheService.cs` to simulate concurrent cache upgrades.
+  - [ ] 1.1.3 Add migration success/failure counters and capture sample output in `notes/status/gui-research.md`.
+
+## A1d. Multi-Server Validation Rollup [deps=A1c]
+
+**REASON:** Once guardrails land, the suite still needs validation runs and documentation so multi-server persistence stays traceable across releases.
+
+**MUST NOT:** Skip Release-mode GUI tests or leave docs outdated.
+
+**MUST:** Re-run the GUI test matrix, refresh coverage reports, and update the persistence walkthrough plus research summary.
+
+**ACCEPT GATES:** Release + Debug GUI tests rerun; coverage report generated; docs updated with persistence flow; status notes summarise the guardrail work.
+
+**REQUIRED RELATED WORK:**
+- [ ] 1.1 Validation & coverage.
+  - [ ] 1.1.1 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`.
+  - [ ] 1.1.2 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable.
+  - [ ] 1.1.3 Execute `python -m scripts.coverage_report` after GUI tests to keep shared coverage reporting in sync.
+- [ ] 1.2 Evidence & documentation.
+  - [ ] 1.2.1 Update `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` with persistence walkthrough + font preload notes.
+  - [ ] 1.2.2 Summarise findings in `notes/status/gui-research.md` under the multi-server guardrails section.
 
 ## A2. Diff Planner Productivity (Phase 2) [deps=A1]
 
@@ -638,5 +676,5 @@ Schema reference
   - [ ] 19.6.3 Keep `docs/windows-gui-notes.md` appendices aligned with packaging outputs, including template NOTICE entries.
 
 # End of priority queue
-<!-- PR prepared: 2025-10-22T09:35:18Z -->
+<!-- PR prepared: 2025-10-22T09:46:54Z -->
 <!-- make_pr anchor -->
