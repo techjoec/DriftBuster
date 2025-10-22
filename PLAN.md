@@ -21,6 +21,9 @@
 - [x] Align Python runner `_build_catalog_and_drilldown` logic and expand `tests/multi_server/test_multi_server.py` for offline host + mixed coverage scenarios.
 - [x] Package/build smoke test to ensure caches and sessions survive restart + upgrades using the new storage path.
 - [x] Update docs (`docs/multi-server-demo.md`, `docs/windows-gui-guide.md`, README) to describe drag/drop, persistence behaviour, and data-root locations.
+- [ ] Headless UI bootstrap seeds `fonts:SystemFonts` before any window is created (reference failure: `KeyNotFoundException` during `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`).
+- [ ] `ShowDrilldownForHostCommand` transitions to a deterministic CanExecute signal once scan results land (reference failure: `ServerSelectionViewModelAdditionalTests` in the same test run reporting `CanExecute == false`).
+- [ ] Cache migration becomes awaitable/deterministic so `BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files` passes without timing flake (reference failure from `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`).
 
 ### Phase 2 — Diff Planner Productivity (P5 + S2 + S1 coverage)
 - [ ] Nail down MRU requirements with UX notes; add persisted per-user MRU lists in `DiffInput`/settings store.
