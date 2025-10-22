@@ -42,10 +42,10 @@ Schema reference
 **ACCEPT GATES:** Deterministic tests exist in `ServerSelectionViewModelAdditionalTests`; telemetry captured to `artifacts/logs/drilldown-ready.json`; transition logs land in `notes/status/gui-research.md`.
 
 **REQUIRED RELATED WORK:**
-- [ ] 1.1 Stabilise `ShowDrilldownForHostCommand` gating within `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs`.
-  - [ ] 1.1.1 Add deterministic `CanExecute` coverage to `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
-  - [ ] 1.1.2 Log drilldown transitions to `notes/status/gui-research.md` for regression evidence.
-  - [ ] 1.1.3 Emit structured telemetry for drilldown readiness via `ILogger` into `artifacts/logs/drilldown-ready.json`.
+- [x] 1.1 Stabilise `ShowDrilldownForHostCommand` gating within `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs`.
+  - [x] 1.1.1 Add deterministic `CanExecute` coverage to `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
+  - [x] 1.1.2 Log drilldown transitions to `notes/status/gui-research.md` for regression evidence.
+  - [x] 1.1.3 Emit structured telemetry for drilldown readiness via `ILogger` into `artifacts/logs/drilldown-ready.json`.
 
 ## A1c. Awaitable Session Cache Migration [deps=A1b]
 

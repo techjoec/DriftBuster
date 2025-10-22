@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-01-01T00:00:00Z",
+  "level": "Information",
+  "eventId": 1001,
+  "eventName": "DrilldownTelemetry",
+  "category": "DriftBuster.Gui.ViewModels.ServerSelectionViewModel",
+  "message": "Drilldown telemetry updated",
+  "state": {
+    "timestamp": "2025-01-01T00:00:00Z",
+    "stage": "drilldown-opened",
+    "hostId": "host-01",
+    "reason": null,
+    "hosts": [
+      {
+        "hostId": "host-01",
+        "label": "App Inc",
+        "isEnabled": true,
+        "hasDrilldown": true
+      },
+      {
+        "hostId": "host-02",
+        "label": "Supporting App",
+        "isEnabled": true,
+        "hasDrilldown": false
+      }
+    ],
+    "isBusy": false,
+    "drilldownCount": 1
+  },
+  "exception": null
+}

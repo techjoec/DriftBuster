@@ -6,6 +6,12 @@
 - Packaging baseline: MSIX for WinUI/Electron; portable zip with bundled Python runtime for Tkinter/PySimpleGUI.
 - Manual update cadence until signing/auto-update story is approved.
 
+### Drilldown command telemetry (A1b)
+
+- `ShowDrilldownForHostCommand` now blocks deterministically when scans are running, a host is disabled, or no drilldown payload exists.
+- Readiness transitions are written to `artifacts/logs/drilldown-ready.json` via the new file-backed `ILogger` implementation, capturing stages like `results-applied`, `drilldown-opened`, and denial reasons (`busy`, `host-disabled`, `no-drilldown`).
+- Status banner strings mirror the telemetry reasons so headless fixtures and manual operators can correlate UI state with log entries without replaying runs.
+
 ## Open Questions
 
 - Which framework aligns best with the eventual reporting pipeline timeline?

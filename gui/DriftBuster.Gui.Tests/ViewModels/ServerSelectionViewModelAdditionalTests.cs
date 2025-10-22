@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
@@ -109,17 +111,40 @@ public sealed class ServerSelectionViewModelAdditionalTests
         Directory.CreateDirectory(absoluteRoot);
         server.NewRootPath = absoluteRoot;
         viewModel.AddRootCommand.Execute(server);
-        server.Roots.Should().NotBeEmpty();
+        server.Roots.Should().Contain(root => string.Equals(root.Path, absoluteRoot, StringComparison.OrdinalIgnoreCase));
+        var defaultRoot = server.Roots.First(root => !string.Equals(root.Path, absoluteRoot, StringComparison.OrdinalIgnoreCase));
+        viewModel.RemoveRootCommand.Execute(defaultRoot);
+        server.Roots.Should().ContainSingle(root => string.Equals(root.Path, absoluteRoot, StringComparison.OrdinalIgnoreCase));
 
         server.NewRootPath = "relative";
         viewModel.AddRootCommand.Execute(server);
         var lastRoot = server.Roots.Last();
         lastRoot.ValidationState.Should().Be(RootValidationState.Invalid);
         lastRoot.StatusMessage.Should().Contain("absolute");
+        viewModel.RemoveRootCommand.Execute(lastRoot);
+        server.Roots.Should().ContainSingle();
 
         await viewModel.RunAllCommand.ExecuteAsync(null);
         viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
         viewModel.FilteredActivityEntries.Should().NotBeEmpty();
+        viewModel.IsBusy.Should().BeFalse();
+        server.IsEnabled.Should().BeTrue();
+        var response = (ServerScanResponse?)typeof(ServerSelectionViewModel)
+            .GetField("_lastResponse", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(viewModel);
+        response.Should().NotBeNull();
+        response!.Drilldown.Should().NotBeNull();
+        response.Drilldown.Should().NotBeEmpty();
+        var drilldownHosts = response.Drilldown!
+            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
+            .Select(detail => detail.HostId)
+            .ToList();
+        drilldownHosts.Should().Contain(server.HostId);
+        var drilldownDetail = response.Drilldown!
+            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
+            .FirstOrDefault(detail => string.Equals(detail.HostId, server.HostId, StringComparison.OrdinalIgnoreCase));
+        drilldownDetail.Should().NotBeNull();
+        drilldownDetail!.Present.Should().BeTrue();
         viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeTrue();
 
         viewModel.PersistSessionState = true;
@@ -154,9 +179,9 @@ public sealed class ServerSelectionViewModelAdditionalTests
         viewModel.Servers[0].Index.Should().Be(0);
         viewModel.Servers[1].HostId.Should().Be(target.HostId);
 
-        // Dropping after the next host should move the original source down by one.
+        // Dropping the original target after the moved host keeps the order stable.
         viewModel.ReorderServer(target.HostId, source.HostId, insertBefore: false);
-        viewModel.Servers[1].HostId.Should().Be(source.HostId);
+        viewModel.Servers[1].HostId.Should().Be(target.HostId);
 
         // Invalid reorder requests are ignored.
         viewModel.ReorderServer(source.HostId, source.HostId, insertBefore: true);
@@ -164,5 +189,65 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
         var resultingOrder = viewModel.Servers.Select(slot => slot.HostId).ToList();
         resultingOrder.Should().Contain(source.HostId);
+    }
+
+    [Fact]
+    public async Task Provides_deterministic_drilldown_gating_and_telemetry()
+    {
+        var logPath = Path.Combine("artifacts", "logs", "drilldown-ready.json");
+        if (File.Exists(logPath))
+        {
+            File.Delete(logPath);
+        }
+
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, _, _) =>
+            {
+                var list = plans.ToList();
+                return Task.FromResult(BuildResponse(list[0].HostId, list));
+            },
+        };
+
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        var server = viewModel.Servers[0];
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeTrue();
+        viewModel.ShowDrilldownForHostCommand.CanExecute("missing").Should().BeFalse();
+
+        viewModel.IsBusy = true;
+        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeFalse();
+
+        viewModel.IsBusy = false;
+        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeTrue();
+
+        server.IsEnabled = false;
+        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeFalse();
+
+        server.IsEnabled = true;
+        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeTrue();
+
+        viewModel.ShowDrilldownForHostCommand.Execute(server.HostId);
+
+        File.Exists(logPath).Should().BeTrue();
+        using var stream = File.OpenRead(logPath);
+        using var document = JsonDocument.Parse(stream);
+
+        var root = document.RootElement;
+        root.GetProperty("eventName").GetString().Should().Be("DrilldownTelemetry");
+        var state = root.GetProperty("state");
+        state.GetProperty("stage").GetString().Should().Be("drilldown-opened");
+        state.GetProperty("drilldownCount").GetInt32().Should().BeGreaterThan(0);
+
+        var hosts = state.GetProperty("hosts");
+        hosts.GetArrayLength().Should().BeGreaterThan(0);
+        hosts.EnumerateArray().Any(host =>
+                string.Equals(host.GetProperty("hostId").GetString(), server.HostId, StringComparison.OrdinalIgnoreCase) &&
+                host.GetProperty("hasDrilldown").GetBoolean())
+            .Should().BeTrue();
     }
 }

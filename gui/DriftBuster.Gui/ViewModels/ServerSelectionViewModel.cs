@@ -16,6 +16,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
+using Microsoft.Extensions.Logging;
 
 namespace DriftBuster.Gui.ViewModels
 {
@@ -302,14 +303,21 @@ namespace DriftBuster.Gui.ViewModels
         private readonly ObservableCollection<ActivityEntryViewModel> _activityEntries = new();
         private readonly ReadOnlyObservableCollection<ActivityEntryViewModel> _activityEntriesReadonly;
         private readonly RelayCommand<string> _showDrilldownForHostCommand;
+        private readonly ILogger<ServerSelectionViewModel> _logger;
+        private static readonly EventId DrilldownTelemetryEventId = new(1001, "DrilldownTelemetry");
 
         private const int MaxActivityItems = 200;
 
-        public ServerSelectionViewModel(IDriftbusterService service, IToastService toastService, ISessionCacheService? cacheService = null)
+        public ServerSelectionViewModel(
+            IDriftbusterService service,
+            IToastService toastService,
+            ISessionCacheService? cacheService = null,
+            ILogger<ServerSelectionViewModel>? logger = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
             _cacheService = cacheService ?? new SessionCacheService();
+            _logger = logger ?? new FileJsonLogger<ServerSelectionViewModel>(Path.Combine("artifacts", "logs", "drilldown-ready.json"));
 
             ScopeOptions = new ReadOnlyCollection<ScanScopeOption>(new[]
             {
@@ -827,6 +835,7 @@ namespace DriftBuster.Gui.ViewModels
             IsViewingCatalog = false;
             IsViewingDrilldown = false;
             _showDrilldownForHostCommand.NotifyCanExecuteChanged();
+            RecordDrilldownTelemetry("history-cleared", null, "clear-history");
         }
 
         private async Task SaveSessionAsync()
@@ -985,6 +994,7 @@ namespace DriftBuster.Gui.ViewModels
         {
             _lastResponse = response;
             _showDrilldownForHostCommand.NotifyCanExecuteChanged();
+            RecordDrilldownTelemetry("results-applied", null, null);
 
             if (response?.Results is not null)
             {
@@ -1129,37 +1139,87 @@ namespace DriftBuster.Gui.ViewModels
                 return false;
             }
 
-            if (_lastResponse?.Drilldown is null || _lastResponse.Drilldown.Length == 0)
+            if (IsBusy)
             {
                 return false;
             }
 
-            return _lastResponse.Drilldown.Any(entry => entry.Servers?.Any(server => string.Equals(server.HostId, hostId, StringComparison.OrdinalIgnoreCase)) == true);
+            var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, hostId, StringComparison.OrdinalIgnoreCase));
+            if (server is null || !server.IsEnabled)
+            {
+                return false;
+            }
+
+            if (!TryGetDrilldownDetail(hostId, out _, out var detail))
+            {
+                return false;
+            }
+
+            return detail is not null && (detail.Present || detail.IsBaseline);
         }
 
         private void OnShowDrilldownForHost(string? hostId)
         {
             if (string.IsNullOrWhiteSpace(hostId))
             {
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "missing-argument");
                 return;
             }
 
-            if (_lastResponse?.Drilldown is null)
+            if (IsBusy)
             {
-                StatusBanner = "Run a scan to view drilldowns.";
+                StatusBanner = "Finish current scans before opening drilldowns.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "busy");
                 return;
             }
 
-            var target = _lastResponse.Drilldown.FirstOrDefault(entry => entry.Servers?.Any(server => string.Equals(server.HostId, hostId, StringComparison.OrdinalIgnoreCase)) == true);
+            var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, hostId, StringComparison.OrdinalIgnoreCase));
+            if (server is null)
+            {
+                StatusBanner = "Selected host is no longer available.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "host-missing");
+                return;
+            }
+
+            if (!server.IsEnabled)
+            {
+                StatusBanner = "Enable the host to open its drilldown.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "host-disabled");
+                return;
+            }
+
+            if (!TryGetDrilldownDetail(hostId, out var target, out var detail))
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "no-drilldown");
+                return;
+            }
+
+            if (detail is null)
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "detail-not-found");
+                return;
+            }
+
+            if (!detail.Present && !detail.IsBaseline)
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "detail-not-ready");
+                return;
+            }
+
             if (target is null)
             {
                 StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "entry-not-found");
                 return;
             }
 
             LoadDrilldown(target.ConfigId);
             IsViewingDrilldown = true;
             LogActivity(ActivitySeverity.Info, "Opened drilldown", $"Host: {hostId} via execution summary.");
+            RecordDrilldownTelemetry("drilldown-opened", hostId, null);
         }
 
         private void LoadDrilldown(string configId)
@@ -1391,12 +1451,98 @@ namespace DriftBuster.Gui.ViewModels
             return Path.IsPathRooted(value);
         }
 
+        private void RecordDrilldownTelemetry(string stage, string? hostId, string? reason)
+        {
+            try
+            {
+                var snapshot = new DrilldownTelemetrySnapshot(
+                    DateTimeOffset.UtcNow,
+                    stage,
+                    hostId,
+                    reason,
+                    CollectDrilldownHostTelemetry(),
+                    IsBusy,
+                    _lastResponse?.Drilldown?.Length ?? 0);
+
+                _logger.Log(
+                    LogLevel.Information,
+                    DrilldownTelemetryEventId,
+                    snapshot,
+                    null,
+                    static (_, _) => "Drilldown telemetry updated");
+            }
+            catch
+            {
+                // Telemetry failures must never block UI execution.
+            }
+        }
+
+        private bool TryGetDrilldownDetail(string hostId, out ConfigDrilldown? drilldown, out ConfigServerDetail? detail)
+        {
+            drilldown = null;
+            detail = null;
+
+            if (_lastResponse?.Drilldown is not { Length: > 0 })
+            {
+                return false;
+            }
+
+            foreach (var entry in _lastResponse.Drilldown)
+            {
+                if (entry.Servers is null)
+                {
+                    continue;
+                }
+
+                var match = entry.Servers.FirstOrDefault(server => string.Equals(server.HostId, hostId, StringComparison.OrdinalIgnoreCase));
+                if (match is null)
+                {
+                    continue;
+                }
+
+                drilldown = entry;
+                detail = match;
+                return true;
+            }
+
+            return false;
+        }
+
+        private IReadOnlyList<DrilldownHostTelemetry> CollectDrilldownHostTelemetry()
+        {
+            var readiness = new List<DrilldownHostTelemetry>();
+            var readyHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (_lastResponse?.Drilldown is { Length: > 0 })
+            {
+                foreach (var detail in _lastResponse.Drilldown.SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>()))
+                {
+                    if (!string.IsNullOrWhiteSpace(detail.HostId) && detail.Present)
+                    {
+                        readyHosts.Add(detail.HostId);
+                    }
+                }
+            }
+
+            foreach (var server in Servers)
+            {
+                readiness.Add(new DrilldownHostTelemetry(
+                    server.HostId,
+                    server.Label,
+                    server.IsEnabled,
+                    readyHosts.Contains(server.HostId)));
+            }
+
+            return readiness;
+        }
+
         partial void OnIsBusyChanged(bool value)
         {
             RunAllCommand.NotifyCanExecuteChanged();
             RunMissingCommand.NotifyCanExecuteChanged();
             CancelRunsCommand.NotifyCanExecuteChanged();
             SaveSessionCommand.NotifyCanExecuteChanged();
+            _showDrilldownForHostCommand.NotifyCanExecuteChanged();
         }
 
         partial void OnPersistSessionStateChanged(bool value)
@@ -1424,5 +1570,20 @@ namespace DriftBuster.Gui.ViewModels
 
             public static RootValidationResult Invalid(string message) => new(RootValidationState.Invalid, message);
         }
+
+        private sealed record DrilldownTelemetrySnapshot(
+            DateTimeOffset Timestamp,
+            string Stage,
+            string? HostId,
+            string? Reason,
+            IReadOnlyList<DrilldownHostTelemetry> Hosts,
+            bool IsBusy,
+            int DrilldownCount);
+
+        private sealed record DrilldownHostTelemetry(
+            string HostId,
+            string Label,
+            bool IsEnabled,
+            bool HasDrilldown);
     }
 }
