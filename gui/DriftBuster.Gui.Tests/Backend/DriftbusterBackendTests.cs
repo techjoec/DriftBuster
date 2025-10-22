@@ -14,9 +14,16 @@ using Xunit;
 
 namespace DriftBuster.Gui.Tests.Backend;
 
+[Collection("BackendTests")]
 public sealed class DriftbusterBackendTests
 {
     private readonly DriftbusterBackend _backend = new();
+    private readonly BackendDataRootFixture _fixture;
+
+    public DriftbusterBackendTests(BackendDataRootFixture fixture)
+    {
+        _fixture = fixture;
+    }
 
     [Fact]
     public async Task PingAsync_returns_pong()
@@ -93,6 +100,44 @@ public sealed class DriftbusterBackendTests
     {
         var ex = await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.HuntAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")), null));
         Assert.Contains("Path does not exist", ex.Message);
+    }
+
+    [Fact]
+    public void BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files()
+    {
+        var plans = new List<ServerScanPlan>
+        {
+            new() { HostId = "alpha", Label = "Primary" },
+        };
+
+        var repositoryRoot = Path.Combine(Path.GetTempPath(), "DriftbusterRepo", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(repositoryRoot);
+        try
+        {
+            var legacyCache = Path.Combine(repositoryRoot, "artifacts", "cache", "diffs");
+            Directory.CreateDirectory(legacyCache);
+            var legacyFile = Path.Combine(legacyCache, "sample.json");
+            File.WriteAllText(legacyFile, "{}");
+
+            var method = typeof(DriftbusterBackend).GetMethod("BuildMultiServerRequest", BindingFlags.NonPublic | BindingFlags.Static);
+            var request = method!.Invoke(null, new object[] { plans, repositoryRoot });
+            request.Should().NotBeNull();
+
+            var cacheDirectory = request!.GetType().GetProperty("CacheDirectory")!.GetValue(request)!.ToString();
+            cacheDirectory.Should().NotBeNullOrWhiteSpace();
+            cacheDirectory!.Should().StartWith(_fixture.Root, StringComparison.OrdinalIgnoreCase);
+            cacheDirectory.Should().Contain(Path.Combine("cache", "diffs"));
+
+            var migratedFile = Path.Combine(cacheDirectory, "sample.json");
+            File.Exists(migratedFile).Should().BeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(repositoryRoot))
+            {
+                Directory.Delete(repositoryRoot, recursive: true);
+            }
+        }
     }
 
     [Fact]

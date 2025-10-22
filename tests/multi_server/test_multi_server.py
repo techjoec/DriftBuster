@@ -12,6 +12,7 @@ from driftbuster.multi_server import (
     MultiServerRunner,
     Plan,
     SCHEMA_VERSION,
+    _resolve_cache_dir,
 )
 
 
@@ -124,3 +125,29 @@ def test_detector_permission_errors_are_reported(tmp_path, monkeypatch) -> None:
     assert result["status"] == "failed"
     assert result["availability"] == "permission_denied"
     assert "Permission denied" in result["message"]
+
+
+
+def test_resolve_cache_dir_uses_data_root_env(monkeypatch, tmp_path) -> None:
+    data_root = tmp_path / "data-root"
+    monkeypatch.setenv("DRIFTBUSTER_DATA_ROOT", str(data_root))
+    cache_dir = _resolve_cache_dir(None)
+    assert cache_dir == (data_root / "cache" / "diffs").resolve()
+    assert cache_dir.exists()
+
+
+def test_resolve_cache_dir_migrates_legacy_cache(monkeypatch, tmp_path) -> None:
+    data_root = tmp_path / "data-root"
+    repo_root = tmp_path / "repo"
+    legacy_dir = repo_root / "artifacts" / "cache" / "diffs"
+    legacy_dir.mkdir(parents=True)
+    legacy_file = legacy_dir / "legacy.json"
+    legacy_file.write_text("{}", encoding="utf-8")
+
+    monkeypatch.setenv("DRIFTBUSTER_DATA_ROOT", str(data_root))
+    monkeypatch.chdir(repo_root)
+
+    cache_dir = _resolve_cache_dir(None)
+    migrated = cache_dir / legacy_file.name
+    assert migrated.exists()
+    assert migrated.read_text(encoding="utf-8") == "{}"

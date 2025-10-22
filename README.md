@@ -85,7 +85,7 @@ Tips:
 ### Multi-server quickstart
 
 - Start the GUI from the repo root: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-- Switch to the Multi-server tab, enable the host slots you need, and add roots or pick scope chips. Turn on the session cache toggle if you want to reuse labels and roots next time.
+- Switch to the Multi-server tab, enable the host slots you need, and add roots or pick scope chips. Turn on the session cache toggle if you want to reuse labels and roots next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
 - Click **Run all** to queue every active host. Use **Run missing only** for retries; toasts and the activity timeline record progress, warnings, and exports.
 - Review the catalog filters, open drilldown diffs, and export HTML/JSON snapshots (they land in `artifacts/exports/<config>-<timestamp>.{html,json}`).
 
@@ -94,7 +94,6 @@ Run the same plan from the shell:
 ```sh
 python -m driftbuster.multi_server <<'JSON'
 {
-  "cache_dir": "artifacts/cache/diffs",
   "plans": [
     {
       "host_id": "server01",
@@ -111,7 +110,7 @@ python -m driftbuster.multi_server <<'JSON'
 JSON
 ```
 
-`driftbuster.multi_server` ships with the Python package; ensure you have installed the repo in editable mode (`python -m pip install -e .`) and that `artifacts/cache` is writable before running the orchestrator. See `docs/multi-server-demo.md` for annotated callouts, filter usage, and rerun tips.
+`driftbuster.multi_server` ships with the Python package; ensure you have installed the repo in editable mode (`python -m pip install -e .`). The CLI and GUI share an OS-specific data root (e.g. `%LOCALAPPDATA%/DriftBuster`, `$XDG_DATA_HOME/DriftBuster`); set `DRIFTBUSTER_DATA_ROOT` to override where cached diffs live. See `docs/multi-server-demo.md` for annotated callouts, filter usage, and rerun tips.
 
 ### Release Build
 

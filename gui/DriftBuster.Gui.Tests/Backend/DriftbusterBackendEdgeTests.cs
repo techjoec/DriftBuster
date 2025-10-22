@@ -10,9 +10,15 @@ using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Gui.Tests.Backend;
 
+[Collection("BackendTests")]
 public sealed class DriftbusterBackendEdgeTests
 {
     private readonly DriftbusterBackend _backend = new();
+
+    public DriftbusterBackendEdgeTests(BackendDataRootFixture fixture)
+    {
+        _ = fixture;
+    }
 
     [Fact]
     public async Task DiffAsync_throws_when_baseline_is_directory()

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import shutil
 import sys
 import time
 from dataclasses import dataclass, field
@@ -37,6 +38,75 @@ _CANONICAL_NORMALISERS = {
     "xml": canonicalise_xml,
     "text": canonicalise_text,
 }
+
+DATA_ROOT_ENV = "DRIFTBUSTER_DATA_ROOT"
+
+
+def _resolve_data_root() -> Path:
+    override = os.environ.get(DATA_ROOT_ENV)
+    if override:
+        candidate = Path(os.path.expandvars(override)).expanduser()
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate.resolve()
+
+    if sys.platform.startswith("win"):
+        for env_var in ("LOCALAPPDATA", "APPDATA"):
+            configured = os.environ.get(env_var)
+            if configured:
+                candidate = Path(os.path.expandvars(configured)).expanduser() / "DriftBuster"
+                candidate.mkdir(parents=True, exist_ok=True)
+                return candidate.resolve()
+
+        fallback = Path(os.path.expanduser("~")) / "AppData" / "Local" / "DriftBuster"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback.resolve()
+
+    if sys.platform == "darwin":
+        home = Path(os.path.expanduser("~"))
+        candidate = home / "Library" / "Application Support" / "DriftBuster"
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate.resolve()
+
+    data_home = os.environ.get("XDG_DATA_HOME")
+    if data_home:
+        candidate = Path(os.path.expandvars(data_home)).expanduser() / "DriftBuster"
+    else:
+        candidate = Path(os.path.expanduser("~")) / ".local" / "share" / "DriftBuster"
+
+    candidate.mkdir(parents=True, exist_ok=True)
+    return candidate.resolve()
+
+
+def _migrate_legacy_cache(destination: Path) -> None:
+    legacy_root = Path("artifacts") / "cache" / "diffs"
+    try:
+        if not legacy_root.exists():
+            return
+
+        if any(destination.iterdir()):
+            return
+
+        destination.mkdir(parents=True, exist_ok=True)
+        for source in legacy_root.glob("*"):
+            if source.is_file():
+                target = destination / source.name
+                if not target.exists():
+                    shutil.copy2(source, target)
+    except Exception:
+        # Migration is best-effort for developer setups.
+        pass
+
+
+def _resolve_cache_dir(cache_dir: str | Path | None) -> Path:
+    if cache_dir:
+        resolved = Path(cache_dir).expanduser()
+        resolved.mkdir(parents=True, exist_ok=True)
+        return resolved.resolve()
+
+    destination = _resolve_data_root() / "cache" / "diffs"
+    destination.mkdir(parents=True, exist_ok=True)
+    _migrate_legacy_cache(destination)
+    return destination
 
 
 def _utc_timestamp() -> str:
@@ -616,7 +686,7 @@ def main() -> int:
         schema_version = str(request.get("schema_version") or SCHEMA_VERSION)
         if schema_version != SCHEMA_VERSION:
             raise SystemExit(f"Unsupported schema version: {schema_version}")
-        cache_dir = Path(request.get("cache_dir") or Path("artifacts") / "cache" / "diffs")
+        cache_dir = _resolve_cache_dir(request.get("cache_dir"))
         plans = _build_plans(request)
         runner = MultiServerRunner(cache_dir)
         response = runner.run(plans)

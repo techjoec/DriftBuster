@@ -273,5 +273,4 @@ namespace DriftBuster.Gui.Services
             }
         }
     }
-    }
 }

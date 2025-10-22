@@ -67,7 +67,7 @@ namespace DriftBuster.Gui.Views
             }
         }
 
-        private void OnCatalogGridSorting(object? sender, DataGridSortingEventArgs e)
+        private void OnCatalogGridSorting(object? sender, DataGridColumnEventArgs e)
         {
             if (_viewModel is null)
             {

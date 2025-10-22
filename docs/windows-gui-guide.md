@@ -84,7 +84,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Diff calls load file contents, build the same JSON payload exposed to the UI, and reuse the shared models for plan metadata.
 - Hunt scans walk the filesystem locally, apply the default rule set, and surface filtered hits to the view models.
 - Run profile actions persist JSON definitions, copy snapshot files, and emit metadata using the shared library helpers.
-- Multi-server orchestration shells out to `python -m driftbuster.multi_server`, streams per-host progress back into toasts and the activity timeline, and persists cached diffs in `artifacts/cache/diffs/`.
+- Multi-server orchestration shells out to `python -m driftbuster.multi_server`, streams per-host progress back into toasts and the activity timeline, and persists cached diffs under the DriftBuster data root (e.g. `%LOCALAPPDATA%/DriftBuster/cache/diffs/`, `$XDG_DATA_HOME/DriftBuster/cache/diffs/`).
 - All work runs asynchronously on background tasks so the UI stays responsive; errors surface through the existing status banners.
 
 ## 9. Packaging Options

@@ -11,8 +11,14 @@ using Xunit;
 
 namespace DriftBuster.Gui.Tests.Backend;
 
+[Collection("BackendTests")]
 public class DriftbusterBackendOfflineCollectorTests
 {
+    public DriftbusterBackendOfflineCollectorTests(BackendDataRootFixture fixture)
+    {
+        _ = fixture;
+    }
+
     [Fact]
     public async Task PrepareOfflineCollector_uses_embedded_secret_rules_when_rules_file_missing()
     {

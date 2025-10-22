@@ -33,17 +33,18 @@
 
 ## P4. Multi-Server Orchestration Guardrails
 **Goal:** Ensure drag/drop reordering, session persistence, and inline drilldown actions work safely during active runs.
-- **Observations**: `ServerSelectionViewModel` lacks drag/drop, session persistence limited to toggle, inline actions accessible only from catalogs.
+- **Observations**: `ServerSelectionViewModel` lacks drag/drop, session persistence limited to toggle, inline actions accessible only from catalogs, and the backend still writes caches/session data under `artifacts/cache/*`, which disappears in packaged builds.
 - **Solution Outline**:
   1. **Drag/drop**: Use `Avalonia.Input.DragDrop`; update `ObservableCollection` with atomic reordering and guard while `IsBusy` to avoid concurrency conflicts.
-  2. **Persistence**: Expand session storage payload to include filter selections, last active tab; add versioning to avoid migration bugs.
+  2. **Persistence**: Expand session storage payload to include filter selections, last active tab; add versioning to avoid migration bugs, and persist via a new user-data helper (AppData/XDG) instead of the repo `artifacts/` directory.
   3. **Inline drilldown**: Add buttons to execution summary grid for quick drilldown navigation post-run.
 - **Engineering Tasks**:
   - Introduce reordering commands with locking in `ServerSelectionViewModel`; ensure `RunAllCommand` checks for reordering state.
-  - Compose new session DTO covering filters + timeline option; store under `artifacts/cache/session.json` (or existing location).
+  - Compose new session DTO covering filters + timeline option; persist via a shared user-data storage helper with schema versioning.
+  - Introduce a reusable path service to redirect existing diff cache/session writes away from `artifacts/`, migrating dev caches on first run and updating both C# backend and Python runner.
   - Update UI to surface drilldown button with accessible text and analytics hook.
   - Extend `tests/multi_server/test_multi_server.py` to cover new `_build_catalog_and_drilldown` branches (offline hosts, mixed coverage) ensuring Python backend keeps up.
-- **Validation**: Avalonia drag/drop tests, concurrency test running reorder while `RunAllCommand` active, manual smoke verifying persistence after restart.
+- **Validation**: Avalonia drag/drop tests, concurrency test running reorder while `RunAllCommand` active, packaged-build smoke verifying persistence across restart and upgrade.
 
 ## P5. Diff Planner Productivity
 **Goal:** Minimise re-entry friction and surface JSON parity without context switching.
@@ -98,6 +99,7 @@
 - `docs/testing-strategy.md`: Document new test suites and virtualization/perf approach.
 - `notes/status/gui-research.md`: Log profiling metrics, assumptions, open questions; link to before/after assets.
 - `CHANGELOG.md`: Add entries under upcoming release section summarising UX improvements and performance updates.
+- Scrub docs that reference `artifacts/cache/*` (e.g. multi-server demo, Windows guide, README) to point at the new user-data storage path and call out upgrade persistence.
 
 ## S3. Execution Hygiene
 - Always `tmux ls` before creating new sessions; retire stale `codexcli-<pid>-*` sessions via `tmux kill-session` once tasks finish.

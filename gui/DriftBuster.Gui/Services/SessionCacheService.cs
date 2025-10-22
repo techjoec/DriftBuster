@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
+using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Gui.Services
@@ -31,7 +32,12 @@ namespace DriftBuster.Gui.Services
 
         public SessionCacheService(string? rootDirectory = null)
         {
-            var basePath = rootDirectory ?? Path.Combine("artifacts", "cache");
+            var basePath = rootDirectory ?? DriftbusterPaths.GetSessionDirectory();
+            if (rootDirectory is null)
+            {
+                MigrateLegacyCache(Path.Combine("artifacts", "cache", "multi-server.json"), Path.Combine(basePath, "multi-server.json"));
+            }
+
             Directory.CreateDirectory(basePath);
             _cachePath = Path.Combine(basePath, "multi-server.json");
         }
@@ -64,6 +70,29 @@ namespace DriftBuster.Gui.Services
             if (File.Exists(_cachePath))
             {
                 File.Delete(_cachePath);
+            }
+        }
+
+        private static void MigrateLegacyCache(string legacyPath, string destination)
+        {
+            try
+            {
+                if (!File.Exists(legacyPath))
+                {
+                    return;
+                }
+
+                if (File.Exists(destination))
+                {
+                    return;
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                File.Copy(legacyPath, destination);
+            }
+            catch
+            {
+                // Best-effort migration for developer caches; ignore failures.
             }
         }
     }

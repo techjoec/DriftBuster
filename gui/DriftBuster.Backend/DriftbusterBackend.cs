@@ -68,8 +68,6 @@ namespace DriftBuster.Backend
         };
 
         private static readonly Encoding Utf8 = new UTF8Encoding(false, false);
-        private static readonly string DiffCacheDirectory = Path.Combine("artifacts", "cache", "diffs");
-
         private static readonly IReadOnlyList<HuntRuleDefinition> HuntRules = new[]
         {
             new HuntRuleDefinition(
@@ -354,8 +352,8 @@ namespace DriftBuster.Backend
                 throw new ArgumentNullException(nameof(plans));
             }
 
-            var cacheDirectory = Path.Combine(repositoryRoot, DiffCacheDirectory);
-            Directory.CreateDirectory(cacheDirectory);
+            var cacheDirectory = DriftbusterPaths.GetCacheDirectory("diffs");
+            MigrateLegacyDiffCache(repositoryRoot, cacheDirectory);
             return new MultiServerRequest
             {
                 Plans = plans,
@@ -601,6 +599,46 @@ namespace DriftBuster.Backend
             startInfo.ArgumentList.Add("-m");
             startInfo.ArgumentList.Add(MultiServerModule);
             return startInfo;
+        }
+
+        private static void MigrateLegacyDiffCache(string repositoryRoot, string cacheDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(repositoryRoot))
+            {
+                return;
+            }
+
+            try
+            {
+                var legacyRoot = Path.Combine(repositoryRoot, "artifacts", "cache", "diffs");
+                if (!Directory.Exists(legacyRoot))
+                {
+                    return;
+                }
+
+                if (!Directory.Exists(cacheDirectory))
+                {
+                    Directory.CreateDirectory(cacheDirectory);
+                }
+
+                if (Directory.GetFileSystemEntries(cacheDirectory).Length > 0)
+                {
+                    return;
+                }
+
+                foreach (var file in Directory.EnumerateFiles(legacyRoot, "*", SearchOption.TopDirectoryOnly))
+                {
+                    var target = Path.Combine(cacheDirectory, Path.GetFileName(file)!);
+                    if (!File.Exists(target))
+                    {
+                        File.Copy(file, target, overwrite: false);
+                    }
+                }
+            }
+            catch
+            {
+                // Migration is a best-effort convenience for developers; ignore failures.
+            }
         }
 
         private static void ValidateMultiServerResponse(ServerScanResponse response)

@@ -31,7 +31,7 @@ Callout notes:
 - **[1] Host cards** – enable a slot, edit the label, and pick a baseline preference for reruns.
 - **[2] Scope chips** – switch between predefined scopes (e.g., `Program Files`, `AppData`) or stay with custom roots.
 - **[3] Roots list** – add, remove, or reorder roots. Inline badges show `pending`, `ok`, or `error` as validation completes.
-- **[4] Session cache toggle** – opt-in to save labels, scopes, and roots into `artifacts/cache/multi-server.json` when you click **Save session**.
+- **[4] Session cache toggle** – opt-in to save labels, scopes, and roots into your DriftBuster data root (for example `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`, `$XDG_DATA_HOME/DriftBuster/sessions/...`) when you click **Save session**.
 - **[5] Guidance footer** – explains why a scan is blocked (missing roots, failed validation) and surfaces **Run all** and **Run missing only** actions.
 
 ### 2. Launch and Monitor a Scan
@@ -54,7 +54,6 @@ The GUI invokes `python -m driftbuster.multi_server` with a JSON request over st
 ```sh
 python -m driftbuster.multi_server <<'JSON'
 {
-  "cache_dir": "artifacts/cache/diffs",
   "plans": [
     {
       "host_id": "server01",
@@ -76,6 +75,7 @@ JSON
 ```
 
 - Progress messages stream as JSON objects with `type: "progress"`. Pipe the output through `jq` to watch updates: `python -m driftbuster.multi_server <<<"…" | jq`.
+- Omit `cache_dir` to let the CLI use the same data root as the GUI. Set `DRIFTBUSTER_DATA_ROOT=/custom/path` to override where cached diffs and sessions are stored.
 - To rerun only missing hosts, send a smaller plan containing the failed host IDs; cached hosts can be left out.
 - Export helpers write HTML/JSON to `artifacts/exports/<config>-<timestamp>.{html,json}`. Combine with `python -m scripts.coverage_report` to summarise multi-host metrics after a batch.
 
@@ -89,7 +89,7 @@ JSON
 - **Root validation errors** – Hover the badge for the failing path. Fix permissions or edit the root, then click **Retry validation**; the toast system also reports the OS error text.
 - **Permission denied hosts** – The activity timeline logs the failure with the host ID. Use **Run missing only** after adjusting credentials or running the CLI with elevated access.
 - **Missing hosts** – Disable unused slots to silence warnings. If a host disconnects mid-run, the toast will point to **Re-scan affected servers** while leaving successful outputs intact.
-- **Cache clean-up** – Remove `artifacts/cache/diffs/` or `artifacts/cache/multi-server.json` to start fresh. The GUI will prompt before writing a new session snapshot.
+- **Cache clean-up** – Remove the cached diffs or session file from your DriftBuster data root (e.g. `%LOCALAPPDATA%/DriftBuster/cache/diffs/`, `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`) to start fresh. The GUI will prompt before writing a new snapshot.
 
 ### Next Steps
 
