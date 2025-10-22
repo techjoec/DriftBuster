@@ -118,7 +118,7 @@ Before marking the work complete:
 - [ ] Catalog entries and docs reference the same variant names as the plugin.
 - [ ] Manual verification commands are noted in the relevant checklist files.
 - [ ] Follow-up tasks (automation, extended fixtures) are captured in
-      `CLOUDTASKS.md` or `ROADMAP.md` if they fall outside the current change.
+      `CLOUDTASKS.md` (see relevant area) if they fall outside the current change.
 
 Keeping each format change aligned with this guide will make detector expansion
 predictable for reviewers and downstream tooling.

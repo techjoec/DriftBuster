@@ -143,7 +143,7 @@ deterministic and highlights which docs to touch:
    play. Note the results in `notes/checklists/profile-summary.md`.
 4. Record dynamic token decisions in `notes/checklists/hunt-profile-review.md`.
 5. Update the relevant doc sections (`docs/configuration-profiles.md`,
-   `docs/hunt-mode.md`, `docs/reporting-roadmap.md`) if reviewers need new
+   `docs/hunt-mode.md`, `CLOUDTASKS.md` (areas A10-A12)) if reviewers need new
    context to interpret the diff.
 
 ### JSON detector checklist
@@ -188,7 +188,7 @@ deterministic and highlights which docs to touch:
 - ✅ Docs refreshed (`docs/detection-types.md`, optionally `README.md`).
 - ✅ Manual verification log added; acceptance gates in `CLOUDTASKS.md` ticked.
 - ✅ Follow-up tasks for downstream formats captured in `CLOUDTASKS.md` or
-  `ROADMAP.md` if gaps remain.
+  `CLOUDTASKS.md` if gaps remain.
 - 🚧 Deferred automation items recorded in `docs/testing-strategy.md` under the
   "Deferred automation" block (typing + fuzz harnesses).
 

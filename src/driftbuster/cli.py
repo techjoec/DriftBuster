@@ -1,6 +1,6 @@
 """Lightweight command-line entry point for manual DriftBuster scans.
 
-The long-term roadmap includes a richer CLI (see ``docs/python-cli-plan.md``),
+The long-term roadmap includes a richer CLI (see ``CLOUDTASKS.md`` area A18),
 but manual validation tasks already reference ``python -m driftbuster.cli``.
 This module provides the minimal plumbing required for those checklists:
 

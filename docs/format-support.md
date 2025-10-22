@@ -41,5 +41,5 @@ Last updated: 2025-10-20.
   heuristics before additional formats leave HOLD.
 - `docs/detection-types.md` lists catalog priorities and the usage data backing
   each class.
-- `ROADMAP.md` calls out the remaining XML backlog items (canonical transforms,
+- `CLOUDTASKS.md` area A8 tracks the remaining XML backlog items (canonical transforms,
   schema provenance, namespace reporting).

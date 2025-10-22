@@ -29,7 +29,7 @@ iterations have a concrete baseline.
   command. Ensure `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` stays green
   after any UX iteration.
 - Future work: capture 1280/1440/1920 px snapshots under `artifacts/ux/` once the automated
-  screenshot harness lands. Track this follow-up in PLAN.md when the tooling is ready.
+  screenshot harness lands. Track this follow-up in CLOUDTASKS.md (area A4) when the tooling is ready.
 
 Last updated: 2025-02-14 — regenerate after any notable UX change.
 

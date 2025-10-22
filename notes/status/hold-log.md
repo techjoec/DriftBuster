@@ -12,7 +12,7 @@
 ### Decision-Ready Summary
 | Blocker | Approval required | Notes |
 | --- | --- | --- |
-| Reporting adapter rollout plan | Awaiting future go-ahead; current focus stays on core + XML | Scope captured in `docs/reporting-roadmap.md#hold-prerequisites`; revisit once user authorises A8 resumption. |
+| Reporting adapter rollout plan | Awaiting future go-ahead; current focus stays on core + XML | Scope captured in `CLOUDTASKS.md` area A10; revisit once user authorises A8 resumption. |
 | Capture manifest workflow | Sign-off that `scripts/capture.py` storage defaults keep outputs vendor-neutral | Ensure sample catalog in `docs/testing-strategy.md` matches the guardrails in `docs/legal-safeguards.md#hold-exit-briefing`. |
 | Manual verification coverage | User reaffirmed manual-only compile/lint gate for current work | `notes/checklists/core-scan.md` checklist remains authoritative; continue logging command output before shipping core/XML changes. |
 

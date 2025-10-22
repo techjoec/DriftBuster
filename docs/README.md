@@ -39,11 +39,7 @@ Docs are grouped so you can jump straight to the guide you need.
 
 - [`format-backlog-briefing.md`](format-backlog-briefing.md) — queued formats
   and heuristics.
-- [`reporting-roadmap.md`](reporting-roadmap.md) — adapters and diff tooling
-  roadmap.
-- [`python-cli-plan.md`](python-cli-plan.md) — CLI expansion ideas (draft).
-- [`powershell-module-plan.md`](powershell-module-plan.md) — Windows shell notes
-  (draft).
+- [`../CLOUDTASKS.md`](../CLOUDTASKS.md) — consolidated backlog (replaces the former reporting roadmap, Python CLI, and PowerShell plan).
 - [`windows-gui-guide.md`](windows-gui-guide.md) — Avalonia usage guide.
 - [`windows-gui-notes.md`](windows-gui-notes.md) — design scratchpad (draft).
 

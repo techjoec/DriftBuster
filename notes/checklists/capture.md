@@ -32,7 +32,7 @@
   - Ensure hunt hits that should map to approved tokens list the expected
     `token_name`; investigate any unexpected entries before proceeding.
   - Keep the snapshot in the restricted storage location defined in
-    `docs/reporting-roadmap.md`.
+    `CLOUDTASKS.md` (see areas A10-A12).
   - Capture any tooling gaps or repetitive manual steps and log them in the
     automation backlog tracker for future improvements.
 - **Comparison step:**
