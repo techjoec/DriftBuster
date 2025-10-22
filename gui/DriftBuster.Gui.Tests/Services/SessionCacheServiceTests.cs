@@ -38,6 +38,7 @@ public sealed class SessionCacheServiceTests
                     Severity = "Info",
                     Summary = "Ran scan",
                     Detail = "Evaluated 4 configs",
+                    Category = "General",
                 },
             },
         };

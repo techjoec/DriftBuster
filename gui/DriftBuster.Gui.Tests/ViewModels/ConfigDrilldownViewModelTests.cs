@@ -75,6 +75,8 @@ public sealed class ConfigDrilldownViewModelTests
 
         drilldown.SelectAllCommand.Execute(null);
         drilldown.ReScanSelectedCommand.CanExecute(null).Should().BeTrue();
+        drilldown.BaselineLabel.Should().Be("Baseline");
+        drilldown.BaselineHostSummary.Should().Contain("server01");
 
         string? exportedFormat = null;
         string? exportPayload = null;
@@ -88,6 +90,11 @@ public sealed class ConfigDrilldownViewModelTests
         exportedFormat.Should().Be("Html");
         exportPayload.Should().NotBeNull();
         exportPayload!.Should().Contain("Logging");
+
+        string? copiedJson = null;
+        drilldown.CopyJsonRequested += (_, payload) => copiedJson = payload;
+        await drilldown.CopyJsonCommand.ExecuteAsync(null);
+        copiedJson.Should().NotBeNullOrEmpty();
 
         string[]? rescannedHosts = null;
         drilldown.ReScanRequested += (_, hosts) => rescannedHosts = hosts.ToArray();

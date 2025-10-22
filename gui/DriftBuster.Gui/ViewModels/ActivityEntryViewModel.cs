@@ -12,14 +12,21 @@ namespace DriftBuster.Gui.ViewModels
         Error,
     }
 
+    public enum ActivityCategory
+    {
+        General,
+        Export,
+    }
+
     public sealed partial class ActivityEntryViewModel : ObservableObject
     {
-        public ActivityEntryViewModel(ActivitySeverity severity, string summary, string detail, DateTimeOffset timestamp)
+        public ActivityEntryViewModel(ActivitySeverity severity, string summary, string detail, DateTimeOffset timestamp, ActivityCategory category)
         {
             Severity = severity;
             Summary = summary;
             Detail = detail;
             Timestamp = timestamp;
+            Category = category;
             Id = Guid.NewGuid();
         }
 
@@ -33,6 +40,8 @@ namespace DriftBuster.Gui.ViewModels
 
         public DateTimeOffset Timestamp { get; }
 
+        public ActivityCategory Category { get; }
+
         public string TimestampText => Timestamp.ToLocalTime().ToString("g");
 
         public string SeverityLabel => Severity.ToString();
@@ -42,5 +51,9 @@ namespace DriftBuster.Gui.ViewModels
             : $"[{Timestamp:u}] {Summary}{Environment.NewLine}{Detail}";
 
         public bool IsError => Severity == ActivitySeverity.Error;
+
+        public bool IsWarning => Severity == ActivitySeverity.Warning;
+
+        public bool IsExport => Category == ActivityCategory.Export;
     }
 }

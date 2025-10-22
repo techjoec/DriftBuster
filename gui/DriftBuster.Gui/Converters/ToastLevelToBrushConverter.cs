@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 
@@ -19,13 +20,20 @@ namespace DriftBuster.Gui.Converters
                 return Brushes.Gray;
             }
 
-            return level switch
+            var resourceKey = level switch
             {
-                ToastLevel.Success => new SolidColorBrush(Color.Parse("#14532D")),
-                ToastLevel.Warning => new SolidColorBrush(Color.Parse("#9A3412")),
-                ToastLevel.Error => new SolidColorBrush(Color.Parse("#7F1D1D")),
-                _ => new SolidColorBrush(Color.Parse("#1D4ED8")),
+                ToastLevel.Success => "Brush.Toast.Success",
+                ToastLevel.Warning => "Brush.Toast.Warning",
+                ToastLevel.Error => "Brush.Toast.Error",
+                _ => "Brush.Toast.Info",
             };
+
+            if (Application.Current?.TryFindResource(resourceKey, out var resource) == true && resource is IBrush brush)
+            {
+                return brush;
+            }
+
+            return Brushes.Gray;
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

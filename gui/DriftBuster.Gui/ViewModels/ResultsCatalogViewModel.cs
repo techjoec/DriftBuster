@@ -66,6 +66,15 @@ namespace DriftBuster.Gui.ViewModels
 
         public string Severity => string.IsNullOrWhiteSpace(_entry.Severity) ? "none" : _entry.Severity;
 
+        public int SeverityRank => Severity.ToLowerInvariant() switch
+        {
+            "high" => 0,
+            "medium" => 1,
+            "low" => 2,
+            "none" => 3,
+            _ => 4,
+        };
+
         public IReadOnlyList<string> PresentHosts => _entry.PresentHosts ?? Array.Empty<string>();
 
         public IReadOnlyList<string> MissingHosts => _entry.MissingHosts ?? Array.Empty<string>();
@@ -75,6 +84,8 @@ namespace DriftBuster.Gui.ViewModels
         public int TotalHosts { get; }
 
         public string CoverageText => TotalHosts <= 0 ? "0/0" : $"{PresentCount}/{TotalHosts}";
+
+        public double CoverageRatio => TotalHosts <= 0 ? 0d : (double)PresentCount / TotalHosts;
 
         public string CoverageStatus => string.IsNullOrWhiteSpace(_entry.CoverageStatus) ? (IsFullCoverage ? "full" : IsMissingCoverage ? "missing" : "partial") : _entry.CoverageStatus;
 
@@ -101,6 +112,35 @@ namespace DriftBuster.Gui.ViewModels
         public bool HasAnyAlerts => HasSecrets || HasValidationIssues || HasMaskedTokens || DriftCount > 0;
 
         public string MissingHostsSummary => MissingHosts.Count == 0 ? "" : string.Join(", ", MissingHosts);
+    }
+
+    public static class CatalogSortColumns
+    {
+        public const string Config = nameof(ConfigCatalogItemViewModel.DisplayName);
+        public const string Drift = nameof(ConfigCatalogItemViewModel.DriftCount);
+        public const string Coverage = nameof(ConfigCatalogItemViewModel.CoverageRatio);
+        public const string Format = nameof(ConfigCatalogItemViewModel.Format);
+        public const string Severity = nameof(ConfigCatalogItemViewModel.SeverityRank);
+        public const string Updated = nameof(ConfigCatalogItemViewModel.LastUpdated);
+    }
+
+    public sealed record CatalogSortDescriptor(string ColumnKey, bool Descending)
+    {
+        public static CatalogSortDescriptor Default { get; } = new(CatalogSortColumns.Updated, true);
+
+        public static CatalogSortDescriptor Normalize(string? columnKey, bool descending)
+        {
+            return columnKey?.Trim() switch
+            {
+                CatalogSortColumns.Drift => new CatalogSortDescriptor(CatalogSortColumns.Drift, descending),
+                CatalogSortColumns.Coverage => new CatalogSortDescriptor(CatalogSortColumns.Coverage, descending),
+                CatalogSortColumns.Format => new CatalogSortDescriptor(CatalogSortColumns.Format, descending),
+                CatalogSortColumns.Severity => new CatalogSortDescriptor(CatalogSortColumns.Severity, descending),
+                CatalogSortColumns.Updated => new CatalogSortDescriptor(CatalogSortColumns.Updated, descending),
+                CatalogSortColumns.Config => new CatalogSortDescriptor(CatalogSortColumns.Config, descending),
+                _ => new CatalogSortDescriptor(CatalogSortColumns.Config, descending),
+            };
+        }
     }
 
     public sealed partial class ResultsCatalogViewModel : ObservableObject
@@ -156,6 +196,12 @@ namespace DriftBuster.Gui.ViewModels
 
         public ObservableCollection<string> FormatOptions { get; }
 
+        private CatalogSortDescriptor _sortDescriptor = CatalogSortDescriptor.Default;
+
+        public CatalogSortDescriptor SortDescriptor => _sortDescriptor;
+
+        public event EventHandler<CatalogSortDescriptor>? SortDescriptorChanged;
+
         [ObservableProperty]
         private CoverageFilterOption _selectedCoverageFilter;
 
@@ -206,6 +252,36 @@ namespace DriftBuster.Gui.ViewModels
         public event EventHandler<ConfigCatalogItemViewModel>? DrilldownRequested;
 
         public event EventHandler<IReadOnlyList<string>>? ReScanRequested;
+
+        public void SetSortDescriptor(string? columnKey, bool descending)
+        {
+            UpdateSortDescriptor(CatalogSortDescriptor.Normalize(columnKey, descending), raiseEvent: true);
+        }
+
+        public void RestoreSortDescriptor(CatalogSortDescriptor descriptor)
+        {
+            if (UpdateSortDescriptor(CatalogSortDescriptor.Normalize(descriptor.ColumnKey, descriptor.Descending), raiseEvent: false))
+            {
+                SortDescriptorChanged?.Invoke(this, _sortDescriptor);
+            }
+        }
+
+        private bool UpdateSortDescriptor(CatalogSortDescriptor descriptor, bool raiseEvent)
+        {
+            if (_sortDescriptor == descriptor)
+            {
+                return false;
+            }
+
+            _sortDescriptor = descriptor;
+            ApplyFilters();
+            if (raiseEvent)
+            {
+                SortDescriptorChanged?.Invoke(this, _sortDescriptor);
+            }
+
+            return true;
+        }
 
         public void LoadFromResponse(ServerScanResponse? response, int totalHosts)
         {
@@ -348,9 +424,37 @@ namespace DriftBuster.Gui.ViewModels
             ReScanRequested?.Invoke(this, hosts);
         }
 
+        private IEnumerable<ConfigCatalogItemViewModel> ApplySort(IEnumerable<ConfigCatalogItemViewModel> source)
+        {
+            var ordered = _sortDescriptor.ColumnKey switch
+            {
+                CatalogSortColumns.Drift => Sort(source, entry => entry.DriftCount),
+                CatalogSortColumns.Coverage => Sort(source, entry => entry.CoverageRatio),
+                CatalogSortColumns.Format => Sort(source, entry => entry.Format, StringComparer.OrdinalIgnoreCase),
+                CatalogSortColumns.Severity => Sort(source, entry => entry.SeverityRank),
+                CatalogSortColumns.Updated => Sort(source, entry => entry.LastUpdated),
+                _ => Sort(source, entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase),
+            };
+
+            return ordered.ThenBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private IOrderedEnumerable<ConfigCatalogItemViewModel> Sort<TKey>(IEnumerable<ConfigCatalogItemViewModel> source, Func<ConfigCatalogItemViewModel, TKey> keySelector)
+        {
+            return Sort(source, keySelector, comparer: null);
+        }
+
+        private IOrderedEnumerable<ConfigCatalogItemViewModel> Sort<TKey>(IEnumerable<ConfigCatalogItemViewModel> source, Func<ConfigCatalogItemViewModel, TKey> keySelector, IComparer<TKey>? comparer)
+        {
+            var comparison = comparer ?? Comparer<TKey>.Default;
+            return _sortDescriptor.Descending
+                ? source.OrderByDescending(keySelector, comparison)
+                : source.OrderBy(keySelector, comparison);
+        }
+
         private void ApplyFilters()
         {
-            var filtered = Entries.Where(MatchesFilters).ToList();
+            var filtered = ApplySort(Entries.Where(MatchesFilters)).ToList();
 
             FilteredEntries.Clear();
             foreach (var entry in filtered)

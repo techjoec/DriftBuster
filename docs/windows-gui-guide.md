@@ -59,7 +59,27 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Hover tooltips provide full text when truncated.
 - Raw JSON is available in the expander for exporting or analysis.
 
-## 7. Backend Bridge
+## 7. Multi-server View Details
+### Host Configuration
+- Host cards now render inside a responsive grid that fits 1280–1920 px widths without horizontal scrolling. Cards stretch to fill available space while keeping a minimum width, so you can scan labels, scopes, and roots side by side.
+- Each card exposes a `ValidationSummary` tooltip and automation name that narrates the current root status (ready, pending validation, or needs attention) for screen readers.
+- Keyboard users get high-contrast focus outlines on buttons, toggles, combo boxes, and root text boxes; the Run/Cancel strip also exposes access keys (`Alt+R`, `Alt+M`, `Alt+C`).
+
+### Root Validation & Persistence
+- Switching a server to **Custom roots** keeps the validation summary live while you type. Duplicate or relative paths flag the card immediately, and summaries stay cached even when the card loses focus.
+- Session saves now persist the active catalog sort descriptor, so reloading a session restores the same ordering you left in place.
+
+### Catalog & Drilldown Enhancements
+- Catalog columns support click-to-sort with visual indicators; the current sort mode is cached alongside server state.
+- Drilldown headers now surface format, baseline host, drift count, and provenance in a metadata strip for quick triage.
+- A dedicated **Copy JSON** action copies the sanitised export payload to the clipboard without triggering a file save, mirroring the HTML/JSON export options.
+
+### Notifications & Timeline
+- Toast alerts now surface in a compact stack with at most three visible at once; additional messages collapse into an overflow tray so long-running scans don't flood the viewport.
+- Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter persists with the rest of the multi-server session.
+- Clipboard/export actions write to the timeline with the new **Exports** filter so analysts can isolate delivery events quickly.
+
+## 8. Backend Bridge
 - `DriftbusterService` instantiates the shared `DriftbusterBackend` class and executes diff, hunt, and run-profile operations in-process.
 - Diff calls load file contents, build the same JSON payload exposed to the UI, and reuse the shared models for plan metadata.
 - Hunt scans walk the filesystem locally, apply the default rule set, and surface filtered hits to the view models.
@@ -67,7 +87,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Multi-server orchestration shells out to `python -m driftbuster.multi_server`, streams per-host progress back into toasts and the activity timeline, and persists cached diffs in `artifacts/cache/diffs/`.
 - All work runs asynchronously on background tasks so the UI stays responsive; errors surface through the existing status banners.
 
-## 8. Packaging Options
+## 9. Packaging Options
 - Default release builds produce an installer:
   - `python scripts/release_build.py --release-notes notes/releases/<semver>.md --installer-rid win-x64`
   - Installer artifacts: `artifacts/velopack/releases/<rid>`.
@@ -79,12 +99,12 @@ This guide explains the capabilities, layout, and operational details of the Ava
   - `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true`
 - Before packaging, sync versions: `python scripts/sync_versions.py`.
 
-## 9. Manual Smoke Checklist
+## 10. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.
 - Covers ping, diff, hunt, error handling, and verifying backend shutdown after closing the window.
 - Record date/operator each time the checklist is executed.
 
-## 10. Automated & Headless Tests
+## 11. Automated & Headless Tests
 - UI automation lives in `gui/DriftBuster.Gui.Tests/Ui` and complementary view-model suites under `gui/DriftBuster.Gui.Tests/ViewModels`. Headless UI tests are attributed with `[AvaloniaFact]`, ensuring each case runs on the Avalonia dispatcher (navigation, drilldown exports, hunt flows, converters, session cache, and theme toggles).
 - `HeadlessFixture` calls `Program.EnsureHeadless(...)`, which guards against duplicate `AppBuilder.Setup` calls in repeated test execution.
 - Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
@@ -94,7 +114,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
   - XAML compilation gate: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:EnableAvaloniaXamlCompilation=true`
 - Diagnostic harness: set `AVALONIA_INSPECT=1` and run `--filter FullyQualifiedName=DriftBuster.Gui.Tests.Ui.AvaloniaSetupInspection.LogSetupState` to capture resource/style registration in `artifacts/codexcli-inspect.log`.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 | Symptom | Suggested Checks | 
 |---------|-----------------| 
 | “Backend closed unexpectedly” | Run the GUI from a console and inspect logs; verify the selected files are accessible. |
@@ -102,7 +122,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 | Empty hunt results | Check filter string, increase rule coverage, or drop filter to view raw hits. |
 | Clipboard not working | Ensure the app is running in a desktop session (clipboard APIs require a real user session). Use the activity timeline’s copy buttons to verify clipboard access quickly. |
 
-## 12. Extensibility Pointers
+## 13. Extensibility Pointers
 - Extend `Driftbuster.Backend` with new helpers, then wire them into both the GUI service and PowerShell module.
 - New view models should expose observable collections + status fields similar to Diff/Hunt pattern.
 

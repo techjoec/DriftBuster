@@ -42,19 +42,39 @@
       <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
         <StackPanel Spacing="12">
           <TextBlock Text="Configuration catalog" FontSize="18" FontWeight="SemiBold" />
-          <DataGrid ItemsSource="{Binding FilteredEntries}"
+          <DataGrid x:Name="CatalogGrid"
+                    ItemsSource="{Binding FilteredEntries}"
                     AutoGenerateColumns="False"
                     IsReadOnly="True"
                     HeadersVisibility="Column"
                     GridLinesVisibility="All"
-                    MinHeight="280">
+                    MinHeight="280"
+                    Sorting="OnCatalogGridSorting">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Config" Binding="{Binding DisplayName}" Width="2*" />
-              <DataGridTextColumn Header="Drift" Binding="{Binding DriftSummary}" Width="*" />
-              <DataGridTextColumn Header="Coverage" Binding="{Binding CoverageText}" Width="*" />
-              <DataGridTextColumn Header="Format" Binding="{Binding Format}" Width="*" />
-              <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="*" />
-              <DataGridTextColumn Header="Updated" Binding="{Binding LastUpdatedText}" Width="1.5*" />
+              <DataGridTextColumn Header="Config"
+                                  Binding="{Binding DisplayName}"
+                                  Width="2*"
+                                  SortMemberPath="{x:Static vm:CatalogSortColumns.Config}" />
+              <DataGridTextColumn Header="Drift"
+                                  Binding="{Binding DriftSummary}"
+                                  Width="*"
+                                  SortMemberPath="{x:Static vm:CatalogSortColumns.Drift}" />
+              <DataGridTextColumn Header="Coverage"
+                                  Binding="{Binding CoverageText}"
+                                  Width="*"
+                                  SortMemberPath="{x:Static vm:CatalogSortColumns.Coverage}" />
+              <DataGridTextColumn Header="Format"
+                                  Binding="{Binding Format}"
+                                  Width="*"
+                                  SortMemberPath="{x:Static vm:CatalogSortColumns.Format}" />
+              <DataGridTextColumn Header="Severity"
+                                  Binding="{Binding Severity}"
+                                  Width="*"
+                                  SortMemberPath="{x:Static vm:CatalogSortColumns.Severity}" />
+              <DataGridTextColumn Header="Updated"
+                                  Binding="{Binding LastUpdatedText}"
+                                  Width="1.5*"
+                                  SortMemberPath="{x:Static vm:CatalogSortColumns.Updated}" />
               <DataGridTemplateColumn Header="Tags" Width="2*">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>

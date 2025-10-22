@@ -43,4 +43,19 @@ public class ToastServiceTests
         service.Dismiss(toast.Id);
         service.ActiveToasts.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Overflow_moves_extra_toasts()
+    {
+        var service = new ToastService(action => action());
+
+        for (var i = 0; i < 4; i++)
+        {
+            service.Show($"Toast {i}", "Message", ToastLevel.Info, TimeSpan.FromSeconds(5));
+        }
+
+        service.ActiveToasts.Should().HaveCount(3);
+        service.OverflowToasts.Should().HaveCount(1);
+    }
+
 }

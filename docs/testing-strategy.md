@@ -19,13 +19,16 @@ for new and modified components.
 - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` — runs
   the Avalonia headless suite (`[AvaloniaFact]`) covering MainWindow
   navigation, drilldown export/rescan, hunt mode flows, profile interactions,
-  GUI converters, and the dispatcher-backed toast/session services. Launch
-  this inside a tmux session (`tmux new -s codexcli-<pid>-tests 'dotnet test …'`)
+  GUI converters, dispatcher-backed toast/session services, responsive host
+  layout validation, catalog sort persistence, and the drilldown Copy JSON
+  workflow. Launch this inside a tmux session (`tmux new -s codexcli-<pid>-tests 'dotnet test …'`)
   so long-running GUI runs don’t block your shell.
 - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter MainWindowUserJourneyTests`
   drives the end-to-end multi-server journey (catalog + drilldown + hunt +
   profiles) against the fake backend and should pass before claiming GUI
   parity with multi-host plans.
+- `dotnet test gui/DriftBuster.Gui.Tests/Services/ToastServiceTests.cs --filter Overflow_moves_extra_toasts`
+  verifies toast overflow behaviour and should run after modifying toast capacity or overflow UI.
 - `dotnet build` now runs with the latest built-in analyzers and style
   enforcement (see `Directory.Build.props`). Address any analyzer warnings
   surfaced during builds before committing.

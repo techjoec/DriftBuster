@@ -69,6 +69,10 @@ namespace DriftBuster.Gui.Services
 
         public DateTimeOffset Timestamp { get; }
 
+        public string TimestampText => Timestamp.ToLocalTime().ToString("t");
+
+        public string LevelLabel => Level.ToString();
+
         public IRelayCommand DismissCommand { get; }
 
         public IAsyncRelayCommand? PrimaryCommand { get; }
@@ -112,6 +116,8 @@ namespace DriftBuster.Gui.Services
     {
         ReadOnlyObservableCollection<ToastNotification> ActiveToasts { get; }
 
+        ReadOnlyObservableCollection<ToastNotification> OverflowToasts { get; }
+
         ToastNotification Show(
             string title,
             string message,
@@ -127,20 +133,27 @@ namespace DriftBuster.Gui.Services
 
     public sealed class ToastService : IToastService
     {
+        private const int MaxVisibleToasts = 3;
         private static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(5);
 
-        private readonly ObservableCollection<ToastNotification> _toasts = new();
+        private readonly List<ToastNotification> _allToasts = new();
+        private readonly ObservableCollection<ToastNotification> _visibleToasts = new();
+        private readonly ObservableCollection<ToastNotification> _overflowToasts = new();
         private readonly Dictionary<Guid, CancellationTokenSource> _tokens = new();
-        private readonly ReadOnlyObservableCollection<ToastNotification> _readonlyToasts;
+        private readonly ReadOnlyObservableCollection<ToastNotification> _visibleReadonly;
+        private readonly ReadOnlyObservableCollection<ToastNotification> _overflowReadonly;
         private readonly Action<Action> _dispatcher;
 
         public ToastService(Action<Action>? dispatcher = null)
         {
             _dispatcher = dispatcher ?? DispatchToUi;
-            _readonlyToasts = new ReadOnlyObservableCollection<ToastNotification>(_toasts);
+            _visibleReadonly = new ReadOnlyObservableCollection<ToastNotification>(_visibleToasts);
+            _overflowReadonly = new ReadOnlyObservableCollection<ToastNotification>(_overflowToasts);
         }
 
-        public ReadOnlyObservableCollection<ToastNotification> ActiveToasts => _readonlyToasts;
+        public ReadOnlyObservableCollection<ToastNotification> ActiveToasts => _visibleReadonly;
+
+        public ReadOnlyObservableCollection<ToastNotification> OverflowToasts => _overflowReadonly;
 
         public ToastNotification Show(
             string title,
@@ -162,9 +175,10 @@ namespace DriftBuster.Gui.Services
 
             _dispatcher(() =>
             {
-                _toasts.Add(toast);
+                _allToasts.Insert(0, toast);
                 var cts = new CancellationTokenSource();
                 _tokens[toast.Id] = cts;
+                RebuildCollections();
                 _ = AutoDismissAsync(toast, cts.Token);
             });
 
@@ -181,14 +195,16 @@ namespace DriftBuster.Gui.Services
                     cts.Dispose();
                 }
 
-                for (var i = 0; i < _toasts.Count; i++)
+                for (var i = 0; i < _allToasts.Count; i++)
                 {
-                    if (_toasts[i].Id == id)
+                    if (_allToasts[i].Id == id)
                     {
-                        _toasts.RemoveAt(i);
+                        _allToasts.RemoveAt(i);
                         break;
                     }
                 }
+
+                RebuildCollections();
             });
         }
 
@@ -201,9 +217,32 @@ namespace DriftBuster.Gui.Services
                     token.Cancel();
                     token.Dispose();
                 }
+
                 _tokens.Clear();
-                _toasts.Clear();
+                _allToasts.Clear();
+                RebuildCollections();
             });
+        }
+
+        private void RebuildCollections()
+        {
+            _visibleToasts.Clear();
+            _overflowToasts.Clear();
+
+            var index = 0;
+            foreach (var toast in _allToasts)
+            {
+                if (index < MaxVisibleToasts)
+                {
+                    _visibleToasts.Add(toast);
+                }
+                else
+                {
+                    _overflowToasts.Add(toast);
+                }
+
+                index++;
+            }
         }
 
         private static void DispatchToUi(Action action)
@@ -233,5 +272,6 @@ namespace DriftBuster.Gui.Services
                 // Swallow cancellation; toast was dismissed manually.
             }
         }
+    }
     }
 }

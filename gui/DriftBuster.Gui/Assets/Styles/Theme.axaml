@@ -183,4 +183,24 @@
   <Style Selector="Separator">
     <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
   </Style>
+  <Style Selector="Button:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <Style Selector="ComboBox:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <Style Selector="TextBox:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <Style Selector="ToggleSwitch:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
 </Styles>

@@ -4,57 +4,93 @@
              xmlns:services="using:DriftBuster.Gui.Services"
              x:Class="DriftBuster.Gui.Views.ToastHost"
              x:DataType="services:IToastService">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ToastCardTemplate"
+                  x:DataType="services:ToastNotification">
+      <Border Classes="toast-card"
+              Background="{Binding Level, Converter={x:Static conv:ToastLevelToBrushConverter.Instance}}">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+          <TextBlock Text="{Binding Level, Converter={x:Static conv:ToastLevelToIconConverter.Instance}}"
+                     FontSize="{DynamicResource Toast.IconFontSize}"
+                     VerticalAlignment="Center"
+                     Foreground="{DynamicResource Brush.Toast.Foreground}" />
+          <StackPanel Grid.Column="1" Spacing="{DynamicResource Toast.InnerSpacing}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <TextBlock Text="{Binding Title}"
+                         FontWeight="SemiBold"
+                         FontSize="15"
+                         Foreground="{DynamicResource Brush.Toast.Foreground}" />
+              <TextBlock Grid.Column="1"
+                         Text="{Binding TimestampText}"
+                         FontSize="11"
+                         Foreground="{DynamicResource Brush.Toast.Timestamp}"
+                         HorizontalAlignment="Right" />
+            </Grid>
+            <TextBlock Text="{Binding Message}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource Brush.Toast.Foreground}" />
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8"
+                        HorizontalAlignment="Right">
+              <Button Content="{Binding SecondaryLabel}"
+                      Classes="outline"
+                      Command="{Binding SecondaryCommand}"
+                      IsVisible="{Binding SecondaryCommand}"
+                      Foreground="{DynamicResource Brush.Toast.Foreground}"
+                      Background="Transparent" />
+              <Button Content="{Binding PrimaryLabel}"
+                      Classes="outline"
+                      Command="{Binding PrimaryCommand}"
+                      IsVisible="{Binding PrimaryCommand}"
+                      Foreground="{DynamicResource Brush.Toast.Foreground}"
+                      Background="Transparent" />
+              <Button Content="Dismiss"
+                      Classes="outline"
+                      Command="{Binding DismissCommand}"
+                      Foreground="{DynamicResource Brush.Toast.Foreground}"
+                      Background="Transparent" />
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
   <StackPanel Orientation="Vertical"
               Spacing="8"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
               Margin="0,24,24,0">
-    <ItemsControl ItemsSource="{Binding ActiveToasts}">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="services:ToastNotification">
-          <Border Padding="14"
-                  CornerRadius="12"
-                  Background="{Binding Level, Converter={x:Static conv:ToastLevelToBrushConverter.Instance}}"
-                  Width="320"
-                  Opacity="0.95">
-            <StackPanel Spacing="8">
-              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Title}"
-                           FontWeight="SemiBold"
-                           Foreground="White"
-                           FontSize="15" />
-                <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:T}'}"
-                           Foreground="#F8FAFC"
-                           FontSize="11"
-                           HorizontalAlignment="Right"
-                           Opacity="0.7" />
-              </StackPanel>
-              <TextBlock Text="{Binding Message}"
-                         Foreground="#F8FAFC"
-                         TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                <Button Content="{Binding SecondaryLabel}"
-                        Classes="outline"
-                        Command="{Binding SecondaryCommand}"
-                        IsVisible="{Binding SecondaryCommand}"
-                        Foreground="White"
-                        Background="Transparent" />
-                <Button Content="{Binding PrimaryLabel}"
-                        Classes="outline"
-                        Command="{Binding PrimaryCommand}"
-                        IsVisible="{Binding PrimaryCommand}"
-                        Foreground="White"
-                        Background="Transparent" />
-                <Button Content="Dismiss"
-                        Classes="outline"
-                        Command="{Binding DismissCommand}"
-                        Foreground="White"
-                        Background="Transparent" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
+    <ItemsControl ItemsSource="{Binding ActiveToasts}"
+                  ItemTemplate="{StaticResource ToastCardTemplate}"
+                  HorizontalAlignment="Right">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Spacing="8" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
     </ItemsControl>
+
+    <Expander Margin="0,8,0,0"
+              Width="{DynamicResource Toast.Width}"
+              HorizontalAlignment="Right"
+              IsVisible="{Binding OverflowToasts.Count, Converter={x:Static conv:CountToBooleanConverter.Instance}}">
+      <Expander.Header>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <TextBlock Text="More alerts"
+                     Foreground="{DynamicResource Brush.Toast.OverflowHeader}" />
+          <TextBlock Text="{Binding OverflowToasts.Count, StringFormat='({0})'}"
+                     Foreground="{DynamicResource Brush.Toast.OverflowHeader}" />
+        </StackPanel>
+      </Expander.Header>
+      <ItemsControl ItemsSource="{Binding OverflowToasts}"
+                    ItemTemplate="{StaticResource ToastCardTemplate}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="8" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
+    </Expander>
   </StackPanel>
 </UserControl>

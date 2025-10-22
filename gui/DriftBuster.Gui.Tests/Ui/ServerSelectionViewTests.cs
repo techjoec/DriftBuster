@@ -155,6 +155,67 @@ public sealed class ServerSelectionViewTests
     }
 
     [AvaloniaFact]
+    public async Task SaveSessionShouldCaptureCatalogSortDescriptor()
+    {
+        var cache = new InMemorySessionCacheService();
+        var viewModel = CreateViewModel(cache: cache);
+
+        viewModel.PersistSessionState = true;
+        viewModel.CatalogViewModel.SetSortDescriptor(CatalogSortColumns.Drift, descending: false);
+        viewModel.ActivityFilter = ActivityFilterOption.Exports;
+
+        await viewModel.SaveSessionCommand.ExecuteAsync(null);
+
+        cache.Snapshot.Should().NotBeNull();
+        cache.Snapshot!.CatalogSort.Should().NotBeNull();
+        cache.Snapshot!.CatalogSort!.Column.Should().Be(CatalogSortColumns.Drift);
+        cache.Snapshot.CatalogSort.Descending.Should().BeFalse();
+        cache.Snapshot.ActivityFilter.Should().Be(ActivityFilterOption.Exports.ToString());
+    }
+
+    [AvaloniaFact]
+    public void LoadSessionRestoresCatalogSortDescriptor()
+    {
+        var cache = new InMemorySessionCacheService
+        {
+            Snapshot = new ServerSelectionCache
+            {
+                PersistSession = true,
+                CatalogSort = new CatalogSortCache
+                {
+                    Column = CatalogSortColumns.Format,
+                    Descending = false,
+                },
+                ActivityFilter = ActivityFilterOption.Warnings.ToString(),
+            },
+        };
+
+        var viewModel = CreateViewModel(cache: cache);
+
+        SpinWait.SpinUntil(() => viewModel.PersistSessionState, TimeSpan.FromSeconds(1)).Should().BeTrue();
+        viewModel.CatalogViewModel.SortDescriptor.ColumnKey.Should().Be(CatalogSortColumns.Format);
+        viewModel.CatalogViewModel.SortDescriptor.Descending.Should().BeFalse();
+        viewModel.ActivityFilter.Should().Be(ActivityFilterOption.Warnings);
+    }
+
+    [AvaloniaFact]
+    public async Task CopyJsonCommandUpdatesStatus()
+    {
+        var toast = new ToastService(action => action());
+        var viewModel = CreateViewModel(toast: toast);
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+        var firstEntry = viewModel.CatalogViewModel.FilteredEntries.First();
+        viewModel.CatalogViewModel.DrilldownCommand.Execute(firstEntry);
+
+        viewModel.DrilldownViewModel.Should().NotBeNull();
+        await viewModel.DrilldownViewModel!.CopyJsonCommand.ExecuteAsync(null);
+
+        viewModel.StatusBanner.Should().Contain("JSON copied");
+        toast.ActiveToasts.Should().Contain(toastNotification => toastNotification.Title.Contains("JSON", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [AvaloniaFact]
     public void ClearingHistoryShouldClearCacheWhenPersistenceEnabled()
     {
         var cache = new InMemorySessionCacheService

@@ -4,5 +4,6 @@
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://DriftBuster.Gui/Assets/Styles/Theme.axaml" />
+    <StyleInclude Source="avares://DriftBuster.Gui/Assets/Styles/Notifications.axaml" />
   </Application.Styles>
 </Application>

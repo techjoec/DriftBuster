@@ -78,6 +78,12 @@ namespace DriftBuster.Gui.Services
 
         [JsonPropertyName("activities")]
         public List<ActivityCacheEntry> Activities { get; set; } = new();
+
+        [JsonPropertyName("catalog_sort")]
+        public CatalogSortCache? CatalogSort { get; set; }
+
+        [JsonPropertyName("activity_filter")]
+        public string? ActivityFilter { get; set; }
     }
 
     public sealed class ServerSelectionCacheEntry
@@ -111,5 +117,17 @@ namespace DriftBuster.Gui.Services
 
         [JsonPropertyName("detail")]
         public string? Detail { get; set; }
+
+        [JsonPropertyName("category")]
+        public string? Category { get; set; }
+    }
+
+    public sealed class CatalogSortCache
+    {
+        [JsonPropertyName("column")]
+        public string Column { get; set; } = string.Empty;
+
+        [JsonPropertyName("descending")]
+        public bool Descending { get; set; }
     }
 }

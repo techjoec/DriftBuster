@@ -84,6 +84,7 @@ namespace DriftBuster.Gui.ViewModels
             BackCommand = new RelayCommand(() => BackRequested?.Invoke(this, EventArgs.Empty));
             ExportHtmlCommand = new AsyncRelayCommand(() => RaiseExportAsync(ExportFormat.Html));
             ExportJsonCommand = new AsyncRelayCommand(() => RaiseExportAsync(ExportFormat.Json));
+            CopyJsonCommand = new AsyncRelayCommand(CopyJsonAsync);
             ReScanSelectedCommand = new RelayCommand(RaiseReScanRequested, () => Servers.Any(server => server.IsSelected));
             SelectAllCommand = new RelayCommand(() => SetSelection(true));
             SelectNoneCommand = new RelayCommand(() => SetSelection(false));
@@ -139,11 +140,19 @@ namespace DriftBuster.Gui.ViewModels
 
         public ConfigDrilldownServerViewModel? BaselineServer => Servers.FirstOrDefault(server => server.HostId == BaselineHostId);
 
+        public string BaselineLabel => BaselineServer?.Label ?? "Not assigned";
+
+        public string BaselineHostSummary => BaselineServer is null
+            ? "Baseline host not assigned."
+            : $"{BaselineServer.Label} ({BaselineServer.HostId})";
+
         public IRelayCommand BackCommand { get; }
 
         public IAsyncRelayCommand ExportHtmlCommand { get; }
 
         public IAsyncRelayCommand ExportJsonCommand { get; }
+
+        public IAsyncRelayCommand CopyJsonCommand { get; }
 
         public IRelayCommand ReScanSelectedCommand { get; }
 
@@ -156,6 +165,8 @@ namespace DriftBuster.Gui.ViewModels
         public event EventHandler? BackRequested;
 
         public event EventHandler<ConfigDrilldownExportRequest>? ExportRequested;
+
+        public event EventHandler<string>? CopyJsonRequested;
 
         public event EventHandler<IReadOnlyList<string>>? ReScanRequested;
 
@@ -221,6 +232,13 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             ReScanRequested?.Invoke(this, selected);
+        }
+
+        private Task CopyJsonAsync()
+        {
+            var payload = BuildJsonPayload();
+            CopyJsonRequested?.Invoke(this, payload);
+            return Task.CompletedTask;
         }
 
         private Task RaiseExportAsync(ExportFormat format)

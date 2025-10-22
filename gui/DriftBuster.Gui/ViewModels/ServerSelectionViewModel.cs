@@ -30,6 +30,8 @@ namespace DriftBuster.Gui.ViewModels
     {
         All,
         Errors,
+        Warnings,
+        Exports,
     }
 
     public sealed class ScanScopeOption
@@ -79,6 +81,8 @@ namespace DriftBuster.Gui.ViewModels
             {
                 EnsureDefaultRoot();
             }
+
+            RefreshValidationSummary();
         }
 
         public int Index { get; }
@@ -111,9 +115,17 @@ namespace DriftBuster.Gui.ViewModels
         [ObservableProperty]
         private string? _rootInputError;
 
+        [ObservableProperty]
+        private string _validationSummary = "All roots ready.";
+
         public bool CanRetry => RunState == ServerScanStatus.Failed;
 
         public bool HasCachedResult => RunState is ServerScanStatus.Cached or ServerScanStatus.Succeeded;
+
+        partial void OnRootInputErrorChanged(string? value)
+        {
+            RefreshValidationSummary();
+        }
 
         partial void OnIsEnabledChanged(bool value)
         {
@@ -127,6 +139,7 @@ namespace DriftBuster.Gui.ViewModels
                 MarkState(ServerScanStatus.Skipped, "Disabled");
             }
 
+            RefreshValidationSummary();
             _owner.NotifyServerToggled(this);
         }
 
@@ -153,6 +166,50 @@ namespace DriftBuster.Gui.ViewModels
             {
                 LastRunAt = null;
             }
+        }
+
+        internal void RefreshValidationSummary()
+        {
+            ValidationSummary = BuildValidationSummary();
+        }
+
+        private string BuildValidationSummary()
+        {
+            if (!string.IsNullOrWhiteSpace(RootInputError))
+            {
+                return RootInputError!;
+            }
+
+            if (!IsEnabled)
+            {
+                return "Host disabled; validation paused.";
+            }
+
+            if (Roots.Count == 0)
+            {
+                return "No roots configured.";
+            }
+
+            var invalidMessages = Roots
+                .Where(root => root.ValidationState == RootValidationState.Invalid)
+                .Select(root => string.IsNullOrWhiteSpace(root.StatusMessage) ? "Root requires attention." : root.StatusMessage!)
+                .Distinct()
+                .ToList();
+
+            if (invalidMessages.Count > 0)
+            {
+                return string.Join(" ", invalidMessages);
+            }
+
+            var pendingCount = Roots.Count(root => root.ValidationState == RootValidationState.Pending);
+            if (pendingCount > 0)
+            {
+                return pendingCount == 1
+                    ? "One root pending validation."
+                    : $"{pendingCount} roots pending validation.";
+            }
+
+            return "All roots ready.";
         }
 
         internal void EnsureDefaultRoot()
@@ -302,6 +359,8 @@ namespace DriftBuster.Gui.ViewModels
         {
             ActivityFilterOption.All,
             ActivityFilterOption.Errors,
+            ActivityFilterOption.Warnings,
+            ActivityFilterOption.Exports,
         });
 
         [ObservableProperty]
@@ -367,6 +426,7 @@ namespace DriftBuster.Gui.ViewModels
                 current.BackRequested -= OnDrilldownBackRequested;
                 current.ReScanRequested -= OnDrilldownReScanRequested;
                 current.ExportRequested -= OnDrilldownExportRequested;
+                current.CopyJsonRequested -= OnDrilldownCopyJsonRequested;
             }
         }
 
@@ -377,6 +437,7 @@ namespace DriftBuster.Gui.ViewModels
                 value.BackRequested += OnDrilldownBackRequested;
                 value.ReScanRequested += OnDrilldownReScanRequested;
                 value.ExportRequested += OnDrilldownExportRequested;
+                value.CopyJsonRequested += OnDrilldownCopyJsonRequested;
             }
 
             ShowDrilldownCommand.NotifyCanExecuteChanged();
@@ -418,6 +479,7 @@ namespace DriftBuster.Gui.ViewModels
                 root.StatusMessage = result.Message;
             }
 
+            slot.RefreshValidationSummary();
             RunAllCommand.NotifyCanExecuteChanged();
             RunMissingCommand.NotifyCanExecuteChanged();
         }
@@ -444,6 +506,16 @@ namespace DriftBuster.Gui.ViewModels
 
                 PersistSessionState = snapshot.PersistSession;
 
+                if (snapshot.CatalogSort is not null)
+                {
+                    CatalogViewModel.RestoreSortDescriptor(new CatalogSortDescriptor(snapshot.CatalogSort.Column, snapshot.CatalogSort.Descending));
+                }
+
+                if (!string.IsNullOrWhiteSpace(snapshot.ActivityFilter) && Enum.TryParse<ActivityFilterOption>(snapshot.ActivityFilter, true, out var savedFilter))
+                {
+                    ActivityFilter = savedFilter;
+                }
+
                 _activityEntries.Clear();
                 if (snapshot.Activities is { Count: > 0 })
                 {
@@ -454,7 +526,10 @@ namespace DriftBuster.Gui.ViewModels
                             severity = ActivitySeverity.Info;
                         }
 
-                        var entryVm = new ActivityEntryViewModel(severity, activity.Summary, activity.Detail ?? string.Empty, activity.Timestamp);
+                        var category = Enum.TryParse<ActivityCategory>(activity.Category ?? nameof(ActivityCategory.General), true, out var parsedCategory)
+                            ? parsedCategory
+                            : ActivityCategory.General;
+                        var entryVm = new ActivityEntryViewModel(severity, activity.Summary, activity.Detail ?? string.Empty, activity.Timestamp, category);
                         _activityEntries.Insert(0, entryVm);
                     }
                     RefreshActivityFilter();
@@ -526,6 +601,7 @@ namespace DriftBuster.Gui.ViewModels
             var result = ValidateRoot(slot, entry);
             entry.ValidationState = result.State;
             entry.StatusMessage = result.Message;
+            slot.RefreshValidationSummary();
         }
 
         private void OnRemoveRoot(RootEntryViewModel? entry)
@@ -546,6 +622,7 @@ namespace DriftBuster.Gui.ViewModels
                 entry.StatusMessage = "At least one root is required.";
                 entry.ValidationState = RootValidationState.Invalid;
                 LogActivity(ActivitySeverity.Warning, $"Skipped removing last root from {slot.Label}.");
+                slot.RefreshValidationSummary();
                 return;
             }
 
@@ -705,8 +782,15 @@ namespace DriftBuster.Gui.ViewModels
                             Severity = entry.Severity.ToString(),
                             Summary = entry.Summary,
                             Detail = entry.Detail,
+                            Category = entry.Category.ToString(),
                         })
                         .ToList(),
+                    CatalogSort = new CatalogSortCache
+                    {
+                        Column = CatalogViewModel.SortDescriptor.ColumnKey,
+                        Descending = CatalogViewModel.SortDescriptor.Descending,
+                    },
+                    ActivityFilter = ActivityFilter.ToString(),
                 };
 
                 await _cacheService.SaveAsync(snapshot).ConfigureAwait(false);
@@ -903,6 +987,23 @@ namespace DriftBuster.Gui.ViewModels
             _ = RunScopedAsync(hosts);
         }
 
+        private void OnDrilldownCopyJsonRequested(object? sender, string payload)
+        {
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return;
+            }
+
+            _ = CopyToClipboardAsync(payload);
+            StatusBanner = "Sanitized drilldown JSON copied to clipboard.";
+            _toastService.Show(
+                "JSON copied",
+                "Drilldown payload is available in the clipboard.",
+                ToastLevel.Info,
+                TimeSpan.FromSeconds(3));
+            LogActivity(ActivitySeverity.Info, "Copied drilldown JSON", DrilldownViewModel?.DisplayName ?? string.Empty, ActivityCategory.Export);
+        }
+
         private void OnDrilldownExportRequested(object? sender, ConfigDrilldownExportRequest request)
         {
             _ = HandleExportAsync(request);
@@ -914,7 +1015,7 @@ namespace DriftBuster.Gui.ViewModels
             {
                 await ExportCallback(request).ConfigureAwait(false);
                 StatusBanner = $"Exported {request.DisplayName} ({request.Format}).";
-                LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName} ({request.Format})", request.Payload);
+                LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName} ({request.Format})", request.Payload, ActivityCategory.Export);
                 return;
             }
 
@@ -926,7 +1027,7 @@ namespace DriftBuster.Gui.ViewModels
             var path = Path.Combine(directory, fileName);
             await File.WriteAllTextAsync(path, request.Payload).ConfigureAwait(false);
             StatusBanner = $"Exported {request.DisplayName} to {path}.";
-            LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName}", path);
+            LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName}", path, ActivityCategory.Export);
         }
 
         private static string SanitizeFileName(string name)
@@ -951,9 +1052,9 @@ namespace DriftBuster.Gui.ViewModels
             CopyActivityRequested?.Invoke(this, entry.ClipboardText);
         }
 
-        private void LogActivity(ActivitySeverity severity, string summary, string? detail = null)
+        private void LogActivity(ActivitySeverity severity, string summary, string? detail = null, ActivityCategory category = ActivityCategory.General)
         {
-            var entry = new ActivityEntryViewModel(severity, summary, detail ?? string.Empty, DateTimeOffset.UtcNow);
+            var entry = new ActivityEntryViewModel(severity, summary, detail ?? string.Empty, DateTimeOffset.UtcNow, category);
             _activityEntries.Insert(0, entry);
             while (_activityEntries.Count > MaxActivityItems)
             {
@@ -970,7 +1071,15 @@ namespace DriftBuster.Gui.ViewModels
 
             foreach (var entry in _activityEntries)
             {
-                if (ActivityFilter == ActivityFilterOption.Errors && !entry.IsError)
+                var include = ActivityFilter switch
+                {
+                    ActivityFilterOption.Errors => entry.IsError,
+                    ActivityFilterOption.Warnings => entry.IsWarning,
+                    ActivityFilterOption.Exports => entry.IsExport,
+                    _ => true,
+                };
+
+                if (!include)
                 {
                     continue;
                 }
