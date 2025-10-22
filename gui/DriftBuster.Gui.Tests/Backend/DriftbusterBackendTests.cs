@@ -125,7 +125,7 @@ public sealed class DriftbusterBackendTests
 
             var cacheDirectory = request!.GetType().GetProperty("CacheDirectory")!.GetValue(request)!.ToString();
             cacheDirectory.Should().NotBeNullOrWhiteSpace();
-            cacheDirectory!.Should().StartWith(_fixture.Root, StringComparison.OrdinalIgnoreCase);
+            cacheDirectory!.StartsWith(_fixture.Root, StringComparison.OrdinalIgnoreCase).Should().BeTrue();
             cacheDirectory.Should().Contain(Path.Combine("cache", "diffs"));
 
             var migratedFile = Path.Combine(cacheDirectory, "sample.json");

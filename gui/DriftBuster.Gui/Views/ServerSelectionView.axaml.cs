@@ -77,7 +77,7 @@ namespace DriftBuster.Gui.Views
             data.Set(ServerDragDataFormat, slot.HostId);
             data.Set(DataFormats.Text, slot.Label);
 
-            await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+            DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
         }
 
         private void OnServerCardDragOver(object? sender, DragEventArgs e)

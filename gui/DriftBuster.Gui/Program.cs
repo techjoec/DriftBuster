@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 
 using Avalonia;
+using Avalonia.Media;
 
 using Velopack;
 
@@ -20,6 +21,17 @@ namespace DriftBuster.Gui
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
+                .With(new FontManagerOptions
+                {
+                    DefaultFamilyName = "Inter",
+                    FontFallbacks = new[]
+                    {
+                        new FontFallback
+                        {
+                            FontFamily = new FontFamily("Inter")
+                        }
+                    }
+                })
                 .WithInterFont()
                 .LogToTrace();
 
@@ -39,6 +51,10 @@ namespace DriftBuster.Gui
                 builder = configure?.Invoke(builder) ?? builder;
 
                 builder.SetupWithoutStarting();
+                if (Application.Current is App app)
+                {
+                    App.EnsureFontResources(app);
+                }
                 _headlessInitialized = true;
 
                 return HeadlessScope.Instance;

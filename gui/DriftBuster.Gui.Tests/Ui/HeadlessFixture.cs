@@ -15,7 +15,7 @@ public sealed class HeadlessFixture : IAsyncLifetime
     {
         _scope = Program.EnsureHeadless(builder => builder.UseHeadless(new AvaloniaHeadlessPlatformOptions
         {
-            UseHeadlessDrawing = false,
+            UseHeadlessDrawing = true,
         }));
 
         return Task.CompletedTask;
