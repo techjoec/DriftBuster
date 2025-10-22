@@ -14,6 +14,7 @@
 - [ ] P5 — Diff planner MRU lists and JSON dual-pane still in discovery; capture UX requirements.
 - [ ] P6 — Virtualisation and buffered dispatcher work blocked on telemetry perf baselines.
 - [ ] P7 — Theme palette expansion and breakpoint tokens deferred until post-P6 metrics.
+- [ ] P8 — Results catalog/API alignment blocked on Avalonia 11.2 changes (DataGrid sorting + resource lookups).
 - [ ] S1 — Coverage gaps to close once P3/P4 land; add virtualization smoke harness.
 - [ ] S2 — Screenshot/decision log refresh scheduled after P3 visual updates.
 - [x] S3 — tmux hygiene script, benchmark template, and documentation added.
@@ -25,6 +26,7 @@
 | P5 | Diff planner productivity | `DiffViewModel.cs`, backend diff payload | MRU browse history, JSON dual-pane |
 | P6 | Performance & async | `ServerSelectionView.axaml`, dispatcher services | Virtualization, buffered progress queue |
 | P7 | Theme & responsiveness | `App.axaml`, shared resources, settings storage | High-contrast themes, breakpoint tokens |
+| P8 | Results catalog alignment | `ResultsCatalogView.axaml`, toast converters | Avalonia DataGrid sorting, resource lookup fixes |
 | S1 | Testing & coverage | `tests/**`, `gui/DriftBuster.Gui.Tests/**`, `scripts/verify_coverage.sh` | New cases, coverage gates, perf diagnostics |
 | S2 | Docs & design references | `docs/windows-gui-guide.md`, `docs/ux-refresh.md`, `notes/status/gui-research.md` | Screenshot refresh, decision logs |
 | S3 | Execution hygiene | tmux baseline, scripts | Session lifecycle, telemetry logging |
@@ -87,6 +89,20 @@
 
 ---
 
+## P8. Results Catalog Alignment
+**Goal:** Restore catalog sorting and toast visuals after Avalonia 11.2 API changes.
+- **Observations**: `ResultsCatalogView` still relies on `DataGridSortDirection`/`DataGridSortingEventArgs`, and toast converters call `Application.TryFindResource`, both removed in Avalonia 11.2; GUI build currently fails.
+- **Solution Outline**:
+  1. **Sorting**: Swap to `DataGridColumnSortDescription`/`SortDescription` helpers or a custom `IDataGridSortDescription` binding; persist descriptor mapping in the view model.
+  2. **Converters**: Replace `Application.TryFindResource` usage with `Application.Current?.FindResource` or `IResourceProvider` lookup; ensure null-safe fallbacks.
+  3. **Unit tests**: Extend UI/view-model tests to cover manual sort toggles under the new API and verify converters degrade gracefully when resources are missing.
+- **Engineering Tasks**:
+  - Refactor `ResultsCatalogView.axaml.cs` to use supported Avalonia 11.2 sorting hooks and remove deprecated types.
+  - Update toast converters to use the new resource retrieval pattern and cover with focused unit tests.
+  - Add regression tests in `ResultsCatalogViewTests` (or create new suite) ensuring user-driven sort updates propagate to the descriptor and that columns reflect the state.
+  - Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` and document the fix in release notes.
+- **Validation**: Passing GUI test suite, manual smoke verifying sort toggling and toast icon/colour rendering.
+
 ## S1. Testing & Coverage Expansion
 - **Python**: Add scenarios in `tests/multi_server/test_multi_server.py` for offline host mix, redacted drift, and cache invalidation; ensure coverage ≥90% after expansion.
 - **Avalonia**: Extend `gui/DriftBuster.Gui.Tests/Ui/` with new suites (`ToastOverflowTests`, `DiffJsonPaneTests`, `ServerReorderTests`, `VirtualizationSmokeTests`).
@@ -100,6 +116,7 @@
 - `notes/status/gui-research.md`: Log profiling metrics, assumptions, open questions; link to before/after assets.
 - `CHANGELOG.md`: Add entries under upcoming release section summarising UX improvements and performance updates.
 - Scrub docs that reference `artifacts/cache/*` (e.g. multi-server demo, Windows guide, README) to point at the new user-data storage path and call out upgrade persistence.
+- Document Avalonia 11.2 migration notes (DataGrid sorting/resource lookups) in `docs/windows-gui-guide.md` or new troubleshooting appendix.
 
 ## S3. Execution Hygiene
 - Always `tmux ls` before creating new sessions; retire stale `codexcli-<pid>-*` sessions via `tmux kill-session` once tasks finish.
@@ -110,3 +127,11 @@
 - Track work via section IDs (P1–P7, S1–S3); annotate completion dates and PR links inline.
 - For each completed slice, record assumptions, validation evidence, residual risks in subsections.
 - Re-run relevant automated suites plus `scripts/verify_coverage.sh` at phase close and log outcomes in `notes/status/gui-research.md`.
+
+## Roadmap to Done
+- **Phase 1 – Guardrails Ready (P4 + docs)**: finish multi-server drag/drop and persistence, land cache/session migrations, scrub docs, and validate with Python + backend tests.
+- **Phase 2 – Diff Productivity (P5)**: ship MRU paths, JSON dual-pane, backend payload updates, and associated Avalonia headless tests.
+- **Phase 3 – Responsive & Fast (P6/P7)**: integrate virtualization and buffered dispatcher, capture perf baselines, then expand theme palette and breakpoint tokens with visual docs.
+- **Phase 4 – Catalog Alignment (P8)**: refactor ResultsCatalog sorting and toast resources for Avalonia 11.2, unblock GUI test suite, and record migration guidance.
+- **S-track – Quality & Story (S1–S3)**: keep coverage ≥90%, refresh screenshots/decision logs, and maintain tmux/benchmark hygiene alongside each phase.
+
