@@ -30,13 +30,13 @@ Open the desktop preview (`dotnet run --project gui/DriftBuster.Gui/DriftBuster.
 Callout notes:
 - **[1] Host cards** – enable a slot, edit the label, and pick a baseline preference for reruns.
 - **[2] Scope chips** – switch between predefined scopes (e.g., `Program Files`, `AppData`) or stay with custom roots.
-- **[3] Roots list** – add, remove, or reorder roots. Inline badges show `pending`, `ok`, or `error` as validation completes.
-- **[4] Session cache toggle** – opt-in to save labels, scopes, and roots into your DriftBuster data root (for example `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`, `$XDG_DATA_HOME/DriftBuster/sessions/...`) when you click **Save session**.
+- **[3] Roots list** – add, remove, or reorder roots. Inline badges show `pending`, `ok`, or `error` as validation completes, and you can drag any host card to reorder the execution priority; baseline preference updates automatically.
+- **[4] Session cache toggle** – opt-in to save labels, scopes, root order, catalog filters, timeline state, and the last active tab into your DriftBuster data root (for example `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`, `$XDG_DATA_HOME/DriftBuster/sessions/...`) when you click **Save session**.
 - **[5] Guidance footer** – explains why a scan is blocked (missing roots, failed validation) and surfaces **Run all** and **Run missing only** actions.
 
 ### 2. Launch and Monitor a Scan
 
-- Click **Run all** once every active host shows a green root badge.
+- Click **Run all** once every active host shows a green root badge. The inline **View drilldown** button in the execution summary lets you jump straight from a host status row to the latest drilldown entry for that host.
 - Progress appears next to each host. Statuses cycle through `queued`, `running`, `succeeded`, `failed`, or `skipped`.
 - Toasts summarize completed runs, permission warnings, and retry hints. Open the activity timeline on the right to view a durable log of root changes, exports, and reruns.
 - Successful results are cached by `(host, root, config)` so rerunning only missing hosts is instant; the view reuses existing catalog entries while new work finishes.

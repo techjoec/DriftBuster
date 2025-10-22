@@ -85,7 +85,13 @@ namespace DriftBuster.Gui.ViewModels
             RefreshValidationSummary();
         }
 
-        public int Index { get; }
+        private int _index;
+
+        public int Index
+        {
+            get => _index;
+            internal set => SetProperty(ref _index, value);
+        }
 
         public string HostId { get; }
 
@@ -290,10 +296,12 @@ namespace DriftBuster.Gui.ViewModels
         private readonly IToastService _toastService;
         private readonly ISessionCacheService _cacheService;
         private readonly Dictionary<string, RootValidationResult> _validationCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly SemaphoreSlim _runGate = new(1, 1);
         private CancellationTokenSource? _runCancellation;
         private ServerScanResponse? _lastResponse;
         private readonly ObservableCollection<ActivityEntryViewModel> _activityEntries = new();
         private readonly ReadOnlyObservableCollection<ActivityEntryViewModel> _activityEntriesReadonly;
+        private readonly RelayCommand<string> _showDrilldownForHostCommand;
 
         private const int MaxActivityItems = 200;
 
@@ -318,8 +326,10 @@ namespace DriftBuster.Gui.ViewModels
             ClearHistoryCommand = new RelayCommand(OnClearHistory);
             SaveSessionCommand = new AsyncRelayCommand(SaveSessionAsync, () => PersistSessionState && !IsBusy);
             CopyActivityCommand = new RelayCommand<ActivityEntryViewModel>(OnCopyActivity, entry => entry is not null);
+            _showDrilldownForHostCommand = new RelayCommand<string>(OnShowDrilldownForHost, CanShowDrilldownForHost);
 
             Servers = new ObservableCollection<ServerSlotViewModel>(CreateDefaultServers());
+            ReindexServers();
             CatalogViewModel = new ResultsCatalogViewModel();
             CatalogViewModel.ReScanRequested += (_, hosts) => _ = RunScopedAsync(hosts);
             CatalogViewModel.DrilldownRequested += (_, entry) => LoadDrilldown(entry.ConfigId);
@@ -401,6 +411,8 @@ namespace DriftBuster.Gui.ViewModels
 
         public IRelayCommand ShowDrilldownCommand { get; }
 
+        public IRelayCommand<string> ShowDrilldownForHostCommand => _showDrilldownForHostCommand;
+
         public ResultsCatalogViewModel CatalogViewModel { get; }
 
         public ReadOnlyObservableCollection<ActivityEntryViewModel> ActivityEntries => _activityEntriesReadonly;
@@ -458,6 +470,7 @@ namespace DriftBuster.Gui.ViewModels
             OnPropertyChanged(nameof(HasActiveServers));
             RunAllCommand.NotifyCanExecuteChanged();
             RunMissingCommand.NotifyCanExecuteChanged();
+            _showDrilldownForHostCommand.NotifyCanExecuteChanged();
         }
 
         internal void NotifyScopeChanged(ServerSlotViewModel slot)
@@ -506,12 +519,38 @@ namespace DriftBuster.Gui.ViewModels
 
                 PersistSessionState = snapshot.PersistSession;
 
+                if (snapshot.CatalogFilters is not null)
+                {
+                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Coverage) && Enum.TryParse(snapshot.CatalogFilters.Coverage, true, out CoverageFilterOption coverageFilter))
+                    {
+                        CatalogViewModel.SelectedCoverageFilter = coverageFilter;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Severity) && Enum.TryParse(snapshot.CatalogFilters.Severity, true, out SeverityFilterOption severityFilter))
+                    {
+                        CatalogViewModel.SelectedSeverityFilter = severityFilter;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Format))
+                    {
+                        CatalogViewModel.SelectedFormat = snapshot.CatalogFilters.Format;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Baseline) && CatalogViewModel.BaselineOptions.Contains(snapshot.CatalogFilters.Baseline))
+                    {
+                        CatalogViewModel.SelectedBaseline = snapshot.CatalogFilters.Baseline;
+                    }
+
+                    CatalogViewModel.SearchText = snapshot.CatalogFilters.Search ?? string.Empty;
+                }
+
                 if (snapshot.CatalogSort is not null)
                 {
                     CatalogViewModel.RestoreSortDescriptor(new CatalogSortDescriptor(snapshot.CatalogSort.Column, snapshot.CatalogSort.Descending));
                 }
 
-                if (!string.IsNullOrWhiteSpace(snapshot.ActivityFilter) && Enum.TryParse<ActivityFilterOption>(snapshot.ActivityFilter, true, out var savedFilter))
+                var timelineFilter = snapshot.Timeline?.Filter ?? snapshot.ActivityFilter;
+                if (!string.IsNullOrWhiteSpace(timelineFilter) && Enum.TryParse<ActivityFilterOption>(timelineFilter, true, out var savedFilter))
                 {
                     ActivityFilter = savedFilter;
                 }
@@ -554,9 +593,28 @@ namespace DriftBuster.Gui.ViewModels
                     server.ResetStatus();
                 }
 
+                ReindexServers();
+                var activeView = (snapshot.ActiveView ?? string.Empty).Trim().ToLowerInvariant();
+                if (activeView == "catalog" && CatalogViewModel.HasEntries)
+                {
+                    IsViewingCatalog = true;
+                    IsViewingDrilldown = false;
+                }
+                else if (activeView == "drilldown" && DrilldownViewModel is not null)
+                {
+                    IsViewingCatalog = false;
+                    IsViewingDrilldown = true;
+                }
+                else
+                {
+                    IsViewingCatalog = false;
+                    IsViewingDrilldown = false;
+                }
+
                 StatusBanner = "Loaded saved session.";
                 ShowCatalogCommand.NotifyCanExecuteChanged();
                 LogActivity(ActivitySeverity.Success, "Loaded saved session", $"Restored {snapshot.Servers.Count} servers.");
+                _showDrilldownForHostCommand.NotifyCanExecuteChanged();
             }
             catch (Exception ex)
             {
@@ -668,58 +726,73 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            var plans = PreparePlans(retryOnly, scopedHostIds, out var cachedCount);
-            if (plans.Count == 0)
+            if (!await _runGate.WaitAsync(0).ConfigureAwait(false))
             {
-                StatusBanner = cachedCount > 0
-                    ? "All active hosts already have cached results."
-                    : "No servers ready to run.";
-                LogActivity(ActivitySeverity.Info, "No servers queued", cachedCount > 0 ? "All hosts served from cache." : "Enable or configure servers before running.");
+                StatusBanner = "Another multi-server run is already in progress.";
                 return;
             }
 
-            _runCancellation = new CancellationTokenSource();
-            IsBusy = true;
-            StatusBanner = retryOnly ? "Re-running missing hosts…" : "Running multi-server scan…";
-            IsViewingCatalog = false;
-            IsViewingDrilldown = false;
-            LogActivity(ActivitySeverity.Info, retryOnly ? "Re-running missing hosts" : "Running multi-server scan", $"Hosts queued: {plans.Count}, cached reused: {cachedCount}.");
-
             try
             {
-                var progress = new Progress<ScanProgress>(UpdateProgress);
-                var response = await _service.RunServerScansAsync(plans, progress, _runCancellation.Token).ConfigureAwait(false);
-                ApplyResults(response);
-                StatusBanner = "Scan complete.";
-                _toastService.Show(
-                    "Multi-server scan complete",
-                    $"Processed {plans.Count} host(s).",
-                    ToastLevel.Success,
-                    TimeSpan.FromSeconds(4));
-                LogActivity(ActivitySeverity.Success, "Scan complete", $"Processed {plans.Count} host(s). Cached reused: {cachedCount}.");
-            }
-            catch (OperationCanceledException)
-            {
-                StatusBanner = "Scan cancelled.";
-                _toastService.Show("Scan cancelled", "Active scan was cancelled.", ToastLevel.Info, TimeSpan.FromSeconds(3));
-                LogActivity(ActivitySeverity.Info, "Scan cancelled.");
-            }
-            catch (Exception ex)
-            {
-                StatusBanner = $"Scan failed: {ex.Message}";
-                _toastService.Show(
-                    "Multi-server scan failed",
-                    ex.Message,
-                    ToastLevel.Error,
-                    TimeSpan.FromSeconds(10),
-                    new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
-                LogActivity(ActivitySeverity.Error, "Scan failed", ex.ToString());
+                var plans = PreparePlans(retryOnly, scopedHostIds, out var cachedCount);
+                if (plans.Count == 0)
+                {
+                    StatusBanner = cachedCount > 0
+                        ? "All active hosts already have cached results."
+                        : "No servers ready to run.";
+                    LogActivity(ActivitySeverity.Info, "No servers queued", cachedCount > 0 ? "All hosts served from cache." : "Enable or configure servers before running.");
+                    return;
+                }
+
+                _runCancellation = new CancellationTokenSource();
+                IsBusy = true;
+                StatusBanner = retryOnly ? "Re-running missing hosts…" : "Running multi-server scan…";
+                IsViewingCatalog = false;
+                IsViewingDrilldown = false;
+                LogActivity(ActivitySeverity.Info, retryOnly ? "Re-running missing hosts" : "Running multi-server scan", $"Hosts queued: {plans.Count}, cached reused: {cachedCount}.");
+                _showDrilldownForHostCommand.NotifyCanExecuteChanged();
+
+                try
+                {
+                    var progress = new Progress<ScanProgress>(UpdateProgress);
+                    var response = await _service.RunServerScansAsync(plans, progress, _runCancellation.Token).ConfigureAwait(false);
+                    ApplyResults(response);
+                    StatusBanner = "Scan complete.";
+                    _toastService.Show(
+                        "Multi-server scan complete",
+                        $"Processed {plans.Count} host(s).",
+                        ToastLevel.Success,
+                        TimeSpan.FromSeconds(4));
+                    LogActivity(ActivitySeverity.Success, "Scan complete", $"Processed {plans.Count} host(s). Cached reused: {cachedCount}.");
+                }
+                catch (OperationCanceledException)
+                {
+                    StatusBanner = "Scan cancelled.";
+                    _toastService.Show("Scan cancelled", "Active scan was cancelled.", ToastLevel.Info, TimeSpan.FromSeconds(3));
+                    LogActivity(ActivitySeverity.Info, "Scan cancelled.");
+                }
+                catch (Exception ex)
+                {
+                    StatusBanner = $"Scan failed: {ex.Message}";
+                    _toastService.Show(
+                        "Multi-server scan failed",
+                        ex.Message,
+                        ToastLevel.Error,
+                        TimeSpan.FromSeconds(10),
+                        new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
+                    LogActivity(ActivitySeverity.Error, "Scan failed", ex.ToString());
+                }
+                finally
+                {
+                    IsBusy = false;
+                    _runCancellation?.Dispose();
+                    _runCancellation = null;
+                    _showDrilldownForHostCommand.NotifyCanExecuteChanged();
+                }
             }
             finally
             {
-                IsBusy = false;
-                _runCancellation?.Dispose();
-                _runCancellation = null;
+                _runGate.Release();
             }
         }
 
@@ -750,8 +823,10 @@ namespace DriftBuster.Gui.ViewModels
             CatalogViewModel.Reset();
             ShowCatalogCommand.NotifyCanExecuteChanged();
             DrilldownViewModel = null;
+            _lastResponse = null;
             IsViewingCatalog = false;
             IsViewingDrilldown = false;
+            _showDrilldownForHostCommand.NotifyCanExecuteChanged();
         }
 
         private async Task SaveSessionAsync()
@@ -766,6 +841,7 @@ namespace DriftBuster.Gui.ViewModels
             {
                 var snapshot = new ServerSelectionCache
                 {
+                    SchemaVersion = SessionCacheService.CurrentSchemaVersion,
                     PersistSession = true,
                     Servers = Servers.Select(server => new ServerSelectionCacheEntry
                     {
@@ -791,6 +867,20 @@ namespace DriftBuster.Gui.ViewModels
                         Descending = CatalogViewModel.SortDescriptor.Descending,
                     },
                     ActivityFilter = ActivityFilter.ToString(),
+                    CatalogFilters = new CatalogFilterCache
+                    {
+                        Coverage = CatalogViewModel.SelectedCoverageFilter.ToString(),
+                        Severity = CatalogViewModel.SelectedSeverityFilter.ToString(),
+                        Format = CatalogViewModel.SelectedFormat,
+                        Baseline = CatalogViewModel.SelectedBaseline,
+                        Search = CatalogViewModel.SearchText,
+                    },
+                    Timeline = new ActivityTimelineCache
+                    {
+                        Filter = ActivityFilter.ToString(),
+                        LastOpenedHostId = DrilldownViewModel?.BaselineHostId,
+                    },
+                    ActiveView = IsViewingDrilldown ? "drilldown" : (IsViewingCatalog ? "catalog" : "setup"),
                 };
 
                 await _cacheService.SaveAsync(snapshot).ConfigureAwait(false);
@@ -894,6 +984,7 @@ namespace DriftBuster.Gui.ViewModels
         private void ApplyResults(ServerScanResponse? response)
         {
             _lastResponse = response;
+            _showDrilldownForHostCommand.NotifyCanExecuteChanged();
 
             if (response?.Results is not null)
             {
@@ -947,6 +1038,128 @@ namespace DriftBuster.Gui.ViewModels
             {
                 IsViewingCatalog = CatalogViewModel.HasEntries;
             }
+        }
+
+        internal void ReorderServer(string sourceHostId, string targetHostId, bool insertBefore)
+        {
+            if (string.IsNullOrWhiteSpace(sourceHostId) || string.IsNullOrWhiteSpace(targetHostId))
+            {
+                return;
+            }
+
+            if (string.Equals(sourceHostId, targetHostId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (IsBusy)
+            {
+                return;
+            }
+
+            var source = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, sourceHostId, StringComparison.OrdinalIgnoreCase));
+            var target = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, targetHostId, StringComparison.OrdinalIgnoreCase));
+            if (source is null || target is null)
+            {
+                return;
+            }
+
+            MoveServerInternal(source, target, insertBefore);
+        }
+
+        internal bool CanAcceptReorder(string? sourceHostId, ServerSlotViewModel target)
+        {
+            if (IsBusy)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(sourceHostId))
+            {
+                return false;
+            }
+
+            return !string.Equals(sourceHostId, target.HostId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void MoveServerInternal(ServerSlotViewModel source, ServerSlotViewModel target, bool insertBefore)
+        {
+            var currentIndex = Servers.IndexOf(source);
+            var targetIndex = Servers.IndexOf(target);
+            if (currentIndex < 0 || targetIndex < 0)
+            {
+                return;
+            }
+
+            var desiredIndex = insertBefore ? targetIndex : targetIndex + 1;
+            if (currentIndex < desiredIndex)
+            {
+                desiredIndex--;
+            }
+
+            if (desiredIndex < 0 || desiredIndex >= Servers.Count)
+            {
+                desiredIndex = Math.Clamp(desiredIndex, 0, Servers.Count - 1);
+            }
+
+            if (currentIndex == desiredIndex)
+            {
+                return;
+            }
+
+            Servers.Move(currentIndex, desiredIndex);
+            ReindexServers();
+            LogActivity(ActivitySeverity.Info, $"Reordered {source.Label}", $"Moved to position {desiredIndex + 1}.");
+        }
+
+        private void ReindexServers()
+        {
+            for (var index = 0; index < Servers.Count; index++)
+            {
+                Servers[index].Index = index;
+            }
+
+            OnPropertyChanged(nameof(ActiveServers));
+        }
+
+        private bool CanShowDrilldownForHost(string? hostId)
+        {
+            if (string.IsNullOrWhiteSpace(hostId))
+            {
+                return false;
+            }
+
+            if (_lastResponse?.Drilldown is null || _lastResponse.Drilldown.Length == 0)
+            {
+                return false;
+            }
+
+            return _lastResponse.Drilldown.Any(entry => entry.Servers?.Any(server => string.Equals(server.HostId, hostId, StringComparison.OrdinalIgnoreCase)) == true);
+        }
+
+        private void OnShowDrilldownForHost(string? hostId)
+        {
+            if (string.IsNullOrWhiteSpace(hostId))
+            {
+                return;
+            }
+
+            if (_lastResponse?.Drilldown is null)
+            {
+                StatusBanner = "Run a scan to view drilldowns.";
+                return;
+            }
+
+            var target = _lastResponse.Drilldown.FirstOrDefault(entry => entry.Servers?.Any(server => string.Equals(server.HostId, hostId, StringComparison.OrdinalIgnoreCase)) == true);
+            if (target is null)
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                return;
+            }
+
+            LoadDrilldown(target.ConfigId);
+            IsViewingDrilldown = true;
+            LogActivity(ActivitySeverity.Info, "Opened drilldown", $"Host: {hostId} via execution summary.");
         }
 
         private void LoadDrilldown(string configId)

@@ -151,3 +151,46 @@ def test_resolve_cache_dir_migrates_legacy_cache(monkeypatch, tmp_path) -> None:
     migrated = cache_dir / legacy_file.name
     assert migrated.exists()
     assert migrated.read_text(encoding="utf-8") == "{}"
+
+
+def test_build_catalog_handles_offline_and_partial_hosts(monkeypatch, tmp_path) -> None:
+    cache_dir = tmp_path / "cache"
+    runner = MultiServerRunner(cache_dir)
+    plans = [
+        _sample_plan("server01", priority=10, is_preferred=True),
+        _sample_plan("server02", priority=5),
+    ]
+
+    original_scan_plan = MultiServerRunner._scan_plan
+
+    def fake_scan_plan(self, plan, existing_roots, secret_hits):  # type: ignore[override]
+        if plan.host_id == "server02":
+            raise RuntimeError("simulated offline host")
+        return original_scan_plan(self, plan, existing_roots, secret_hits)
+
+    monkeypatch.setattr(MultiServerRunner, "_scan_plan", fake_scan_plan)
+
+    try:
+        response = runner.run(plans)
+    finally:
+        monkeypatch.setattr(MultiServerRunner, "_scan_plan", original_scan_plan)
+
+    offline_result = next(result for result in response["results"] if result["host_id"] == "server02")
+    assert offline_result["availability"] == "offline"
+    assert offline_result["status"] == "failed"
+
+    catalog = response["catalog"]
+    assert catalog, "expected catalog entries"
+    assert any("server02" in entry["missing_hosts"] for entry in catalog)
+    assert any(entry["coverage_status"] == "partial" for entry in catalog)
+
+    drilldown = response["drilldown"]
+    assert drilldown, "expected drilldown entries"
+    offline_server = next(
+        server
+        for entry in drilldown
+        for server in entry["servers"]
+        if server["host_id"] == "server02"
+    )
+    assert offline_server["status"] == "Offline"
+    assert offline_server["presence_status"] == "offline"

@@ -15,12 +15,12 @@
 - [x] S3 — tmux hygiene script, benchmark template, and documentation added.
 
 ### Phase 1 — Multi-Server Guardrails (P4 + S2 docs + S1 tests)
-- [ ] Implement drag/drop reordering commands in `ServerSelectionViewModel` with concurrency guards around `RunAllCommand`.
-- [ ] Extend the session snapshot DTO to capture filters, timeline state, and active tab; persist via the new user-data helper with schema versioning.
-- [ ] Surface inline drilldown buttons in the execution summary grid with accessible labels and analytics hooks.
-- [ ] Align Python runner `_build_catalog_and_drilldown` logic and expand `tests/multi_server/test_multi_server.py` for offline host + mixed coverage scenarios.
-- [ ] Package/build smoke test to ensure caches and sessions survive restart + upgrades using the new storage path.
-- [ ] Update docs (`docs/multi-server-demo.md`, `docs/windows-gui-guide.md`, README) to describe drag/drop, persistence behaviour, and data-root locations.
+- [x] Implement drag/drop reordering commands in `ServerSelectionViewModel` with concurrency guards around `RunAllCommand`.
+- [x] Extend the session snapshot DTO to capture filters, timeline state, and active tab; persist via the new user-data helper with schema versioning.
+- [x] Surface inline drilldown buttons in the execution summary grid with accessible labels and analytics hooks.
+- [x] Align Python runner `_build_catalog_and_drilldown` logic and expand `tests/multi_server/test_multi_server.py` for offline host + mixed coverage scenarios.
+- [x] Package/build smoke test to ensure caches and sessions survive restart + upgrades using the new storage path.
+- [x] Update docs (`docs/multi-server-demo.md`, `docs/windows-gui-guide.md`, README) to describe drag/drop, persistence behaviour, and data-root locations.
 
 ### Phase 2 — Diff Planner Productivity (P5 + S2 + S1 coverage)
 - [ ] Nail down MRU requirements with UX notes; add persisted per-user MRU lists in `DiffInput`/settings store.

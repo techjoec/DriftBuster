@@ -76,7 +76,11 @@
                       Classes="surface"
                       CornerRadius="{DynamicResource Radius.Large}"
                       ToolTip.Tip="{Binding ValidationSummary}"
-                      automation:AutomationProperties.Name="{Binding ValidationSummary}">
+                      automation:AutomationProperties.Name="{Binding ValidationSummary}"
+                      PointerPressed="OnServerCardPointerPressed"
+                      input:DragDrop.AllowDrop="True"
+                      input:DragDrop.DragOver="OnServerCardDragOver"
+                      input:DragDrop.Drop="OnServerCardDrop">
                 <StackPanel Spacing="12">
                   <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <ToggleSwitch IsChecked="{Binding IsEnabled}" Content="Enabled" />
@@ -164,10 +168,17 @@
               <ItemsControl ItemsSource="{Binding Servers}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="12">
+                    <Grid ColumnDefinitions="2*,*,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
                       <TextBlock Text="{Binding Label}" />
                       <TextBlock Text="{Binding RunState}" />
                       <TextBlock Text="{Binding StatusText}" />
+                      <Button Grid.Column="3"
+                              Content="View drilldown"
+                              Classes="outline"
+                              Command="{Binding DataContext.ShowDrilldownForHostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding HostId}"
+                              ToolTip.Tip="Open the most recent drilldown for this host."
+                              automation:AutomationProperties.Name="{Binding Label, StringFormat='View drilldown for {0}'}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

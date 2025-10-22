@@ -85,9 +85,9 @@ Tips:
 ### Multi-server quickstart
 
 - Start the GUI from the repo root: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-- Switch to the Multi-server tab, enable the host slots you need, and add roots or pick scope chips. Turn on the session cache toggle if you want to reuse labels and roots next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
+- Switch to the Multi-server tab, enable the host slots you need, and add roots or pick scope chips. Drag host cards to reorder execution priority and turn on the session cache toggle if you want to reuse labels, filters, and layout next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
 - Click **Run all** to queue every active host. Use **Run missing only** for retries; toasts and the activity timeline record progress, warnings, and exports.
-- Review the catalog filters, open drilldown diffs, and export HTML/JSON snapshots (they land in `artifacts/exports/<config>-<timestamp>.{html,json}`).
+- Review the catalog filters, open drilldown diffs (including the inline **View drilldown** shortcut from the host summary), and export HTML/JSON snapshots (they land in `artifacts/exports/<config>-<timestamp>.{html,json}`).
 
 Run the same plan from the shell:
 

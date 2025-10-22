@@ -64,19 +64,21 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Host cards now render inside a responsive grid that fits 1280–1920 px widths without horizontal scrolling. Cards stretch to fill available space while keeping a minimum width, so you can scan labels, scopes, and roots side by side.
 - Each card exposes a `ValidationSummary` tooltip and automation name that narrates the current root status (ready, pending validation, or needs attention) for screen readers.
 - Keyboard users get high-contrast focus outlines on buttons, toggles, combo boxes, and root text boxes; the Run/Cancel strip also exposes access keys (`Alt+R`, `Alt+M`, `Alt+C`).
+- Drag-and-drop host cards to reorder execution priority. The baseline preference and command ordering update in-place, and the new order is captured with the session snapshot.
 
 ### Root Validation & Persistence
 - Switching a server to **Custom roots** keeps the validation summary live while you type. Duplicate or relative paths flag the card immediately, and summaries stay cached even when the card loses focus.
-- Session saves now persist the active catalog sort descriptor, so reloading a session restores the same ordering you left in place.
+- Session saves now persist the active catalog sort descriptor, catalog filters, timeline filter, selected view (setup/results/drilldown), and root ordering so reloading a session restores the same working state.
 
 ### Catalog & Drilldown Enhancements
 - Catalog columns support click-to-sort with visual indicators; the current sort mode is cached alongside server state.
 - Drilldown headers now surface format, baseline host, drift count, and provenance in a metadata strip for quick triage.
 - A dedicated **Copy JSON** action copies the sanitised export payload to the clipboard without triggering a file save, mirroring the HTML/JSON export options.
+- The execution summary grid exposes a **View drilldown** shortcut per host so analysts can jump into the latest drift snapshot without leaving the setup surface.
 
 ### Notifications & Timeline
 - Toast alerts now surface in a compact stack with at most three visible at once; additional messages collapse into an overflow tray so long-running scans don't flood the viewport.
-- Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter persists with the rest of the multi-server session.
+- Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter plus the last opened drilldown host persist with the rest of the multi-server session.
 - Clipboard/export actions write to the timeline with the new **Exports** filter so analysts can isolate delivery events quickly.
 
 ## 8. Backend Bridge

@@ -22,6 +22,7 @@ namespace DriftBuster.Gui.Services
 
     public sealed class SessionCacheService : ISessionCacheService
     {
+        internal const int CurrentSchemaVersion = 2;
         private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
         {
             WriteIndented = true,
@@ -99,6 +100,9 @@ namespace DriftBuster.Gui.Services
 
     public sealed class ServerSelectionCache
     {
+        [JsonPropertyName("schema_version")]
+        public int SchemaVersion { get; set; } = SessionCacheService.CurrentSchemaVersion;
+
         [JsonPropertyName("persist_session")]
         public bool PersistSession { get; set; }
 
@@ -113,6 +117,15 @@ namespace DriftBuster.Gui.Services
 
         [JsonPropertyName("activity_filter")]
         public string? ActivityFilter { get; set; }
+
+        [JsonPropertyName("catalog_filters")]
+        public CatalogFilterCache? CatalogFilters { get; set; }
+
+        [JsonPropertyName("timeline")]
+        public ActivityTimelineCache? Timeline { get; set; }
+
+        [JsonPropertyName("active_view")]
+        public string? ActiveView { get; set; }
     }
 
     public sealed class ServerSelectionCacheEntry
@@ -158,5 +171,32 @@ namespace DriftBuster.Gui.Services
 
         [JsonPropertyName("descending")]
         public bool Descending { get; set; }
+    }
+
+    public sealed class CatalogFilterCache
+    {
+        [JsonPropertyName("coverage")]
+        public string? Coverage { get; set; }
+
+        [JsonPropertyName("severity")]
+        public string? Severity { get; set; }
+
+        [JsonPropertyName("format")]
+        public string? Format { get; set; }
+
+        [JsonPropertyName("baseline")]
+        public string? Baseline { get; set; }
+
+        [JsonPropertyName("search")]
+        public string? Search { get; set; }
+    }
+
+    public sealed class ActivityTimelineCache
+    {
+        [JsonPropertyName("filter")]
+        public string? Filter { get; set; }
+
+        [JsonPropertyName("last_opened_host")]
+        public string? LastOpenedHostId { get; set; }
     }
 }

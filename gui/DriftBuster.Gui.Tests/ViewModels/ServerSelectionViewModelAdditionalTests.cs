@@ -120,6 +120,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
         await viewModel.RunAllCommand.ExecuteAsync(null);
         viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
         viewModel.FilteredActivityEntries.Should().NotBeEmpty();
+        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeTrue();
 
         viewModel.PersistSessionState = true;
         await viewModel.SaveSessionCommand.ExecuteAsync(null);
@@ -131,5 +132,37 @@ public sealed class ServerSelectionViewModelAdditionalTests
         viewModel.ClearHistoryCommand.Execute(null);
         cache.Cleared.Should().BeTrue();
         viewModel.HasActiveServers.Should().BeTrue();
+        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Reorders_servers_and_updates_indexes()
+    {
+        var service = new FakeDriftbusterService();
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        var originalOrder = viewModel.Servers.Select(slot => slot.HostId).ToList();
+        originalOrder.Should().HaveCountGreaterThan(2);
+
+        var source = viewModel.Servers[2];
+        var target = viewModel.Servers[0];
+
+        viewModel.ReorderServer(source.HostId, target.HostId, insertBefore: true);
+
+        viewModel.Servers[0].HostId.Should().Be(source.HostId);
+        viewModel.Servers[0].Index.Should().Be(0);
+        viewModel.Servers[1].HostId.Should().Be(target.HostId);
+
+        // Dropping after the next host should move the original source down by one.
+        viewModel.ReorderServer(target.HostId, source.HostId, insertBefore: false);
+        viewModel.Servers[1].HostId.Should().Be(source.HostId);
+
+        // Invalid reorder requests are ignored.
+        viewModel.ReorderServer(source.HostId, source.HostId, insertBefore: true);
+        viewModel.ReorderServer("missing", target.HostId, insertBefore: true);
+
+        var resultingOrder = viewModel.Servers.Select(slot => slot.HostId).ToList();
+        resultingOrder.Should().Contain(source.HostId);
     }
 }
