@@ -15,6 +15,7 @@
 ## Next Actions (Deferred)
 
 - Prototype data loading adapters once reporting outputs stabilise.
+- Track packaging readiness via `CLOUDTASKS.md` area A19.
 - Draft NOTICE/licence bundle templates before distributing binaries.
 - Plan VM matrix for manual verification (Windows 10/11, offline/online hosts).
 

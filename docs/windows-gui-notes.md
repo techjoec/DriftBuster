@@ -79,6 +79,8 @@ Active user requirements are tracked in the status log (`notes/status/gui-resear
 
 ## Packaging & Distribution Plan
 
+_Execution queue:_ see `CLOUDTASKS.md` area A19 for the current packaging backlog.
+
 - **MSIX**
   - Natural fit for WinUI/Electron bundles; delivers auto-updates and clean install/uninstall.
   - Needs code-signing certificate and explicit capability declarations (file system access, WebView2 runtime).
