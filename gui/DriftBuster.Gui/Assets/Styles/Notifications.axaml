@@ -1,11 +1,11 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <Double x:Key="Toast.Width">320</Double>
+    <x:Double x:Key="Toast.Width">320</x:Double>
     <CornerRadius x:Key="Toast.CornerRadius">12</CornerRadius>
     <Thickness x:Key="Toast.Padding">14</Thickness>
     <Thickness x:Key="Toast.CardMargin">0,0,0,8</Thickness>
-    <Double x:Key="Toast.IconFontSize">20</Double>
+    <x:Double x:Key="Toast.IconFontSize">20</x:Double>
     <Thickness x:Key="Toast.InnerSpacing">8</Thickness>
 
     <Color x:Key="Color.Toast.Info">#FF1D4ED8</Color>
@@ -21,10 +21,10 @@
     <SolidColorBrush x:Key="Brush.Toast.Timestamp" Color="#CCF8FAFC" />
     <SolidColorBrush x:Key="Brush.Toast.OverflowHeader" Color="#FFE2E8F0" />
 
-    <string x:Key="Toast.Icon.Info">ℹ</string>
-    <string x:Key="Toast.Icon.Success">✔</string>
-    <string x:Key="Toast.Icon.Warning">!</string>
-    <string x:Key="Toast.Icon.Error">⚠</string>
+    <x:String x:Key="Toast.Icon.Info">ℹ</x:String>
+    <x:String x:Key="Toast.Icon.Success">✔</x:String>
+    <x:String x:Key="Toast.Icon.Warning">!</x:String>
+    <x:String x:Key="Toast.Icon.Error">⚠</x:String>
   </Styles.Resources>
 
   <Style Selector="Border.toast-card">

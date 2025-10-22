@@ -4,7 +4,6 @@
              xmlns:views="using:DriftBuster.Gui.Views"
              xmlns:conv="using:DriftBuster.Gui.Converters"
              xmlns:input="using:Avalonia.Input"
-             xmlns:layouts="using:Avalonia.Layout"
              xmlns:automation="using:Avalonia.Automation"
              x:Class="DriftBuster.Gui.Views.ServerSelectionView"
              x:DataType="vm:ServerSelectionViewModel">
@@ -61,17 +60,19 @@
           </StackPanel>
         </Border>
 
-        <ItemsRepeater ItemsSource="{Binding Servers}"
+        <ItemsControl ItemsSource="{Binding Servers}"
                        HorizontalAlignment="Stretch">
-          <ItemsRepeater.Layout>
-            <layouts:UniformGridLayout MinItemWidth="320"
-                                       MinItemHeight="240"
-                                       MinColumnSpacing="16"
-                                       MinRowSpacing="16" />
-          </ItemsRepeater.Layout>
-          <ItemsRepeater.ItemTemplate>
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel ItemWidth="320"
+                         MinHeight="240"
+                         Margin="0,0,0,16" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
             <DataTemplate>
               <Border Padding="16"
+                      Margin="0,0,16,16"
                       HorizontalAlignment="Stretch"
                       Classes="surface"
                       CornerRadius="{DynamicResource Radius.Large}"
@@ -104,9 +105,14 @@
                     <TextBlock Text="Scope" Classes="subtitle" />
                     <ComboBox Grid.Column="1"
                               ItemsSource="{Binding DataContext.ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              SelectedItem="{Binding Scope}"
-                              DisplayMemberPath="DisplayName"
-                              SelectedValuePath="Value" />
+                              SelectedValue="{Binding Scope, Mode=TwoWay}"
+                              SelectedValueBinding="{Binding Value}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding DisplayName}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                   </Grid>
 
                   <StackPanel Spacing="8">
@@ -151,8 +157,8 @@
                 </StackPanel>
               </Border>
             </DataTemplate>
-          </ItemsRepeater.ItemTemplate>
-        </ItemsRepeater>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
 
 
@@ -160,10 +166,10 @@
           <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
             <StackPanel Spacing="10">
               <TextBlock Text="Execution" FontSize="18" FontWeight="SemiBold" />
-              <WrapPanel Spacing="10">
-                <Button Content="Run all" Classes="primary" Command="{Binding RunAllCommand}" IsEnabled="{Binding HasActiveServers}" input:AccessKeyHandler.AccessKey="R" />
-                <Button Content="Run missing" Classes="outline" Command="{Binding RunMissingCommand}" input:AccessKeyHandler.AccessKey="M" />
-                <Button Content="Cancel" Classes="outline" Command="{Binding CancelRunsCommand}" IsEnabled="{Binding IsBusy}" input:AccessKeyHandler.AccessKey="C" />
+              <WrapPanel>
+                <Button Content="Run all" Classes="primary" Command="{Binding RunAllCommand}" IsEnabled="{Binding HasActiveServers}" Margin="0,0,10,10" />
+                <Button Content="Run missing" Classes="outline" Command="{Binding RunMissingCommand}" Margin="0,0,10,10" />
+                <Button Content="Cancel" Classes="outline" Command="{Binding CancelRunsCommand}" IsEnabled="{Binding IsBusy}" Margin="0,0,10,10" />
               </WrapPanel>
               <ItemsControl ItemsSource="{Binding Servers}">
                 <ItemsControl.ItemTemplate>

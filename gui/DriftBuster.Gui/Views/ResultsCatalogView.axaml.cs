@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
@@ -51,18 +52,18 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
+            var direction = descriptor.Descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
+
             foreach (var column in _catalogGrid.Columns)
             {
                 var columnKey = column.SortMemberPath ?? column.Header?.ToString();
                 if (string.Equals(columnKey, descriptor.ColumnKey, StringComparison.OrdinalIgnoreCase))
                 {
-                    column.SortDirection = descriptor.Descending
-                        ? DataGridSortDirection.Descending
-                        : DataGridSortDirection.Ascending;
+                    column.Sort(direction);
                 }
                 else
                 {
-                    column.SortDirection = null;
+                    column.ClearSort();
                 }
             }
         }
@@ -75,12 +76,12 @@ namespace DriftBuster.Gui.Views
             }
 
             var columnKey = e.Column.SortMemberPath ?? e.Column.Header?.ToString() ?? CatalogSortColumns.Config;
-            var nextDirection = e.Column.SortDirection == DataGridSortDirection.Ascending
-                ? DataGridSortDirection.Descending
-                : DataGridSortDirection.Ascending;
+            var current = _viewModel.SortDescriptor;
+            var nextDescending = string.Equals(current.ColumnKey, columnKey, StringComparison.OrdinalIgnoreCase)
+                ? !current.Descending
+                : false;
 
-            e.Column.SortDirection = nextDirection;
-            _viewModel.SetSortDescriptor(columnKey, nextDirection == DataGridSortDirection.Descending);
+            _viewModel.SetSortDescriptor(columnKey, nextDescending);
             e.Handled = true;
         }
     }

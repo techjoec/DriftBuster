@@ -3,6 +3,7 @@ using System.Globalization;
 
 using Avalonia;
 using Avalonia.Data.Converters;
+using Avalonia.Styling;
 
 using DriftBuster.Gui.Services;
 
@@ -27,11 +28,27 @@ namespace DriftBuster.Gui.Converters
                 _ => "Toast.Icon.Info",
             };
 
-            return Application.Current?.TryFindResource(resourceKey, out var resource) == true
-                ? resource
-                : string.Empty;
+            if (TryGetResource(resourceKey, out var resource))
+            {
+                return resource;
+            }
+
+            return string.Empty;
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+
+        private static bool TryGetResource(object key, out object? resource)
+        {
+            var app = Application.Current;
+            if (app is null)
+            {
+                resource = null;
+                return false;
+            }
+
+            var theme = app.ActualThemeVariant ?? ThemeVariant.Default;
+            return app.TryGetResource(key, theme, out resource);
+        }
     }
 }

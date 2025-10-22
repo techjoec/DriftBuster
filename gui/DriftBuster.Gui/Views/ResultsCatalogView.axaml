@@ -7,28 +7,28 @@
   <ScrollViewer>
     <StackPanel Margin="0,0,0,24" Spacing="18">
       <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
-        <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto">
+        <Grid ColumnDefinitions="*,*,*,*,*" RowDefinitions="Auto,Auto">
           <StackPanel Grid.Column="0" Spacing="4">
             <TextBlock Text="Baseline" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding BaselineOptions}" SelectedItem="{Binding SelectedBaseline}" />
           </StackPanel>
-          <StackPanel Grid.Column="1" Spacing="4">
+          <StackPanel Grid.Column="1" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Coverage" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding CoverageFilterOptions}"
                       SelectedValue="{Binding SelectedCoverageFilter}"
                       SelectedValueBinding="{Binding Value}" />
           </StackPanel>
-          <StackPanel Grid.Column="2" Spacing="4">
+          <StackPanel Grid.Column="2" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Severity" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding SeverityFilterOptions}"
                       SelectedValue="{Binding SelectedSeverityFilter}"
                       SelectedValueBinding="{Binding Value}" />
           </StackPanel>
-          <StackPanel Grid.Column="3" Spacing="4">
+          <StackPanel Grid.Column="3" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Format" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding FormatOptions}" SelectedItem="{Binding SelectedFormat}" />
           </StackPanel>
-          <StackPanel Grid.Column="4" Spacing="4">
+          <StackPanel Grid.Column="4" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Search" Classes="subtitle" />
             <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Config name or ID" />
           </StackPanel>
@@ -78,17 +78,17 @@
               <DataGridTemplateColumn Header="Tags" Width="2*">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <WrapPanel Spacing="6">
-                      <Border Background="#4C1D95" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasDrift}">
+                    <WrapPanel>
+                      <Border Background="#4C1D95" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasDrift}" Margin="0,0,6,6">
                         <TextBlock Text="Drift" FontSize="12" />
                       </Border>
-                      <Border Background="#991B1B" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasSecrets}">
+                      <Border Background="#991B1B" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasSecrets}" Margin="0,0,6,6">
                         <TextBlock Text="Secrets" FontSize="12" />
                       </Border>
-                      <Border Background="#9A3412" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasMaskedTokens}">
+                      <Border Background="#9A3412" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasMaskedTokens}" Margin="0,0,6,6">
                         <TextBlock Text="Masked" FontSize="12" />
                       </Border>
-                      <Border Background="#92400E" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasValidationIssues}">
+                      <Border Background="#92400E" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasValidationIssues}" Margin="0,0,6,6">
                         <TextBlock Text="Validation" FontSize="12" />
                       </Border>
                     </WrapPanel>
@@ -115,12 +115,13 @@
       <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}"
               IsVisible="{Binding HasPartialCoverage}">
         <StackPanel Spacing="10">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+          <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
             <TextBlock Text="Missing artifacts" FontSize="18" FontWeight="SemiBold" />
             <Button Grid.Column="1"
                     Content="Re-scan all missing"
                     Classes="outline"
-                    Command="{Binding ReScanAllPartialCommand}" />
+                    Command="{Binding ReScanAllPartialCommand}"
+                    Margin="12,0,0,0" />
           </Grid>
           <ItemsControl ItemsSource="{Binding PartialCoverageEntries}">
             <ItemsControl.ItemTemplate>

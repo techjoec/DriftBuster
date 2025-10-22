@@ -4,6 +4,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using Avalonia.Styling;
 
 using DriftBuster.Gui.Services;
 
@@ -28,7 +29,7 @@ namespace DriftBuster.Gui.Converters
                 _ => "Brush.Toast.Info",
             };
 
-            if (Application.Current?.TryFindResource(resourceKey, out var resource) == true && resource is IBrush brush)
+            if (TryGetResource(resourceKey, out var resource) && resource is IBrush brush)
             {
                 return brush;
             }
@@ -39,6 +40,19 @@ namespace DriftBuster.Gui.Converters
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             throw new NotSupportedException();
+        }
+
+        private static bool TryGetResource(object key, out object? resource)
+        {
+            var app = Application.Current;
+            if (app is null)
+            {
+                resource = null;
+                return false;
+            }
+
+            var theme = app.ActualThemeVariant ?? ThemeVariant.Default;
+            return app.TryGetResource(key, theme, out resource);
         }
     }
 }
