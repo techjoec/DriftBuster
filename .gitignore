@@ -8,3 +8,4 @@ bin/
 obj/
 artifacts/
 Releases/
+.codex-cloud/
