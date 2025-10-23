@@ -1,0 +1,30 @@
+
+Welcome to .NET 8.0!
+---------------------
+SDK Version: 8.0.121
+
+----------------
+Installed an ASP.NET Core HTTPS development certificate.
+To trust the certificate, view the instructions: https://aka.ms/dotnet-https-linux
+
+----------------
+Write your first app: https://aka.ms/dotnet-hello-world
+Find out what's new: https://aka.ms/dotnet-whats-new
+Explore documentation: https://aka.ms/dotnet-docs
+Report issues and find source on GitHub: https://github.com/dotnet/core
+Use 'dotnet --help' to see available commands or visit: https://aka.ms/dotnet-cli
+--------------------------------------------------------------------------------------
+MSBuild version 17.8.43+f0cbb1397 for .NET
+  Determining projects to restore...
+  Restored /workspace/DriftBuster/gui/DriftBuster.Backend/DriftBuster.Backend.csproj (in 2.1 sec).
+  Restored /workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj (in 9.6 sec).
+  DriftBuster.Backend -> /workspace/DriftBuster/gui/DriftBuster.Backend/bin/Release/net8.0/DriftBuster.Backend.dll
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(76,28): warning CS0618: 'DataObject' is obsolete: 'Use DataTransfer instead' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(78,22): warning CS0618: 'DataFormats.Text' is obsolete: 'Use DataFormat.Text instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(80,13): warning CS0618: 'DragDrop.DoDragDrop(PointerEventArgs, IDataObject, DragDropEffects)' is obsolete: 'Use DoDragDropAsync instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(80,13): warning CS4014: Because this call is not awaited, execution of the current method continues before the call is completed. Consider applying the 'await' operator to the result of the call. [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(58,28): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread. [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(90,32): warning CS0618: 'DragEventArgs.Data' is obsolete: 'Use DataTransfer instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(103,32): warning CS0618: 'DragEventArgs.Data' is obsolete: 'Use DataTransfer instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Release/net8.0/win-x64/DriftBuster.Gui.dll
+  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Release/net8.0/win-x64/publish/

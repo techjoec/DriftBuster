@@ -16,5 +16,7 @@ artifacts/*
 !artifacts/powershell/**
 !artifacts/cli-plan/
 !artifacts/cli-plan/**
+!artifacts/gui-packaging/
+!artifacts/gui-packaging/**
 Releases/
 .codex-cloud/

@@ -83,6 +83,10 @@ _Execution queue:_ see `CLOUDTASKS.md` area A19 for the current packaging backlo
 - **Bundled runtime**
   - Ship the .NET runtime when targeting hosts without it (`/p:SelfContained=true`).
   - Record third-party notices alongside binaries.
+- **WebView2 Evergreen redistribution**
+  - Bundle the offline Evergreen installer (`MicrosoftEdgeWebView2RuntimeInstallerX64.exe`) beside the GUI publish output.
+  - During packaging, script `MicrosoftEdgeWebView2RuntimeInstallerX64.exe /silent /install` before first GUI launch; emit installer logs to `artifacts/gui-packaging/` for traceability.
+  - After installation, verify `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}` exists and record the `pv` value in release notes so operators can confirm runtime parity offline.
 - **Update Channel**
   - Manual updates: publish checksum + version in release notes until automation is approved.
 

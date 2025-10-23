@@ -691,10 +691,10 @@ Schema reference
   - [x] 19.1.1 Review WinUI 3, Tkinter, PySimpleGUI, and Electron options; record decision matrix in `notes/status/gui-research.md`.
   - [x] 19.1.2 Sync `docs/windows-gui-notes.md#candidate-frameworks` with updated rationale and preferred pathway.
   - [x] 19.1.3 Capture licensing implications and NOTICE requirements in `docs/legal-safeguards.md#gui-frameworks`.
-- [ ] 19.2 Runtime prerequisites.
-  - [ ] 19.2.1 Decide on WebView2 Evergreen redistribution strategy; document installer steps in `docs/windows-gui-notes.md#packaging--distribution-plan`.
-  - [ ] 19.2.2 Validate `.NET` publish commands (framework-dependent vs self-contained) and log outputs in `notes/dev-host-prep.md`.
-  - [ ] 19.2.3 Store publish command transcripts + hashes in `artifacts/gui-packaging/` with README describing reproduction steps.
+- [x] 19.2 Runtime prerequisites.
+  - [x] 19.2.1 Decide on WebView2 Evergreen redistribution strategy; document installer steps in `docs/windows-gui-notes.md#packaging--distribution-plan`.
+  - [x] 19.2.2 Validate `.NET` publish commands (framework-dependent vs self-contained) and log outputs in `notes/dev-host-prep.md`.
+  - [x] 19.2.3 Store publish command transcripts + hashes in `artifacts/gui-packaging/` with README describing reproduction steps.
 - [ ] 19.3 Accessibility baseline.
   - [ ] 19.3.1 Define Narrator/Inspect test matrix in `notes/status/gui-research.md#user-requirements`.
   - [ ] 19.3.2 Update `docs/windows-gui-notes.md#compliance--accessibility-checklist` with step-by-step execution notes.

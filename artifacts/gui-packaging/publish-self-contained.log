@@ -1,0 +1,7 @@
+MSBuild version 17.8.43+f0cbb1397 for .NET
+  Determining projects to restore...
+  Restored /workspace/DriftBuster/gui/DriftBuster.Backend/DriftBuster.Backend.csproj (in 3.01 sec).
+  Restored /workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj (in 3.04 sec).
+  DriftBuster.Backend -> /workspace/DriftBuster/gui/DriftBuster.Backend/bin/Release/net8.0/DriftBuster.Backend.dll
+  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Release/net8.0/win-x64/DriftBuster.Gui.dll
+  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Release/net8.0/win-x64/publish/

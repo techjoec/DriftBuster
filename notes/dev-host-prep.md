@@ -44,6 +44,19 @@
   - Emits a self-contained bundle (~120 MB) suitable for offline installs.
 - Both publish flavours rely solely on the bundled .NET bits; no external Python runtime required.
 
+## Publish Validation (2025-10-25)
+
+- `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true`
+  - Result: ✅ succeeded (see `artifacts/gui-packaging/publish-framework-dependent.log`).
+  - Hash: recorded `DriftBuster.Gui.exe` checksum in `artifacts/gui-packaging/publish-framework-dependent.sha256`.
+  - Notes: output folder only includes the single-file host plus backend PDB, matching expectations for portable ZIP packaging.
+- `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=true`
+  - Result: ✅ succeeded (see `artifacts/gui-packaging/publish-self-contained.log`).
+  - Hash: recorded `DriftBuster.Gui.exe` checksum in `artifacts/gui-packaging/publish-self-contained.sha256` alongside native payloads.
+  - Notes: publish directory expands with native `libSkiaSharp`/`av_libglesv2` binaries; archive entire folder when producing the self-contained ZIP/MSIX payload.
+
+> WebView2 offline installer should be staged with either publish flavour per the distribution plan in `docs/windows-gui-notes.md`.
+
 ## Manual Verification Snapshot
 
 - GUI smoke test documented in `notes/checklists/gui-smoke.md` (ping core, diff two samples, hunt directory, observe error handling, quit → verify backend exits).
