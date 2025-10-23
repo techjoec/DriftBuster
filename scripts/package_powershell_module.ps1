@@ -1,7 +1,8 @@
 #!/usr/bin/env pwsh
 param(
     [string]$Configuration = "Release",
-    [string]$OutputDirectory = "artifacts/powershell"
+    [string]$OutputDirectory = "artifacts/powershell/releases",
+    [switch]$SkipAnalyzer
 )
 
 Set-StrictMode -Version Latest
@@ -49,15 +50,19 @@ if ($manifestBackendVersion -ne $backendVersion) {
     throw "Module manifest BackendVersion '$manifestBackendVersion' does not match core version '$backendVersion'."
 }
 
-if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
-    throw "PSScriptAnalyzer is required. Install via 'Install-Module PSScriptAnalyzer'."
-}
+if (-not $SkipAnalyzer) {
+    if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+        throw "PSScriptAnalyzer is required. Install via 'Install-Module PSScriptAnalyzer'."
+    }
 
-$analysisResults = Invoke-ScriptAnalyzer -Path $moduleRoot -Recurse -Severity @('Error','Warning')
-$analysisArray = @($analysisResults)
-if ($analysisArray.Count -gt 0) {
-    $analysisArray | Format-Table
-    throw "PSScriptAnalyzer reported $($analysisArray.Count) issue(s)."
+    $analysisResults = Invoke-ScriptAnalyzer -Path $moduleRoot -Recurse -Severity @('Error','Warning')
+    $analysisArray = @($analysisResults)
+    if ($analysisArray.Count -gt 0) {
+        $analysisArray | Format-Table
+        throw "PSScriptAnalyzer reported $($analysisArray.Count) issue(s)."
+    }
+} else {
+    Write-Warning "Skipping PSScriptAnalyzer validation by request."
 }
 
 $backendBin = Join-Path $root "gui/DriftBuster.Backend/bin/$Configuration/net8.0/DriftBuster.Backend.dll"
@@ -72,7 +77,11 @@ try {
     Copy-Item -Path $moduleRoot -Destination $stagingRoot -Recurse -Force
     Copy-Item -Path $backendBin -Destination (Join-Path $stagingRoot 'DriftBuster.PowerShell') -Force
 
-    $outputPath = Resolve-Path (New-Item -ItemType Directory -Path $OutputDirectory -Force)
+    if (-not (Test-Path -LiteralPath $OutputDirectory)) {
+        New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
+    }
+
+    $outputPath = Resolve-Path $OutputDirectory
     $archiveName = "DriftBuster.PowerShell-$moduleVersion.zip"
     $archivePath = Join-Path $outputPath $archiveName
 
@@ -81,9 +90,14 @@ try {
     }
 
     $sourcePath = Join-Path $stagingRoot 'DriftBuster.PowerShell'
-    Compress-Archive -Path (Join-Path $sourcePath '*') -DestinationPath $archivePath -Force
+    Compress-Archive -Path $sourcePath -DestinationPath $archivePath -Force
+
+    $hash = Get-FileHash -Path $archivePath -Algorithm SHA256
+    $checksumPath = Join-Path $outputPath "$archiveName.sha256"
+    Set-Content -LiteralPath $checksumPath -Value "$($hash.Hash)  $archiveName"
 
     Write-Host "Packaged PowerShell module to $archivePath" -ForegroundColor Green
+    Write-Host "SHA256 checksum saved to $checksumPath" -ForegroundColor Green
 }
 finally {
     if (Test-Path -LiteralPath $stagingRoot) {

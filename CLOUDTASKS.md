@@ -642,10 +642,10 @@ Schema reference
   - [x] 17.3.1 Surface friendly errors when backend assembly missing.
   - [x] 17.3.2 Document fallback instructions in `README.md`.
   - [x] 17.3.3 Add troubleshooting section to `docs/windows-gui-guide.md#powershell-module`.
-- [ ] 17.4 Packaging.
-  - [ ] 17.4.1 Update `scripts/package_powershell_module.ps1`.
-  - [ ] 17.4.2 Document usage in `docs/windows-gui-guide.md` and `README.md`.
-  - [ ] 17.4.3 Archive packaged module zip and checksum in `artifacts/powershell/releases/`.
+ - [x] 17.4 Packaging.
+  - [x] 17.4.1 Update `scripts/package_powershell_module.ps1`.
+  - [x] 17.4.2 Document usage in `docs/windows-gui-guide.md` and `README.md`.
+  - [x] 17.4.3 Archive packaged module zip and checksum in `artifacts/powershell/releases/`.
 
 ## A18. Python CLI Concept (On Hold) [deps=A7]
 

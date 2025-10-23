@@ -154,6 +154,8 @@ For deeper implementation notes, refer to `docs/windows-gui-notes.md` (engineeri
   2. Import the module: `pwsh -NoLogo -NoProfile -Command "Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psm1 -Force"`.
   3. Verify connectivity and schema: `Test-DriftBusterPing` (returns `{ status = "pong" }`), `Invoke-DriftBusterDiff -Left baseline.json -Right release.json`, and `Invoke-DriftBusterRunProfile -Profile <profile.json> -BaseDir . -NoSave -Raw`.
   4. When validating packaging, run `pwsh ./cli/DriftBuster.PowerShell.Tests/Invoke-ModuleTests.ps1` to execute the Pester suite and capture an NUnit XML report under `artifacts/powershell/tests/`.
+- Package the module for distribution using `pwsh ./scripts/package_powershell_module.ps1 -Configuration Release`. The script copies the compiled backend into a temporary staging area, produces `artifacts/powershell/releases/DriftBuster.PowerShell-<version>.zip`, and writes a matching `.sha256` checksum file in the same directory.
+- Confirm the checksum before publishing: `Get-FileHash artifacts/powershell/releases/DriftBuster.PowerShell-<version>.zip -Algorithm SHA256` should match the recorded hash.
 
 ### Troubleshooting
 | Symptom | Suggested Checks |

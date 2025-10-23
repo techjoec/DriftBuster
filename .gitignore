@@ -12,5 +12,7 @@ artifacts/*
 !artifacts/logs/**
 !artifacts/sql/
 !artifacts/sql/**
+!artifacts/powershell/
+!artifacts/powershell/**
 Releases/
 .codex-cloud/

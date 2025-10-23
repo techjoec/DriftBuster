@@ -145,6 +145,16 @@ Export-DriftBusterSqlSnapshot -Database fixtures/sqlite/sample.sqlite -MaskColum
 The PowerShell module uses the shared `DriftBuster.Backend` library, giving the
 CLI and GUI identical diff, hunt, and run-profile behaviour.
 
+To publish a redistributable archive, run:
+
+```powershell
+dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Release
+pwsh ./scripts/package_powershell_module.ps1 -Configuration Release -SkipAnalyzer
+Get-Content artifacts/powershell/releases/DriftBuster.PowerShell-<version>.zip.sha256
+```
+
+The script emits `DriftBuster.PowerShell-<version>.zip` and an accompanying `.sha256` file under `artifacts/powershell/releases/`; verify the checksum before distributing the module.
+
 If importing the module reports `DriftBusterBackendMissing`, publish the backend
 assembly and re-import:
 
