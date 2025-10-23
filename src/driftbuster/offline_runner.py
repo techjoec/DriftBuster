@@ -39,6 +39,8 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence, T
 import zipfile
 from glob import glob
 
+from .sql import build_sqlite_snapshot
+
 
 MANIFEST_SCHEMA = "https://driftbuster.dev/offline-runner/manifest/v1"
 CONFIG_SCHEMA = "https://driftbuster.dev/offline-runner/config/v1"
@@ -469,11 +471,135 @@ class OfflineRegistryScanSource:
         return _safe_name(f"registry_{base}")
 
 
+def _normalise_snapshot_columns(value: Any) -> Mapping[str, tuple[str, ...]]:
+    if not value:
+        return {}
+    if isinstance(value, Mapping):
+        normalised: dict[str, tuple[str, ...]] = {}
+        for table, columns in value.items():
+            if not table:
+                continue
+            if isinstance(columns, Sequence):
+                entries = [str(column).strip() for column in columns if str(column).strip()]
+            else:
+                entries = [str(columns).strip()]
+            if entries:
+                normalised[str(table)] = tuple(entries)
+        return normalised
+    if isinstance(value, Sequence):
+        grouped: dict[str, list[str]] = {}
+        for entry in value:
+            if not entry:
+                continue
+            text = str(entry).strip()
+            if not text or "." not in text:
+                continue
+            table, column = text.split(".", 1)
+            table = table.strip()
+            column = column.strip()
+            if not table or not column:
+                continue
+            grouped.setdefault(table, []).append(column)
+        return {table: tuple(columns) for table, columns in grouped.items()}
+    return {}
+
+
+@dataclass(frozen=True)
+class OfflineSqlSnapshotSource:
+    path: str
+    alias: str | None = None
+    optional: bool = False
+    tables: Tuple[str, ...] = ()
+    exclude_tables: Tuple[str, ...] = ()
+    mask_columns: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    hash_columns: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    limit: int | None = None
+    placeholder: str = "[REDACTED]"
+    hash_salt: str = ""
+    dialect: str = "sqlite"
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineSqlSnapshotSource":
+        spec = payload.get("sql_snapshot")
+        if not isinstance(spec, Mapping):
+            raise ValueError("sql_snapshot source requires an object payload")
+
+        path_value = spec.get("path") or payload.get("path")
+        if not path_value or not str(path_value).strip():
+            raise ValueError("sql_snapshot requires a 'path'.")
+
+        alias_value = payload.get("alias") or spec.get("alias")
+        alias = str(alias_value).strip() if alias_value and str(alias_value).strip() else None
+
+        optional_value = payload.get("optional", spec.get("optional", False))
+        optional = bool(optional_value)
+
+        def _string_tuple(key: str) -> Tuple[str, ...]:
+            raw = spec.get(key)
+            if not raw:
+                return ()
+            if isinstance(raw, str):
+                return (raw,)
+            return tuple(str(item).strip() for item in raw if str(item).strip())
+
+        tables = _string_tuple("tables")
+        exclude_tables = _string_tuple("exclude_tables")
+
+        mask_columns = _normalise_snapshot_columns(spec.get("mask_columns"))
+        hash_columns = _normalise_snapshot_columns(spec.get("hash_columns"))
+
+        limit_value = spec.get("limit")
+        limit = None
+        if limit_value is not None:
+            limit = int(limit_value)
+            if limit <= 0:
+                raise ValueError("sql_snapshot limit must be positive if provided")
+
+        placeholder = str(spec.get("placeholder") or payload.get("placeholder") or "[REDACTED]")
+        hash_salt = str(spec.get("hash_salt") or payload.get("hash_salt") or "")
+        dialect = str(spec.get("dialect") or "sqlite").lower()
+        if dialect != "sqlite":
+            raise ValueError("sql_snapshot currently supports only the 'sqlite' dialect")
+
+        return cls(
+            path=str(path_value),
+            alias=alias,
+            optional=optional,
+            tables=tables,
+            exclude_tables=exclude_tables,
+            mask_columns=mask_columns,
+            hash_columns=hash_columns,
+            limit=limit,
+            placeholder=placeholder,
+            hash_salt=hash_salt,
+            dialect=dialect,
+        )
+
+    def destination_name(self, *, fallback_index: int) -> str:
+        if self.alias:
+            return _safe_name(self.alias)
+        stem = Path(self.path).stem
+        if stem:
+            return _safe_name(stem)
+        return f"sql_snapshot_{fallback_index:02d}"
+
+    def snapshot_kwargs(self) -> Mapping[str, Any]:
+        return {
+            "tables": self.tables or None,
+            "exclude_tables": self.exclude_tables or None,
+            "mask_columns": self.mask_columns,
+            "hash_columns": self.hash_columns,
+            "limit": self.limit,
+            "placeholder": self.placeholder,
+            "hash_salt": self.hash_salt,
+        }
+
+
 @dataclass(frozen=True)
 class OfflineRunnerProfile:
     name: str
     description: str | None
-    sources: Sequence[Union[OfflineCollectionSource, OfflineRegistryScanSource]]
+    sources: Sequence[Union[OfflineCollectionSource, OfflineRegistryScanSource, OfflineSqlSnapshotSource]]
     baseline: str | None
     tags: Sequence[str]
     options: Mapping[str, Any]
@@ -489,11 +615,13 @@ class OfflineRunnerProfile:
         if not raw_sources:
             raise ValueError("Profile must define at least one source.")
 
-        sources: list[OfflineCollectionSource] = []
+        sources: list[Union[OfflineCollectionSource, OfflineRegistryScanSource, OfflineSqlSnapshotSource]] = []
         for entry in raw_sources:
             if isinstance(entry, Mapping):
                 if "registry_scan" in entry:
                     sources.append(OfflineRegistryScanSource.from_dict(entry))
+                elif "sql_snapshot" in entry:
+                    sources.append(OfflineSqlSnapshotSource.from_dict(entry))
                 else:
                     sources.append(OfflineCollectionSource.from_dict(entry))
             else:
@@ -502,7 +630,11 @@ class OfflineRunnerProfile:
         baseline = payload.get("baseline")
         if baseline is not None:
             baseline = str(baseline)
-            file_paths = {s.path for s in sources if isinstance(s, OfflineCollectionSource)}
+            file_paths = {
+                s.path
+                for s in sources
+                if isinstance(s, (OfflineCollectionSource, OfflineSqlSnapshotSource))
+            }
             if baseline not in file_paths:
                 raise ValueError(
                     "Profile baseline must reference one of the declared sources."
@@ -741,6 +873,76 @@ def execute_config(
         destination_root.mkdir(parents=True, exist_ok=True)
 
         matches: list[Path] = []
+        if isinstance(source, OfflineSqlSnapshotSource):
+            candidate = _expand_path(source.path)
+            if not candidate.exists():
+                if source.optional:
+                    log(f"optional sql snapshot skipped: {source.path}")
+                    source_summaries.append(
+                        {
+                            "type": "sql_snapshot",
+                            "path": source.path,
+                            "alias": alias,
+                            "optional": True,
+                            "skipped": True,
+                            "reason": "missing",
+                        }
+                    )
+                    continue
+                log(f"sql snapshot source missing: {source.path}")
+                raise FileNotFoundError(f"SQL snapshot source not found: {source.path}")
+
+            log(f"building sql snapshot from {candidate}")
+            snapshot = build_sqlite_snapshot(candidate, **source.snapshot_kwargs())
+            payload = snapshot.to_dict()
+            content = json.dumps(payload, indent=2, sort_keys=True)
+            encoded = content.encode("utf-8")
+            if (
+                settings.max_total_bytes is not None
+                and total_bytes + len(encoded) > settings.max_total_bytes
+            ):
+                raise ValueError("Collection exceeds configured max_total_bytes limit.")
+
+            snapshot_path = destination_root / "sql-snapshot.json"
+            snapshot_path.write_bytes(encoded)
+            size = len(encoded)
+            digest = _hash_file(snapshot_path)
+            total_bytes += size
+
+            files.append(
+                CollectedFile(
+                    alias=alias,
+                    source=f"sql:{source.dialect}",
+                    destination=snapshot_path,
+                    relative_path=snapshot_path.relative_to(destination_root),
+                    size=size,
+                    sha256=digest,
+                )
+            )
+            source_summaries.append(
+                {
+                    "type": "sql_snapshot",
+                    "path": source.path,
+                    "alias": alias,
+                    "dialect": source.dialect,
+                    "tables": [table["name"] for table in payload.get("tables", [])],
+                    "row_counts": {
+                        table["name"]: table["row_count"] for table in payload.get("tables", [])
+                    },
+                    "masked_columns": {
+                        table: list(columns) for table, columns in source.mask_columns.items()
+                    },
+                    "hashed_columns": {
+                        table: list(columns) for table, columns in source.hash_columns.items()
+                    },
+                }
+            )
+            log(
+                "sql snapshot exported with "
+                f"{len(payload.get('tables', []))} table(s)"
+            )
+            continue
+
         if isinstance(source, OfflineCollectionSource):
             try:
                 for candidate in _iter_source_matches(source.path):
