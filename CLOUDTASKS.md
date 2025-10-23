@@ -688,9 +688,9 @@ Schema reference
 
 **REQUIRED RELATED WORK:**
 - [ ] 19.1 Framework evaluation.
-  - [ ] 19.1.1 Review WinUI 3, Tkinter, PySimpleGUI, and Electron options; record decision matrix in `notes/status/gui-research.md`.
-  - [ ] 19.1.2 Sync `docs/windows-gui-notes.md#candidate-frameworks` with updated rationale and preferred pathway.
-  - [ ] 19.1.3 Capture licensing implications and NOTICE requirements in `docs/legal-safeguards.md#gui-frameworks`.
+  - [x] 19.1.1 Review WinUI 3, Tkinter, PySimpleGUI, and Electron options; record decision matrix in `notes/status/gui-research.md`.
+  - [x] 19.1.2 Sync `docs/windows-gui-notes.md#candidate-frameworks` with updated rationale and preferred pathway.
+  - [x] 19.1.3 Capture licensing implications and NOTICE requirements in `docs/legal-safeguards.md#gui-frameworks`.
 - [ ] 19.2 Runtime prerequisites.
   - [ ] 19.2.1 Decide on WebView2 Evergreen redistribution strategy; document installer steps in `docs/windows-gui-notes.md#packaging--distribution-plan`.
   - [ ] 19.2.2 Validate `.NET` publish commands (framework-dependent vs self-contained) and log outputs in `notes/dev-host-prep.md`.

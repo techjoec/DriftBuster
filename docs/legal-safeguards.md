@@ -17,6 +17,22 @@ We keep the project lightweight and respect other creators:
 
 These guardrails cover every feature, note, and capture helper.
 
+## GUI frameworks
+
+- **WinUI 3 / Windows App SDK**
+  - Include the Windows App SDK and WinUI acknowledgements plus the WebView2 Evergreen redistribution notice in the packaged NOTICE file.
+  - Distribute the Microsoft WebView2 installer alongside offline bundles so operators can install the runtime without network calls.
+  - Record redistribution package hashes in `artifacts/gui-packaging/` when preparing MSIX or portable bundles.
+- **Tkinter**
+  - Bundle the Python PSF licence text and Tcl/Tk copyright notice when shipping CPython runtimes.
+  - Document any embedded CPython version inside the NOTICE manifest so security reviews can map CVE coverage quickly.
+- **PySimpleGUI (Tk flavour)**
+  - Provide the LGPLv3 licence text and a written offer (README reference) for source access if distributing modified wheels.
+  - Track which PySimpleGUI artefact (official wheel vs patched build) ships so the notice stays accurate across releases.
+- **Electron**
+  - Maintain an enumerated list of bundled npm dependencies with licence identifiers in NOTICE; refresh it every release build.
+  - Store checksum + SBOM outputs for the packaged Node modules alongside the release artefacts for audit.
+
 ## SQL snapshot safeguards
 
 - Mask or hash sensitive columns using the CLI options documented in

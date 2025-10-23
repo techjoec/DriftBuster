@@ -60,22 +60,16 @@ Active user requirements are tracked in the status log (`notes/status/gui-resear
 
 ## Candidate Frameworks
 
-- **WinUI 3 / Windows App SDK**
-  - Pros: Native Windows visuals, fluent design widgets, built-in WebView2 for HTML embedding.
-  - Cons: Requires MSIX packaging and Windows 10 1809+, tooling tied to Visual Studio.
-  - Licensing: MIT for the SDK; WebView2 runtime redistribution allowed via Microsoft runtime installer.
-- **Tkinter**
-  - Pros: Bundled with CPython, trivial to script, no extra runtime dependencies.
-  - Cons: Limited modern UI widgets, no native WebView (requires third-party bridge for HTML reports).
-  - Licensing: Inherits Python's PSF licence; shipping requires respecting CPython redistribution notice.
-- **PySimpleGUI (Tk flavour)**
-  - Pros: Rapid prototyping layer, higher-level API for layout, built-in file picker flows.
-  - Cons: Depends on Tkinter backend capabilities; LGPL for PySimpleGUI requires source offer for modifications.
-  - Licensing: LGPLv3; safe for closed distribution if we distribute unmodified wheels + licence text.
-- **Electron**
-  - Pros: Full Chromium engine, powerful rendering for HTML/JS-based reports, wide ecosystem of components.
-  - Cons: Heavy footprint (~100 MB), Node.js toolchain, security posture must be hardened.
-  - Licensing: MIT; must audit bundled npm packages for compatible licences.
+**Current decision (A19.1): prioritise WinUI 3 for the shipping Windows shell, keep Tkinter/PySimpleGUI research as lightweight tooling notes, and treat Electron as a future HTML-heavy contingency.**
+
+| Framework | Why we would pick it | Key blockers | Packaging notes | Licence callouts |
+| --- | --- | --- | --- | --- |
+| **WinUI 3 / Windows App SDK** | Fluent native shell, built-in WebView2 keeps HTML diff rendering first-class, aligns with Microsoft tooling most operators already have. | Requires MSIX tooling (Windows 10 1809+), Visual Studio workload heavier than dotnet-only projects, WebView2 runtime must be staged for offline installs. | Default to MSIX with optional self-contained `.NET` publish for offline deployments; bundle WebView2 Evergreen installer in distribution folder. | MIT SDK + WebView2 redistribution notice; add Windows App SDK, WinUI, and WebView2 runtime to NOTICE bundle. |
+| **Tkinter** | Ships with CPython, very small footprint, fast to script maintenance utilities. | No native WebView for HTML reports, UI dated for production shell without major effort. | Portable zip with embedded CPython covers offline hosts; MSIX adds little beyond packaging convenience. | Include Python PSF licence plus Tcl/Tk notice in NOTICE directory. |
+| **PySimpleGUI (Tk flavour)** | Higher-level layout wrappers on top of Tkinter, minimal code to build dialogs and wizards. | Still inherits Tkinter rendering limits, LGPLv3 obligations if modified. | Same portable zip approach as Tkinter; document source-offer steps if distributing customised wheel. | NOTICE must reference PySimpleGUI LGPLv3 text and source access location. |
+| **Electron** | Chromium renderer unlocks fully interactive HTML/JS dashboards and deep telemetry overlays. | Sizeable download (~100 MB), Node.js toolchain, extra security hardening for offline-friendly builds. | MSIX or Squirrel packages; ensure hashed offline bundle with signed Node modules. | Enumerate bundled npm licences in NOTICE and track updates rigorously. |
+
+Update the status log (`notes/status/gui-research.md`) when evaluating new candidates so this section stays synced.
 
 ## Packaging & Distribution Plan
 

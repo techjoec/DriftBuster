@@ -2,9 +2,18 @@
 
 ## Decisions & Findings
 
-- Framework shortlist: WinUI 3, Tkinter, PySimpleGUI, Electron. Electron reserved for rich HTML workflows; Tkinter/PySimpleGUI for lightweight builds.
-- Packaging baseline: MSIX for WinUI/Electron; portable zip with bundled Python runtime for Tkinter/PySimpleGUI.
-- Manual update cadence until signing/auto-update story is approved.
+### Framework decision matrix (A19.1)
+
+| Framework | Strengths | Gaps | Packaging & runtime | Licensing & NOTICE impact | Assessment |
+| --- | --- | --- | --- | --- | --- |
+| **WinUI 3 / Windows App SDK** | Fluent visuals, native controls, built-in WebView2 for HTML diff rendering, tight Windows integration. | Requires MSIX tooling, Windows 10 1809+, Visual Studio workflow heavier than .NET-only projects. | Expects MSIX (required for full feature set) with optional self-contained `.NET` publish for offline runs. Needs WebView2 Evergreen redistributable staged alongside installer. | MIT SDK; NOTICE must call out Windows App SDK, WinUI libraries, WebView2 runtime package. Ship Microsoft redistribution notice with installer. | **Preferred path.** Matches existing Avalonia parity goals and keeps HTML reporting viable once WebView2 ships. |
+| **Tkinter** | Bundled with CPython, zero external runtime, quick scripting for maintenance tools. | Lacks modern UI widgets, no first-party WebView; would need third-party bridge for HTML reports. | Portable zip easiest (ship CPython + scripts). Windows packaging limited; MSIX viable but offers little beyond Tkinter basics. | PSF licence; include Python redistribution notice and Tcl/Tk copyright in NOTICE bundle. | Viable fallback for ultra-light tooling but fails HTML diff requirement without extra work. |
+| **PySimpleGUI (Tk flavour)** | Higher-level layout layer, rapid iteration on Tkinter base, built-in dialog helpers. | Inherits Tkinter limitations, LGPLv3 obligations if modified, ecosystem smaller for advanced widgets. | Mirrors Tkinter packaging; distribute wheels + Python runtime. Must document source access if we ship modified PySimpleGUI. | LGPLv3; NOTICE must link to project source and provide written offer when distributing binaries. | Adds developer ergonomics but brings extra compliance steps with limited UX gains. |
+| **Electron** | Chromium engine enables rich HTML/JS experiences, easy HTML report embedding, cross-platform base. | Heavy footprint (~100 MB), requires Node.js toolchain, more security hardening for offline usage. | Requires MSIX or Squirrel-style installer; offline deployment needs pre-bundled Node modules and signed artefacts. Hash + integrity logs mandatory. | MIT core but npm dependencies vary; NOTICE must enumerate bundled packages and licences. | Reserved for future HTML-first experiences; overhead too high for current Windows-first deliverable. |
+
+- Packaging baseline: WinUI/Electron favour MSIX; Tkinter/PySimpleGUI lean on portable zip bundles with embedded CPython.
+- Manual update cadence stays in place until signing/auto-update decisions land.
+- Recommendation: focus on WinUI 3 for production packaging, keep Tkinter/PySimpleGUI research archived as lightweight fallback notes, and track Electron as a contingency once reporting adapters demand full Chromium rendering.
 
 ### Drilldown command telemetry (A1b)
 
