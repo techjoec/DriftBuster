@@ -40,6 +40,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
         help="Minimum number of total runs expected per scenario (default: 1).",
     )
+    parser.add_argument(
+        "--require-scenario",
+        dest="required_scenarios",
+        action="append",
+        metavar="NAME",
+        help="Scenario that must appear in the telemetry (repeat this flag for multiple names).",
+    )
     return parser
 
 
@@ -57,6 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         max_failure_rate=args.max_failure_rate,
         require_last_pass=not args.allow_last_failure,
         min_total_runs=args.min_total_runs,
+        required_scenarios=args.required_scenarios,
     )
 
     for line in format_report(evaluation):

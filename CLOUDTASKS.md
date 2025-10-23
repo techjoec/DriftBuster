@@ -12,6 +12,22 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0e. Font Telemetry Scenario Enforcement [deps=A0]
+
+**REASON:** Headless telemetry occasionally omits scenario entries when pipelines shift, hiding regressions needed for release validation.
+
+**MUST NOT:** Overwrite collected telemetry or relax existing drift thresholds.
+
+**MUST:** Flag missing scenario coverage in evaluations, expose CLI enforcement, and extend regression tests.
+
+**ACCEPT GATES:** Evaluation reports treat absent scenarios as issues, CLI surface supports required names, and tests cover the new guardrails.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.5 Detect missing scenarios inside `src/driftbuster/font_health.py` evaluations.
+  - [x] 0.5.1 Extend `ReportEvaluation` to track absent scenarios and update `format_report` output.
+- [x] 0.6 Add CLI controls in `scripts/font_health_summary.py` to require scenarios.
+- [x] 0.7 Expand `tests/scripts/test_font_health_summary.py` coverage for missing scenario handling.
+
 ## A0. FontManager Regression Hardening [deps=]
 
 **REASON:** Release builds still intermittently lose the headless `FontManager` alias chain, causing glyph resolution crashes before the window tree materialises.

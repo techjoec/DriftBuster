@@ -59,10 +59,11 @@ class ScenarioEvaluation:
 class ReportEvaluation:
     report: FontHealthReport
     scenarios: Sequence[ScenarioEvaluation]
+    missing_scenarios: Sequence[str] = ()
 
     @property
     def has_issues(self) -> bool:
-        return any(e.issues for e in self.scenarios)
+        return any(e.issues for e in self.scenarios) or bool(self.missing_scenarios)
 
 
 class FontHealthError(RuntimeError):
@@ -159,8 +160,14 @@ def evaluate_report(
     max_failure_rate: float = 0.0,
     require_last_pass: bool = True,
     min_total_runs: int = 1,
+    required_scenarios: Iterable[str] | None = None,
 ) -> ReportEvaluation:
-    """Evaluate a :class:`FontHealthReport`."""
+    """Evaluate a :class:`FontHealthReport`.
+
+    Args:
+        required_scenarios: Scenario names that must appear in the telemetry; missing
+            entries are surfaced as issues.
+    """
 
     scenarios = evaluate_scenarios(
         report.scenarios,
@@ -168,7 +175,21 @@ def evaluate_report(
         require_last_pass=require_last_pass,
         min_total_runs=min_total_runs,
     )
-    return ReportEvaluation(report=report, scenarios=tuple(scenarios))
+    missing: List[str] = []
+    if required_scenarios:
+        observed = {item.scenario.name.casefold() for item in scenarios}
+        for candidate in required_scenarios:
+            normalised = (candidate or "").strip()
+            if not normalised:
+                continue
+            if normalised.casefold() not in observed:
+                missing.append(normalised)
+
+    return ReportEvaluation(
+        report=report,
+        scenarios=tuple(scenarios),
+        missing_scenarios=tuple(missing),
+    )
 
 
 def format_report(evaluation: ReportEvaluation) -> List[str]:
@@ -195,6 +216,11 @@ def format_report(evaluation: ReportEvaluation) -> List[str]:
         lines.append(
             f"Generated at: {evaluation.report.generated_at.isoformat(timespec='seconds')}"
         )
+
+    if evaluation.missing_scenarios:
+        lines.append("")
+        lines.append("Missing scenarios:")
+        lines.extend(f"    ↳ {name}" for name in evaluation.missing_scenarios)
     return lines
 
 

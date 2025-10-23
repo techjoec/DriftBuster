@@ -98,3 +98,28 @@ def test_load_font_health_report_errors_when_missing_file(tmp_path: Path) -> Non
     missing = tmp_path / "absent.json"
     with pytest.raises(FontHealthError):
         load_font_health_report(missing)
+
+
+def test_evaluate_report_flags_missing_required_scenarios(sample_payload: Path) -> None:
+    report = load_font_health_report(sample_payload)
+
+    evaluation = evaluate_report(
+        report,
+        max_failure_rate=0.2,
+        required_scenarios=("passes-release", "missing-scenario"),
+    )
+
+    assert evaluation.has_issues is True
+    assert evaluation.missing_scenarios == ("missing-scenario",)
+
+
+def test_format_report_lists_missing_scenarios(sample_payload: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    report = load_font_health_report(sample_payload)
+    evaluation = evaluate_report(report, required_scenarios=("Absent",))
+
+    for line in format_report(evaluation):
+        print(line)
+
+    output = capsys.readouterr().out
+    assert "Missing scenarios:" in output
+    assert "Absent" in output
