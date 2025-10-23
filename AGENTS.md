@@ -4,7 +4,7 @@
 - No weeks, sprints, or sprawling documentation.
 - No GitHub Actions/Runners.
 - **Do not downgrade/reverse**: if you are having dep issues or other moderniztion-induced issues strive to resolve the issue to stay on the latest stable/mainstream versioning possible.
-
+- When running pwsh be sure to use the -NonInteractive param
 - Coverage baseline for all changes and new formats: keep line coverage at
   90% or higher. Enforce locally, not via CI. Verify with:
   - Python: `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`
