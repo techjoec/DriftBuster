@@ -83,10 +83,10 @@ Schema reference
   - [x] 1.0.2.a Map the existing `IFontManagerImpl` call sites and document the binding strategy in `docs/windows-gui-guide.md#headless-bootstrap`.
   - [x] 1.0.2.b Implement the locator binding with a wrapper/proxy that keeps glyph loading synchronous for tests.
   - [x] 1.0.2.c Extend `HeadlessFixture` with targeted asserts for default family, glyph resolution, and alias preservation.
-  - [ ] 1.0.3 Capture the remediation notes and stack trace context in `notes/status/gui-research.md#headless-font-issues`.
-    - [ ] 1.0.3.a Summarise the failing scenarios pre-fix (Release window creation, Drilldown view instantiation).
-    - [ ] 1.0.3.b Record the applied binding approach, including proxy details and locator hooks.
-    - [ ] 1.0.3.c Attach before/after test evidence referencing the new smoke assertions.
+- [x] 1.0.3 Capture the remediation notes and stack trace context in `notes/status/gui-research.md#headless-font-issues`.
+    - [x] 1.0.3.a Summarise the failing scenarios pre-fix (Release window creation, Drilldown view instantiation).
+    - [x] 1.0.3.b Record the applied binding approach, including proxy details and locator hooks.
+    - [x] 1.0.3.c Attach before/after test evidence referencing the new smoke assertions.
 - [ ] 1.1 Validation & coverage.
   - [ ] 1.1.1 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`.
   - [ ] 1.1.2 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable.

@@ -27,9 +27,9 @@
 
 ### Headless font issues (A1d)
 
-- Release-mode headless windows previously crashed because `fonts:SystemFonts` was absent from the Avalonia locator. The captured stack trace lives in [`artifacts/logs/headless-font-release-stacktrace.txt`](../../artifacts/logs/headless-font-release-stacktrace.txt).
-- A reflection-based bootstrapper now binds `FontManagerOptions` and `IFontManagerImpl` to ensure the Inter fallback is registered for headless scenarios before the locator serves fonts.
-- The shared UI fixture verifies that `fonts:SystemFonts` and `Inter` entries exist prior to window instantiation, and a smoke test instantiates `MainWindow` under the headless collection to guard the regression.
+- Pre-fix failures hit both the Release `MainWindow` smoke test and the drilldown view instantiation path because Avalonia attempted to resolve `fonts:SystemFonts` before any headless locator bindings existed. The captured stack trace remains in [`artifacts/logs/headless-font-release-stacktrace.txt`](../../artifacts/logs/headless-font-release-stacktrace.txt) for release window crashes, while the matching drilldown failure reproduced under `[Collection(HeadlessCollection.Name)]` until the bootstrap landed.
+- The remediation injects `FontManagerOptions` plus an `IFontManagerImpl` proxy during `BuildAvaloniaApp()` via the service locator hooks. The proxy keeps glyph loads synchronous, forwards `GetGlyphTypeface` to the real manager, and seeds `Inter` as the default family so existing glyph aliases keep working.
+- After the binding, `HeadlessFixture` now asserts the `fonts:SystemFonts` dictionary and `Inter` fallback before any window construction, and `HeadlessBootstrapperSmokeTests` covers both `EnsureHeadless_registers_inter_font_manager` and `EnsureHeadless_allows_main_window_instantiation` to demonstrate the before/after success criteria. Passing runs are recorded alongside the seed log in [`artifacts/logs/headless-font-seed.txt`](../../artifacts/logs/headless-font-seed.txt).
 
 ## Open Questions
 
