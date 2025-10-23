@@ -1,0 +1,39 @@
+{
+  "captured_at": "2025-10-23T07:10:24.451205+00:00",
+  "database": "validation-sample.sqlite",
+  "dialect": "sqlite",
+  "path": "validation-sample.sqlite",
+  "tables": [
+    {
+      "columns": [
+        "id",
+        "email",
+        "secret",
+        "balance"
+      ],
+      "hashed_columns": [
+        "email"
+      ],
+      "masked_columns": [
+        "secret"
+      ],
+      "name": "accounts",
+      "row_count": 2,
+      "rows": [
+        {
+          "balance": 42.5,
+          "email": "sha256:50f3e4e3818005ad5fb413ff436c7043c05e0b9d89df4229cd588d13f2ae9bb7",
+          "id": 1,
+          "secret": "[MASK]"
+        },
+        {
+          "balance": 13.75,
+          "email": "sha256:794733b9f2caae4111fa87aec5b12250b94b845c2a844bbfce753df14eb99e39",
+          "id": 2,
+          "secret": "[MASK]"
+        }
+      ],
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)"
+    }
+  ]
+}

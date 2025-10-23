@@ -1,0 +1,43 @@
+{
+  "captured_at": "2025-10-23T07:10:24.451604+00:00",
+  "exports": [
+    {
+      "dialect": "sqlite",
+      "hashed_columns": {
+        "accounts": [
+          "email"
+        ]
+      },
+      "masked_columns": {
+        "accounts": [
+          "secret"
+        ]
+      },
+      "output": "validation-sql-snapshot.json",
+      "row_counts": {
+        "accounts": 2
+      },
+      "source": "validation-sample.sqlite",
+      "tables": [
+        "accounts"
+      ]
+    }
+  ],
+  "options": {
+    "exclude_tables": [],
+    "hash_salt": "pepper",
+    "hashed_columns": {
+      "accounts": [
+        "email"
+      ]
+    },
+    "limit": null,
+    "masked_columns": {
+      "accounts": [
+        "secret"
+      ]
+    },
+    "placeholder": "[MASK]",
+    "tables": []
+  }
+}

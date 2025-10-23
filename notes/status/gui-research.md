@@ -41,6 +41,12 @@
 - Bootstrapper smoke telemetry now persists to [`artifacts/logs/headless-font-health.json`](../../artifacts/logs/headless-font-health.json), capturing per-scenario totals (`totalRuns`, `passes`, `failures`) and the latest metrics. The current snapshot shows all three headless smoke tests green after the alias/lookup retries, making it easy to spot regressions when the counts drift.
 - `scripts/font_health_summary.py` turns the telemetry into a quick drift report, failing the session when pass rates dip or the latest status regresses so the Release/Debug parity checks stay honest.
 
+### Offline SQL snapshot validation (A1d · 16.4)
+
+- Seeded a minimal `accounts` SQLite database and executed `scripts.capture.run_sql_export` to validate the SQL snapshot export path with deterministic masking (`accounts.secret`) and hashing (`accounts.email`).
+- Stored the generated evidence under [`artifacts/sql/validation-sql-snapshot.json`](../../artifacts/sql/validation-sql-snapshot.json) and [`artifacts/sql/sql-manifest.json`](../../artifacts/sql/sql-manifest.json), with matching SHA-256 records archived in [`artifacts/sql/validation-checksums.json`](../../artifacts/sql/validation-checksums.json) for downstream integrity checks.
+- Retention plan: refresh the sanitized snapshot quarterly or whenever the SQL export schema shifts, keep only the most recent manifest/snapshot pair plus checksum log for 90 days, and drop superseded captures after confirming the new hashes so no historical data lingers outside controlled storage.
+
 ## Open Questions
 
 - Which framework aligns best with the eventual reporting pipeline timeline?

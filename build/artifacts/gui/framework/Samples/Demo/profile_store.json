@@ -1,0 +1,40 @@
+{
+  "profiles": [
+    {
+      "name": "demo-baseline",
+      "description": "Baseline project configuration",
+      "tags": ["env:demo", "tier:web"],
+      "configs": [
+        {
+          "id": "appsettings",
+          "path": "baseline/app/appsettings.json",
+          "expected_format": "json"
+        },
+        {
+          "id": "app-ini",
+          "path": "baseline/app/app.ini",
+          "expected_format": "ini",
+          "expected_variant": "sectioned-ini"
+        },
+        {
+          "id": "web-config",
+          "path": "baseline/web/web.config",
+          "expected_format": "structured-config-xml"
+        },
+        {
+          "id": "project-csproj",
+          "path": "baseline/msbuild/Project.csproj",
+          "expected_format": "xml",
+          "expected_variant": "msbuild-project-xml"
+        },
+        {
+          "id": "strings-resx",
+          "path": "baseline/localization/Strings.resx",
+          "expected_format": "xml",
+          "expected_variant": "resource-xml"
+        }
+      ]
+    }
+  ]
+}
+

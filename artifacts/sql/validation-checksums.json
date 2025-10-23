@@ -1,0 +1,13 @@
+{
+  "files": {
+    "sql-manifest.json": {
+      "sha256": "267976992bba64957c2c0d5d3e70dd782cbaa4486c7d4f102f5c23df44219103",
+      "size_bytes": 765
+    },
+    "validation-sql-snapshot.json": {
+      "sha256": "22189ca88c38b3fc64b6970ed63e5cf218c8f93ceba66dbacb45898af5eab6b8",
+      "size_bytes": 945
+    }
+  },
+  "generated_at": "2025-10-23T07:12:37.169046+00:00"
+}

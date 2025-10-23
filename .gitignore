@@ -6,6 +6,11 @@ __pycache__/
 .venv/
 bin/
 obj/
-artifacts/
+!artifacts/
+artifacts/*
+!artifacts/logs/
+!artifacts/logs/**
+!artifacts/sql/
+!artifacts/sql/**
 Releases/
 .codex-cloud/

@@ -615,9 +615,9 @@ Schema reference
   - [x] 16.3.1 Update `docs/registry.md` and `docs/legal-safeguards.md`.
   - [x] 16.3.2 Log approvals in `notes/checklists/legal-review.md`.
   - [x] 16.3.3 Capture retention policy for database snapshots in `docs/legal-safeguards.md#retention`.
-- [ ] 16.4 Validation.
-  - [ ] 16.4.1 Capture sample run, store evidence in `notes/status/gui-research.md`, and ensure retention plan recorded.
-  - [ ] 16.4.2 Archive database export checksums in `artifacts/sql/`.
+- [x] 16.4 Validation.
+  - [x] 16.4.1 Capture sample run, store evidence in `notes/status/gui-research.md`, and ensure retention plan recorded.
+  - [x] 16.4.2 Archive database export checksums in `artifacts/sql/`.
 
 ## A17. PowerShell Module Delivery [deps=A10]
 
