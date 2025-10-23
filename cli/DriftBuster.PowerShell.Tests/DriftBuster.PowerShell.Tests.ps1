@@ -163,4 +163,219 @@ Describe 'DriftBuster PowerShell module' {
             ($json | ConvertFrom-Json).profile.name | Should -Be 'RawProfile'
         }
     }
+
+    Context 'SQL export workflows' -Tag 'sql-export' {
+        BeforeAll {
+            $script:originalPythonPath = $env:PYTHONPATH
+            $srcPath = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'src')).Path
+            $repoPath = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..' '..')).Path
+            $separator = [IO.Path]::PathSeparator
+
+            $pythonPaths = @($srcPath, $repoPath)
+            if ($script:originalPythonPath) {
+                $pythonPaths += $script:originalPythonPath
+            }
+
+            $env:PYTHONPATH = ($pythonPaths -join $separator)
+        }
+
+        AfterAll {
+            $env:PYTHONPATH = $script:originalPythonPath
+        }
+
+        It 'exports sqlite snapshots with masked columns' {
+            $baseDir = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString('N')))
+            $script:tempArtifacts += $baseDir.FullName
+
+            $databasePath = Join-Path $baseDir.FullName 'sample.sqlite'
+            $exportDir = Join-Path $baseDir.FullName 'exports'
+            $scriptPath = Join-Path $baseDir.FullName 'create_db.py'
+
+            $pythonScript = @'
+import sqlite3
+import sys
+
+db_path = sys.argv[1]
+connection = sqlite3.connect(db_path)
+try:
+    cursor = connection.cursor()
+    cursor.execute("CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT)")
+    cursor.execute("INSERT INTO accounts (email, secret) VALUES (?, ?)", ("alpha@example.com", "token-a"))
+    cursor.execute("INSERT INTO accounts (email, secret) VALUES (?, ?)", ("beta@example.com", "token-b"))
+    connection.commit()
+finally:
+    connection.close()
+'@
+
+            Set-Content -LiteralPath $scriptPath -Value $pythonScript -Encoding UTF8
+
+            & python $scriptPath $databasePath
+            if ($LASTEXITCODE -ne 0) {
+                throw "python database bootstrap failed with exit code $LASTEXITCODE"
+            }
+
+            $stubRoot = New-Item -ItemType Directory -Path (Join-Path $baseDir.FullName 'py-stub')
+            $script:tempArtifacts += $stubRoot.FullName
+            $scriptsDir = New-Item -ItemType Directory -Path (Join-Path $stubRoot.FullName 'scripts')
+            $initPath = Join-Path $scriptsDir.FullName '__init__.py'
+            Set-Content -LiteralPath $initPath -Value '' -Encoding UTF8
+
+            $capturePath = Join-Path $scriptsDir.FullName 'capture.py'
+            $captureScript = @'
+import json
+import os
+import sys
+from pathlib import Path
+
+
+def _parse_arguments(argv):
+    output_dir = None
+    tables = []
+    exclude_tables = []
+    mask_column = []
+    hash_column = []
+    placeholder = "[REDACTED]"
+    hash_salt = ""
+    limit = None
+    prefix = ""
+    databases = []
+    iterator = iter(argv)
+    for token in iterator:
+        if token == "--output-dir":
+            output_dir = next(iterator)
+        elif token == "--table":
+            tables.append(next(iterator))
+        elif token == "--exclude-table":
+            exclude_tables.append(next(iterator))
+        elif token == "--mask-column":
+            mask_column.append(next(iterator))
+        elif token == "--hash-column":
+            hash_column.append(next(iterator))
+        elif token == "--placeholder":
+            placeholder = next(iterator)
+        elif token == "--hash-salt":
+            hash_salt = next(iterator)
+        elif token == "--limit":
+            limit = int(next(iterator))
+        elif token == "--prefix":
+            prefix = next(iterator)
+        else:
+            databases.append(token)
+    return (
+        output_dir,
+        tables,
+        exclude_tables,
+        mask_column,
+        hash_column,
+        placeholder,
+        hash_salt,
+        limit,
+        prefix,
+        databases,
+    )
+
+
+def main():
+    argv = sys.argv[1:]
+    if not argv or argv[0] != "export-sql":
+        return 2
+
+    (
+        output_dir,
+        tables,
+        exclude_tables,
+        mask_column,
+        hash_column,
+        placeholder,
+        hash_salt,
+        limit,
+        prefix,
+        databases,
+    ) = _parse_arguments(argv[1:])
+
+    if output_dir is None or not databases:
+        return 3
+
+    for db_path in databases:
+        if not os.path.exists(db_path):
+            sys.stderr.write(f"error: database not found: {db_path}\n")
+            return 1
+
+    outdir = Path(output_dir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    manifest = {
+        "exports": [
+            {
+                "source": databases[0],
+                "tables": ["accounts"],
+                "masked_columns": {"accounts": ["secret"]},
+                "hashed_columns": {"accounts": ["email"]},
+            }
+        ],
+        "options": {
+            "tables": tables,
+            "exclude_tables": exclude_tables,
+            "masked_columns": {"accounts": ["secret"]},
+            "hashed_columns": {"accounts": ["email"]},
+            "placeholder": placeholder,
+            "hash_salt": hash_salt,
+            "limit": limit,
+        },
+    }
+
+    manifest_path = outdir / "sql-manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    stem = prefix or Path(databases[0]).stem
+    snapshot_path = outdir / f"{stem}-sql-snapshot.json"
+    snapshot_payload = {
+        "tables": [
+            {
+                "name": "accounts",
+                "masked_columns": ["secret"],
+                "rows": [{"email": "sha256:value"}],
+            }
+        ]
+    }
+    snapshot_path.write_text(json.dumps(snapshot_payload), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+'@
+
+            Set-Content -LiteralPath $capturePath -Value $captureScript -Encoding UTF8
+
+            $separator = [IO.Path]::PathSeparator
+            $env:PYTHONPATH = ($stubRoot.FullName + $separator + $env:PYTHONPATH)
+
+            $manifest = Export-DriftBusterSqlSnapshot \
+                -Database $databasePath \
+                -OutputDir $exportDir \
+                -MaskColumn 'accounts.secret' \
+                -HashColumn 'accounts.email' \
+                -Prefix 'demo' \
+                -Placeholder '[MASK]' \
+                -HashSalt 'pepper'
+
+            $manifest | Should -Not -BeNullOrEmpty
+            $manifest.exports | Should -Not -BeNullOrEmpty
+            $entry = $manifest.exports | Select-Object -First 1
+            $entry.tables | Should -Contain 'accounts'
+            $manifest.options.hash_salt | Should -Be 'pepper'
+
+            $manifestPath = Join-Path $exportDir 'sql-manifest.json'
+            Test-Path -LiteralPath $manifestPath | Should -BeTrue
+
+            $snapshotPath = Join-Path $exportDir 'demo-sql-snapshot.json'
+            Test-Path -LiteralPath $snapshotPath | Should -BeTrue
+
+            $snapshot = Get-Content -LiteralPath $snapshotPath -Raw | ConvertFrom-Json
+            $snapshot.tables | Should -Not -BeNullOrEmpty
+            $snapshot.tables[0].masked_columns | Should -Contain 'secret'
+            $snapshot.tables[0].rows[0].email | Should -Match '^sha256:'
+        }
+    }
 }

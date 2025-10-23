@@ -116,7 +116,9 @@ function Get-DriftBusterBackendCacheDirectory {
             $segments += $Version
         }
 
-        $cacheDirectory = $method.Invoke($null, @([string[]]$segments))
+        $arguments = [object[]]::new(1)
+        $arguments[0] = [string[]]$segments
+        $cacheDirectory = $method.Invoke($null, $arguments)
     }
     finally {
         $context.Unload()
@@ -184,6 +186,8 @@ function Get-DriftBusterBackendAssembly {
     $cacheDirectory = Get-DriftBusterBackendCacheDirectory -AssemblyPath $resolvedCandidate -Version $backendVersion
     $cacheAssemblyPath = Join-Path $cacheDirectory 'DriftBuster.Backend.dll'
 
+    $sourceDirectory = Split-Path -Parent $resolvedCandidate
+
     if ($resolvedCandidate -ne $cacheAssemblyPath) {
         $shouldCopy = $true
 
@@ -207,6 +211,30 @@ function Get-DriftBusterBackendAssembly {
 
         if ($shouldCopy) {
             Copy-Item -LiteralPath $resolvedCandidate -Destination $cacheAssemblyPath -Force
+        }
+    }
+
+    $dependencyPatterns = @('*.dll', '*.json')
+    foreach ($pattern in $dependencyPatterns) {
+        $dependencies = Get-ChildItem -LiteralPath $sourceDirectory -Filter $pattern -File -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -ne 'DriftBuster.Backend.dll'
+        }
+
+        foreach ($dependency in $dependencies) {
+            $targetPath = Join-Path $cacheDirectory $dependency.Name
+            $copyDependency = $true
+
+            if (Test-Path -LiteralPath $targetPath) {
+                $sourceWrite = $dependency.LastWriteTimeUtc
+                $targetWrite = (Get-Item -LiteralPath $targetPath).LastWriteTimeUtc
+                if ($targetWrite -ge $sourceWrite) {
+                    $copyDependency = $false
+                }
+            }
+
+            if ($copyDependency) {
+                Copy-Item -LiteralPath $dependency.FullName -Destination $targetPath -Force
+            }
         }
     }
 
@@ -831,7 +859,7 @@ function Export-DriftBusterSqlSnapshot {
         $PythonPath = "python"
     )
 
-    $arguments = @("-m", "driftbuster.cli", "export-sql", "--output-dir", $OutputDir)
+    $arguments = @("-m", "scripts.capture", "export-sql", "--output-dir", $OutputDir)
 
     if ($Table) {
         foreach ($value in $Table) {
@@ -877,6 +905,7 @@ function Export-DriftBusterSqlSnapshot {
         $arguments += $databasePath
     }
 
+    Write-Verbose ("Invoking {0} {1}" -f $PythonPath, ($arguments -join ' '))
     $output = & $PythonPath @arguments 2>&1
     if ($LASTEXITCODE -ne 0) {
         $message = "driftbuster export failed with exit code $LASTEXITCODE"
