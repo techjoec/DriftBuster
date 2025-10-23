@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -13,6 +13,7 @@ from driftbuster.font_health import (
     format_report,
     load_font_health_report,
 )
+from scripts import font_health_summary
 
 
 @pytest.fixture
@@ -145,3 +146,86 @@ def test_evaluate_report_normalises_required_scenario_names() -> None:
 
     assert evaluation.missing_scenarios == ()
     assert evaluation.has_issues is False
+
+
+def test_evaluate_scenarios_flags_stale_entries(sample_payload: Path) -> None:
+    report = load_font_health_report(sample_payload)
+
+    evaluations = evaluate_scenarios(
+        report.scenarios,
+        max_failure_rate=1.0,
+        max_last_updated_age=timedelta(seconds=1),
+        now=datetime(2025, 10, 23, 6, 5, 33, tzinfo=timezone.utc),
+    )
+
+    assert evaluations[0].issues == ()
+    assert any("lastUpdated is stale" in issue for issue in evaluations[1].issues)
+
+
+def test_evaluate_scenarios_flags_missing_last_updated_when_required() -> None:
+    scenario = ScenarioHealth(
+        name="stale-scenario",
+        total_runs=1,
+        passes=1,
+        failures=0,
+        last_status="pass",
+        last_updated=None,
+        last_details={},
+    )
+
+    evaluations = evaluate_scenarios(
+        (scenario,),
+        max_last_updated_age=timedelta(hours=1),
+        now=datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+
+    assert evaluations[0].issues == (
+        "missing lastUpdated timestamp; expected telemetry within 1h 0m 0s",
+    )
+
+
+def test_evaluate_report_flags_stale_entries(sample_payload: Path) -> None:
+    report = load_font_health_report(sample_payload)
+
+    evaluation = evaluate_report(
+        report,
+        max_failure_rate=1.0,
+        max_last_updated_age=timedelta(seconds=1),
+        now=datetime(2025, 10, 23, 6, 5, 33, tzinfo=timezone.utc),
+    )
+
+    assert evaluation.has_issues is True
+    stale_issues = [issue for item in evaluation.scenarios for issue in item.issues]
+    assert any("lastUpdated is stale" in issue for issue in stale_issues)
+
+
+def test_cli_rejects_negative_max_stale_hours(sample_payload: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        font_health_summary.main(
+            [str(sample_payload), "--max-stale-hours", "-1"]
+        )
+
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "--max-stale-hours must be non-negative" in err
+
+
+def test_cli_flags_stale_exit_code(
+    sample_payload: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 293680, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    exit_code = font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+        ]
+    )
+
+    assert exit_code == 1

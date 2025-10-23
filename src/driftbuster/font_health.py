@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
 import json
@@ -110,12 +110,43 @@ def load_font_health_report(path: Path | str) -> FontHealthReport:
     return FontHealthReport(generated_at=generated_at, scenarios=scenarios)
 
 
+def _to_utc(moment: datetime) -> datetime:
+    """Convert *moment* to a timezone-aware UTC value."""
+
+    if moment.tzinfo is None:
+        return moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
+def _format_timedelta(delta: timedelta) -> str:
+    """Render *delta* as a human-friendly duration."""
+
+    total_seconds = int(delta.total_seconds())
+    sign = "-" if total_seconds < 0 else ""
+    total_seconds = abs(total_seconds)
+    days, remainder = divmod(total_seconds, 24 * 60 * 60)
+    hours, remainder = divmod(remainder, 60 * 60)
+    minutes, seconds = divmod(remainder, 60)
+
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or days:
+        parts.append(f"{hours}h")
+    if minutes or hours or days:
+        parts.append(f"{minutes}m")
+    parts.append(f"{seconds}s")
+    return sign + " ".join(parts)
+
+
 def evaluate_scenarios(
     scenarios: Iterable[ScenarioHealth],
     *,
     max_failure_rate: float = 0.0,
     require_last_pass: bool = True,
     min_total_runs: int = 1,
+    max_last_updated_age: timedelta | None = None,
+    now: datetime | None = None,
 ) -> List[ScenarioEvaluation]:
     """Evaluate *scenarios* and flag drift signals.
 
@@ -129,6 +160,12 @@ def evaluate_scenarios(
         raise ValueError("max_failure_rate must be between 0 and 1")
     if min_total_runs < 0:
         raise ValueError("min_total_runs must be non-negative")
+    if max_last_updated_age is not None and max_last_updated_age.total_seconds() < 0:
+        raise ValueError("max_last_updated_age must be non-negative")
+
+    resolved_now: datetime | None = None
+    if max_last_updated_age is not None:
+        resolved_now = _to_utc(now or datetime.now(timezone.utc))
 
     evaluations: List[ScenarioEvaluation] = []
     for scenario in scenarios:
@@ -145,6 +182,22 @@ def evaluate_scenarios(
             )
         if require_last_pass and scenario.last_status.lower() != "pass":
             issues.append(f"latest status is '{scenario.last_status}'")
+        if max_last_updated_age is not None:
+            if scenario.last_updated is None:
+                issues.append(
+                    "missing lastUpdated timestamp; expected telemetry within "
+                    f"{_format_timedelta(max_last_updated_age)}"
+                )
+            else:
+                updated = _to_utc(scenario.last_updated)
+                current = resolved_now or _to_utc(datetime.now(timezone.utc))
+                age = current - updated
+                if age > max_last_updated_age:
+                    issues.append(
+                        "lastUpdated is stale by "
+                        f"{_format_timedelta(age - max_last_updated_age)} "
+                        f"(limit {_format_timedelta(max_last_updated_age)})"
+                    )
 
         evaluations.append(
             ScenarioEvaluation(
@@ -161,6 +214,8 @@ def evaluate_report(
     require_last_pass: bool = True,
     min_total_runs: int = 1,
     required_scenarios: Iterable[str] | None = None,
+    max_last_updated_age: timedelta | None = None,
+    now: datetime | None = None,
 ) -> ReportEvaluation:
     """Evaluate a :class:`FontHealthReport`.
 
@@ -174,6 +229,8 @@ def evaluate_report(
         max_failure_rate=max_failure_rate,
         require_last_pass=require_last_pass,
         min_total_runs=min_total_runs,
+        max_last_updated_age=max_last_updated_age,
+        now=now,
     )
     missing: List[str] = []
     if required_scenarios:

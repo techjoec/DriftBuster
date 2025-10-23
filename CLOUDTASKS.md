@@ -12,6 +12,22 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g. Font Telemetry Staleness Alerts [deps=A0f]
+
+**REASON:** Telemetry feeds occasionally stall without updating timestamps, hiding stale headless scenarios until regressions ship.
+
+**MUST NOT:** Relax existing failure-rate thresholds or skip required scenario checks while adding the staleness guard.
+
+**MUST:** Detect stale scenario timestamps, expose CLI toggles for operators, and lock coverage with regression tests.
+
+**ACCEPT GATES:** Evaluation highlights stale or missing timestamps, CLI flag enforces guardrails, and tests pin behaviour.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.9 Guard scenario staleness detection in `src/driftbuster/font_health.py`.
+  - [x] 0.9.1 Add `max_last_updated_age` evaluation coverage in `tests/scripts/test_font_health_summary.py`.
+- [x] 0.10 Surface CLI controls for staleness tolerances.
+  - [x] 0.10.1 Extend `scripts/font_health_summary.py` parser and enforcement.
+
 ## A0f. Font Telemetry Normalisation [deps=A0e]
 
 **REASON:** Scenario name whitespace and case drift currently causes false missing flags in telemetry enforcement.
