@@ -63,11 +63,11 @@ internal class HeadlessFontManagerProxy : DispatchProxy
     {
         _inner = inner;
         _defaultFamilyName = defaultFamilyName;
-        _aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            defaultFamilyName,
-            "fonts:SystemFonts",
-        };
+        _aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        AddAlias(defaultFamilyName);
+        AddAlias("fonts:SystemFonts");
+        AddAlias($"fonts:SystemFonts#{defaultFamilyName}");
 
         if (aliases is null)
         {
@@ -76,10 +76,33 @@ internal class HeadlessFontManagerProxy : DispatchProxy
 
         foreach (var alias in aliases)
         {
-            var normalized = alias?.Trim();
-            if (!string.IsNullOrWhiteSpace(normalized))
+            AddAlias(alias);
+        }
+    }
+
+    private void AddAlias(string? alias)
+    {
+        var normalized = alias?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return;
+        }
+
+        _aliases.Add(normalized);
+
+        var fragmentIndex = normalized.IndexOf('#');
+        if (fragmentIndex > 0)
+        {
+            var baseAlias = normalized[..fragmentIndex];
+            if (!string.IsNullOrWhiteSpace(baseAlias))
             {
-                _aliases.Add(normalized);
+                _aliases.Add(baseAlias);
+            }
+
+            var fragment = normalized[(fragmentIndex + 1)..];
+            if (!string.IsNullOrWhiteSpace(fragment))
+            {
+                _aliases.Add(fragment);
             }
         }
     }

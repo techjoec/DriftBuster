@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Media;
+using Avalonia.Platform;
 
 using Xunit;
 
@@ -91,6 +92,28 @@ public sealed class HeadlessFixture : IAsyncLifetime
         Assert.NotNull(interAliasGlyph);
         Assert.True(string.Equals("Inter", interAliasGlyph.FamilyName, StringComparison.OrdinalIgnoreCase),
             "fonts:SystemFonts#Inter should normalise to the Inter glyph family.");
+
+        var platformService = getService!.Invoke(locator, new object[] { typeof(IFontManagerImpl) });
+        var platform = Assert.IsAssignableFrom<IFontManagerImpl>(platformService);
+        var tryCreateGlyphTypeface = typeof(IFontManagerImpl).GetMethod("TryCreateGlyphTypeface", new[]
+        {
+            typeof(string), typeof(FontStyle), typeof(FontWeight), typeof(FontStretch), typeof(IGlyphTypeface).MakeByRefType(),
+        });
+
+        Assert.NotNull(tryCreateGlyphTypeface);
+
+        var parameters = new object?[]
+        {
+            "fonts:SystemFonts#Inter",
+            FontStyle.Normal,
+            FontWeight.Normal,
+            FontStretch.Normal,
+            null,
+        };
+
+        var glyphSuccess = (bool)tryCreateGlyphTypeface!.Invoke(platform, parameters)!;
+        Assert.True(glyphSuccess, "Headless font manager proxy should normalise fonts:SystemFonts#Inter before invoking the inner implementation.");
+        Assert.NotNull(parameters[4]);
 
         return Task.CompletedTask;
     }

@@ -38,6 +38,7 @@ internal static class HeadlessFontBootstrapper
             {
                 DefaultFamilyName,
                 "fonts:SystemFonts",
+                $"fonts:SystemFonts#{DefaultFamilyName}",
             };
 
             var proxy = HeadlessFontManagerProxy.Create(CreateFontManager(), DefaultFamilyName, aliases);
