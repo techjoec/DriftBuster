@@ -632,7 +632,7 @@ Schema reference
 **REQUIRED RELATED WORK:**
 - [ ] 17.1 Module implementation.
   - [ ] 17.1.1 Flesh out cmdlets in `cli/DriftBuster.PowerShell/DriftBuster.psm1`.
-  - [ ] 17.1.2 Load latest backend assembly via `DriftbusterPaths.GetCacheDirectory`.
+- [x] 17.1.2 Load latest backend assembly via `DriftbusterPaths.GetCacheDirectory`.
   - [ ] 17.1.3 Document module initialisation flow in `docs/windows-gui-guide.md#powershell-module`.
 - [ ] 17.2 Validation.
   - [ ] 17.2.1 Add Pester tests (new `cli/DriftBuster.PowerShell.Tests`) covering `Test-DriftBusterPing`, diff/hunt, run-profile commands.

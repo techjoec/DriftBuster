@@ -1,31 +1,161 @@
 $ErrorActionPreference = 'Stop'
 
+$script:ModuleManifest = $null
+$script:BackendVersion = $null
+$script:BackendAssemblyPath = $null
+
+function Get-DriftBusterModuleManifest {
+    if ($script:ModuleManifest) {
+        return $script:ModuleManifest
+    }
+
+    $manifestPath = Join-Path $PSScriptRoot 'DriftBuster.psd1'
+    if (-not (Test-Path -LiteralPath $manifestPath)) {
+        throw "Module manifest not found at $manifestPath"
+    }
+
+    $script:ModuleManifest = Import-PowerShellDataFile -Path $manifestPath
+    return $script:ModuleManifest
+}
+
+function Get-DriftBusterBackendVersion {
+    if ($script:BackendVersion) {
+        return $script:BackendVersion
+    }
+
+    $manifest = Get-DriftBusterModuleManifest
+    $version = $manifest.PrivateData.BackendVersion
+    if (-not $version) {
+        throw "Module manifest missing PrivateData.BackendVersion"
+    }
+
+    $script:BackendVersion = [string]$version
+    return $script:BackendVersion
+}
+
+function Get-DriftBusterBackendCacheDirectory {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $AssemblyPath,
+
+        [Parameter()]
+        [string]
+        $Version
+    )
+
+    $resolvedAssembly = (Resolve-Path -LiteralPath $AssemblyPath).Path
+    $contextName = "DriftbusterPathsProbe_{0}" -f ([Guid]::NewGuid().ToString('N'))
+    $context = [System.Runtime.Loader.AssemblyLoadContext]::new($contextName, $true)
+
+    try {
+        $assembly = $context.LoadFromAssemblyPath($resolvedAssembly)
+        $pathsType = $assembly.GetType('DriftBuster.Backend.DriftbusterPaths', $false)
+        if (-not $pathsType) {
+            throw "Type 'DriftBuster.Backend.DriftbusterPaths' not found in backend assembly at $resolvedAssembly."
+        }
+
+        $method = $pathsType.GetMethod(
+            'GetCacheDirectory',
+            [System.Reflection.BindingFlags]::Public -bor [System.Reflection.BindingFlags]::Static
+        )
+        if (-not $method) {
+            throw "Method DriftbusterPaths.GetCacheDirectory not available in backend assembly."
+        }
+
+        $segments = @('powershell', 'backend')
+        if ($Version) {
+            $segments += $Version
+        }
+
+        $cacheDirectory = $method.Invoke($null, @([string[]]$segments))
+    }
+    finally {
+        $context.Unload()
+        [System.GC]::Collect()
+        [System.GC]::WaitForPendingFinalizers()
+        [System.GC]::Collect()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($cacheDirectory)) {
+        throw "Backend cache directory resolution returned an empty path."
+    }
+
+    return $cacheDirectory
+}
+
 function Get-DriftBusterBackendAssembly {
     param()
 
-    $root = Join-Path $PSScriptRoot '..\..\gui\DriftBuster.Backend\bin'
-    if (-not (Test-Path -LiteralPath $root)) {
+    if ($script:BackendAssemblyPath) {
+        return $script:BackendAssemblyPath
+    }
+
+    $backendVersion = Get-DriftBusterBackendVersion
+
+    $candidatePaths = @()
+
+    $packagedAssembly = Join-Path $PSScriptRoot 'DriftBuster.Backend.dll'
+    if (Test-Path -LiteralPath $packagedAssembly) {
+        $candidatePaths += (Resolve-Path -LiteralPath $packagedAssembly).Path
+    }
+
+    $devRoot = Join-Path $PSScriptRoot '..\..\gui\DriftBuster.Backend\bin'
+    if (Test-Path -LiteralPath $devRoot) {
+        $devCandidates = Get-ChildItem -LiteralPath $devRoot -Filter 'DriftBuster.Backend.dll' -Recurse -ErrorAction SilentlyContinue
+        if ($devCandidates) {
+            $candidatePaths += $devCandidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -ExpandProperty FullName
+        }
+    }
+
+    $candidatePaths = $candidatePaths | Where-Object { $_ } | Select-Object -Unique
+    if (-not $candidatePaths) {
         throw "Backend assembly not found. Run 'dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj' first."
     }
 
-    $candidates = Get-ChildItem -LiteralPath $root -Filter 'DriftBuster.Backend.dll' -Recurse
-    if (-not $candidates) {
-        throw "Unable to locate DriftBuster.Backend.dll under $root. Build the project before importing the module."
+    $selectedCandidate = $candidatePaths |
+        Where-Object { Test-Path -LiteralPath $_ } |
+        Sort-Object { (Get-Item -LiteralPath $_).LastWriteTimeUtc } -Descending |
+        Select-Object -First 1
+
+    if (-not $selectedCandidate) {
+        throw "Unable to locate DriftBuster.Backend.dll. Build the project before importing the module."
     }
 
-    # Prefer assemblies from a 'published' output (which includes dependencies)
-    $published = $candidates | Where-Object { $_.FullName -match "[/\\]published[/\\]" } | Sort-Object LastWriteTime -Descending
-    if ($published) {
-        $assembly = $published | Select-Object -First 1
-    }
-    else {
-        $assembly = $candidates | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    }
-    if (-not $assembly) {
-        throw "Unable to locate DriftBuster.Backend.dll under $root. Build the project before importing the module."
+    $resolvedCandidate = (Resolve-Path -LiteralPath $selectedCandidate).Path
+
+    $cacheDirectory = Get-DriftBusterBackendCacheDirectory -AssemblyPath $resolvedCandidate -Version $backendVersion
+    $cacheAssemblyPath = Join-Path $cacheDirectory 'DriftBuster.Backend.dll'
+
+    if ($resolvedCandidate -ne $cacheAssemblyPath) {
+        $shouldCopy = $true
+
+        if (Test-Path -LiteralPath $cacheAssemblyPath) {
+            try {
+                $sourceAssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($resolvedCandidate)
+                $targetAssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName((Resolve-Path -LiteralPath $cacheAssemblyPath).Path)
+
+                if ($sourceAssemblyName.Version -eq $targetAssemblyName.Version) {
+                    $sourceWrite = (Get-Item -LiteralPath $resolvedCandidate).LastWriteTimeUtc
+                    $targetWrite = (Get-Item -LiteralPath $cacheAssemblyPath).LastWriteTimeUtc
+                    if ($targetWrite -ge $sourceWrite) {
+                        $shouldCopy = $false
+                    }
+                }
+            }
+            catch {
+                $shouldCopy = $true
+            }
+        }
+
+        if ($shouldCopy) {
+            Copy-Item -LiteralPath $resolvedCandidate -Destination $cacheAssemblyPath -Force
+        }
     }
 
-    return $assembly.FullName
+    $script:BackendAssemblyPath = (Resolve-Path -LiteralPath $cacheAssemblyPath).Path
+    return $script:BackendAssemblyPath
 }
 
 if (-not ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq 'DriftBuster.Backend' })) {
