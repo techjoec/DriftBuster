@@ -108,3 +108,5 @@
 | **Inspect** | Verify contrast hints for high-contrast theme toggles. | Settings dialog theme toggle, diff viewer preview text. | Enable High Contrast in Windows Settings, restart app, re-run Inspect color contrast capture, confirm contrast ratio >= 4.5:1. Document steps for resetting theme. | `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` (High contrast check). |
 
 - Follow-up: integrate Screen Reader regression checks into the Release GUI smoke pipeline once headless instrumentation lands.
+- Automation: run `python -m scripts.accessibility_summary` to validate transcripts include each matrix scenario and expected
+  keywords before archiving new evidence.

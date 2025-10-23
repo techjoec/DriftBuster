@@ -695,7 +695,7 @@ Schema reference
   - [x] 19.2.1 Decide on WebView2 Evergreen redistribution strategy; document installer steps in `docs/windows-gui-notes.md#packaging--distribution-plan`.
   - [x] 19.2.2 Validate `.NET` publish commands (framework-dependent vs self-contained) and log outputs in `notes/dev-host-prep.md`.
   - [x] 19.2.3 Store publish command transcripts + hashes in `artifacts/gui-packaging/` with README describing reproduction steps.
-- [ ] 19.3 Accessibility baseline.
+- [x] 19.3 Accessibility baseline.
   - [x] 19.3.1 Define Narrator/Inspect test matrix in `notes/status/gui-research.md#user-requirements`.
   - [x] 19.3.2 Update `docs/windows-gui-notes.md#compliance--accessibility-checklist` with step-by-step execution notes.
   - [x] 19.3.3 Archive accessibility run evidence (tool versions, pass/fail, screenshots) in `artifacts/gui-accessibility/`.
