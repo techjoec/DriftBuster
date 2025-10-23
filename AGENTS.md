@@ -3,6 +3,7 @@
 - Skip stakeholders, sign-offs, reviews, and team references.
 - No weeks, sprints, or sprawling documentation.
 - No GitHub Actions/Runners.
+- **Do not downgrade/reverse**: if you are having dep issues or other moderniztion-induced issues strive to resolve the issue to stay on the latest stable/mainstream versioning possible.
 
 - Coverage baseline for all changes and new formats: keep line coverage at
   90% or higher. Enforce locally, not via CI. Verify with:
