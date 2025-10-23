@@ -33,8 +33,8 @@ Schema reference
 - [x] 0.3.1 Add targeted fixture coverage in `gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` verifying the same default family in Release and Debug.
 - [x] 0.3.2 Record verification notes and commands in `docs/windows-gui-guide.md#fontmanager-regression-playbook` for operators.
 - [ ] 0.4 Monitor metrics and regression drift.
-  - [ ] 0.4.1 Pipe bootstrapper health telemetry into `artifacts/logs/headless-font-health.json` during GUI smoke tests.
-  - [ ] 0.4.2 Add a condensed status rollup to `notes/status/gui-research.md#fontmanager-regression` describing pass/fail trends.
+  - [x] 0.4.1 Pipe bootstrapper health telemetry into `artifacts/logs/headless-font-health.json` during GUI smoke tests.
+  - [x] 0.4.2 Add a condensed status rollup to `notes/status/gui-research.md#fontmanager-regression` describing pass/fail trends.
 
 ## A1a. Headless Font Guardrails [deps=]
 

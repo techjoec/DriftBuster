@@ -36,6 +36,7 @@
 - Captured the latest Release-mode failure showing `FontManagerImpl.TryCreateGlyphTypeface` rejecting the `fonts:SystemFonts#Inter` alias when Avalonia boots without the proxy fallbacks enabled. The trace is archived in [`artifacts/logs/fontmanager-regression.txt`](../../artifacts/logs/fontmanager-regression.txt) so we can diff future stack signatures.
 - Regression reproduces while `HeadlessFontManagerProxy.TryMatchCharacter` normalises alias inputs; the inner exception documents the missing Inter fallback that now drives the deterministic guard rails.
 - Next mitigation steps track under A0 once the Release-mode smoke test lands, keeping this section aligned with ongoing hardening.
+- Bootstrapper smoke telemetry now persists to [`artifacts/logs/headless-font-health.json`](../../artifacts/logs/headless-font-health.json), capturing per-scenario totals (`totalRuns`, `passes`, `failures`) and the latest metrics. The current snapshot shows all three headless smoke tests green after the alias/lookup retries, making it easy to spot regressions when the counts drift.
 
 ## Open Questions
 
