@@ -611,10 +611,10 @@ Schema reference
   - [x] 16.2.1 Wire exports into CLI/PowerShell surfaces.
   - [x] 16.2.2 Update manifests to record database metadata.
   - [x] 16.2.3 Add CLI/PowerShell usage examples to `docs/registry.md` and `README.md`.
-- [ ] 16.3 Documentation & legal.
-  - [ ] 16.3.1 Update `docs/registry.md` and `docs/legal-safeguards.md`.
-  - [ ] 16.3.2 Log approvals in `notes/checklists/legal-review.md`.
-  - [ ] 16.3.3 Capture retention policy for database snapshots in `docs/legal-safeguards.md#retention`.
+- [x] 16.3 Documentation & legal.
+  - [x] 16.3.1 Update `docs/registry.md` and `docs/legal-safeguards.md`.
+  - [x] 16.3.2 Log approvals in `notes/checklists/legal-review.md`.
+  - [x] 16.3.3 Capture retention policy for database snapshots in `docs/legal-safeguards.md#retention`.
 - [ ] 16.4 Validation.
   - [ ] 16.4.1 Capture sample run, store evidence in `notes/status/gui-research.md`, and ensure retention plan recorded.
   - [ ] 16.4.2 Archive database export checksums in `artifacts/sql/`.

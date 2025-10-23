@@ -17,6 +17,29 @@ We keep the project lightweight and respect other creators:
 
 These guardrails cover every feature, note, and capture helper.
 
+## SQL snapshot safeguards
+
+- Mask or hash sensitive columns using the CLI options documented in
+  `fixtures/sql/README.md` before exporting.
+- Store generated manifests (`sql-manifest.json`) and masked exports in a
+  restricted directory with the same retention plan as the source evidence.
+- Record the anonymisation choices inside `notes/status/gui-research.md` when
+  sharing samples so reviewers understand what data was transformed.
+- Keep checksum files under `artifacts/sql/` so downstream consumers can
+  confirm the artefacts were not modified after approval.
+
+## Retention
+
+- Default retention window for database snapshots is **30 days** unless a
+  documented investigation requires an extension. Extensions must include a new
+  expiry date and the reason for holding the artefact.
+- Track retention decisions in `notes/checklists/legal-review.md` alongside the
+  scenario that produced the snapshot.
+- Purge expired exports and their manifests, checksum files, and scratch
+  directories. Record the purge completion in the same log entry.
+- When sharing artefacts externally, duplicate them into a fresh directory and
+  re-run masking to avoid reusing long-lived copies.
+
 ## HOLD Exit Briefing
 
 - Check `notes/status/hold-log.md#decision-ready-summary` before resuming reporting work.

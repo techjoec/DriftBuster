@@ -8,6 +8,7 @@ follow-up questions.
 | Date (UTC) | Scenario | JSON output | HTML output | Diff output | Notes |
 |------------|----------|-------------|-------------|-------------|-------|
 | 2025-09-26 | Mixed fixture scan masked tokens ``API_KEY``/``DB_PASSWORD`` using ``[REDACTED]`` placeholder. | Verified via `render_json_lines` with token list; no raw secrets present. | `render_html_report` emitted warning banner and redaction summary. | `render_unified_diff` replaced secrets in config drift hunk. | Snapshot manifest logged classification=internal-only and redacted tokens. |
+| 2025-10-23 | SQL snapshot export masked ``accounts.secret`` and hashed ``accounts.email``. | `sql-manifest.json` lists policies per column; inspected masked rows for completeness. | N/A | N/A | Stored export under restricted `captures/sql-exports/2025-10-23/` with checksum pair in `artifacts/sql/`; retention expiry set for 2025-11-22. |
 
 ## Sample review log
 
@@ -15,6 +16,9 @@ follow-up questions.
   restricted `captures/2025-09-26-mixed-fixture/` directory.
 - Documented retention window (30 days) and scheduled purge in personal task
   tracker.
+- Logged SQL snapshot export approval for `captures/sql-exports/2025-10-23/`
+  with checksum bundle stored in `artifacts/sql/2025-10-23/` and purge due on
+  2025-11-22.
 - No additional redaction passes required.
 
 ## Outstanding legal questions

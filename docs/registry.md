@@ -33,6 +33,9 @@ SQL Snapshot Exports
 - Run the same workflow from PowerShell:
   - `Export-DriftBusterSqlSnapshot -Database samples/sqlite/sample.sqlite -MaskColumn accounts.secret -HashColumn accounts.email`
 - Exports land in `sql-exports/` by default with a `sql-manifest.json` rollup containing table lists, row counts, and column policies.
+- Record which columns were masked or hashed inside `notes/status/gui-research.md` so auditors can retrace the anonymisation steps.
+- Store the masked database, manifest, and checksum bundle under a restricted directory until the retention deadline recorded in `notes/checklists/legal-review.md`.
+- Follow the retention guidance in `docs/legal-safeguards.md#retention` and document purge completion when artefacts are deleted.
 
 Offline Runner
 --------------
