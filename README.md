@@ -56,6 +56,19 @@ python -m driftbuster.cli fixtures/config --glob "*.config"
 - Use `--max-sample` to override the default 128 KiB sampling window.
 - Pass `--profile <path>` to apply a configuration profile while scanning.
 
+### Export SQL snapshots
+
+```sh
+python -m driftbuster.cli export-sql fixtures/sqlite/sample.sqlite \
+  --mask-column accounts.secret \
+  --hash-column accounts.email \
+  --placeholder "[MASK]" \
+  --hash-salt pepper
+```
+
+- Multiple database paths are supported; each export is listed in `sql-manifest.json` with table counts and masking metadata.
+- Use `--output-dir` to control the destination directory (defaults to `sql-exports/`).
+
 ### Use the library
 
 ```python
@@ -126,6 +139,7 @@ dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj
 pwsh scripts/lint_powershell.ps1
 Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1
 Invoke-DriftBusterDiff -Versions 'fixtures/config/appsettings.json','fixtures/config/web.config'
+Export-DriftBusterSqlSnapshot -Database fixtures/sqlite/sample.sqlite -MaskColumn accounts.secret -HashColumn accounts.email
 ```
 
 The PowerShell module uses the shared `DriftBuster.Backend` library, giving the

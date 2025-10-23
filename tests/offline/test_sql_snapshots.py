@@ -122,6 +122,10 @@ def test_capture_export_sql_subcommand_writes_manifest(tmp_path: Path) -> None:
     assert manifest["exports"]
     export_entry = manifest["exports"][0]
     assert export_entry["tables"] == ["accounts"]
+    assert export_entry["dialect"] == "sqlite"
+    assert export_entry["masked_columns"] == {"accounts": ["secret"]}
+    assert export_entry["hashed_columns"] == {"accounts": ["email"]}
+    assert manifest["options"]["hash_salt"] == "pepper"
 
     snapshot_path = output_dir / "demo-sql-snapshot.json"
     assert snapshot_path.exists()
@@ -178,6 +182,12 @@ def test_offline_runner_sql_snapshot_source(tmp_path: Path) -> None:
     summary = next(entry for entry in manifest["sources"] if entry["type"] == "sql_snapshot")
     assert summary["alias"] == "accounts-db"
     assert summary["tables"] == ["accounts"]
+    sql_metadata = manifest["metadata"].get("sql_exports")
+    assert sql_metadata, "expected sql metadata entries in manifest"
+    metadata_entry = next(entry for entry in sql_metadata if entry["alias"] == "accounts-db")
+    assert metadata_entry["masked_columns"] == {"accounts": ["secret"]}
+    assert metadata_entry["hashed_columns"] == {"accounts": ["email"]}
+    assert metadata_entry["placeholder"] == "[MASK]"
 
 
 def test_offline_runner_sql_snapshot_optional(tmp_path: Path) -> None:

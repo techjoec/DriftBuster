@@ -866,6 +866,7 @@ def execute_config(
     files: list[CollectedFile] = []
     total_bytes = 0
     source_summaries: list[MutableMapping[str, Any]] = []
+    sql_metadata: list[MutableMapping[str, Any]] = []
 
     for index, source in enumerate(config.profile.sources):
         alias = source.destination_name(fallback_index=index)
@@ -935,6 +936,26 @@ def execute_config(
                     "hashed_columns": {
                         table: list(columns) for table, columns in source.hash_columns.items()
                     },
+                }
+            )
+            sql_metadata.append(
+                {
+                    "alias": alias,
+                    "source": source.path,
+                    "dialect": source.dialect,
+                    "tables": [table["name"] for table in payload.get("tables", [])],
+                    "row_counts": {
+                        table["name"]: table["row_count"] for table in payload.get("tables", [])
+                    },
+                    "masked_columns": {
+                        table: list(columns) for table, columns in source.mask_columns.items()
+                    },
+                    "hashed_columns": {
+                        table: list(columns) for table, columns in source.hash_columns.items()
+                    },
+                    "placeholder": source.placeholder,
+                    "hash_salt": source.hash_salt,
+                    "output": snapshot_path.relative_to(destination_root).as_posix(),
                 }
             )
             log(
@@ -1229,6 +1250,11 @@ def execute_config(
                 "cleanup_staging": settings.cleanup_staging,
             },
         }
+
+        if sql_metadata:
+            metadata_payload = dict(manifest_payload["metadata"])
+            metadata_payload["sql_exports"] = sql_metadata
+            manifest_payload["metadata"] = metadata_payload
 
         if config_path and config_path.exists():
             manifest_payload["config"] = {

@@ -132,4 +132,112 @@ function Invoke-DriftBusterRunProfile {
     $result
 }
 
+function Export-DriftBusterSqlSnapshot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]
+        $Database,
+
+        [string]
+        $OutputDir = "sql-exports",
+
+        [string[]]
+        $Table,
+
+        [string[]]
+        $ExcludeTable,
+
+        [string[]]
+        $MaskColumn,
+
+        [string[]]
+        $HashColumn,
+
+        [string]
+        $Placeholder = "[REDACTED]",
+
+        [string]
+        $HashSalt = "",
+
+        [int]
+        $Limit,
+
+        [string]
+        $Prefix,
+
+        [string]
+        $PythonPath = "python"
+    )
+
+    $arguments = @("-m", "driftbuster.cli", "export-sql", "--output-dir", $OutputDir)
+
+    if ($Table) {
+        foreach ($value in $Table) {
+            $arguments += @("--table", $value)
+        }
+    }
+
+    if ($ExcludeTable) {
+        foreach ($value in $ExcludeTable) {
+            $arguments += @("--exclude-table", $value)
+        }
+    }
+
+    if ($MaskColumn) {
+        foreach ($value in $MaskColumn) {
+            $arguments += @("--mask-column", $value)
+        }
+    }
+
+    if ($HashColumn) {
+        foreach ($value in $HashColumn) {
+            $arguments += @("--hash-column", $value)
+        }
+    }
+
+    if ($PSBoundParameters.ContainsKey("Placeholder")) {
+        $arguments += @("--placeholder", $Placeholder)
+    }
+
+    if ($PSBoundParameters.ContainsKey("HashSalt")) {
+        $arguments += @("--hash-salt", $HashSalt)
+    }
+
+    if ($PSBoundParameters.ContainsKey("Limit")) {
+        $arguments += @("--limit", [string]$Limit)
+    }
+
+    if ($PSBoundParameters.ContainsKey("Prefix") -and $Prefix) {
+        $arguments += @("--prefix", $Prefix)
+    }
+
+    foreach ($databasePath in $Database) {
+        $arguments += $databasePath
+    }
+
+    $output = & $PythonPath @arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $message = "driftbuster export failed with exit code $LASTEXITCODE"
+        if ($output) {
+            $message += "`n" + ($output -join [Environment]::NewLine)
+        }
+        throw $message
+    }
+
+    if ($output) {
+        Write-Verbose ($output -join [Environment]::NewLine)
+    }
+
+    $manifestPath = Join-Path $OutputDir "sql-manifest.json"
+    if (Test-Path -LiteralPath $manifestPath) {
+        $content = Get-Content -LiteralPath $manifestPath -Raw
+        if ($content) {
+            return $content | ConvertFrom-Json
+        }
+    }
+
+    return $null
+}
+
 Export-ModuleMember -Function *-DriftBuster*

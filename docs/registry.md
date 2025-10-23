@@ -26,6 +26,14 @@ CLI Helper
   - Suggest roots: `python -m driftbuster.registry_cli suggest-roots "Vendor App"`
   - Search: `python -m driftbuster.registry_cli search "Vendor App" --keyword server --pattern "api\\.internal\\.local"`
 
+SQL Snapshot Exports
+--------------------
+- Capture masked SQLite exports directly from the CLI:
+  - `python -m driftbuster.cli export-sql samples/sqlite/sample.sqlite --mask-column accounts.secret --hash-column accounts.email`
+- Run the same workflow from PowerShell:
+  - `Export-DriftBusterSqlSnapshot -Database samples/sqlite/sample.sqlite -MaskColumn accounts.secret -HashColumn accounts.email`
+- Exports land in `sql-exports/` by default with a `sql-manifest.json` rollup containing table lists, row counts, and column policies.
+
 Offline Runner
 --------------
 - The offline collection tool can execute registry scans alongside file copies.

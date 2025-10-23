@@ -607,10 +607,10 @@ Schema reference
   - [x] 16.1.2 Add connectors in `src/driftbuster/offline_runner.py`.
   - [x] 16.1.3 Provide tests `tests/offline/test_sql_snapshots.py`.
   - [x] 16.1.4 Document sample database schemas and anonymisation steps in `fixtures/sql/README.md`.
-- [ ] 16.2 Integration.
-  - [ ] 16.2.1 Wire exports into CLI/PowerShell surfaces.
-  - [ ] 16.2.2 Update manifests to record database metadata.
-  - [ ] 16.2.3 Add CLI/PowerShell usage examples to `docs/registry.md` and `README.md`.
+- [x] 16.2 Integration.
+  - [x] 16.2.1 Wire exports into CLI/PowerShell surfaces.
+  - [x] 16.2.2 Update manifests to record database metadata.
+  - [x] 16.2.3 Add CLI/PowerShell usage examples to `docs/registry.md` and `README.md`.
 - [ ] 16.3 Documentation & legal.
   - [ ] 16.3.1 Update `docs/registry.md` and `docs/legal-safeguards.md`.
   - [ ] 16.3.2 Log approvals in `notes/checklists/legal-review.md`.

@@ -17,11 +17,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Iterable, Mapping, Optional, Sequence, Tuple
 
 from .core.detector import Detector
 from .core.types import DetectionMatch
+from .sql import build_sqlite_snapshot
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -48,6 +50,71 @@ def _build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Emit JSON lines instead of a table.",
+    )
+    return parser
+
+
+def _build_export_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="driftbuster export-sql",
+        description="Export anonymised SQL snapshots for portable review.",
+    )
+    parser.add_argument("database", nargs="+", help="Path(s) to SQLite databases.")
+    parser.add_argument(
+        "--output-dir",
+        default="sql-exports",
+        help="Directory to store exported SQL snapshots.",
+    )
+    parser.add_argument(
+        "--table",
+        action="append",
+        default=[],
+        help="Restrict export to a specific table (repeatable).",
+    )
+    parser.add_argument(
+        "--exclude-table",
+        action="append",
+        default=[],
+        help="Exclude a specific table from export (repeatable).",
+    )
+    parser.add_argument(
+        "--mask-column",
+        dest="mask_column",
+        action="append",
+        default=[],
+        help="Mask sensitive column data using placeholder (table.column).",
+    )
+    parser.add_argument(
+        "--hash-column",
+        dest="hash_column",
+        action="append",
+        default=[],
+        help="Deterministically hash column data (table.column).",
+    )
+    parser.add_argument(
+        "--placeholder",
+        default="[REDACTED]",
+        help="Placeholder used when masking columns.",
+    )
+    parser.add_argument(
+        "--hash-salt",
+        default="",
+        help="Salt applied when hashing column data.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Optional maximum rows to export per table.",
+    )
+    parser.add_argument(
+        "--prefix",
+        default="",
+        help="Optional prefix to apply to exported snapshot filenames.",
+    )
+    parser.add_argument(
+        "--manifest-name",
+        default="sql-manifest.json",
+        help="Filename for the manifest written to the output directory.",
     )
     return parser
 
@@ -139,7 +206,129 @@ def _emit_json(
         print(json.dumps(payload, sort_keys=True))
 
 
+def _parse_column_arguments(values: Sequence[str] | None) -> Mapping[str, tuple[str, ...]]:
+    mapping: dict[str, list[str]] = {}
+    for entry in values or ():
+        if not entry or "." not in entry:
+            continue
+        table, column = entry.split(".", 1)
+        table = table.strip()
+        column = column.strip()
+        if not table or not column:
+            continue
+        mapping.setdefault(table, []).append(column)
+    return {key: tuple(value) for key, value in mapping.items()}
+
+
+def _determine_snapshot_path(output_dir: Path, stem: str) -> Path:
+    base = f"{stem}-sql-snapshot.json"
+    candidate = output_dir / base
+    counter = 1
+    while candidate.exists():
+        candidate = output_dir / f"{stem}-sql-snapshot-{counter}.json"
+        counter += 1
+    return candidate
+
+
+def _run_export_sql(argv: Sequence[str]) -> int:
+    parser = _build_export_parser()
+    args = parser.parse_args(argv)
+
+    output_dir = Path(args.output_dir).expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    mask_map = _parse_column_arguments(args.mask_column)
+    hash_map = _parse_column_arguments(args.hash_column)
+    tables = tuple(args.table or ()) or None
+    exclude_tables = tuple(args.exclude_table or ()) or None
+    limit = args.limit
+    placeholder = args.placeholder
+    hash_salt = args.hash_salt or ""
+
+    exports: list[Mapping[str, object]] = []
+    exit_code = 0
+
+    for database in args.database:
+        db_path = Path(database).expanduser().resolve()
+        if not db_path.exists():
+            sys.stderr.write(f"error: database not found: {db_path}\n")
+            exit_code = 1
+            continue
+
+        stem = args.prefix or db_path.stem
+        if len(args.database) > 1:
+            stem = f"{stem}-{db_path.stem}" if args.prefix else db_path.stem
+
+        if limit is not None and limit <= 0:
+            sys.stderr.write("error: --limit must be positive when provided\n")
+            exit_code = 1
+            continue
+
+        try:
+            snapshot = build_sqlite_snapshot(
+                db_path,
+                tables=tables,
+                exclude_tables=exclude_tables,
+                mask_columns=mask_map,
+                hash_columns=hash_map,
+                limit=limit,
+                placeholder=placeholder,
+                hash_salt=hash_salt,
+            )
+        except Exception as exc:  # pragma: no cover - defensive guard
+            sys.stderr.write(f"error: failed to export {db_path}: {exc}\n")
+            exit_code = 1
+            continue
+
+        destination = _determine_snapshot_path(output_dir, stem)
+        payload = snapshot.to_dict()
+        destination.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+        exports.append(
+            {
+                "source": str(db_path),
+                "output": destination.name,
+                "dialect": "sqlite",
+                "tables": [table["name"] for table in payload.get("tables", [])],
+                "row_counts": {
+                    table["name"]: table["row_count"] for table in payload.get("tables", [])
+                },
+                "masked_columns": {
+                    table: list(columns) for table, columns in mask_map.items()
+                },
+                "hashed_columns": {
+                    table: list(columns) for table, columns in hash_map.items()
+                },
+            }
+        )
+
+        sys.stdout.write(f"Exported SQL snapshot to {destination}\n")
+
+    manifest_payload: Mapping[str, object] = {
+        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "exports": exports,
+        "options": {
+            "tables": list(tables or ()),
+            "exclude_tables": list(exclude_tables or ()),
+            "masked_columns": {key: list(value) for key, value in mask_map.items()},
+            "hashed_columns": {key: list(value) for key, value in hash_map.items()},
+            "limit": limit,
+            "placeholder": placeholder,
+            "hash_salt": hash_salt,
+        },
+    }
+    manifest_path = output_dir / args.manifest_name
+    manifest_path.write_text(json.dumps(manifest_payload, indent=2, sort_keys=True), encoding="utf-8")
+    sys.stdout.write(f"Manifest written to {manifest_path}\n")
+
+    return exit_code
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    argv = list(argv or ())
+    if argv and argv[0] == "export-sql":
+        return _run_export_sql(argv[1:])
+
     parser = _build_parser()
     args = parser.parse_args(argv)
 

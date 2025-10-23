@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -88,3 +89,56 @@ def test_main_returns_code_when_parser_error_is_suppressed(monkeypatch: pytest.M
 
     assert exit_code == 2
     assert recorded["message"].startswith("Path does not exist")
+
+
+def _create_sqlite_db(path: Path) -> Path:
+    connection = sqlite3.connect(path)
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT)"
+        )
+        cursor.execute(
+            "INSERT INTO accounts (email, secret) VALUES (?, ?)",
+            ("alice@example.com", "token"),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return path
+
+
+def test_cli_export_sql_generates_manifest(tmp_path: Path) -> None:
+    database = _create_sqlite_db(tmp_path / "demo.sqlite")
+    output_dir = tmp_path / "exports"
+
+    exit_code = cli.main(
+        [
+            "export-sql",
+            str(database),
+            "--output-dir",
+            str(output_dir),
+            "--mask-column",
+            "accounts.secret",
+            "--hash-column",
+            "accounts.email",
+            "--placeholder",
+            "[MASK]",
+            "--hash-salt",
+            "pepper",
+        ]
+    )
+
+    assert exit_code == 0
+
+    manifest_path = output_dir / "sql-manifest.json"
+    assert manifest_path.exists()
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["exports"], "expected manifest export entries"
+    export_entry = manifest["exports"][0]
+    assert export_entry["dialect"] == "sqlite"
+    assert export_entry["masked_columns"] == {"accounts": ["secret"]}
+    assert export_entry["hashed_columns"] == {"accounts": ["email"]}
+
+    snapshot_path = output_dir / "demo-sql-snapshot.json"
+    assert snapshot_path.exists()

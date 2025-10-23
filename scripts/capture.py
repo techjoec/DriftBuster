@@ -350,10 +350,13 @@ def run_sql_export(args: argparse.Namespace) -> int:
             {
                 "source": str(db_path),
                 "output": destination.name,
+                "dialect": "sqlite",
                 "tables": [table["name"] for table in payload.get("tables", [])],
                 "row_counts": {
                     table["name"]: table["row_count"] for table in payload.get("tables", [])
                 },
+                "masked_columns": {key: list(value) for key, value in mask_map.items()},
+                "hashed_columns": {key: list(value) for key, value in hash_map.items()},
             }
         )
 
@@ -366,10 +369,11 @@ def run_sql_export(args: argparse.Namespace) -> int:
         "options": {
             "tables": list(tables or ()),
             "exclude_tables": list(exclude_tables or ()),
-            "masked_columns": mask_map,
-            "hashed_columns": hash_map,
+            "masked_columns": {key: list(value) for key, value in mask_map.items()},
+            "hashed_columns": {key: list(value) for key, value in hash_map.items()},
             "limit": limit,
             "placeholder": placeholder,
+            "hash_salt": hash_salt,
         },
     }
     manifest_path.write_text(json.dumps(manifest_payload, indent=2, sort_keys=True), encoding="utf-8")
