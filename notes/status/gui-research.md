@@ -31,6 +31,12 @@
 - The remediation injects `FontManagerOptions` plus an `IFontManagerImpl` proxy during `BuildAvaloniaApp()` via the service locator hooks. The proxy keeps glyph loads synchronous, forwards `GetGlyphTypeface` to the real manager, and seeds `Inter` as the default family so existing glyph aliases keep working.
 - After the binding, `HeadlessFixture` now asserts the `fonts:SystemFonts` dictionary and `Inter` fallback before any window construction, and `HeadlessBootstrapperSmokeTests` covers both `EnsureHeadless_registers_inter_font_manager` and `EnsureHeadless_allows_main_window_instantiation` to demonstrate the before/after success criteria. Passing runs are recorded alongside the seed log in [`artifacts/logs/headless-font-seed.txt`](../../artifacts/logs/headless-font-seed.txt).
 
+### Fontmanager regression
+
+- Captured the latest Release-mode failure showing `FontManagerImpl.TryCreateGlyphTypeface` rejecting the `fonts:SystemFonts#Inter` alias when Avalonia boots without the proxy fallbacks enabled. The trace is archived in [`artifacts/logs/fontmanager-regression.txt`](../../artifacts/logs/fontmanager-regression.txt) so we can diff future stack signatures.
+- Regression reproduces while `HeadlessFontManagerProxy.TryMatchCharacter` normalises alias inputs; the inner exception documents the missing Inter fallback that now drives the deterministic guard rails.
+- Next mitigation steps track under A0 once the Release-mode smoke test lands, keeping this section aligned with ongoing hardening.
+
 ## Open Questions
 
 - Which framework aligns best with the eventual reporting pipeline timeline?
