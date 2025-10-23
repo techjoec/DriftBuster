@@ -23,7 +23,7 @@ Schema reference
 **ACCEPT GATES:** Reproduction tests cover the regression, proxy changes keep headless glyph loads deterministic, Release + Debug smoke tests stay green, and updated bootstrap guidance ships.
 
 **REQUIRED RELATED WORK:**
-- [ ] 0.1 Capture the regression evidence.
+- [x] 0.1 Capture the regression evidence.
 - [x] 0.1.1 Extend `gui/DriftBuster.Gui.Tests/Ui/HeadlessBootstrapperSmokeTests.cs` with a Release-mode reproduction asserting `FontManager.SystemFonts` still exposes the Inter alias.
   - [x] 0.1.2 Archive the failing stack trace under `artifacts/logs/fontmanager-regression.txt` and summarise it in `notes/status/gui-research.md#fontmanager-regression`.
 - [ ] 0.2 Harden the headless proxy bindings.

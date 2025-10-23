@@ -1,0 +1,26 @@
+{
+  "captured_at": "2025-02-14T08:12:32+00:00",
+  "header": "Avalonia: headless font bootstrap failure captured under Release build",
+  "exceptions": [
+    {
+      "type": "System.InvalidOperationException",
+      "message": "Could not resolve font alias 'fonts:SystemFonts#Inter'",
+      "stack": [
+        "   at Avalonia.Media.FontManagerImpl.ThrowFontNotFound(String familyName)",
+        "   at Avalonia.Media.FontManagerImpl.TryCreateGlyphTypeface(String familyName, FontStyle style, FontWeight weight, FontStretch stretch, IGlyphTypeface& glyphTypeface)",
+        "   at DriftBuster.Gui.Headless.HeadlessFontManagerProxy.TryCreateGlyphTypeface(String familyName, FontStyle style, FontWeight weight, FontStretch stretch, IGlyphTypeface& glyphTypeface)",
+        "   at DriftBuster.Gui.Headless.HeadlessFontBootstrapper.<BuildAvaloniaApp>b__3_2(IServiceLocator locator)",
+        "   at DriftBuster.Gui.Program.EnsureHeadless() in C:\\builds\\driftbuster\\gui\\DriftBuster.Gui\\Program.cs:line 52",
+        "   at DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_registers_inter_font_manager() in C:\\builds\\driftbuster\\gui\\DriftBuster.Gui.Tests\\Ui\\HeadlessBootstrapperSmokeTests.cs:line 40"
+      ]
+    },
+    {
+      "type": "System.ArgumentException",
+      "message": "glyph alias fonts:SystemFonts missing expected Inter fallback entry",
+      "stack": [
+        "   at DriftBuster.Gui.Headless.HeadlessFontManagerProxy.TryMatchCharacter(UInt32 codepoint, FontStyle style, FontWeight weight, FontStretch stretch, FontMatchOptions matchOptions, Typeface& typeface)",
+        "   at Avalonia.Media.FontManager.TryMatchCharacter(UInt32 codepoint, FontStyle style, FontWeight weight, FontStretch stretch, FontMatchOptions matchOptions)"
+      ]
+    }
+  ]
+}
