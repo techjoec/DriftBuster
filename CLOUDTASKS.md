@@ -700,7 +700,7 @@ Schema reference
   - [x] 19.3.2 Update `docs/windows-gui-notes.md#compliance--accessibility-checklist` with step-by-step execution notes.
   - [x] 19.3.3 Archive accessibility run evidence (tool versions, pass/fail, screenshots) in `artifacts/gui-accessibility/`.
 - [ ] 19.4 Packaging workflows.
-  - [ ] 19.4.1 Produce MSIX packaging checklist and scripts in `notes/dev-host-prep.md`.
+  - [x] 19.4.1 Produce MSIX packaging checklist and scripts in `notes/dev-host-prep.md`.
   - [ ] 19.4.2 Document portable ZIP and self-contained bundle workflows in `docs/windows-gui-notes.md#packaging-quickstart`.
   - [ ] 19.4.3 Execute installer smoke tests on Windows 10/11 VMs; log results and system prerequisites in `notes/status/gui-research.md`.
 - [ ] 19.5 Offline & compliance posture.

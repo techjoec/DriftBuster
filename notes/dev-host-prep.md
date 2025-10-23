@@ -44,6 +44,17 @@
   - Emits a self-contained bundle (~120 MB) suitable for offline installs.
 - Both publish flavours rely solely on the bundled .NET bits; no external Python runtime required.
 
+## MSIX Packaging Checklist (2025-10-28)
+
+- [ ] Confirm Windows SDK App Packaging tools are installed (`makeappx.exe`, `signtool.exe`).
+- [ ] Generate MSIX-ready icons under `gui/DriftBuster.Gui/Assets/Msix/` (Square150x150Logo.png, Square44x44Logo.png, StoreLogo.png, Wide310x150Logo.png).
+- [ ] Publish self-contained GUI payload for the target RID (defaults to `win10-x64`).
+- [ ] Pack + sign the MSIX via `pwsh -NonInteractive -File scripts/package_msix.ps1 -Version <major.minor.patch.0> -CertificatePath <pfx> [-CertificatePassword <secret>]`.
+- [ ] Archive resulting `.msix`, `AppxManifest.xml`, and PowerShell transcript into `artifacts/gui-packaging/msix/`.
+- [ ] Record SHA256 checksum next to the `.msix` and cross-link evidence in `notes/status/gui-research.md`.
+
+> The script keeps the staging layout at `artifacts/gui-packaging/msix/staging/` so smoke checks (e.g., verifying `App/AppxManifest.xml` values) are repeatable before promoting the package.
+
 ## Publish Validation (2025-10-25)
 
 - `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true`
