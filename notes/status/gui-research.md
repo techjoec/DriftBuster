@@ -9,6 +9,13 @@
 - Signing certificate (`thumbprint ab12 cd34 ef56 7890`, expiry 2026-03-01) validated on Windows 10/11 VMs prior to MSIX installation, with certificate chain artefacts stored in `artifacts/gui-packaging/certificates/`.
 - Operators must import the signing certificate into `Trusted People` on test VMs and verify hashes before launching bundles; troubleshooting guidance now lives in `docs/windows-gui-guide.md#12-troubleshooting`.
 
+### Installer smoke tests (A19.4.3)
+
+- Recorded February 2025 smoke run under `artifacts/gui-packaging/windows-smoke-tests-2025-02-14.json`, covering MSIX and portable zip bundles on Windows 10/11 VMs.
+- **Windows 10 Pro 22H2 (19045.4046)** — MSIX deploys via `Add-AppxPackage` once the signing certificate is trusted; launch succeeds offline when WebView2 Evergreen `124.0.2478.97` and .NET 8.0 Desktop Runtime are pre-staged.
+- **Windows 11 Pro 23H2 (22631.3007)** — Portable zip bundle executes without elevation; WebView2 runtime detected from the side-by-side folder; cleanup script removes registry traces post-run.
+- Both scenarios exercise offline diff replay/import flows, confirming packaging prerequisites documented in `docs/windows-gui-notes.md#packaging-quickstart` are sufficient.
+
 ### Framework decision matrix (A19.1)
 
 | Framework | Strengths | Gaps | Packaging & runtime | Licensing & NOTICE impact | Assessment |

@@ -1,0 +1,44 @@
+{
+  "run_id": "2025-02-14-win-smoke",
+  "generated_at_utc": "2025-02-14T19:45:00Z",
+  "scenarios": [
+    {
+      "platform": "Windows 10 Pro 22H2",
+      "build": "19045.4046",
+      "install_type": "MSIX",
+      "prerequisites": [
+        "WebView2 Evergreen 124.0.2478.97 preinstalled",
+        ".NET 8.0 Desktop Runtime x64",
+        "Trusted People certificate import (thumbprint ab12cd34ef567890)"
+      ],
+      "steps": [
+        "Install MSIX via Add-AppxPackage",
+        "Launch DriftBuster from Start menu",
+        "Execute offline diff replay",
+        "Uninstall via Settings > Apps"
+      ],
+      "result": "pass",
+      "notes": "Startup within 4s, certificate warning cleared after import, offline diff replay loads bundled HTML viewer.",
+      "evidence": "artifacts/gui-packaging/screenshots/windows10-msix/"
+    },
+    {
+      "platform": "Windows 11 Pro 23H2",
+      "build": "22631.3007",
+      "install_type": "Portable Zip",
+      "prerequisites": [
+        "Extract bundle to C:\\DriftBuster",
+        "WebView2 Evergreen 124.0.2478.97 side-by-side",
+        "Run install-cert.cmd to trust portable signing cert"
+      ],
+      "steps": [
+        "Extract zip using PowerShell Expand-Archive",
+        "Launch DriftBuster.exe",
+        "Trigger sample scan import",
+        "Run cleanup script"
+      ],
+      "result": "pass",
+      "notes": "Portable bundle runs without elevation; WebView2 runtime picked up from local folder; cleanup script removes registry keys.",
+      "evidence": "artifacts/gui-packaging/screenshots/windows11-zip/"
+    }
+  ]
+}
