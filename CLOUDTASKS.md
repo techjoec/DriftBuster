@@ -145,7 +145,7 @@ Schema reference
 - [ ] 1.1 Validation & coverage.
   - [ ] 1.1.0 Capture current Release GUI regression evidence (fonts:SystemFonts alias + cache locks) under `artifacts/logs/gui-validation/` and summarise failure signatures in `notes/status/gui-research.md#multi-server-validation-rollup`.
   - [ ] 1.1.1 Investigate Release headless bootstrapper gap causing `FontManager.SystemFonts` to miss the `fonts:SystemFonts` alias before window creation (track findings in `gui/DriftBuster.Gui/Headless/*`).
-  - [ ] 1.1.2 Stabilise session cache migration writes so concurrent save/load tests stop throwing `/tmp/.../multi-server.json` lock violations in Release builds (`gui/DriftBuster.Gui/Services/SessionCacheService.cs` + tests).
+  - [x] 1.1.2 Stabilise session cache migration writes so concurrent save/load tests stop throwing `/tmp/.../multi-server.json` lock violations in Release builds (`gui/DriftBuster.Gui/Services/SessionCacheService.cs` + tests).
   - [ ] 1.1.3 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release` once font alias + cache fixes land and archive the green log beside the failure capture.
   - [ ] 1.1.4 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable after the Release fixes.
   - [ ] 1.1.5 Execute `python -m scripts.coverage_report` after GUI tests to keep shared coverage reporting in sync.

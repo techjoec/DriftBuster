@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -184,6 +185,69 @@ public sealed class SessionCacheServiceTests
         (await service.LoadAsync()).Should().BeNull();
         SessionCacheMigrationCounters.Successes.Should().Be(0);
         SessionCacheMigrationCounters.Failures.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Concurrent_saves_do_not_trigger_lock_violations()
+    {
+        SessionCacheMigrationCounters.Reset();
+
+        using var temp = new TempDirectory();
+        var serviceA = new SessionCacheService(temp.Path);
+        var serviceB = new SessionCacheService(temp.Path);
+
+        var saveTasks = Enumerable.Range(0, 10).Select(i =>
+        {
+            var service = i % 2 == 0 ? serviceA : serviceB;
+            var snapshot = new ServerSelectionCache
+            {
+                PersistSession = i % 3 == 0,
+                ActivityFilter = $"filter-{i}",
+            };
+
+            return service.SaveAsync(snapshot);
+        }).ToArray();
+
+        await Task.WhenAll(saveTasks);
+
+        var loaded = await serviceA.LoadAsync();
+        loaded.Should().NotBeNull();
+        loaded!.ActivityFilter.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Concurrent_save_and_load_operations_are_serialised()
+    {
+        SessionCacheMigrationCounters.Reset();
+
+        using var temp = new TempDirectory();
+        var service = new SessionCacheService(temp.Path);
+
+        await service.SaveAsync(new ServerSelectionCache
+        {
+            PersistSession = true,
+            ActivityFilter = "seed",
+        });
+
+        var tasks = Enumerable.Range(0, 5).SelectMany(i => new Task[]
+        {
+            service.SaveAsync(new ServerSelectionCache
+            {
+                PersistSession = i % 2 == 0,
+                ActivityFilter = $"value-{i}",
+            }),
+            Task.Run(async () =>
+            {
+                var loaded = await service.LoadAsync();
+                loaded.Should().NotBeNull();
+            }),
+        }).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        var finalSnapshot = await service.LoadAsync();
+        finalSnapshot.Should().NotBeNull();
+        finalSnapshot!.ActivityFilter.Should().NotBeNull();
     }
 
     private sealed class TempDirectory : IDisposable
