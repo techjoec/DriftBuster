@@ -140,6 +140,7 @@ _Execution queue:_ see `CLOUDTASKS.md` area A19 for the current packaging backlo
 4. Extract the portable zip (or copy the self-contained executable) into `C:\ProgramData\DriftBuster\App\` and ensure read/write permissions are limited to administrators.
 5. Launch the GUI once with `DriftBuster.Gui*.exe --log-file C:\ProgramData\DriftBuster\Logs\first-boot-offline.log` to generate the initial cache while offline; archive the log alongside the hash manifest.
 6. Document the activation steps and log locations in `notes/dev-host-prep.md` so subsequent operators can replay the process without re-downloading assets.
+7. Run `python -m scripts.offline_compliance_audit artifacts/gui-packaging` and archive the resulting report alongside the logs so compliance reviewers can verify evidence without internet access.
 
 ## Data Flow & UX Outline
 

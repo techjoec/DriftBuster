@@ -703,7 +703,7 @@ Schema reference
   - [x] 19.4.1 Produce MSIX packaging checklist and scripts in `notes/dev-host-prep.md`.
   - [x] 19.4.2 Document portable ZIP and self-contained bundle workflows in `docs/windows-gui-notes.md#packaging-quickstart`.
   - [x] 19.4.3 Execute installer smoke tests on Windows 10/11 VMs; log results and system prerequisites in `notes/status/gui-research.md`.
-- [ ] 19.5 Offline & compliance posture.
+- [x] 19.5 Offline & compliance posture.
   - [x] 19.5.1 Ensure offline activation guidance lives in `docs/windows-gui-notes.md#distribution--licensing-notes`.
   - [x] 19.5.2 Update `docs/legal-safeguards.md` with packaging/licensing guardrails (NOTICE contents, WebView2 terms).
   - [x] 19.5.3 Record security review notes (hash verification, sideload steps) in `notes/checklists/legal-review.md`.
