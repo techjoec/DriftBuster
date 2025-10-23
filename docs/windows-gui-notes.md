@@ -32,10 +32,42 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 
 ## Packaging Quickstart
 
-- Restore & build: `dotnet restore` then `dotnet build -c Release gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-- Portable zip (uses host .NET runtime): `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true`.
-- Self-contained bundle (ships .NET runtime): add `/p:SelfContained=true` and keep `PublishSingleFile=true`. Expect ~120 MB output.
-- Record publish commands + hashes in `notes/dev-host-prep.md` for each distribution flavour.
+Follow the restore + publish flow below so each bundle lands with reproducible file hashes and matching evidence in `artifacts/gui-packaging/`.
+
+1. Restore & compile once per session: `dotnet restore` then `dotnet build -c Release gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
+2. Snapshot the git commit (`git rev-parse HEAD > artifacts/gui-packaging/commit.txt`) before publishing so downstream evidence ties back to source.
+
+### Portable ZIP workflow (host runtime required)
+
+1. Publish:
+   ```powershell
+   dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj `
+     -c Release -r win-x64 `
+     /p:PublishSingleFile=true `
+     /p:SelfContained=false `
+     /p:IncludeNativeLibrariesForSelfExtract=true
+   ```
+2. Compress the publish folder (`publish/`) into `DriftBuster.Gui-portable-win-x64.zip` and store it under `artifacts/gui-packaging/portable/`.
+3. Copy `MicrosoftEdgeWebView2RuntimeInstallerX64.exe` beside the zip; bundle both into the operator hand-off package.
+4. Capture SHA256 hashes for the zip + WebView2 installer via `Get-FileHash` (PowerShell) and record them in `artifacts/gui-packaging/portable/hashes.txt`.
+5. Note the required pre-installed dependencies (host must have .NET 8.0 Desktop Runtime + WebView2) in the release notes.
+
+### Self-contained bundle workflow (ships .NET runtime)
+
+1. Publish:
+   ```powershell
+   dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj `
+     -c Release -r win-x64 `
+     /p:PublishSingleFile=true `
+     /p:SelfContained=true `
+     /p:IncludeNativeLibrariesForSelfExtract=true
+   ```
+2. Rename the single-file output to `DriftBuster.Gui-selfcontained.exe` and stage it under `artifacts/gui-packaging/selfcontained/`.
+3. Bundle the WebView2 offline installer plus `NOTICE` artefacts in the same folder so operators can deploy without internet access.
+4. Capture SHA256 hashes for every staged file and append to `artifacts/gui-packaging/selfcontained/hashes.txt`.
+5. Verify launch on a clean Windows VM (no .NET runtime installed) and log the console trace to `artifacts/gui-packaging/selfcontained/first-launch.log`.
+
+For each flavour, append the executed commands, hash outputs, and validation notes to `notes/dev-host-prep.md` so packaging evidence stays centralised.
 
 ## Manual Smoke Checklist
 
@@ -96,6 +128,15 @@ _Execution queue:_ see `CLOUDTASKS.md` area A19 for the current packaging backlo
 - Confirm WebView2 Evergreen redistributable terms when embedding reports.
 - Avoid auto-downloading dependencies at runtime; ship vetted binaries to keep supply chain tight.
 - Require offline activation path so security teams can inspect builds before deployment.
+
+### Offline activation guidance (A19.5.1)
+
+1. Stage the portable zip or self-contained bundle plus `MicrosoftEdgeWebView2RuntimeInstallerX64.exe` on a removable drive; include `NOTICE` and hash manifest files so operators can audit contents offline.
+2. On the target host, validate hashes with `Get-FileHash <file> -Algorithm SHA256` and compare against the recorded values before extracting or installing anything.
+3. Run the WebView2 installer with `MicrosoftEdgeWebView2RuntimeInstallerX64.exe /silent /install` while disconnected from the network; capture `%TEMP%\MicrosoftEdgeWebView2Setup.log` and move it into `C:\ProgramData\DriftBuster\Logs\webview2-offline.log` for archival.
+4. Extract the portable zip (or copy the self-contained executable) into `C:\ProgramData\DriftBuster\App\` and ensure read/write permissions are limited to administrators.
+5. Launch the GUI once with `DriftBuster.Gui*.exe --log-file C:\ProgramData\DriftBuster\Logs\first-boot-offline.log` to generate the initial cache while offline; archive the log alongside the hash manifest.
+6. Document the activation steps and log locations in `notes/dev-host-prep.md` so subsequent operators can replay the process without re-downloading assets.
 
 ## Data Flow & UX Outline
 
