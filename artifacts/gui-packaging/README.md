@@ -34,4 +34,5 @@ This directory captures publish transcripts and checksums for the Windows GUI pa
 - `publish-framework-dependent.sha256` — checksum of the resulting single-file executable.
 - `publish-self-contained.log` — transcript for the self-contained publish.
 - `publish-self-contained.sha256` — checksum of the self-contained single-file executable.
+- `framework-evaluation-2025-10-25.json` — structured summary of the framework decision matrix for area A19.1, including packaging and licensing guardrails.
 - `README.md` — this guide.

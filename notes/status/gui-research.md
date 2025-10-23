@@ -28,6 +28,7 @@
 - Packaging baseline: WinUI/Electron favour MSIX; Tkinter/PySimpleGUI lean on portable zip bundles with embedded CPython.
 - Manual update cadence stays in place until signing/auto-update decisions land.
 - Recommendation: focus on WinUI 3 for production packaging, keep Tkinter/PySimpleGUI research archived as lightweight fallback notes, and track Electron as a contingency once reporting adapters demand full Chromium rendering.
+- Structured summary captured in `artifacts/gui-packaging/framework-evaluation-2025-10-25.json` consolidates the matrix, rationale, and evidence links so A19.1 can reference machine-readable proof alongside the narrative notes.
 
 ### Drilldown command telemetry (A1b)
 

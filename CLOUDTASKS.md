@@ -687,7 +687,7 @@ Schema reference
 **ACCEPT GATES:** Updated `docs/windows-gui-notes.md` packaging sections, accessibility checklist completed, packaging smoke tests recorded across Windows 10/11, and evidence archived under `artifacts/gui-packaging/`.
 
 **REQUIRED RELATED WORK:**
-- [ ] 19.1 Framework evaluation.
+- [x] 19.1 Framework evaluation.
   - [x] 19.1.1 Review WinUI 3, Tkinter, PySimpleGUI, and Electron options; record decision matrix in `notes/status/gui-research.md`.
   - [x] 19.1.2 Sync `docs/windows-gui-notes.md#candidate-frameworks` with updated rationale and preferred pathway.
   - [x] 19.1.3 Capture licensing implications and NOTICE requirements in `docs/legal-safeguards.md#gui-frameworks`.

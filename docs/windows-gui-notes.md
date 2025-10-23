@@ -92,7 +92,7 @@ Active user requirements are tracked in the status log (`notes/status/gui-resear
 
 ## Candidate Frameworks
 
-**Current decision (A19.1): prioritise WinUI 3 for the shipping Windows shell, keep Tkinter/PySimpleGUI research as lightweight tooling notes, and treat Electron as a future HTML-heavy contingency.**
+**Current decision (A19.1): prioritise WinUI 3 for the shipping Windows shell, keep Tkinter/PySimpleGUI research as lightweight tooling notes, and treat Electron as a future HTML-heavy contingency.** See `artifacts/gui-packaging/framework-evaluation-2025-10-25.json` for the structured snapshot backing this matrix.
 
 | Framework | Why we would pick it | Key blockers | Packaging notes | Licence callouts |
 | --- | --- | --- | --- | --- |

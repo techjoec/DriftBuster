@@ -1,0 +1,56 @@
+{
+  "evaluated_on": "2025-10-25T00:00:00Z",
+  "preferred_framework": {
+    "name": "WinUI 3",
+    "reasoning": [
+      "Fluent-native controls keep parity with Avalonia styling goals while enabling WebView2 diff rendering.",
+      "Aligns with Microsoft tooling already validated in packaging rehearsals (MSIX + WebView2 installer workflows).",
+      "Packaging transcripts already exist for MSIX-style distribution and self-contained .NET publish flows."
+    ],
+    "packaging_strategy": {
+      "primary": "MSIX",
+      "offline_support": [
+        "Bundle MicrosoftEdgeWebView2RuntimeInstallerX64.exe beside packages.",
+        "Ship NOTICE entries covering Windows App SDK, WinUI, and WebView2 redistribution."
+      ]
+    }
+  },
+  "fallbacks": [
+    {
+      "name": "Tkinter",
+      "use_when": "Constrained maintenance utilities that only require basic forms and do not embed HTML reports.",
+      "tradeoffs": [
+        "Lacks built-in WebView for HTML report rendering.",
+        "UI polish requires significant custom work to reach production bar."
+      ],
+      "packaging": "Prefer portable zip bundles with embedded CPython runtime; include PSF and Tcl/Tk notices."
+    },
+    {
+      "name": "PySimpleGUI (Tk)",
+      "use_when": "Small admin helpers where rapid layout iteration outweighs long-term maintenance concerns.",
+      "tradeoffs": [
+        "inherits Tkinter rendering limitations for HTML content.",
+        "LGPLv3 obligations demand distributing modified source or written offers."
+      ],
+      "packaging": "Mirror Tkinter portable-zip approach and document LGPLv3 source offer in NOTICE bundle."
+    },
+    {
+      "name": "Electron",
+      "use_when": "Future HTML-heavy shells that require Chromium runtime and deep telemetry overlays.",
+      "tradeoffs": [
+        "Large download footprint (~100 MB) and Node.js toolchain overhead.",
+        "Offline-friendly builds require prebundled npm modules and strengthened signing pipeline."
+      ],
+      "packaging": "MSIX or Squirrel installers with hashed offline bundle; enumerate npm licences in NOTICE." 
+    }
+  ],
+  "evidence_links": {
+    "status_log": "notes/status/gui-research.md#framework-decision-matrix-a19-1",
+    "documentation": "docs/windows-gui-notes.md#candidate-frameworks",
+    "packaging_transcripts": [
+      "artifacts/gui-packaging/publish-framework-dependent.log",
+      "artifacts/gui-packaging/publish-self-contained.log",
+      "artifacts/gui-packaging/windows-smoke-tests-2025-02-14.json"
+    ]
+  }
+}
