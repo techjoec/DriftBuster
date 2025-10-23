@@ -18,5 +18,7 @@ artifacts/*
 !artifacts/cli-plan/**
 !artifacts/gui-packaging/
 !artifacts/gui-packaging/**
+!artifacts/gui-accessibility/
+!artifacts/gui-accessibility/**
 Releases/
 .codex-cloud/

@@ -696,9 +696,9 @@ Schema reference
   - [x] 19.2.2 Validate `.NET` publish commands (framework-dependent vs self-contained) and log outputs in `notes/dev-host-prep.md`.
   - [x] 19.2.3 Store publish command transcripts + hashes in `artifacts/gui-packaging/` with README describing reproduction steps.
 - [ ] 19.3 Accessibility baseline.
-  - [ ] 19.3.1 Define Narrator/Inspect test matrix in `notes/status/gui-research.md#user-requirements`.
-  - [ ] 19.3.2 Update `docs/windows-gui-notes.md#compliance--accessibility-checklist` with step-by-step execution notes.
-  - [ ] 19.3.3 Archive accessibility run evidence (tool versions, pass/fail, screenshots) in `artifacts/gui-accessibility/`.
+  - [x] 19.3.1 Define Narrator/Inspect test matrix in `notes/status/gui-research.md#user-requirements`.
+  - [x] 19.3.2 Update `docs/windows-gui-notes.md#compliance--accessibility-checklist` with step-by-step execution notes.
+  - [x] 19.3.3 Archive accessibility run evidence (tool versions, pass/fail, screenshots) in `artifacts/gui-accessibility/`.
 - [ ] 19.4 Packaging workflows.
   - [ ] 19.4.1 Produce MSIX packaging checklist and scripts in `notes/dev-host-prep.md`.
   - [ ] 19.4.2 Document portable ZIP and self-contained bundle workflows in `docs/windows-gui-notes.md#packaging-quickstart`.

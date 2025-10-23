@@ -74,4 +74,16 @@
 - Offline-ready packaging must ship alongside the first GUI preview so security teams can sideload builds without network access (see [Packaging & Distribution Plan](../../docs/windows-gui-notes.md#packaging--distribution-plan)).
 - The GUI needs a lightweight viewer mode that reads generated HTML diffs without bundling new scanners, keeping CLI ownership intact (see [Data Flow & UX Outline](../../docs/windows-gui-notes.md#data-flow--ux-outline)).
 - Accessibility pass requires Narrator and Inspect coverage before the HOLD lifts; track mitigation steps against the [Compliance & Accessibility Checklist](../../docs/windows-gui-notes.md#compliance--accessibility-checklist).
+  - Matrix lives below and ties each scenario to tool configuration, success criteria, and evidence capture.
 - Decision on WebView2 Evergreen redistribution is pending to finalise installer prerequisites (see [Candidate Frameworks](../../docs/windows-gui-notes.md#candidate-frameworks)).
+
+### Accessibility Validation Matrix (A19.3)
+
+| Tool | Scenario | Target Surface | Execution Notes | Evidence |
+| --- | --- | --- | --- | --- |
+| **Narrator** | Launch the packaged shell in default mode, tab through the server selection view. | Primary navigation frame, run profile list, CTA buttons. | Start Narrator (`Win + Ctrl + Enter`), ensure scan mode off, traverse using `Tab`/`Shift+Tab`, confirming focus order matches UI hierarchy. Log any unlabeled controls. | `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` (Narrator section). |
+| **Narrator** | Trigger drilldown panel after selecting a host with completed scans. | Drilldown summary headers, diff viewer launch button. | With Narrator running, activate drilldown using keyboard shortcuts only; verify Narrator announces new panel title and actionable controls. Capture transcript for announcements. | `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` (Drilldown scenario). |
+| **Inspect** | Validate automation properties for top-level window and critical controls. | Window title, start scan button, filter dropdowns. | Run Inspect (`inspect.exe`), attach to DriftBuster window, record `Name`, `AutomationId`, `ControlType`, and keyboard focus for each critical element. Flag missing `HelpText`. | `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` (Inspect section). |
+| **Inspect** | Verify contrast hints for high-contrast theme toggles. | Settings dialog theme toggle, diff viewer preview text. | Enable High Contrast in Windows Settings, restart app, re-run Inspect color contrast capture, confirm contrast ratio >= 4.5:1. Document steps for resetting theme. | `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` (High contrast check). |
+
+- Follow-up: integrate Screen Reader regression checks into the Release GUI smoke pipeline once headless instrumentation lands.

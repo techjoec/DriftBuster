@@ -119,5 +119,11 @@ _Execution queue:_ see `CLOUDTASKS.md` area A19 for the current packaging backlo
 - Legal Guardrails: Never embed vendor logos or proprietary sample content; rely on neutral icons.
 - Security: Store recent files list in memory only; avoid writing cache files unless explicitly configured.
 - Accessibility: Target keyboard navigation, high-contrast theme, and screen-reader labels for critical controls.
+  1. Launch packaged build on Windows 11 VM with stable Narrator + Inspect versions logged in the accessibility evidence file.
+  2. Start Narrator (`Win + Ctrl + Enter`) before opening the DriftBuster shell so focus events are captured from the splash screen.
+  3. Tab through server selection and drilldown views; record any unlabeled controls or incorrect announcements.
+  4. Run `inspect.exe` from the Windows SDK, attach to the DriftBuster window, and capture `Name`, `AutomationId`, and `HelpText` for critical controls.
+  5. Switch to High Contrast mode (Windows Settings → Accessibility → Contrast Themes) and repeat Inspect sweeps to document contrast ratio readings.
+  6. Store transcripts, tool versions, and screenshots in `artifacts/gui-accessibility/` for auditability.
 - Privacy: Ensure redacted tokens remain masked in the UI and exports.
 - Documentation: Keep safeguards aligned with `docs/legal-safeguards.md` when drafting user guidance.

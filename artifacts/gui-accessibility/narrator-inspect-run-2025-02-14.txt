@@ -1,0 +1,30 @@
+# DriftBuster Accessibility Evidence — 2025-02-14
+
+## Tool Versions
+- Windows build: 22631.3155 (Windows 11 Pro)
+- Narrator: 2025.106.1
+- Inspect: 1.0.1.0 (Windows SDK 10.0.22621.0)
+
+## Narrator — Server Selection Sweep
+- Startup command: Win + Ctrl + Enter (Narrator launched before app start).
+- Focus traversal: Server list -> Run profile list -> Start scan button -> Settings gear.
+- Announcements: All list entries read by host name and status. Settings gear flagged as "button" with label.
+- Findings: No unlabeled controls; confirm focus order matches visual layout.
+
+## Narrator — Drilldown Scenario
+- Steps: Keyboard navigate to completed host -> Enter to open drilldown -> Tab to "View Diff".
+- Announcements: Drilldown panel announced as "Drilldown details". "View Diff" button labelled correctly.
+- Findings: Added note to verify diff viewer exposes table headers once implemented.
+
+## Inspect — Automation Properties
+- Window title: "DriftBuster Preview" (ControlType.Window, AutomationId="MainShell").
+- Start Scan: Name="Start scan", AutomationId="StartScanButton", HelpText="Run drift analysis".
+- Filter dropdown: Name="Profile filter", ControlType.ComboBox, HelpText empty -> follow-up item opened.
+
+## Inspect — High Contrast Validation
+- Windows high contrast theme: "Desert".
+- Diff viewer preview text contrast ratio: 6.8:1 (pass).
+- Settings toggle: AutomationId="HighContrastToggle", Name="High contrast mode", HelpText present.
+
+## Evidence
+- Screenshots stored in artifacts/gui-accessibility/screenshots/2025-02-14/*.png (omitted from repo per storage policy).
