@@ -4,6 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Media;
 
+using DriftBuster.Gui.Headless;
+
 using Velopack;
 
 namespace DriftBuster.Gui
@@ -58,6 +60,7 @@ namespace DriftBuster.Gui
                 builder = configure?.Invoke(builder) ?? builder;
 
                 builder.SetupWithoutStarting();
+                HeadlessFontBootstrapper.Ensure(builder);
                 if (Application.Current is App app)
                 {
                     App.EnsureFontResources(app);

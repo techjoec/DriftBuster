@@ -25,6 +25,12 @@
     failure-count: 0
   ```
 
+### Headless font issues (A1d)
+
+- Release-mode headless windows previously crashed because `fonts:SystemFonts` was absent from the Avalonia locator. The captured stack trace lives in [`artifacts/logs/headless-font-release-stacktrace.txt`](../../artifacts/logs/headless-font-release-stacktrace.txt).
+- A reflection-based bootstrapper now binds `FontManagerOptions` and `IFontManagerImpl` to ensure the Inter fallback is registered for headless scenarios before the locator serves fonts.
+- The shared UI fixture verifies that `fonts:SystemFonts` and `Inter` entries exist prior to window instantiation, and a smoke test instantiates `MainWindow` under the headless collection to guard the regression.
+
 ## Open Questions
 
 - Which framework aligns best with the eventual reporting pipeline timeline?

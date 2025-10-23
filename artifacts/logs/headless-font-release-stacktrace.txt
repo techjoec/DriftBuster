@@ -1,0 +1,13 @@
+DriftBuster.Gui.Tests.Ui.AppStartupTests.FrameworkInitialization_assigns_main_window
+System.Collections.Generic.KeyNotFoundException: The given key 'fonts:SystemFonts' was not present in the dictionary.
+   at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at DriftBuster.Gui.Views.MainWindow..ctor() in gui/DriftBuster.Gui/Views/MainWindow.axaml.cs:line 9
