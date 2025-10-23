@@ -630,14 +630,14 @@ Schema reference
 **ACCEPT GATES:** Module passes `Invoke-ScriptAnalyzer`; commands validated against fixtures; README/doc updates live.
 
 **REQUIRED RELATED WORK:**
-- [ ] 17.1 Module implementation.
-  - [ ] 17.1.1 Flesh out cmdlets in `cli/DriftBuster.PowerShell/DriftBuster.psm1`.
-- [x] 17.1.2 Load latest backend assembly via `DriftbusterPaths.GetCacheDirectory`.
-  - [ ] 17.1.3 Document module initialisation flow in `docs/windows-gui-guide.md#powershell-module`.
-- [ ] 17.2 Validation.
-  - [ ] 17.2.1 Add Pester tests (new `cli/DriftBuster.PowerShell.Tests`) covering `Test-DriftBusterPing`, diff/hunt, run-profile commands.
-  - [ ] 17.2.2 Ensure JSON outputs match `gui/DriftBuster.Backend` models.
-  - [ ] 17.2.3 Track coverage via Pester `Invoke-Pester -OutputFormat NUnitXml` and store report in `artifacts/powershell/tests/`.
+ - [ ] 17.1 Module implementation.
+  - [x] 17.1.1 Flesh out cmdlets in `cli/DriftBuster.PowerShell/DriftBuster.psm1`.
+  - [x] 17.1.2 Load latest backend assembly via `DriftbusterPaths.GetCacheDirectory`.
+  - [x] 17.1.3 Document module initialisation flow in `docs/windows-gui-guide.md#powershell-module`.
+ - [ ] 17.2 Validation.
+  - [x] 17.2.1 Add Pester tests (new `cli/DriftBuster.PowerShell.Tests`) covering `Test-DriftBusterPing`, diff/hunt, run-profile commands.
+  - [x] 17.2.2 Ensure JSON outputs match `gui/DriftBuster.Backend` models.
+  - [x] 17.2.3 Track coverage via Pester `Invoke-Pester -OutputFormat NUnitXml` and store report in `artifacts/powershell/tests/`.
 - [x] 17.3 Error handling.
   - [x] 17.3.1 Surface friendly errors when backend assembly missing.
   - [x] 17.3.2 Document fallback instructions in `README.md`.

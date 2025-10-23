@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $script:ModuleManifest = $null
 $script:BackendVersion = $null
 $script:BackendAssemblyPath = $null
+$script:SerializerOptions = $null
 
 function New-DriftBusterBackendMissingError {
     [CmdletBinding()]
@@ -213,6 +214,193 @@ function Get-DriftBusterBackendAssembly {
     return $script:BackendAssemblyPath
 }
 
+function Get-DriftBusterSerializerOptions {
+    if ($script:SerializerOptions) {
+        return $script:SerializerOptions
+    }
+
+    $options = [System.Text.Json.JsonSerializerOptions]::new()
+    $options.DefaultIgnoreCondition = [System.Text.Json.Serialization.JsonIgnoreCondition]::WhenWritingNull
+    $options.PropertyNameCaseInsensitive = $true
+    $options.Converters.Add([System.Text.Json.Serialization.JsonStringEnumMemberConverter]::new())
+
+    $script:SerializerOptions = $options
+    return $script:SerializerOptions
+}
+
+function ConvertFrom-DriftBusterJson {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Json
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Json)) {
+        return $null
+    }
+
+    return $Json | ConvertFrom-Json -Depth 64
+}
+
+function ConvertFrom-DriftBusterModel {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]
+        $Model
+    )
+
+    if ($null -eq $Model) {
+        return $null
+    }
+
+    $options = Get-DriftBusterSerializerOptions
+    $modelType = $Model.GetType()
+    $json = [System.Text.Json.JsonSerializer]::Serialize($Model, $modelType, $options)
+    return ConvertFrom-DriftBusterJson -Json $json
+}
+
+function Get-DriftBusterPropertyValue {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]
+        $Object,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]
+        $Names
+    )
+
+    foreach ($name in $Names) {
+        if ($Object -is [hashtable]) {
+            foreach ($key in $Object.Keys) {
+                if ($null -ne $key -and $key.ToString().Equals($name, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    return $Object[$key]
+                }
+            }
+        }
+        elseif ($Object -is [System.Collections.IDictionary]) {
+            foreach ($key in $Object.Keys) {
+                if ($null -ne $key -and $key.ToString().Equals($name, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    return $Object[$key]
+                }
+            }
+        }
+        elseif ($Object -ne $null -and $Object.PSObject) {
+            $member = $Object.PSObject.Properties |
+                Where-Object { $_.Name.Equals($name, [System.StringComparison]::OrdinalIgnoreCase) } |
+                Select-Object -First 1
+
+            if ($member) {
+                return $member.Value
+            }
+        }
+    }
+
+    return $null
+}
+
+function ConvertTo-DriftBusterRunProfileDefinition {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [object]
+        $InputObject
+    )
+
+    process {
+        if ($null -eq $InputObject) {
+            throw 'Run profile input cannot be null.'
+        }
+
+        if ($InputObject -is [DriftBuster.Backend.Models.RunProfileDefinition]) {
+            return $InputObject
+        }
+
+        if ($InputObject -is [string]) {
+            $text = $InputObject
+            if (Test-Path -LiteralPath $InputObject) {
+                $text = Get-Content -LiteralPath $InputObject -Raw
+            }
+
+            if ([string]::IsNullOrWhiteSpace($text)) {
+                throw 'Run profile content was empty.'
+            }
+
+            $parsed = ConvertFrom-DriftBusterJson -Json $text
+            return ConvertTo-DriftBusterRunProfileDefinition -InputObject $parsed
+        }
+
+        $profile = [DriftBuster.Backend.Models.RunProfileDefinition]::new()
+
+        $name = Get-DriftBusterPropertyValue -Object $InputObject -Names @('name', 'Name')
+        if ($null -ne $name) {
+            $profile.Name = [string]$name
+        }
+
+        $description = Get-DriftBusterPropertyValue -Object $InputObject -Names @('description', 'Description')
+        if ($null -ne $description) {
+            $profile.Description = [string]$description
+        }
+
+        $baseline = Get-DriftBusterPropertyValue -Object $InputObject -Names @('baseline', 'Baseline')
+        if ($null -ne $baseline) {
+            $profile.Baseline = [string]$baseline
+        }
+
+        $sources = Get-DriftBusterPropertyValue -Object $InputObject -Names @('sources', 'Sources')
+        if ($null -ne $sources) {
+            if ($sources -is [System.Collections.IEnumerable] -and -not ($sources -is [string])) {
+                $profile.Sources = @($sources | ForEach-Object { [string]$_ })
+            }
+            else {
+                $profile.Sources = @([string]$sources)
+            }
+        }
+
+        $options = Get-DriftBusterPropertyValue -Object $InputObject -Names @('options', 'Options')
+        if ($null -ne $options) {
+            if ($options -is [System.Collections.IDictionary]) {
+                foreach ($key in $options.Keys) {
+                    $profile.Options[[string]$key] = [string]$options[$key]
+                }
+            }
+            elseif ($options -ne $null -and $options.PSObject) {
+                foreach ($property in $options.PSObject.Properties) {
+                    $profile.Options[[string]$property.Name] = [string]$property.Value
+                }
+            }
+        }
+
+        $secretScanner = Get-DriftBusterPropertyValue -Object $InputObject -Names @('secret_scanner', 'SecretScanner')
+        if ($null -ne $secretScanner) {
+            $ignoreRules = Get-DriftBusterPropertyValue -Object $secretScanner -Names @('ignore_rules', 'IgnoreRules')
+            if ($ignoreRules) {
+                if ($ignoreRules -is [System.Collections.IEnumerable] -and -not ($ignoreRules -is [string])) {
+                    $profile.SecretScanner.IgnoreRules = @($ignoreRules | ForEach-Object { [string]$_ })
+                }
+                else {
+                    $profile.SecretScanner.IgnoreRules = @([string]$ignoreRules)
+                }
+            }
+
+            $ignorePatterns = Get-DriftBusterPropertyValue -Object $secretScanner -Names @('ignore_patterns', 'IgnorePatterns')
+            if ($ignorePatterns) {
+                if ($ignorePatterns -is [System.Collections.IEnumerable] -and -not ($ignorePatterns -is [string])) {
+                    $profile.SecretScanner.IgnorePatterns = @($ignorePatterns | ForEach-Object { [string]$_ })
+                }
+                else {
+                    $profile.SecretScanner.IgnorePatterns = @([string]$ignorePatterns)
+                }
+            }
+        }
+
+        return $profile
+    }
+}
+
 if (-not ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq 'DriftBuster.Backend' })) {
     $assemblyPath = Get-DriftBusterBackendAssembly
     Add-Type -Path $assemblyPath
@@ -223,98 +411,386 @@ if (-not $script:DriftBusterBackend) {
 }
 
 function Test-DriftBusterPing {
+<#
+.SYNOPSIS
+Verifies connectivity to the DriftBuster backend.
+
+.DESCRIPTION
+Invokes the backend `PingAsync` method and returns a status payload so
+callers can confirm that the PowerShell module is wired correctly.
+
+.EXAMPLE
+Test-DriftBusterPing
+#>
     [CmdletBinding()]
+    [OutputType([pscustomobject])]
     param()
 
     $response = $script:DriftBusterBackend.PingAsync().GetAwaiter().GetResult()
     [pscustomobject]@{
-        Status = $response
+        status = $response
     }
 }
 
 function Invoke-DriftBusterDiff {
+<#
+.SYNOPSIS
+Compares configuration versions using the DriftBuster backend.
+
+.DESCRIPTION
+Wraps the backend `DiffAsync` API, accepting either an ordered collection of
+versions or an explicit left/right pair. Results are emitted as PowerShell
+objects that align with the backend JSON contract.
+
+.PARAMETER Versions
+Ordered list of version paths to diff. Accepts pipeline input.
+
+.PARAMETER Left
+Left-hand file or directory to diff.
+
+.PARAMETER Right
+Right-hand file or directory to diff.
+
+.PARAMETER RawJson
+Returns the raw JSON payload instead of converting to a PowerShell object.
+
+.EXAMPLE
+Invoke-DriftBusterDiff -Versions 'baseline/appsettings.json','release/appsettings.json'
+#>
     [CmdletBinding(DefaultParameterSetName = 'Versions')]
+    [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory = $true, ParameterSetName = 'Versions')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Versions', ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+        [Alias('Version')]
         [ValidateNotNullOrEmpty()]
         [string[]]
         $Versions,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'Pair')]
+        [ValidateNotNullOrEmpty()]
         [string]
         $Left,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'Pair')]
+        [ValidateNotNullOrEmpty()]
         [string]
-        $Right
+        $Right,
+
+        [Parameter()]
+        [switch]
+        $RawJson
     )
 
-    $paths = if ($PSCmdlet.ParameterSetName -eq 'Pair') { @($Left, $Right) } else { $Versions }
-    $typedPaths = [string[]]$paths
-    $result = $script:DriftBusterBackend.DiffAsync($typedPaths).GetAwaiter().GetResult()
-    $result.RawJson | ConvertFrom-Json
+    begin {
+        $collected = New-Object System.Collections.Generic.List[string]
+    }
+
+    process {
+        if ($PSCmdlet.ParameterSetName -eq 'Versions') {
+            if ($PSBoundParameters.ContainsKey('Versions')) {
+                foreach ($version in @($Versions)) {
+                    if ($version) {
+                        $collected.Add([string]$version) | Out-Null
+                    }
+                }
+            }
+            elseif ($null -ne $PSItem) {
+                foreach ($value in @($PSItem)) {
+                    if ($value) {
+                        $collected.Add([string]$value) | Out-Null
+                    }
+                }
+            }
+        }
+    }
+
+    end {
+        $paths = if ($PSCmdlet.ParameterSetName -eq 'Pair') {
+            @($Left, $Right)
+        }
+        else {
+            if ($collected.Count -eq 0) {
+                throw 'At least one version path is required.'
+            }
+
+            $collected.ToArray()
+        }
+
+        $typedPaths = [string[]]($paths | Where-Object { $_ })
+        $result = $script:DriftBusterBackend.DiffAsync($typedPaths).GetAwaiter().GetResult()
+
+        if ($RawJson) {
+            return $result.RawJson
+        }
+
+        return ConvertFrom-DriftBusterJson -Json $result.RawJson
+    }
 }
 
 function Invoke-DriftBusterHunt {
+<#
+.SYNOPSIS
+Scans a directory for drift indicators using backend hunt rules.
+
+.DESCRIPTION
+Executes the backend `HuntAsync` routine to surface files and lines that
+match built-in detection rules. Results are normalised to the backend JSON
+schema.
+
+.PARAMETER Directory
+The root directory to scan.
+
+.PARAMETER Pattern
+Optional file glob to limit scanned files.
+
+.PARAMETER RawJson
+Outputs the backend JSON payload without conversion.
+
+.EXAMPLE
+Invoke-DriftBusterHunt -Directory C:\logs -Pattern '*.config'
+#>
     [CmdletBinding()]
+    [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $Directory,
 
+        [Parameter(ValueFromPipelineByPropertyName = $true)]
         [string]
-        $Pattern
+        $Pattern,
+
+        [Parameter()]
+        [switch]
+        $RawJson
     )
 
-    $result = $script:DriftBusterBackend.HuntAsync($Directory, $Pattern).GetAwaiter().GetResult()
-    $result.RawJson | ConvertFrom-Json
+    process {
+        $result = $script:DriftBusterBackend.HuntAsync($Directory, $Pattern).GetAwaiter().GetResult()
+
+        if ($RawJson) {
+            return $result.RawJson
+        }
+
+        return ConvertFrom-DriftBusterJson -Json $result.RawJson
+    }
 }
 
 function Get-DriftBusterRunProfile {
+<#
+.SYNOPSIS
+Lists saved DriftBuster run profiles.
+
+.DESCRIPTION
+Fetches profiles from the backend cache and emits PowerShell objects whose
+property names mirror the backend JSON contract. Use `-PassThru` to access
+the underlying .NET objects.
+
+.PARAMETER BaseDir
+Optional base directory that overrides the default profile store.
+
+.PARAMETER Name
+Filters the returned profiles by name.
+
+.PARAMETER Raw
+Outputs the full backend payload instead of each profile entry.
+
+.PARAMETER PassThru
+Returns the backend `RunProfileDefinition` instances.
+
+.EXAMPLE
+Get-DriftBusterRunProfile | Where-Object name -eq 'Baseline'
+#>
     [CmdletBinding()]
+    [OutputType([pscustomobject])]
     param(
-        [string]
-        $BaseDir
-    )
-
-    $result = $script:DriftBusterBackend.ListProfilesAsync($BaseDir).GetAwaiter().GetResult()
-    $result.Profiles
-}
-
-function Save-DriftBusterRunProfile {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [DriftBuster.Backend.Models.RunProfileDefinition]
-        $Profile,
-
-        [string]
-        $BaseDir
-    )
-
-    $script:DriftBusterBackend.SaveProfileAsync($Profile, $BaseDir).GetAwaiter().GetResult() | Out-Null
-    Write-Verbose "Saved profile '$($Profile.Name)'"
-}
-
-function Invoke-DriftBusterRunProfile {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [DriftBuster.Backend.Models.RunProfileDefinition]
-        $Profile,
-
-        [switch]
-        $NoSave,
-
+        [Parameter(ValueFromPipelineByPropertyName = $true)]
         [string]
         $BaseDir,
 
+        [Parameter(ValueFromPipelineByPropertyName = $true)]
         [string]
-        $Timestamp
+        $Name,
+
+        [Parameter()]
+        [switch]
+        $Raw,
+
+        [Parameter()]
+        [switch]
+        $PassThru
     )
 
-    $result = $script:DriftBusterBackend.RunProfileAsync($Profile, -not $NoSave.IsPresent, $BaseDir, $Timestamp).GetAwaiter().GetResult()
-    $result
+    process {
+        $result = $script:DriftBusterBackend.ListProfilesAsync($BaseDir).GetAwaiter().GetResult()
+
+        if ($PassThru) {
+            return $result.Profiles
+        }
+
+        $converted = ConvertFrom-DriftBusterModel -Model $result
+
+        if ($Raw) {
+            return $converted
+        }
+
+        $profiles = @($converted.profiles)
+        if ($Name) {
+            $profiles = $profiles | Where-Object { $_.name -eq $Name }
+        }
+
+        foreach ($profile in $profiles) {
+            if ($profile) {
+                Write-Output $profile
+            }
+        }
+    }
+}
+
+function Save-DriftBusterRunProfile {
+<#
+.SYNOPSIS
+Persists a DriftBuster run profile to disk.
+
+.DESCRIPTION
+Normalises the supplied profile (PSCustomObject, hashtable, JSON, or typed
+model) before delegating to the backend store. Supports `-WhatIf`/`-Confirm`
+and can emit the saved profile in JSON-aligned form.
+
+.PARAMETER Profile
+Profile definition to save. Accepts pipeline input.
+
+.PARAMETER BaseDir
+Optional base directory override for the profile store.
+
+.PARAMETER PassThru
+Returns the saved profile as a PowerShell object.
+
+.EXAMPLE
+$profile | Save-DriftBusterRunProfile -BaseDir .\.driftbuster -PassThru
+#>
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [object]
+        $Profile,
+
+        [Parameter(ValueFromPipelineByPropertyName = $true)]
+        [string]
+        $BaseDir,
+
+        [Parameter()]
+        [switch]
+        $PassThru
+    )
+
+    process {
+        $definition = ConvertTo-DriftBusterRunProfileDefinition -InputObject $Profile
+
+        if ([string]::IsNullOrWhiteSpace($definition.Name)) {
+            throw 'Run profiles require a Name property.'
+        }
+
+        $target = if ($definition.Name) { $definition.Name } else { 'DriftBuster profile' }
+
+        if ($PSCmdlet.ShouldProcess($target, 'Save DriftBuster run profile')) {
+            $script:DriftBusterBackend.SaveProfileAsync($definition, $BaseDir).GetAwaiter().GetResult() | Out-Null
+            Write-Verbose "Saved profile '$($definition.Name)'"
+
+            if ($PassThru) {
+                return ConvertFrom-DriftBusterModel -Model $definition
+            }
+        }
+    }
+}
+
+function Invoke-DriftBusterRunProfile {
+<#
+.SYNOPSIS
+Executes a DriftBuster run profile and returns the output manifest.
+
+.DESCRIPTION
+Accepts rich profile input (typed, hashtable, JSON, file path) and executes
+it through the backend runner. Results default to JSON-aligned PowerShell
+objects; use `-PassThru` for the .NET result or `-Raw` for JSON text.
+
+.PARAMETER Profile
+Run profile definition to execute. Accepts pipeline input.
+
+.PARAMETER NoSave
+Prevents the profile from being persisted before execution.
+
+.PARAMETER BaseDir
+Optional working directory for profile resolution and persistence.
+
+.PARAMETER Timestamp
+Override timestamp for the run output.
+
+.PARAMETER PassThru
+Returns the backend `RunProfileRunResult` object.
+
+.PARAMETER Raw
+Returns the backend JSON payload instead of a PowerShell object.
+
+.EXAMPLE
+Invoke-DriftBusterRunProfile -Profile $profile -BaseDir .\.driftbuster
+#>
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [object]
+        $Profile,
+
+        [Parameter()]
+        [switch]
+        $NoSave,
+
+        [Parameter(ValueFromPipelineByPropertyName = $true)]
+        [string]
+        $BaseDir,
+
+        [Parameter(ValueFromPipelineByPropertyName = $true)]
+        [string]
+        $Timestamp,
+
+        [Parameter()]
+        [switch]
+        $PassThru,
+
+        [Parameter()]
+        [switch]
+        $Raw
+    )
+
+    process {
+        $definition = ConvertTo-DriftBusterRunProfileDefinition -InputObject $Profile
+
+        if ([string]::IsNullOrWhiteSpace($definition.Name)) {
+            throw 'Run profiles require a Name property.'
+        }
+
+        $target = if ($definition.Name) { $definition.Name } else { 'DriftBuster profile' }
+        $saveProfile = -not $NoSave.IsPresent
+
+        if ($PSCmdlet.ShouldProcess($target, 'Execute DriftBuster run profile')) {
+            $result = $script:DriftBusterBackend.RunProfileAsync($definition, $saveProfile, $BaseDir, $Timestamp).GetAwaiter().GetResult()
+
+            if ($Raw) {
+                $options = Get-DriftBusterSerializerOptions
+                $json = [System.Text.Json.JsonSerializer]::Serialize($result, $result.GetType(), $options)
+                return $json
+            }
+
+            if ($PassThru) {
+                return $result
+            }
+
+            return ConvertFrom-DriftBusterModel -Model $result
+        }
+    }
 }
 
 function Export-DriftBusterSqlSnapshot {
@@ -418,7 +894,7 @@ function Export-DriftBusterSqlSnapshot {
     if (Test-Path -LiteralPath $manifestPath) {
         $content = Get-Content -LiteralPath $manifestPath -Raw
         if ($content) {
-            return $content | ConvertFrom-Json
+            return ConvertFrom-DriftBusterJson -Json $content
         }
     }
 

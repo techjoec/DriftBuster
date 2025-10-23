@@ -149,6 +149,11 @@ For deeper implementation notes, refer to `docs/windows-gui-notes.md` (engineeri
 ## 14. PowerShell module
 - Imports live under `cli/DriftBuster.PowerShell`. Use the module when running backend commands from Windows shells without the GUI.
 - The module loads `DriftBuster.Backend.dll` through the shared cache directory resolved by `DriftbusterPaths.GetCacheDirectory`.
+- Initialise the module with the following sequence to guarantee a published backend and JSON-aligned outputs:
+  1. Publish the backend once per build: `dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published`.
+  2. Import the module: `pwsh -NoLogo -NoProfile -Command "Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psm1 -Force"`.
+  3. Verify connectivity and schema: `Test-DriftBusterPing` (returns `{ status = "pong" }`), `Invoke-DriftBusterDiff -Left baseline.json -Right release.json`, and `Invoke-DriftBusterRunProfile -Profile <profile.json> -BaseDir . -NoSave -Raw`.
+  4. When validating packaging, run `pwsh ./cli/DriftBuster.PowerShell.Tests/Invoke-ModuleTests.ps1` to execute the Pester suite and capture an NUnit XML report under `artifacts/powershell/tests/`.
 
 ### Troubleshooting
 | Symptom | Suggested Checks |

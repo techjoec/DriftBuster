@@ -63,7 +63,7 @@ def _capture_json(module_path: Path, body: str, *, depth: int = 6) -> object:
 
 def test_ping_returns_pong(published_backend: Path) -> None:
     payload = _capture_json(published_backend, "$result = Test-DriftBusterPing; $result")
-    assert payload["Status"] == "pong"
+    assert payload["status"] == "pong"
 
 
 def test_diff_pair_round_trip(published_backend: Path, tmp_path: Path) -> None:
@@ -104,8 +104,8 @@ def test_run_profile_creates_artifacts(published_backend: Path) -> None:
 
     payload = _capture_json(published_backend, body, depth=6)
 
-    assert payload["Files"]
-    assert any(entry["Destination"].endswith("baseline.txt") for entry in payload["Files"])
+    assert payload["files"]
+    assert any(entry["destination"].endswith("baseline.txt") for entry in payload["files"])
 
 
 def test_import_surfaces_backend_missing(tmp_path: Path) -> None:
