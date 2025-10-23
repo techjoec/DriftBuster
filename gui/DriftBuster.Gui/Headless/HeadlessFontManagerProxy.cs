@@ -76,9 +76,10 @@ internal class HeadlessFontManagerProxy : DispatchProxy
 
         foreach (var alias in aliases)
         {
-            if (!string.IsNullOrWhiteSpace(alias))
+            var normalized = alias?.Trim();
+            if (!string.IsNullOrWhiteSpace(normalized))
             {
-                _aliases.Add(alias);
+                _aliases.Add(normalized);
             }
         }
     }
@@ -113,27 +114,41 @@ internal class HeadlessFontManagerProxy : DispatchProxy
             typeof(int), typeof(FontStyle), typeof(FontWeight), typeof(FontStretch), typeof(CultureInfo), typeof(Typeface).MakeByRefType(),
         });
 
-        var success = method is not null && _inner is not null
-            ? (bool)method.Invoke(_inner, forwarded)!
-            : false;
+        var success = false;
+        if (method is not null && _inner is not null)
+        {
+            try
+            {
+                success = (bool)method.Invoke(_inner, forwarded)!;
+            }
+            catch (TargetInvocationException)
+            {
+                success = false;
+                ResetOutParameter(forwarded, 5);
+            }
+            catch (Exception)
+            {
+                success = false;
+                ResetOutParameter(forwarded, 5);
+            }
+        }
 
         var style = forwarded.Length > 1 && forwarded[1] is FontStyle fontStyle ? fontStyle : FontStyle.Normal;
         var weight = forwarded.Length > 2 && forwarded[2] is FontWeight fontWeight ? fontWeight : FontWeight.Normal;
         var stretch = forwarded.Length > 3 && forwarded[3] is FontStretch fontStretch ? fontStretch : FontStretch.Normal;
 
-        var typeface = success && forwarded.Length > 5 && forwarded[5] is Typeface captured
+        var normalized = NormalizeTypeface(success && forwarded.Length > 5 && forwarded[5] is Typeface captured
             ? captured
-            : default;
+            : null, style, weight, stretch);
 
         if (!success)
         {
-            typeface = new Typeface(_defaultFamilyName, style, weight, stretch);
             success = true;
         }
 
         if (args.Length > 5)
         {
-            args[5] = typeface;
+            args[5] = normalized;
         }
 
         return success;
@@ -149,16 +164,12 @@ internal class HeadlessFontManagerProxy : DispatchProxy
         var forwarded = (object?[])args.Clone();
         forwarded[0] = NormalizeFamilyName(forwarded.Length > 0 ? forwarded[0] as string : null);
 
-        var success = method is not null && _inner is not null
-            ? (bool)method.Invoke(_inner, forwarded)!
-            : false;
+        var success = InvokeGlyphTypeface(method, forwarded);
 
         if (!success && forwarded.Length > 0 && !string.Equals((string?)forwarded[0], _defaultFamilyName, StringComparison.OrdinalIgnoreCase))
         {
             forwarded[0] = _defaultFamilyName;
-            success = method is not null && _inner is not null
-                ? (bool)method.Invoke(_inner, forwarded)!
-                : false;
+            success = InvokeGlyphTypeface(method, forwarded);
         }
 
         if (args.Length > 4)
@@ -170,7 +181,59 @@ internal class HeadlessFontManagerProxy : DispatchProxy
     }
 
     private string NormalizeFamilyName(string? familyName)
-        => string.IsNullOrWhiteSpace(familyName) || _aliases.Contains(familyName)
+    {
+        var candidate = familyName?.Trim();
+
+        return string.IsNullOrWhiteSpace(candidate) || _aliases.Contains(candidate)
             ? _defaultFamilyName
-            : familyName;
+            : candidate;
+    }
+
+    private bool InvokeGlyphTypeface(MethodInfo? method, object?[] forwarded)
+    {
+        if (method is null || _inner is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return (bool)method.Invoke(_inner, forwarded)!;
+        }
+        catch (TargetInvocationException)
+        {
+            ResetOutParameter(forwarded, 4);
+            return false;
+        }
+        catch (Exception)
+        {
+            ResetOutParameter(forwarded, 4);
+            return false;
+        }
+    }
+
+    private static void ResetOutParameter(object?[] arguments, int index)
+    {
+        if (arguments.Length > index)
+        {
+            arguments[index] = null;
+        }
+    }
+
+    private Typeface NormalizeTypeface(Typeface? typeface, FontStyle style, FontWeight weight, FontStretch stretch)
+    {
+        if (typeface is null)
+        {
+            return new Typeface(_defaultFamilyName, style, weight, stretch);
+        }
+
+        var value = typeface.Value;
+        var familyName = value.FontFamily.Name;
+        if (string.IsNullOrWhiteSpace(familyName) || _aliases.Contains(familyName))
+        {
+            return new Typeface(_defaultFamilyName, value.Style, value.Weight, value.Stretch);
+        }
+
+        return value;
+    }
 }
