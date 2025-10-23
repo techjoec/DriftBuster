@@ -177,7 +177,12 @@ def evaluate_report(
     )
     missing: List[str] = []
     if required_scenarios:
-        observed = {item.scenario.name.casefold() for item in scenarios}
+        observed = {
+            trimmed.casefold()
+            for item in scenarios
+            for trimmed in (item.scenario.name.strip(),)
+            if trimmed
+        }
         for candidate in required_scenarios:
             normalised = (candidate or "").strip()
             if not normalised:

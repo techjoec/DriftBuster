@@ -12,6 +12,21 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0f. Font Telemetry Normalisation [deps=A0e]
+
+**REASON:** Scenario name whitespace and case drift currently causes false missing flags in telemetry enforcement.
+
+**MUST NOT:** Change telemetry payload structure or weaken existing drift detection thresholds.
+
+**MUST:** Trim observed scenario names, align required matching to canonical casing, and lock coverage with regression tests.
+
+**ACCEPT GATES:** Required scenario enforcement tolerates whitespace/case variations and CLI evaluation tests stay green.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.8 Normalise scenario matching in evaluation flows.
+  - [x] 0.8.1 Trim observed scenario names inside `src/driftbuster/font_health.py`.
+  - [x] 0.8.2 Add regression coverage under `tests/scripts/test_font_health_summary.py` for whitespace-insensitive matching.
+
 ## A0e. Font Telemetry Scenario Enforcement [deps=A0]
 
 **REASON:** Headless telemetry occasionally omits scenario entries when pipelines shift, hiding regressions needed for release validation.

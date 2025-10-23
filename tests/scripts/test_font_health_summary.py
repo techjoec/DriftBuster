@@ -7,6 +7,7 @@ import pytest
 from driftbuster.font_health import (
     FontHealthError,
     FontHealthReport,
+    ScenarioHealth,
     evaluate_report,
     evaluate_scenarios,
     format_report,
@@ -123,3 +124,24 @@ def test_format_report_lists_missing_scenarios(sample_payload: Path, capsys: pyt
     output = capsys.readouterr().out
     assert "Missing scenarios:" in output
     assert "Absent" in output
+
+
+def test_evaluate_report_normalises_required_scenario_names() -> None:
+    scenario = ScenarioHealth(
+        name="  passes-release  ",
+        total_runs=3,
+        passes=3,
+        failures=0,
+        last_status="pass",
+        last_updated=None,
+        last_details={},
+    )
+    report = FontHealthReport(generated_at=None, scenarios=(scenario,))
+
+    evaluation = evaluate_report(
+        report,
+        required_scenarios=("passes-release", "  PASSES-RELEASE  ", ""),
+    )
+
+    assert evaluation.missing_scenarios == ()
+    assert evaluation.has_issues is False
