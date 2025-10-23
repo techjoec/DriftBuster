@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 using Avalonia;
@@ -51,18 +52,19 @@ internal static class HeadlessFontBootstrapper
         }
     }
 
+    private static readonly string[] RequiredFallbackFamilies =
+    {
+        DefaultFamilyName,
+        "fonts:SystemFonts",
+        "fonts:SystemFonts#Inter",
+    };
+
     private static void BindFontOptions(AvaloniaLocator locator)
     {
         if (Resolve(locator, typeof(FontManagerOptions)) is FontManagerOptions existing)
         {
             existing.DefaultFamilyName = DefaultFamilyName;
-            existing.FontFallbacks = new[]
-            {
-                new FontFallback
-                {
-                    FontFamily = new FontFamily(DefaultFamilyName),
-                }
-            };
+            existing.FontFallbacks = CreateFallbacks(existing.FontFallbacks);
 
             return;
         }
@@ -70,16 +72,54 @@ internal static class HeadlessFontBootstrapper
         var options = new FontManagerOptions
         {
             DefaultFamilyName = DefaultFamilyName,
-            FontFallbacks = new[]
-            {
-                new FontFallback
-                {
-                    FontFamily = new FontFamily(DefaultFamilyName),
-                }
-            }
+            FontFallbacks = CreateFallbacks(null),
         };
 
         Register(locator, typeof(FontManagerOptions), options);
+    }
+
+    private static FontFallback[] CreateFallbacks(IEnumerable<FontFallback>? existing)
+    {
+        var fallbacks = new List<FontFallback>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var familyName in RequiredFallbackFamilies)
+        {
+            AddFallback(fallbacks, seen, familyName);
+        }
+
+        if (existing is not null)
+        {
+            foreach (var fallback in existing)
+            {
+                if (fallback?.FontFamily is null)
+                {
+                    continue;
+                }
+
+                AddFallback(fallbacks, seen, fallback.FontFamily.Name, fallback.FontFamily);
+            }
+        }
+
+        return fallbacks.ToArray();
+    }
+
+    private static void AddFallback(ICollection<FontFallback> fallbacks, ISet<string> seen, string? familyName, FontFamily? family = null)
+    {
+        if (string.IsNullOrWhiteSpace(familyName))
+        {
+            return;
+        }
+
+        if (!seen.Add(familyName))
+        {
+            return;
+        }
+
+        fallbacks.Add(new FontFallback
+        {
+            FontFamily = family ?? new FontFamily(familyName),
+        });
     }
 
     private static object? Resolve(AvaloniaLocator locator, Type serviceType)

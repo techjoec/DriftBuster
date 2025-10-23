@@ -117,6 +117,14 @@ This guide explains the capabilities, layout, and operational details of the Ava
     - `HeadlessFixture` verifies `FontManager.Current` exposes Inter as the default family and resolves glyphs for both Inter and the alias, protecting glyph paths used by text controls and dialogs.
     - `HeadlessBootstrapperSmokeTests` assert the locator binding and glyph creation path so regressions in the proxy surface before full suites run.
   - Keep this preload intact when editing the bootstrapper so fixtures never hit the `KeyNotFoundException` observed before the guardrails landed.
+
+### FontManager regression playbook
+- **Purpose:** Confirm `fonts:SystemFonts` and `fonts:SystemFonts#Inter` stay resolvable in both Release and Debug builds so headless smoke tests mirror production.
+- **Targeted tests:**
+  1. `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release --filter FullyQualifiedName~HeadlessBootstrapperSmokeTests.EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts`
+  2. `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter FullyQualifiedName~HeadlessFixture`
+- **Expected signals:** The smoke test asserts the `fonts:SystemFonts` resource exposes the Inter alias keys consumed by `FontManager.SystemFonts`, and `FontManager.Current.TryGetGlyphTypeface("fonts:SystemFonts#Inter")` succeeds; the fixture cross-checks `FontManagerOptions.DefaultFamilyName` and fallback ordering against `FontManager.Current`.
+- **Failure triage:** If either command fails, inspect `artifacts/logs/fontmanager-regression.txt` for the captured stack trace and rerun `Program.EnsureHeadless` instrumentation to verify the proxy registered its aliases.
 - Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
 - Full coverage expectations:
   - Debug: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`

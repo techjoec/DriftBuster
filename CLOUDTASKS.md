@@ -24,14 +24,14 @@ Schema reference
 
 **REQUIRED RELATED WORK:**
 - [ ] 0.1 Capture the regression evidence.
-  - [ ] 0.1.1 Extend `gui/DriftBuster.Gui.Tests/Ui/HeadlessBootstrapperSmokeTests.cs` with a Release-mode reproduction asserting `FontManager.SystemFonts` still exposes the Inter alias.
+- [x] 0.1.1 Extend `gui/DriftBuster.Gui.Tests/Ui/HeadlessBootstrapperSmokeTests.cs` with a Release-mode reproduction asserting `FontManager.SystemFonts` still exposes the Inter alias.
   - [x] 0.1.2 Archive the failing stack trace under `artifacts/logs/fontmanager-regression.txt` and summarise it in `notes/status/gui-research.md#fontmanager-regression`.
 - [ ] 0.2 Harden the headless proxy bindings.
   - [x] 0.2.1 Update `gui/DriftBuster.Gui/Headless/HeadlessFontManagerProxy.cs` to guard `TryCreateGlyphTypeface`/`TryMatchCharacter` fallbacks and normalise alias lookups.
-  - [ ] 0.2.2 Ensure `gui/DriftBuster.Gui/Headless/HeadlessFontBootstrapper.cs` seeds `FontManagerOptions.Fallbacks` deterministically for both Inter and the alias entry.
+- [x] 0.2.2 Ensure `gui/DriftBuster.Gui/Headless/HeadlessFontBootstrapper.cs` seeds `FontManagerOptions.Fallbacks` deterministically for both Inter and the alias entry.
 - [ ] 0.3 Validate Release/Debug bootstrap parity.
-  - [ ] 0.3.1 Add targeted fixture coverage in `gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` verifying the same default family in Release and Debug.
-  - [ ] 0.3.2 Record verification notes and commands in `docs/windows-gui-guide.md#fontmanager-regression-playbook` for operators.
+- [x] 0.3.1 Add targeted fixture coverage in `gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` verifying the same default family in Release and Debug.
+- [x] 0.3.2 Record verification notes and commands in `docs/windows-gui-guide.md#fontmanager-regression-playbook` for operators.
 - [ ] 0.4 Monitor metrics and regression drift.
   - [ ] 0.4.1 Pipe bootstrapper health telemetry into `artifacts/logs/headless-font-health.json` during GUI smoke tests.
   - [ ] 0.4.2 Add a condensed status rollup to `notes/status/gui-research.md#fontmanager-regression` describing pass/fail trends.

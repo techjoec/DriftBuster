@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 using Avalonia;
@@ -39,6 +41,40 @@ public sealed class HeadlessFixture : IAsyncLifetime
         Assert.Contains(new[] { "Inter", "fonts:SystemFonts" }, value =>
             value.Equals(defaultFamilyName, StringComparison.OrdinalIgnoreCase));
 
+        var locatorProperty = typeof(AvaloniaLocator).GetProperty("CurrentMutable", BindingFlags.Public | BindingFlags.Static);
+        var locator = Assert.IsAssignableFrom<AvaloniaLocator>(locatorProperty?.GetValue(null));
+        var getService = locator.GetType().GetMethod("GetService", BindingFlags.Instance | BindingFlags.Public, new[] { typeof(Type) });
+        Assert.NotNull(getService);
+
+        var options = getService!.Invoke(locator, new object[] { typeof(FontManagerOptions) });
+        var managerOptions = Assert.IsType<FontManagerOptions>(options);
+        Assert.Equal("Inter", managerOptions.DefaultFamilyName);
+        Assert.True(string.Equals(managerOptions.DefaultFamilyName, defaultFamilyName, StringComparison.OrdinalIgnoreCase),
+            "Default font family should align between FontManager and FontManagerOptions regardless of configuration.");
+
+        var fallbackFamilies = managerOptions.FontFallbacks?
+            .Select(fallback => fallback?.FontFamily)
+            .Where(family => family is not null)
+            .Cast<FontFamily>()
+            .ToArray() ?? Array.Empty<FontFamily>();
+
+        Assert.Contains(fallbackFamilies, family =>
+            string.Equals(family.Name, "Inter", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(fallbackFamilies, family =>
+            string.Equals(family.Name, "fonts:SystemFonts", StringComparison.OrdinalIgnoreCase));
+
+        var sourceProperty = typeof(FontFamily).GetProperty("Source", BindingFlags.Instance | BindingFlags.Public);
+        if (sourceProperty is not null)
+        {
+            var fallbackSources = fallbackFamilies
+                .Select(family => sourceProperty.GetValue(family) as string)
+                .Where(source => !string.IsNullOrWhiteSpace(source))
+                .Select(source => source!)
+                .ToArray();
+
+            Assert.Contains("fonts:SystemFonts", fallbackSources, StringComparer.OrdinalIgnoreCase);
+        }
+
         Assert.True(fontManager.TryGetGlyphTypeface(new Typeface("Inter"), out var interGlyph),
             "Expected Inter glyph typeface to resolve in headless runs.");
         Assert.NotNull(interGlyph);
@@ -49,6 +85,12 @@ public sealed class HeadlessFixture : IAsyncLifetime
         Assert.NotNull(aliasGlyph);
         Assert.Contains(new[] { "Inter", "fonts:SystemFonts" }, value =>
             value.Equals(aliasGlyph.FamilyName, StringComparison.OrdinalIgnoreCase));
+
+        Assert.True(fontManager.TryGetGlyphTypeface(new Typeface("fonts:SystemFonts#Inter"), out var interAliasGlyph),
+            "Expected fonts:SystemFonts#Inter alias to resolve for parity between Release and Debug.");
+        Assert.NotNull(interAliasGlyph);
+        Assert.True(string.Equals("Inter", interAliasGlyph.FamilyName, StringComparison.OrdinalIgnoreCase),
+            "fonts:SystemFonts#Inter should normalise to the Inter glyph family.");
 
         return Task.CompletedTask;
     }
