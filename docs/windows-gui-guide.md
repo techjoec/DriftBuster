@@ -70,6 +70,12 @@ This guide explains the capabilities, layout, and operational details of the Ava
 ### Root Validation & Persistence
 - Switching a server to **Custom roots** keeps the validation summary live while you type. Duplicate or relative paths flag the card immediately, and summaries stay cached even when the card loses focus.
 - Session saves now persist the active catalog sort descriptor, catalog filters, timeline filter, selected view (setup/results/drilldown), and root ordering so reloading a session restores the same working state.
+- Font preload guardrail: `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary during `BuildAvaloniaApp()`, so Release/Debug headless runs hydrate Inter before the multi-server view instantiates catalog headers or guidance text.
+
+#### Persistence walkthrough
+1. Click **Save session** after a successful multi-server run. The awaitable `SessionCacheService` writes the snapshot to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or the `$XDG_DATA_HOME` equivalent) while recording migration counters.
+2. Relaunch the GUI; `ServerSelectionViewModel` loads the snapshot, reapplies host enablement, restores catalog/drilldown/timeline state, and logs a **Loaded saved session** activity entry summarising the number of restored servers.
+3. Trigger **Run missing only** to validate the restored session. Cached hosts remain in **succeeded** state, while active plans append fresh activity telemetry without losing the restored context.
 
 ### Catalog & Drilldown Enhancements
 - Catalog columns support click-to-sort with visual indicators; the current sort mode is cached alongside server state.

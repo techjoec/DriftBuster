@@ -115,9 +115,9 @@ Schema reference
   - [ ] 1.1.1 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`.
   - [ ] 1.1.2 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable.
   - [ ] 1.1.3 Execute `python -m scripts.coverage_report` after GUI tests to keep shared coverage reporting in sync.
-- [ ] 1.2 Evidence & documentation.
-  - [ ] 1.2.1 Update `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` with persistence walkthrough + font preload notes.
-  - [ ] 1.2.2 Summarise findings in `notes/status/gui-research.md` under the multi-server guardrails section.
+- [x] 1.2 Evidence & documentation.
+  - [x] 1.2.1 Update `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` with persistence walkthrough + font preload notes.
+  - [x] 1.2.2 Summarise findings in `notes/status/gui-research.md` under the multi-server guardrails section.
 
 ## A2. Diff Planner Productivity (Phase 2) [deps=A1]
 

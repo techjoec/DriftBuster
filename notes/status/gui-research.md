@@ -54,6 +54,13 @@
 - The remediation injects `FontManagerOptions` plus an `IFontManagerImpl` proxy during `BuildAvaloniaApp()` via the service locator hooks. The proxy keeps glyph loads synchronous, forwards `GetGlyphTypeface` to the real manager, and seeds `Inter` as the default family so existing glyph aliases keep working.
 - After the binding, `HeadlessFixture` now asserts the `fonts:SystemFonts` dictionary and `Inter` fallback before any window construction, and `HeadlessBootstrapperSmokeTests` covers both `EnsureHeadless_registers_inter_font_manager` and `EnsureHeadless_allows_main_window_instantiation` to demonstrate the before/after success criteria. Passing runs are recorded alongside the seed log in [`artifacts/logs/headless-font-seed.txt`](../../artifacts/logs/headless-font-seed.txt).
 
+### Multi-server guardrails (A1d)
+
+- `SessionCacheService` now writes snapshots to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or the platform data root) while migrating any legacy cache in the background, so the awaitable save/load flow no longer races during shutdown or restores. The cache schema captures catalog filters, timeline filter, active view, and host metadata for deterministic reloads.
+- `ServerSelectionViewModel` reapplies saved host enablement, roots, and view state on launch, then logs a **Loaded saved session** activity entry (`Restored {n} servers.`) to the timeline so operators can audit when a persisted configuration is replayed.
+- `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary with Inter before the view tree spins up, ensuring the restored multi-server tab renders catalog headers and guidance text consistently in Release and Debug headless runs.
+- Persistence walkthrough published in `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` now directs operators through saving a session, validating restored hosts, and confirming the Inter preload guardrail stays intact after relaunches.
+
 ### Fontmanager regression
 
 - Captured the latest Release-mode failure showing `FontManagerImpl.TryCreateGlyphTypeface` rejecting the `fonts:SystemFonts#Inter` alias when Avalonia boots without the proxy fallbacks enabled. The trace is archived in [`artifacts/logs/fontmanager-regression.txt`](../../artifacts/logs/fontmanager-regression.txt) so we can diff future stack signatures.

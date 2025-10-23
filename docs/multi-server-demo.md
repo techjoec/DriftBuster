@@ -47,6 +47,13 @@ Callout notes:
 2. **Drilldown** – select a catalog entry to open side-by-side and unified diffs. Toggle servers on/off from the checklist to compare subsets. Export HTML/JSON snapshots with the inline buttons.
 3. **Selective reruns** – the catalog’s **Re-scan affected servers** button issues targeted plans so you can validate fresh drift without losing context.
 
+### 3a. Persist and Restore a Session
+
+1. Click **Save session** once every host has completed at least one run. The snapshot writes to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or `$XDG_DATA_HOME/DriftBuster/sessions/...` on non-Windows hosts) using the awaitable cache service introduced in `SessionCacheService`.
+2. Close the GUI and relaunch it with `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`. The multi-server tab will repopulate host labels, scopes, root ordering, baseline preferences, catalog filters, the last selected drilldown host, and the active timeline filter.
+3. Validate that Inter-font dependent controls (catalog headers, guidance footer text) render correctly. The headless bootstrapper now preloads `fonts:SystemFonts` so even Release builds hydrate the alias dictionary before multi-server views instantiate.
+4. Trigger a rerun from the restored session. Cached hosts immediately report **succeeded** while the activity timeline records a **Loaded saved session** success entry ("Restored _n_ servers.") before fresh run telemetry lands for any hosts that require new work.
+
 ### 4. CLI Parity
 
 The GUI invokes `python -m driftbuster.multi_server` with a JSON request over stdin. Try the same flow from the repo root:
