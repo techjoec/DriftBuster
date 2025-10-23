@@ -47,9 +47,9 @@ Follow the restore + publish flow below so each bundle lands with reproducible f
      /p:SelfContained=false `
      /p:IncludeNativeLibrariesForSelfExtract=true
    ```
-2. Compress the publish folder (`publish/`) into `DriftBuster.Gui-portable-win-x64.zip` and store it under `artifacts/gui-packaging/portable/`.
+2. Compress the publish folder (`publish/`) into `DriftBuster.Gui-portable-win-x64.zip` and store it under `artifacts/gui-packaging/portable/` (create the folder when capturing release evidence).
 3. Copy `MicrosoftEdgeWebView2RuntimeInstallerX64.exe` beside the zip; bundle both into the operator hand-off package.
-4. Capture SHA256 hashes for the zip + WebView2 installer via `Get-FileHash` (PowerShell) and record them in `artifacts/gui-packaging/portable/hashes.txt`.
+4. Capture SHA256 hashes for the zip + WebView2 installer via `Get-FileHash` (PowerShell) and record them in `artifacts/gui-packaging/portable/hashes.txt` (or append the values to `artifacts/gui-packaging/publish-framework-dependent.sha256` to mirror the tracked evidence format).
 5. Note the required pre-installed dependencies (host must have .NET 8.0 Desktop Runtime + WebView2) in the release notes.
 
 ### Self-contained bundle workflow (ships .NET runtime)
@@ -62,12 +62,12 @@ Follow the restore + publish flow below so each bundle lands with reproducible f
      /p:SelfContained=true `
      /p:IncludeNativeLibrariesForSelfExtract=true
    ```
-2. Rename the single-file output to `DriftBuster.Gui-selfcontained.exe` and stage it under `artifacts/gui-packaging/selfcontained/`.
+2. Rename the single-file output to `DriftBuster.Gui-selfcontained.exe` and stage it under `artifacts/gui-packaging/selfcontained/` (create the folder if it does not exist yet).
 3. Bundle the WebView2 offline installer plus `NOTICE` artefacts in the same folder so operators can deploy without internet access.
-4. Capture SHA256 hashes for every staged file and append to `artifacts/gui-packaging/selfcontained/hashes.txt`.
+4. Capture SHA256 hashes for every staged file and append to `artifacts/gui-packaging/selfcontained/hashes.txt` (or reuse `artifacts/gui-packaging/publish-self-contained.sha256`).
 5. Verify launch on a clean Windows VM (no .NET runtime installed) and log the console trace to `artifacts/gui-packaging/selfcontained/first-launch.log`.
 
-For each flavour, append the executed commands, hash outputs, and validation notes to `notes/dev-host-prep.md` so packaging evidence stays centralised.
+For each flavour, append the executed commands, hash outputs, and validation notes to `notes/dev-host-prep.md` so packaging evidence stays centralised. The current repository snapshot captures both publish transcripts and hashes in `artifacts/gui-packaging/publish-framework-dependent.log`, `artifacts/gui-packaging/publish-framework-dependent.sha256`, `artifacts/gui-packaging/publish-self-contained.log`, and `artifacts/gui-packaging/publish-self-contained.sha256`.
 
 ## Manual Smoke Checklist
 
@@ -122,15 +122,29 @@ _Execution queue:_ see `CLOUDTASKS.md` area A19 for the current packaging backlo
 - **Update Channel**
   - Manual updates: publish checksum + version in release notes until automation is approved.
 
+## Evidence index (A19.6)
+
+| Evidence | Location | Purpose |
+| --- | --- | --- |
+| Framework-dependent publish transcript | `artifacts/gui-packaging/publish-framework-dependent.log` | Records the exact command output for the portable ZIP workflow. |
+| Framework-dependent hash | `artifacts/gui-packaging/publish-framework-dependent.sha256` | Verifies the single-file portable binary shipped in that workflow. |
+| Self-contained publish transcript | `artifacts/gui-packaging/publish-self-contained.log` | Captures the command output for the self-contained bundle. |
+| Self-contained hash | `artifacts/gui-packaging/publish-self-contained.sha256` | Confirms the signed binary that includes the .NET runtime. |
+| Framework decision matrix | `artifacts/gui-packaging/framework-evaluation-2025-10-25.json` | Machine-readable rationale aligning with the narrative matrix in this doc. |
+| Windows packaging smoke log | `artifacts/gui-packaging/windows-smoke-tests-2025-02-14.json` | Evidence of Windows 10/11 installer validation runs referenced in the status notes. |
+| Packaging evidence guide | `artifacts/gui-packaging/README.md` | Step-by-step instructions mirroring the captured transcripts and hash commands. |
+
+Keep new publish runs in sync with this table so operators can audit the exact evidence set without guessing at filenames or directories.
+
 ## Distribution & Licensing Notes
 
-- Maintain a `NOTICE` file covering .NET dependencies, Avalonia packages, and any auxiliary tooling.
+- Maintain a `NOTICE` file covering .NET dependencies, Avalonia packages, and any auxiliary tooling. Reference the current template stored alongside the packaging evidence so regenerated bundles inherit the same baseline.
 - Confirm WebView2 Evergreen redistributable terms when embedding reports.
 - Avoid auto-downloading dependencies at runtime; ship vetted binaries to keep supply chain tight.
 - Require offline activation path so security teams can inspect builds before deployment.
-- Generate SHA256 manifests for every bundle (`artifacts/gui-packaging/<flavour>/hashes.txt`) and mirror the manifest inside the operator hand-off package.
-- Capture install/uninstall transcripts per flavour under `artifacts/gui-packaging/logs/` and record signing certificate details (thumbprint, expiry, issuer) in the legal review checklist.
-- Provide certificate chain exports in `artifacts/gui-packaging/certificates/` so operators can import signing roots on isolated hosts before installing MSIX packages.
+- Generate SHA256 manifests for every bundle (see the checked-in `publish-*.sha256` files in `artifacts/gui-packaging/`) and mirror the manifest inside the operator hand-off package.
+- Capture install/uninstall transcripts per flavour (e.g., `publish-*.log` in `artifacts/gui-packaging/`) and record signing certificate details (thumbprint, expiry, issuer) in the legal review checklist.
+- Provide certificate chain exports under `artifacts/gui-packaging/certificates/` so operators can import signing roots on isolated hosts before installing MSIX packages. Create the folder on first run if it does not yet exist in the evidence tree.
 
 ### Offline activation guidance (A19.5.1)
 

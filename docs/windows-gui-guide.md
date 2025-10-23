@@ -114,9 +114,9 @@ This guide explains the capabilities, layout, and operational details of the Ava
 |------|---------|
 | Capture current commit hash (`git rev-parse HEAD > artifacts/gui-packaging/commit.txt`). | Tie installer evidence back to source. |
 | Stage WebView2 offline installer next to publish output. | Satisfy Evergreen redistribution requirements for offline installs. |
-| Generate SHA256 manifest for every staged file. | Enable downstream integrity verification without internet access. |
+| Generate SHA256 manifest for every staged file. | Enable downstream integrity verification without internet access; mirror outputs listed in `docs/windows-gui-notes.md#evidence-index-a196`. |
 | Copy updated `NOTICE` directory into the bundle. | Keep licence obligations intact across packaging flavours. |
-| Log install/uninstall transcript to `artifacts/gui-packaging/logs/<flavour>-<date>.txt`. | Provide reproducible evidence for legal and security reviews. |
+| Log install/uninstall transcript to `artifacts/gui-packaging/publish-<flavour>.log` (or a dedicated logs folder) and archive alongside hashes. | Provide reproducible evidence for legal and security reviews. |
 
 ## 10. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.

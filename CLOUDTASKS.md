@@ -707,7 +707,7 @@ Schema reference
   - [x] 19.5.1 Ensure offline activation guidance lives in `docs/windows-gui-notes.md#distribution--licensing-notes`.
   - [x] 19.5.2 Update `docs/legal-safeguards.md` with packaging/licensing guardrails (NOTICE contents, WebView2 terms).
   - [x] 19.5.3 Record security review notes (hash verification, sideload steps) in `notes/checklists/legal-review.md`.
-- [ ] 19.6 Evidence & communication.
+- [x] 19.6 Evidence & communication. (See `notes/status/gui-research.md#packaging-readiness-summary-a196` and `docs/windows-gui-notes.md#evidence-index-a196`.)
   - [x] 19.6.1 Update `docs/windows-gui-guide.md` with packaging prerequisites and troubleshooting tips.
   - [x] 19.6.2 Summarise packaging readiness status in `notes/status/gui-research.md` and cross-link from this area when closing.
   - [x] 19.6.3 Keep `docs/windows-gui-notes.md` appendices aligned with packaging outputs, including template NOTICE entries.
