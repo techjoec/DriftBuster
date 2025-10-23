@@ -1,0 +1,247 @@
+
+Welcome to .NET 8.0!
+---------------------
+SDK Version: 8.0.121
+
+----------------
+Installed an ASP.NET Core HTTPS development certificate.
+To trust the certificate, view the instructions: https://aka.ms/dotnet-https-linux
+
+----------------
+Write your first app: https://aka.ms/dotnet-hello-world
+Find out what's new: https://aka.ms/dotnet-whats-new
+Explore documentation: https://aka.ms/dotnet-docs
+Report issues and find source on GitHub: https://github.com/dotnet/core
+Use 'dotnet --help' to see available commands or visit: https://aka.ms/dotnet-cli
+--------------------------------------------------------------------------------------
+  Determining projects to restore...
+  Restored /workspace/DriftBuster/gui/DriftBuster.Backend/DriftBuster.Backend.csproj (in 1.25 sec).
+  Restored /workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj (in 7.58 sec).
+  Restored /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj (in 7.44 sec).
+  DriftBuster.Backend -> /workspace/DriftBuster/gui/DriftBuster.Backend/bin/Release/net8.0/DriftBuster.Backend.dll
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(76,28): warning CS0618: 'DataObject' is obsolete: 'Use DataTransfer instead' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(78,22): warning CS0618: 'DataFormats.Text' is obsolete: 'Use DataFormat.Text instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(80,13): warning CS0618: 'DragDrop.DoDragDrop(PointerEventArgs, IDataObject, DragDropEffects)' is obsolete: 'Use DoDragDropAsync instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(80,13): warning CS4014: Because this call is not awaited, execution of the current method continues before the call is completed. Consider applying the 'await' operator to the result of the call. [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(58,28): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread. [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(90,32): warning CS0618: 'DragEventArgs.Data' is obsolete: 'Use DataTransfer instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(103,32): warning CS0618: 'DragEventArgs.Data' is obsolete: 'Use DataTransfer instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Release/net8.0/DriftBuster.Gui.dll
+  DriftBuster.Gui.Tests -> /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Release/net8.0/DriftBuster.Gui.Tests.dll
+Test run for /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Release/net8.0/DriftBuster.Gui.Tests.dll (.NETCoreApp,Version=v8.0)
+Microsoft (R) Test Execution Command Line Tool Version 17.8.0 (x64)
+Copyright (c) Microsoft Corporation.  All rights reserved.
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+  Failed DriftBuster.Gui.Tests.Backend.DriftbusterBackendTests.BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files [89 ms]
+  Error Message:
+   Expected File.Exists(migratedFile) to be true, but found False.
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Primitives.BooleanAssertions`1.BeTrue(String because, Object[] becauseArgs)
+   at DriftBuster.Gui.Tests.Backend.DriftbusterBackendTests.BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Backend/DriftbusterBackendTests.cs:line 132
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Views.ViewInstantiationTests.Theme_toggle_updates_requested_variant [26 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.MainWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/MainWindow.axaml.cs:line 9
+   at DriftBuster.Gui.Tests.Views.ViewInstantiationTests.Theme_toggle_updates_requested_variant() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Views/ViewInstantiationTests.cs:line 31
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.AppStartupTests.FrameworkInitialization_assigns_main_window [< 1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.MainWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/MainWindow.axaml.cs:line 9
+   at DriftBuster.Gui.App.OnFrameworkInitializationCompleted() in /workspace/DriftBuster/gui/DriftBuster.Gui/App.axaml.cs:line 30
+   at DriftBuster.Gui.Tests.Ui.AppStartupTests.FrameworkInitialization_assigns_main_window() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/AppStartupTests.cs:line 33
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts [22 ms]
+  Error Message:
+   Expected fonts:SystemFonts#Inter alias to resolve via the font manager in release mode.
+  Stack Trace:
+     at DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessBootstrapperSmokeTests.cs:line 127
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_allows_main_window_instantiation [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.MainWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/MainWindow.axaml.cs:line 9
+   at DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_allows_main_window_instantiation() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessBootstrapperSmokeTests.cs:line 162
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.MainWindowUiTests.Should_Create_MainWindow_With_ViewModel [< 1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.MainWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/MainWindow.axaml.cs:line 9
+   at DriftBuster.Gui.Tests.Ui.MainWindowUiTests.Should_Create_MainWindow_With_ViewModel() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/MainWindowUiTests.cs:line 16
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.SecretScannerSettings_with_override_applies_changes [10 ms]
+  Error Message:
+   Expected viewModel.SecretScanner.IgnoreRules {empty} to contain "rule-x".
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Collections.GenericCollectionAssertions`3.Contain(T expected, String because, Object[] becauseArgs)
+   at DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.SecretScannerSettings_with_override_applies_changes() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/RunProfilesViewInteractionTests.cs:line 185
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.SecretScannerSettings_without_owner_exits_cleanly [5 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.SecretScannerSettingsWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/SecretScannerSettingsWindow.axaml.cs:line 12
+   at DriftBuster.Gui.Views.RunProfilesView.OnSecretScannerSettings(Object sender, RoutedEventArgs e) in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/RunProfilesView.axaml.cs:line 71
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__128_0(Object state)
+  Failed DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Cancel_closes_window [< 1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.SecretScannerSettingsWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/SecretScannerSettingsWindow.axaml.cs:line 12
+   at DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Cancel_closes_window() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/SecretScannerSettingsWindowTests.cs:line 45
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Should_Bind_SecretScanner_ViewModel [< 1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.SecretScannerSettingsWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/SecretScannerSettingsWindow.axaml.cs:line 12
+   at DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Should_Bind_SecretScanner_ViewModel() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/SecretScannerSettingsWindowTests.cs:line 26
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Confirm_closes_window [< 1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at Avalonia.Media.Typeface.get_GlyphTypeface()
+   at Avalonia.Rendering.Composition.Compositor.get_DiagnosticTextRenderer()
+   at Avalonia.Rendering.Composition.Compositor.CreateCompositionTarget(Func`1 surfaces)
+   at Avalonia.Rendering.Composition.CompositingRenderer..ctor(IRenderRoot root, Compositor compositor, Func`1 surfaces)
+   at Avalonia.Controls.TopLevel..ctor(ITopLevelImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl, IAvaloniaDependencyResolver dependencyResolver)
+   at Avalonia.Controls.WindowBase..ctor(IWindowBaseImpl impl)
+   at Avalonia.Controls.Window..ctor(IWindowImpl impl)
+   at Avalonia.Controls.Window..ctor()
+   at DriftBuster.Gui.Views.SecretScannerSettingsWindow..ctor() in /workspace/DriftBuster/gui/DriftBuster.Gui/Views/SecretScannerSettingsWindow.axaml.cs:line 12
+   at DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Confirm_closes_window() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/SecretScannerSettingsWindowTests.cs:line 38
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Failed!  - Failed:    11, Passed:   111, Skipped:     0, Total:   122, Duration: 4 s - DriftBuster.Gui.Tests.dll (net8.0)

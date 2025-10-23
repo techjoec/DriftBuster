@@ -171,4 +171,22 @@ public sealed class HeadlessBootstrapperSmokeTests
             throw;
         }
     }
+
+    [Fact]
+    public void EnsureHeadless_records_bootstrapper_diagnostics_snapshot()
+    {
+        using var scope = Program.EnsureHeadless();
+
+        var snapshot = HeadlessFontBootstrapperDiagnostics.GetSnapshot();
+
+        Assert.True(snapshot.Timestamp > DateTimeOffset.MinValue, "Snapshot timestamp should be recorded.");
+        Assert.NotEmpty(snapshot.Probes);
+        Assert.True(snapshot.ResourceCount > 0, "Expected font resource dictionary to contain entries.");
+        Assert.True(snapshot.ResourceContainsSystemFonts, "fonts:SystemFonts alias should exist in resource dictionary.");
+        Assert.True(snapshot.ResourceContainsInter, "Inter alias should exist in resource dictionary.");
+        Assert.Contains(snapshot.Probes, probe =>
+            string.Equals(probe.Alias, "fonts:SystemFonts", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(snapshot.Probes, probe =>
+            string.Equals(probe.Alias, "fonts:SystemFonts#Inter", StringComparison.OrdinalIgnoreCase));
+    }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 using Avalonia;
@@ -46,10 +47,14 @@ internal static class HeadlessFontBootstrapper
 
             BindFontOptions(locator);
 
+            IDictionary<string, FontFamily>? fontsResource = null;
             if (Application.Current is App app)
             {
                 App.EnsureFontResources(app);
+                fontsResource = TryGetFontResourceDictionary(app);
             }
+
+            HeadlessFontBootstrapperDiagnostics.RecordSnapshot(CreateSnapshot(FontManager.Current, fontsResource));
         }
     }
 
@@ -165,4 +170,72 @@ internal static class HeadlessFontBootstrapper
     private static AvaloniaLocator? TryGetCurrentLocator()
         => CurrentMutableProperty?.GetValue(null) as AvaloniaLocator;
 
+    private static IDictionary<string, FontFamily>? TryGetFontResourceDictionary(Application app)
+    {
+        const string key = "fonts:SystemFonts";
+
+        if (!app.Resources.TryGetValue(key, out var resource))
+        {
+            return null;
+        }
+
+        return resource as IDictionary<string, FontFamily>;
+    }
+
+    private static HeadlessFontBootstrapperDiagnostics.ProbeSnapshot CreateSnapshot(
+        FontManager? fontManager,
+        IDictionary<string, FontFamily>? fontsResource)
+    {
+        var probes = new List<HeadlessFontBootstrapperDiagnostics.ProbeResult>();
+        var failureNotes = new List<string>();
+
+        foreach (var alias in RequiredFallbackFamilies.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var result = ProbeAlias(fontManager, alias);
+            probes.Add(result);
+
+            if (!result.Success)
+            {
+                failureNotes.Add($"glyph:{alias}:{result.Error ?? "unknown"}");
+            }
+        }
+
+        var containsSystemFonts = fontsResource?.ContainsKey("fonts:SystemFonts") ?? false;
+        var containsInter = fontsResource?.Keys.Any(key =>
+            string.Equals(key, "Inter", StringComparison.OrdinalIgnoreCase)) ?? false;
+        var resourceCount = fontsResource?.Count ?? 0;
+
+        return new HeadlessFontBootstrapperDiagnostics.ProbeSnapshot(
+            DateTimeOffset.UtcNow,
+            probes,
+            containsSystemFonts,
+            containsInter,
+            resourceCount,
+            failureNotes.Count == 0 ? null : string.Join(";", failureNotes));
+    }
+
+    private static HeadlessFontBootstrapperDiagnostics.ProbeResult ProbeAlias(FontManager? fontManager, string alias)
+    {
+        if (fontManager is null)
+        {
+            return new HeadlessFontBootstrapperDiagnostics.ProbeResult(alias, false, null, "font_manager_unavailable");
+        }
+
+        try
+        {
+            var success = fontManager.TryGetGlyphTypeface(new Typeface(alias), out var glyphTypeface);
+            var family = glyphTypeface?.FamilyName;
+            var error = success ? null : "try_get_glyph_failed";
+
+            return new HeadlessFontBootstrapperDiagnostics.ProbeResult(alias, success, family, error);
+        }
+        catch (Exception ex)
+        {
+            return new HeadlessFontBootstrapperDiagnostics.ProbeResult(
+                alias,
+                false,
+                null,
+                $"{ex.GetType().Name}: {ex.Message}");
+        }
+    }
 }

@@ -62,6 +62,11 @@
 - `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary with Inter before the view tree spins up, ensuring the restored multi-server tab renders catalog headers and guidance text consistently in Release and Debug headless runs.
 - Persistence walkthrough published in `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` now directs operators through saving a session, validating restored hosts, and confirming the Inter preload guardrail stays intact after relaunches.
 
+#### Multi-server validation rollup (A1d)
+
+- 2025-10-23 Release rerun still fails: see [`artifacts/logs/gui-validation/gui-tests-release-2025-10-23-regression.txt`](../../artifacts/logs/gui-validation/gui-tests-release-2025-10-23-regression.txt) for the glyph alias + session cache migration misses. Failures surfaced before any window construction, keeping the regression evidence adjacent to the earlier failing log.
+- New `HeadlessFontBootstrapperDiagnostics` snapshot captures the alias probes and resource counts on every headless bootstrap. The latest run shows `fonts:SystemFonts` entries present but glyph creation failing, exporting details through `HeadlessFontBootstrapperDiagnostics.GetSnapshot()` so telemetry and smoke tests can ingest the state without rehydrating Avalonia types.
+
 ### Fontmanager regression
 
 - Captured the latest Release-mode failure showing `FontManagerImpl.TryCreateGlyphTypeface` rejecting the `fonts:SystemFonts#Inter` alias when Avalonia boots without the proxy fallbacks enabled. The trace is archived in [`artifacts/logs/fontmanager-regression.txt`](../../artifacts/logs/fontmanager-regression.txt) so we can diff future stack signatures.
