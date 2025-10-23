@@ -145,6 +145,17 @@ Export-DriftBusterSqlSnapshot -Database fixtures/sqlite/sample.sqlite -MaskColum
 The PowerShell module uses the shared `DriftBuster.Backend` library, giving the
 CLI and GUI identical diff, hunt, and run-profile behaviour.
 
+If importing the module reports `DriftBusterBackendMissing`, publish the backend
+assembly and re-import:
+
+```powershell
+dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published
+Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1 -Force
+```
+
+Copying the resulting `DriftBuster.Backend.dll` next to `DriftBuster.psm1` also
+unblocks import when working from a published module archive.
+
 ## Key Concepts
 
 - **Catalog (`src/driftbuster/catalog.py`)** – central listing of detection

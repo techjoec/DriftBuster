@@ -145,3 +145,12 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - New view models should expose observable collections + status fields similar to Diff/Hunt pattern.
 
 For deeper implementation notes, refer to `docs/windows-gui-notes.md` (engineering focus) and `notes/dev-host-prep.md` (host setup log).
+
+## 14. PowerShell module
+- Imports live under `cli/DriftBuster.PowerShell`. Use the module when running backend commands from Windows shells without the GUI.
+- The module loads `DriftBuster.Backend.dll` through the shared cache directory resolved by `DriftbusterPaths.GetCacheDirectory`.
+
+### Troubleshooting
+| Symptom | Suggested Checks |
+|---------|-----------------|
+| Import fails with `DriftBusterBackendMissing`. | Publish the backend: `dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published`, then re-import the module or copy the resulting `DriftBuster.Backend.dll` next to `DriftBuster.psm1`. Confirm the cache directory contains the DLL afterwards. |

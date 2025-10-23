@@ -638,10 +638,10 @@ Schema reference
   - [ ] 17.2.1 Add Pester tests (new `cli/DriftBuster.PowerShell.Tests`) covering `Test-DriftBusterPing`, diff/hunt, run-profile commands.
   - [ ] 17.2.2 Ensure JSON outputs match `gui/DriftBuster.Backend` models.
   - [ ] 17.2.3 Track coverage via Pester `Invoke-Pester -OutputFormat NUnitXml` and store report in `artifacts/powershell/tests/`.
-- [ ] 17.3 Error handling.
-  - [ ] 17.3.1 Surface friendly errors when backend assembly missing.
-  - [ ] 17.3.2 Document fallback instructions in `README.md`.
-  - [ ] 17.3.3 Add troubleshooting section to `docs/windows-gui-guide.md#powershell-module`.
+- [x] 17.3 Error handling.
+  - [x] 17.3.1 Surface friendly errors when backend assembly missing.
+  - [x] 17.3.2 Document fallback instructions in `README.md`.
+  - [x] 17.3.3 Add troubleshooting section to `docs/windows-gui-guide.md#powershell-module`.
 - [ ] 17.4 Packaging.
   - [ ] 17.4.1 Update `scripts/package_powershell_module.ps1`.
   - [ ] 17.4.2 Document usage in `docs/windows-gui-guide.md` and `README.md`.

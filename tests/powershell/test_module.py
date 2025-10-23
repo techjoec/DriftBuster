@@ -39,12 +39,14 @@ def published_backend() -> Path:
     return MODULE_PATH.resolve()
 
 
-def _run_powershell(module_path: Path, body: str) -> subprocess.CompletedProcess[str]:
+def _run_powershell(
+    module_path: Path, body: str, *, check: bool = True
+) -> subprocess.CompletedProcess[str]:
     module_literal = _ps_literal(str(module_path))
     script = f"$module = {module_literal}; Import-Module $module -Force; {body}"
     return subprocess.run(
         ["pwsh", "-NoLogo", "-NoProfile", "-Command", script],
-        check=True,
+        check=check,
         capture_output=True,
         text=True,
     )
@@ -104,3 +106,19 @@ def test_run_profile_creates_artifacts(published_backend: Path) -> None:
 
     assert payload["Files"]
     assert any(entry["Destination"].endswith("baseline.txt") for entry in payload["Files"])
+
+
+def test_import_surfaces_backend_missing(tmp_path: Path) -> None:
+    module_root = tmp_path / "module"
+    shutil.copytree(MODULE_PATH.parent, module_root)
+
+    packaged_backend = module_root / "DriftBuster.Backend.dll"
+    if packaged_backend.exists():
+        packaged_backend.unlink()
+
+    result = _run_powershell(module_root / MODULE_PATH.name, "", check=False)
+
+    assert result.returncode != 0
+    stderr = result.stderr or ""
+    assert "DriftBusterBackendMissing" in stderr
+    assert "dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj" in stderr

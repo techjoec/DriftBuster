@@ -4,6 +4,52 @@ $script:ModuleManifest = $null
 $script:BackendVersion = $null
 $script:BackendAssemblyPath = $null
 
+function New-DriftBusterBackendMissingError {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]
+        $SearchedPaths,
+
+        [Parameter()]
+        [System.Exception]
+        $InnerException
+    )
+
+    $uniquePaths = $SearchedPaths | Where-Object { $_ } | Sort-Object -Unique
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('Unable to load DriftBuster.Backend.dll for the PowerShell module.') | Out-Null
+
+    if ($uniquePaths) {
+        $lines.Add('') | Out-Null
+        $lines.Add('Searched locations:') | Out-Null
+        foreach ($path in $uniquePaths) {
+            $lines.Add("  - $path") | Out-Null
+        }
+    }
+
+    $lines.Add('') | Out-Null
+    $lines.Add('Recover by publishing the backend assembly:') | Out-Null
+    $lines.Add('  dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published') | Out-Null
+    $lines.Add('Then re-import the module or copy the resulting DriftBuster.Backend.dll next to DriftBuster.psm1.') | Out-Null
+
+    $message = [string]::Join([Environment]::NewLine, $lines)
+
+    if ($InnerException) {
+        $exception = [System.IO.FileNotFoundException]::new($message, $InnerException)
+    }
+    else {
+        $exception = [System.IO.FileNotFoundException]::new($message)
+    }
+
+    return [System.Management.Automation.ErrorRecord]::new(
+        $exception,
+        'DriftBusterBackendMissing',
+        [System.Management.Automation.ErrorCategory]::ObjectNotFound,
+        $null
+    )
+}
+
 function Get-DriftBusterModuleManifest {
     if ($script:ModuleManifest) {
         return $script:ModuleManifest
@@ -95,8 +141,10 @@ function Get-DriftBusterBackendAssembly {
     $backendVersion = Get-DriftBusterBackendVersion
 
     $candidatePaths = @()
+    $searchedPaths = @()
 
     $packagedAssembly = Join-Path $PSScriptRoot 'DriftBuster.Backend.dll'
+    $searchedPaths += $packagedAssembly
     if (Test-Path -LiteralPath $packagedAssembly) {
         $candidatePaths += (Resolve-Path -LiteralPath $packagedAssembly).Path
     }
@@ -106,12 +154,19 @@ function Get-DriftBusterBackendAssembly {
         $devCandidates = Get-ChildItem -LiteralPath $devRoot -Filter 'DriftBuster.Backend.dll' -Recurse -ErrorAction SilentlyContinue
         if ($devCandidates) {
             $candidatePaths += $devCandidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -ExpandProperty FullName
+            $searchedPaths += $devCandidates | Select-Object -ExpandProperty FullName
         }
+        else {
+            $searchedPaths += $devRoot
+        }
+    }
+    else {
+        $searchedPaths += $devRoot
     }
 
     $candidatePaths = $candidatePaths | Where-Object { $_ } | Select-Object -Unique
     if (-not $candidatePaths) {
-        throw "Backend assembly not found. Run 'dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj' first."
+        throw (New-DriftBusterBackendMissingError -SearchedPaths $searchedPaths)
     }
 
     $selectedCandidate = $candidatePaths |
@@ -120,7 +175,7 @@ function Get-DriftBusterBackendAssembly {
         Select-Object -First 1
 
     if (-not $selectedCandidate) {
-        throw "Unable to locate DriftBuster.Backend.dll. Build the project before importing the module."
+        throw (New-DriftBusterBackendMissingError -SearchedPaths $candidatePaths)
     }
 
     $resolvedCandidate = (Resolve-Path -LiteralPath $selectedCandidate).Path
