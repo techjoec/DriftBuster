@@ -112,6 +112,10 @@ This guide explains the capabilities, layout, and operational details of the Ava
 
 ### Headless bootstrap
   - `Program.BuildAvaloniaApp()` preloads the `fonts:SystemFonts` resource so the Avalonia headless pipeline always has a populated `ConcurrentDictionary<string, FontFamily>` including the alias entry consumed by `FontManager.SystemFonts`.
+  - `Program.EnsureHeadless(...)` binds `HeadlessFontManagerProxy` through `HeadlessFontBootstrapper` so Avalonia's `IFontManagerImpl` always resolves Inter with synchronous glyph loading. The proxy normalises aliases such as `fonts:SystemFonts`, extends the installed family list, and keeps glyph requests deterministic for smoke tests. Call sites worth preserving:
+    - `App.EnsureFontResources` seeds the alias dictionary consumed by Avalonia controls via `FontManager.SystemFonts`.
+    - `HeadlessFixture` verifies `FontManager.Current` exposes Inter as the default family and resolves glyphs for both Inter and the alias, protecting glyph paths used by text controls and dialogs.
+    - `HeadlessBootstrapperSmokeTests` assert the locator binding and glyph creation path so regressions in the proxy surface before full suites run.
   - Keep this preload intact when editing the bootstrapper so fixtures never hit the `KeyNotFoundException` observed before the guardrails landed.
 - Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
 - Full coverage expectations:

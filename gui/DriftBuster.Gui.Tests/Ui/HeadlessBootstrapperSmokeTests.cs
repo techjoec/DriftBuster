@@ -5,6 +5,8 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
 
+using DriftBuster.Gui.Headless;
+
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
@@ -25,7 +27,7 @@ public sealed class HeadlessBootstrapperSmokeTests
         Assert.NotNull(serviceMethod);
 
         var fontManager = serviceMethod!.Invoke(locator, new object[] { typeof(IFontManagerImpl) });
-        Assert.IsAssignableFrom<IFontManagerImpl>(fontManager);
+        var manager = Assert.IsAssignableFrom<IFontManagerImpl>(fontManager);
 
         var options = serviceMethod.Invoke(locator, new object[] { typeof(FontManagerOptions) });
         var managerOptions = Assert.IsType<FontManagerOptions>(options);
@@ -35,6 +37,24 @@ public sealed class HeadlessBootstrapperSmokeTests
         Assert.NotNull(fallbacks);
         Assert.Contains(fallbacks!, fallback =>
             string.Equals(fallback.FontFamily.Name, "Inter", StringComparison.OrdinalIgnoreCase));
+
+        var tryCreateGlyphTypeface = typeof(IFontManagerImpl).GetMethod("TryCreateGlyphTypeface", new[]
+        {
+            typeof(string), typeof(FontStyle), typeof(FontWeight), typeof(FontStretch), typeof(IGlyphTypeface).MakeByRefType(),
+        });
+
+        var parameters = new object?[]
+        {
+            "fonts:SystemFonts",
+            FontStyle.Normal,
+            FontWeight.Normal,
+            FontStretch.Normal,
+            null,
+        };
+
+        var success = tryCreateGlyphTypeface is not null && (bool)tryCreateGlyphTypeface.Invoke(manager, parameters)!;
+        Assert.True(success);
+        var aliasTypeface = Assert.IsAssignableFrom<IGlyphTypeface>(parameters[4]);
     }
 
     [Fact]

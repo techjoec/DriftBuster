@@ -79,10 +79,10 @@ Schema reference
     - [x] 1.0.1.a Capture the current Release failure stack trace and link it under `notes/status/gui-research.md#headless-font-issues`.
     - [x] 1.0.1.b Introduce a minimal headless font bootstrapper that seeds the Avalonia locator with an `Inter` fallback without touching compiled resources.
     - [x] 1.0.1.c Verify the bootstrapper against a single `[Collection(HeadlessCollection.Name)]` smoke test before attempting the full suite.
-  - [ ] 1.0.2 Bind a deterministic headless `IFontManagerImpl` (Inter fallback) and cover it via `HeadlessFixture` smoke asserts.
-    - [ ] 1.0.2.a Map the existing `IFontManagerImpl` call sites and document the binding strategy in `docs/windows-gui-guide.md#headless-bootstrap`.
-    - [ ] 1.0.2.b Implement the locator binding with a wrapper/proxy that keeps glyph loading synchronous for tests.
-    - [ ] 1.0.2.c Extend `HeadlessFixture` with targeted asserts for default family, glyph resolution, and alias preservation.
+- [x] 1.0.2 Bind a deterministic headless `IFontManagerImpl` (Inter fallback) and cover it via `HeadlessFixture` smoke asserts.
+  - [x] 1.0.2.a Map the existing `IFontManagerImpl` call sites and document the binding strategy in `docs/windows-gui-guide.md#headless-bootstrap`.
+  - [x] 1.0.2.b Implement the locator binding with a wrapper/proxy that keeps glyph loading synchronous for tests.
+  - [x] 1.0.2.c Extend `HeadlessFixture` with targeted asserts for default family, glyph resolution, and alias preservation.
   - [ ] 1.0.3 Capture the remediation notes and stack trace context in `notes/status/gui-research.md#headless-font-issues`.
     - [ ] 1.0.3.a Summarise the failing scenarios pre-fix (Release window creation, Drilldown view instantiation).
     - [ ] 1.0.3.b Record the applied binding approach, including proxy details and locator hooks.

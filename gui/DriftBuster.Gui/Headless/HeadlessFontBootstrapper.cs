@@ -33,11 +33,14 @@ internal static class HeadlessFontBootstrapper
 
         lock (Sync)
         {
-            if (Resolve(locator, typeof(IFontManagerImpl)) is not IFontManagerImpl fontManager)
+            var aliases = new[]
             {
-                fontManager = CreateFontManager();
-                Register(locator, typeof(IFontManagerImpl), fontManager);
-            }
+                DefaultFamilyName,
+                "fonts:SystemFonts",
+            };
+
+            var proxy = HeadlessFontManagerProxy.Create(CreateFontManager(), DefaultFamilyName, aliases);
+            Register(locator, typeof(IFontManagerImpl), proxy);
 
             BindFontOptions(locator);
 
@@ -120,4 +123,5 @@ internal static class HeadlessFontBootstrapper
 
     private static AvaloniaLocator? TryGetCurrentLocator()
         => CurrentMutableProperty?.GetValue(null) as AvaloniaLocator;
+
 }
