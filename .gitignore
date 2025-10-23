@@ -14,5 +14,7 @@ artifacts/*
 !artifacts/sql/**
 !artifacts/powershell/
 !artifacts/powershell/**
+!artifacts/cli-plan/
+!artifacts/cli-plan/**
 Releases/
 .codex-cloud/

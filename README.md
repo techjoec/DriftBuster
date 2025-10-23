@@ -127,9 +127,10 @@ JSON
 
 ### Python CLI stub (on hold)
 
-The lightweight CLI stub remains paused, but packaging scripts now expose the
-entry point for manual smoke checks. Install in editable mode and call the
-console scripts:
+The lightweight CLI stub remains paused. Packaging prerequisites and manual
+validation drills live in `notes/status/cli-plan.md`; use that plan when the
+CLI workstream resumes. Until then you can rehearse the entry points locally by
+installing the project in editable mode and invoking the console scripts:
 
 ```sh
 python -m pip install -e .
@@ -137,7 +138,8 @@ driftbuster samples/config
 driftbuster-export-sql fixtures/sqlite/sample.sqlite --output-dir exports
 ```
 
-Current argument surface:
+Current argument surface (captured in `artifacts/cli-plan/README.md` alongside
+expected outputs):
 
 | Command | Arguments | Purpose |
 | --- | --- | --- |
@@ -145,6 +147,7 @@ Current argument surface:
 | | `--glob PATTERN` | Restrict directory recursion (default `**/*`). |
 | | `--sample-size BYTES` | Override detector sampling window. |
 | | `--json` | Emit JSON lines instead of a table. |
+| | `--min-confidence VALUE` *(planned)* | Filter matches below the configured confidence floor. |
 | `driftbuster export-sql` | `DATABASE [DATABASE…]` | Export anonymised SQLite snapshots. |
 | | `--output-dir PATH` | Destination for snapshots and manifest. |
 | | `--table NAME` / `--exclude-table NAME` | Include/exclude specific tables. |
@@ -155,6 +158,7 @@ Current argument surface:
 | | `--limit COUNT` | Cap exported rows per table. |
 | | `--prefix TEXT` | Prefix generated snapshot filenames. |
 | | `--manifest-name NAME` | Override manifest filename. |
+| | `--no-progress` *(planned)* | Suppress progress indicators once implemented. |
 
 ### Release Build
 

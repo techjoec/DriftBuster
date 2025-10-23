@@ -662,19 +662,19 @@ Schema reference
   - [x] 18.1.1 Maintain `src/driftbuster/cli.py` stub aligning with `pyproject.toml` `[project.scripts]`.
   - [x] 18.1.2 Keep argument table in sync with detector capabilities.
   - [x] 18.1.3 Document stub status in `docs/README.md` (Plans & Notes section).
-- [ ] 18.2 Packaging checklist.
-  - [ ] 18.2.1 Track readiness steps in this queue until activation.
-  - [ ] 18.2.2 Update `README.md` placeholder section for CLI usage.
-  - [ ] 18.2.3 Record activation prerequisites in `notes/status/cli-plan.md`.
-- [ ] 18.3 Manual validation plan.
-  - [ ] 18.3.1 Migrate historical notes into `notes/status/cli-plan.md` (new) with command walkthroughs.
-  - [ ] 18.3.2 Capture expected outputs for JSON/HTML/diff commands using fixtures under `fixtures/`.
-  - [ ] 18.3.3 Store command transcripts in `artifacts/cli-plan/README.md`.
-- [ ] 18.4 Open questions.
-  - [ ] 18.4.1 Decide on confidence threshold flag handling.
-  - [ ] 18.4.2 Evaluate progress indicator requirements.
-  - [ ] 18.4.3 Determine packaging strategy (editable vs PyPI) once activated.
-  - [ ] 18.4.4 Track decision timeline in `notes/status/cli-plan.md`.
+- [x] 18.2 Packaging checklist.
+  - [x] 18.2.1 Track readiness steps in this queue until activation.
+  - [x] 18.2.2 Update `README.md` placeholder section for CLI usage.
+  - [x] 18.2.3 Record activation prerequisites in `notes/status/cli-plan.md`.
+- [x] 18.3 Manual validation plan.
+  - [x] 18.3.1 Migrate historical notes into `notes/status/cli-plan.md` (new) with command walkthroughs.
+  - [x] 18.3.2 Capture expected outputs for JSON/HTML/diff commands using fixtures under `fixtures/`.
+  - [x] 18.3.3 Store command transcripts in `artifacts/cli-plan/README.md`.
+- [x] 18.4 Open questions.
+  - [x] 18.4.1 Decide on confidence threshold flag handling.
+  - [x] 18.4.2 Evaluate progress indicator requirements.
+  - [x] 18.4.3 Determine packaging strategy (editable vs PyPI) once activated.
+  - [x] 18.4.4 Track decision timeline in `notes/status/cli-plan.md`.
 
 ## A19. Windows GUI Packaging & Research (Windows shell readiness) [deps=A11]
 
