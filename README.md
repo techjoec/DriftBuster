@@ -125,6 +125,37 @@ JSON
 
 `driftbuster.multi_server` ships with the Python package; ensure you have installed the repo in editable mode (`python -m pip install -e .`). The CLI and GUI share an OS-specific data root (e.g. `%LOCALAPPDATA%/DriftBuster`, `$XDG_DATA_HOME/DriftBuster`); set `DRIFTBUSTER_DATA_ROOT` to override where cached diffs live. See `docs/multi-server-demo.md` for annotated callouts, filter usage, and rerun tips.
 
+### Python CLI stub (on hold)
+
+The lightweight CLI stub remains paused, but packaging scripts now expose the
+entry point for manual smoke checks. Install in editable mode and call the
+console scripts:
+
+```sh
+python -m pip install -e .
+driftbuster samples/config
+driftbuster-export-sql fixtures/sqlite/sample.sqlite --output-dir exports
+```
+
+Current argument surface:
+
+| Command | Arguments | Purpose |
+| --- | --- | --- |
+| `driftbuster` | `PATH` | Scan a file or directory using detector defaults. |
+| | `--glob PATTERN` | Restrict directory recursion (default `**/*`). |
+| | `--sample-size BYTES` | Override detector sampling window. |
+| | `--json` | Emit JSON lines instead of a table. |
+| `driftbuster export-sql` | `DATABASE [DATABASE…]` | Export anonymised SQLite snapshots. |
+| | `--output-dir PATH` | Destination for snapshots and manifest. |
+| | `--table NAME` / `--exclude-table NAME` | Include/exclude specific tables. |
+| | `--mask-column TABLE.COLUMN` | Replace sensitive values with placeholders. |
+| | `--hash-column TABLE.COLUMN` | Deterministically hash column values. |
+| | `--placeholder TEXT` | Placeholder text when masking columns. |
+| | `--hash-salt TEXT` | Salt applied to hashed values. |
+| | `--limit COUNT` | Cap exported rows per table. |
+| | `--prefix TEXT` | Prefix generated snapshot filenames. |
+| | `--manifest-name NAME` | Override manifest filename. |
+
 ### Release Build
 
 - Python + .NET installer (default):

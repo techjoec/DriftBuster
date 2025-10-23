@@ -325,7 +325,10 @@ def _run_export_sql(argv: Sequence[str]) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    argv = list(argv or ())
+    if argv is None:
+        argv = list(sys.argv[1:])
+    else:
+        argv = list(argv)
     if argv and argv[0] == "export-sql":
         return _run_export_sql(argv[1:])
 
@@ -348,3 +351,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry
     sys.exit(main())
+
+
+def console_main() -> None:
+    """Entry point for ``driftbuster`` console script."""
+
+    sys.exit(main())
+
+
+def export_sql_console_main() -> None:
+    """Entry point for ``driftbuster-export-sql`` console script."""
+
+    argv = ["export-sql", *sys.argv[1:]]
+    sys.exit(main(argv))

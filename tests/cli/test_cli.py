@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import sys
 from pathlib import Path
+from typing import Sequence
 
 import pytest
 
@@ -142,3 +144,36 @@ def test_cli_export_sql_generates_manifest(tmp_path: Path) -> None:
 
     snapshot_path = output_dir / "demo-sql-snapshot.json"
     assert snapshot_path.exists()
+
+
+def test_main_consumes_sys_argv(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    sample = tmp_path / "config.json"
+    sample.write_text('{"enabled": true}', encoding="utf-8")
+
+    monkeypatch.setattr(sys, "argv", ["driftbuster", str(sample), "--json"])
+
+    exit_code = cli.main()
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    payload = [json.loads(line) for line in captured.out.strip().splitlines() if line]
+    assert payload and payload[0]["detected"]
+    assert payload[0]["format"] == "json"
+
+
+def test_export_sql_console_main_forwards_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorded: dict[str, Sequence[str] | None] = {}
+
+    def fake_main(argv: Sequence[str] | None = None) -> int:  # type: ignore[override]
+        recorded["argv"] = argv
+        return 0
+
+    monkeypatch.setattr(cli, "main", fake_main)  # type: ignore[arg-type]
+    monkeypatch.setattr(sys, "argv", ["driftbuster-export-sql", "demo.sqlite", "--limit", "10"])
+
+    with pytest.raises(SystemExit) as exc:
+        cli.export_sql_console_main()
+
+    assert exc.value.code == 0
+    assert recorded["argv"][0] == "export-sql"
+    assert recorded["argv"][1:] == ["demo.sqlite", "--limit", "10"]

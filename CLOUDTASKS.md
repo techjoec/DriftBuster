@@ -658,10 +658,10 @@ Schema reference
 **ACCEPT GATES:** Blueprint synced with current detector API; manual commands rehearsed once resumed.
 
 **REQUIRED RELATED WORK:**
-- [ ] 18.1 Entry-point prep.
-  - [ ] 18.1.1 Maintain `src/driftbuster/cli.py` stub aligning with `pyproject.toml` `[project.scripts]`.
-  - [ ] 18.1.2 Keep argument table in sync with detector capabilities.
-  - [ ] 18.1.3 Document stub status in `docs/README.md` (Plans & Notes section).
+- [x] 18.1 Entry-point prep.
+  - [x] 18.1.1 Maintain `src/driftbuster/cli.py` stub aligning with `pyproject.toml` `[project.scripts]`.
+  - [x] 18.1.2 Keep argument table in sync with detector capabilities.
+  - [x] 18.1.3 Document stub status in `docs/README.md` (Plans & Notes section).
 - [ ] 18.2 Packaging checklist.
   - [ ] 18.2.1 Track readiness steps in this queue until activation.
   - [ ] 18.2.2 Update `README.md` placeholder section for CLI usage.

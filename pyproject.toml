@@ -16,6 +16,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.scripts]
+driftbuster = "driftbuster.cli:console_main"
+driftbuster-export-sql = "driftbuster.cli:export_sql_console_main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
