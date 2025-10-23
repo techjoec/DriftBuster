@@ -705,12 +705,12 @@ Schema reference
   - [ ] 19.4.3 Execute installer smoke tests on Windows 10/11 VMs; log results and system prerequisites in `notes/status/gui-research.md`.
 - [ ] 19.5 Offline & compliance posture.
   - [x] 19.5.1 Ensure offline activation guidance lives in `docs/windows-gui-notes.md#distribution--licensing-notes`.
-  - [ ] 19.5.2 Update `docs/legal-safeguards.md` with packaging/licensing guardrails (NOTICE contents, WebView2 terms).
-  - [ ] 19.5.3 Record security review notes (hash verification, sideload steps) in `notes/checklists/legal-review.md`.
+  - [x] 19.5.2 Update `docs/legal-safeguards.md` with packaging/licensing guardrails (NOTICE contents, WebView2 terms).
+  - [x] 19.5.3 Record security review notes (hash verification, sideload steps) in `notes/checklists/legal-review.md`.
 - [ ] 19.6 Evidence & communication.
-  - [ ] 19.6.1 Update `docs/windows-gui-guide.md` with packaging prerequisites and troubleshooting tips.
-  - [ ] 19.6.2 Summarise packaging readiness status in `notes/status/gui-research.md` and cross-link from this area when closing.
-  - [ ] 19.6.3 Keep `docs/windows-gui-notes.md` appendices aligned with packaging outputs, including template NOTICE entries.
+  - [x] 19.6.1 Update `docs/windows-gui-guide.md` with packaging prerequisites and troubleshooting tips.
+  - [x] 19.6.2 Summarise packaging readiness status in `notes/status/gui-research.md` and cross-link from this area when closing.
+  - [x] 19.6.3 Keep `docs/windows-gui-notes.md` appendices aligned with packaging outputs, including template NOTICE entries.
 
 # End of priority queue
 <!-- PR prepared: 2025-10-23T08:13:17Z -->

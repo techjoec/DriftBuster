@@ -128,6 +128,9 @@ _Execution queue:_ see `CLOUDTASKS.md` area A19 for the current packaging backlo
 - Confirm WebView2 Evergreen redistributable terms when embedding reports.
 - Avoid auto-downloading dependencies at runtime; ship vetted binaries to keep supply chain tight.
 - Require offline activation path so security teams can inspect builds before deployment.
+- Generate SHA256 manifests for every bundle (`artifacts/gui-packaging/<flavour>/hashes.txt`) and mirror the manifest inside the operator hand-off package.
+- Capture install/uninstall transcripts per flavour under `artifacts/gui-packaging/logs/` and record signing certificate details (thumbprint, expiry, issuer) in the legal review checklist.
+- Provide certificate chain exports in `artifacts/gui-packaging/certificates/` so operators can import signing roots on isolated hosts before installing MSIX packages.
 
 ### Offline activation guidance (A19.5.1)
 

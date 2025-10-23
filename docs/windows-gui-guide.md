@@ -13,6 +13,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 | .NET SDK 8.0.x | Required to restore, run, and publish the GUI. |
 | DriftBuster repo checkout | Required for fixtures and sample data referenced by the UI. |
 | Optional editor tooling | JetBrains Rider, VS Code + Avalonia extension, or equivalent for XAML previews. |
+| Microsoft Edge WebView2 Evergreen Runtime | Bundle the offline installer alongside portable/self-contained builds; confirm version recorded in `artifacts/gui-packaging/`. |
 
 ## 3. Launching the GUI
 1. Ensure prerequisites are installed (`dotnet --list-sdks`, `python --version`).
@@ -101,6 +102,16 @@ This guide explains the capabilities, layout, and operational details of the Ava
   - `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true`
 - Before packaging, sync versions: `python scripts/sync_versions.py`.
 
+### Packaging prerequisites checklist
+
+| Step | Purpose |
+|------|---------|
+| Capture current commit hash (`git rev-parse HEAD > artifacts/gui-packaging/commit.txt`). | Tie installer evidence back to source. |
+| Stage WebView2 offline installer next to publish output. | Satisfy Evergreen redistribution requirements for offline installs. |
+| Generate SHA256 manifest for every staged file. | Enable downstream integrity verification without internet access. |
+| Copy updated `NOTICE` directory into the bundle. | Keep licence obligations intact across packaging flavours. |
+| Log install/uninstall transcript to `artifacts/gui-packaging/logs/<flavour>-<date>.txt`. | Provide reproducible evidence for legal and security reviews. |
+
 ## 10. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.
 - Covers ping, diff, hunt, error handling, and verifying backend shutdown after closing the window.
@@ -133,12 +144,15 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Diagnostic harness: set `AVALONIA_INSPECT=1` and run `--filter FullyQualifiedName=DriftBuster.Gui.Tests.Ui.AvaloniaSetupInspection.LogSetupState` to capture resource/style registration in `artifacts/codexcli-inspect.log`.
 
 ## 12. Troubleshooting
-| Symptom | Suggested Checks | 
-|---------|-----------------| 
+| Symptom | Suggested Checks |
+|---------|-----------------|
 | “Backend closed unexpectedly” | Run the GUI from a console and inspect logs; verify the selected files are accessible. |
 | Validation won’t clear | Confirm file/directory exists and is accessible; refresh the path using Browse. |
 | Empty hunt results | Check filter string, increase rule coverage, or drop filter to view raw hits. |
 | Clipboard not working | Ensure the app is running in a desktop session (clipboard APIs require a real user session). Use the activity timeline’s copy buttons to verify clipboard access quickly. |
+| Packaged build fails to launch WebView2 | Confirm the offline Evergreen installer ran successfully and the recorded runtime version matches the hash manifest; reinstall using `/silent /install` and capture the updated log. |
+| Hash verification mismatch | Recompute SHA256 hashes for the staged bundle and confirm the manifest includes every file distributed to operators; regenerate the manifest before retrying install. |
+| MSIX refuses to install (certificate error) | Verify the signing certificate thumbprint matches the value logged in `notes/checklists/legal-review.md`; import the certificate into `Trusted People` on the VM before rerunning the install. |
 
 ## 13. Extensibility Pointers
 - Extend `Driftbuster.Backend` with new helpers, then wire them into both the GUI service and PowerShell module.

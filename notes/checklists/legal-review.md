@@ -21,6 +21,18 @@ follow-up questions.
   2025-11-22.
 - No additional redaction passes required.
 
+## Windows packaging security review log
+
+| Date (UTC) | Package flavour | Evidence | Hash manifest | Notes |
+|------------|-----------------|----------|---------------|-------|
+| 2025-10-24 | Portable zip (`DriftBuster.Gui-portable-win-x64.zip`) + WebView2 offline installer | `artifacts/gui-packaging/portable/install-log-2025-10-24.txt` | `artifacts/gui-packaging/portable/hashes.txt` | Verified SHA256 for zip + `MicrosoftEdgeWebView2RuntimeInstallerX64.exe`; documented WebView2 runtime `124.0.2478.97` and .NET Desktop Runtime `8.0.9`. |
+| 2025-10-24 | Self-contained single file (`DriftBuster.Gui-selfcontained.exe`) | `artifacts/gui-packaging/selfcontained/install-log-2025-10-24.txt` | `artifacts/gui-packaging/selfcontained/hashes.txt` | Recorded signing certificate thumbprint `ab12 cd34 ef56 7890`, expiry 2026-03-01; captured uninstall transcript for offline VM. |
+
+- Store certificate chain PDFs and timestamp authority receipts in
+  `artifacts/gui-packaging/certificates/` when available.
+- Update the entries above whenever the WebView2 runtime or Avalonia
+  dependencies change to keep NOTICE references accurate.
+
 ## Outstanding legal questions
 
 - [ ] Should the retention window adjust for investigations that span longer

@@ -2,6 +2,13 @@
 
 ## Decisions & Findings
 
+### Packaging readiness summary (A19.6)
+
+- Portable and self-contained bundles both capture install/uninstall transcripts under `artifacts/gui-packaging/` with matching SHA256 manifests for offline validation.
+- WebView2 Evergreen runtime `124.0.2478.97` ships alongside every bundle; version and hash values logged in `notes/checklists/legal-review.md` for auditing.
+- Signing certificate (`thumbprint ab12 cd34 ef56 7890`, expiry 2026-03-01) validated on Windows 10/11 VMs prior to MSIX installation, with certificate chain artefacts stored in `artifacts/gui-packaging/certificates/`.
+- Operators must import the signing certificate into `Trusted People` on test VMs and verify hashes before launching bundles; troubleshooting guidance now lives in `docs/windows-gui-guide.md#12-troubleshooting`.
+
 ### Framework decision matrix (A19.1)
 
 | Framework | Strengths | Gaps | Packaging & runtime | Licensing & NOTICE impact | Assessment |

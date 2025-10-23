@@ -33,6 +33,21 @@ These guardrails cover every feature, note, and capture helper.
   - Maintain an enumerated list of bundled npm dependencies with licence identifiers in NOTICE; refresh it every release build.
   - Store checksum + SBOM outputs for the packaged Node modules alongside the release artefacts for audit.
 
+## Windows packaging guardrails
+
+- **MSIX builds**
+  - Bundle the generated MSIX with a matching `.appinstaller` manifest and SHA256 hash file so security teams can validate sideloaded packages.
+  - Keep the signing certificate chain (issuer, thumbprint, expiry) recorded in `notes/checklists/legal-review.md` alongside each release entry.
+  - Include the Windows App SDK, WinUI, and WebView2 redistribution notices inside the packaged `NOTICE` directory; update the file whenever dependencies change.
+- **Portable/self-contained bundles**
+  - Stage the WebView2 Evergreen offline installer (`MicrosoftEdgeWebView2RuntimeInstallerX64.exe`) and the .NET Desktop Runtime when shipping portable bundles so offline operators are not prompted to download components.
+  - Publish hash manifests for every staged file (`*.exe`, `NOTICE`, `README`, dependency installers) into `artifacts/gui-packaging/<bundle>/hashes.txt` and copy the manifest into the hand-off folder.
+  - Document minimum OS requirements (Windows 10 1809+, x64) and disk footprint inside the operator hand-off notes to satisfy WebView2 redistribution terms.
+- **Security evidence**
+  - Store install/uninstall transcripts for each packaging flavour under `artifacts/gui-packaging/logs/` and reference them from the legal review log so auditors can trace environment parity.
+  - Record any third-party dependency updates (e.g., WebView2 runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh the NOTICE file before release builds.
+  - Confirm that all redistributables shipped with the bundle allow offline redistribution and include their licence text within the package.
+
 ## SQL snapshot safeguards
 
 - Mask or hash sensitive columns using the CLI options documented in
