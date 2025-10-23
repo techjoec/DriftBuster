@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("pwsh") is None, reason="PowerShell (pwsh) is not available"
+)
 
 
 MODULE_PATH = Path("cli/DriftBuster.PowerShell/DriftBuster.psm1")

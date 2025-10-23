@@ -37,6 +37,7 @@
 - Regression reproduces while `HeadlessFontManagerProxy.TryMatchCharacter` normalises alias inputs; the inner exception documents the missing Inter fallback that now drives the deterministic guard rails.
 - Next mitigation steps track under A0 once the Release-mode smoke test lands, keeping this section aligned with ongoing hardening.
 - Bootstrapper smoke telemetry now persists to [`artifacts/logs/headless-font-health.json`](../../artifacts/logs/headless-font-health.json), capturing per-scenario totals (`totalRuns`, `passes`, `failures`) and the latest metrics. The current snapshot shows all three headless smoke tests green after the alias/lookup retries, making it easy to spot regressions when the counts drift.
+- `scripts/font_health_summary.py` turns the telemetry into a quick drift report, failing the session when pass rates dip or the latest status regresses so the Release/Debug parity checks stay honest.
 
 ## Open Questions
 
