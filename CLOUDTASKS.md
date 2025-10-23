@@ -12,6 +12,30 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0. FontManager Regression Hardening [deps=]
+
+**REASON:** Release builds still intermittently lose the headless `FontManager` alias chain, causing glyph resolution crashes before the window tree materialises.
+
+**MUST NOT:** Regress the existing `HeadlessFontBootstrapper` flow or introduce platform-specific font hard-coding.
+
+**MUST:** Capture the current regression, stabilise the proxy bindings, validate Release/Debug parity, and document recovery steps for operators.
+
+**ACCEPT GATES:** Reproduction tests cover the regression, proxy changes keep headless glyph loads deterministic, Release + Debug smoke tests stay green, and updated bootstrap guidance ships.
+
+**REQUIRED RELATED WORK:**
+- [ ] 0.1 Capture the regression evidence.
+  - [ ] 0.1.1 Extend `gui/DriftBuster.Gui.Tests/Ui/HeadlessBootstrapperSmokeTests.cs` with a Release-mode reproduction asserting `FontManager.SystemFonts` still exposes the Inter alias.
+  - [ ] 0.1.2 Archive the failing stack trace under `artifacts/logs/fontmanager-regression.txt` and summarise it in `notes/status/gui-research.md#fontmanager-regression`.
+- [ ] 0.2 Harden the headless proxy bindings.
+  - [ ] 0.2.1 Update `gui/DriftBuster.Gui/Headless/HeadlessFontManagerProxy.cs` to guard `TryCreateGlyphTypeface`/`TryMatchCharacter` fallbacks and normalise alias lookups.
+  - [ ] 0.2.2 Ensure `gui/DriftBuster.Gui/Headless/HeadlessFontBootstrapper.cs` seeds `FontManagerOptions.Fallbacks` deterministically for both Inter and the alias entry.
+- [ ] 0.3 Validate Release/Debug bootstrap parity.
+  - [ ] 0.3.1 Add targeted fixture coverage in `gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` verifying the same default family in Release and Debug.
+  - [ ] 0.3.2 Record verification notes and commands in `docs/windows-gui-guide.md#fontmanager-regression-playbook` for operators.
+- [ ] 0.4 Monitor metrics and regression drift.
+  - [ ] 0.4.1 Pipe bootstrapper health telemetry into `artifacts/logs/headless-font-health.json` during GUI smoke tests.
+  - [ ] 0.4.2 Add a condensed status rollup to `notes/status/gui-research.md#fontmanager-regression` describing pass/fail trends.
+
 ## A1a. Headless Font Guardrails [deps=]
 
 **REASON:** Remove the font bootstrap gap that currently breaks headless Avalonia runs, letting existing GUI test fixtures boot without manual font installs.
