@@ -12,6 +12,26 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g+. Font Telemetry Staleness Follow-through [deps=A0g]
+
+**REASON:** The newly added stale timestamp guard needs production-grade polish so operators can tune, observe, and document the behaviour without reverse-engineering the initial patch.
+
+**MUST NOT:** Relax existing staleness enforcement thresholds or bypass regression coverage introduced in A0g.
+
+**MUST:** Provide operational documentation, observability hooks, fixture coverage for boundary cases, and backlog tracking for open telemetry gaps.
+
+**ACCEPT GATES:** Operators can audit stale timestamp handling end-to-end via docs, logs, and tests; alerts expose actionable metadata; deferred telemetry clean-up stories recorded.
+
+**REQUIRED RELATED WORK:**
+- [ ] 0.11 Document staleness tuning knobs in `docs/font-telemetry.md` with troubleshooting flowcharts.
+  - [ ] 0.11.1 Capture CLI usage examples covering `--max-last-updated-age` overrides.
+- [ ] 0.12 Instrument alert outputs to emit structured log events under `artifacts/logs/font-staleness/`.
+  - [ ] 0.12.1 Extend `scripts/font_health_summary.py` to mirror new log metadata.
+- [ ] 0.13 Add regression tests for boundary timestamp drift in `tests/scripts/test_font_health_summary.py`.
+  - [ ] 0.13.1 Cover both below-threshold and above-threshold cases with fixture snapshots.
+- [ ] 0.14 Create backlog entry in `notes/status/font-telemetry.md` tracking upstream telemetry fixes and remaining risks.
+  - [ ] 0.14.1 Outline follow-up owner expectations and review cadence.
+
 ## A0g. Font Telemetry Staleness Alerts [deps=A0f]
 
 **REASON:** Telemetry feeds occasionally stall without updating timestamps, hiding stale headless scenarios until regressions ship.
