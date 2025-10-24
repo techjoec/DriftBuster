@@ -26,7 +26,12 @@ from pathlib import Path
 import re
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
 
-from ..catalog import DetectionCatalog, FormatClass, FormatSubtype
+from ..catalog import (
+    DetectionCatalog,
+    FormatClass,
+    FormatSubtype,
+    RemediationHint,
+)
 
 _VALID_ID = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
@@ -199,6 +204,13 @@ def validate_detection_metadata(
     fmt_entry = _find_format_class(catalog, canonical_format)
     if fmt_entry is not None:
         severity_value = getattr(fmt_entry, "default_severity", None)
+        severity_hint_value = getattr(fmt_entry, "severity_hint", None)
+        remediation_sources: List[RemediationHint] = [
+            hint
+            for hint in getattr(fmt_entry, "remediation_hints", ())
+            if isinstance(hint, RemediationHint)
+        ]
+
         variant_key = metadata.get("catalog_variant")
         if variant_key:
             for subtype in fmt_entry.subtypes:
@@ -215,16 +227,29 @@ def validate_detection_metadata(
                 if subtype_variant == variant_key or variant_key in variant_aliases:
                     if subtype.severity:
                         severity_value = subtype.severity
+                    subtype_hint = getattr(subtype, "severity_hint", None)
+                    if subtype_hint:
+                        severity_hint_value = subtype_hint
+                    subtype_remediations = getattr(
+                        subtype,
+                        "remediation_hints",
+                        (),
+                    )
+                    for hint in subtype_remediations:
+                        if isinstance(hint, RemediationHint):
+                            remediation_sources.append(hint)
                     break
         if severity_value:
             metadata.setdefault("catalog_severity", severity_value)
-        severity_hint = getattr(fmt_entry, "severity_hint", None)
-        if severity_hint:
-            metadata.setdefault("catalog_severity_hint", severity_hint)
-        remediation_hints = getattr(fmt_entry, "remediation_hints", ())
-        if remediation_hints:
+        if severity_hint_value:
+            metadata.setdefault("catalog_severity_hint", severity_hint_value)
+        if remediation_sources:
             remediation_payload = []
-            for hint in remediation_hints:
+            seen_ids: set[str] = set()
+            for hint in remediation_sources:
+                if hint.id in seen_ids:
+                    continue
+                seen_ids.add(hint.id)
                 entry = {
                     "id": hint.id,
                     "category": hint.category,

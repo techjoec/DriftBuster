@@ -24,6 +24,9 @@ These guardrails cover every feature, note, and capture helper.
 - Remediation stubs reference internal documentation only (`docs/*` and
   scrub guides) so downstream operators do not treat them as legal mandates for
   third-party systems.
+- Variant-specific severity copy (e.g., dotenv guidance) cleared by the legal
+  review on record; keep future updates vendor-neutral and reference internal
+  documentation only.
 - Keep future catalog updates aligned with this language review; deviations
   require re-approval before shipping.
 

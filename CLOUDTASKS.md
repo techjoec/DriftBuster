@@ -621,11 +621,11 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Metadata fields documented, tests covering new payloads, docs updated.
 
 **REQUIRED RELATED WORK:**
-- [ ] 9.1 Severity & remediation hints.
-  - [ ] 9.1.1 Extend metadata in `src/driftbuster/catalog.py`.
-  - [ ] 9.1.2 Add coverage in `tests/catalog/test_metadata.py` (new).
-  - [ ] 9.1.3 Document hints in `docs/detection-types.md`.
-  - [ ] 9.1.4 Record legal review outcome for severity text in `docs/legal-safeguards.md`.
+- [x] 9.1 Severity & remediation hints.
+  - [x] 9.1.1 Extend metadata in `src/driftbuster/catalog.py`.
+  - [x] 9.1.2 Add coverage in `tests/catalog/test_metadata.py` (new).
+  - [x] 9.1.3 Document hints in `docs/detection-types.md`.
+  - [x] 9.1.4 Record legal review outcome for severity text in `docs/legal-safeguards.md`.
 - [ ] 9.2 Variant metadata expansion.
   - [ ] 9.2.1 Surface remediation guidance once hunt tokens stabilize.
   - [ ] 9.2.2 Update `src/driftbuster/reporting/summary.py` to include new keys.

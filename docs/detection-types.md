@@ -115,8 +115,9 @@ reviewers and to script downstream workflows without hard-coding guidance.
 
 ### Ini
 
-- **Severity hint:** INI and dotenv style files often embed credentials,
-  tokens, and environment toggles that impact access control immediately.
+- **Severity hint:** INI-style configuration files centralise environment
+  toggles, service hosts, and credential references that influence access
+  control immediately.
 - **Remediations:**
   - `ini-secret-rotation` (secrets): Rotate secrets surfaced in dotenv or
     credential sections and confirm masked samples replace raw exports.
@@ -124,6 +125,19 @@ reviewers and to script downstream workflows without hard-coding guidance.
     workflow before sharing dotenv fixtures to prevent leaking production
     values. See `scripts/fixtures/README.md` for the scrub steps referenced by
     this remediation entry.
+
+<a id="ini-dotenv"></a>
+#### Dotenv variant
+
+- **Variant severity hint:** Dotenv environment files commonly store plaintext
+  secrets, service URLs, and deployment toggles that require immediate
+  rotation when discovered.
+- **Variant remediations:**
+  - `ini-dotenv-rotate-secrets` (secrets): Rotate keys stored in dotenv files
+    and replace evidence copies with sanitised variants before sharing.
+  - `ini-dotenv-sanitise-identifiers` (sanitisation): Strip hostnames and
+    environment identifiers from dotenv exports prior to archiving or
+    distribution.
 
 ### KeyValueProperties
 

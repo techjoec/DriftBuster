@@ -47,6 +47,8 @@ class FormatSubtype:
     content_signatures: Tuple[ContentSignature, ...] = field(default_factory=tuple)
     mime_hints: Tuple[str, ...] = field(default_factory=tuple)
     aliases: Tuple[str, ...] = field(default_factory=tuple)
+    severity_hint: str | None = None
+    remediation_hints: Tuple[RemediationHint, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -612,7 +614,26 @@ DETECTION_CATALOG = DetectionCatalog(
                     name="Dotenv",
                     priority=75,
                     variant="dotenv",
-                    severity="medium",
+                    severity="high",
+                    aliases=("env", "env-file"),
+                    severity_hint=(
+                        "Dotenv environment files commonly store plaintext secrets, service URLs, "
+                        "and deployment toggles that require immediate rotation when discovered."
+                    ),
+                    remediation_hints=(
+                        RemediationHint(
+                            id="ini-dotenv-rotate-secrets",
+                            category="secrets",
+                            summary="Rotate keys stored in dotenv files and replace evidence copies with sanitised variants before sharing.",
+                            documentation="docs/detection-types.md#ini-dotenv",
+                        ),
+                        RemediationHint(
+                            id="ini-dotenv-sanitise-identifiers",
+                            category="sanitisation",
+                            summary="Strip hostnames and environment identifiers from dotenv exports prior to archiving or distribution.",
+                            documentation="docs/detection-types.md#ini-dotenv",
+                        ),
+                    ),
                 ),
                 FormatSubtype(
                     name="JavaPropertiesIni",

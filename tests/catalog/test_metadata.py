@@ -47,3 +47,26 @@ def test_variant_specific_severity_overrides_default() -> None:
     references = metadata["catalog_references"]
     assert "docs/detection-types.md#unixconf" in references
     assert any(entry.get("id") == "unix-conf-hardening" for entry in catalog_remediations)
+
+
+def test_variant_specific_remediation_hints_extend_base() -> None:
+    match = DetectionMatch(
+        plugin_name="ini",
+        format_name="ini",
+        variant="dotenv",
+        confidence=0.8,
+        reasons=["synthetic"],
+    )
+
+    metadata = validate_detection_metadata(match, DETECTION_CATALOG)
+
+    assert metadata["catalog_severity"] == "high"
+    assert metadata["catalog_severity_hint"].startswith("Dotenv environment files")
+    remediations = metadata["catalog_remediations"]
+    remediation_ids = {entry.get("id") for entry in remediations}
+    assert "ini-secret-rotation" in remediation_ids
+    assert "ini-dotenv-rotate-secrets" in remediation_ids
+    assert any(
+        entry.get("documentation") == "docs/detection-types.md#ini-dotenv"
+        for entry in remediations
+    )
