@@ -683,7 +683,7 @@ highlight where to consume the artifact.
 
 **REQUIRED RELATED WORK:**
 - [ ] 11.1 Output targets.
-  - [ ] 11.1.1 Implement JSON lines emitter in `src/driftbuster/reporting/json_lines.py`.
+  - [x] 11.1.1 Implement JSON lines emitter in `src/driftbuster/reporting/json_lines.py`.
   - [ ] 11.1.2 Build HTML summary adapter in `src/driftbuster/reporting/html.py`.
   - [ ] 11.1.3 Provide diff/patch CLI integration in `src/driftbuster/cli.py` (or successor) and GUI surfaces.
   - [ ] 11.1.4 Plan GUI shell (Windows) leveraging HTML/JSON once CLI stabilises.

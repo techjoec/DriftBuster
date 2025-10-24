@@ -4,7 +4,7 @@ import io
 
 from driftbuster.core.types import DetectionMatch
 from driftbuster.hunt import HuntHit, HuntRule
-from driftbuster.reporting.json import iter_json_records, render_json_lines, write_json_lines
+from driftbuster.reporting.json_lines import iter_json_records, render_json_lines, write_json_lines
 from driftbuster.reporting.redaction import RedactionFilter
 
 

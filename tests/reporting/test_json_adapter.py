@@ -5,7 +5,8 @@ from pathlib import Path
 
 from driftbuster.core.types import DetectionMatch
 from driftbuster.hunt import HuntHit, HuntRule
-from driftbuster.reporting.json import iter_json_records, render_json_lines, write_json_lines
+from driftbuster.reporting import json as legacy_json
+from driftbuster.reporting.json_lines import iter_json_records, render_json_lines, write_json_lines
 from driftbuster.reporting.redaction import RedactionFilter
 
 
@@ -50,6 +51,12 @@ def test_iter_json_records_enriches_metadata_and_applies_redaction() -> None:
     hunt = records[2]
     assert hunt["payload"]["excerpt"] == "[REDACTED]"
     assert hunt["payload"]["run_metadata"]["run_id"] == "abc"
+
+
+def test_legacy_module_reexports_new_helpers() -> None:
+    assert legacy_json.iter_json_records is iter_json_records
+    assert legacy_json.render_json_lines is render_json_lines
+    assert legacy_json.write_json_lines is write_json_lines
 
 
 def test_render_and_write_json_lines_preserve_ordering(tmp_path) -> None:
