@@ -69,6 +69,7 @@
 - 2025-10-26 Release rerun is still red. [`artifacts/logs/gui-validation/gui-tests-release-2025-10-26-regression.txt`](../../artifacts/logs/gui-validation/gui-tests-release-2025-10-26-regression.txt) captures the `fonts:SystemFonts` dictionary miss plus the lingering `BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files` assertion gap. The refreshed `artifacts/logs/headless-font-health.json` snapshot shows nine total attempts with seven failures for the Inter alias probe, confirming the bootstrapper guard rails still are not wiring the dictionary under Release.
 - 2025-10-26 Debug rerun mirrors the Release failures (see [`artifacts/logs/gui-validation/gui-tests-debug-2025-10-26-run.txt`](../../artifacts/logs/gui-validation/gui-tests-debug-2025-10-26-run.txt)), so the alias bootstrapper work needs to land before we can check the stability box for Debug as well.
 - Running `python -m scripts.coverage_report` after the GUI runs flags "Cobertura XML not found" because the failing .NET suites are not emitting coverage output yet; regenerate the Coverage XML once the headless glyph fixes allow green Release/Debug sweeps.
+- Latest release rerun (`dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`) passes now that `Program.EnsureHeadless` rebinds the headless font proxy even when an `App` instance already exists. The smoke tests confirm `fonts:SystemFonts` and `fonts:SystemFonts#Inter` resolve during reinitialisation, unblocking the coverage sweep follow-ups.
 
 ### Fontmanager regression
 

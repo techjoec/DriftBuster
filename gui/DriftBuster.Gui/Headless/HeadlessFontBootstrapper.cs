@@ -31,13 +31,8 @@ internal static class HeadlessFontBootstrapper
     private static readonly FieldInfo? SystemFontsField = typeof(FontManager)
         .GetField("_systemFonts", BindingFlags.Instance | BindingFlags.NonPublic);
 
-    public static void Ensure(AppBuilder builder)
+    public static void Ensure()
     {
-        if (builder is null)
-        {
-            throw new ArgumentNullException(nameof(builder));
-        }
-
         if (TryGetCurrentLocator() is not AvaloniaLocator locator)
         {
             return;

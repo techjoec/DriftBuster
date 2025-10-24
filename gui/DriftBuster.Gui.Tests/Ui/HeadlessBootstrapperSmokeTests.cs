@@ -176,6 +176,30 @@ public sealed class HeadlessBootstrapperSmokeTests
     }
 
     [Fact]
+    public void EnsureHeadless_reinitialises_existing_application_with_aliases()
+    {
+        using var initialScope = Program.EnsureHeadless();
+        HeadlessFixture.EnsureFonts();
+
+        ResetHeadlessInitialisedFlag();
+
+        using var rerunScope = Program.EnsureHeadless();
+        HeadlessFixture.EnsureFonts();
+
+        var fontManager = FontManager.Current;
+        Assert.NotNull(fontManager);
+
+        Assert.True(fontManager!.TryGetGlyphTypeface(new Typeface("fonts:SystemFonts"), out var aliasGlyph),
+            "Expected fonts:SystemFonts alias to resolve after reinitialising an existing App instance.");
+        Assert.NotNull(aliasGlyph);
+
+        Assert.True(fontManager.TryGetGlyphTypeface(new Typeface("fonts:SystemFonts#Inter"), out var interGlyph),
+            "Expected fonts:SystemFonts#Inter alias to resolve after reinitialising an existing App instance.");
+        Assert.NotNull(interGlyph);
+        Assert.Equal("Inter", interGlyph!.FamilyName, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void EnsureHeadless_records_bootstrapper_diagnostics_snapshot()
     {
         using var scope = Program.EnsureHeadless();
@@ -192,5 +216,11 @@ public sealed class HeadlessBootstrapperSmokeTests
             string.Equals(probe.Alias, "fonts:SystemFonts", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(snapshot.Probes, probe =>
             string.Equals(probe.Alias, "fonts:SystemFonts#Inter", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void ResetHeadlessInitialisedFlag()
+    {
+        var field = typeof(Program).GetField("_headlessInitialized", BindingFlags.Static | BindingFlags.NonPublic);
+        field?.SetValue(null, false);
     }
 }

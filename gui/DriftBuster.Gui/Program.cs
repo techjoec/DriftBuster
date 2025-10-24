@@ -58,12 +58,7 @@ namespace DriftBuster.Gui
 
                 if (Application.Current is App existingApp)
                 {
-                    App.EnsureFontResources(existingApp);
-                    var fontManager = FontManager.Current;
-                    HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
-                    HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
-                    _headlessInitialized = true;
-
+                    InitialiseHeadlessApp(existingApp);
                     return HeadlessScope.Instance;
                 }
 
@@ -78,27 +73,38 @@ namespace DriftBuster.Gui
                 {
                     if (Application.Current is App fallbackApp)
                     {
-                        App.EnsureFontResources(fallbackApp);
-                        var fallbackManager = FontManager.Current;
-                        HeadlessFontBootstrapper.EnsureSystemFonts(fallbackManager);
-                        HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fallbackManager);
-                        _headlessInitialized = true;
-
+                        InitialiseHeadlessApp(fallbackApp);
                         return HeadlessScope.Instance;
                     }
 
                     throw;
                 }
 
-                HeadlessFontBootstrapper.Ensure(builder);
                 if (Application.Current is App app)
                 {
-                    App.EnsureFontResources(app);
+                    InitialiseHeadlessApp(app);
                 }
-                _headlessInitialized = true;
+                else
+                {
+                    HeadlessFontBootstrapper.Ensure();
+                    var fontManager = FontManager.Current;
+                    HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
+                    HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
+                    _headlessInitialized = true;
+                }
 
                 return HeadlessScope.Instance;
             }
+        }
+
+        private static void InitialiseHeadlessApp(App app)
+        {
+            HeadlessFontBootstrapper.Ensure();
+            App.EnsureFontResources(app);
+            var fontManager = FontManager.Current;
+            HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
+            HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
+            _headlessInitialized = true;
         }
 
         private sealed class HeadlessScope : IDisposable

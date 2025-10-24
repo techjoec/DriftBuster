@@ -165,7 +165,7 @@ Schema reference
 **ACCEPT GATES:** Release + Debug GUI tests rerun; coverage report generated; docs updated with persistence flow; status notes summarise the guardrail work.
 
 **REQUIRED RELATED WORK:**
-- [ ] 1.0 Headless font bootstrap remediation.
+- [x] 1.0 Headless font bootstrap remediation.
   - [x] 1.0.1 Resolve `fonts:SystemFonts` lookup failures blocking Avalonia window construction during Release GUI tests.
     - [x] 1.0.1.a Capture the current Release failure stack trace and link it under `notes/status/gui-research.md#headless-font-issues`.
     - [x] 1.0.1.b Introduce a minimal headless font bootstrapper that seeds the Avalonia locator with an `Inter` fallback without touching compiled resources.
