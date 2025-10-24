@@ -635,10 +635,10 @@ highlight where to consume the artifact.
   - [x] 9.3.1 Attach reference URLs in metadata payload.
   - [x] 9.3.2 Update docs `docs/format-support.md` with link inventory.
   - [x] 9.3.3 Add schema link QA checklist entry to `notes/checklists/catalog-review.md`.
-- [ ] 9.4 Documentation & validation.
-  - [ ] 9.4.1 Capture review log in `notes/checklists/reporting-tests.md`.
-  - [ ] 9.4.2 Ensure adapters display hints (GUI/CLI validations).
-  - [ ] 9.4.3 Verify CLI output includes severity/remediation metadata using `python -m driftbuster.cli` against fixtures, logging results in `notes/snippets/cli-severity-log.md`.
+- [x] 9.4 Documentation & validation.
+  - [x] 9.4.1 Capture review log in `notes/checklists/reporting-tests.md`.
+  - [x] 9.4.2 Ensure adapters display hints (GUI/CLI validations).
+  - [x] 9.4.3 Verify CLI output includes severity/remediation metadata using `python -m driftbuster.cli` against fixtures, logging results in `notes/snippets/cli-severity-log.md`.
 
 ## A10. Reporting Hold Exit Prerequisites [deps=A7,A8]
 

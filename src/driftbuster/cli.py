@@ -150,7 +150,15 @@ def _ellipsize(value: str, limit: int) -> str:
 def _emit_table(
     root: Path, results: Sequence[Tuple[Path, Optional[DetectionMatch]]]
 ) -> None:
-    columns = ("Path", "Format", "Variant", "Confidence", "Metadata keys")
+    columns = (
+        "Path",
+        "Format",
+        "Variant",
+        "Confidence",
+        "Severity",
+        "Severity hint",
+        "Metadata keys",
+    )
     widths = [max(len(col), 4) for col in columns]
 
     formatted_rows = []
@@ -159,18 +167,37 @@ def _emit_table(
         format_name = match.format_name if match else "—"
         variant = match.variant if match and match.variant else "—"
         confidence = f"{match.confidence:.2f}" if match else "—"
+        severity = "—"
+        severity_hint = "—"
         metadata_keys = "—"
         if match and match.metadata:
-            metadata_keys = ", ".join(sorted(match.metadata.keys()))
+            metadata = match.metadata
+            metadata_keys = ", ".join(sorted(metadata.keys()))
+            severity = str(metadata.get("catalog_severity") or "—")
+            severity_hint = str(metadata.get("catalog_severity_hint") or "—")
         formatted_rows.append(
-            (relative, format_name, variant, confidence, metadata_keys)
+            (
+                relative,
+                format_name,
+                variant,
+                confidence,
+                severity,
+                severity_hint,
+                metadata_keys,
+            )
         )
         for index, value in enumerate(formatted_rows[-1]):
             widths[index] = max(widths[index], len(value))
 
+    max_hint_width = 72
+    hint_index = columns.index("Severity hint")
+    if widths[hint_index] > max_hint_width:
+        widths[hint_index] = max_hint_width
+
     max_metadata_width = 48
-    if widths[-1] > max_metadata_width:
-        widths[-1] = max_metadata_width
+    metadata_index = columns.index("Metadata keys")
+    if widths[metadata_index] > max_metadata_width:
+        widths[metadata_index] = max_metadata_width
 
     header = "  ".join(
         column.ljust(widths[index]) for index, column in enumerate(columns)
@@ -195,12 +222,15 @@ def _emit_json(
             "detected": bool(match),
         }
         if match:
+            metadata = match.metadata or {}
             payload.update(
                 {
                     "format": match.format_name,
                     "variant": match.variant,
                     "confidence": match.confidence,
-                    "metadata": match.metadata,
+                    "severity": metadata.get("catalog_severity"),
+                    "severity_hint": metadata.get("catalog_severity_hint"),
+                    "metadata": metadata,
                 }
             )
         print(json.dumps(payload, sort_keys=True))

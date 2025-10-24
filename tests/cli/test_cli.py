@@ -24,6 +24,10 @@ def test_cli_table_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
     assert "Path" in captured.out
     assert "appsettings.json" in captured.out
     assert "json" in captured.out
+    assert "Severity" in captured.out
+    assert "Severity hint" in captured.out
+    assert "medium" in captured.out
+    assert "JSON configuration files" in captured.out
 
 
 def test_cli_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -37,6 +41,10 @@ def test_cli_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> 
     payload = [json.loads(line) for line in captured.out.strip().splitlines() if line]
     assert payload
     assert payload[0]["format"] == "json"
+    assert payload[0]["severity"] == "medium"
+    assert payload[0]["metadata"]["catalog_severity"] == "medium"
+    hint = payload[0]["severity_hint"]
+    assert isinstance(hint, str) and "JSON configuration files" in hint
 
 
 def test_cli_reports_missing_path(capsys: pytest.CaptureFixture[str]) -> None:

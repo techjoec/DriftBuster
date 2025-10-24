@@ -19,6 +19,11 @@
   - Confirm the emitted records include `type=detection`,
     `type=profile_summary`, and `type=hunt_hit` entries in sequence.
   - Note the placeholder token counts reported by the redaction filter.
+- **Severity hint validation:**
+  - Run `python -m driftbuster.cli` against curated samples and confirm the
+    table output lists both the catalog severity and severity hint columns.
+  - Capture the command transcript in `notes/snippets/cli-severity-log.md` and
+    reference the review timestamp when updating this checklist.
 - **HTML report review:**
   - Render `render_html_report` with the same payloads and open the file in a
     local browser (offline mode).
