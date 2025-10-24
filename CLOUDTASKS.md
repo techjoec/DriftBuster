@@ -314,11 +314,11 @@ highlight where to consume the artifact.
   - [x] 3.3.2 Add async unit tests in `gui/DriftBuster.Gui.Tests/Services`.
   - [x] 3.3.3 Mirror progress throttling in Python `src/driftbuster/multi_server.py` for CLI parity with tests in `tests/multi_server/test_multi_server.py`.
   - [x] 3.3.4 Record timing metrics before/after in `notes/status/gui-research.md`.
-- [ ] 3.4 Perf harness + validation.
-  - [ ] 3.4.1 Create `gui/DriftBuster.Gui.Tests/Ui/PerformanceSmokeTests.cs` exercising virtualization/perf toggles.
-  - [ ] 3.4.2 Wire optional perf flag into `scripts/verify_coverage.sh`.
-  - [ ] 3.4.3 Document runbook in `notes/status/gui-research.md`.
-  - [ ] 3.4.4 Schedule weekly perf checks in `notes/checklists/perf-calendar.md` with recorded metrics.
+- [x] 3.4 Perf harness + validation.
+  - [x] 3.4.1 Create `gui/DriftBuster.Gui.Tests/Ui/PerformanceSmokeTests.cs` exercising virtualization/perf toggles.
+  - [x] 3.4.2 Wire optional perf flag into `scripts/verify_coverage.sh`.
+  - [x] 3.4.3 Document runbook in `notes/status/gui-research.md`.
+  - [x] 3.4.4 Schedule weekly perf checks in `notes/checklists/perf-calendar.md` with recorded metrics.
 - [ ] 3.5 Evidence & release notes.
   - [ ] 3.5.1 Update `docs/release-notes.md` with performance improvements summary.
   - [ ] 3.5.2 Archive perf charts and measurements under `artifacts/perf/`.

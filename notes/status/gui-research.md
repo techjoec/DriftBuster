@@ -54,6 +54,13 @@
 - Synthetic dispatcher harness burst-testing 500 toast notifications recorded **22.34 ms** flush time across **500 UI posts** with the legacy dispatcher (`dotnet run` harness mirroring the pre-queue implementation).
 - The buffered queue drops the same scenario to **9.55 ms** across **2 UI posts**, keeping auto-dismiss scheduling intact while collapsing redundant dispatcher work.
 
+### Performance smoke harness (A3.4)
+
+- `scripts/verify_coverage.sh --perf-smoke` now toggles the targeted perf suite after the baseline coverage sweep, persisting console output to `artifacts/perf/perf-smoke-<UTC>.log` for archival.
+- Perf filter defaults to `Category=PerfSmoke`; pass `--perf-filter "Category=PerfSmoke&FullyQualifiedName~Performance"` when scoping to new virtualisation stories.
+- `PerformanceProfile` reads `DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD` (default **400**) and `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION` overrides so headless fixtures and the GUI can align on the same heuristics.
+- `PerformanceSmokeTests` exercises the environment overrides plus the toast queue burst, asserting dispatcher posts collapse to two passes (show + dismiss) for 200 synthetic notifications.
+
 ### Headless font issues (A1d)
 
 - Pre-fix failures hit both the Release `MainWindow` smoke test and the drilldown view instantiation path because Avalonia attempted to resolve `fonts:SystemFonts` before any headless locator bindings existed. The captured stack trace remains in [`artifacts/logs/headless-font-release-stacktrace.txt`](../../artifacts/logs/headless-font-release-stacktrace.txt) for release window crashes, while the matching drilldown failure reproduced under `[Collection(HeadlessCollection.Name)]` until the bootstrap landed.
