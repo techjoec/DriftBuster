@@ -527,10 +527,10 @@ highlight where to consume the artifact.
   - [x] 7.3.1 Extend `src/driftbuster/registry/__init__.py::registry_summary` with usage statistics.
   - [ ] 7.3.2 Capture manual review steps in `notes/checklists/reporting-tests.md`.
   - [x] 7.3.3 Add regression coverage verifying usage statistics in `tests/registry/test_registry_summary.py`.
-- [ ] 7.4 Diff/patch utilities.
-  - [ ] 7.4.1 Finalise helpers in `src/driftbuster/reporting/diff.py` for before/after comparisons.
-  - [ ] 7.4.2 Add regression coverage in `tests/reporting/test_diff.py` (new) and update docs.
-  - [ ] 7.4.3 Document diff helper behaviour in `notes/checklists/reporting-tests.md` and link from `docs/format-playbook.md`.
+- [x] 7.4 Diff/patch utilities.
+  - [x] 7.4.1 Finalise helpers in `src/driftbuster/reporting/diff.py` for before/after comparisons.
+  - [x] 7.4.2 Add regression coverage in `tests/reporting/test_diff.py` (new) and update docs.
+  - [x] 7.4.3 Document diff helper behaviour in `notes/checklists/reporting-tests.md` and link from `docs/format-playbook.md`.
 - [ ] 7.5 Hunt-mode integration.
   - [ ] 7.5.1 Wire dynamic token detection into plan transforms (`src/driftbuster/hunt.py`).
   - [ ] 7.5.2 Add tests in `tests/hunt/test_dynamic_tokens.py`.

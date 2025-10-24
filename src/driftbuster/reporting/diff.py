@@ -257,19 +257,17 @@ def build_unified_diff(
     )
 
 
-def summarise_diff_result(
+def _build_comparison_summary(
     result: DiffResult,
-    *,
-    versions: Sequence[str] | None = None,
-    baseline_name: str | None = None,
-    comparison_name: str | None = None,
-) -> DiffResultSummary:
-    """Return :class:`DiffResultSummary` describing ``result``."""
+    baseline_name: str | None,
+    comparison_name: str | None,
+) -> DiffComparisonSummary:
+    """Return a :class:`DiffComparisonSummary` for ``result``."""
 
     before_lines = result.canonical_before.splitlines()
     after_lines = result.canonical_after.splitlines()
-
     stats = result.stats or {}
+
     change_summary = DiffChangeSummary(
         before_digest=_digest(result.canonical_before),
         after_digest=_digest(result.canonical_after),
@@ -298,7 +296,7 @@ def summarise_diff_result(
         comparison_name=comparison_name or result.to_label,
     )
 
-    comparison_summary = DiffComparisonSummary(
+    return DiffComparisonSummary(
         from_label=result.from_label,
         to_label=result.to_label,
         plan=plan_summary,
@@ -306,11 +304,60 @@ def summarise_diff_result(
         summary=change_summary,
     )
 
+
+def summarise_diff_result(
+    result: DiffResult,
+    *,
+    versions: Sequence[str] | None = None,
+    baseline_name: str | None = None,
+    comparison_name: str | None = None,
+) -> DiffResultSummary:
+    """Return :class:`DiffResultSummary` describing ``result``."""
+
+    comparison_summary = _build_comparison_summary(result, baseline_name, comparison_name)
+
     versions_tuple = tuple(versions or ())
     return DiffResultSummary(
         generated_at=datetime.now(timezone.utc),
         versions=versions_tuple,
         comparisons=(comparison_summary,),
+    )
+
+
+def summarise_diff_results(
+    results: Sequence[DiffResult],
+    *,
+    versions: Sequence[str] | None = None,
+    baseline_names: Sequence[str | None] | None = None,
+    comparison_names: Sequence[str | None] | None = None,
+) -> DiffResultSummary:
+    """Return a combined :class:`DiffResultSummary` for ``results``.
+
+    Each comparison mirrors :func:`summarise_diff_result` while ensuring callers
+    can provide explicit ``baseline_names`` or ``comparison_names`` for the
+    generated metadata payload. When a name sequence is supplied its length
+    must match ``results``; otherwise the originating ``from_label``/
+    ``to_label`` values are reused.
+    """
+
+    if not results:
+        raise ValueError("results must not be empty")
+
+    if baseline_names is not None and len(baseline_names) != len(results):
+        raise ValueError("baseline_names length must match results")
+    if comparison_names is not None and len(comparison_names) != len(results):
+        raise ValueError("comparison_names length must match results")
+
+    comparisons: list[DiffComparisonSummary] = []
+    for index, result in enumerate(results):
+        baseline_name = baseline_names[index] if baseline_names is not None else None
+        comparison_name = comparison_names[index] if comparison_names is not None else None
+        comparisons.append(_build_comparison_summary(result, baseline_name, comparison_name))
+
+    return DiffResultSummary(
+        generated_at=datetime.now(timezone.utc),
+        versions=tuple(versions or ()),
+        comparisons=tuple(comparisons),
     )
 
 

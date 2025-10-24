@@ -18,6 +18,7 @@ from .diff import (
     diff_summary_to_payload,
     render_unified_diff,
     summarise_diff_result,
+    summarise_diff_results,
 )
 from .snapshot import build_snapshot_manifest, write_snapshot
 
@@ -35,6 +36,7 @@ __all__ = [
     "DiffResultSummary",
     "build_unified_diff",
     "summarise_diff_result",
+    "summarise_diff_results",
     "diff_summary_to_payload",
     "render_unified_diff",
     "build_snapshot_manifest",

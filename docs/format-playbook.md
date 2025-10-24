@@ -141,6 +141,9 @@ deterministic and highlights which docs to touch:
    metadata/hunt output locally (never in-repo).
 3. Call `diff_summary_snapshots` from `ProfileStore` helpers if profiles are in
    play. Note the results in `notes/checklists/profile-summary.md`.
+   When comparing more than one before/after pair, run
+   `driftbuster.reporting.diff.summarise_diff_results` so reviewers receive a
+   single metadata bundle for every comparison.
 4. Record dynamic token decisions in `notes/checklists/hunt-profile-review.md`.
 5. Update the relevant doc sections (`docs/configuration-profiles.md`,
    `docs/hunt-mode.md`, `CLOUDTASKS.md` (areas A10-A12)) if reviewers need new

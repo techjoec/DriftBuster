@@ -8,6 +8,9 @@
   - Log both the `DiffPlan` and `plan_to_kwargs` output via
     `driftbuster.core.diffing`. Feed the resulting kwargs into
     `build_unified_diff` manually so the blueprint stays in sync.
+  - Combine every generated `DiffResult` with
+    `driftbuster.reporting.diff.summarise_diff_results` and store the JSON
+    payload alongside the raw diff to confirm reviewers get the bundled view.
   - Paste the unified diff output into this checklist and record whether
     placeholders replaced every tracked token.
 - **JSON lines export:**
