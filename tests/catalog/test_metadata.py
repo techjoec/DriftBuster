@@ -20,6 +20,8 @@ def test_catalog_injects_severity_hint_and_remediations() -> None:
     remediations = metadata["catalog_remediations"]
     assert isinstance(remediations, list)
     assert remediations
+    references = metadata["catalog_references"]
+    assert "docs/detection-types.md#registryexport" in references
     assert any(
         entry.get("id") == "registry-export-lockdown" and entry.get("category") == "secrets"
         for entry in remediations
@@ -42,4 +44,6 @@ def test_variant_specific_severity_overrides_default() -> None:
     assert metadata["catalog_severity"] == "medium"
     assert metadata["catalog_severity_hint"].startswith("Unix configuration files")
     catalog_remediations = metadata["catalog_remediations"]
+    references = metadata["catalog_references"]
+    assert "docs/detection-types.md#unixconf" in references
     assert any(entry.get("id") == "unix-conf-hardening" for entry in catalog_remediations)

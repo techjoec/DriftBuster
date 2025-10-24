@@ -25,6 +25,29 @@ variants and metadata expectations each format must satisfy.
 
 Last updated: 2025-10-24.
 
+## Catalog reference links
+
+`validate_detection_metadata` now surfaces a `catalog_references` array sourced
+from `driftbuster.catalog`. Each entry points to the reviewer guidance for that
+format so downstream tooling can deep link into the appropriate reference
+material. Current mappings:
+
+| Catalog format        | Reference |
+|-----------------------|-----------|
+| `registry-export`     | `docs/detection-types.md#registryexport` |
+| `registry-live`       | `docs/detection-types.md#registrylive` |
+| `structured-config-xml` | `docs/detection-types.md#structuredconfigxml` |
+| `xml`                 | `docs/detection-types.md#xml` |
+| `json`                | `docs/detection-types.md#json` |
+| `yaml`                | `docs/detection-types.md#yaml` |
+| `toml`                | `docs/detection-types.md#toml` |
+| `ini`                 | `docs/detection-types.md#ini` |
+| `properties`          | `docs/detection-types.md#keyvalueproperties` |
+| `unix-conf`           | `docs/detection-types.md#unixconf` |
+| `script-config`       | `docs/detection-types.md#scriptconfig` |
+| `embedded-sql-db`     | `docs/detection-types.md#embeddedsqldb` |
+| `binary-dat`          | `docs/detection-types.md#genericbinarydat` |
+
 ## Version Tracking Guidance
 
 - When you adjust detection heuristics or metadata for a plugin, bump its

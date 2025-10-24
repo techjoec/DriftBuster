@@ -631,10 +631,10 @@ highlight where to consume the artifact.
   - [ ] 9.2.2 Update `src/driftbuster/reporting/summary.py` to include new keys.
   - [ ] 9.2.3 Add tests `tests/reporting/test_summary.py`.
   - [ ] 9.2.4 Update `docs/format-addition-guide.md` with metadata extension workflow.
-- [ ] 9.3 Schema/reference links.
-  - [ ] 9.3.1 Attach reference URLs in metadata payload.
-  - [ ] 9.3.2 Update docs `docs/format-support.md` with link inventory.
-  - [ ] 9.3.3 Add schema link QA checklist entry to `notes/checklists/catalog-review.md`.
+- [x] 9.3 Schema/reference links.
+  - [x] 9.3.1 Attach reference URLs in metadata payload.
+  - [x] 9.3.2 Update docs `docs/format-support.md` with link inventory.
+  - [x] 9.3.3 Add schema link QA checklist entry to `notes/checklists/catalog-review.md`.
 - [ ] 9.4 Documentation & validation.
   - [ ] 9.4.1 Capture review log in `notes/checklists/reporting-tests.md`.
   - [ ] 9.4.2 Ensure adapters display hints (GUI/CLI validations).

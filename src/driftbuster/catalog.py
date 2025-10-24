@@ -77,6 +77,7 @@ class FormatClass:
     subtypes: Tuple[FormatSubtype, ...] = field(default_factory=tuple)
     severity_hint: str | None = None
     remediation_hints: Tuple[RemediationHint, ...] = field(default_factory=tuple)
+    references: Tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -137,6 +138,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     documentation="docs/detection-types.md#registryexport",
                 ),
             ),
+            references=(
+                "docs/detection-types.md#registryexport",
+            ),
         ),
         FormatClass(
             name="RegistryLive",
@@ -175,6 +179,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     summary="Confirm monitoring tokens align with approved hosts and rotate any credentials referenced in the manifest.",
                     documentation="docs/detection-types.md#registrylive",
                 ),
+            ),
+            references=(
+                "docs/detection-types.md#registrylive",
             ),
         ),
         FormatClass(
@@ -259,6 +266,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     summary="Review debug switches and permissive runtime settings before promoting captured configs to shared baselines.",
                     documentation="docs/detection-types.md#structuredconfigxml",
                 ),
+            ),
+            references=(
+                "docs/detection-types.md#structuredconfigxml",
             ),
         ),
         FormatClass(
@@ -367,6 +377,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     documentation="docs/detection-types.md#xml",
                 ),
             ),
+            references=(
+                "docs/detection-types.md#xml",
+            ),
         ),
         FormatClass(
             name="Json",
@@ -433,6 +446,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     documentation="docs/detection-types.md#json",
                 ),
             ),
+            references=(
+                "docs/detection-types.md#json",
+            ),
         ),
         FormatClass(
             name="Yaml",
@@ -477,6 +493,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     summary="Verify namespace and replica settings to prevent accidental cross-environment rollouts when replaying manifests.",
                     documentation="docs/detection-types.md#yaml",
                 ),
+            ),
+            references=(
+                "docs/detection-types.md#yaml",
             ),
         ),
         FormatClass(
@@ -536,6 +555,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     summary="Sanitise path and signing configuration to avoid leaking build infrastructure details in exported manifests.",
                     documentation="docs/detection-types.md#toml",
                 ),
+            ),
+            references=(
+                "docs/detection-types.md#toml",
             ),
         ),
         FormatClass(
@@ -614,6 +636,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     documentation="docs/detection-types.md#ini",
                 ),
             ),
+            references=(
+                "docs/detection-types.md#ini",
+            ),
         ),
         FormatClass(
             name="KeyValueProperties",
@@ -651,6 +676,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     summary="Review inline comments for deployment notes or hostnames and redact sensitive context before sharing.",
                     documentation="docs/detection-types.md#keyvalueproperties",
                 ),
+            ),
+            references=(
+                "docs/detection-types.md#keyvalueproperties",
             ),
         ),
         FormatClass(
@@ -721,6 +749,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     summary="Confirm referenced key, certificate, and log paths carry restricted permissions before sharing archives.",
                     documentation="docs/detection-types.md#unixconf",
                 ),
+            ),
+            references=(
+                "docs/detection-types.md#unixconf",
             ),
         ),
         FormatClass(
@@ -799,6 +830,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     documentation="docs/detection-types.md#scriptconfig",
                 ),
             ),
+            references=(
+                "docs/detection-types.md#scriptconfig",
+            ),
         ),
         FormatClass(
             name="EmbeddedSqlDb",
@@ -832,6 +866,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     documentation="docs/detection-types.md#embeddedsqldb",
                 ),
             ),
+            references=(
+                "docs/detection-types.md#embeddedsqldb",
+            ),
         ),
         FormatClass(
             name="GenericBinaryDat",
@@ -864,6 +901,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     summary="If the blob contains extracted credentials or certificates, replace it with hashed summaries before sharing.",
                     documentation="docs/detection-types.md#genericbinarydat",
                 ),
+            ),
+            references=(
+                "docs/detection-types.md#genericbinarydat",
             ),
         ),
     ),

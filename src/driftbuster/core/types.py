@@ -198,7 +198,7 @@ def validate_detection_metadata(
 
     fmt_entry = _find_format_class(catalog, canonical_format)
     if fmt_entry is not None:
-        severity_value = fmt_entry.default_severity
+        severity_value = getattr(fmt_entry, "default_severity", None)
         variant_key = metadata.get("catalog_variant")
         if variant_key:
             for subtype in fmt_entry.subtypes:
@@ -218,11 +218,13 @@ def validate_detection_metadata(
                     break
         if severity_value:
             metadata.setdefault("catalog_severity", severity_value)
-        if fmt_entry.severity_hint:
-            metadata.setdefault("catalog_severity_hint", fmt_entry.severity_hint)
-        if fmt_entry.remediation_hints:
+        severity_hint = getattr(fmt_entry, "severity_hint", None)
+        if severity_hint:
+            metadata.setdefault("catalog_severity_hint", severity_hint)
+        remediation_hints = getattr(fmt_entry, "remediation_hints", ())
+        if remediation_hints:
             remediation_payload = []
-            for hint in fmt_entry.remediation_hints:
+            for hint in remediation_hints:
                 entry = {
                     "id": hint.id,
                     "category": hint.category,
@@ -232,6 +234,11 @@ def validate_detection_metadata(
                     entry["documentation"] = hint.documentation
                 remediation_payload.append(entry)
             metadata.setdefault("catalog_remediations", remediation_payload)
+        if getattr(fmt_entry, "references", None):
+            metadata.setdefault(
+                "catalog_references",
+                [reference for reference in fmt_entry.references if reference],
+            )
 
     return metadata
 
