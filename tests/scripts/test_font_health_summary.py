@@ -16,6 +16,13 @@ from driftbuster.font_health import (
 from scripts import font_health_summary
 
 
+def _copy_fixture(name: str, destination: Path) -> Path:
+    fixture = Path(__file__).resolve().parents[2] / "fixtures" / "font_telemetry" / name
+    target = destination / name
+    target.write_text(fixture.read_text())
+    return target
+
+
 @pytest.fixture
 def sample_payload(tmp_path: Path) -> Path:
     payload = {
@@ -229,3 +236,70 @@ def test_cli_flags_stale_exit_code(
     )
 
     assert exit_code == 1
+
+
+def test_cli_emits_structured_staleness_log(
+    sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 293680, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    exit_code = font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+        ]
+    )
+
+    assert exit_code == 1
+    written = sorted(log_dir.glob("font-staleness-*.json"))
+    assert len(written) == 1
+    payload = json.loads(written[0].read_text())
+    assert payload["hasIssues"] is True
+    assert payload["maxLastUpdatedAgeSeconds"] == pytest.approx(0.72)
+    assert payload["missingScenarios"] == []
+    assert payload["scenarios"][1]["issues"]
+    assert payload["scenarios"][1]["status"] == "drift"
+    assert payload["scenarios"][0]["status"] == "ok"
+
+
+def test_within_threshold_fixture_remains_healthy(tmp_path: Path) -> None:
+    payload_path = _copy_fixture("within_threshold.json", tmp_path)
+    report = load_font_health_report(payload_path)
+
+    evaluation = evaluate_report(
+        report,
+        max_failure_rate=0.0,
+        max_last_updated_age=timedelta(minutes=20),
+        now=datetime(2025, 10, 23, 6, 5, 33, tzinfo=timezone.utc),
+    )
+
+    assert evaluation.has_issues is False
+    scenario = evaluation.scenarios[0]
+    assert scenario.status == "ok"
+    assert scenario.issues == ()
+
+
+def test_stale_threshold_fixture_flags_drift(tmp_path: Path) -> None:
+    payload_path = _copy_fixture("stale_threshold.json", tmp_path)
+    report = load_font_health_report(payload_path)
+
+    evaluation = evaluate_report(
+        report,
+        max_failure_rate=0.0,
+        max_last_updated_age=timedelta(hours=1),
+        now=datetime(2025, 10, 23, 6, 5, 33, tzinfo=timezone.utc),
+    )
+
+    assert evaluation.has_issues is True
+    scenario = evaluation.scenarios[0]
+    assert scenario.status == "drift"
+    assert any("lastUpdated is stale" in issue for issue in scenario.issues)

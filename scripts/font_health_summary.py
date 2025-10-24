@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from driftbuster.font_health import (
     FontHealthError,
+    ReportEvaluation,
+    ScenarioEvaluation,
     evaluate_report,
     format_report,
     load_font_health_report,
@@ -60,6 +64,117 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _resolve_log_dir() -> Path:
+    """Return the destination directory for structured staleness logs."""
+
+    candidate = os.environ.get("FONT_STALENESS_LOG_DIR")
+    if candidate:
+        return Path(candidate)
+    return Path("artifacts/logs/font-staleness")
+
+
+def _coerce_utc(moment: datetime) -> datetime:
+    if moment.tzinfo is None:
+        return moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
+def _scenario_payload(
+    evaluation: ScenarioEvaluation,
+    *,
+    evaluation_time: datetime,
+) -> dict:
+    scenario = evaluation.scenario
+    payload: dict[str, object] = {
+        "name": scenario.name,
+        "status": evaluation.status,
+        "issues": list(evaluation.issues),
+        "failureRate": evaluation.failure_rate,
+        "totalRuns": scenario.total_runs,
+        "passes": scenario.passes,
+        "failures": scenario.failures,
+        "lastStatus": scenario.last_status,
+    }
+
+    if scenario.last_updated is not None:
+        last_updated = _coerce_utc(scenario.last_updated)
+        payload["lastUpdated"] = last_updated.isoformat()
+        payload["lastUpdatedAgeSeconds"] = (
+            _coerce_utc(evaluation_time) - last_updated
+        ).total_seconds()
+    else:
+        payload["lastUpdated"] = None
+        payload["lastUpdatedAgeSeconds"] = None
+
+    if scenario.last_details:
+        payload["lastDetails"] = scenario.last_details
+
+    return payload
+
+
+def _write_staleness_event(
+    evaluation: ReportEvaluation,
+    *,
+    evaluation_time: datetime,
+    source_path: Path,
+    max_last_updated_age: timedelta | None,
+    max_failure_rate: float,
+    min_total_runs: int,
+    require_last_pass: bool,
+    log_dir: Path,
+) -> None:
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "generatedAt": _coerce_utc(evaluation_time).isoformat(),
+        "source": str(source_path),
+        "hasIssues": evaluation.has_issues,
+        "missingScenarios": list(evaluation.missing_scenarios),
+        "maxLastUpdatedAgeSeconds": (
+            max_last_updated_age.total_seconds()
+            if max_last_updated_age is not None
+            else None
+        ),
+        "maxFailureRate": max_failure_rate,
+        "minTotalRuns": min_total_runs,
+        "requireLastPass": require_last_pass,
+        "scenarios": [
+            _scenario_payload(item, evaluation_time=evaluation_time)
+            for item in evaluation.scenarios
+        ],
+    }
+
+    timestamp = _coerce_utc(evaluation_time).strftime("%Y%m%dT%H%M%SZ")
+    destination = log_dir / f"font-staleness-{timestamp}.json"
+    destination.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def _emit_staleness_event(
+    evaluation: ReportEvaluation,
+    *,
+    evaluation_time: datetime,
+    args: argparse.Namespace,
+    source_path: Path,
+) -> None:
+    try:
+        _write_staleness_event(
+            evaluation,
+            evaluation_time=evaluation_time,
+            source_path=source_path,
+            max_last_updated_age=(
+                timedelta(hours=args.max_stale_hours)
+                if args.max_stale_hours is not None
+                else None
+            ),
+            max_failure_rate=args.max_failure_rate,
+            min_total_runs=args.min_total_runs,
+            require_last_pass=not args.allow_last_failure,
+            log_dir=_resolve_log_dir(),
+        )
+    except Exception as exc:  # pragma: no cover - defensive guard
+        print(f"warning: failed to write staleness log: {exc}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -78,6 +193,7 @@ def main(argv: list[str] | None = None) -> int:
         else None
     )
 
+    evaluation_time = datetime.now(timezone.utc)
     evaluation = evaluate_report(
         report,
         max_failure_rate=args.max_failure_rate,
@@ -85,11 +201,18 @@ def main(argv: list[str] | None = None) -> int:
         min_total_runs=args.min_total_runs,
         required_scenarios=args.required_scenarios,
         max_last_updated_age=max_age,
-        now=datetime.now(timezone.utc),
+        now=evaluation_time,
     )
 
     for line in format_report(evaluation):
         print(line)
+
+    _emit_staleness_event(
+        evaluation,
+        evaluation_time=evaluation_time,
+        args=args,
+        source_path=Path(args.path),
+    )
 
     return 1 if evaluation.has_issues else 0
 

@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2025-10-23T06:05:33.000000+00:00",
+  "scenarios": [
+    {
+      "name": "borderline-healthy",
+      "totalRuns": 4,
+      "passes": 4,
+      "failures": 0,
+      "lastStatus": "pass",
+      "lastUpdated": "2025-10-23T05:50:33.000000+00:00",
+      "lastDetails": {
+        "glyph_family": "Inter"
+      }
+    }
+  ]
+}
