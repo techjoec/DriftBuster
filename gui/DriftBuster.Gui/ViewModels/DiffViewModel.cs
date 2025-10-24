@@ -708,6 +708,9 @@ namespace DriftBuster.Gui.ViewModels
                     ? comparison.From
                     : $"{comparison.From} → {comparison.To}";
 
+                UnifiedDiff = comparison.UnifiedDiff ?? string.Empty;
+                HasDiff = !string.IsNullOrWhiteSpace(UnifiedDiff);
+
                 PlanEntries = new ObservableCollection<NameValuePair>(
                     new[]
                     {
@@ -737,6 +740,10 @@ namespace DriftBuster.Gui.ViewModels
             public ObservableCollection<NameValuePair> PlanEntries { get; }
 
             public ObservableCollection<NameValuePair> MetadataEntries { get; }
+
+            public string UnifiedDiff { get; }
+
+            public bool HasDiff { get; }
         }
 
         public sealed class NameValuePair

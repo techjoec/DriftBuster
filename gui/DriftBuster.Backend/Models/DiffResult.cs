@@ -34,6 +34,9 @@ namespace DriftBuster.Backend.Models
 
         [JsonPropertyName("metadata")]
         public DiffMetadata Metadata { get; set; } = new();
+
+        [JsonPropertyName("unified_diff")]
+        public string UnifiedDiff { get; set; } = string.Empty;
     }
 
     public sealed class DiffPlan

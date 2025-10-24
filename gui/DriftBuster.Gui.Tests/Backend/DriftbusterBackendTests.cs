@@ -49,6 +49,7 @@ public sealed class DriftbusterBackendTests
             Assert.Single(result.Comparisons);
             Assert.Contains("alpha", result.Comparisons[0].Plan.Before);
             Assert.Contains("beta", result.Comparisons[0].Plan.After);
+            result.Comparisons[0].UnifiedDiff.Should().Contain("---");
             Assert.False(string.IsNullOrWhiteSpace(result.RawJson));
             Assert.False(string.IsNullOrWhiteSpace(result.SanitizedJson));
             result.Summary.Should().NotBeNull();

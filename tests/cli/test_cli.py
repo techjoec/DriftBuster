@@ -185,3 +185,56 @@ def test_export_sql_console_main_forwards_arguments(monkeypatch: pytest.MonkeyPa
     assert exc.value.code == 0
     assert recorded["argv"][0] == "export-sql"
     assert recorded["argv"][1:] == ["demo.sqlite", "--limit", "10"]
+
+
+def test_cli_diff_generates_unified_patch(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    baseline = tmp_path / "baseline.txt"
+    baseline.write_text("alpha\nsecret\n", encoding="utf-8")
+    candidate = tmp_path / "candidate.txt"
+    candidate.write_text("alpha\nsecret updated\n", encoding="utf-8")
+
+    exit_code = cli.main(
+        [
+            "diff",
+            str(baseline),
+            str(candidate),
+            "--mask-token",
+            "secret",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "baseline.txt" in captured.out
+    assert "candidate.txt" in captured.out
+    assert "[REDACTED]" in captured.out
+    assert "Summary:" in captured.out
+
+
+def test_cli_diff_writes_patch_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    baseline = tmp_path / "config.xml"
+    baseline.write_text("<root>\n  <value>1</value>\n</root>\n", encoding="utf-8")
+    candidate = tmp_path / "config-release.xml"
+    candidate.write_text("<root>\n  <value>2</value>\n</root>\n", encoding="utf-8")
+    output_dir = tmp_path / "patches"
+
+    exit_code = cli.main(
+        [
+            "diff",
+            str(baseline),
+            str(candidate),
+            "--output-dir",
+            str(output_dir),
+            "--context-lines",
+            "1",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Wrote diff" in captured.out
+    patch_file = output_dir / "config--config-release.patch"
+    assert patch_file.exists()
+    patch_contents = patch_file.read_text(encoding="utf-8")
+    assert patch_contents.startswith("--- config.xml")
+    assert "+<root><value>2</value></root>" in patch_contents

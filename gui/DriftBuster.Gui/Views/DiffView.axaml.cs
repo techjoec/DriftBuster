@@ -98,5 +98,32 @@ namespace DriftBuster.Gui.Views
 
             await clipboard.SetTextAsync(payload).ConfigureAwait(true);
         }
+
+        private async void OnCopyDiff(object? sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button)
+            {
+                return;
+            }
+
+            if (button.Tag is not string diffText || string.IsNullOrWhiteSpace(diffText))
+            {
+                return;
+            }
+
+            if (ClipboardSetTextOverride is not null)
+            {
+                await ClipboardSetTextOverride(diffText).ConfigureAwait(true);
+                return;
+            }
+
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is null)
+            {
+                return;
+            }
+
+            await clipboard.SetTextAsync(diffText).ConfigureAwait(true);
+        }
     }
 }

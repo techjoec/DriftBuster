@@ -202,6 +202,35 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <Border Background="{DynamicResource Brush.SurfaceAlt}"
+                            BorderBrush="{DynamicResource Brush.Border}"
+                            BorderThickness="{DynamicResource Thickness.Border}"
+                            CornerRadius="{DynamicResource Radius.Medium}"
+                            Padding="12"
+                            Margin="0,4,0,0"
+                            IsVisible="{Binding HasDiff}">
+                      <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch">
+                          <TextBlock Text="Unified diff" FontWeight="SemiBold" />
+                          <Button Classes="outline"
+                                  Content="Copy diff"
+                                  Tag="{Binding UnifiedDiff}"
+                                  HorizontalAlignment="Right"
+                                  Click="OnCopyDiff" />
+                        </StackPanel>
+                        <ScrollViewer Height="200">
+                          <TextBlock Text="{Binding UnifiedDiff}"
+                                     FontFamily="Consolas"
+                                     TextWrapping="Wrap" />
+                        </ScrollViewer>
+                      </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="No diff output (files are identical)."
+                               Classes="subtitle"
+                               HorizontalAlignment="Center"
+                               IsVisible="{Binding HasDiff, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
                   </StackPanel>
                 </Border>
               </DataTemplate>

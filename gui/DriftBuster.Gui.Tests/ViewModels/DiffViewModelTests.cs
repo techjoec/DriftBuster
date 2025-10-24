@@ -44,6 +44,7 @@ public class DiffViewModelTests
                 ContentType = "text",
                 ContextLines = 2,
             },
+            UnifiedDiff = "--- left.txt\n+++ right.txt\n@@ -1,1 +1,1 @@\n-before text\n+after text",
         };
 
         var service = new FakeDriftbusterService
@@ -78,6 +79,8 @@ public class DiffViewModelTests
         var comparisonView = viewModel.Comparisons.Should().ContainSingle().Subject;
         comparisonView.Title.Should().Be("left.txt → right.txt");
         comparisonView.PlanEntries.Single(p => p.Name == "Mask tokens").Value.Should().Be("secret");
+        comparisonView.HasDiff.Should().BeTrue();
+        comparisonView.UnifiedDiff.Should().Contain("@@");
 
         service.DiffAsyncHandler = (_, _) => Task.FromException<DiffResult>(new IOException("bad"));
 

@@ -70,6 +70,17 @@ namespace DriftBuster.Backend
         };
 
         private static readonly Encoding Utf8 = new UTF8Encoding(false, false);
+        private static readonly HashSet<string> XmlExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".config",
+            ".csproj",
+            ".resx",
+            ".targets",
+            ".vbproj",
+            ".xml",
+            ".xaml",
+            ".xslt",
+        };
         private static readonly IReadOnlyList<HuntRuleDefinition> HuntRules = new[]
         {
             new HuntRuleDefinition(
@@ -248,11 +259,18 @@ namespace DriftBuster.Backend
                 var candidateName = Path.GetFileName(candidatePath);
                 var candidateContent = ReadText(candidatePath);
 
+                var contentType = DetectContentType(baselinePath, candidatePath);
+                var canonicalBefore = CanonicaliseContent(baselineContent, contentType);
+                var canonicalAfter = CanonicaliseContent(candidateContent, contentType);
+                var beforeLines = SplitLines(canonicalBefore);
+                var afterLines = SplitLines(canonicalAfter);
+                var unifiedDiff = BuildUnifiedDiff(beforeLines, afterLines, baselineName, candidateName, 3);
+
                 var plan = new DiffPlan
                 {
-                    Before = baselineContent,
-                    After = candidateContent,
-                    ContentType = "text",
+                    Before = canonicalBefore,
+                    After = canonicalAfter,
+                    ContentType = contentType,
                     FromLabel = baselineName,
                     ToLabel = candidateName,
                     Placeholder = RedactedPlaceholder,
@@ -268,9 +286,10 @@ namespace DriftBuster.Backend
                     {
                         LeftPath = baselinePath,
                         RightPath = candidatePath,
-                        ContentType = "text",
+                        ContentType = contentType,
                         ContextLines = 3,
                     },
+                    UnifiedDiff = unifiedDiff,
                 });
             }
 
@@ -285,6 +304,27 @@ namespace DriftBuster.Backend
             result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
             result.SanitizedJson = JsonSerializer.Serialize(summary, SerializerOptions);
             return result;
+        }
+
+        private static string DetectContentType(string baselinePath, string candidatePath)
+        {
+            if (IsXmlLike(baselinePath) || IsXmlLike(candidatePath))
+            {
+                return "xml";
+            }
+
+            return "text";
+        }
+
+        private static bool IsXmlLike(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+
+            var extension = Path.GetExtension(path);
+            return !string.IsNullOrEmpty(extension) && XmlExtensions.Contains(extension);
         }
 
         private static DiffResultSummary BuildSanitizedSummary(DiffResult result, IReadOnlyList<string?> resolved)
@@ -566,6 +606,161 @@ namespace DriftBuster.Backend
         private static string BuildDiffDigestSeed(string canonicalBefore, string canonicalAfter)
         {
             return $"{canonicalBefore}\n---\n{canonicalAfter}";
+        }
+
+        private static string BuildUnifiedDiff(
+            IReadOnlyList<string> beforeLines,
+            IReadOnlyList<string> afterLines,
+            string fromLabel,
+            string toLabel,
+            int contextLines)
+        {
+            var matcher = new SequenceMatcher(beforeLines, afterLines);
+            var opcodes = matcher.GetOpcodes().ToList();
+            if (opcodes.Count == 0)
+            {
+                return $"--- {fromLabel}\n+++ {toLabel}";
+            }
+
+            var groups = GroupOpcodes(opcodes, contextLines);
+            if (groups.Count == 0)
+            {
+                return $"--- {fromLabel}\n+++ {toLabel}";
+            }
+
+            var builder = new StringBuilder();
+            builder.AppendLine($"--- {fromLabel}");
+            builder.AppendLine($"+++ {toLabel}");
+
+            foreach (var group in groups)
+            {
+                if (group.Count == 0)
+                {
+                    continue;
+                }
+
+                var first = group[0];
+                var last = group[^1];
+                var aStart = first.I1;
+                var aEnd = last.I2;
+                var bStart = first.J1;
+                var bEnd = last.J2;
+                var aLen = Math.Max(aEnd - aStart, 0);
+                var bLen = Math.Max(bEnd - bStart, 0);
+                builder.AppendLine($"@@ -{aStart + 1},{aLen} +{bStart + 1},{bLen} @@");
+
+                foreach (var opcode in group)
+                {
+                    switch (opcode.Tag)
+                    {
+                        case SequenceOperation.Equal:
+                            for (var i = opcode.I1; i < opcode.I2; i++)
+                            {
+                                builder.Append(' ');
+                                builder.AppendLine(beforeLines[i]);
+                            }
+
+                            break;
+                        case SequenceOperation.Delete:
+                            for (var i = opcode.I1; i < opcode.I2; i++)
+                            {
+                                builder.Append('-');
+                                builder.AppendLine(beforeLines[i]);
+                            }
+
+                            break;
+                        case SequenceOperation.Insert:
+                            for (var j = opcode.J1; j < opcode.J2; j++)
+                            {
+                                builder.Append('+');
+                                builder.AppendLine(afterLines[j]);
+                            }
+
+                            break;
+                        case SequenceOperation.Replace:
+                            for (var i = opcode.I1; i < opcode.I2; i++)
+                            {
+                                builder.Append('-');
+                                builder.AppendLine(beforeLines[i]);
+                            }
+
+                            for (var j = opcode.J1; j < opcode.J2; j++)
+                            {
+                                builder.Append('+');
+                                builder.AppendLine(afterLines[j]);
+                            }
+
+                            break;
+                    }
+                }
+            }
+
+            return builder.ToString().TrimEnd('\r', '\n');
+        }
+
+        private static List<List<SequenceOpcode>> GroupOpcodes(
+            List<SequenceOpcode> opcodes,
+            int contextLines)
+        {
+            var groups = new List<List<SequenceOpcode>>();
+            var group = new List<SequenceOpcode>();
+            var context = Math.Max(contextLines, 0);
+            var doubleContext = context * 2;
+
+            foreach (var opcode in opcodes)
+            {
+                var tag = opcode.Tag;
+                var i1 = opcode.I1;
+                var i2 = opcode.I2;
+                var j1 = opcode.J1;
+                var j2 = opcode.J2;
+
+                if (tag == SequenceOperation.Equal && i2 - i1 > doubleContext)
+                {
+                    group.Add(new SequenceOpcode(tag, i1, i1 + context, j1, j1 + context));
+                    if (group.Count > 0)
+                    {
+                        groups.Add(group);
+                    }
+
+                    group = new List<SequenceOpcode>();
+                    i1 = Math.Max(i2 - context, i1);
+                    j1 = Math.Max(j2 - context, j1);
+                }
+
+                group.Add(new SequenceOpcode(tag, i1, i2, j1, j2));
+            }
+
+            if (group.Count > 0)
+            {
+                groups.Add(group);
+            }
+
+            if (groups.Count == 0)
+            {
+                return groups;
+            }
+
+            var first = groups[0];
+            if (first.Count > 0 && first[0].Tag == SequenceOperation.Equal)
+            {
+                var op = first[0];
+                var startI = Math.Max(op.I2 - context, op.I1);
+                var startJ = Math.Max(op.J2 - context, op.J1);
+                first[0] = new SequenceOpcode(op.Tag, startI, op.I2, startJ, op.J2);
+            }
+
+            var last = groups[^1];
+            if (last.Count > 0 && last[^1].Tag == SequenceOperation.Equal)
+            {
+                var op = last[^1];
+                var endI = Math.Min(op.I1 + context, op.I2);
+                var endJ = Math.Min(op.J1 + context, op.J2);
+                last[^1] = new SequenceOpcode(op.Tag, op.I1, endI, op.J1, endJ);
+            }
+
+            groups.RemoveAll(g => g.All(op => op.Tag == SequenceOperation.Equal));
+            return groups;
         }
 
         private static DiffStats ComputeDiffStats(IReadOnlyList<string> beforeLines, IReadOnlyList<string> afterLines)
