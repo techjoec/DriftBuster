@@ -327,6 +327,9 @@ def test_cli_writes_summary_payload(
     assert metrics["remainingLogs"] == 1
     assert metrics["maxLogFiles"] is None
     assert metrics["maxLogAgeSeconds"] is None
+    assert metrics["deletedByCountFiles"] == []
+    assert metrics["deletedByAgeFiles"] == []
+    assert metrics["deletedFiles"] == []
 
 
 def test_cli_respects_retention_metrics_path_override(
@@ -360,6 +363,9 @@ def test_cli_respects_retention_metrics_path_override(
     metrics = json.loads(override_path.read_text())
     assert metrics["remainingLogs"] == 1
     assert metrics["deletedTotal"] == 0
+    assert metrics["deletedByCountFiles"] == []
+    assert metrics["deletedByAgeFiles"] == []
+    assert metrics["deletedFiles"] == []
 
     default_metrics = log_dir / "font-retention-metrics.json"
     assert not default_metrics.exists()
@@ -454,6 +460,13 @@ def test_cli_prunes_old_logs_when_max_log_files_set(
     assert metrics["remainingLogs"] == 2
     assert metrics["maxLogFiles"] == 2
     assert metrics["maxLogAgeSeconds"] is None
+    assert metrics["deletedByCountFiles"] == [
+        "font-staleness-20251023T060533Z.json"
+    ]
+    assert metrics["deletedByAgeFiles"] == []
+    assert metrics["deletedFiles"] == [
+        {"path": "font-staleness-20251023T060533Z.json", "reason": "count"}
+    ]
 
 
 def test_format_retention_summary_formats_values() -> None:
@@ -526,6 +539,13 @@ def test_cli_prunes_logs_older_than_max_log_age(
     assert metrics["remainingLogs"] == 2
     assert metrics["maxLogFiles"] is None
     assert metrics["maxLogAgeSeconds"] == pytest.approx(0.0166667 * 3600, rel=1e-6)
+    assert metrics["deletedByCountFiles"] == []
+    assert metrics["deletedByAgeFiles"] == [
+        "font-staleness-20251023T060533Z.json"
+    ]
+    assert metrics["deletedFiles"] == [
+        {"path": "font-staleness-20251023T060533Z.json", "reason": "age"}
+    ]
 
 
 def test_cli_can_disable_retention_metrics_file(
@@ -610,6 +630,13 @@ def test_cli_max_log_files_zero_removes_all_event_logs(
     assert metrics["remainingLogs"] == 0
     assert metrics["maxLogFiles"] == 0
     assert metrics["maxLogAgeSeconds"] is None
+    assert metrics["deletedByCountFiles"] == [
+        "font-staleness-20251023T060533Z.json"
+    ]
+    assert metrics["deletedByAgeFiles"] == []
+    assert metrics["deletedFiles"] == [
+        {"path": "font-staleness-20251023T060533Z.json", "reason": "count"}
+    ]
 
 
 def test_cli_log_dir_override_takes_precedence(

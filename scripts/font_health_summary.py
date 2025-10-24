@@ -5,7 +5,7 @@ import argparse
 import json
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -265,10 +265,24 @@ class _RetentionMetrics:
     deleted_by_count: int = 0
     deleted_by_age: int = 0
     remaining_logs: int = 0
+    deleted_by_count_files: list[str] = field(default_factory=list)
+    deleted_by_age_files: list[str] = field(default_factory=list)
 
     @property
     def total_deleted(self) -> int:
         return self.deleted_by_count + self.deleted_by_age
+
+    @property
+    def deleted_files(self) -> list[dict[str, str]]:
+        entries: list[dict[str, str]] = [
+            {"path": name, "reason": "count"}
+            for name in self.deleted_by_count_files
+        ]
+        entries.extend(
+            {"path": name, "reason": "age"}
+            for name in self.deleted_by_age_files
+        )
+        return entries
 
 
 def _prune_old_logs(
@@ -279,19 +293,23 @@ def _prune_old_logs(
     now: datetime | None = None,
 ) -> _RetentionMetrics:
     deleted_by_count = 0
+    deleted_by_count_files: list[str] = []
     if keep is not None:
         candidates = _event_log_candidates(log_dir)
         if keep <= 0:
             for path in candidates:
                 path.unlink(missing_ok=True)
                 deleted_by_count += 1
+                deleted_by_count_files.append(path.name)
         else:
             excess = len(candidates) - keep
             for path in candidates[: max(excess, 0)]:
                 path.unlink(missing_ok=True)
                 deleted_by_count += 1
+                deleted_by_count_files.append(path.name)
 
     deleted_by_age = 0
+    deleted_by_age_files: list[str] = []
     if max_age is not None:
         if now is None:
             now = datetime.now(timezone.utc)
@@ -307,12 +325,15 @@ def _prune_old_logs(
             if timestamp < cutoff:
                 path.unlink(missing_ok=True)
                 deleted_by_age += 1
+                deleted_by_age_files.append(path.name)
 
     remaining_logs = len(_event_log_candidates(log_dir))
     return _RetentionMetrics(
         deleted_by_count=deleted_by_count,
         deleted_by_age=deleted_by_age,
         remaining_logs=remaining_logs,
+        deleted_by_count_files=deleted_by_count_files,
+        deleted_by_age_files=deleted_by_age_files,
     )
 
 
@@ -405,6 +426,9 @@ def _write_staleness_event(
         "deletedByAge": retention_metrics.deleted_by_age,
         "deletedTotal": retention_metrics.total_deleted,
         "remainingLogs": retention_metrics.remaining_logs,
+        "deletedByCountFiles": retention_metrics.deleted_by_count_files,
+        "deletedByAgeFiles": retention_metrics.deleted_by_age_files,
+        "deletedFiles": retention_metrics.deleted_files,
     }
     if retention_metrics_path is not None:
         retention_metrics_path.parent.mkdir(parents=True, exist_ok=True)

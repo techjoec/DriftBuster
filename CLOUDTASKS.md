@@ -12,6 +12,26 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g++++++++. Font Telemetry Retention Audit Trails [deps=A0g+++++++]
+
+**REASON:** Retention metrics alone lacked artifact-level evidence, making it hard to prove which
+logs were removed during pruning reviews.
+
+**MUST NOT:** Alter existing deletion counts or change default retention behaviour.
+
+**MUST:** Capture deleted filenames with reasons, expose them through retention payloads, and
+update operator guidance.
+
+**ACCEPT GATES:** Metrics enumerate deleted logs with reasons, CLI tests pin the structure, and
+docs tell reviewers how to leverage the data.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.22 Expand retention metrics audit data.
+  - [x] 0.22.1 Track deleted filenames in `_RetentionMetrics` and expose aggregated `deletedFiles`.
+  - [x] 0.22.2 Surface filename data in retention payloads so JSON exports capture the audit trail.
+  - [x] 0.22.3 Extend regression coverage in `tests/scripts/test_font_health_summary.py` for the new fields.
+  - [x] 0.22.4 Document filename tracking expectations in `docs/font-telemetry.md`.
+
 ## A0g+++++++. Font Telemetry Retention Metrics Redirect [deps=A0g++++++]
 
 **REASON:** Operators archiving investigation bundles need deterministic control over where
