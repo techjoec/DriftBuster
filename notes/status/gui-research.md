@@ -61,6 +61,13 @@
 - `PerformanceProfile` reads `DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD` (default **400**) and `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION` overrides so headless fixtures and the GUI can align on the same heuristics.
 - `PerformanceSmokeTests` exercises the environment overrides plus the toast queue burst, asserting dispatcher posts collapse to two passes (show + dismiss) for 200 synthetic notifications.
 
+### Performance diagnostics baseline (A3.1)
+
+- `python scripts/perf_diagnostics.py` executes the perf-smoke subset and exports `artifacts/perf/baseline.json`, capturing the TRX snippet plus virtualization projections for default and forced overrides. The 2025-10-24 run stamped **13:01:12Z** against commit `6835c6a1d41351f4b5f8130eb4b11525ccb45800` with an exit code of zero.
+- Perf smoke timings stayed tiny: environment override check completed in **1.9 ms** while the toast burst harness drained in **49.5 ms**, confirming the dispatcher queue still collapses 200 notifications into a single UI post followed by the dismissal sweep.
+- Fixture census shows the bundled multi-server sample spans **10 hosts / 37 config files** (max **5** per host), so virtualization will only trigger on synthetic or production payloads. The projection table in the baseline covers counts from 2→1600 entries, with the default **400** threshold flipping to `true` at 400+.
+- Forced overrides remain deterministic: the baseline stores precomputed matrices for `force=true` (always virtualise) and `force=false` (never virtualise), making it trivial to compare operator overrides against the default heuristics before shipping changes.
+
 ### Headless font issues (A1d)
 
 - Pre-fix failures hit both the Release `MainWindow` smoke test and the drilldown view instantiation path because Avalonia attempted to resolve `fonts:SystemFonts` before any headless locator bindings existed. The captured stack trace remains in [`artifacts/logs/headless-font-release-stacktrace.txt`](../../artifacts/logs/headless-font-release-stacktrace.txt) for release window crashes, while the matching drilldown failure reproduced under `[Collection(HeadlessCollection.Name)]` until the bootstrap landed.

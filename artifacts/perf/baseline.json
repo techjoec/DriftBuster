@@ -1,0 +1,252 @@
+{
+  "captured_at_utc": "2025-10-24T13:01:12Z",
+  "fixtures": {
+    "multi_server": {
+      "available": true,
+      "host_count": 10,
+      "hosts": [
+        {
+          "file_count": 5,
+          "name": "server01"
+        },
+        {
+          "file_count": 5,
+          "name": "server02"
+        },
+        {
+          "file_count": 5,
+          "name": "server03"
+        },
+        {
+          "file_count": 3,
+          "name": "server04"
+        },
+        {
+          "file_count": 4,
+          "name": "server05"
+        },
+        {
+          "file_count": 3,
+          "name": "server06"
+        },
+        {
+          "file_count": 4,
+          "name": "server07"
+        },
+        {
+          "file_count": 3,
+          "name": "server08"
+        },
+        {
+          "file_count": 3,
+          "name": "server09"
+        },
+        {
+          "file_count": 2,
+          "name": "server10"
+        }
+      ],
+      "max_files_per_host": 5,
+      "min_files_per_host": 2,
+      "total_files": 37
+    }
+  },
+  "git_head": "6835c6a1d41351f4b5f8130eb4b11525ccb45800",
+  "perf_smoke": {
+    "command": "dotnet test /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter Category=PerfSmoke --logger 'trx;LogFileName=perf-smoke.trx' --results-directory /tmp/tmp6y4xvf1v",
+    "exit_code": 0,
+    "log_excerpt": [
+      "Determining projects to restore...",
+      "  All projects are up-to-date for restore.",
+      "  DriftBuster.Backend -> /workspace/DriftBuster/gui/DriftBuster.Backend/bin/Debug/net8.0/DriftBuster.Backend.dll",
+      "  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Debug/net8.0/DriftBuster.Gui.dll",
+      "  DriftBuster.Gui.Tests -> /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Debug/net8.0/DriftBuster.Gui.Tests.dll",
+      "Test run for /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Debug/net8.0/DriftBuster.Gui.Tests.dll (.NETCoreApp,Version=v8.0)",
+      "Microsoft (R) Test Execution Command Line Tool Version 17.8.0 (x64)",
+      "Copyright (c) Microsoft Corporation.  All rights reserved.",
+      "Starting test execution, please wait...",
+      "A total of 1 test files matched the specified pattern.",
+      "Results File: /tmp/tmp6y4xvf1v/perf-smoke.trx",
+      "Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 4 ms - DriftBuster.Gui.Tests.dll (net8.0)"
+    ],
+    "results": [
+      {
+        "duration_seconds": 0.0019228,
+        "name": "DriftBuster.Gui.Tests.Ui.PerformanceSmokeTests.PerformanceProfile_respects_environment_overrides",
+        "outcome": "Passed"
+      },
+      {
+        "duration_seconds": 0.0494652,
+        "name": "DriftBuster.Gui.Tests.Ui.PerformanceSmokeTests.ToastService_batches_dispatcher_work_during_burst",
+        "outcome": "Passed"
+      }
+    ],
+    "total_duration_seconds": 0.051388
+  },
+  "virtualization": {
+    "default_threshold": 400,
+    "force_override": null,
+    "scenarios": [
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 2,
+        "virtualized": false
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 3,
+        "virtualized": false
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 4,
+        "virtualized": false
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 5,
+        "virtualized": false
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 50,
+        "virtualized": false
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 200,
+        "virtualized": false
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 400,
+        "virtualized": true
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 512,
+        "virtualized": true
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 750,
+        "virtualized": true
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 1024,
+        "virtualized": true
+      },
+      {
+        "applied_threshold": 400,
+        "force_override": null,
+        "items": 1600,
+        "virtualized": true
+      }
+    ],
+    "with_force_override": {
+      "force_false": [
+        {
+          "items": 2,
+          "virtualized": false
+        },
+        {
+          "items": 3,
+          "virtualized": false
+        },
+        {
+          "items": 4,
+          "virtualized": false
+        },
+        {
+          "items": 5,
+          "virtualized": false
+        },
+        {
+          "items": 50,
+          "virtualized": false
+        },
+        {
+          "items": 200,
+          "virtualized": false
+        },
+        {
+          "items": 400,
+          "virtualized": false
+        },
+        {
+          "items": 512,
+          "virtualized": false
+        },
+        {
+          "items": 750,
+          "virtualized": false
+        },
+        {
+          "items": 1024,
+          "virtualized": false
+        },
+        {
+          "items": 1600,
+          "virtualized": false
+        }
+      ],
+      "force_true": [
+        {
+          "items": 2,
+          "virtualized": true
+        },
+        {
+          "items": 3,
+          "virtualized": true
+        },
+        {
+          "items": 4,
+          "virtualized": true
+        },
+        {
+          "items": 5,
+          "virtualized": true
+        },
+        {
+          "items": 50,
+          "virtualized": true
+        },
+        {
+          "items": 200,
+          "virtualized": true
+        },
+        {
+          "items": 400,
+          "virtualized": true
+        },
+        {
+          "items": 512,
+          "virtualized": true
+        },
+        {
+          "items": 750,
+          "virtualized": true
+        },
+        {
+          "items": 1024,
+          "virtualized": true
+        },
+        {
+          "items": 1600,
+          "virtualized": true
+        }
+      ]
+    }
+  }
+}

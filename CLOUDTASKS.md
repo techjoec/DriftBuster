@@ -300,10 +300,10 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Baseline metrics recorded; virtualization toggles documented; perf harness integrated into `scripts/verify_coverage.sh`.
 
 **REQUIRED RELATED WORK:**
-- [ ] 3.1 Capture baseline diagnostics.
-  - [ ] 3.1.1 Run Avalonia diagnostics on large fixture scans and log results in `notes/status/gui-research.md`.
-  - [ ] 3.1.2 Add guidance to `docs/windows-gui-guide.md#performance`.
-  - [ ] 3.1.3 Store raw diagnostics export under `artifacts/perf/baseline.json`.
+- [x] 3.1 Capture baseline diagnostics.
+  - [x] 3.1.1 Run Avalonia diagnostics on large fixture scans and log results in `notes/status/gui-research.md`.
+  - [x] 3.1.2 Add guidance to `docs/windows-gui-guide.md#performance`.
+  - [x] 3.1.3 Store raw diagnostics export under `artifacts/perf/baseline.json`.
 - [ ] 3.2 Introduce virtualization.
   - [x] 3.2.1 Apply `ItemsRepeater` + `VirtualizingStackPanel` to high-volume views in `gui/DriftBuster.Gui/Views/ResultsCatalogView.axaml` and `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml`.
   - [x] 3.2.2 Guard virtualization behind heuristics in `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`.

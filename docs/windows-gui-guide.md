@@ -139,6 +139,14 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Set `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION=true` to keep virtualization enabled even for tiny host counts when you want to minimise viewport footprint or avoid re-layout churn after toggling filters.
 - Overrides are read on startup; update the environment variable, restart the shell, then relaunch the GUI to apply changes. Logged heuristics and the active override value appear in the performance smoke artefact under `artifacts/perf/` for future audits.
 
+## Performance
+
+- Run `python scripts/perf_diagnostics.py` to capture the lightweight perf-smoke suite (`Category=PerfSmoke`) and export a JSON baseline to `artifacts/perf/baseline.json`.
+- The export records the executed `dotnet test` command, outcomes, and durations for each perf case. Successful runs keep both checks under **60 ms** (environment override in ~2 ms, toast burst harness in ~50 ms) so dispatcher batching remains intact.
+- The JSON payload also includes a virtualization projection table. Counts below the default **400** threshold stay on the simpler list layout, while synthetic scenarios at **400+** flip to virtualisation; precomputed matrices for `force=true` / `force=false` demonstrate how overrides change that behaviour.
+- Multi-server fixture statistics (10 hosts / 37 config files in the bundled sample) live alongside the perf data, helping you estimate whether upcoming runs will trip the virtualization threshold.
+- Re-run the script after tweaking thresholds or toast batching logic and compare the resulting `captured_at_utc` stamps plus projections to confirm behavioural drift before shipping changes.
+
 ## 8. Backend Bridge
 - `DriftbusterService` instantiates the shared `DriftbusterBackend` class and executes diff, hunt, and run-profile operations in-process.
 - Diff calls load file contents, build the same JSON payload exposed to the UI, and reuse the shared models for plan metadata.
