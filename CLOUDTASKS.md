@@ -12,6 +12,28 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g+++++. Font Telemetry Log Age Retention [deps=A0g++++]
+
+**REASON:** Operators now cap log counts, but forensic reviews still need a deterministic way to
+drop stale JSON events once they exceed a retention window.
+
+**MUST NOT:** Delete the aggregated summary snapshot or bypass existing count-based pruning.
+
+**MUST:** Provide an age-based retention switch, ensure combined switches behave predictably, and
+update operator guidance.
+
+**ACCEPT GATES:** Age flag deletes stale events while preserving fresh telemetry, coverage exercises
+negative and positive paths, and docs capture usage plus review expectations.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.19 Add `--max-log-age-hours` pruning to `scripts/font_health_summary.py`.
+  - [x] 0.19.1 Cover age-pruning scenarios (retention, disabled, interaction) in
+        `tests/scripts/test_font_health_summary.py`.
+  - [x] 0.19.2 Document the age retention workflow in `docs/font-telemetry.md` and
+        `notes/status/font-telemetry.md`.
+  - [ ] 0.19.3 Prototype a retention metrics sampler in `scripts/font_health_summary.py` to report
+        deleted counts for future automation.
+
 ## A0g++++. Font Telemetry Log Retention Controls [deps=A0g+++]
 
 **REASON:** Event logs accumulate quickly in sandboxed triage environments, so operators need a

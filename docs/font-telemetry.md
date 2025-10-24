@@ -56,6 +56,11 @@ artifact retention needs to stay within a fixed window. Passing `0` deletes the 
 just written (the aggregated summary remains) so that operators can rely solely on the summary
 snapshot when necessary.
 
+When retention should be based on age rather than count, pass `--max-log-age-hours <hours>`.
+DriftBuster prunes any structured event logs older than the supplied window while keeping the
+fresh summary snapshot in place. Combine the count and age switches to enforce whichever limit is
+tighter for the current investigation.
+
 Include the latest JSON log when filing investigations so reviewers can replay configuration and
 scenario metadata without rerunning telemetry.
 

@@ -86,6 +86,15 @@ def build_parser() -> argparse.ArgumentParser:
             "Older files are pruned after writing a new event."
         ),
     )
+    parser.add_argument(
+        "--max-log-age-hours",
+        type=float,
+        default=None,
+        help=(
+            "Maximum age in hours for staleness event logs. "
+            "Older files are pruned after writing a new event."
+        ),
+    )
     return parser
 
 
@@ -204,14 +213,8 @@ def _build_summary_payload(
     }
 
 
-def _prune_old_logs(log_dir: Path, *, keep: int) -> None:
-    if keep <= 0:
-        for path in log_dir.glob("font-staleness-*.json"):
-            if "-summary" not in path.name:
-                path.unlink(missing_ok=True)
-        return
-
-    candidates = sorted(
+def _event_log_candidates(log_dir: Path) -> list[Path]:
+    return sorted(
         (
             path
             for path in log_dir.glob("font-staleness-*.json")
@@ -219,12 +222,56 @@ def _prune_old_logs(log_dir: Path, *, keep: int) -> None:
         ),
         key=lambda path: path.name,
     )
-    excess = len(candidates) - keep
-    if excess <= 0:
+
+
+def _parse_event_timestamp(path: Path) -> datetime | None:
+    name = path.name
+    if not name.endswith(".json"):
+        return None
+    stem = name[:-5]
+    prefix = "font-staleness-"
+    if not stem.startswith(prefix):
+        return None
+    token = stem[len(prefix) :]
+    try:
+        return datetime.strptime(token, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _prune_old_logs(
+    log_dir: Path,
+    *,
+    keep: int | None = None,
+    max_age: timedelta | None = None,
+    now: datetime | None = None,
+) -> None:
+    if keep is not None:
+        candidates = _event_log_candidates(log_dir)
+        if keep <= 0:
+            for path in candidates:
+                path.unlink(missing_ok=True)
+        else:
+            excess = len(candidates) - keep
+            for path in candidates[: max(excess, 0)]:
+                path.unlink(missing_ok=True)
+
+    if max_age is None:
         return
 
-    for path in candidates[:excess]:
-        path.unlink(missing_ok=True)
+    if now is None:
+        now = datetime.now(timezone.utc)
+
+    cutoff = _coerce_utc(now) - max_age
+    if max_age <= timedelta(0):
+        cutoff = _coerce_utc(now)
+
+    for path in _event_log_candidates(log_dir):
+        timestamp = _parse_event_timestamp(path)
+        if timestamp is None:
+            timestamp = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        if timestamp < cutoff:
+            path.unlink(missing_ok=True)
 
 
 def _write_staleness_event(
@@ -239,6 +286,7 @@ def _write_staleness_event(
     log_dir: Path,
     summary_path: Path | None,
     max_log_files: int | None,
+    max_log_age: timedelta | None,
 ) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -265,8 +313,16 @@ def _write_staleness_event(
     destination = log_dir / f"font-staleness-{timestamp}.json"
     destination.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
-    if max_log_files is not None and max_log_files >= 0:
-        _prune_old_logs(log_dir, keep=max_log_files)
+    keep = max_log_files if max_log_files is not None else None
+    if keep is not None and keep < 0:
+        keep = None
+
+    _prune_old_logs(
+        log_dir,
+        keep=keep,
+        max_age=max_log_age,
+        now=evaluation_time,
+    )
 
     if summary_path is not None:
         summary_payload = _build_summary_payload(
@@ -318,6 +374,11 @@ def _emit_staleness_event(
             log_dir=log_dir,
             summary_path=summary_path,
             max_log_files=args.max_log_files,
+            max_log_age=(
+                timedelta(hours=args.max_log_age_hours)
+                if args.max_log_age_hours is not None
+                else None
+            ),
         )
     except Exception as exc:  # pragma: no cover - defensive guard
         print(f"warning: failed to write staleness log: {exc}", file=sys.stderr)
@@ -336,6 +397,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--max-stale-hours must be non-negative")
     if args.max_log_files is not None and args.max_log_files < 0:
         parser.error("--max-log-files must be non-negative")
+    if args.max_log_age_hours is not None and args.max_log_age_hours < 0:
+        parser.error("--max-log-age-hours must be non-negative")
 
     max_age = (
         timedelta(hours=args.max_stale_hours)

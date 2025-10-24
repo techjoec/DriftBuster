@@ -249,6 +249,17 @@ def test_cli_rejects_negative_max_log_files(sample_payload: Path, capsys: pytest
     assert "--max-log-files must be non-negative" in err
 
 
+def test_cli_rejects_negative_max_log_age_hours(sample_payload: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        font_health_summary.main(
+            [str(sample_payload), "--max-log-age-hours", "-1"]
+        )
+
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "--max-log-age-hours must be non-negative" in err
+
+
 def test_cli_emits_structured_staleness_log(
     sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -353,6 +364,51 @@ def test_cli_prunes_old_logs_when_max_log_files_set(
     assert len(event_logs) == 2
     assert all(path.name.endswith("Z.json") for path in event_logs)
     assert event_logs[0].name.endswith("060533Z.json") is False
+
+    summary_path = log_dir / "font-staleness-summary.json"
+    assert summary_path.is_file()
+
+
+def test_cli_prunes_logs_older_than_max_log_age(
+    sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    log_dir.mkdir()
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+
+    (log_dir / "font-staleness-20251023T060533Z.json").write_text("{}\n")
+    (log_dir / "font-staleness-20251023T060700Z.json").write_text("{}\n")
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            moment = datetime(2025, 10, 23, 6, 7, 33, tzinfo=timezone.utc)
+            if tz is not None:
+                return moment.astimezone(tz)
+            return moment
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+            "--max-log-age-hours",
+            "0.0166667",
+        ]
+    )
+
+    remaining_logs = sorted(
+        path.name
+        for path in log_dir.glob("font-staleness-*.json")
+        if "-summary" not in path.name
+    )
+
+    assert remaining_logs == [
+        "font-staleness-20251023T060700Z.json",
+        "font-staleness-20251023T060733Z.json",
+    ]
 
     summary_path = log_dir / "font-staleness-summary.json"
     assert summary_path.is_file()
