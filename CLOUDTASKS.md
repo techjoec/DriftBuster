@@ -731,11 +731,17 @@ highlight where to consume the artifact.
   - [x] 11.6.3 Update `notes/checklists/reporting-tests.md` with cleanup steps.
   - [x] 11.6.4 Ensure capture workflow guidance in `docs/testing-strategy.md` and `notes/checklists/capture.md` stays in sync with script updates.
   - Notes (2025-11-12): Added capture schema docstring + helpers, enforced metadata guardrails, and refreshed capture/reporting checklists with schema version cleanup guidance.
-- [ ] 11.7 Compliance & retention.
-  - [ ] 11.7.1 Outline retention limits (30 days) in docs.
-  - [ ] 11.7.2 Add purge scripts/checklist entries in `notes/checklists/legal-review.md`.
-  - [ ] 11.7.3 Record manual audit steps to confirm placeholder usage.
-  - [ ] 11.7.4 Log audit evidence in `notes/checklists/legal-review.md` with sign-off initials.
+- [x] 11.7 Compliance & retention.
+  - [x] 11.7.1 Outline retention limits (30 days) in docs.
+    - Notes (2025-11-13): Expanded retention section in `docs/legal-safeguards.md` with 30-day cap,
+      purge script workflow, and placeholder audit checklist.
+  - [x] 11.7.2 Add purge scripts/checklist entries in `notes/checklists/legal-review.md`.
+    - Notes (2025-11-13): Added `scripts/purge_reporting_retention.py` dry-run reference and step-by-step
+      purge checklist covering transcript storage.
+  - [x] 11.7.3 Record manual audit steps to confirm placeholder usage.
+    - Notes (2025-11-13): Logged audit procedure verifying `[REDACTED]` across JSON/HTML/diff artefacts.
+  - [x] 11.7.4 Log audit evidence in `notes/checklists/legal-review.md` with sign-off initials.
+    - Notes (2025-11-13): Captured purge rehearsal row with MP sign-off and transcript location.
 - [ ] 11.8 Open questions.
   - [ ] 11.8.1 Resolve safe diff content thresholds.
   - [ ] 11.8.2 Decide on canonicalisation options (sorted keys) with tests.

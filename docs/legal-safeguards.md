@@ -107,13 +107,24 @@ These guardrails cover every feature, note, and capture helper.
 
 ## Retention
 
-- Default retention window for database snapshots is **30 days** unless a
-  documented investigation requires an extension. Extensions must include a new
-  expiry date and the reason for holding the artefact.
+- Default retention window for database snapshots and reporting artefacts is
+  **30 days** unless a documented investigation requires an extension.
+  Extensions must include a new expiry date, responsible owner, and the reason
+  for holding the artefact.
+- Run `python scripts/purge_reporting_retention.py captures/ artifacts/reporting/`
+  every review cycle to list purge candidates. Re-run with `--confirm` only
+  after updating `notes/checklists/legal-review.md` with the planned deletions
+  and the operator initials approving the purge.
+- During manual audits, spot-check JSON/HTML/diff outputs for the `[REDACTED]`
+  placeholder before deleting artefacts. Record the filenames inspected,
+  confirm placeholder usage, and store the evidence summary in the legal review
+  log.
 - Track retention decisions in `notes/checklists/legal-review.md` alongside the
-  scenario that produced the snapshot.
-- Purge expired exports and their manifests, checksum files, and scratch
-  directories. Record the purge completion in the same log entry.
+  scenario that produced each artefact and note when purge scripts were
+  executed.
+- Purge expired exports plus their manifests, checksum files, and scratch
+  directories. Record the purge completion in the same log entry along with the
+  command that performed the deletion.
 - When sharing artefacts externally, duplicate them into a fresh directory and
   re-run masking to avoid reusing long-lived copies.
 

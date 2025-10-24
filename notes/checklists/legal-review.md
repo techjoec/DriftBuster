@@ -11,6 +11,7 @@ follow-up questions.
 | 2025-10-23 | SQL snapshot export masked ``accounts.secret`` and hashed ``accounts.email``. | `sql-manifest.json` lists policies per column; inspected masked rows for completeness. | N/A | N/A | Stored export under restricted `captures/sql-exports/2025-10-23/` with checksum pair in `artifacts/sql/`; retention expiry set for 2025-11-22. |
 | 2025-10-28 | Diff planner MRU telemetry captured sanitized payload rejection + replay confirmation. | `artifacts/logs/diff-planner-mru-telemetry.json` records sanitized summary digests only. | N/A | N/A | MRU cache capped at ten entries under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/`; retention note logged, no raw payloads persisted. |
 | 2025-10-31 | Reporting hold-exit evidence bundle (compile/lint verification). | `artifacts/hold-exit/compile-lint.txt` hashed via `verification-2025-10-31.sha256`. | N/A | N/A | Mirrored to restricted share `captures/reporting-hold/2025-10-31/`; purge scheduled for 2025-11-30 with owner rotation noted below. |
+| 2025-11-13 | Reporting artefact purge rehearsal. | `python scripts/purge_reporting_retention.py captures/ artifacts/reporting/` dry-run transcript stored in `artifacts/reporting/purge-dryrun-2025-11-13.txt`. | Spot-checked `report.html` confirms `[REDACTED]` placeholders. | Diff sample `web-config.patch` verified for token masking. | MP (sign-off) confirmed purge candidates and placeholder audit before recording approvals. |
 
 ## Sample review log
 
@@ -22,6 +23,20 @@ follow-up questions.
   with checksum bundle stored in `artifacts/sql/2025-10-23/` and purge due on
   2025-11-22.
 - No additional redaction passes required.
+- 2025-11-13 audit steps: (1) Run purge script in dry-run mode, (2) inspect `config-scan.jsonl`,
+  `report.html`, and `web-config.patch` for `[REDACTED]` placeholders, (3) capture transcript and
+  file checksums before confirming deletion window.
+
+## Retention purge checklist
+
+1. Run `python scripts/purge_reporting_retention.py captures/ artifacts/reporting/` without
+   `--confirm` and save the transcript under `artifacts/reporting/` with the current date.
+2. Verify each candidate's JSON/HTML/diff outputs retain `[REDACTED]` placeholders and note the
+   files inspected in this log with initials.
+3. Update the scenario table with the purge date, transcript path, and the reviewer who approved
+   the deletion window.
+4. Re-run the purge command with `--confirm` only after completing the documentation steps above
+   and recording the retention owner for any directories that remain on hold.
 
 ## Windows packaging security review log
 
