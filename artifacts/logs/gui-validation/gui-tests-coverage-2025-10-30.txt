@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  DriftBuster.Backend -> /workspace/DriftBuster/gui/DriftBuster.Backend/bin/Debug/net8.0/DriftBuster.Backend.dll
+  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Debug/net8.0/DriftBuster.Gui.dll
+  DriftBuster.Gui.Tests -> /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Debug/net8.0/DriftBuster.Gui.Tests.dll
+Test run for /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Debug/net8.0/DriftBuster.Gui.Tests.dll (.NETCoreApp,Version=v8.0)
+Microsoft (R) Test Execution Command Line Tool Version 17.8.0 (x64)
+Copyright (c) Microsoft Corporation.  All rights reserved.
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   155, Skipped:     0, Total:   155, Duration: 4 s - DriftBuster.Gui.Tests.dll (net8.0)

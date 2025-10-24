@@ -422,7 +422,7 @@ highlight where to consume the artifact.
 **REQUIRED RELATED WORK:**
 - [ ] 6.1 Coverage enforcement.
   - [x] 6.1.1 Run `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`.
-  - [ ] 6.1.2 Execute `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`.
+- [x] 6.1.2 Execute `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`.
   - [x] 6.1.3 Capture combined summary via `python -m scripts.coverage_report`.
   - [x] 6.1.4 Store coverage artefacts (HTML, XML) under `artifacts/coverage/final/`.
 - [ ] 6.2 Smoke & manual runs.

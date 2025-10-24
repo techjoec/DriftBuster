@@ -123,6 +123,10 @@
 - Running `python -m scripts.coverage_report` after the GUI runs flags "Cobertura XML not found" because the failing .NET suites are not emitting coverage output yet; regenerate the Coverage XML once the headless glyph fixes allow green Release/Debug sweeps.
 - Latest release rerun (`dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`) passes now that `Program.EnsureHeadless` rebinds the headless font proxy even when an `App` instance already exists. The smoke tests confirm `fonts:SystemFonts` and `fonts:SystemFonts#Inter` resolve during reinitialisation, unblocking the coverage sweep follow-ups.
 
+#### 2025-10-30 coverage enforcement sweep (A6.1.2)
+
+- `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` (Debug) — ✅ `coverlet.collector` reported 155 passing tests without tripping the 90 % line-coverage gate. Console transcript stored at `artifacts/logs/gui-validation/gui-tests-coverage-2025-10-30.txt` for the release evidence bundle.
+
 ### Fontmanager regression
 
 - Captured the latest Release-mode failure showing `FontManagerImpl.TryCreateGlyphTypeface` rejecting the `fonts:SystemFonts#Inter` alias when Avalonia boots without the proxy fallbacks enabled. The trace is archived in [`artifacts/logs/fontmanager-regression.txt`](../../artifacts/logs/fontmanager-regression.txt) so we can diff future stack signatures.
