@@ -8,6 +8,10 @@
   - Log both the `DiffPlan` and `plan_to_kwargs` output via
     `driftbuster.core.diffing`. Feed the resulting kwargs into
     `build_unified_diff` manually so the blueprint stays in sync.
+  - Note the canonicalisation rationale while reviewing output: text inputs
+    strip BOM/unicode newline noise, XML prologs/doctype blocks are preserved,
+    attributes are sorted, and whitespace-only nodes collapse before diffs are
+    generated.
   - Combine every generated `DiffResult` with
     `driftbuster.reporting.diff.summarise_diff_results` and store the JSON
     payload alongside the raw diff to confirm reviewers get the bundled view.

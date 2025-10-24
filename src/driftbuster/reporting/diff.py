@@ -27,12 +27,25 @@ def _digest_bytes(payload: bytes) -> str:
     return f"sha256:{sha256(payload).hexdigest()}"
 
 
+_BOM = "\ufeff"
+_UNICODE_NEWLINES = ("\u2028", "\u2029", "\u0085")
+
+
 def canonicalise_text(payload: str) -> str:
     """Return ``payload`` with normalised newlines and trimmed trailing spaces."""
 
     if not payload:
         return ""
-    normalised = payload.replace("\r\n", "\n").replace("\r", "\n")
+
+    working = payload
+    if working.startswith(_BOM):
+        working = working.lstrip(_BOM)
+
+    for separator in _UNICODE_NEWLINES:
+        if separator in working:
+            working = working.replace(separator, "\n")
+
+    normalised = working.replace("\r\n", "\n").replace("\r", "\n")
     lines = [line.rstrip() for line in normalised.split("\n")]
     return "\n".join(lines)
 
@@ -51,6 +64,9 @@ def canonicalise_xml(payload: str) -> str:
 
     if not payload:
         return ""
+
+    if payload.startswith(_BOM):
+        payload = payload.lstrip(_BOM)
 
     xml_declaration = ""
     doctype = ""
@@ -149,6 +165,7 @@ class DiffResult:
     mask_tokens: Sequence[str] | None = None
     placeholder: str = "[REDACTED]"
     context_lines: int = 3
+    redaction_counts: Mapping[str, int] | None = None
     binary_evidence: Sequence[BinarySegmentEvidence] | None = None
 
 
@@ -173,6 +190,7 @@ class DiffPlanSummary:
     mask_tokens: tuple[str, ...]
     placeholder: str
     context_lines: int
+    redaction_counts: tuple[tuple[str, int], ...] = field(default_factory=tuple)
     binary_evidence: tuple[BinarySegmentEvidence, ...] = field(default_factory=tuple)
 
 
@@ -243,8 +261,14 @@ def build_unified_diff(
     canonical_after = normaliser(after)
 
     active_redactor = resolve_redactor(redactor=redactor, mask_tokens=mask_tokens, placeholder=placeholder)
+    result_placeholder = placeholder
+    if active_redactor:
+        result_placeholder = active_redactor.placeholder
     before_lines = _apply_redaction(canonical_before.splitlines(), active_redactor)
     after_lines = _apply_redaction(canonical_after.splitlines(), active_redactor)
+    redaction_counts: Mapping[str, int] | None = None
+    if active_redactor:
+        redaction_counts = active_redactor.stats()
     diff_iter = unified_diff(
         before_lines,
         after_lines,
@@ -256,7 +280,11 @@ def build_unified_diff(
     diff_text = "\n".join(diff_iter)
     stats = _calculate_stats(before_lines, after_lines)
     mask_tuple: Sequence[str] | None = None
-    if mask_tokens is not None:
+    if active_redactor:
+        ordered = getattr(active_redactor, "_ordered_tokens", ())
+        if ordered:
+            mask_tuple = tuple(ordered)
+    elif mask_tokens is not None:
         mask_tuple = tuple(mask_tokens)
 
     return DiffResult(
@@ -269,8 +297,9 @@ def build_unified_diff(
         to_label=to_label,
         label=label,
         mask_tokens=mask_tuple,
-        placeholder=placeholder,
+        placeholder=result_placeholder,
         context_lines=context_lines,
+        redaction_counts=redaction_counts,
         binary_evidence=None,
     )
 
@@ -324,6 +353,7 @@ def build_binary_diff(
         mask_tokens=None,
         placeholder="[REDACTED]",
         context_lines=0,
+        redaction_counts=None,
         binary_evidence=(evidence,),
     )
 
@@ -358,6 +388,7 @@ def _build_comparison_summary(
         mask_tokens=tuple(result.mask_tokens or ()),
         placeholder=result.placeholder,
         context_lines=result.context_lines,
+        redaction_counts=tuple(sorted((result.redaction_counts or {}).items())),
         binary_evidence=tuple(result.binary_evidence or ()),
     )
 
@@ -450,6 +481,9 @@ def diff_summary_to_payload(summary: DiffResultSummary) -> Mapping[str, object]:
                     "mask_tokens": list(comparison.plan.mask_tokens),
                     "placeholder": comparison.plan.placeholder,
                     "context_lines": comparison.plan.context_lines,
+                    "redaction_counts": {
+                        token: count for token, count in comparison.plan.redaction_counts
+                    },
                     "binary_evidence": [
                         {
                             "label": evidence.label,

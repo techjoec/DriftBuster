@@ -52,3 +52,10 @@ def test_canonicalise_xml_falls_back_to_text_on_parse_error() -> None:
     expected = canonicalise_text(payload)
 
     assert canonicalise_xml(payload) == expected
+
+
+def test_canonicalise_xml_strips_bom_prefix() -> None:
+    payload = "\ufeff<?xml version='1.0'?><root> value </root>"
+    result = canonicalise_xml(payload)
+    assert not result.startswith("\ufeff")
+    assert result == "<?xml version='1.0'?>\n<root> value </root>"

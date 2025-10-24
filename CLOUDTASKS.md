@@ -696,11 +696,14 @@ highlight where to consume the artifact.
   - [x] 11.2.2 Add tests in `tests/reporting/test_adapters.py`.
     - Notes (2025-10-24): Added regression coverage validating shared payloads, JSON reuse, and HTML metadata enrichment.
   - [ ] 11.2.3 Document shared metadata contract in `docs/format-playbook.md` and `docs/hunt-mode.md`.
-- [ ] 11.3 Diff canonicalisation & masking.
-  - [ ] 11.3.1 Finalise `canonicalise_text`/`canonicalise_xml` in `src/driftbuster/reporting/diff.py`.
-  - [ ] 11.3.2 Ensure `build_unified_diff` returns stats + masking flags.
-  - [ ] 11.3.3 Cover redaction filters with tests in `tests/reporting/test_diff_masking.py`.
-  - [ ] 11.3.4 Append canonicalisation rationale to `notes/checklists/reporting-tests.md`.
+- [x] 11.3 Diff canonicalisation & masking.
+  - [x] 11.3.1 Finalise `canonicalise_text`/`canonicalise_xml` in `src/driftbuster/reporting/diff.py`.
+  - [x] 11.3.2 Ensure `build_unified_diff` returns stats + masking flags.
+  - [x] 11.3.3 Cover redaction filters with tests in `tests/reporting/test_diff_masking.py`.
+  - [x] 11.3.4 Append canonicalisation rationale to `notes/checklists/reporting-tests.md`.
+    - Notes: Canonicalisers now strip BOM/unicode newlines, diff results expose
+      token ordering with redaction counts, and regression tests lock masking
+      behaviour plus checklist documentation.
 - [ ] 11.4 Diff blueprint execution.
   - [ ] 11.4.1 Implement `execute_diff_plan` in `src/driftbuster/core/diffing.py`.
   - [ ] 11.4.2 Update checklists `notes/snippets/xml-config-diffs.md` and `notes/checklists/reporting-tests.md`.

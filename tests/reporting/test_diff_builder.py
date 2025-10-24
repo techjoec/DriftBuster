@@ -18,6 +18,13 @@ def test_canonicalise_text_normalises_newlines() -> None:
     assert normalised.splitlines() == ["line1", "line2"]
 
 
+def test_canonicalise_text_removes_bom_and_unicode_newlines() -> None:
+    payload = "\ufeffalpha\u2028beta\u2029gamma\u0085"
+    normalised = canonicalise_text(payload)
+    assert normalised.endswith("\n")
+    assert normalised.splitlines() == ["alpha", "beta", "gamma"]
+
+
 def test_canonicalise_xml_preserves_prolog_and_handles_doctype() -> None:
     payload = (
         "<?xml version=\"1.0\"?>\n"
@@ -44,6 +51,8 @@ def test_build_unified_diff_applies_redaction() -> None:
     assert isinstance(result, DiffResult)
     assert "[REDACTED]" in result.diff
     assert result.stats["added_lines"] == 1
+    assert result.mask_tokens == ("SECRET",)
+    assert result.redaction_counts == {"SECRET": 2}
 
 
 def test_render_unified_diff_and_errors() -> None:
