@@ -24,6 +24,24 @@ iterations have a concrete baseline.
   handed to the export path, removes the need to save a temp file, and fires a toast/status entry
   so there is evidence in the activity timeline.
 
+## Diff Planner MRU (P2)
+- Diff planner header exposes a **Recent plans** dropdown that replays sanitized MRU entries with
+  trimmed file metadata, digests, and comparison counts. Entries persist in
+  `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/mru.json` (or the XDG data root equivalent) and cap
+  at ten records to avoid stale payload buildup.
+- Sanitized payloads only: raw backend responses are rejected and a telemetry record (`payload_kind`
+  `raw`) is logged before the GUI drops the entry. Refer to the structured events in
+  `artifacts/logs/diff-planner-mru-telemetry.json` when auditing the guardrail.
+- Screenshot capture checklist lives alongside the GUI guide:
+  1. Load sanitized fixtures from `artifacts/samples/diff-planner/` and toggle **Sanitized JSON**.
+  2. Verify the footer banner shows **Sanitized summary** and that digests (not raw text) appear in
+     both panes.
+  3. Save captures into `docs/assets/diff-planner/` using `YYYYMMDD-mru-<theme>-<resolution>.png`.
+  4. Record capture metadata (theme, resolution, fixture) in the asset manifest table below once
+     populated.
+- Follow-up: populate `docs/assets/diff-planner/manifest.md` once the first sanitized capture set
+  lands; include theme/resolution columns so refreshes remain auditable.
+
 ## Validation & Testing Checkpoints
 - Headless tests cover responsive host layout, catalog sort persistence, and the new clipboard
   command. Ensure `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` stays green

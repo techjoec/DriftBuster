@@ -9,6 +9,7 @@ follow-up questions.
 |------------|----------|-------------|-------------|-------------|-------|
 | 2025-09-26 | Mixed fixture scan masked tokens ``API_KEY``/``DB_PASSWORD`` using ``[REDACTED]`` placeholder. | Verified via `render_json_lines` with token list; no raw secrets present. | `render_html_report` emitted warning banner and redaction summary. | `render_unified_diff` replaced secrets in config drift hunk. | Snapshot manifest logged classification=internal-only and redacted tokens. |
 | 2025-10-23 | SQL snapshot export masked ``accounts.secret`` and hashed ``accounts.email``. | `sql-manifest.json` lists policies per column; inspected masked rows for completeness. | N/A | N/A | Stored export under restricted `captures/sql-exports/2025-10-23/` with checksum pair in `artifacts/sql/`; retention expiry set for 2025-11-22. |
+| 2025-10-28 | Diff planner MRU telemetry captured sanitized payload rejection + replay confirmation. | `artifacts/logs/diff-planner-mru-telemetry.json` records sanitized summary digests only. | N/A | N/A | MRU cache capped at ten entries under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/`; retention note logged, no raw payloads persisted. |
 
 ## Sample review log
 

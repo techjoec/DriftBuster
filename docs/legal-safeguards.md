@@ -48,6 +48,13 @@ These guardrails cover every feature, note, and capture helper.
   - Record any third-party dependency updates (e.g., WebView2 runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh the NOTICE file before release builds.
   - Confirm that all redistributables shipped with the bundle allow offline redistribution and include their licence text within the package.
 
+## Diff planner MRU storage
+
+- Persist only sanitized summaries. MRU entries must never include raw file contents, secrets, or unmasked configuration values; the GUI enforces this by rejecting payloads where `payload_kind` resolves to `raw`.
+- Store cache files under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/` (or the XDG data root). Operators may relocate the directory, but any alternate path must inherit the same restricted ACLs as the default location.
+- Sanitized entries should cap at ten records and rotate automatically. Manual exports must mask timestamps, hostnames, and operator identifiers before sharing outside the local workstation.
+- Record MRU telemetry samples (see `artifacts/logs/diff-planner-mru-telemetry.json`) when auditing sanitization behaviour and capture retention outcomes in `notes/checklists/legal-review.md`.
+
 ## SQL snapshot safeguards
 
 - Mask or hash sensitive columns using the CLI options documented in

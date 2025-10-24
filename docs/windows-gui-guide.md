@@ -70,6 +70,27 @@ This guide explains the capabilities, layout, and operational details of the Ava
   - `raw_payload.json` demonstrates the direct backend contract.
   - `sanitized_summary.json` shows the MRU-safe structure with digests and counts.
 
+### MRU replay workflow
+- Open the **Recent plans** dropdown in the diff planner header to list the most recent sanitized payloads (capped to ten).
+- Selecting an item restores the plan inputs, sanitised metadata cards, and summary digests without rehydrating raw file
+  contents.
+- Each MRU entry includes the generated timestamp, baseline alias, and comparison count so analysts can confirm provenance
+  before replaying a plan.
+- Use **Manage saved plans…** to purge entries you no longer need. The dialog exposes the cache root resolved via
+  `DriftbusterPaths.GetCacheDirectory("diff-planner")` so you can audit or delete payloads outside the GUI when required.
+- MRU persistence never writes raw payloads to disk—only the sanitized summary described above. If validation detects an
+  unsanitized payload, the GUI logs a structured rejection event (see `DiffViewModel` telemetry) and refuses to cache it.
+
+### Sanitised screenshot capture
+- When documenting MRU workflows, launch the GUI with the sanitized fixtures under `artifacts/samples/diff-planner/` to ensure
+  no raw secrets appear in the UI.
+- Capture screenshots after toggling **Sanitized JSON** so the diff panes render digest fields instead of file contents. Confirm
+  the footer banner notes "Sanitized summary" before taking the capture.
+- Store captures in `docs/assets/diff-planner/` using the naming pattern `YYYYMMDD-mru-<theme>-<resolution>.png` and log each
+  addition in `docs/ux-refresh.md#diff-planner-mru`.
+- Mask any lingering filesystem paths or operator names by overlaying solid rectangles before committing assets. Re-run the
+  capture if masking would obscure key UI elements.
+
 ## 6. Hunt View Details
 ### Inputs
 - **Target** accepts either a directory or single file. The Browse button opens a folder picker first, falling back to file selection.

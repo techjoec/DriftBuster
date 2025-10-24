@@ -274,20 +274,20 @@ highlight where to consume the artifact.
   - [x] 2.2.2 Modify `gui/DriftBuster.Gui/Views/DiffView.axaml` to render sanitized JSON panes with accessible automation IDs.
   - [x] 2.2.3 Ensure clipboard helpers refuse unsanitized payloads (`gui/DriftBuster.Gui/ViewModels/DiffViewModel.cs` logic + tests).
   - [x] 2.2.4 Add UI automation coverage in `gui/DriftBuster.Gui.Tests/Ui/DiffViewUiTests.cs` verifying MRU selection and JSON pane toggles.
-- [ ] 2.3 Extend backend contracts.
+- [x] 2.3 Extend backend contracts.
   - [x] 2.3.1 Update `gui/DriftBuster.Backend/DriftbusterBackend.cs` and `gui/DriftBuster.Backend/Models/DiffResult.cs` to emit raw + summarized JSON.
   - [x] 2.3.2 Mirror payload changes in `src/driftbuster/reporting/diff.py` and related helpers.
   - [x] 2.3.3 Add regression coverage in `gui/DriftBuster.Gui.Tests/ViewModels/DiffViewModelTests.cs` and `tests/multi_server/test_multi_server.py`.
   - [x] 2.3.4 Document payload schema in `docs/windows-gui-guide.md#diff-planner` and store samples under `artifacts/samples/diff-planner/`.
-- [ ] 2.4 Documentation & validation.
-  - [ ] 2.4.1 Refresh `docs/windows-gui-guide.md` and `docs/ux-refresh.md` with MRU instructions and sanitized screenshots.
-  - [ ] 2.4.2 Log manual validation steps under `notes/status/gui-research.md`.
-  - [ ] 2.4.3 Re-run `dotnet test ...` and `coverage run --source=src/driftbuster -m pytest tests/multi_server/test_multi_server.py` ensuring ≥90%.
-  - [ ] 2.4.4 Archive validation artefacts (screenshots, JSON payloads, command output) in `artifacts/diff-planner-validation/README.md`.
-- [ ] 2.5 Security & telemetry.
+- [x] 2.4 Documentation & validation.
+  - [x] 2.4.1 Refresh `docs/windows-gui-guide.md` and `docs/ux-refresh.md` with MRU instructions and sanitized screenshots.
+  - [x] 2.4.2 Log manual validation steps under `notes/status/gui-research.md`.
+  - [x] 2.4.3 Re-run `dotnet test ...` and `coverage run --source=src/driftbuster -m pytest tests/multi_server/test_multi_server.py` ensuring ≥90%.
+  - [x] 2.4.4 Archive validation artefacts (screenshots, JSON payloads, command output) in `artifacts/diff-planner-validation/README.md`.
+- [x] 2.5 Security & telemetry.
   - [x] 2.5.1 Add structured logging for sanitized-vs-raw payload rejects in `DiffViewModel`.
-  - [ ] 2.5.2 Extend privacy guardrails in `docs/legal-safeguards.md` to cover MRU storage.
-  - [ ] 2.5.3 Capture telemetry sample results in `notes/checklists/legal-review.md`.
+  - [x] 2.5.2 Extend privacy guardrails in `docs/legal-safeguards.md` to cover MRU storage.
+  - [x] 2.5.3 Capture telemetry sample results in `notes/checklists/legal-review.md`.
 
 ## A3. Performance & Async Stability (Phase 3) [deps=A2]
 

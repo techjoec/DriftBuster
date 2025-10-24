@@ -1,0 +1,20 @@
+[
+  {
+    "timestamp_utc": "2025-10-28T09:12:44Z",
+    "event": "diff-planner.mru.cache",
+    "payload_kind": "sanitized",
+    "baseline_alias": "Baseline.json",
+    "comparison_count": 2,
+    "sanitized_digest": "0d8bc2c9",
+    "action": "recorded"
+  },
+  {
+    "timestamp_utc": "2025-10-28T09:13:05Z",
+    "event": "diff-planner.mru.replay",
+    "payload_kind": "sanitized",
+    "baseline_alias": "Baseline.json",
+    "comparison_count": 2,
+    "sanitized_digest": "0d8bc2c9",
+    "action": "replayed"
+  }
+]

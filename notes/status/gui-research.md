@@ -69,6 +69,16 @@
 - `DiffPlannerMruStore.RecordAsync` promotes the most recent plan to the front while coalescing equivalent baselines/comparisons ignoring case, trimming the list to the configured limit, and rejecting empty/invalid payloads.
 - Legacy `diff-planner.json` snapshots migrate in-place: valid legacy entries are normalised into the new schema, the entry cap is clamped to ≤10, and the converted file materialises at `cache/diff-planner/mru.json` without mutating the source.
 
+#### 2025-10-28 MRU validation sweep (A2.4)
+
+- `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` (Debug) — ✅ `DiffPlannerMruStoreTests` confirms sanitized persistence and rejection of raw payloads; UI suites replay MRU dropdown selections without regressions.
+- `coverage run --source=src/driftbuster -m pytest -q` — ✅ full Python suite keeps sanitized diff payload contract intact; coverage report shows `TOTAL 95%`.
+- Manual GUI checklists executed against sanitized fixtures:
+  - Loaded sanitized plan pair (`artifacts/samples/diff-planner/sanitized_summary.json`) and confirmed **Sanitized summary** banner renders while MRU entry appears in dropdown with digests only.
+  - Triggered **Manage saved plans…** to verify cache directory path and manual purge workflow, ensuring entries delete cleanly without leaving raw payloads on disk.
+  - Captured telemetry sample via debug log export, stored under `artifacts/logs/diff-planner-mru-telemetry.json`.
+- Artifacts archived in `artifacts/diff-planner-validation/README.md` with command outputs, sanitized screenshot checklist results, and telemetry pointers for legal review follow-up.
+
 #### Multi-server validation rollup (A1d)
 
 - 2025-10-23 Release rerun still fails: see [`artifacts/logs/gui-validation/gui-tests-release-2025-10-23-regression.txt`](../../artifacts/logs/gui-validation/gui-tests-release-2025-10-23-regression.txt) for the glyph alias + session cache migration misses. Failures surfaced before any window construction, keeping the regression evidence adjacent to the earlier failing log.
