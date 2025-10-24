@@ -134,6 +134,16 @@
 - Captured the CLI output and noted the session staging path (`/tmp/tmp.1n8G7P9V0T/sessions`) so Release prep evidence can point back to the cached multi-server persistence trail.
 - Logged this sweep under A6.2.1 to close the smoke prerequisite ahead of the manual walkthrough capture.
 
+### Release validation checklist (A6 · 6.4.1)
+
+| Gate | Status | Evidence | Notes |
+| --- | --- | --- | --- |
+| Coverage ≥ 90 % (Python/.NET) | ✅ Complete | `artifacts/logs/gui-validation/gui-tests-coverage-2025-10-30.txt`, `artifacts/coverage/final/` | Coverage transcript stored alongside consolidated HTML/XML artefacts after the A6.1 sweep. |
+| Packaged smoke storage run | ✅ Complete | Section “2025-10-24 multi-server smoke storage sweep (A6.2.1)” | Cold/hot cache behaviour captured in-session with staging paths logged for follow-up evidence bundles. |
+| Manual multi-server walkthrough capture | ⏳ Pending | — | Schedule interactive session to verify persistence + diff planner, then archive capture in `artifacts/manual-runs/`. |
+| Docs & asset refresh | ⏳ Pending | — | Await final screenshot capture before updating `docs/ux-refresh.md`, GUI guide, release notes, and README references. |
+| Release bundle assembly | ⏳ Pending | — | Collate CHANGELOG update, validation notes, and artefact manifest into `notes/releases/next.md` once the remaining gates land. |
+
 ### Fontmanager regression
 
 - Captured the latest Release-mode failure showing `FontManagerImpl.TryCreateGlyphTypeface` rejecting the `fonts:SystemFonts#Inter` alias when Avalonia boots without the proxy fallbacks enabled. The trace is archived in [`artifacts/logs/fontmanager-regression.txt`](../../artifacts/logs/fontmanager-regression.txt) so we can diff future stack signatures.

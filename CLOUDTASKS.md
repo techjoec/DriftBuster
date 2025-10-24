@@ -480,7 +480,7 @@ highlight where to consume the artifact.
   - [ ] 6.3.2 Update `README.md` and `docs/multi-server-demo.md` with summary of new capabilities.
   - [ ] 6.3.3 Ensure `docs/README.md` index references updated assets.
 - [ ] 6.4 Release evidence.
-  - [ ] 6.4.1 Update `CHANGELOG.md` and `notes/status/gui-research.md` with validation checklist.
+  - [x] 6.4.1 Update `CHANGELOG.md` and `notes/status/gui-research.md` with validation checklist.
   - [ ] 6.4.2 Archive artifacts under `artifacts/` as needed and note retention plan.
   - [ ] 6.4.3 Compile release handoff bundle (`notes/releases/next.md`) summarising evidence.
 

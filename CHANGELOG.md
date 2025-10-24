@@ -40,6 +40,7 @@ by Added, Changed, Fixed, and Docs.
 - Updated detection types and format support matrices to include registry-live.
 - Updated GUI guide/notes and README to cover theme toggle, health indicator, button variants, and table/settings refinements.
 - Logged the Dark+/Light+ palette refresh with new release-ready captures and manifest updates under `docs/assets/themes/` and `docs/ux-refresh.md`.
+- Added Phase 6 release validation checklist in `notes/status/gui-research.md` summarising coverage, smoke status, and pending evidence bundles.
 
 ## [0.0.2] - 2025-10-16
 
