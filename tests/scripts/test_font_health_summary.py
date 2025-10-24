@@ -329,6 +329,39 @@ def test_cli_writes_summary_payload(
     assert metrics["maxLogAgeSeconds"] is None
 
 
+def test_cli_prints_retention_metrics_when_enabled(
+    sample_payload: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 293680, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    exit_code = font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+            "--print-retention-metrics",
+        ]
+    )
+
+    assert exit_code == 1
+
+    output = capsys.readouterr().out
+    assert "Retention metrics: deletedByCount=0" in output
+    assert "maxLogFiles=None" in output
+    assert "maxLogAgeHours=None" in output
+
+
 def test_cli_prunes_old_logs_when_max_log_files_set(
     sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -385,6 +418,24 @@ def test_cli_prunes_old_logs_when_max_log_files_set(
     assert metrics["remainingLogs"] == 2
     assert metrics["maxLogFiles"] == 2
     assert metrics["maxLogAgeSeconds"] is None
+
+
+def test_format_retention_summary_formats_values() -> None:
+    payload = {
+        "deletedByCount": 3,
+        "deletedByAge": 2,
+        "remainingLogs": 5,
+        "maxLogFiles": 4,
+        "maxLogAgeSeconds": 7200.0,
+    }
+
+    summary = font_health_summary._format_retention_summary(payload)
+
+    assert "deletedByCount=3" in summary
+    assert "deletedByAge=2" in summary
+    assert "remainingLogs=5" in summary
+    assert "maxLogFiles=4" in summary
+    assert "maxLogAgeHours=2.00" in summary
 
 
 def test_cli_prunes_logs_older_than_max_log_age(

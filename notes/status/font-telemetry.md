@@ -13,6 +13,8 @@
 - Pipeline maintainer owns fixes for ingestion gaps and reports status during the weekly sync.
 - Any run that enables `--max-log-age-hours` must capture the chosen window and follow-up retention
   plan in the next review entry.
+- When `--print-retention-metrics` is used, copy the reported deletion counts into the run log so
+  the retention summary stays visible even if the JSON artifact is rotated out.
 
 ## Review cadence
 

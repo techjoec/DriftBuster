@@ -61,6 +61,11 @@ DriftBuster prunes any structured event logs older than the supplied window whil
 fresh summary snapshot in place. Combine the count and age switches to enforce whichever limit is
 tighter for the current investigation.
 
+Pass `--print-retention-metrics` alongside either switch when the operator needs an immediate
+summary of how many logs were deleted and what limits were applied. The CLI prints a single line
+with the current pruning totals while still updating `font-retention-metrics.json` on disk for
+audits and automation hooks.
+
 Include the latest JSON log when filing investigations so reviewers can replay configuration and
 scenario metadata without rerunning telemetry.
 

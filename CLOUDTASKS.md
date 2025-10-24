@@ -12,6 +12,29 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g++++++. Font Telemetry Retention Diagnostics [deps=A0g+++++]
+
+**REASON:** Operators reviewing retention churn need immediate visibility into how pruning switches
+impact log counts without opening the metrics JSON manually.
+
+**MUST NOT:** Change the retention metrics file location or remove existing telemetry payloads.
+
+**MUST:** Provide a CLI flag that surfaces retention metrics inline, extend regression coverage for
+the new output, and update operator runbooks.
+
+**ACCEPT GATES:** CLI prints the retention summary only when requested, tests pin the formatted
+output, and docs capture usage guidance plus review expectations.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.20 Add a `--print-retention-metrics` flag to `scripts/font_health_summary.py` that emits
+      a human-readable retention summary while keeping JSON files unchanged.
+  - [x] 0.20.1 Cover the flag behaviour (enabled vs default) in
+        `tests/scripts/test_font_health_summary.py`.
+  - [x] 0.20.2 Document the workflow in `docs/font-telemetry.md` with review notes in
+        `notes/status/font-telemetry.md`.
+  - [x] 0.20.3 Keep the retention metrics payload available to callers (return value) for future
+        automation hooks.
+
 ## A0g+++++. Font Telemetry Log Age Retention [deps=A0g++++]
 
 **REASON:** Operators now cap log counts, but forensic reviews still need a deterministic way to

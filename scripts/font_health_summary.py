@@ -96,6 +96,14 @@ def build_parser() -> argparse.ArgumentParser:
             "Older files are pruned after writing a new event."
         ),
     )
+    parser.add_argument(
+        "--print-retention-metrics",
+        action="store_true",
+        help=(
+            "Print a human-readable retention summary after pruning event logs. "
+            "JSON artifacts remain unchanged."
+        ),
+    )
     return parser
 
 
@@ -300,6 +308,34 @@ def _prune_old_logs(
     )
 
 
+def _format_retention_summary(payload: dict[str, object]) -> str:
+    deleted_by_count = int(payload.get("deletedByCount", 0))
+    deleted_by_age = int(payload.get("deletedByAge", 0))
+    remaining_logs = int(payload.get("remainingLogs", 0))
+    max_log_files = payload.get("maxLogFiles")
+    max_log_age_seconds = payload.get("maxLogAgeSeconds")
+
+    if max_log_files is None:
+        files_fragment = "maxLogFiles=None"
+    else:
+        files_fragment = f"maxLogFiles={int(max_log_files)}"
+
+    if max_log_age_seconds is None:
+        age_fragment = "maxLogAgeHours=None"
+    else:
+        hours = float(max_log_age_seconds) / 3600.0
+        age_fragment = f"maxLogAgeHours={hours:.2f}"
+
+    return (
+        "Retention metrics: "
+        f"deletedByCount={deleted_by_count}, "
+        f"deletedByAge={deleted_by_age}, "
+        f"remainingLogs={remaining_logs}, "
+        f"{files_fragment}, "
+        f"{age_fragment}"
+    )
+
+
 def _write_staleness_event(
     evaluation: ReportEvaluation,
     *,
@@ -313,7 +349,7 @@ def _write_staleness_event(
     summary_path: Path | None,
     max_log_files: int | None,
     max_log_age: timedelta | None,
-) -> None:
+) -> dict[str, object]:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     payload = {
@@ -350,7 +386,7 @@ def _write_staleness_event(
         now=evaluation_time,
     )
 
-    retention_payload = {
+    retention_payload: dict[str, object] = {
         "generatedAt": _coerce_utc(evaluation_time).isoformat(),
         "maxLogFiles": retention_keep,
         "maxLogAgeSeconds": (
@@ -380,6 +416,8 @@ def _write_staleness_event(
             json.dumps(summary_payload, indent=2, sort_keys=True) + "\n"
         )
 
+    return retention_payload
+
 
 def _emit_staleness_event(
     evaluation: ReportEvaluation,
@@ -400,7 +438,7 @@ def _emit_staleness_event(
             summary_path = None
         else:
             summary_path = Path(args.summary_path)
-        _write_staleness_event(
+        retention_payload = _write_staleness_event(
             evaluation,
             evaluation_time=evaluation_time,
             source_path=source_path,
@@ -421,6 +459,9 @@ def _emit_staleness_event(
                 else None
             ),
         )
+
+        if args.print_retention_metrics:
+            print(_format_retention_summary(retention_payload))
     except Exception as exc:  # pragma: no cover - defensive guard
         print(f"warning: failed to write staleness log: {exc}", file=sys.stderr)
 
