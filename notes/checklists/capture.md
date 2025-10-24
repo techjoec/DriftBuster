@@ -6,8 +6,10 @@
   - Confirm the target directory is accessible and does not contain prior
     snapshots that should be retained.
 - **Run snapshot:**
-  - Execute the manual helper with explicit metadata:
-
+  - Execute the manual helper with explicit metadata (the script now requires
+    `--environment` and `--reason`, and resolves the operator from
+    `--operator`, `DRIFTBUSTER_CAPTURE_OPERATOR`, or the shell `USER`).
+  
     ```bash
     python scripts/capture.py run /path/to/configs \
       --profiles profiles.json \
@@ -23,9 +25,12 @@
     the guard (log the justification in the legal notes).
 - **Inspect manifest:**
   - Open `<capture-id>-manifest.json` and log the detection count, hunt hit
-    count, and the recorded durations.
-  - Verify that `mask_token_count` reflects the number of tokens supplied and
-    that `total_redactions` is non-zero when masking is expected.
+    count, the recorded durations, and confirm the `schema_version` field is
+    present.
+  - Verify that the mirrored `capture` metadata retains the environment,
+    operator, reason, and root expected for the run.
+  - Confirm `mask_token_count` reflects the number of tokens supplied and that
+    `total_redactions` is non-zero when masking is expected.
   - Record the manifest path plus capture ID in the legal review notes.
 - **Review snapshot:**
   - Confirm `relative_path` entries resolve correctly from the capture root.
@@ -44,5 +49,6 @@
   - Log added, removed, and changed detection keys along with token deltas in
     the manual audit notes.
 - **Cleanup:**
-  - When the review closes, purge the snapshot and manifest together and note
-    the deletion time in the legal log.
+  - When the review closes, purge the snapshot and manifest together (they
+    share the capture ID and `schema_version`) and note the deletion time in the
+    legal log.

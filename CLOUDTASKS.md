@@ -725,11 +725,12 @@ highlight where to consume the artifact.
   - Notes (2025-11-10): Added `token_approvals` module with `TokenApprovalStore` JSON
     persistence, regression tests for store + candidate grouping, and docs/checklist
     updates covering the approval schema plus collection workflow.
-- [ ] 11.6 Capture pipeline.
-  - [ ] 11.6.1 Document capture workflow in `scripts/capture.py` and ensure output layout matches spec.
-  - [ ] 11.6.2 Maintain manifest metadata requirements (environment, operator, reasons).
-  - [ ] 11.6.3 Update `notes/checklists/reporting-tests.md` with cleanup steps.
-  - [ ] 11.6.4 Ensure capture workflow guidance in `docs/testing-strategy.md` and `notes/checklists/capture.md` stays in sync with script updates.
+- [x] 11.6 Capture pipeline.
+  - [x] 11.6.1 Document capture workflow in `scripts/capture.py` and ensure output layout matches spec.
+  - [x] 11.6.2 Maintain manifest metadata requirements (environment, operator, reasons).
+  - [x] 11.6.3 Update `notes/checklists/reporting-tests.md` with cleanup steps.
+  - [x] 11.6.4 Ensure capture workflow guidance in `docs/testing-strategy.md` and `notes/checklists/capture.md` stays in sync with script updates.
+  - Notes (2025-11-12): Added capture schema docstring + helpers, enforced metadata guardrails, and refreshed capture/reporting checklists with schema version cleanup guidance.
 - [ ] 11.7 Compliance & retention.
   - [ ] 11.7.1 Outline retention limits (30 days) in docs.
   - [ ] 11.7.2 Add purge scripts/checklist entries in `notes/checklists/legal-review.md`.

@@ -2,8 +2,21 @@
 """Manual capture helper coordinating detection, profiles, and hunt scans.
 
 This script is intentionally lightweight so auditors can snapshot driftbuster
-runs without wiring a full CLI yet. It writes a detailed snapshot describing the
-scan plus a compact manifest with the key metrics for logging purposes.
+runs without wiring a full CLI yet. It emits two JSON artefacts:
+
+``<capture-id>-snapshot.json``
+    Full capture payload containing the capture metadata, redacted detection
+    matches, optional profile summary, and hunt hits. Consumers expect the
+    ``capture`` block to include ``id``, ``root``, ``captured_at`` (UTC ISO
+    string), ``operator``, ``environment``, ``reason``, ``host``,
+    ``placeholder``, and ``mask_token_count``.
+
+``<capture-id>-manifest.json``
+    Compact manifest for quick logging that records key metadata, duration
+    metrics, aggregate counts, a profile summary, and redaction statistics.
+    The manifest mirrors the capture metadata and advertises a
+    ``schema_version`` field so downstream tooling can evolve alongside this
+    module.
 """
 
 from __future__ import annotations
@@ -25,6 +38,8 @@ from driftbuster.hunt import HuntHit, default_rules, hunt_path
 from driftbuster.profile_cli import _load_json as load_json_payload, _store_from_payload
 from driftbuster.reporting.redaction import redact_data, resolve_redactor
 from driftbuster.sql import build_sqlite_snapshot
+
+CAPTURE_MANIFEST_SCHEMA_VERSION = "1.0"
 
 
 def _ensure_mapping(data: Mapping[str, Any] | None) -> MutableMapping[str, Any]:
@@ -142,6 +157,104 @@ def _prepare_output_paths(directory: Path, capture_id: str) -> tuple[Path, Path]
     return snapshot_path, manifest_path
 
 
+def _resolve_operator(value: str | None) -> str | None:
+    candidates = (
+        value,
+        os.getenv("DRIFTBUSTER_CAPTURE_OPERATOR"),
+        os.getenv("USER"),
+        os.getenv("USERNAME"),
+    )
+    for candidate in candidates:
+        candidate = (candidate or "").strip()
+        if candidate:
+            return candidate
+    return None
+
+
+def _build_snapshot_payload(
+    *,
+    capture_id: str,
+    root: Path,
+    operator: str,
+    environment: str,
+    reason: str,
+    placeholder: str,
+    mask_tokens: Sequence[str] | None,
+    detections: Sequence[Mapping[str, Any]],
+    profile_summary: Mapping[str, Any] | None,
+    hunt_hits: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    capture_block = {
+        "id": capture_id,
+        "root": str(root),
+        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "operator": operator,
+        "environment": environment,
+        "reason": reason,
+        "host": socket.gethostname(),
+        "placeholder": placeholder,
+        "mask_token_count": len(mask_tokens or ()),
+    }
+    return {
+        "capture": capture_block,
+        "detections": list(detections),
+        "profile_summary": profile_summary,
+        "hunt_hits": list(hunt_hits),
+    }
+
+
+def _build_manifest_payload(
+    *,
+    capture: Mapping[str, Any],
+    snapshot_path: Path,
+    manifest_path: Path,
+    detection_duration: float,
+    hunt_duration: float,
+    total_duration: float,
+    detection_count: int,
+    profile_match_count: int,
+    hunt_count: int,
+    profile_summary: Mapping[str, Any] | None,
+    placeholder: str,
+    mask_token_count: int,
+    total_redactions: int,
+) -> dict[str, Any]:
+    profile_summary = profile_summary or {}
+    return {
+        "schema_version": CAPTURE_MANIFEST_SCHEMA_VERSION,
+        "capture": {
+            "id": capture["id"],
+            "snapshot_path": snapshot_path.name,
+            "manifest_path": manifest_path.name,
+            "captured_at": capture["captured_at"],
+            "root": capture["root"],
+            "operator": capture["operator"],
+            "environment": capture["environment"],
+            "reason": capture["reason"],
+            "host": capture["host"],
+        },
+        "durations": {
+            "detection_seconds": round(detection_duration, 3),
+            "hunt_seconds": round(hunt_duration, 3),
+            "total_seconds": round(total_duration, 3),
+        },
+        "counts": {
+            "detections": detection_count,
+            "profile_matches": profile_match_count,
+            "hunt_hits": hunt_count,
+        },
+        "profile_summary": {
+            "total_profiles": profile_summary.get("total_profiles", 0),
+            "total_configs": profile_summary.get("total_configs", 0),
+        },
+        "redaction": {
+            "placeholder": placeholder,
+            "mask_token_count": mask_token_count,
+            "total_redactions": total_redactions,
+        },
+    }
+
+
 def _build_detector(args: argparse.Namespace) -> Detector:
     return Detector(sample_size=args.sample_size)
 
@@ -156,6 +269,23 @@ def run_capture(args: argparse.Namespace) -> int:
         sys.stderr.write(
             "error: provide at least one --mask-token or explicitly opt-in with --allow-unmasked\n"
         )
+        return 1
+
+    operator = _resolve_operator(args.operator)
+    if operator is None:
+        sys.stderr.write(
+            "error: provide --operator or set DRIFTBUSTER_CAPTURE_OPERATOR/USER before running captures\n"
+        )
+        return 1
+
+    environment = (args.environment or "").strip()
+    if not environment:
+        sys.stderr.write("error: --environment is required for capture manifests\n")
+        return 1
+
+    reason = (args.reason or "").strip()
+    if not reason:
+        sys.stderr.write("error: --reason is required for capture manifests\n")
         return 1
 
     profile_store: ProfileStore | None = None
@@ -216,22 +346,18 @@ def run_capture(args: argparse.Namespace) -> int:
 
     redactor = resolve_redactor(mask_tokens=args.mask_tokens, placeholder=args.placeholder)
 
-    snapshot_payload: dict[str, Any] = {
-        "capture": {
-            "id": capture_id,
-            "root": str(root),
-            "captured_at": datetime.now(timezone.utc).isoformat(),
-            "operator": args.operator or os.getenv("USER"),
-            "environment": args.environment,
-            "host": socket.gethostname(),
-            "reason": args.reason,
-            "placeholder": args.placeholder,
-            "mask_token_count": len(args.mask_tokens or ()),
-        },
-        "detections": detections,
-        "profile_summary": profile_summary,
-        "hunt_hits": hunt_hits,
-    }
+    snapshot_payload = _build_snapshot_payload(
+        capture_id=capture_id,
+        root=root,
+        operator=operator,
+        environment=environment,
+        reason=reason,
+        placeholder=args.placeholder,
+        mask_tokens=args.mask_tokens,
+        detections=detections,
+        profile_summary=profile_summary,
+        hunt_hits=hunt_hits,
+    )
 
     redacted_snapshot = redact_data(snapshot_payload, redactor) if redactor else snapshot_payload
 
@@ -245,38 +371,21 @@ def run_capture(args: argparse.Namespace) -> int:
     if redactor:
         total_redactions = sum(redactor.stats().values())
 
-    manifest_payload = {
-        "capture": {
-            "id": capture_id,
-            "snapshot_path": snapshot_path.name,
-            "manifest_path": manifest_path.name,
-            "captured_at": snapshot_payload["capture"]["captured_at"],
-            "root": str(root),
-            "operator": snapshot_payload["capture"]["operator"],
-            "environment": args.environment,
-            "host": snapshot_payload["capture"]["host"],
-            "reason": args.reason,
-        },
-        "durations": {
-            "detection_seconds": round(detection_duration, 3),
-            "hunt_seconds": round(hunt_duration, 3),
-            "total_seconds": round(total_duration, 3),
-        },
-        "counts": {
-            "detections": detection_count,
-            "profile_matches": profile_match_count,
-            "hunt_hits": hunt_count,
-        },
-        "profile_summary": {
-            "total_profiles": profile_summary.get("total_profiles") if profile_summary else 0,
-            "total_configs": profile_summary.get("total_configs") if profile_summary else 0,
-        },
-        "redaction": {
-            "placeholder": args.placeholder,
-            "mask_token_count": len(args.mask_tokens or ()),
-            "total_redactions": total_redactions,
-        },
-    }
+    manifest_payload = _build_manifest_payload(
+        capture=redacted_snapshot["capture"],
+        snapshot_path=snapshot_path,
+        manifest_path=manifest_path,
+        detection_duration=detection_duration,
+        hunt_duration=hunt_duration,
+        total_duration=total_duration,
+        detection_count=detection_count,
+        profile_match_count=profile_match_count,
+        hunt_count=hunt_count,
+        profile_summary=profile_summary,
+        placeholder=args.placeholder,
+        mask_token_count=len(args.mask_tokens or ()),
+        total_redactions=total_redactions,
+    )
 
     manifest_path.write_text(json.dumps(manifest_payload, indent=2, sort_keys=True))
 

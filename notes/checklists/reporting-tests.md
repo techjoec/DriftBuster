@@ -47,6 +47,10 @@
 - **Follow-up:** if any placeholder is missing, rerun with updated token lists
   before distributing artefacts. Log remediation steps alongside manual lint
   commands (`python -m compileall src`) once the reporting bundle is ready.
+- **Capture cleanup:** when rehearsing adapters from manual captures, remove the
+  `<capture-id>-snapshot.json` and `<capture-id>-manifest.json` pair together
+  after logging the review. Confirm the manifest `schema_version` matches `1.0`
+  before deletion so evidence lines up with the current capture pipeline.
 - **Revert plan:** when an adapter output shape regresses, revert to the last
   known-good commit (record the hash here), restore the stored artefacts from
   secure storage, and pause distribution until the replacement diff/HTML/JSON

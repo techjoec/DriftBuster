@@ -207,6 +207,10 @@ grounded in reproducible fixtures.
 - Keep running the manual compile/lint block from `notes/checklists/core-scan.md`; log the results next to the HOLD exit review entry once approvals land.
 - 2025-10-24 validation: Confirmed `scripts/capture.py` defaults (`root='.'`, glob `**/*`, output dir `captures`, placeholder `[REDACTED]`) match this readiness packet; update this note if defaults change.
 - Document any capture manifest tweaks alongside the roadmap entry so `scripts/capture.py` defaults stay aligned with the readiness packet.
+- Capture manifests (schema version `1.0`) require explicit `--environment` and
+  `--reason` flags plus an operator identifier. The helper will abort if those
+  fields are omitted, so rehearsals must provide them or set
+  `DRIFTBUSTER_CAPTURE_OPERATOR` in the environment before execution.
 
 ## Metadata Validation Routine
 
