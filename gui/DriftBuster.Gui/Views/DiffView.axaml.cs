@@ -74,13 +74,12 @@ namespace DriftBuster.Gui.Views
 
         private async void OnCopyActiveJson(object? sender, RoutedEventArgs e)
         {
-            if (DataContext is not DiffViewModel vm || !vm.CanCopyActiveJson)
+            if (DataContext is not DiffViewModel vm)
             {
                 return;
             }
 
-            var payload = vm.ActiveJson;
-            if (string.IsNullOrEmpty(payload))
+            if (!vm.TryGetCopyPayload(out var payload))
             {
                 return;
             }

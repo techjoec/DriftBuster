@@ -11,6 +11,7 @@ using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
 
@@ -409,6 +410,41 @@ public class DiffViewModelTests
         summary.GetProperty("before_digest").GetString().Should().Be("sha256:111");
     }
 
+    [Fact]
+    public void SelectJsonViewMode_logs_when_sanitized_unavailable()
+    {
+        using var temp = new TempDirectory();
+        var logger = new ListLogger<DiffViewModel>();
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), store, logger: logger);
+
+        viewModel.RawJson = "{\"raw\":true}";
+        viewModel.SelectJsonViewModeCommand.Execute(DiffViewModel.DiffJsonViewMode.Sanitized);
+
+        logger.Entries.Should().Contain(entry =>
+            entry.EventId.Id == 2101 &&
+            entry.Message.Contains("reason=sanitized_not_available", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TryGetCopyPayload_logs_when_raw_blocked()
+    {
+        using var temp = new TempDirectory();
+        var logger = new ListLogger<DiffViewModel>();
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), store, logger: logger);
+
+        viewModel.RawJson = "{\"raw\":true}";
+        viewModel.SanitizedJson = "{\"safe\":true}";
+        viewModel.JsonViewMode = DiffViewModel.DiffJsonViewMode.Raw;
+
+        viewModel.TryGetCopyPayload(out _).Should().BeFalse();
+
+        logger.Entries.Should().Contain(entry =>
+            entry.EventId.Id == 2102 &&
+            entry.Message.Contains("reason=raw_blocked_sanitized_preferred", StringComparison.Ordinal));
+    }
+
     private static Task InvokeRunDiffAsync(DiffViewModel viewModel)
     {
         var method = typeof(DiffViewModel).GetMethod(
@@ -421,9 +457,10 @@ public class DiffViewModelTests
     private static DiffViewModel CreateViewModel(
         IDriftbusterService service,
         DiffPlannerMruStore store,
-        Func<DateTimeOffset>? clock = null)
+        Func<DateTimeOffset>? clock = null,
+        ILogger<DiffViewModel>? logger = null)
     {
-        var viewModel = new DiffViewModel(service, store, clock);
+        var viewModel = new DiffViewModel(service, store, clock, logger);
         viewModel.Initialization.GetAwaiter().GetResult();
         return viewModel;
     }

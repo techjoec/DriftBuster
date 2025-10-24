@@ -285,7 +285,7 @@ highlight where to consume the artifact.
   - [ ] 2.4.3 Re-run `dotnet test ...` and `coverage run --source=src/driftbuster -m pytest tests/multi_server/test_multi_server.py` ensuring ≥90%.
   - [ ] 2.4.4 Archive validation artefacts (screenshots, JSON payloads, command output) in `artifacts/diff-planner-validation/README.md`.
 - [ ] 2.5 Security & telemetry.
-  - [ ] 2.5.1 Add structured logging for sanitized-vs-raw payload rejects in `DiffViewModel`.
+  - [x] 2.5.1 Add structured logging for sanitized-vs-raw payload rejects in `DiffViewModel`.
   - [ ] 2.5.2 Extend privacy guardrails in `docs/legal-safeguards.md` to cover MRU storage.
   - [ ] 2.5.3 Capture telemetry sample results in `notes/checklists/legal-review.md`.
 

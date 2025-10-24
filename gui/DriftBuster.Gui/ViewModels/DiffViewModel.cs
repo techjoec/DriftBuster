@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -13,6 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
+using Microsoft.Extensions.Logging;
 
 namespace DriftBuster.Gui.ViewModels
 {
@@ -26,6 +28,9 @@ namespace DriftBuster.Gui.ViewModels
         private readonly ObservableCollection<DiffPlannerMruEntryView> _mruEntries = new();
         private readonly RelayCommand<DiffJsonViewMode> _selectJsonViewModeCommand;
         private readonly Task _initializationTask;
+        private readonly ILogger<DiffViewModel> _logger;
+        private static readonly EventId SanitizedFallbackEventId = new(2101, "DiffPlannerSanitizedFallback");
+        private static readonly EventId RawPayloadRejectedEventId = new(2102, "DiffPlannerRawPayloadRejected");
         private bool _suppressMruSelection;
         private bool _updatingBaseline;
 
@@ -80,11 +85,13 @@ namespace DriftBuster.Gui.ViewModels
         public DiffViewModel(
             IDriftbusterService service,
             DiffPlannerMruStore? mruStore = null,
-            Func<DateTimeOffset>? clock = null)
+            Func<DateTimeOffset>? clock = null,
+            ILogger<DiffViewModel>? logger = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _mruStore = mruStore ?? new DiffPlannerMruStore();
             _clock = clock ?? (() => DateTimeOffset.UtcNow);
+            _logger = logger ?? new FileJsonLogger<DiffViewModel>(Path.Combine("artifacts", "logs", "diff-planner-telemetry.json"));
 
             MruEntries = new ReadOnlyObservableCollection<DiffPlannerMruEntryView>(_mruEntries);
             _mruEntries.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasMruEntries));
@@ -140,6 +147,7 @@ namespace DriftBuster.Gui.ViewModels
 
             if (!HasSanitizedJson && JsonViewMode == DiffJsonViewMode.Sanitized)
             {
+                LogSanitizedFallback("sanitized_payload_missing");
                 JsonViewMode = DiffJsonViewMode.Raw;
             }
         }
@@ -281,10 +289,31 @@ namespace DriftBuster.Gui.ViewModels
         {
             if (mode == DiffJsonViewMode.Sanitized && !HasSanitizedJson)
             {
+                LogSanitizedFallback("sanitized_not_available");
                 mode = DiffJsonViewMode.Raw;
             }
 
             JsonViewMode = mode;
+        }
+
+        public bool TryGetCopyPayload([NotNullWhen(true)] out string? payload)
+        {
+            payload = null;
+
+            if (HasSanitizedJson && JsonViewMode != DiffJsonViewMode.Sanitized)
+            {
+                LogRawPayloadRejected("raw_blocked_sanitized_preferred");
+                return false;
+            }
+
+            var candidate = ActiveJson;
+            if (string.IsNullOrEmpty(candidate))
+            {
+                return false;
+            }
+
+            payload = candidate;
+            return true;
         }
 
         private async Task RunDiffAsync()
@@ -721,6 +750,61 @@ namespace DriftBuster.Gui.ViewModels
             public string Name { get; }
 
             public string Value { get; }
+        }
+
+        private void LogSanitizedFallback(string reason)
+        {
+            var telemetry = CreateTelemetry(reason);
+            _logger.Log(
+                LogLevel.Information,
+                SanitizedFallbackEventId,
+                telemetry,
+                null,
+                static (DiffPlannerPayloadRejectTelemetry state, Exception? _) =>
+                    $"Sanitized payload unavailable. reason={state.RejectReason}");
+        }
+
+        private void LogRawPayloadRejected(string reason)
+        {
+            var telemetry = CreateTelemetry(reason);
+            _logger.Log(
+                LogLevel.Information,
+                RawPayloadRejectedEventId,
+                telemetry,
+                null,
+                static (DiffPlannerPayloadRejectTelemetry state, Exception? _) =>
+                    $"Raw payload rejected. reason={state.RejectReason}");
+        }
+
+        private DiffPlannerPayloadRejectTelemetry CreateTelemetry(string reason)
+        {
+            return new DiffPlannerPayloadRejectTelemetry
+            {
+                RejectReason = reason,
+                ActiveMode = JsonViewMode.ToString(),
+                HasSanitizedJson = HasSanitizedJson,
+                HasRawJson = HasRawJson,
+                ComparisonCount = Comparisons.Count,
+                RawLength = RawJson?.Length ?? 0,
+                SanitizedLength = SanitizedJson?.Length ?? 0,
+            };
+        }
+
+        private sealed class DiffPlannerPayloadRejectTelemetry
+        {
+            public string RejectReason { get; init; } = string.Empty;
+
+            public string ActiveMode { get; init; } = string.Empty;
+
+            public bool HasSanitizedJson { get; init; }
+
+            public bool HasRawJson { get; init; }
+
+            public int ComparisonCount { get; init; }
+
+            public int RawLength { get; init; }
+
+            public int SanitizedLength { get; init; }
         }
     }
 }
