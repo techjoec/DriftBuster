@@ -127,6 +127,20 @@ format-specific exception.
   hunt mode (`docs/hunt-mode.md`) so reviewers can approve or reject expected
   churn explicitly.
 
+<a id="structured-text"></a>
+### Structured-text whitespace policy
+
+- YAML detectors must emit an `indentation` metadata block summarising the
+  baseline indent width, tolerated widths (`allowed_widths`), and any tab/mixed
+  indentation sightings. Review tools rely on this metadata to raise drift
+  alerts when operators introduce odd spacing.
+- TOML detectors emit `key_value_spacing` metadata capturing the preferred
+  spaces before/after `=` plus lines containing tab characters. Keep regression
+  tests pinned to these tolerances so updates do not loosen the guardrails.
+- Any change to whitespace heuristics requires updating the structured-text
+  section of this playbook, the addition guide, and related tests under
+  `tests/formats/` to keep policy, documentation, and behaviour aligned.
+
 ## 3. Documentation Requirements
 
 - Update `docs/detection-types.md` with:

@@ -595,13 +595,13 @@ highlight where to consume the artifact.
   - [x] 8.3.4 Update docs (`docs/format-playbook.md`) with consolidated lineage.
   - [x] 8.3.5 Add encoding/secret audit results to `notes/status/core-formats.md`.
   - [x] 8.3.6 Ensure dotenv fixtures reference sanitisation scripts stored under `scripts/fixtures/README.md`.
-- [ ] 8.4 Structured text (Priority 4).
-  - [ ] 8.4.1 Harden YAML/TOML detectors in `src/driftbuster/formats/yaml` and `toml`.
-  - [ ] 8.4.2 Codify whitespace tolerances.
-  - [ ] 8.4.3 Add tests `tests/formats/test_yaml_plugin.py`, `test_yaml_flags_and_gating.py`, and `tests/formats/test_toml_plugin.py`.
-  - [ ] 8.4.4 Update docs `docs/format-support.md` + `docs/format-addition-guide.md`.
-  - [ ] 8.4.5 Publish indentation tolerance policy in `docs/format-playbook.md#structured-text`.
-  - [ ] 8.4.6 Capture multi-document YAML samples with provenance notes under `fixtures/yaml/README.md`.
+- [x] 8.4 Structured text (Priority 4).
+  - [x] 8.4.1 Harden YAML/TOML detectors in `src/driftbuster/formats/yaml` and `toml`.
+  - [x] 8.4.2 Codify whitespace tolerances.
+  - [x] 8.4.3 Add tests `tests/formats/test_yaml_plugin.py`, `test_yaml_flags_and_gating.py`, and `tests/formats/test_toml_plugin.py`.
+  - [x] 8.4.4 Update docs `docs/format-support.md` + `docs/format-addition-guide.md`.
+  - [x] 8.4.5 Publish indentation tolerance policy in `docs/format-playbook.md#structured-text`.
+  - [x] 8.4.6 Capture multi-document YAML samples with provenance notes under `fixtures/yaml/README.md`.
 - [ ] 8.5 Binary/Hybrid (Priority 5).
   - [ ] 8.5.1 Design adapters for embedded SQL, property lists, markdown front matter in `src/driftbuster/formats`.
   - [ ] 8.5.2 Add fixtures under `fixtures/` with legal review tracked.

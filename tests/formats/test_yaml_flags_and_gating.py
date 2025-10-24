@@ -33,3 +33,12 @@ def test_yaml_ini_like_extension_requires_structure():
     strong = "---\nservers:\n  item: true\n  nested:\n    key: value\n  - list: yes\n"
     m_strong = _detect("service.conf", strong)
     assert m_strong is not None
+
+
+def test_yaml_inconsistent_indentation_triggers_review():
+    content = """root:\n  good: value\n     bad: indent\n"""
+    match = _detect("indent.yaml", content)
+    assert match is not None
+    assert match.metadata and match.metadata.get("needs_review") is True
+    reasons = match.metadata.get("review_reasons", [])
+    assert any("Indentation widths outside tolerated range" in r for r in reasons)

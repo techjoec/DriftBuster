@@ -32,3 +32,24 @@ def test_toml_generic_and_array_of_tables():
     assert m2 is not None
     assert m2.variant == "array-of-tables"
 
+
+def test_toml_spacing_metadata_and_inline_table_reason():
+    content = """
+    [tool.black]
+    line-length = 88
+    skip-string-normalization = true
+
+    [tool.poetry.dependencies]
+    python = "^3.11"
+
+    [tool.poetry.group.dev.dependencies]
+    pytest = { version = "^7.0", extras = ["cov"] }
+    """.strip()
+    match = _detect("pyproject.toml", content)
+    assert match is not None
+    assert any("inline table" in r for r in match.reasons)
+    spacing = (match.metadata or {}).get("key_value_spacing")
+    assert spacing is not None
+    assert spacing.get("after") is not None
+    assert spacing.get("allowed_after")
+

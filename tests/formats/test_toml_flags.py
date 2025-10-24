@@ -37,3 +37,15 @@ def test_toml_bare_keys_flag():
     assert m.metadata and m.metadata.get("needs_review") is True
     assert any("bare key" in r for r in m.metadata.get("review_reasons", []))
 
+
+def test_toml_tab_spacing_triggers_review():
+    content = """
+    [tool.sample]
+    name\t=\t"demo"
+    other = 1
+    """.strip()
+    match = _detect("spacing.toml", content)
+    assert match is not None
+    assert match.metadata and match.metadata.get("needs_review") is True
+    assert any("Tab characters around '='" in r for r in match.metadata.get("review_reasons", []))
+

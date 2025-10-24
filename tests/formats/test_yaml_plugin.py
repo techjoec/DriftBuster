@@ -72,3 +72,27 @@ def test_yaml_heavily_commented_reference_like_minion():
     match = _detect("minion", content)
     assert match is not None
     assert match.format_name == "yaml"
+
+
+def test_yaml_multidocument_reports_markers_and_indentation():
+    content = """---
+kind: ConfigMap
+metadata:
+  name: sample
+...
+---
+apiVersion: v1
+kind: Pod
+spec:
+    containers:
+      - name: app
+        image: demo:1
+"""
+    match = _detect("bundle.yaml", content)
+    assert match is not None
+    assert any("document start" in r.lower() for r in match.reasons)
+    assert any("document end" in r.lower() for r in match.reasons)
+    indentation = (match.metadata or {}).get("indentation")
+    assert indentation is not None
+    assert indentation.get("baseline") in {2, 4}
+    assert indentation.get("allowed_widths")

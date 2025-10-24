@@ -1,0 +1,26 @@
+---
+kind: ConfigMap
+metadata:
+  name: web-config
+  namespace: web
+  labels:
+    tier: frontend
+...
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: example/web:1.0
+          env:
+            - name: LOG_LEVEL
+              value: info

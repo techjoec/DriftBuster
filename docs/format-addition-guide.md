@@ -15,8 +15,8 @@ Current registry order example (`driftbuster.formats.registry_summary()`; actual
 | 2     | `dockerfile`   | `driftbuster.formats.dockerfile.plugin.DockerfilePlugin`      | 120      | 0.0.1   |
 | 3     | `conf`         | `driftbuster.formats.conf.plugin.ConfPlugin`                  | 150      | 0.0.1   |
 | 4     | `hcl`          | `driftbuster.formats.hcl.plugin.HclPlugin`                    | 158      | 0.0.1   |
-| 5     | `yaml`         | `driftbuster.formats.yaml.plugin.YamlPlugin`                  | 160      | 0.0.1   |
-| 6     | `toml`         | `driftbuster.formats.toml.plugin.TomlPlugin`                  | 165      | 0.0.1   |
+| 5     | `yaml`         | `driftbuster.formats.yaml.plugin.YamlPlugin`                  | 160      | 0.0.3   |
+| 6     | `toml`         | `driftbuster.formats.toml.plugin.TomlPlugin`                  | 165      | 0.0.3   |
 | 7     | `ini`          | `driftbuster.formats.ini.plugin.IniPlugin`                    | 170      | 0.0.1   |
 | 8     | `json`         | `driftbuster.formats.json.plugin.JsonPlugin`                  | 200      | 0.0.3   |
 | 9     | `text`         | `driftbuster.formats.text.plugin.TextPlugin`                  | 1000     | 0.0.1   |
@@ -80,6 +80,10 @@ registration happens on module import alongside the built-ins.
    conditions (truncated sample, undecodable bytes, missing markers). When
    stripping comments or other auxiliary content for metadata extraction,
    always fall back to the original sample if sanitisation fails.
+7. **Whitespace tolerances** – Structured text detectors (YAML/TOML) must emit
+   indentation/spacing metadata outlining the tolerated ranges so review tools
+   can flag drift. When heuristics change, update `docs/format-playbook.md` and
+   regression tests to lock in the revised tolerances.
 
 Review the shipped JSON and INI detectors to keep heuristics consistent with the
 existing style.

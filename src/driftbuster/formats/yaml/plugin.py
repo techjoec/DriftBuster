@@ -20,6 +20,7 @@ Variants surfaced today:
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -34,6 +35,74 @@ _KEY_COLON = re.compile(r"^\s*[A-Za-z_][\w.-]*\s*:\s*(\S|$)", re.MULTILINE)
 _INDENTED_BLOCK = re.compile(r"\n\s{2,}[A-Za-z_][\w.-]*\s*:\s*(\S|$)")
 _LIST_MARKER = re.compile(r"^\s*-\s+\S+", re.MULTILINE)
 _COMMENTED_KEY = re.compile(r"^\s*#\s*[A-Za-z_][\w.-]*\s*:\s*", re.MULTILINE)
+_DOC_END = re.compile(r"^\s*\.\.\.\s*$", re.MULTILINE)
+
+
+def _analyse_indentation(lines: List[str]) -> Optional[Dict[str, object]]:
+    """Inspect indentation to derive tolerances and drift signals.
+
+    The YAML plugin only needs a coarse-grained profile so we avoid pulling in a
+    parser. This helper summarises indentation style and highlights outliers so
+    callers can surface actionable review metadata without parsing the full
+    document.
+    """
+
+    indent_stats: Counter[int] = Counter()
+    space_lines: Dict[int, List[int]] = {}
+    tab_lines: List[int] = []
+    mixed_lines: List[int] = []
+
+    for idx, raw in enumerate(lines, 1):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        leading = len(raw) - len(raw.lstrip())
+        if leading == 0:
+            continue
+        prefix = raw[:leading]
+        if "\t" in prefix and prefix.replace("\t", ""):
+            mixed_lines.append(idx)
+            continue
+        if "\t" in prefix:
+            tab_lines.append(idx)
+            continue
+        indent_stats[leading] += 1
+        space_lines.setdefault(leading, []).append(idx)
+
+    if not indent_stats and not tab_lines and not mixed_lines:
+        return None
+
+    metadata: Dict[str, object] = {}
+    if tab_lines and not indent_stats:
+        metadata["style"] = "tabs"
+        metadata["tab_lines"] = tab_lines[:10]
+        return metadata
+
+    metadata["style"] = "spaces" if indent_stats else "mixed"
+    if indent_stats:
+        baseline, _ = indent_stats.most_common(1)[0]
+        allowed = {baseline}
+        # Allow progressive multiples (2x, 3x) and off-by-two for nested
+        # structures that occasionally add extra padding.
+        for width in list(indent_stats):
+            if width % baseline == 0 or abs(width - baseline) <= 2:
+                allowed.add(width)
+        outliers: List[int] = []
+        for width, occurrences in space_lines.items():
+            if width not in allowed:
+                outliers.extend(occurrences[:10])
+        metadata["baseline"] = baseline
+        metadata["allowed_widths"] = sorted(allowed)
+        if outliers:
+            metadata["outlier_lines"] = sorted(set(outliers))
+
+    if tab_lines:
+        metadata["tab_lines"] = tab_lines[:10]
+        metadata["style"] = "mixed" if indent_stats else "tabs"
+    if mixed_lines:
+        metadata["mixed_indent_lines"] = mixed_lines[:10]
+        metadata["style"] = "mixed"
+
+    return metadata or None
 
 
 @dataclass
@@ -41,7 +110,7 @@ class YamlPlugin:
     name: str = "yaml"
     # Run before INI to avoid unix-conf/env-file stealing YAML payloads
     priority: int = 160
-    version: str = "0.0.2"
+    version: str = "0.0.3"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -71,12 +140,24 @@ class YamlPlugin:
         # Core YAML signals
         has_key_colon = bool(_KEY_COLON.search(scan_text))
         has_doc = bool(_DOC_START.search(scan_text))
+        has_doc_end = bool(_DOC_END.search(scan_text))
         has_list = bool(_LIST_MARKER.search(scan_text))
         has_indented = bool(_INDENTED_BLOCK.search(scan_text))
 
         # Oddities: tabs for indentation are suspicious
         if "\t" in text:
             review_reasons.append("Tab indentation present in YAML-like content")
+
+        indent_profile = _analyse_indentation(lines)
+        if indent_profile:
+            metadata["indentation"] = indent_profile
+            outliers = indent_profile.get("outlier_lines")
+            if outliers:
+                review_reasons.append(
+                    "Indentation widths outside tolerated range detected"
+                )
+            if indent_profile.get("style") in {"tabs", "mixed"} and "Tab indentation present in YAML-like content" not in review_reasons:
+                review_reasons.append("Tab or mixed indentation detected in YAML sample")
 
         # Guard against common false positives like inline URLs with ':'
         # by requiring either indentation-based maps or multiple key: lines.
@@ -91,6 +172,8 @@ class YamlPlugin:
 
         if has_doc:
             reasons.append("Detected YAML document start marker '---'")
+        if has_doc_end:
+            reasons.append("Detected YAML document end marker '...'")
         if has_list:
             reasons.append("Detected YAML list marker '- '")
         if has_key_colon:
@@ -144,6 +227,8 @@ class YamlPlugin:
             confidence += 0.05
         if has_doc:
             confidence += 0.05
+        if has_doc_end:
+            confidence += 0.02
         if variant == "kubernetes-manifest":
             confidence += 0.05
         confidence = min(0.95, confidence)

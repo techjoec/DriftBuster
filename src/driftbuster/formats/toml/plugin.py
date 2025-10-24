@@ -10,6 +10,7 @@ Signals used:
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -24,13 +25,52 @@ _ARRAY_OF_TABLES = re.compile(r"^\s*\[\[[A-Za-z0-9_.\-]+\]\]\s*$", re.MULTILINE)
 _KEY_EQUALS = re.compile(r"^\s*[A-Za-z0-9_.\-]+\s*=\s*.+$", re.MULTILINE)
 _QUOTED_VALUE = re.compile(r"=\s*(\"[^\"]*\"|'[^']*')")
 _ARRAY_VALUE = re.compile(r"=\s*\[.*?\]", re.DOTALL)
+_INLINE_TABLE = re.compile(r"=\s*\{.*?\}")
+
+
+def _analyse_spacing(lines: List[str]) -> Optional[Dict[str, object]]:
+    before_counter: Counter[int] = Counter()
+    after_counter: Counter[int] = Counter()
+    tab_lines: List[int] = []
+
+    for idx, raw in enumerate(lines, 1):
+        if "=" not in raw:
+            continue
+        stripped = raw.lstrip()
+        if not stripped or stripped[0] in "#;[":
+            continue
+        left, _, right = raw.partition("=")
+        if "\t" in left or "\t" in right:
+            tab_lines.append(idx)
+        before_spaces = len(left) - len(left.rstrip(" "))
+        after_spaces = len(right) - len(right.lstrip(" "))
+        before_counter[before_spaces] += 1
+        after_counter[after_spaces] += 1
+
+    if not before_counter and not after_counter and not tab_lines:
+        return None
+
+    metadata: Dict[str, object] = {}
+    if before_counter:
+        before_base, _ = before_counter.most_common(1)[0]
+        metadata["before"] = before_base
+        allowed_before = {before_base, max(0, before_base - 1), before_base + 1}
+        metadata["allowed_before"] = sorted(allowed_before)
+    if after_counter:
+        after_base, _ = after_counter.most_common(1)[0]
+        metadata["after"] = after_base
+        allowed_after = {after_base, max(0, after_base - 1), after_base + 1}
+        metadata["allowed_after"] = sorted(allowed_after)
+    if tab_lines:
+        metadata["tab_lines"] = tab_lines[:10]
+    return metadata or None
 
 
 @dataclass
 class TomlPlugin:
     name: str = "toml"
     priority: int = 165
-    version: str = "0.0.2"
+    version: str = "0.0.3"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -50,6 +90,7 @@ class TomlPlugin:
         has_key_equals = bool(key_pairs)
         quoted_pairs = len(_QUOTED_VALUE.findall(text))
         array_pairs = len(_ARRAY_VALUE.findall(text))
+        inline_tables = len(_INLINE_TABLE.findall(text))
 
         if has_array_tables:
             reasons.append("Found [[array-of-tables]] declaration")
@@ -61,6 +102,8 @@ class TomlPlugin:
             reasons.append("Found quoted value assignments")
         if array_pairs:
             reasons.append("Found array value assignments")
+        if inline_tables:
+            reasons.append("Found inline table assignments")
 
         # Gate on content signals only; treat extension as a confidence hint, not a gate.
         content_signals = sum(
@@ -71,6 +114,7 @@ class TomlPlugin:
                 has_key_equals,
                 quoted_pairs > 0,
                 array_pairs > 0,
+                inline_tables > 0,
             )
             if flag
         )
@@ -87,6 +131,12 @@ class TomlPlugin:
         if len(bare_key_lines) >= 3 and has_table_headers is False:
             review_reasons.append("Multiple bare key lines without '=' suggest malformed TOML")
 
+        spacing_profile = _analyse_spacing(text.splitlines())
+        if spacing_profile:
+            metadata["key_value_spacing"] = spacing_profile
+            if spacing_profile.get("tab_lines"):
+                review_reasons.append("Tab characters around '=' detected in TOML sample")
+
         confidence = 0.5
         # Extension contributes as a hint only.
         if ext == _EXT:
@@ -99,6 +149,8 @@ class TomlPlugin:
             confidence += 0.05
         if quoted_pairs or array_pairs:
             confidence += 0.05
+        if inline_tables:
+            confidence += 0.03
         confidence = min(0.95, confidence)
 
         if review_reasons:
