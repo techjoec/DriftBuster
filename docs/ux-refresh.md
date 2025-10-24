@@ -29,6 +29,11 @@ iterations have a concrete baseline.
   trimmed file metadata, digests, and comparison counts. Entries persist in
   `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/mru.json` (or the XDG data root equivalent) and cap
   at ten records to avoid stale payload buildup.
+- Final release capture (`docs/assets/themes/20250309-theme-darkplus-1600px.png`) shows the MRU
+  dropdown expanded with sanitized digests and the activity timeline recording the export burst.
+  Pair it with the manual walkthrough in `artifacts/manual-runs/2025-10-24-multi-server-notes.md`
+  when preparing release notes so reviewers can trace how diff planner persistence behaves in a
+  multi-server session.
 - Sanitized payloads only: raw backend responses are rejected and a telemetry record (`payload_kind`
   `raw`) is logged before the GUI drops the entry. Refer to the structured events in
   `artifacts/logs/diff-planner-mru-telemetry.json` when auditing the guardrail.
@@ -40,7 +45,9 @@ iterations have a concrete baseline.
   4. Record capture metadata (theme, resolution, fixture) in the asset manifest table below once
      populated.
 - Follow-up: populate `docs/assets/diff-planner/manifest.md` once the first sanitized capture set
-  lands; include theme/resolution columns so refreshes remain auditable.
+  lands; include theme/resolution columns so refreshes remain auditable. The latest manual run
+  already references the Dark+/Light+ captures, so keep the manifest aligned when new screenshots
+  replace them.
 
 ## Avalonia 11.2 Migration Follow-up (P5)
 - Results catalog view and toast converters now target Avalonia 11.2 APIs. See `docs/windows-gui-guide.md#avalonia-112-migration-notes` for the build/test checklist captured during the release-blocker sweep.
@@ -54,7 +61,8 @@ iterations have a concrete baseline.
 - Future work: capture 1280/1440/1920 px snapshots under `artifacts/ux/` once the automated
   screenshot harness lands. Track this follow-up in CLOUDTASKS.md (area A4) when the tooling is ready.
 
-Last updated: 2025-03-09 — regenerate after any notable UX change.
+Last updated: 2025-03-12 — regenerate after any notable UX change or when the multi-server manual
+run notes receive new evidence.
 
 ## Asset Provenance
 - Store UI screenshots under `docs/assets/` with filenames that encode resolution, theme, and feature (e.g. `20250214-server-grid-1440px-dark.png`).

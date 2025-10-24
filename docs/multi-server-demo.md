@@ -2,6 +2,8 @@
 
 The multi-server flow configures up to six hosts, shares progress with live toasts, and produces catalog/drilldown exports without leaving the GUI. This guide walks through the end-to-end experience using the bundled sample data plus equivalent CLI commands so you can automate the same orchestration.
 
+Latest release captures (see `docs/assets/themes/20250309-theme-darkplus-1600px.png` and `docs/assets/themes/20250309-theme-lightplus-1600px.png`) mirror the walkthrough recorded in `artifacts/manual-runs/2025-10-24-multi-server-notes.md`. Reference both while following these steps to confirm diff planner MRU entries and activity timeline exports line up with the documented baseline.
+
 ### Scenario Overview
 
 - Demo dataset: `samples/multi-server/`
@@ -40,6 +42,7 @@ Callout notes:
 - Progress appears next to each host. Statuses cycle through `queued`, `running`, `succeeded`, `failed`, or `skipped`.
 - Toasts summarize completed runs, permission warnings, and retry hints. Open the activity timeline on the right to view a durable log of root changes, exports, and reruns.
 - Successful results are cached by `(host, root, config)` so rerunning only missing hosts is instant; the view reuses existing catalog entries while new work finishes.
+- Compare what you see with the Dark+ manual-run capture referenced above; the export burst and MRU dropdown should match the sanitized highlights documented in the evidence file.
 
 ### 3. Explore Results
 
@@ -53,6 +56,7 @@ Callout notes:
 2. Close the GUI and relaunch it with `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`. The multi-server tab will repopulate host labels, scopes, root ordering, baseline preferences, catalog filters, the last selected drilldown host, and the active timeline filter.
 3. Validate that Inter-font dependent controls (catalog headers, guidance footer text) render correctly. The headless bootstrapper now preloads `fonts:SystemFonts` so even Release builds hydrate the alias dictionary before multi-server views instantiate.
 4. Trigger a rerun from the restored session. Cached hosts immediately report **succeeded** while the activity timeline records a **Loaded saved session** success entry ("Restored _n_ servers.") before fresh run telemetry lands for any hosts that require new work.
+5. Match the restored state to the manual run evidence file to confirm MRU entries, timeline filters, and export records persisted as expected.
 
 ### 4. CLI Parity
 

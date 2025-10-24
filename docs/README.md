@@ -41,6 +41,7 @@ Docs are grouped so you can jump straight to the guide you need.
   and heuristics.
 - [`../CLOUDTASKS.md`](../CLOUDTASKS.md) — consolidated backlog (replaces the former reporting roadmap, Python CLI, and PowerShell plan).
 - [`windows-gui-guide.md`](windows-gui-guide.md) — Avalonia usage guide.
+- [`ux-refresh.md`](ux-refresh.md) — screenshot manifest, MRU guidance, and links to manual run evidence for the latest release captures.
 - [`windows-gui-notes.md`](windows-gui-notes.md) — design scratchpad (draft).
 - [`../README.md#python-cli-stub-on-hold`](../README.md#python-cli-stub-on-hold) — CLI stub status, argument surface, and manual smoke steps.
 

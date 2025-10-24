@@ -475,10 +475,10 @@ highlight where to consume the artifact.
   - [x] 6.2.1 Trigger packaged smoke (`scripts/smoke_multi_server_storage.sh`) and log outputs in `notes/status/gui-research.md`.
   - [ ] 6.2.2 Execute manual multi-server session, verifying persistence + diff planner features.
   - [ ] 6.2.3 Record session walkthrough (screen capture + notes) and archive under `artifacts/manual-runs/`.
-- [ ] 6.3 Docs & assets.
-  - [ ] 6.3.1 Refresh `docs/ux-refresh.md`, `docs/windows-gui-guide.md`, and `docs/release-notes.md` with final screenshots + notes.
-  - [ ] 6.3.2 Update `README.md` and `docs/multi-server-demo.md` with summary of new capabilities.
-  - [ ] 6.3.3 Ensure `docs/README.md` index references updated assets.
+- [x] 6.3 Docs & assets.
+  - [x] 6.3.1 Refresh `docs/ux-refresh.md`, `docs/windows-gui-guide.md`, and `docs/release-notes.md` with final screenshots + notes.
+  - [x] 6.3.2 Update `README.md` and `docs/multi-server-demo.md` with summary of new capabilities.
+  - [x] 6.3.3 Ensure `docs/README.md` index references updated assets.
 - [x] 6.4 Release evidence.
   - [x] 6.4.1 Update `CHANGELOG.md` and `notes/status/gui-research.md` with validation checklist.
   - [x] 6.4.2 Archive artifacts under `artifacts/` as needed and note retention plan.

@@ -42,6 +42,7 @@ packaging script enforces these guards automatically.
   `docs/assets/themes/` and reference the manifest table in
   `docs/ux-refresh.md#theme-capture-manifest` so reviewers can trace when the
   visuals were last regenerated.
+- Cite the matching manual run evidence (`artifacts/manual-runs/2025-10-24-multi-server-notes.md`) when noting multi-server or diff planner changes; the Dark+ capture already highlights the MRU dropdown and export timeline pairing validated during that walkthrough.
 
 ### Avalonia 11.2 Results Catalog Alignment
 - Record the Avalonia 11.2 migration in the **GUI** section with a bullet similar to `- GUI: Updated results catalog sorting and toast resource lookups for Avalonia 11.2.` Keep the statement in present tense.

@@ -42,7 +42,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 
 ![Light+ theme overview at 1600px](assets/themes/20250309-theme-lightplus-1600px.png)
 
-The captures above follow the asset naming convention documented in `docs/ux-refresh.md#theme-capture-manifest`. Reuse them in release material whenever the palettes change, and regenerate fresh captures after significant visual adjustments to keep the manifest traceable.
+The captures above follow the asset naming convention documented in `docs/ux-refresh.md#theme-capture-manifest`. Reuse them in release material whenever the palettes change, and regenerate fresh captures after significant visual adjustments to keep the manifest traceable. The Dark+ capture also records the diff planner MRU dropdown and export timeline pairing validated in `artifacts/manual-runs/2025-10-24-multi-server-notes.md`.
 
 ## Avalonia 11.2 Migration Notes
 
@@ -136,6 +136,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 - Switching a server to **Custom roots** keeps the validation summary live while you type. Duplicate or relative paths flag the card immediately, and summaries stay cached even when the card loses focus.
 - Session saves now persist the active catalog sort descriptor, catalog filters, timeline filter, selected view (setup/results/drilldown), and root ordering so reloading a session restores the same working state.
 - Font preload guardrail: `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary during `BuildAvaloniaApp()`, so Release/Debug headless runs hydrate Inter before the multi-server view instantiates catalog headers or guidance text.
+- Manual walkthrough recorded in `artifacts/manual-runs/2025-10-24-multi-server-notes.md` exercises save/restore, confirms cached diff planner MRU entries, and maps the persisted timeline filter shown in the Dark+ capture above.
 
 #### Persistence walkthrough
 1. Click **Save session** after a successful multi-server run. The awaitable `SessionCacheService` writes the snapshot to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or the `$XDG_DATA_HOME` equivalent) while recording migration counters.
@@ -153,6 +154,12 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 - Toast styling now reads Avalonia 11.2 theme dictionaries directly: override `Brush.Toast.*` or `Toast.Icon.*` resources under `ThemeVariant.Dark` / `ThemeVariant.Light` to tailor per-theme palettes without touching the converters.
 - Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter plus the last opened drilldown host persist with the rest of the multi-server session.
 - Clipboard/export actions write to the timeline with the new **Exports** filter so analysts can isolate delivery events quickly.
+- Diff planner exports from the manual run evidence file appear in the **Exports** view alongside the MRU replay, demonstrating how sanitized payloads and timeline entries stay in sync for audits.
+
+### Manual run evidence
+- `artifacts/manual-runs/2025-10-24-multi-server-notes.md` documents a six-host walkthrough using the bundled fixtures, including the diff planner MRU capture shown in the Dark+ screenshot above.
+- Pair the notes with the Light+ capture when reviewing accessibility tweaks; each callout references the same sanitized export burst recorded in the activity timeline.
+- Refresh the evidence entry whenever MRU formatting, session cache layout, or activity filters change so this guide always points at the latest screenshots and transcript hashes.
 
 ### Virtualization heuristics & fallback toggle
 - The server cards, activity feed, and results catalog all read a shared `PerformanceProfile` that flips between the virtualised `ItemsRepeater` layout and the non-virtualised fallback when host counts are low. The default threshold is **400** entries, keeping memory usage predictable without penalising small scans.
