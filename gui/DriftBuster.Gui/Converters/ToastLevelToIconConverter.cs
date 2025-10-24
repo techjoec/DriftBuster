@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using Avalonia.Styling;
 
@@ -45,6 +46,11 @@ namespace DriftBuster.Gui.Converters
             {
                 resource = null;
                 return false;
+            }
+
+            if (app.TryFindResource(key, out resource))
+            {
+                return true;
             }
 
             var theme = app.ActualThemeVariant ?? ThemeVariant.Default;

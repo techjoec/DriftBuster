@@ -371,10 +371,10 @@ highlight where to consume the artifact.
   - [x] 5.1.2 Update `gui/DriftBuster.Gui/ViewModels/ResultsCatalogViewModel.cs` logic accordingly.
   - [x] 5.1.3 Add regression tests under `gui/DriftBuster.Gui.Tests/ViewModels/ResultsCatalogViewModelTests.cs`.
   - [x] 5.1.4 Capture before/after sorting behaviour in `notes/status/gui-research.md` with screenshots or logs.
-- [ ] 5.2 Toast resource refactor.
-  - [ ] 5.2.1 Update converters in `gui/DriftBuster.Gui/Converters` to use Avalonia 11.2 resource lookups.
-  - [ ] 5.2.2 Expand tests in `gui/DriftBuster.Gui.Tests/Converters`.
-  - [ ] 5.2.3 Document toast resource lookup changes in `docs/windows-gui-guide.md#notifications`.
+- [x] 5.2 Toast resource refactor.
+  - [x] 5.2.1 Update converters in `gui/DriftBuster.Gui/Converters` to use Avalonia 11.2 resource lookups.
+  - [x] 5.2.2 Expand tests in `gui/DriftBuster.Gui.Tests/Converters`.
+  - [x] 5.2.3 Document toast resource lookup changes in `docs/windows-gui-guide.md#notifications`.
 - [ ] 5.3 Build validation.
   - [ ] 5.3.1 Rebuild GUI with Avalonia 11.2 and capture results in `notes/status/gui-research.md`.
   - [ ] 5.3.2 Run headless UI tests ensuring toasts and sorting propagate.
