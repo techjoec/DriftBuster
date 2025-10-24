@@ -481,9 +481,9 @@ highlight where to consume the artifact.
   - [ ] 7.2.2 Update `docs/detection-types.md` after adjustments.
   - [ ] 7.2.3 Capture catalog diff summary in `notes/checklists/catalog-review.md`.
 - [ ] 7.3 Registry summary expansion.
-  - [ ] 7.3.1 Extend `src/driftbuster/registry/__init__.py::registry_summary` with usage statistics.
+  - [x] 7.3.1 Extend `src/driftbuster/registry/__init__.py::registry_summary` with usage statistics.
   - [ ] 7.3.2 Capture manual review steps in `notes/checklists/reporting-tests.md`.
-  - [ ] 7.3.3 Add regression coverage verifying usage statistics in `tests/registry/test_registry_summary.py`.
+  - [x] 7.3.3 Add regression coverage verifying usage statistics in `tests/registry/test_registry_summary.py`.
 - [ ] 7.4 Diff/patch utilities.
   - [ ] 7.4.1 Finalise helpers in `src/driftbuster/reporting/diff.py` for before/after comparisons.
   - [ ] 7.4.2 Add regression coverage in `tests/reporting/test_diff.py` (new) and update docs.
