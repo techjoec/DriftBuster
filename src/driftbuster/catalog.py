@@ -161,6 +161,9 @@ DETECTION_CATALOG = DetectionCatalog(
                 ContentSignature(type="contains_regex", pattern="<(appSettings|runtime|system\.web)(\s|>)"),
             ),
             mime_hints=("application/xml", "text/xml"),
+            examples=(
+                "<configuration xmlns:xdt=\"http://schemas.example/xdt\">...</configuration>",
+            ),
             subtypes=(
                 FormatSubtype(
                     name="WebConfigXml",
@@ -233,6 +236,9 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
             ),
             mime_hints=("application/xml", "text/xml"),
+            examples=(
+                "<assembly xmlns=\"urn:example:driftbuster:manifest\" xmlns:compat=\"urn:example:driftbuster:compatibility\">...</assembly>",
+            ),
             subtypes=(
                 FormatSubtype(
                     name="MsbuildTargetsXml",
@@ -732,7 +738,7 @@ FORMAT_SURVEY = FormatSurvey(
             variant="web-or-app-config",
             extensions=(".config",),
             mime_hints=("application/xml",),
-            context="Enterprise XML configuration files (e.g., app.config, web.config, machine.config) used by general web frameworks.",
+            context="Enterprise XML configuration files (e.g., app.config, web.config, machine.config) used by general web frameworks; detector logs namespace provenance hashes with line numbers for audit trails.",
             approx_usage_percent=12,
             confidence_model="schema+namespace",
         ),
@@ -741,7 +747,7 @@ FORMAT_SURVEY = FormatSurvey(
             variant="generic",
             extensions=(".xml", ".manifest", ".resx", ".xaml"),
             mime_hints=("application/xml", "text/xml"),
-            context="Generic or declarative XML configuration; also includes system manifests, .resx resources, and XAML-style UI files.",
+            context="Generic or declarative XML configuration; also includes system manifests, .resx resources, and XAML-style UI files with line-level namespace provenance logging.",
             approx_usage_percent=14,
             confidence_model="doctype+element-scan",
             variants=(

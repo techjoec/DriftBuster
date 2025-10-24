@@ -11,8 +11,8 @@ variants and metadata expectations each format must satisfy.
 
 | Format family            | Variants / focus                                                 | Plugin | Module version | Status       | Notes |
 |--------------------------|------------------------------------------------------------------|--------|----------------|--------------|-------|
-| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.4          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, and MSBuild metadata now populate automatically. |
-| Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.4          | Stabilising  | Namespace logging, schema provenance, `.resx` resource keys, MSBuild project detection, and attribute hints surface alongside hunt-aligned tokens. |
+| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.6          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, MSBuild metadata, and line-level namespace provenance hashes now populate automatically. |
+| Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.6          | Stabilising  | Namespace logging captures per-declaration hashes + line numbers, schema provenance, `.resx` resource keys, MSBuild project detection, and attribute hints surface alongside hunt-aligned tokens. |
 | JSON                     | Generic JSON, comment-friendly `jsonc`, `appsettings*.json`      | json   | 0.0.1          | Preview      | Large-sample validation and sampling guardrails are still being tuned. |
 | Registry live scan       | JSON/YAML scan manifests (`registry_scan` token/keywords/patterns) | registry-live | 0.0.1      | Preview      | Integrates live Windows Registry hunts via definition files; avoids `.reg` exports. |
 | INI                       | Classic/sectionless, dotenv gating, directive spillover metadata | ini    | 0.0.1          | Preview     | Records encoding, comment style, sensitive key hints, and classifies dotenv/unix-conf/hybrid variants for remediation planning. |
@@ -23,7 +23,7 @@ variants and metadata expectations each format must satisfy.
 | HCL                      | HashiCorp configs (Nomad/Vault/Consul)                            | hcl    | 0.0.1          | Preview      | Detects `job {}`, `server {}`, `listener {}`, `seal {}` blocks + `key = value` pairs. |
 | Dockerfile               | Multi-stage builds and directives                                 | dockerfile | 0.0.1       | Preview      | Filename/Dockerfile hint, `FROM` on first non-comment line, and common directives (RUN/COPY/ARG). |
 
-Last updated: 2025-10-20.
+Last updated: 2025-10-24.
 
 ## Version Tracking Guidance
 

@@ -15,6 +15,17 @@ def test_xml_plugin_helper_reason_builders() -> None:
     metadata = {
         "xml_declaration": {"version": "1.0", "encoding": "utf-8", "standalone": "yes"},
         "namespaces": {"default": "urn:example"},
+        "namespace_provenance": [
+            {
+                "attribute": "xmlns",
+                "prefix": None,
+                "uri": "urn:example",
+                "line": 2,
+                "column": 5,
+                "source": "root-attribute",
+                "hash": "aaaaaaaaaaaa",
+            }
+        ],
         "schema_locations": [
             {"namespace": "urn:example", "location": "http://example.com/schema.xsd"},
             {"namespace": None, "location": "local.xsd"},
@@ -45,6 +56,7 @@ def test_xml_plugin_helper_reason_builders() -> None:
     plugin._append_doctype_reason(metadata, reasons)
     assert any("XML version declared" in reason for reason in reasons)
     assert any("namespace declarations" in reason for reason in reasons)
+    assert any("@L" in reason for reason in reasons if "namespace" in reason)
     assert any("Schema" in reason for reason in reasons)
     assert any("resource keys" in reason for reason in reasons)
     assert any("MSBuild" in reason for reason in reasons)
@@ -77,6 +89,14 @@ def test_xml_plugin_metadata_extractors() -> None:
 
     assert metadata["root_tag"].lower() == "configuration"
     assert metadata["schema_locations"]
+    provenance = metadata.get("namespace_provenance")
+    assert isinstance(provenance, list)
+    assert provenance
+    first_entry = provenance[0]
+    assert first_entry["attribute"] == "xmlns:xsi"
+    assert first_entry["source"] == "root-attribute"
+    assert first_entry["line"] == 2
+    assert len(first_entry["hash"]) == 12
     hints = metadata["attribute_hints"]
     assert hints["connection_strings"]
     assert hints["service_endpoints"]

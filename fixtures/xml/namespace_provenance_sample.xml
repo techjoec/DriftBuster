@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly xmlns="urn:example:driftbuster:manifest"
+          xmlns:compat="urn:example:driftbuster:compatibility"
+          xmlns:provenance="urn:example:driftbuster:provenance">
+  <assemblyIdentity name="Placeholder.Audit" version="1.0.0.0" />
+  <description>Placeholder manifest demonstrating namespace provenance logging.</description>
+  <compat:review>Namespace entries reference anonymised URIs for testing.</compat:review>
+  <provenance:note>This sample is fully synthetic and safe to redistribute.</provenance:note>
+</assembly>

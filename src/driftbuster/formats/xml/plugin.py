@@ -116,7 +116,7 @@ def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
 class XmlPlugin:
     name: str = "xml"
     priority: int = 100
-    version: str = "0.0.5"
+    version: str = "0.0.6"
     _MAX_SAFE_PARSE_BYTES: ClassVar[int] = 512 * 1024
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
@@ -545,9 +545,40 @@ class XmlPlugin:
         namespaces = metadata.get("namespaces")
         if not namespaces or not isinstance(namespaces, dict):
             return
+
+        provenance = metadata.get("namespace_provenance")
+        preview_entries: List[str] = []
+        if isinstance(provenance, list):
+            for entry in provenance:
+                if not isinstance(entry, dict):
+                    continue
+                uri = entry.get("uri")
+                if not isinstance(uri, str) or not uri:
+                    continue
+                prefix = entry.get("prefix")
+                prefix_label = prefix if isinstance(prefix, str) and prefix else "default"
+                line = entry.get("line")
+                if isinstance(line, int) and line > 0:
+                    preview_entries.append(f"{prefix_label}→{uri} @L{line}")
+                else:
+                    preview_entries.append(f"{prefix_label}→{uri}")
+                if len(preview_entries) == 3:
+                    break
+
+        if preview_entries:
+            preview = "; ".join(preview_entries)
+            self._add_reason(
+                reasons,
+                f"Recorded XML namespace declarations ({preview})",
+            )
+            return
+
         default_ns = namespaces.get("default")
-        if default_ns:
-            self._add_reason(reasons, f"Detected XML namespace declarations (default namespace {default_ns})")
+        if isinstance(default_ns, str) and default_ns:
+            self._add_reason(
+                reasons,
+                f"Detected XML namespace declarations (default namespace {default_ns})",
+            )
         else:
             self._add_reason(reasons, "Detected XML namespace declarations")
 
@@ -724,14 +755,38 @@ class XmlPlugin:
             break
 
         namespace_pairs = []
+        namespace_provenance: List[Dict[str, object]] = []
         for m in _XMLNS_ATTRIBUTE.finditer(snippet):
-            prefix = m.group("prefix") or "default"
+            raw_prefix = m.group("prefix")
+            prefix = raw_prefix or "default"
             uri = (m.group("uri") or "").strip()
             namespace_pairs.append((prefix, uri))
+
+            attr_start = m.start()
+            line_number = snippet.count("\n", 0, attr_start) + 1
+            last_newline = snippet.rfind("\n", 0, attr_start)
+            column_number = attr_start + 1 if last_newline == -1 else attr_start - last_newline
+            attribute_name = "xmlns" if raw_prefix is None else f"xmlns:{raw_prefix}"
+            digest_source = f"{attribute_name}|{uri}".encode("utf-8")
+            digest = hashlib.sha1(digest_source).hexdigest()[:12]
+
+            provenance_entry: Dict[str, object] = {
+                "attribute": attribute_name,
+                "prefix": raw_prefix,
+                "uri": uri,
+                "line": line_number,
+                "column": column_number,
+                "source": "root-attribute",
+                "hash": digest,
+            }
+            namespace_provenance.append(provenance_entry)
+
         if namespace_pairs:
             namespace_pairs.sort(key=lambda item: (item[0].lower(), item[0]))
             namespace_matches = {prefix: uri for prefix, uri in namespace_pairs}
             metadata["namespaces"] = namespace_matches
+            if namespace_provenance:
+                metadata["namespace_provenance"] = namespace_provenance
             root_prefix = metadata.get("root_prefix")
             if isinstance(root_prefix, str):
                 ns = namespace_matches.get(root_prefix)

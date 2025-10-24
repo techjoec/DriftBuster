@@ -66,6 +66,12 @@ These guardrails cover every feature, note, and capture helper.
 - Keep checksum files under `artifacts/sql/` so downstream consumers can
   confirm the artefacts were not modified after approval.
 
+## XML namespace fixtures
+
+- Use anonymised namespaces (`urn:example:*`) and placeholder assembly identities for XML samples stored under `fixtures/xml/`.
+- Document namespace provenance (filename, declaration line numbers, hash previews) inside `fixtures/xml/README.md` so auditors can trace the recorded metadata.
+- Avoid bundling vendor-specific schema files; reference public specifications or redact proprietary URIs before archiving.
+
 ## Retention
 
 - Default retention window for database snapshots is **30 days** unless a

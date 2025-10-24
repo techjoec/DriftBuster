@@ -574,13 +574,13 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Each priority includes schema updates, tests, and doc revisions recorded in `docs/format-support.md`.
 
 **REQUIRED RELATED WORK:**
-- [ ] 8.1 XML family (Priority 1).
-  - [ ] 8.1.1 Finalise heuristics in `src/driftbuster/formats/xml/*.py` with namespace provenance logging.
-  - [ ] 8.1.2 Update catalog entries in `src/driftbuster/catalog.py`.
-  - [ ] 8.1.3 Extend tests `tests/formats/test_xml_plugin.py`, `test_xml_plugin_helpers.py`, and diff renderers.
-  - [ ] 8.1.4 Document schema-driven hints in `docs/format-support.md`.
-  - [ ] 8.1.5 Capture anonymised XML fixtures with provenance notes under `fixtures/xml/README.md`.
-  - [ ] 8.1.6 Record legal review status for schema redistribution in `docs/legal-safeguards.md`.
+- [x] 8.1 XML family (Priority 1).
+  - [x] 8.1.1 Finalise heuristics in `src/driftbuster/formats/xml/*.py` with namespace provenance logging.
+  - [x] 8.1.2 Update catalog entries in `src/driftbuster/catalog.py`.
+  - [x] 8.1.3 Extend tests `tests/formats/test_xml_plugin.py`, `test_xml_plugin_helpers.py`, and diff renderers.
+  - [x] 8.1.4 Document schema-driven hints in `docs/format-support.md`.
+  - [x] 8.1.5 Capture anonymised XML fixtures with provenance notes under `fixtures/xml/README.md`.
+  - [x] 8.1.6 Record legal review status for schema redistribution in `docs/legal-safeguards.md`.
 - [ ] 8.2 JSON (Priority 2).
   - [ ] 8.2.1 Implement JSONC/appsettings variant support in `src/driftbuster/formats/json`.
   - [ ] 8.2.2 Ensure sampling guardrails handle large vendor payloads.

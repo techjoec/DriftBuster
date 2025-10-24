@@ -203,6 +203,14 @@ def test_xml_plugin_detects_manifest_variant() -> None:
     assert match.variant == "app-manifest-xml"
     assert match.metadata is not None
     assert match.metadata["root_local_name"].lower() == "assembly"
+    provenance = match.metadata.get("namespace_provenance")
+    assert isinstance(provenance, list) and provenance
+    default_entry = provenance[0]
+    assert default_entry["attribute"] == "xmlns"
+    assert default_entry["uri"] == "urn:schemas-microsoft-com:asm.v1"
+    assert default_entry["line"] >= 2
+    namespace_reasons = [reason for reason in match.reasons if "namespace" in reason.lower()]
+    assert any("@L" in reason for reason in namespace_reasons)
 
 
 def test_xml_plugin_detects_manifest_by_extension_without_namespace() -> None:
@@ -235,6 +243,9 @@ def test_xml_plugin_detects_resx_variant_via_namespace() -> None:
     assert match.variant == "resource-xml"
     assert match.metadata is not None
     assert match.metadata["resource_keys"] == ["Sample"]
+    provenance = match.metadata.get("namespace_provenance")
+    assert isinstance(provenance, list) and provenance
+    assert provenance[0]["attribute"] == "xmlns"
     assert any("Captured resource keys" in reason for reason in match.reasons)
 
 
