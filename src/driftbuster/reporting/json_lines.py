@@ -13,7 +13,8 @@ from __future__ import annotations
 import json
 from typing import Any, Iterable, Iterator, Mapping, Sequence, TextIO
 
-from ..core.types import DetectionMatch, summarise_metadata
+from ..core.types import DetectionMatch
+from ._metadata import iter_detection_payloads
 from ..hunt import HuntHit
 from .redaction import RedactionFilter, redact_data, resolve_redactor
 
@@ -64,12 +65,7 @@ def iter_json_records(
     active_redactor = resolve_redactor(redactor=redactor, mask_tokens=mask_tokens, placeholder=placeholder)
     run_metadata = dict(extra_metadata or {})
 
-    for match in matches:
-        payload = dict(summarise_metadata(match))
-        metadata = dict(payload.get("metadata") or {})
-        if run_metadata:
-            metadata.update(run_metadata)
-        payload["metadata"] = metadata
+    for payload in iter_detection_payloads(matches, extra_metadata=run_metadata):
         yield _prepare_record("detection", payload, redactor=active_redactor)
 
     if profile_summary:

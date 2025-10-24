@@ -689,8 +689,10 @@ highlight where to consume the artifact.
   - [ ] 11.1.4 Plan GUI shell (Windows) leveraging HTML/JSON once CLI stabilises.
   - [ ] 11.1.5 Capture adapter smoke outputs (JSON/HTML/diff) under `artifacts/reporting/` with redaction proof.
 - [ ] 11.2 Metadata consumption.
-  - [ ] 11.2.1 Ensure adapters share `summarise_metadata` outputs.
-  - [ ] 11.2.2 Add tests in `tests/reporting/test_adapters.py`.
+- [x] 11.2.1 Ensure adapters share `summarise_metadata` outputs.
+    - Notes (2025-10-24): Centralised detection payload preparation into `reporting._metadata.iter_detection_payloads` and wired HTML/JSON adapters through the helper.
+  - [x] 11.2.2 Add tests in `tests/reporting/test_adapters.py`.
+    - Notes (2025-10-24): Added regression coverage validating shared payloads, JSON reuse, and HTML metadata enrichment.
   - [ ] 11.2.3 Document shared metadata contract in `docs/format-playbook.md` and `docs/hunt-mode.md`.
 - [ ] 11.3 Diff canonicalisation & masking.
   - [ ] 11.3.1 Finalise `canonicalise_text`/`canonicalise_xml` in `src/driftbuster/reporting/diff.py`.

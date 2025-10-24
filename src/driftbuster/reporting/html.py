@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Iterable, Mapping, Sequence
 
-from ..core.types import DetectionMatch, summarise_metadata
+from ..core.types import DetectionMatch
 from ..hunt import HuntHit
+from ._metadata import iter_detection_payloads
 from .diff import DiffResult
 from .redaction import RedactionFilter, redact_data, resolve_redactor
 
@@ -235,12 +236,7 @@ def render_html_report(
 
     active_redactor = resolve_redactor(redactor=redactor, mask_tokens=mask_tokens, placeholder=placeholder)
     prepared_matches: list[Mapping[str, object]] = []
-    for match in matches:
-        record = dict(summarise_metadata(match))
-        metadata = dict(record.get("metadata") or {})
-        if extra_metadata:
-            metadata.update(extra_metadata)
-        record["metadata"] = metadata
+    for record in iter_detection_payloads(matches, extra_metadata=extra_metadata):
         if active_redactor:
             record = redact_data(record, active_redactor)
         prepared_matches.append(record)
