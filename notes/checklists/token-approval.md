@@ -49,6 +49,9 @@
 - When the CLI output identifies new blockers, append them to Area A11.8 in
   `CLOUDTASKS.md` before closing the monthly review so the backlog stays
   current.
+- Mirror any newly discovered questions or blockers in
+  `notes/status/reporting-open-questions.md` so the register reflects the
+  latest review findings before updating Area A11.8.
 
 ## JSON approval log schema
 

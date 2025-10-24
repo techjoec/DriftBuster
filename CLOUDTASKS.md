@@ -742,7 +742,11 @@ highlight where to consume the artifact.
     - Notes (2025-11-13): Logged audit procedure verifying `[REDACTED]` across JSON/HTML/diff artefacts.
   - [x] 11.7.4 Log audit evidence in `notes/checklists/legal-review.md` with sign-off initials.
     - Notes (2025-11-13): Captured purge rehearsal row with MP sign-off and transcript location.
-- [ ] 11.8 Open questions.
+- [x] 11.8 Open questions.
+  - Notes (2025-11-24): Stood up `notes/status/reporting-open-questions.md` to
+    track remaining decisions, tied monthly review cadence into the register,
+    and cross-linked the token approval checklist so new blockers mirror into
+    this queue automatically.
 - [x] 11.8.1 Resolve safe diff content thresholds.
   - Notes (2025-11-21): Added 256 KiB canonical and 128 KiB / 600 line diff clamps,
     surfaced safety digests in `diff.py`, HTML output, and reporting docs so
