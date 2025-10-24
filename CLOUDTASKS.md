@@ -308,7 +308,7 @@ highlight where to consume the artifact.
   - [x] 3.2.1 Apply `ItemsRepeater` + `VirtualizingStackPanel` to high-volume views in `gui/DriftBuster.Gui/Views/ResultsCatalogView.axaml` and `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml`.
   - [x] 3.2.2 Guard virtualization behind heuristics in `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`.
   - [x] 3.2.3 Add UI tests in `gui/DriftBuster.Gui.Tests/Ui` covering virtualization toggles.
-  - [ ] 3.2.4 Document virtualization fallback toggle for low-memory hosts in `docs/windows-gui-guide.md`.
+  - [x] 3.2.4 Document virtualization fallback toggle for low-memory hosts in `docs/windows-gui-guide.md`.
 - [x] 3.3 Buffer dispatcher updates.
   - [x] 3.3.1 Implement buffered queue in `gui/DriftBuster.Gui/Services/ToastService.cs` (or new progress dispatcher service).
   - [x] 3.3.2 Add async unit tests in `gui/DriftBuster.Gui.Tests/Services`.
@@ -319,9 +319,9 @@ highlight where to consume the artifact.
   - [x] 3.4.2 Wire optional perf flag into `scripts/verify_coverage.sh`.
   - [x] 3.4.3 Document runbook in `notes/status/gui-research.md`.
   - [x] 3.4.4 Schedule weekly perf checks in `notes/checklists/perf-calendar.md` with recorded metrics.
-- [ ] 3.5 Evidence & release notes.
-  - [ ] 3.5.1 Update `docs/release-notes.md` with performance improvements summary.
-  - [ ] 3.5.2 Archive perf charts and measurements under `artifacts/perf/`.
+- [x] 3.5 Evidence & release notes.
+- [x] 3.5.1 Update `docs/release-notes.md` with performance improvements summary.
+- [x] 3.5.2 Archive perf charts and measurements under `artifacts/perf/`.
 
 ## A4. Theme & Responsiveness (Phase 4) [deps=A3]
 

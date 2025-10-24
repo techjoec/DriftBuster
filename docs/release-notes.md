@@ -84,3 +84,8 @@ scripts/build_velopack_release.sh \
 
 The script fails fast when any required section is missing. Use `Notes` to point
 users to doc updates or manual migration steps.
+
+### Performance & Async Stability (A3) Summary
+- Virtualised server catalog heuristics now default to a 400-item threshold and fall back to the existing non-virtualised layout when the override disables recycling on constrained hosts.
+- Environment variables `DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD` and `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION` give operators deterministic control when preparing release notes for low-memory or high-volume environments.
+- Capture the active override plus sample virtualization decisions in `artifacts/perf/virtualization-baseline.json` and link the evidence bundle from GUI release entries.

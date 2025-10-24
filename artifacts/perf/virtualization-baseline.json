@@ -1,0 +1,28 @@
+{
+  "captured_at_utc": "2025-10-24T12:52:02Z",
+  "profile": {
+    "virtualization_threshold": 400,
+    "force_override": null
+  },
+  "sample_decisions": [
+    { "host_count": 50, "virtualized": false },
+    { "host_count": 200, "virtualized": false },
+    { "host_count": 400, "virtualized": true },
+    { "host_count": 750, "virtualized": true }
+  ],
+  "override_examples": [
+    {
+      "force_override": false,
+      "host_count": 600,
+      "virtualized": false,
+      "notes": "Disable virtualization when the simpler ItemsControl layout avoids recycling overhead."
+    },
+    {
+      "force_override": true,
+      "host_count": 10,
+      "virtualized": true,
+      "notes": "Keep virtualization active even for tiny host lists to trim memory pressure."
+    }
+  ],
+  "notes": "Reflects PerformanceProfile.ShouldVirtualize heuristics exercised by the GUI smoke harness."
+}

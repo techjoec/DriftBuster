@@ -132,6 +132,13 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter plus the last opened drilldown host persist with the rest of the multi-server session.
 - Clipboard/export actions write to the timeline with the new **Exports** filter so analysts can isolate delivery events quickly.
 
+### Virtualization heuristics & fallback toggle
+- The server cards, activity feed, and results catalog all read a shared `PerformanceProfile` that flips between the virtualised `ItemsRepeater` layout and the non-virtualised fallback when host counts are low. The default threshold is **400** entries, keeping memory usage predictable without penalising small scans.
+- Operators can raise or lower the threshold before launching the GUI by exporting `DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD=<count>` (PowerShell: `setx DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD 600` then restart the shell) on machines that regularly plan against hundreds of hosts.
+- Low-memory hosts can force the simpler non-virtualised list by setting `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION=false` before launch. The override applies immediately across all virtualised surfaces, swapping in the existing `ItemsControl` fallback that avoids retaining recycled item containers.
+- Set `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION=true` to keep virtualization enabled even for tiny host counts when you want to minimise viewport footprint or avoid re-layout churn after toggling filters.
+- Overrides are read on startup; update the environment variable, restart the shell, then relaunch the GUI to apply changes. Logged heuristics and the active override value appear in the performance smoke artefact under `artifacts/perf/` for future audits.
+
 ## 8. Backend Bridge
 - `DriftbusterService` instantiates the shared `DriftbusterBackend` class and executes diff, hunt, and run-profile operations in-process.
 - Diff calls load file contents, build the same JSON payload exposed to the UI, and reuse the shared models for plan metadata.
