@@ -66,6 +66,10 @@ summary of how many logs were deleted and what limits were applied. The CLI prin
 with the current pruning totals while still updating `font-retention-metrics.json` on disk for
 audits and automation hooks.
 
+When the JSON needs to live alongside other run artifacts, point the exporter at a new location
+with `--retention-metrics-path <path>`. Passing `-` disables writing the file entirely while still
+printing metrics when `--print-retention-metrics` is enabled.
+
 Include the latest JSON log when filing investigations so reviewers can replay configuration and
 scenario metadata without rerunning telemetry.
 

@@ -12,6 +12,28 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g+++++++. Font Telemetry Retention Metrics Redirect [deps=A0g++++++]
+
+**REASON:** Operators archiving investigation bundles need deterministic control over where
+retention metrics land (or to skip the artifact) without losing inline visibility.
+
+**MUST NOT:** Remove the default metrics export or break existing log/summary writes.
+
+**MUST:** Provide a configurable retention metrics path, preserve inline output for audits, and
+document the new workflow for reviewers.
+
+**ACCEPT GATES:** Default behaviour stays unchanged, overrides land in the requested path, tests
+cover override/disable scenarios, and docs/runbooks reflect the new flag.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.21 Add a `--retention-metrics-path` flag to `scripts/font_health_summary.py` supporting
+      overrides and `-` disable while keeping printed metrics.
+  - [x] 0.21.1 Extend `tests/scripts/test_font_health_summary.py` to cover override and disabled
+        outputs.
+  - [x] 0.21.2 Document the flag in `docs/font-telemetry.md` with disable guidance.
+  - [x] 0.21.3 Update operator notes in `notes/status/font-telemetry.md` about recording the
+        retention metrics destination.
+
 ## A0g++++++. Font Telemetry Retention Diagnostics [deps=A0g+++++]
 
 **REASON:** Operators reviewing retention churn need immediate visibility into how pruning switches

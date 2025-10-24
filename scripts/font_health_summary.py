@@ -104,6 +104,14 @@ def build_parser() -> argparse.ArgumentParser:
             "JSON artifacts remain unchanged."
         ),
     )
+    parser.add_argument(
+        "--retention-metrics-path",
+        metavar="PATH",
+        help=(
+            "Write retention metrics JSON to PATH; defaults to <log dir>/"
+            "font-retention-metrics.json. Pass '-' to disable writing to disk."
+        ),
+    )
     return parser
 
 
@@ -349,6 +357,7 @@ def _write_staleness_event(
     summary_path: Path | None,
     max_log_files: int | None,
     max_log_age: timedelta | None,
+    retention_metrics_path: Path | None,
 ) -> dict[str, object]:
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -397,9 +406,11 @@ def _write_staleness_event(
         "deletedTotal": retention_metrics.total_deleted,
         "remainingLogs": retention_metrics.remaining_logs,
     }
-    _retention_metrics_path(log_dir).write_text(
-        json.dumps(retention_payload, indent=2, sort_keys=True) + "\n"
-    )
+    if retention_metrics_path is not None:
+        retention_metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        retention_metrics_path.write_text(
+            json.dumps(retention_payload, indent=2, sort_keys=True) + "\n"
+        )
 
     if summary_path is not None:
         summary_payload = _build_summary_payload(
@@ -457,6 +468,15 @@ def _emit_staleness_event(
                 timedelta(hours=args.max_log_age_hours)
                 if args.max_log_age_hours is not None
                 else None
+            ),
+            retention_metrics_path=(
+                _retention_metrics_path(log_dir)
+                if args.retention_metrics_path is None
+                else (
+                    None
+                    if args.retention_metrics_path.strip() in {"", "-"}
+                    else Path(args.retention_metrics_path)
+                )
             ),
         )
 

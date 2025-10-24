@@ -329,6 +329,42 @@ def test_cli_writes_summary_payload(
     assert metrics["maxLogAgeSeconds"] is None
 
 
+def test_cli_respects_retention_metrics_path_override(
+    sample_payload: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+    override_path = tmp_path / "custom" / "retention.json"
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 293680, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    exit_code = font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+            "--retention-metrics-path",
+            str(override_path),
+        ]
+    )
+
+    assert exit_code == 1
+    assert override_path.is_file()
+    metrics = json.loads(override_path.read_text())
+    assert metrics["remainingLogs"] == 1
+    assert metrics["deletedTotal"] == 0
+
+    default_metrics = log_dir / "font-retention-metrics.json"
+    assert not default_metrics.exists()
+
+
 def test_cli_prints_retention_metrics_when_enabled(
     sample_payload: Path,
     tmp_path: Path,
@@ -490,6 +526,41 @@ def test_cli_prunes_logs_older_than_max_log_age(
     assert metrics["remainingLogs"] == 2
     assert metrics["maxLogFiles"] is None
     assert metrics["maxLogAgeSeconds"] == pytest.approx(0.0166667 * 3600, rel=1e-6)
+
+
+def test_cli_can_disable_retention_metrics_file(
+    sample_payload: Path,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 293680, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    exit_code = font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+            "--retention-metrics-path",
+            "-",
+            "--print-retention-metrics",
+        ]
+    )
+
+    assert exit_code == 1
+    output = capsys.readouterr().out
+    assert "Retention metrics:" in output
+
+    metrics_path = log_dir / "font-retention-metrics.json"
+    assert not metrics_path.exists()
 
 
 def test_cli_max_log_files_zero_removes_all_event_logs(

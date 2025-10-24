@@ -15,6 +15,8 @@
   plan in the next review entry.
 - When `--print-retention-metrics` is used, copy the reported deletion counts into the run log so
   the retention summary stays visible even if the JSON artifact is rotated out.
+- Runs that redirect metrics with `--retention-metrics-path` must record the destination so follow-up
+  tooling can locate the JSON (or note `disabled` when `-` is supplied).
 
 ## Review cadence
 
