@@ -38,6 +38,12 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - **Runtime selection:** `MainWindowViewModel` binds the header dropdown to these palette entries. Selecting an option updates `Application.Current.RequestedThemeVariant` and rewrites the shared color/brush tokens so view refreshes pick up the new palette immediately.
 - **Extending palettes:** To add additional themes, clone the structure used by `Palette.DarkPlus`, register a new `ThemeOption` in `ApplicationThemeRuntime`, and update the documentation matrix above. Keep the `Theme.DefaultPaletteId` resource in sync with the intended startup palette so migrations stay deterministic.
 
+![Dark+ theme overview at 1600px](assets/themes/20250309-theme-darkplus-1600px.png)
+
+![Light+ theme overview at 1600px](assets/themes/20250309-theme-lightplus-1600px.png)
+
+The captures above follow the asset naming convention documented in `docs/ux-refresh.md#theme-capture-manifest`. Reuse them in release material whenever the palettes change, and regenerate fresh captures after significant visual adjustments to keep the manifest traceable.
+
 ## 5. Diff Planner Details
 ### Inputs & Validation
 - Use the **Browse** buttons beside each textbox to pick the left/right file.

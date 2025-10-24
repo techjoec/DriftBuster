@@ -49,12 +49,19 @@ iterations have a concrete baseline.
 - Future work: capture 1280/1440/1920 px snapshots under `artifacts/ux/` once the automated
   screenshot harness lands. Track this follow-up in CLOUDTASKS.md (area A4) when the tooling is ready.
 
-Last updated: 2025-02-14 — regenerate after any notable UX change.
+Last updated: 2025-03-09 — regenerate after any notable UX change.
 
 ## Asset Provenance
 - Store UI screenshots under `docs/assets/` with filenames that encode resolution, theme, and feature (e.g. `20250214-server-grid-1440px-dark.png`).
 - Record each capture in the benchmark log or design notes with source resolution, theme, and data set used.
 - Link assets back to the benchmark entry or doc section that motivated the capture so refresh cycles stay traceable.
+
+### Theme capture manifest
+
+| Capture | Theme | Resolution | Fixture | Notes |
+|---------|-------|------------|---------|-------|
+| `docs/assets/themes/20250309-theme-darkplus-1600px.png` | Dark+ | 1600×900 | Multi-server validation baseline | Highlights contrast-checked command strip, responsive host grid, and toast revisions. |
+| `docs/assets/themes/20250309-theme-lightplus-1600px.png` | Light+ | 1600×900 | Multi-server validation baseline | Shows softened neutral layers, accent outlines, and activity timeline readability tweaks. |
 
 ## Notifications & Timeline (P3)
 - Toast host now draws from tokenised colours/icons defined in `Notifications.axaml`, caps the visible stack at three cards, and exposes an overflow expander with counts.

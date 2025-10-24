@@ -344,16 +344,16 @@ highlight where to consume the artifact.
   - [x] 4.2.2 Modify `gui/DriftBuster.Gui/Views/MainWindow.axaml` and `ServerSelectionView.axaml` to consume the spacing tokens.
   - [x] 4.2.3 Extend UI tests to validate layout shifts at different widths.
   - [x] 4.2.4 Capture layout change matrix in `notes/status/gui-research.md`.
-- [ ] 4.3 Asset refresh.
-  - [ ] 4.3.1 Capture new screenshots and store under `docs/ux-refresh.md`.
-  - [ ] 4.3.2 Update `docs/windows-gui-guide.md` and `docs/release-notes.md` with visuals.
-  - [ ] 4.3.3 Maintain screenshot manifest in `docs/ux-refresh.md#asset-inventory`.
+- [x] 4.3 Asset refresh.
+  - [x] 4.3.1 Capture new screenshots and store under `docs/ux-refresh.md`.
+  - [x] 4.3.2 Update `docs/windows-gui-guide.md` and `docs/release-notes.md` with visuals.
+  - [x] 4.3.3 Maintain screenshot manifest in `docs/ux-refresh.md#asset-inventory`.
 - [ ] 4.4 Validation.
   - [ ] 4.4.1 Run contrast tooling (`scripts/coverage_report.py` optional hook + manual audit) and log results.
   - [ ] 4.4.2 Execute regression tests: `dotnet test`, `pytest`, and manual multi-server run with theme toggles documented in `notes/status/gui-research.md`.
   - [ ] 4.4.3 Log accessibility audit results (tool, version, outcome) in `notes/checklists/accessibility-report.md`.
-- [ ] 4.5 Release communication.
-  - [ ] 4.5.1 Add theme change summary to `CHANGELOG.md` and note screenshot refresh in `docs/release-notes.md`.
+- [x] 4.5 Release communication.
+  - [x] 4.5.1 Add theme change summary to `CHANGELOG.md` and note screenshot refresh in `docs/release-notes.md`.
 
 ## A5. Results Catalog Alignment (Phase 5) [deps=A4]
 

@@ -38,6 +38,10 @@ packaging script enforces these guards automatically.
   `gui.md`, `installer.md`, `tooling.md`, or `formats/<name>.md`).
 - Lifetime data (dates, operator) should live in `Notes` if required.
 - The file name convention is `notes/releases/<version>.md`.
+- When theme updates land, embed or link to the refreshed captures in
+  `docs/assets/themes/` and reference the manifest table in
+  `docs/ux-refresh.md#theme-capture-manifest` so reviewers can trace when the
+  visuals were last regenerated.
 
 ## Component Changelog Files
 - `notes/changelog/core.md`
