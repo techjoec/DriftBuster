@@ -684,7 +684,9 @@ highlight where to consume the artifact.
 **REQUIRED RELATED WORK:**
 - [ ] 11.1 Output targets.
   - [x] 11.1.1 Implement JSON lines emitter in `src/driftbuster/reporting/json_lines.py`.
-  - [ ] 11.1.2 Build HTML summary adapter in `src/driftbuster/reporting/html.py`.
+- [x] 11.1.2 Build HTML summary adapter in `src/driftbuster/reporting/html.py`.
+  - Notes (2025-10-24): Implemented HTML renderer with path/stream writer helper and expanded regression
+    coverage for redaction, diff, hunt, and warning sections.
   - [ ] 11.1.3 Provide diff/patch CLI integration in `src/driftbuster/cli.py` (or successor) and GUI surfaces.
   - [ ] 11.1.4 Plan GUI shell (Windows) leveraging HTML/JSON once CLI stabilises.
   - [ ] 11.1.5 Capture adapter smoke outputs (JSON/HTML/diff) under `artifacts/reporting/` with redaction proof.

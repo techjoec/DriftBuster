@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from html import escape
-from typing import Iterable, Mapping, Sequence
+from os import PathLike
+from pathlib import Path
+from typing import Iterable, Mapping, Sequence, TextIO
 
 from ..core.types import DetectionMatch
 from ..hunt import HuntHit
 from ._metadata import iter_detection_payloads
 from .diff import DiffResult
 from .redaction import RedactionFilter, redact_data, resolve_redactor
+
+__all__ = ["render_html_report", "write_html_report"]
 
 
 _HTML_HEADER = """<!doctype html>
@@ -321,3 +325,21 @@ def render_html_report(
 
     parts.append("</body></html>")
     return "\n".join(parts)
+
+
+def write_html_report(
+    matches: Iterable[DetectionMatch],
+    destination: TextIO | str | PathLike[str],
+    **kwargs: object,
+) -> None:
+    """Write the rendered HTML report to ``destination``.
+
+    The ``destination`` may be a writable text stream or a filesystem path.  Any
+    keyword arguments are forwarded to :func:`render_html_report`.
+    """
+
+    html = render_html_report(matches, **kwargs)
+    if isinstance(destination, (str, PathLike, Path)):
+        Path(destination).write_text(html, encoding="utf-8")
+        return
+    destination.write(html)

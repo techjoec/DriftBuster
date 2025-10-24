@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from io import StringIO
 from pathlib import Path
 
 from driftbuster.core.types import DetectionMatch
 from driftbuster.hunt import HuntHit, HuntRule
 from driftbuster.reporting.diff import DiffResult
-from driftbuster.reporting.html import render_html_report
+from driftbuster.reporting.html import render_html_report, write_html_report
 from driftbuster.reporting.redaction import RedactionFilter
 
 
@@ -67,3 +68,22 @@ def test_render_html_report_includes_sections() -> None:
     assert "Redaction Summary" in html
     assert "Handle with care" in html
 
+
+def test_render_html_report_handles_no_redaction_hits() -> None:
+    html = render_html_report([_match()], warnings=["Only sample"])
+    assert "Derived data only" in html
+    assert "No configured tokens were encountered" in html
+
+
+def test_write_html_report_accepts_stream_and_path(tmp_path: Path) -> None:
+    buffer = StringIO()
+    write_html_report([_match()], buffer, title="Stream Output")
+    contents = buffer.getvalue()
+    assert "Stream Output" in contents
+    assert contents.strip().startswith("<!doctype html>")
+
+    target = tmp_path / "report.html"
+    write_html_report([_match()], target, title="Disk Output")
+    written = target.read_text(encoding="utf-8")
+    assert "Disk Output" in written
+    assert "DriftBuster" not in target.name  # ensure file naming left to caller
