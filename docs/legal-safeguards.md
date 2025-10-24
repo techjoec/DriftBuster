@@ -17,6 +17,16 @@ We keep the project lightweight and respect other creators:
 
 These guardrails cover every feature, note, and capture helper.
 
+## Catalog severity language
+
+- Severity hints embedded in `driftbuster.catalog` stay neutral: they describe
+  risk categories without naming vendors or proprietary products.
+- Remediation stubs reference internal documentation only (`docs/*` and
+  scrub guides) so downstream operators do not treat them as legal mandates for
+  third-party systems.
+- Keep future catalog updates aligned with this language review; deviations
+  require re-approval before shipping.
+
 ## JSON samples
 
 - Clamp JSON detector analysis windows to 200 kB before running comment or

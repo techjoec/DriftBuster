@@ -108,6 +108,16 @@ def _build_format_lookup(
     return lookup
 
 
+def _find_format_class(catalog: DetectionCatalog, slug: str | None) -> FormatClass | None:
+    if not slug:
+        return None
+    slug_key = slug.strip().lower()
+    for fmt in catalog.classes:
+        if fmt.slug.strip().lower() == slug_key:
+            return fmt
+    return None
+
+
 def _normalise_identifier(raw: str, *, field: str) -> str:
     identifier = raw.strip().lower()
     if not identifier:
@@ -185,6 +195,43 @@ def validate_detection_metadata(
             metadata["catalog_variant"] = variant_id
     else:
         metadata.pop("catalog_variant", None)
+
+    fmt_entry = _find_format_class(catalog, canonical_format)
+    if fmt_entry is not None:
+        severity_value = fmt_entry.default_severity
+        variant_key = metadata.get("catalog_variant")
+        if variant_key:
+            for subtype in fmt_entry.subtypes:
+                if not isinstance(subtype, FormatSubtype):
+                    continue
+                subtype_variant = None
+                if subtype.variant:
+                    subtype_variant = subtype.variant.strip().lower()
+                variant_aliases = [
+                    alias.strip().lower()
+                    for alias in getattr(subtype, "aliases", ())
+                    if isinstance(alias, str)
+                ]
+                if subtype_variant == variant_key or variant_key in variant_aliases:
+                    if subtype.severity:
+                        severity_value = subtype.severity
+                    break
+        if severity_value:
+            metadata.setdefault("catalog_severity", severity_value)
+        if fmt_entry.severity_hint:
+            metadata.setdefault("catalog_severity_hint", fmt_entry.severity_hint)
+        if fmt_entry.remediation_hints:
+            remediation_payload = []
+            for hint in fmt_entry.remediation_hints:
+                entry = {
+                    "id": hint.id,
+                    "category": hint.category,
+                    "summary": hint.summary,
+                }
+                if hint.documentation:
+                    entry["documentation"] = hint.documentation
+                remediation_payload.append(entry)
+            metadata.setdefault("catalog_remediations", remediation_payload)
 
     return metadata
 

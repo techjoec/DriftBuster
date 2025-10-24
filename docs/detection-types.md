@@ -33,6 +33,154 @@ Default severity labels mirror the canonical values embedded in
 `driftbuster.catalog.DETECTION_CATALOG` so CLI and registry summaries share a
 single source of truth.
 
+## Severity and Remediation Hints
+
+`validate_detection_metadata` now injects catalog-provided severity hints and
+remediation stubs for every detection class. Use these entries to brief
+reviewers and to script downstream workflows without hard-coding guidance.
+
+### RegistryExport
+
+- **Severity hint:** Registry exports capture entire hive snapshots, including
+  secrets, policy settings, and service fingerprints.
+- **Remediations:**
+  - `registry-export-lockdown` (secrets): Store exported hives in restricted
+    evidence shares and rotate credentials referenced in the dump.
+
+### RegistryLive
+
+- **Severity hint:** Registry scan definitions describe automated hive reads
+  and target tokens that expose sensitive audit scope.
+- **Remediations:**
+  - `registry-live-scope-review` (review): Confirm monitoring tokens align with
+    approved hosts and rotate any credentials referenced in the manifest.
+
+### StructuredConfigXml
+
+- **Severity hint:** Application configuration files expose secrets,
+  connection strings, and runtime policy toggles that impact production
+  systems.
+- **Remediations:**
+  - `structured-config-rotate-secrets` (secrets): Rotate credentials stored in
+    configuration sections and confirm transforms match approved deployment
+    scopes.
+  - `structured-config-hardening` (hardening): Review debug switches and
+    permissive runtime settings before promoting captured configs to shared
+    baselines.
+
+### Xml
+
+- **Severity hint:** Generic XML manifests advertise capabilities, endpoints,
+  and policy grants that can expose infrastructure layout when leaked.
+- **Remediations:**
+  - `xml-provenance-review` (review): Confirm manifest namespaces and
+    deployment identifiers map to approved environments before sharing samples
+    externally.
+  - `xml-sanitise-identifiers` (sanitisation): Strip unique identifiers or
+    replace them with anonymised tokens prior to archiving manifests in shared
+    stores.
+
+### Json
+
+- **Severity hint:** JSON configuration files reveal feature flags, API
+  endpoints, and secrets that map directly to runtime access.
+- **Remediations:**
+  - `json-secret-rotation` (secrets): Rotate keys or tokens stored in captured
+    JSON configs and ensure redacted copies replace archival snapshots.
+  - `json-flag-review` (review): Audit feature toggles and environment
+    overrides before applying configs to ensure they respect approved
+    deployment policies.
+
+### Yaml
+
+- **Severity hint:** YAML manifests encode infrastructure state, secrets
+  references, and rollout policies that leak environment topology.
+- **Remediations:**
+  - `yaml-secret-reference-audit` (review): Audit Secret and ConfigMap
+    references before distributing manifests and scrub environment identifiers
+    when possible.
+  - `yaml-deployment-scope` (hardening): Verify namespace and replica settings
+    to prevent accidental cross-environment rollouts when replaying manifests.
+
+### Toml
+
+- **Severity hint:** TOML project manifests reveal dependency feeds, signing
+  requirements, and build output paths that identify release pipelines.
+- **Remediations:**
+  - `toml-feed-audit` (review): Review [[tool]] sections for internal
+    registries or credentials and relocate them to secure secret stores before
+    sharing manifests.
+  - `toml-build-scope` (hardening): Sanitise path and signing configuration to
+    avoid leaking build infrastructure details in exported manifests.
+
+### Ini
+
+- **Severity hint:** INI and dotenv style files often embed credentials,
+  tokens, and environment toggles that impact access control immediately.
+- **Remediations:**
+  - `ini-secret-rotation` (secrets): Rotate secrets surfaced in dotenv or
+    credential sections and confirm masked samples replace raw exports.
+  - `ini-sanitisation-workflow` (sanitisation): Follow the sanitisation
+    workflow before sharing dotenv fixtures to prevent leaking production
+    values. See `scripts/fixtures/README.md` for the scrub steps referenced by
+    this remediation entry.
+
+### KeyValueProperties
+
+- **Severity hint:** Java-style properties files concentrate service
+  endpoints, credentials, and feature toggles for entire JVM applications.
+- **Remediations:**
+  - `properties-credential-scan` (secrets): Scan captured properties for
+    passwords or tokens and migrate them into managed secret stores
+    immediately.
+  - `properties-comment-scrub` (sanitisation): Review inline comments for
+    deployment notes or hostnames and redact sensitive context before sharing.
+
+### UnixConf
+
+- **Severity hint:** Unix configuration files govern listeners, crypto
+  policies, and authentication hooks that immediately influence service
+  exposure.
+- **Remediations:**
+  - `unix-conf-hardening` (hardening): Review captured directives against
+    hardened baselines and disable permissive modules before redeploying
+    configs.
+  - `unix-conf-access-review` (review): Confirm referenced key, certificate,
+    and log paths carry restricted permissions before sharing archives.
+
+### ScriptConfig
+
+- **Severity hint:** Script-based configs can execute arbitrary changes, embed
+  credentials, and provision infrastructure when replayed without review.
+- **Remediations:**
+  - `script-config-scope` (review): Validate script scopes and ensure they run
+    against lab environments before applying to production hosts.
+  - `script-config-secret-hygiene` (secrets): Replace inline credentials with
+    secure parameter stores and scrub tokens before archiving scripts.
+
+### EmbeddedSqlDb
+
+- **Severity hint:** Embedded SQLite databases retain raw operational data,
+  including user records and tokens, making them high-risk evidence.
+- **Remediations:**
+  - `embedded-sql-redaction` (sanitisation): Mask or drop sensitive rows before
+    distributing captured databases and document transformations in the
+    evidence log.
+  - `embedded-sql-retention` (retention): Apply the 30-day retention policy
+    and record purge decisions once investigations close.
+
+### GenericBinaryDat
+
+- **Severity hint:** Opaque binary blobs are unclassified evidence; treat them
+  cautiously until confirmed non-sensitive.
+- **Remediations:**
+  - `binary-dat-triage` (review): Triages samples with dedicated tooling before
+    storing them long term to determine whether further sanitisation is
+    required.
+  - `binary-dat-redaction` (sanitisation): If the blob contains extracted
+    credentials or certificates, replace it with hashed summaries before
+    sharing.
+
 INI-family detectors now rank structural evidence (section headers, directive blocks, brace hybrids) ahead of extension-only cues so shared `.conf` and `.properties` suffixes keep their dedicated variants. Dotenv matches remain gated by known filenames and export/`=` density, allowing Java properties to retain the `java-properties` variant even when sections are absent.
 
 ### Plugin Families and Aliases

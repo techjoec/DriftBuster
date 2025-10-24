@@ -50,6 +50,16 @@ class FormatSubtype:
 
 
 @dataclass(frozen=True)
+class RemediationHint:
+    """Recommended follow-up action for a detection class."""
+
+    id: str
+    category: str
+    summary: str
+    documentation: str | None = None
+
+
+@dataclass(frozen=True)
 class FormatClass:
     """Primary detection class definition."""
 
@@ -65,6 +75,8 @@ class FormatClass:
     mime_hints: Tuple[str, ...] = field(default_factory=tuple)
     examples: Tuple[str, ...] = field(default_factory=tuple)
     subtypes: Tuple[FormatSubtype, ...] = field(default_factory=tuple)
+    severity_hint: str | None = None
+    remediation_hints: Tuple[RemediationHint, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -116,6 +128,15 @@ DETECTION_CATALOG = DetectionCatalog(
             examples=(
                 'Windows Registry Editor Version 5.00\n[HKEY_CURRENT_USER\\Software\\Vendor\\App]\n"Key"="Value"',
             ),
+            severity_hint="Registry exports capture entire hive snapshots, including secrets, policy settings, and service fingerprints.",
+            remediation_hints=(
+                RemediationHint(
+                    id="registry-export-lockdown",
+                    category="secrets",
+                    summary="Store exported hives in restricted evidence shares and rotate credentials referenced in the dump.",
+                    documentation="docs/detection-types.md#registryexport",
+                ),
+            ),
         ),
         FormatClass(
             name="RegistryLive",
@@ -145,6 +166,15 @@ DETECTION_CATALOG = DetectionCatalog(
             examples=(
                 '{"registry_scan": {"token": "Vendor App", "keywords": ["server"]}}',
                 'registry_scan:\n  token: Vendor App\n  keywords: [server]',
+            ),
+            severity_hint="Registry scan definitions describe automated hive reads and target tokens that expose sensitive audit scope.",
+            remediation_hints=(
+                RemediationHint(
+                    id="registry-live-scope-review",
+                    category="review",
+                    summary="Confirm monitoring tokens align with approved hosts and rotate any credentials referenced in the manifest.",
+                    documentation="docs/detection-types.md#registrylive",
+                ),
             ),
         ),
         FormatClass(
@@ -213,6 +243,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     variant="custom-config-xml",
                     severity="medium",
                     aliases=("sample",),
+                ),
+            ),
+            severity_hint="Application configuration files expose secrets, connection strings, and runtime policy toggles that impact production systems.",
+            remediation_hints=(
+                RemediationHint(
+                    id="structured-config-rotate-secrets",
+                    category="secrets",
+                    summary="Rotate credentials stored in configuration sections and confirm transforms match approved deployment scopes.",
+                    documentation="docs/detection-types.md#structuredconfigxml",
+                ),
+                RemediationHint(
+                    id="structured-config-hardening",
+                    category="hardening",
+                    summary="Review debug switches and permissive runtime settings before promoting captured configs to shared baselines.",
+                    documentation="docs/detection-types.md#structuredconfigxml",
                 ),
             ),
         ),
@@ -307,6 +352,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="medium",
                 ),
             ),
+            severity_hint="Generic XML manifests advertise capabilities, endpoints, and policy grants that can expose infrastructure layout when leaked.",
+            remediation_hints=(
+                RemediationHint(
+                    id="xml-provenance-review",
+                    category="review",
+                    summary="Confirm manifest namespaces and deployment identifiers map to approved environments before sharing samples externally.",
+                    documentation="docs/detection-types.md#xml",
+                ),
+                RemediationHint(
+                    id="xml-sanitise-identifiers",
+                    category="sanitisation",
+                    summary="Strip unique identifiers or replace them with anonymised tokens prior to archiving manifests in shared stores.",
+                    documentation="docs/detection-types.md#xml",
+                ),
+            ),
         ),
         FormatClass(
             name="Json",
@@ -358,6 +418,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     ),
                 ),
             ),
+            severity_hint="JSON configuration files reveal feature flags, API endpoints, and secrets that map directly to runtime access.",
+            remediation_hints=(
+                RemediationHint(
+                    id="json-secret-rotation",
+                    category="secrets",
+                    summary="Rotate keys or tokens stored in captured JSON configs and ensure redacted copies replace archival snapshots.",
+                    documentation="docs/detection-types.md#json",
+                ),
+                RemediationHint(
+                    id="json-flag-review",
+                    category="review",
+                    summary="Audit feature toggles and environment overrides before applying configs to ensure they respect approved deployment policies.",
+                    documentation="docs/detection-types.md#json",
+                ),
+            ),
         ),
         FormatClass(
             name="Yaml",
@@ -386,6 +461,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     priority=51,
                     variant="kubernetes-manifest",
                     severity="medium",
+                ),
+            ),
+            severity_hint="YAML manifests encode infrastructure state, secrets references, and rollout policies that leak environment topology.",
+            remediation_hints=(
+                RemediationHint(
+                    id="yaml-secret-reference-audit",
+                    category="review",
+                    summary="Audit Secret and ConfigMap references before distributing manifests and scrub environment identifiers when possible.",
+                    documentation="docs/detection-types.md#yaml",
+                ),
+                RemediationHint(
+                    id="yaml-deployment-scope",
+                    category="hardening",
+                    summary="Verify namespace and replica settings to prevent accidental cross-environment rollouts when replaying manifests.",
+                    documentation="docs/detection-types.md#yaml",
                 ),
             ),
         ),
@@ -430,6 +520,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     variant="project-settings-toml",
                     filename_patterns=("^pyproject\.toml$",),
                     severity="medium",
+                ),
+            ),
+            severity_hint="TOML project manifests reveal dependency feeds, signing requirements, and build output paths that identify release pipelines.",
+            remediation_hints=(
+                RemediationHint(
+                    id="toml-feed-audit",
+                    category="review",
+                    summary="Review [[tool]] sections for internal registries or credentials and relocate them to secure secret stores before sharing manifests.",
+                    documentation="docs/detection-types.md#toml",
+                ),
+                RemediationHint(
+                    id="toml-build-scope",
+                    category="hardening",
+                    summary="Sanitise path and signing configuration to avoid leaking build infrastructure details in exported manifests.",
+                    documentation="docs/detection-types.md#toml",
                 ),
             ),
         ),
@@ -494,6 +599,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="medium",
                 ),
             ),
+            severity_hint="INI and dotenv style files often embed credentials, tokens, and environment toggles that impact access control immediately.",
+            remediation_hints=(
+                RemediationHint(
+                    id="ini-secret-rotation",
+                    category="secrets",
+                    summary="Rotate secrets surfaced in dotenv or credential sections and confirm masked samples replace raw exports.",
+                    documentation="docs/detection-types.md#ini",
+                ),
+                RemediationHint(
+                    id="ini-sanitisation-workflow",
+                    category="sanitisation",
+                    summary="Follow the sanitisation workflow before sharing dotenv fixtures to prevent leaking production values.",
+                    documentation="docs/detection-types.md#ini",
+                ),
+            ),
         ),
         FormatClass(
             name="KeyValueProperties",
@@ -517,6 +637,21 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
             ),
             mime_hints=("text/plain",),
+            severity_hint="Java-style properties files concentrate service endpoints, credentials, and feature toggles for entire JVM applications.",
+            remediation_hints=(
+                RemediationHint(
+                    id="properties-credential-scan",
+                    category="secrets",
+                    summary="Scan captured properties for passwords or tokens and migrate them into managed secret stores immediately.",
+                    documentation="docs/detection-types.md#keyvalueproperties",
+                ),
+                RemediationHint(
+                    id="properties-comment-scrub",
+                    category="sanitisation",
+                    summary="Review inline comments for deployment notes or hostnames and redact sensitive context before sharing.",
+                    documentation="docs/detection-types.md#keyvalueproperties",
+                ),
+            ),
         ),
         FormatClass(
             name="UnixConf",
@@ -570,6 +705,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     priority=96,
                     variant="openvpn-conf",
                     severity="high",
+                ),
+            ),
+            severity_hint="Unix configuration files govern listeners, crypto policies, and authentication hooks that immediately influence service exposure.",
+            remediation_hints=(
+                RemediationHint(
+                    id="unix-conf-hardening",
+                    category="hardening",
+                    summary="Review captured directives against hardened baselines and disable permissive modules before redeploying configs.",
+                    documentation="docs/detection-types.md#unixconf",
+                ),
+                RemediationHint(
+                    id="unix-conf-access-review",
+                    category="review",
+                    summary="Confirm referenced key, certificate, and log paths carry restricted permissions before sharing archives.",
+                    documentation="docs/detection-types.md#unixconf",
                 ),
             ),
         ),
@@ -634,6 +784,21 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="high",
                 ),
             ),
+            severity_hint="Script-based configs can execute arbitrary changes, embed credentials, and provision infrastructure when replayed without review.",
+            remediation_hints=(
+                RemediationHint(
+                    id="script-config-scope",
+                    category="review",
+                    summary="Validate script scopes and ensure they run against lab environments before applying to production hosts.",
+                    documentation="docs/detection-types.md#scriptconfig",
+                ),
+                RemediationHint(
+                    id="script-config-secret-hygiene",
+                    category="secrets",
+                    summary="Replace inline credentials with secure parameter stores and scrub tokens before archiving scripts.",
+                    documentation="docs/detection-types.md#scriptconfig",
+                ),
+            ),
         ),
         FormatClass(
             name="EmbeddedSqlDb",
@@ -652,6 +817,21 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
             ),
             mime_hints=("application/vnd.sqlite3", "application/octet-stream"),
+            severity_hint="Embedded SQLite databases retain raw operational data, including user records and tokens, making them high-risk evidence.",
+            remediation_hints=(
+                RemediationHint(
+                    id="embedded-sql-redaction",
+                    category="sanitisation",
+                    summary="Mask or drop sensitive rows before distributing captured databases and document transformations in the evidence log.",
+                    documentation="docs/detection-types.md#embeddedsqldb",
+                ),
+                RemediationHint(
+                    id="embedded-sql-retention",
+                    category="retention",
+                    summary="Apply the 30-day retention policy and record purge decisions once investigations close.",
+                    documentation="docs/detection-types.md#embeddedsqldb",
+                ),
+            ),
         ),
         FormatClass(
             name="GenericBinaryDat",
@@ -670,6 +850,21 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
             ),
             mime_hints=("application/octet-stream",),
+            severity_hint="Opaque binary blobs are unclassified evidence; treat them cautiously until confirmed non-sensitive.",
+            remediation_hints=(
+                RemediationHint(
+                    id="binary-dat-triage",
+                    category="review",
+                    summary="Triages samples with dedicated tooling before storing them long term to determine whether further sanitisation is required.",
+                    documentation="docs/detection-types.md#genericbinarydat",
+                ),
+                RemediationHint(
+                    id="binary-dat-redaction",
+                    category="sanitisation",
+                    summary="If the blob contains extracted credentials or certificates, replace it with hashed summaries before sharing.",
+                    documentation="docs/detection-types.md#genericbinarydat",
+                ),
+            ),
         ),
     ),
     fallback=FallbackClass(
@@ -986,4 +1181,11 @@ FORMAT_SURVEY = FormatSurvey(
 )
 
 
-__all__ = ["DETECTION_CATALOG", "FORMAT_SURVEY", "ContentSignature", "FormatClass", "FormatSubtype"]
+__all__ = [
+    "DETECTION_CATALOG",
+    "FORMAT_SURVEY",
+    "ContentSignature",
+    "FormatClass",
+    "FormatSubtype",
+    "RemediationHint",
+]
