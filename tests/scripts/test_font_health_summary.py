@@ -304,6 +304,40 @@ def test_cli_writes_summary_payload(
     assert summary["issueCount"] >= 1
 
 
+def test_cli_log_dir_override_takes_precedence(
+    sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_log_dir = tmp_path / "env-logs"
+    override_dir = tmp_path / "override-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(env_log_dir))
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 293680, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    exit_code = font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+            "--log-dir",
+            str(override_dir),
+        ]
+    )
+
+    assert exit_code == 1
+    override_logs = sorted(override_dir.glob("font-staleness-*.json"))
+    env_logs = sorted(env_log_dir.glob("font-staleness-*.json"))
+    assert override_logs, "expected logs to be written to the override directory"
+    assert not env_logs, "env directory should not receive logs when override is used"
+
+    summary_path = override_dir / "font-staleness-summary.json"
+    assert summary_path.is_file()
+
+
 def test_within_threshold_fixture_remains_healthy(tmp_path: Path) -> None:
     payload_path = _copy_fixture("within_threshold.json", tmp_path)
     report = load_font_health_report(payload_path)

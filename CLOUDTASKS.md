@@ -12,6 +12,25 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g+++. Font Telemetry Log Overrides [deps=A0g++]
+
+**REASON:** Operators need to redirect structured staleness logs when triaging evidence in
+isolated sandboxes.
+
+**MUST NOT:** Break existing log layouts or disable environment variable overrides.
+
+**MUST:** Provide an explicit CLI flag, confirm precedence over environment settings, and update
+docs covering the new control.
+
+**ACCEPT GATES:** CLI flag stores events in the supplied path, tests cover precedence, and docs
+explain the override behaviour.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.17 Add a CLI `--log-dir` override in `scripts/font_health_summary.py`.
+  - [x] 0.17.1 Cover override precedence with regression tests under
+        `tests/scripts/test_font_health_summary.py`.
+  - [x] 0.17.2 Document the flag in `docs/font-telemetry.md`.
+
 ## A0g++. Font Telemetry Summary Snapshot [deps=A0g+]
 
 **REASON:** Operators need a quick-glance rollup of staleness enforcement without parsing full

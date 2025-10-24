@@ -44,7 +44,8 @@ All overrides are logged in structured staleness events so reviewers can audit t
 ## Structured staleness events
 
 Running the summary now writes JSON logs to `artifacts/logs/font-staleness/` (override with
-`FONT_STALENESS_LOG_DIR`). Each file is named `font-staleness-<UTC timestamp>.json` and includes:
+`FONT_STALENESS_LOG_DIR` or `--log-dir`). Each file is named `font-staleness-<UTC timestamp>.json`
+and includes:
 
 - CLI guardrail configuration (`maxFailureRate`, `maxLastUpdatedAgeSeconds`, etc.).
 - Scenario evaluations with status, issues, and computed `lastUpdatedAgeSeconds`.
@@ -54,9 +55,10 @@ Include the latest JSON log when filing investigations so reviewers can replay c
 scenario metadata without rerunning telemetry.
 
 The CLI also maintains an aggregated snapshot at `font-staleness-summary.json` inside the same log
-directory (override with `--summary-path`; pass `-` to disable). The summary captures scenario
-status counts, highlights stale or missing `lastUpdated` entries, and records the evaluated
-configuration so operators can monitor drift at a glance.
+directory (override with `--summary-path`; pass `-` to disable). When `--log-dir` is provided the
+summary follows the override. The summary captures scenario status counts, highlights stale or
+missing `lastUpdated` entries, and records the evaluated configuration so operators can monitor
+drift at a glance.
 
 ## Troubleshooting cues
 

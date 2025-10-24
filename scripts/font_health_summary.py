@@ -69,6 +69,14 @@ def build_parser() -> argparse.ArgumentParser:
             "<log dir>/font-staleness-summary.json. Pass '-' to disable."
         ),
     )
+    parser.add_argument(
+        "--log-dir",
+        metavar="PATH",
+        help=(
+            "Directory to store staleness logs; overrides FONT_STALENESS_LOG_DIR. "
+            "Defaults to artifacts/logs/font-staleness/."
+        ),
+    )
     return parser
 
 
@@ -248,7 +256,11 @@ def _emit_staleness_event(
     source_path: Path,
 ) -> None:
     try:
-        log_dir = _resolve_log_dir()
+        if args.log_dir and args.log_dir.strip():
+            log_dir = Path(args.log_dir)
+        else:
+            log_dir = _resolve_log_dir()
+
         if args.summary_path is None:
             summary_path = log_dir / "font-staleness-summary.json"
         elif args.summary_path.strip() in {"", "-"}:
