@@ -1,0 +1,4 @@
+after-migration:
+  scenario: regression test switched Config asc -> Drift desc
+  glyph_state: glyphs match view-model descriptor, payload order stable
+  note: generated via ResultsCatalogViewModelTests.Collection_view_tracks_sort_descriptor

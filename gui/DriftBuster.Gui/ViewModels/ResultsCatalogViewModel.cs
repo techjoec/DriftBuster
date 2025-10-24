@@ -1,8 +1,11 @@
 using System;
+using System.ComponentModel;
+using System.Globalization;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
+using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -155,6 +158,7 @@ namespace DriftBuster.Gui.ViewModels
             _performanceProfile = performanceProfile ?? PerformanceProfile.FromEnvironment();
             Entries = new ObservableCollection<ConfigCatalogItemViewModel>();
             FilteredEntries = new ObservableCollection<ConfigCatalogItemViewModel>();
+            FilteredEntriesView = new DataGridCollectionView(FilteredEntries);
 
             CoverageFilterOptions = new ReadOnlyCollection<FilterOption<CoverageFilterOption>>(new[]
             {
@@ -187,11 +191,14 @@ namespace DriftBuster.Gui.ViewModels
 
             ApplyFilters();
             RefreshPartialCoverageVirtualization();
+            ApplySortToCollectionView();
         }
 
         public ObservableCollection<ConfigCatalogItemViewModel> Entries { get; }
 
         public ObservableCollection<ConfigCatalogItemViewModel> FilteredEntries { get; }
+
+        public DataGridCollectionView FilteredEntriesView { get; }
 
         public ReadOnlyCollection<FilterOption<CoverageFilterOption>> CoverageFilterOptions { get; }
 
@@ -283,6 +290,7 @@ namespace DriftBuster.Gui.ViewModels
 
             _sortDescriptor = descriptor;
             ApplyFilters();
+            ApplySortToCollectionView();
             if (raiseEvent)
             {
                 SortDescriptorChanged?.Invoke(this, _sortDescriptor);
@@ -476,12 +484,47 @@ namespace DriftBuster.Gui.ViewModels
             OnPropertyChanged(nameof(PartialCoverageEntries));
             ReScanAllPartialCommand.NotifyCanExecuteChanged();
             RefreshPartialCoverageVirtualization();
+            FilteredEntriesView.Refresh();
         }
 
         private void RefreshPartialCoverageVirtualization()
         {
             var partialCount = Entries.Count(entry => entry.IsPartialCoverage || entry.IsMissingCoverage);
             UseVirtualizedPartialCoverage = _performanceProfile.ShouldVirtualize(partialCount);
+        }
+
+        private void ApplySortToCollectionView()
+        {
+            var sortDescriptions = FilteredEntriesView.SortDescriptions;
+            sortDescriptions.Clear();
+
+            var primary = CreateSortDescription(_sortDescriptor.ColumnKey, _sortDescriptor.Descending);
+            if (primary is not null)
+            {
+                sortDescriptions.Add(primary);
+            }
+
+            if (!string.Equals(_sortDescriptor.ColumnKey, CatalogSortColumns.Config, StringComparison.OrdinalIgnoreCase))
+            {
+                var secondary = CreateSortDescription(CatalogSortColumns.Config, descending: false);
+                if (secondary is not null)
+                {
+                    sortDescriptions.Add(secondary);
+                }
+            }
+
+            FilteredEntriesView.Refresh();
+        }
+
+        private static DataGridSortDescription? CreateSortDescription(string columnKey, bool descending)
+        {
+            if (string.IsNullOrWhiteSpace(columnKey))
+            {
+                return null;
+            }
+
+            var direction = descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
+            return DataGridSortDescription.FromPath(columnKey, direction, CultureInfo.CurrentCulture);
         }
     }
 }

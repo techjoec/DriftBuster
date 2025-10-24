@@ -43,7 +43,7 @@
         <StackPanel Spacing="12">
           <TextBlock Text="Configuration catalog" FontSize="18" FontWeight="SemiBold" />
           <DataGrid x:Name="CatalogGrid"
-                    ItemsSource="{Binding FilteredEntries}"
+                    ItemsSource="{Binding FilteredEntriesView}"
                     AutoGenerateColumns="False"
                     IsReadOnly="True"
                     HeadersVisibility="Column"

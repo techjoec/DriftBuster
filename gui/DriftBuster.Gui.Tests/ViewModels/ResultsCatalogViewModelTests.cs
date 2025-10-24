@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Linq;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
@@ -100,6 +101,33 @@ public sealed class ResultsCatalogViewModelTests
         hosts.Should().NotBeNull();
         hosts!.Should().Contain("server02");
 
+    }
+
+    [Fact]
+    public void Collection_view_tracks_sort_descriptor()
+    {
+        var viewModel = new ResultsCatalogViewModel();
+        viewModel.LoadFromResponse(BuildResponse(), totalHosts: 2);
+
+        viewModel.SetSortDescriptor(CatalogSortColumns.Config, descending: false);
+
+        viewModel.FilteredEntriesView.SortDescriptions.Should().NotBeEmpty();
+        var primary = viewModel.FilteredEntriesView.SortDescriptions[0];
+        primary.PropertyPath.Should().Be(CatalogSortColumns.Config);
+        primary.Direction.Should().Be(ListSortDirection.Ascending);
+    }
+
+    [Fact]
+    public void Set_sort_descriptor_toggles_direction()
+    {
+        var viewModel = new ResultsCatalogViewModel();
+        viewModel.LoadFromResponse(BuildResponse(), totalHosts: 2);
+
+        viewModel.SetSortDescriptor(CatalogSortColumns.Drift, descending: false);
+        viewModel.SortDescriptor.Descending.Should().BeFalse();
+
+        viewModel.SetSortDescriptor(CatalogSortColumns.Drift, descending: true);
+        viewModel.SortDescriptor.Descending.Should().BeTrue();
     }
 
     [Fact]

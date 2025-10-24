@@ -77,6 +77,12 @@
 - Fixture census shows the bundled multi-server sample spans **10 hosts / 37 config files** (max **5** per host), so virtualization will only trigger on synthetic or production payloads. The projection table in the baseline covers counts from 2→1600 entries, with the default **400** threshold flipping to `true` at 400+.
 - Forced overrides remain deterministic: the baseline stores precomputed matrices for `force=true` (always virtualise) and `force=false` (never virtualise), making it trivial to compare operator overrides against the default heuristics before shipping changes.
 
+### Results catalog sorting migration (A5.1.4)
+
+- **Before (Avalonia 11.1 shim):** Sorting glyphs were driven by a manual `DataGridColumn.Sort(ListSortDirection)` call, so the UI desynchronised whenever the view-model reapplied filters. Screenshot log (`artifacts/logs/results-catalog/sorting-pre-11-2.txt`) captured mismatched glyphs after toggling between `Updated` and `Coverage` columns.
+- **After (Avalonia 11.2 APIs):** `ResultsCatalogViewModel` now mirrors `DataGridCollectionView.SortDescriptions`, allowing the grid to toggle glyphs via Avalonia’s built-in pipeline while the view-model retains authoritative ordering. `artifacts/logs/results-catalog/sorting-11-2.txt` stores the console trace from the new regression test that switches between `Config` ascending and `Drift` descending, confirming glyph + payload stay aligned.
+- Operator takeaway: when a persisted session rehydrates, the default `Updated desc` descriptor hydrates both the collection view and glyphs without user clicks, eliminating the stale sort indicator issue noted in the 2025-10-12 regression triage.
+
 ### Headless font issues (A1d)
 
 - Pre-fix failures hit both the Release `MainWindow` smoke test and the drilldown view instantiation path because Avalonia attempted to resolve `fonts:SystemFonts` before any headless locator bindings existed. The captured stack trace remains in [`artifacts/logs/headless-font-release-stacktrace.txt`](../../artifacts/logs/headless-font-release-stacktrace.txt) for release window crashes, while the matching drilldown failure reproduced under `[Collection(HeadlessCollection.Name)]` until the bootstrap landed.

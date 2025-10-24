@@ -1,0 +1,4 @@
+before-migration:
+  scenario: toggled between Updated and Coverage
+  glyph_state: coverage column highlighted while list sorted by Updated desc
+  note: captured from 2025-10-12 regression replay prior to Avalonia 11.2 sync.
