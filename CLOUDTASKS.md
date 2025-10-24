@@ -542,13 +542,13 @@ highlight where to consume the artifact.
   - [x] 7.1.1 Refine sampling guardrails in `src/driftbuster/core/detector.py` and `src/driftbuster/multi_server.py`.
   - [x] 7.1.2 Add stress tests in `tests/core/test_detector.py` and `tests/multi_server/test_multi_server.py`.
   - [x] 7.1.3 Document sampling benchmarks (inputs, timings, outcomes) in `notes/status/core-detector.md`.
-- [ ] 7.2 Catalog authority.
-  - [ ] 7.2.1 Audit `src/driftbuster/catalog.py` to ensure detector metadata (priority, severity, variant) remains source of truth.
-  - [ ] 7.2.2 Update `docs/detection-types.md` after adjustments.
-  - [ ] 7.2.3 Capture catalog diff summary in `notes/checklists/catalog-review.md`.
-- [ ] 7.3 Registry summary expansion.
+- [x] 7.2 Catalog authority.
+  - [x] 7.2.1 Audit `src/driftbuster/catalog.py` to ensure detector metadata (priority, severity, variant) remains source of truth.
+  - [x] 7.2.2 Update `docs/detection-types.md` after adjustments.
+  - [x] 7.2.3 Capture catalog diff summary in `notes/checklists/catalog-review.md`.
+- [x] 7.3 Registry summary expansion.
   - [x] 7.3.1 Extend `src/driftbuster/registry/__init__.py::registry_summary` with usage statistics.
-  - [ ] 7.3.2 Capture manual review steps in `notes/checklists/reporting-tests.md`.
+  - [x] 7.3.2 Capture manual review steps in `notes/checklists/reporting-tests.md`.
   - [x] 7.3.3 Add regression coverage verifying usage statistics in `tests/registry/test_registry_summary.py`.
 - [x] 7.4 Diff/patch utilities.
   - [x] 7.4.1 Finalise helpers in `src/driftbuster/reporting/diff.py` for before/after comparisons.

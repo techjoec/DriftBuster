@@ -399,7 +399,8 @@ class MultiServerRunner:
         total_entries = 0
         root_fingerprint = hashlib.sha1("|".join(sorted(str(root.resolve()) for root in roots)).encode("utf-8")).hexdigest()
 
-        self._detector.reset_sample_budget()
+        if hasattr(self._detector, "reset_sample_budget"):
+            self._detector.reset_sample_budget()
         budget_exhausted = False
         for root in roots:
             for path, match in self._detector.scan_path(
@@ -462,7 +463,8 @@ class MultiServerRunner:
                 break
 
         budget_reached = budget_exhausted or self._detector.sample_budget_exhausted
-        self._detector.reset_sample_budget()
+        if hasattr(self._detector, "reset_sample_budget"):
+            self._detector.reset_sample_budget()
 
         used_cache = total_entries > 0 and cached_entries == total_entries
         return configs, used_cache, budget_reached

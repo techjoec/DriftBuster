@@ -25,6 +25,15 @@
   - Verify the detection summary table, diff section, hunt badges, and redaction
     summary align with the JSON data.
   - Capture screenshots or textual descriptions of anomalies in this checklist.
+- **Registry summary usage review:**
+  - Call `registry_summary()` from `src.driftbuster.registry` with a recorded
+    `RegistryStore` snapshot after a representative multi-server run.
+  - Confirm the summary payload lists `usage.statistics` with the expected
+    counters (`totalServers`, `totalProfiles`, `activeProfiles`,
+    `detectorInvocations`).
+  - Cross-check the counters against the captured run artefacts (diff JSON,
+    profile exports) and log the evidence here before promoting the summary to
+    reviewers.
 - **Follow-up:** if any placeholder is missing, rerun with updated token lists
   before distributing artefacts. Log remediation steps alongside manual lint
   commands (`python -m compileall src`) once the reporting bundle is ready.

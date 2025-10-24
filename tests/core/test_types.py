@@ -79,6 +79,34 @@ def test_validate_detection_metadata_handles_strict_false() -> None:
     assert metadata["path"] == "/tmp/obj"
 
 
+def test_validate_detection_metadata_resolves_alias_format() -> None:
+    match = DetectionMatch(
+        plugin_name="dockerfile",
+        format_name="dockerfile",
+        variant="generic",
+        confidence=0.8,
+        reasons=["Dockerfile heuristics matched"],
+    )
+
+    metadata = validate_detection_metadata(match, DETECTION_CATALOG)
+
+    assert metadata["catalog_format"] == "script-config"
+    assert metadata["catalog_variant"] == "generic"
+
+
+def test_validate_detection_metadata_rejects_unknown_variant_for_known_format() -> None:
+    match = DetectionMatch(
+        plugin_name="json",
+        format_name="json",
+        variant="mystery",
+        confidence=0.4,
+        reasons=["unknown"],
+    )
+
+    with pytest.raises(MetadataValidationError):
+        validate_detection_metadata(match, DETECTION_CATALOG)
+
+
 def test_validate_detection_metadata_rejects_bad_metadata_type() -> None:
     match = DetectionMatch(
         plugin_name="json",

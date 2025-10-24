@@ -26,7 +26,7 @@ from pathlib import Path
 import re
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
 
-from ..catalog import DetectionCatalog
+from ..catalog import DetectionCatalog, FormatClass, FormatSubtype
 
 _VALID_ID = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
@@ -35,39 +35,6 @@ class MetadataValidationError(ValueError):
     """Raised when detection metadata fails validation checks."""
 
 
-_CATALOG_FORMAT_IDS: Dict[str, str] = {
-    "RegistryExport": "registry-export",
-    "RegistryLive": "registry-live",
-    "StructuredConfigXml": "structured-config-xml",
-    "XmlGeneric": "xml",
-    "Json": "json",
-    "Yaml": "yaml",
-    "Toml": "toml",
-    "Ini": "ini",
-    "KeyValueProperties": "properties",
-    "UnixConf": "unix-conf",
-    "ScriptConfig": "script-config",
-    "EmbeddedSqlDb": "embedded-sql-db",
-    "GenericBinaryDat": "binary-dat",
-}
-
-_FORMAT_ALIASES: Dict[str, str] = {
-    "xml-generic": "xml",
-    "registry-export": "registry-export",
-    "structured-config": "structured-config-xml",
-    "structured-config-xml": "structured-config-xml",
-    # Normalise plugin family names used by detectors to canonical catalog ids
-    "env-file": "ini",
-    "ini-json-hybrid": "ini",
-    "dockerfile": "script-config",
-    "hcl": "ini",
-    "embedded-sql": "embedded-sql-db",
-    "embedded-sqlite": "embedded-sql-db",
-    "sqlite": "embedded-sql-db",
-    "binary": "binary-dat",
-}
-
-_FALLBACK_FORMAT_ID = "unknown-text-or-binary"
 
 
 def _ensure_mapping(metadata: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
@@ -98,19 +65,46 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
+def _collect_variant_ids(fmt: FormatClass) -> set[str]:
+    variants: set[str] = set()
+    if fmt.default_variant:
+        variants.add(fmt.default_variant.strip().lower())
+    for subtype in fmt.subtypes:
+        if isinstance(subtype, FormatSubtype):
+            if subtype.variant:
+                variants.add(subtype.variant.strip().lower())
+            if getattr(subtype, "aliases", None):
+                variants.update(alias.strip().lower() for alias in subtype.aliases if alias)
+    return {variant for variant in variants if variant}
+
+
 def _build_format_lookup(
     catalog: DetectionCatalog,
-) -> Dict[str, tuple[str, Any]]:
-    lookup: Dict[str, tuple[str, Any]] = {}
+) -> Dict[str, tuple[str, set[str]]]:
+    lookup: Dict[str, tuple[str, set[str]]] = {}
     for fmt in catalog.classes:
-        canonical = _CATALOG_FORMAT_IDS.get(fmt.name)
-        if canonical:
-            lookup.setdefault(canonical, (canonical, fmt))
+        canonical = fmt.slug.strip().lower()
+        variant_ids = _collect_variant_ids(fmt)
+        keys = {canonical}
+        name_key = fmt.name.strip().lower()
+        if name_key:
+            keys.add(name_key)
+            try:
+                keys.add(_normalise_identifier(fmt.name, field="format_name"))
+            except MetadataValidationError:
+                pass
+        keys.update(alias.strip().lower() for alias in fmt.aliases if alias)
+        for key in keys:
+            if key:
+                lookup.setdefault(key, (canonical, set(variant_ids)))
     fallback = catalog.fallback
-    lookup.setdefault(_FALLBACK_FORMAT_ID, (_FALLBACK_FORMAT_ID, fallback))
-    for alias, canonical in _FORMAT_ALIASES.items():
-        if canonical in lookup:
-            lookup.setdefault(alias, lookup[canonical])
+    fallback_slug = fallback.slug.strip().lower()
+    fallback_keys = {fallback_slug, fallback.name.strip().lower()}
+    if getattr(fallback, "aliases", None):
+        fallback_keys.update(alias.strip().lower() for alias in fallback.aliases if alias)
+    for key in fallback_keys:
+        if key:
+            lookup.setdefault(key, (fallback_slug, set()))
     return lookup
 
 
@@ -161,8 +155,9 @@ def validate_detection_metadata(
 
     lookup = _build_format_lookup(catalog)
     canonical_format: Optional[str] = None
+    allowed_variants: set[str] = set()
     if format_id in lookup:
-        canonical_format = lookup[format_id][0]
+        canonical_format, allowed_variants = lookup[format_id]
     elif strict:
         raise MetadataValidationError(f"Unknown catalog format: {format_id}")
     else:
@@ -182,6 +177,11 @@ def validate_detection_metadata(
         else:
             variant_id = variant.strip().lower()
         if variant_id:
+            if strict and allowed_variants and variant_id not in allowed_variants:
+                raise MetadataValidationError(
+                    f"Unknown catalog variant '{variant_id}' for format "
+                    f"'{canonical_format}'."
+                )
             metadata["catalog_variant"] = variant_id
     else:
         metadata.pop("catalog_variant", None)

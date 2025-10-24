@@ -19,8 +19,18 @@ from driftbuster.core.types import (
 
 
 @dataclass
+class DummyCatalogSubtype:
+    variant: str | None = None
+    aliases: Sequence[str] = ()
+
+
+@dataclass
 class DummyCatalogFormat:
     name: str
+    slug: str
+    aliases: Sequence[str] = ()
+    default_variant: str | None = None
+    subtypes: Sequence[DummyCatalogSubtype] = ()
 
 
 @dataclass
@@ -33,8 +43,11 @@ class DummyCatalog:
 def _catalog() -> DummyCatalog:
     return DummyCatalog(
         version="1.0.0",
-        classes=[DummyCatalogFormat("Json"), DummyCatalogFormat("StructuredConfigXml")],
-        fallback=DummyCatalogFormat("unknown"),
+        classes=[
+            DummyCatalogFormat(name="Json", slug="json"),
+            DummyCatalogFormat(name="StructuredConfigXml", slug="structured-config-xml"),
+        ],
+        fallback=DummyCatalogFormat(name="unknown", slug="unknown-text-or-binary"),
     )
 
 

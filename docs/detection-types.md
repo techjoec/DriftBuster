@@ -12,22 +12,26 @@ For the definitive detector expectations, refer to
 
 ## Active Detection Classes
 
-| Priority | Class Name              | Catalog Format        | Primary Variant                | Key Extensions                     | Usage % | Detection Cues                |
-|----------|------------------------|-----------------------|--------------------------------|------------------------------------|---------|-------------------------------|
-| 10       | RegistryExport         | registry-export       | —                              | `.reg`                             | 10      | signature + prefix            |
-| 15       | RegistryLive           | registry-live         | scan-definition                | `.json`, `.yml`, `.yaml`           | —       | `registry_scan` manifest key  |
-| 20       | StructuredConfigXml    | structured-config-xml | web/app/machine + transforms   | `.config`                          | 12      | filename + section hints      |
-| 30       | XmlGeneric             | xml                   | namespace-driven               | `.xml`, `.manifest`, `.resx`, `.xaml` | 14      | namespace + root metadata     |
-| 40       | Json                   | json                  | generic                 | `.json`, `.jsonc`                  | 22      | bracket balance + parse       |
-| 50       | Yaml                   | yaml                  | —                      | `.yml`, `.yaml`                    | 8       | key/colon indentation         |
-| 60       | Toml                   | toml                  | —                      | `.toml`                            | 4       | bracketed sections + `=`      |
-| 70       | Ini                    | ini                   | sectioned-ini + env/dotenv/hybrid/unix-conf variants | `.ini`, `.cfg`, `.cnf`             | 15     | section headers + key density + extension hints |
-| 80       | KeyValueProperties     | properties            | java-properties         | `.properties`                      | 3      | extension + `=`/`:` pairs + continuations |
-| 90       | UnixConf               | unix-conf             | directive-conf (apache/nginx variants) | `.conf`                            | 2     | directive keywords + comment markers |
-| 100      | ScriptConfig           | script-config         | shell-automation        | `.ps1`, `.bat`, `.cmd`, `.vbs`     | 4       | shebang/keyword scan          |
-| 110      | EmbeddedSqlDb          | embedded-sql-db       | —                      | `.sqlite`, `.db`                   | 2       | page-structured signature     |
-| 120      | GenericBinaryDat       | binary-dat            | —                      | `.dat`, `.bin`                     | 3       | entropy threshold             |
-| 1000     | UnknownTextOrBinary    | —                     | —                      | _fallback_                         | —       | —                             |
+| Priority | Class Name              | Catalog Format        | Default Severity | Primary Variant / Notes                 | Key Extensions                      | Usage % | Detection Cues                |
+|----------|------------------------|-----------------------|------------------|-----------------------------------------|-------------------------------------|---------|-------------------------------|
+| 10       | RegistryExport         | registry-export       | high             | —                                       | `.reg`                               | 10      | signature + prefix            |
+| 15       | RegistryLive           | registry-live         | medium           | scan-definition                          | `.json`, `.yml`, `.yaml`             | —       | `registry_scan` manifest key  |
+| 20       | StructuredConfigXml    | structured-config-xml | high             | web/app/machine + transform variants     | `.config`                            | 12      | filename + section hints      |
+| 30       | XmlGeneric             | xml                   | medium           | generic, msbuild, manifest/resource/XAML | `.xml`, `.manifest`, `.resx`, `.xaml` | 14     | namespace + root metadata     |
+| 40       | Json                   | json                  | medium           | generic / jsonc / structured-settings    | `.json`, `.jsonc`                    | 22      | bracket balance + parse       |
+| 50       | Yaml                   | yaml                  | medium           | generic / kubernetes-manifest            | `.yml`, `.yaml`                      | 8       | key/colon indentation         |
+| 60       | Toml                   | toml                  | medium           | generic / array-of-tables                | `.toml`                              | 4       | bracketed sections + `=`      |
+| 70       | Ini                    | ini                   | medium           | sectioned-ini, dotenv, hybrid, desktop   | `.ini`, `.cfg`, `.cnf`               | 15      | section headers + key density + extension hints |
+| 80       | KeyValueProperties     | properties            | medium           | java-properties                          | `.properties`                        | 3       | extension + `=`/`:` pairs + continuations |
+| 90       | UnixConf               | unix-conf             | high             | directive-conf + apache/nginx/SSH/VPN    | `.conf`                              | 2       | directive keywords + comment markers |
+| 100      | ScriptConfig           | script-config         | high             | generic (PowerShell/BAT/CMD/VB planned)  | `.ps1`, `.bat`, `.cmd`, `.vbs`       | 4       | shebang/keyword scan          |
+| 110      | EmbeddedSqlDb          | embedded-sql-db       | high             | —                                       | `.sqlite`, `.db`                     | 2       | page-structured signature     |
+| 120      | GenericBinaryDat       | binary-dat            | low              | —                                       | `.dat`, `.bin`                       | 3       | entropy threshold             |
+| 1000     | UnknownTextOrBinary    | unknown-text-or-binary | info            | fallback                                 | _fallback_                           | —       | —                             |
+
+Default severity labels mirror the canonical values embedded in
+`driftbuster.catalog.DETECTION_CATALOG` so CLI and registry summaries share a
+single source of truth.
 
 INI-family detectors now rank structural evidence (section headers, directive blocks, brace hybrids) ahead of extension-only cues so shared `.conf` and `.properties` suffixes keep their dedicated variants. Dotenv matches remain gated by known filenames and export/`=` density, allowing Java properties to retain the `java-properties` variant even when sections are absent.
 

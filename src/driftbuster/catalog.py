@@ -41,9 +41,12 @@ class FormatSubtype:
 
     name: str
     priority: int
+    variant: str | None = None
+    severity: str | None = None
     filename_patterns: Tuple[str, ...] = field(default_factory=tuple)
     content_signatures: Tuple[ContentSignature, ...] = field(default_factory=tuple)
     mime_hints: Tuple[str, ...] = field(default_factory=tuple)
+    aliases: Tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -51,8 +54,12 @@ class FormatClass:
     """Primary detection class definition."""
 
     name: str
+    slug: str
     priority: int
+    default_severity: str
     extensions: Tuple[str, ...]
+    default_variant: str | None = None
+    aliases: Tuple[str, ...] = field(default_factory=tuple)
     filename_patterns: Tuple[str, ...] = field(default_factory=tuple)
     content_signatures: Tuple[ContentSignature, ...] = field(default_factory=tuple)
     mime_hints: Tuple[str, ...] = field(default_factory=tuple)
@@ -63,8 +70,11 @@ class FormatClass:
 @dataclass(frozen=True)
 class FallbackClass:
     name: str
+    slug: str
     priority: int
+    default_severity: str
     mime_hints: Tuple[str, ...]
+    aliases: Tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -87,41 +97,46 @@ DETECTION_CATALOG = DetectionCatalog(
     classes=(
         FormatClass(
             name="RegistryExport",
+            slug="registry-export",
             priority=10,
+            default_severity="high",
             extensions=(".reg",),
-            filename_patterns=("(?i)^.*\\.reg$",),
+            filename_patterns=("(?i)^.*\.reg$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
-                    pattern="^(Windows Registry Editor Version (4|5)\\.00|REGEDIT4)\\r?\\n",
+                    pattern="^(Windows Registry Editor Version (4|5)\.00|REGEDIT4)\r?\n",
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\\[HKEY_(LOCAL_MACHINE|CURRENT_USER|CLASSES_ROOT|USERS|CURRENT_CONFIG)\\\\.+\\]$",
+                    pattern="^\[HKEY_(LOCAL_MACHINE|CURRENT_USER|CLASSES_ROOT|USERS|CURRENT_CONFIG)\\.+\]$",
                 ),
             ),
             mime_hints=("application/regedit", "text/plain"),
             examples=(
-                "Windows Registry Editor Version 5.00\\n[HKEY_CURRENT_USER\\Software\\Vendor\\App]\\n\"Key\"=\"Value\"",
+                'Windows Registry Editor Version 5.00\n[HKEY_CURRENT_USER\\Software\\Vendor\\App]\n"Key"="Value"',
             ),
         ),
         FormatClass(
             name="RegistryLive",
+            slug="registry-live",
             priority=15,
+            default_severity="medium",
             extensions=(".json", ".yml", ".yaml"),
+            default_variant="scan-definition",
             filename_patterns=(
-                "(?i)^.*\\.(regscan\\.json|registry\\.json)$",
-                "(?i)^(registry|reg).*\\.(json|ya?ml)$",
+                "(?i)^.*\.(regscan\.json|registry\.json)$",
+                "(?i)^(registry|reg).*\.(json|ya?ml)$",
             ),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern=r'\"registry_scan\"\s*:\\s*\{',
+                    pattern=r'"registry_scan"\s*:\s*\{',
                     optional=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern=r"^\\s*registry_scan\\s*:\\s*$",
+                    pattern=r"^\s*registry_scan\s*:\s*$",
                     multiline=True,
                     optional=True,
                 ),
@@ -134,80 +149,172 @@ DETECTION_CATALOG = DetectionCatalog(
         ),
         FormatClass(
             name="StructuredConfigXml",
+            slug="structured-config-xml",
             priority=20,
+            default_severity="high",
             extensions=(".config",),
-            filename_patterns=("(?i)^.*\\.(config)$", "(?i)^(app|web|machine)\\.config$"),
+            default_variant="web-or-app-config",
+            aliases=("structured-config",),
+            filename_patterns=("(?i)^.*\.(config)$", "(?i)^(app|web|machine)\.config$"),
             content_signatures=(
-                ContentSignature(type="contains_regex", pattern="<configuration(\\s|>)"),
-                ContentSignature(type="contains_regex", pattern="<(appSettings|runtime|system\\.web)(\\s|>)"),
+                ContentSignature(type="contains_regex", pattern="<configuration(\s|>)"),
+                ContentSignature(type="contains_regex", pattern="<(appSettings|runtime|system\.web)(\s|>)"),
             ),
             mime_hints=("application/xml", "text/xml"),
+            subtypes=(
+                FormatSubtype(
+                    name="WebConfigXml",
+                    priority=21,
+                    variant="web-config",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="AppConfigXml",
+                    priority=22,
+                    variant="app-config",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="MachineConfigXml",
+                    priority=23,
+                    variant="machine-config",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="WebConfigTransform",
+                    priority=24,
+                    variant="web-config-transform",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="AppConfigTransform",
+                    priority=25,
+                    variant="app-config-transform",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="MachineConfigTransform",
+                    priority=26,
+                    variant="machine-config-transform",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="GenericConfigTransform",
+                    priority=27,
+                    variant="config-transform",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="CustomConfigXml",
+                    priority=28,
+                    variant="custom-config-xml",
+                    severity="medium",
+                    aliases=("sample",),
+                ),
+            ),
         ),
         FormatClass(
             name="XmlGeneric",
+            slug="xml",
             priority=30,
+            default_severity="medium",
             extensions=(".xml", ".manifest", ".resx", ".xaml"),
-            filename_patterns=("(?i)^.*\\.(xml|manifest|resx|xaml)$",),
+            default_variant="generic",
+            aliases=("xml-generic",),
+            filename_patterns=("(?i)^.*\.(xml|manifest|resx|xaml)$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
-                    pattern="^\\s*<\\?xml\\s+version\\s*=\\s*\"[^\"]+\"",
+                    pattern=r'^\s*<\?xml\s+version\s*=\s*"[^"]+"',
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\\s*<[^!?][\\w:.-]+(\\s|>)",
+                    pattern="^\s*<[^!?][\w:.-]+(\s|>)",
                 ),
             ),
             mime_hints=("application/xml", "text/xml"),
             subtypes=(
                 FormatSubtype(
-                    name="WindowsManifestXml",
+                    name="MsbuildTargetsXml",
                     priority=31,
-                    filename_patterns=("(?i)^.*\\.manifest$",),
+                    variant="msbuild-targets",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="MsbuildPropsXml",
+                    priority=32,
+                    variant="msbuild-props",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="MsbuildProjectXml",
+                    priority=33,
+                    variant="msbuild-project",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="WindowsManifestXml",
+                    priority=34,
+                    variant="app-manifest-xml",
+                    filename_patterns=("(?i)^.*\.manifest$",),
                     content_signatures=(
-                        ContentSignature(type="contains_regex", pattern="<assembly(\\s|>)"),
+                        ContentSignature(type="contains_regex", pattern="<assembly(\s|>)"),
                         ContentSignature(
                             type="contains_regex",
-                            pattern="xmlns=\"urn:schemas-microsoft-com:asm\\.v1\"",
+                            pattern=r'xmlns="urn:schemas-microsoft-com:asm\.v1"',
                         ),
                     ),
+                    severity="medium",
                 ),
                 FormatSubtype(
                     name="ResxXml",
-                    priority=32,
-                    filename_patterns=("(?i)^.*\\.resx$",),
+                    priority=35,
+                    variant="resource-xml",
+                    filename_patterns=("(?i)^.*\.resx$",),
                     content_signatures=(
-                        ContentSignature(type="contains_regex", pattern="<root(\\s|>)"),
-                        ContentSignature(type="contains_regex", pattern="<data\\s+name=\""),
+                        ContentSignature(type="contains_regex", pattern="<root(\s|>)"),
+                        ContentSignature(type="contains_regex", pattern=r'<data\s+name="'),
                     ),
+                    severity="medium",
                 ),
                 FormatSubtype(
                     name="XamlUiXml",
-                    priority=33,
-                    filename_patterns=("(?i)^.*\\.xaml$",),
+                    priority=36,
+                    variant="interface-xml",
+                    filename_patterns=("(?i)^.*\.xaml$",),
                     content_signatures=(
                         ContentSignature(
                             type="contains_regex",
-                            pattern="xmlns(:\\w+)?=\"http://schemas\\.microsoft\\.com/winfx/2006/xaml\"",
+                            pattern=r'xmlns(:\w+)?="http://schemas\.microsoft\.com/winfx/2006/xaml"',
                         ),
                         ContentSignature(
                             type="contains_regex",
-                            pattern="<(Window|UserControl|Page|Application|ResourceDictionary)(\\s|>)",
+                            pattern="<(Window|UserControl|Page|Application|ResourceDictionary)(\s|>)",
                         ),
                     ),
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="XsltStylesheetXml",
+                    priority=37,
+                    variant="xslt-xml",
+                    severity="medium",
                 ),
             ),
         ),
         FormatClass(
             name="Json",
+            slug="json",
             priority=40,
+            default_severity="medium",
             extensions=(".json", ".jsonc"),
-            filename_patterns=("(?i)^.*\\.(json|jsonc)$",),
+            default_variant="generic",
+            filename_patterns=("(?i)^.*\.(json|jsonc)$",),
             content_signatures=(
-                ContentSignature(type="starts_with_regex", pattern="^\\s*[\\[{]"),
+                ContentSignature(type="starts_with_regex", pattern="^\s*[\[{]"),
                 ContentSignature(
                     type="not_contains_regex",
-                    pattern="\\/\\/|/\\*",
+                    pattern="\/\/|/\*",
                     optional=True,
                 ),
                 ContentSignature(type="json_parse_probe", max_bytes=2_097_152),
@@ -217,11 +324,12 @@ DETECTION_CATALOG = DetectionCatalog(
                 FormatSubtype(
                     name="JsonWithComments",
                     priority=41,
-                    filename_patterns=("(?i)^.*\\.jsonc$",),
+                    variant="jsonc",
+                    filename_patterns=("(?i)^.*\.jsonc$",),
                     content_signatures=(
                         ContentSignature(
                             type="contains_regex",
-                            pattern="(^|\\n)\\s*(\\/\\/|/\\*)",
+                            pattern="(^|\n)\s*(\/\/|/\*)",
                         ),
                     ),
                     mime_hints=("application/json", "text/plain"),
@@ -229,15 +337,16 @@ DETECTION_CATALOG = DetectionCatalog(
                 FormatSubtype(
                     name="StructuredSettingsJson",
                     priority=42,
-                    filename_patterns=("(?i)^appsettings(\\.[A-Za-z0-9_-]+)?\\.json$",),
+                    variant="structured-settings-json",
+                    filename_patterns=("(?i)^appsettings(\.[A-Za-z0-9_-]+)?\.json$",),
                     content_signatures=(
                         ContentSignature(
                             type="contains_regex",
-                            pattern='"Logging"\\s*:\\s*\\{',
+                            pattern='"Logging"\s*:\s*\{',
                         ),
                         ContentSignature(
                             type="contains_regex",
-                            pattern='"ConnectionStrings"\\s*:\\s*\\{',
+                            pattern='"ConnectionStrings"\s*:\s*\{',
                             optional=True,
                         ),
                     ),
@@ -246,13 +355,16 @@ DETECTION_CATALOG = DetectionCatalog(
         ),
         FormatClass(
             name="Yaml",
+            slug="yaml",
             priority=50,
+            default_severity="medium",
             extensions=(".yml", ".yaml"),
-            filename_patterns=("(?i)^.*\\.(ya?ml)$",),
+            default_variant="generic",
+            filename_patterns=("(?i)^.*\.(ya?ml)$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
-                    pattern="^\\s*---\\s*$",
+                    pattern="^\s*---\s*$",
                     optional=True,
                 ),
                 ContentSignature(
@@ -262,62 +374,129 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
             ),
             mime_hints=("application/yaml", "text/yaml", "text/plain"),
+            subtypes=(
+                FormatSubtype(
+                    name="KubernetesManifest",
+                    priority=51,
+                    variant="kubernetes-manifest",
+                    severity="medium",
+                ),
+            ),
         ),
         FormatClass(
             name="Toml",
+            slug="toml",
             priority=60,
+            default_severity="medium",
             extensions=(".toml",),
-            filename_patterns=("(?i)^.*\\.toml$",),
+            default_variant="generic",
+            filename_patterns=("(?i)^.*\.toml$",),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\\s*\\[[A-Za-z0-9_.\\-]+\\]\\s*$",
+                    pattern="^\s*\[[A-Za-z0-9_.\-]+\]\s*$",
                     multiline=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[A-Za-z0-9_\\-]+\\s*=\\s*[^\\n]+$",
+                    pattern="^[A-Za-z0-9_\-]+\s*=\s*[^\n]+$",
                     multiline=True,
                 ),
             ),
             mime_hints=("application/toml", "text/plain"),
             subtypes=(
                 FormatSubtype(
-                    name="PackageManifestToml",
+                    name="ArrayOfTablesToml",
                     priority=61,
-                    filename_patterns=("^Cargo\\.toml$",),
+                    variant="array-of-tables",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="PackageManifestToml",
+                    priority=62,
+                    variant="package-manifest-toml",
+                    filename_patterns=("^Cargo\.toml$",),
+                    severity="medium",
                 ),
                 FormatSubtype(
                     name="ProjectSettingsToml",
-                    priority=62,
-                    filename_patterns=("^pyproject\\.toml$",),
+                    priority=63,
+                    variant="project-settings-toml",
+                    filename_patterns=("^pyproject\.toml$",),
+                    severity="medium",
                 ),
             ),
         ),
         FormatClass(
             name="Ini",
+            slug="ini",
             priority=70,
+            default_severity="medium",
             extensions=(".ini", ".cfg", ".cnf"),
-            filename_patterns=("(?i)^.*\\.(ini|cfg|cnf)$", "(?i)^desktop\\.ini$"),
+            default_variant="sectioned-ini",
+            aliases=("env-file", "ini-json-hybrid", "hcl"),
+            filename_patterns=("(?i)^.*\.(ini|cfg|cnf)$", "(?i)^desktop\.ini$"),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\\s*\\[[^\\]\\n]+\\]\\s*$",
+                    pattern="^\s*\[[^\]\n]+\]\s*$",
                     multiline=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[A-Za-z0-9_.\\-]+\\s*=\\s*[^\\n]*$",
+                    pattern="^[A-Za-z0-9_.\-]+\s*=\s*[^\n]*$",
                     multiline=True,
                 ),
             ),
             mime_hints=("text/plain",),
+            subtypes=(
+                FormatSubtype(
+                    name="SectionedIni",
+                    priority=71,
+                    variant="sectioned-ini",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="SectionlessIni",
+                    priority=72,
+                    variant="sectionless-ini",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="DesktopIni",
+                    priority=73,
+                    variant="desktop-ini",
+                    severity="medium",
+                    filename_patterns=("(?i)^desktop\.ini$",),
+                ),
+                FormatSubtype(
+                    name="IniJsonHybrid",
+                    priority=74,
+                    variant="section-json-hybrid",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="Dotenv",
+                    priority=75,
+                    variant="dotenv",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="JavaPropertiesIni",
+                    priority=76,
+                    variant="java-properties",
+                    severity="medium",
+                ),
+            ),
         ),
         FormatClass(
             name="KeyValueProperties",
+            slug="properties",
             priority=80,
+            default_severity="medium",
             extensions=(".properties",),
-            filename_patterns=("(?i)^.*\\.properties$",),
+            default_variant="java-properties",
+            filename_patterns=("(?i)^.*\.properties$",),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
@@ -327,7 +506,7 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[A-Za-z0-9_.\\-]+\\s*(=|:)\\s*.*$",
+                    pattern="^[A-Za-z0-9_.\-]+\s*(=|:)\s*.*$",
                     multiline=True,
                 ),
             ),
@@ -335,23 +514,68 @@ DETECTION_CATALOG = DetectionCatalog(
         ),
         FormatClass(
             name="UnixConf",
+            slug="unix-conf",
             priority=90,
+            default_severity="high",
             extensions=(".conf",),
-            filename_patterns=("(?i)^.*\\.conf$",),
+            default_variant="directive-conf",
+            filename_patterns=("(?i)^.*\.conf$",),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^(\\s*#|\\s*;|\\s*[A-Za-z0-9_.\\-]+\\s+[^\\n]+)$",
+                    pattern="^(\s*#|\s*;|\s*[A-Za-z0-9_.\-]+\s+[^\n]+)$",
                     multiline=True,
                 ),
             ),
             mime_hints=("text/plain",),
+            subtypes=(
+                FormatSubtype(
+                    name="DirectiveConf",
+                    priority=91,
+                    variant="directive-conf",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="ApacheConf",
+                    priority=92,
+                    variant="apache-conf",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="NginxConf",
+                    priority=93,
+                    variant="nginx-conf",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="GenericDirectiveText",
+                    priority=94,
+                    variant="generic-directive-text",
+                    severity="medium",
+                ),
+                FormatSubtype(
+                    name="OpensshConf",
+                    priority=95,
+                    variant="openssh-conf",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="OpenvpnConf",
+                    priority=96,
+                    variant="openvpn-conf",
+                    severity="high",
+                ),
+            ),
         ),
         FormatClass(
             name="ScriptConfig",
+            slug="script-config",
             priority=100,
+            default_severity="high",
             extensions=(".ps1", ".bat", ".cmd", ".vbs"),
-            filename_patterns=("(?i)^.*\\.(ps1|bat|cmd|vbs)$",),
+            default_variant="generic",
+            aliases=("dockerfile",),
+            filename_patterns=("(?i)^.*\.(ps1|bat|cmd|vbs)$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
@@ -360,12 +584,7 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="(?i)Set-Item|New-Item|Set-Content|Get-Item",
-                    optional=True,
-                ),
-                ContentSignature(
-                    type="contains_regex",
-                    pattern="^(?:@?echo\\s+off|set\\s+\\w+=)",
+                    pattern="^(?:@?echo\s+off|set\s+\w+=)",
                     multiline=True,
                     optional=True,
                 ),
@@ -376,12 +595,49 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
             ),
             mime_hints=("text/x-powershell", "text/x-batch", "text/vbscript", "text/plain"),
+            subtypes=(
+                FormatSubtype(
+                    name="PowerShellConfig",
+                    priority=101,
+                    variant="ps1-shell",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="BatchScriptConfig",
+                    priority=102,
+                    variant="batch-script",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="CmdScriptConfig",
+                    priority=103,
+                    variant="cmd-shell",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="VbscriptConfig",
+                    priority=104,
+                    variant="vbscript",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="ContainerBuildScript",
+                    priority=105,
+                    variant="generic",
+                    aliases=("dockerfile",),
+                    severity="high",
+                ),
+            ),
         ),
         FormatClass(
             name="EmbeddedSqlDb",
+            slug="embedded-sql-db",
             priority=110,
+            default_severity="high",
             extensions=(".sqlite", ".db"),
-            filename_patterns=("(?i)^.*\\.(sqlite|db)$",),
+            default_variant="generic",
+            aliases=("embedded-sql", "embedded-sqlite", "sqlite"),
+            filename_patterns=("(?i)^.*\.(sqlite|db)$",),
             content_signatures=(
                 ContentSignature(
                     type="binary_magic",
@@ -393,9 +649,13 @@ DETECTION_CATALOG = DetectionCatalog(
         ),
         FormatClass(
             name="GenericBinaryDat",
+            slug="binary-dat",
             priority=120,
+            default_severity="low",
             extensions=(".dat", ".bin"),
-            filename_patterns=("(?i)^.*\\.(dat|bin)$",),
+            default_variant="generic",
+            aliases=("binary",),
+            filename_patterns=("(?i)^.*\.(dat|bin)$",),
             content_signatures=(
                 ContentSignature(
                     type="binary_threshold",
@@ -408,7 +668,9 @@ DETECTION_CATALOG = DetectionCatalog(
     ),
     fallback=FallbackClass(
         name="UnknownTextOrBinary",
+        slug="unknown-text-or-binary",
         priority=1000,
+        default_severity="info",
         mime_hints=("text/plain", "application/octet-stream"),
     ),
 )
