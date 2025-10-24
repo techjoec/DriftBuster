@@ -267,6 +267,7 @@ class _RetentionMetrics:
     remaining_logs: int = 0
     deleted_by_count_files: list[str] = field(default_factory=list)
     deleted_by_age_files: list[str] = field(default_factory=list)
+    age_cutoff: datetime | None = None
 
     @property
     def total_deleted(self) -> int:
@@ -310,13 +311,16 @@ def _prune_old_logs(
 
     deleted_by_age = 0
     deleted_by_age_files: list[str] = []
+    age_cutoff: datetime | None = None
     if max_age is not None:
         if now is None:
             now = datetime.now(timezone.utc)
 
-        cutoff = _coerce_utc(now) - max_age
+        current = _coerce_utc(now)
+        cutoff = current - max_age
         if max_age <= timedelta(0):
-            cutoff = _coerce_utc(now)
+            cutoff = current
+        age_cutoff = _coerce_utc(cutoff)
 
         for path in _event_log_candidates(log_dir):
             timestamp = _parse_event_timestamp(path)
@@ -334,6 +338,7 @@ def _prune_old_logs(
         remaining_logs=remaining_logs,
         deleted_by_count_files=deleted_by_count_files,
         deleted_by_age_files=deleted_by_age_files,
+        age_cutoff=age_cutoff,
     )
 
 
@@ -343,6 +348,7 @@ def _format_retention_summary(payload: dict[str, object]) -> str:
     remaining_logs = int(payload.get("remainingLogs", 0))
     max_log_files = payload.get("maxLogFiles")
     max_log_age_seconds = payload.get("maxLogAgeSeconds")
+    age_cutoff = payload.get("ageCutoff")
 
     if max_log_files is None:
         files_fragment = "maxLogFiles=None"
@@ -355,13 +361,19 @@ def _format_retention_summary(payload: dict[str, object]) -> str:
         hours = float(max_log_age_seconds) / 3600.0
         age_fragment = f"maxLogAgeHours={hours:.2f}"
 
+    if age_cutoff in (None, ""):
+        cutoff_fragment = "ageCutoff=None"
+    else:
+        cutoff_fragment = f"ageCutoff={age_cutoff}"
+
     return (
         "Retention metrics: "
         f"deletedByCount={deleted_by_count}, "
         f"deletedByAge={deleted_by_age}, "
         f"remainingLogs={remaining_logs}, "
         f"{files_fragment}, "
-        f"{age_fragment}"
+        f"{age_fragment}, "
+        f"{cutoff_fragment}"
     )
 
 
@@ -429,6 +441,11 @@ def _write_staleness_event(
         "deletedByCountFiles": retention_metrics.deleted_by_count_files,
         "deletedByAgeFiles": retention_metrics.deleted_by_age_files,
         "deletedFiles": retention_metrics.deleted_files,
+        "ageCutoff": (
+            retention_metrics.age_cutoff.isoformat()
+            if retention_metrics.age_cutoff is not None
+            else None
+        ),
     }
     if retention_metrics_path is not None:
         retention_metrics_path.parent.mkdir(parents=True, exist_ok=True)

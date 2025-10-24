@@ -12,6 +12,29 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g++++++++++. Font Telemetry Retention Cutoff Visibility [deps=A0g++++++++.]
+
+**REASON:** Reviewers tracing aggressive pruning need to know the exact cutoff moment used
+when age-based retention removes logs so they can reconcile deletions with upstream
+publishing gaps.
+
+**MUST NOT:** Alter deletion counts or remove existing retention metadata fields.
+
+**MUST:** Record the evaluated cutoff timestamp alongside retention metrics, surface the
+value in the CLI summary, and document how operators should reference it during audits.
+
+**ACCEPT GATES:** Metrics embed a UTC cutoff ISO string when age pruning runs, CLI tests pin
+the output, and docs clarify how the new field supports review workflows.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.23 Extend `_RetentionMetrics` to retain the pruning cutoff and expose it via the
+      retention payload.
+  - [x] 0.23.1 Include the cutoff metadata in `--print-retention-metrics` output so auditors
+        can see it without opening JSON artifacts.
+  - [x] 0.23.2 Update `tests/scripts/test_font_health_summary.py` to cover the cutoff field
+        across file and CLI scenarios.
+  - [x] 0.23.3 Document retention cutoff expectations in `docs/font-telemetry.md`.
+
 ## A0g++++++++. Font Telemetry Retention Audit Trails [deps=A0g+++++++]
 
 **REASON:** Retention metrics alone lacked artifact-level evidence, making it hard to prove which

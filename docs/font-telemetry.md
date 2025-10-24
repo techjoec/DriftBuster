@@ -71,8 +71,10 @@ with `--retention-metrics-path <path>`. Passing `-` disables writing the file en
 printing metrics when `--print-retention-metrics` is enabled.
 
 `font-retention-metrics.json` now also records the exact event log filenames that were deleted and
-why (`count` vs `age`). Operators can attach the JSON to investigation bundles to show which
-artifacts were purged and confirm that pruning respected the configured limits.
+why (`count` vs `age`). When age-based pruning runs, the file includes an `ageCutoff` ISO 8601
+timestamp so reviewers can confirm which events fell outside the evaluated window. Operators can
+attach the JSON to investigation bundles to show which artifacts were purged and confirm that
+pruning respected the configured limits.
 
 Include the latest JSON log when filing investigations so reviewers can replay configuration and
 scenario metadata without rerunning telemetry.

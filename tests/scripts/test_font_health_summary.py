@@ -330,6 +330,7 @@ def test_cli_writes_summary_payload(
     assert metrics["deletedByCountFiles"] == []
     assert metrics["deletedByAgeFiles"] == []
     assert metrics["deletedFiles"] == []
+    assert metrics["ageCutoff"] is None
 
 
 def test_cli_respects_retention_metrics_path_override(
@@ -366,6 +367,7 @@ def test_cli_respects_retention_metrics_path_override(
     assert metrics["deletedByCountFiles"] == []
     assert metrics["deletedByAgeFiles"] == []
     assert metrics["deletedFiles"] == []
+    assert metrics["ageCutoff"] is None
 
     default_metrics = log_dir / "font-retention-metrics.json"
     assert not default_metrics.exists()
@@ -402,6 +404,7 @@ def test_cli_prints_retention_metrics_when_enabled(
     assert "Retention metrics: deletedByCount=0" in output
     assert "maxLogFiles=None" in output
     assert "maxLogAgeHours=None" in output
+    assert "ageCutoff=None" in output
 
 
 def test_cli_prunes_old_logs_when_max_log_files_set(
@@ -467,6 +470,7 @@ def test_cli_prunes_old_logs_when_max_log_files_set(
     assert metrics["deletedFiles"] == [
         {"path": "font-staleness-20251023T060533Z.json", "reason": "count"}
     ]
+    assert metrics["ageCutoff"] is None
 
 
 def test_format_retention_summary_formats_values() -> None:
@@ -476,6 +480,7 @@ def test_format_retention_summary_formats_values() -> None:
         "remainingLogs": 5,
         "maxLogFiles": 4,
         "maxLogAgeSeconds": 7200.0,
+        "ageCutoff": "2025-10-23T06:05:33+00:00",
     }
 
     summary = font_health_summary._format_retention_summary(payload)
@@ -485,6 +490,7 @@ def test_format_retention_summary_formats_values() -> None:
     assert "remainingLogs=5" in summary
     assert "maxLogFiles=4" in summary
     assert "maxLogAgeHours=2.00" in summary
+    assert "ageCutoff=2025-10-23T06:05:33+00:00" in summary
 
 
 def test_cli_prunes_logs_older_than_max_log_age(
@@ -546,6 +552,10 @@ def test_cli_prunes_logs_older_than_max_log_age(
     assert metrics["deletedFiles"] == [
         {"path": "font-staleness-20251023T060533Z.json", "reason": "age"}
     ]
+    assert metrics["ageCutoff"] == (
+        datetime(2025, 10, 23, 6, 7, 33, tzinfo=timezone.utc)
+        - timedelta(hours=0.0166667)
+    ).isoformat()
 
 
 def test_cli_can_disable_retention_metrics_file(
@@ -578,6 +588,7 @@ def test_cli_can_disable_retention_metrics_file(
     assert exit_code == 1
     output = capsys.readouterr().out
     assert "Retention metrics:" in output
+    assert "ageCutoff=None" in output
 
     metrics_path = log_dir / "font-retention-metrics.json"
     assert not metrics_path.exists()
@@ -637,6 +648,7 @@ def test_cli_max_log_files_zero_removes_all_event_logs(
     assert metrics["deletedFiles"] == [
         {"path": "font-staleness-20251023T060533Z.json", "reason": "count"}
     ]
+    assert metrics["ageCutoff"] is None
 
 
 def test_cli_log_dir_override_takes_precedence(
