@@ -65,6 +65,7 @@ internal static class HeadlessFontBootstrapper
 
             var bootstrapperFailures = new List<string>();
             TryRefreshSystemFontCollection(fontManager, bootstrapperFailures);
+            EnsureSystemFonts(fontManager, bootstrapperFailures);
             if (!ReferenceEquals(fontManager, FontManager.Current))
             {
                 bootstrapperFailures.Add("current_font_manager_mismatch");
@@ -218,66 +219,31 @@ internal static class HeadlessFontBootstrapper
             return;
         }
 
-        try
-        {
-            var keys = dictionary.Keys
-                .Select(key => key?.ToString() ?? string.Empty)
-                .ToArray();
-            failures.Add($"existing_keys:{string.Join('|', keys)}");
-        }
-        catch (Exception ex)
-        {
-            failures.Add($"enumerate_keys_failed:{ex.GetType().Name}");
-        }
-
         var systemFontsKey = SystemFontsUri;
-
-        if (dictionary is ConcurrentDictionary<Uri, Avalonia.Media.Fonts.IFontCollection> concurrent)
+        if (dictionary.TryGetValue(systemFontsKey, out var existing) && existing is not null)
         {
-            if (!concurrent.TryRemove(systemFontsKey, out _))
+            if (existing is HeadlessAliasFontCollection)
             {
-                failures.Add("system_fonts_key_missing_before_replace");
+                return;
             }
-        }
-        else if (dictionary.ContainsKey(systemFontsKey))
-        {
-            dictionary.Remove(systemFontsKey);
-        }
-        else
-        {
-            failures.Add("system_fonts_key_not_found_before_replace");
-        }
 
-        var type = Type.GetType("Avalonia.Media.Fonts.SystemFontCollection, Avalonia.Base");
-        if (type is null)
-        {
-            failures.Add("system_font_collection_type_missing");
+            var wrapped = new HeadlessAliasFontCollection(existing, DefaultFamilyName);
+            dictionary[systemFontsKey] = wrapped;
+            failures.Add($"wrapped_collection:{wrapped.Key}");
             return;
         }
 
-        if (Activator.CreateInstance(type, fontManager) is not Avalonia.Media.Fonts.IFontCollection inner)
+        var collection = CreateAliasCollection(fontManager, failures);
+        if (collection is null)
         {
-            failures.Add("system_font_collection_create_failed");
             return;
         }
 
-        if (PlatformImplProperty?.GetValue(fontManager) is not IFontManagerImpl platformImpl)
-        {
-            failures.Add("platform_impl_unavailable");
-            return;
-        }
-
-        inner.Initialize(platformImpl);
-        var collection = new HeadlessAliasFontCollection(inner, DefaultFamilyName);
-        failures.Add($"collection_key:{collection.Key}");
-
-        var added = false;
         if (AddFontCollectionMethod is not null)
         {
             try
             {
                 AddFontCollectionMethod.Invoke(fontManager, new object[] { collection });
-                added = true;
             }
             catch (Exception ex)
             {
@@ -285,38 +251,68 @@ internal static class HeadlessFontBootstrapper
             }
         }
 
-        if (!added)
+        dictionary[systemFontsKey] = collection;
+    }
+
+    internal static void EnsureSystemFonts(FontManager fontManager)
+        => EnsureSystemFonts(fontManager, null);
+
+    private static void EnsureSystemFonts(FontManager fontManager, ICollection<string>? failures)
+    {
+        if (fontManager is null)
         {
+            failures?.Add("font_manager_null");
+            return;
+        }
+
+        if (FontCollectionsField?.GetValue(fontManager) is not IDictionary<Uri, Avalonia.Media.Fonts.IFontCollection> dictionary)
+        {
+            failures?.Add("font_collection_field_unavailable");
+            return;
+        }
+
+        var systemFontsKey = SystemFontsUri;
+
+        if (!dictionary.TryGetValue(systemFontsKey, out var collection) || collection is null)
+        {
+            collection = CreateAliasCollection(fontManager, failures);
+            if (collection is null)
+            {
+                return;
+            }
+
             dictionary[systemFontsKey] = collection;
         }
-
-        if (!dictionary.ContainsKey(systemFontsKey))
+        else if (collection is not HeadlessAliasFontCollection)
         {
-            failures.Add("system_fonts_key_missing_after_replace");
+            collection = new HeadlessAliasFontCollection(collection, DefaultFamilyName);
+            dictionary[systemFontsKey] = collection;
         }
-        else
+    }
+
+    private static Avalonia.Media.Fonts.IFontCollection? CreateAliasCollection(FontManager fontManager, ICollection<string>? failures)
+    {
+        var type = Type.GetType("Avalonia.Media.Fonts.SystemFontCollection, Avalonia.Base");
+        if (type is null)
         {
-            try
-            {
-                var postKeys = dictionary.Keys
-                    .Select(key => key?.ToString() ?? string.Empty)
-                    .ToArray();
-                failures.Add($"post_keys:{string.Join('|', postKeys)}");
-            }
-            catch (Exception ex)
-            {
-                failures.Add($"enumerate_post_keys_failed:{ex.GetType().Name}");
-            }
+            failures?.Add("system_font_collection_type_missing");
+            return null;
         }
 
-        try
+        if (Activator.CreateInstance(type, fontManager) is not Avalonia.Media.Fonts.IFontCollection inner)
         {
-            _ = fontManager.SystemFonts;
+            failures?.Add("system_font_collection_create_failed");
+            return null;
         }
-        catch (Exception ex)
+
+        if (PlatformImplProperty?.GetValue(fontManager) is not IFontManagerImpl platformImpl)
         {
-            failures.Add($"system_fonts_access_failed:{ex.GetType().Name}");
+            failures?.Add("platform_impl_unavailable");
+            return null;
         }
+
+        inner.Initialize(platformImpl);
+        return new HeadlessAliasFontCollection(inner, DefaultFamilyName);
     }
 
     private static HeadlessFontBootstrapperDiagnostics.ProbeSnapshot CreateSnapshot(

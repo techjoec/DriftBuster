@@ -185,7 +185,7 @@ Schema reference
   - [ ] 1.1.3 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release` once font alias + cache fixes land and archive the green log beside the failure capture.
     - [x] 1.1.3.a Diagnose persistent `fonts:SystemFonts` alias misses despite headless alias collection (Release run).
     - [x] 1.1.3.b Capture updated Release failure logs highlighting `BuildMultiServerRequest` migration gaps post-run.
-    - [ ] 1.1.3.c Restore `fonts:SystemFonts` dictionary seeding for Release headless runs so the alias probe and cache migration assertions pass.
+    - [x] 1.1.3.c Restore `fonts:SystemFonts` dictionary seeding for Release headless runs so the alias probe and cache migration assertions pass.
   - [ ] 1.1.4 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable after the Release fixes.
     - [x] 1.1.4.a Archive the 2025-10-26 Debug failure log capturing the alias miss for follow-up diagnostics.
   - [ ] 1.1.5 Execute `python -m scripts.coverage_report` after GUI tests to keep shared coverage reporting in sync.

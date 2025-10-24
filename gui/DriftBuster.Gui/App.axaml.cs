@@ -10,6 +10,7 @@ using Avalonia.Media;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
+using DriftBuster.Gui.Headless;
 
 namespace DriftBuster.Gui
 {
@@ -55,6 +56,9 @@ namespace DriftBuster.Gui
             };
 
             app.Resources[key] = dictionary;
+
+            var fontManager = FontManager.Current;
+            HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
         }
     }
 }
