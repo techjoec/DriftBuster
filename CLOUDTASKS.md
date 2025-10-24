@@ -449,7 +449,7 @@ highlight where to consume the artifact.
   - [x] 6.1.3 Capture combined summary via `python -m scripts.coverage_report`.
   - [x] 6.1.4 Store coverage artefacts (HTML, XML) under `artifacts/coverage/final/`.
 - [ ] 6.2 Smoke & manual runs.
-  - [ ] 6.2.1 Trigger packaged smoke (`scripts/smoke_multi_server_storage.sh`) and log outputs in `notes/status/gui-research.md`.
+  - [x] 6.2.1 Trigger packaged smoke (`scripts/smoke_multi_server_storage.sh`) and log outputs in `notes/status/gui-research.md`.
   - [ ] 6.2.2 Execute manual multi-server session, verifying persistence + diff planner features.
   - [ ] 6.2.3 Record session walkthrough (screen capture + notes) and archive under `artifacts/manual-runs/`.
 - [ ] 6.3 Docs & assets.

@@ -127,6 +127,13 @@
 
 - `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` (Debug) — ✅ `coverlet.collector` reported 155 passing tests without tripping the 90 % line-coverage gate. Console transcript stored at `artifacts/logs/gui-validation/gui-tests-coverage-2025-10-30.txt` for the release evidence bundle.
 
+#### 2025-10-24 multi-server smoke storage sweep (A6.2.1)
+
+- Ran `./scripts/smoke_multi_server_storage.sh` to exercise the packaged storage smoke covering cold/hot cache reuse.
+- Cold run populated the temporary cache root (`/tmp/tmp.1n8G7P9V0T/cache/diffs` in this session), and the validation script confirmed `used_cache=true` on the follow-up hot pass.
+- Captured the CLI output and noted the session staging path (`/tmp/tmp.1n8G7P9V0T/sessions`) so Release prep evidence can point back to the cached multi-server persistence trail.
+- Logged this sweep under A6.2.1 to close the smoke prerequisite ahead of the manual walkthrough capture.
+
 ### Fontmanager regression
 
 - Captured the latest Release-mode failure showing `FontManagerImpl.TryCreateGlyphTypeface` rejecting the `fonts:SystemFonts#Inter` alias when Avalonia boots without the proxy fallbacks enabled. The trace is archived in [`artifacts/logs/fontmanager-regression.txt`](../../artifacts/logs/fontmanager-regression.txt) so we can diff future stack signatures.
