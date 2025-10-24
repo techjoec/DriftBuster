@@ -17,6 +17,15 @@ We keep the project lightweight and respect other creators:
 
 These guardrails cover every feature, note, and capture helper.
 
+## JSON samples
+
+- Clamp JSON detector analysis windows to 200 kB before running comment or
+  brace heuristics so oversized vendor payloads never enter long-lived logs.
+- Keep comment stripping ephemeral. Sanitise payloads in-memory for metadata
+  only and discard the cleaned string once detection finishes.
+- When recording validation evidence, summarise detector metadata instead of
+  storing raw JSON; note when the analysis window truncated the sample.
+
 ## GUI frameworks
 
 - **WinUI 3 / Windows App SDK**

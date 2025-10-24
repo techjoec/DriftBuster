@@ -2,14 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from driftbuster.core.types import DetectionMatch
 from driftbuster.formats.json import JsonPlugin
-
-
-def _detect(plugin: JsonPlugin, filename: str, content: str) -> DetectionMatch | None:
-    path = Path(filename)
-    data = content.encode("utf-8")
-    return plugin.detect(path, data, content)
 
 
 def test_json_plugin_detects_structured_settings() -> None:
@@ -25,6 +18,21 @@ def test_json_plugin_detects_structured_settings() -> None:
     assert match.variant == "structured-settings-json"
     assert match.metadata is not None
     assert match.metadata["settings_hint"] == "filename"
+    assert "settings_environment" not in match.metadata
+
+
+def test_json_plugin_detects_structured_settings_environment() -> None:
+    plugin = JsonPlugin()
+    match = _detect(
+        plugin,
+        "appsettings.Staging.json",
+        '{"Logging": {"LogLevel": {"Default": "Warning"}}}',
+    )
+
+    assert match is not None
+    assert match.variant == "structured-settings-json"
+    assert match.metadata is not None
+    assert match.metadata["settings_environment"] == "staging"
 
 
 def test_json_plugin_detects_json_with_comments() -> None:
@@ -39,6 +47,8 @@ def test_json_plugin_detects_json_with_comments() -> None:
     assert match.variant == "jsonc"
     assert match.metadata is not None
     assert match.metadata["has_comments"] is True
+    assert match.metadata.get("parsed_with_comment_stripping") is True
+    assert "top_level_keys" in match.metadata
 
 
 def test_json_plugin_rejects_non_json_payloads() -> None:
@@ -105,6 +115,16 @@ def test_json_plugin_comment_helpers() -> None:
     parse = plugin._attempt_parse('{"unterminated": }', allow_comments=False)
     assert parse.success is False
 
+    cleaned, removed = plugin._strip_json_comments(
+        """{
+        "key": "// inside string",
+        // comment
+        "flag": true
+    }"""
+    )
+    assert removed is True
+    assert "// inside string" in cleaned
+
 
 def test_json_plugin_unknown_top_level_with_extension() -> None:
     plugin = JsonPlugin()
@@ -120,30 +140,37 @@ def test_json_plugin_signals_guard_for_custom_extension() -> None:
     assert match is None
 
 
-def test_json_plugin_internal_helpers() -> None:
+def test_json_plugin_large_payload_gets_clamped() -> None:
     plugin = JsonPlugin()
-    stripped, consumed = plugin._strip_leading_comments("// comment\n/* block */\n{\"key\": 1}")
-    assert consumed is True and stripped.startswith("{\"key\"")
+    payload = '{"key": "' + ("a" * 250_000) + '"}'
+    match = _detect(plugin, "massive.json", payload)
 
-    assert plugin._contains_comments('{"text": "escape \\"quote\\""}') is False
-    assert plugin._contains_comments('{"roll": true}// trailing') is True
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata.get("analysis_window_truncated") is True
+    assert match.metadata.get("analysis_window_chars") == 200_000
 
-    assert plugin._has_key_value_marker('{"text": "escaped \\"quote\\""}') is True
-    assert plugin._has_key_value_marker('[]') is False
 
-
-def test_json_plugin_key_marker_handles_nested_objects() -> None:
+def test_json_plugin_comment_stripping_preserves_arrays() -> None:
     plugin = JsonPlugin()
-    payload = '{"outer": {"inner": "quoted \\"value\\""}}'
-    assert plugin._has_key_value_marker(payload) is True
+    content = """{
+        // comment about endpoints
+        "endpoints": [
+            "https://example.local",
+            "https://api.local" // trailing comment
+        ]
+    }
+    """
+    match = _detect(plugin, "config.jsonc", content)
+
+    assert match is not None
+    assert match.metadata is not None
+    assert match.metadata.get("parsed_with_comment_stripping") is True
+    assert match.metadata.get("top_level_keys") == ["endpoints"]
 
 
-def test_json_plugin_key_marker_handles_escape_without_objects() -> None:
-    plugin = JsonPlugin()
-    payload = '"escaped \\"quote\\" string"'
-    assert plugin._has_key_value_marker(payload) is False
+def _detect(plugin: JsonPlugin, filename: str, payload: str):
+    path = Path(filename)
+    sample = payload.encode("utf-8")
+    return plugin.detect(path, sample, payload)
 
-
-def test_json_plugin_key_marker_tracks_closing_braces() -> None:
-    plugin = JsonPlugin()
-    assert plugin._has_key_value_marker("{{}}") is False

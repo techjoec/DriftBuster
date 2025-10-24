@@ -18,7 +18,7 @@ Current registry order example (`driftbuster.formats.registry_summary()`; actual
 | 5     | `yaml`         | `driftbuster.formats.yaml.plugin.YamlPlugin`                  | 160      | 0.0.1   |
 | 6     | `toml`         | `driftbuster.formats.toml.plugin.TomlPlugin`                  | 165      | 0.0.1   |
 | 7     | `ini`          | `driftbuster.formats.ini.plugin.IniPlugin`                    | 170      | 0.0.1   |
-| 8     | `json`         | `driftbuster.formats.json.plugin.JsonPlugin`                  | 200      | 0.0.1   |
+| 8     | `json`         | `driftbuster.formats.json.plugin.JsonPlugin`                  | 200      | 0.0.3   |
 | 9     | `text`         | `driftbuster.formats.text.plugin.TextPlugin`                  | 1000     | 0.0.1   |
 
 Use the same structure for new plugins so the registry report stays predictable.
@@ -65,7 +65,9 @@ registration happens on module import alongside the built-ins.
    semantic `version` string.
 2. **Sampling discipline** – Accept `(path, sample, text)` like the existing
    detectors. Derive `text` via `decode_text` only when you need it; the caller
-   already performs best-effort decoding for you.
+   already performs best-effort decoding for you. Clamp expensive heuristics to
+   a bounded analysis window (the JSON plugin stops at 200 kB) so vendor-sized
+   payloads do not blow past the detector sampling budgets.
 3. **Signals** – Combine filename/extension cues with bounded structural checks.
    The JSON plugin demonstrates how to accumulate multiple weak signals before
    returning a positive match.
@@ -75,7 +77,9 @@ registration happens on module import alongside the built-ins.
 5. **Confidence** – Start with a conservative baseline (≈0.5) and add small
    increments per independent signal. Clamp the final value at `0.95`.
 6. **Error handling** – Return `None` on uncertainty. Never raise for expected
-   conditions (truncated sample, undecodable bytes, missing markers).
+   conditions (truncated sample, undecodable bytes, missing markers). When
+   stripping comments or other auxiliary content for metadata extraction,
+   always fall back to the original sample if sanitisation fails.
 
 Review the shipped JSON and INI detectors to keep heuristics consistent with the
 existing style.

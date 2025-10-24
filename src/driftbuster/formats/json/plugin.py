@@ -31,7 +31,7 @@ from __future__ import annotations
 import json as json_lib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from ..format_registry import register
 from ...core.types import DetectionMatch
@@ -43,6 +43,8 @@ _STRUCTURED_FILENAMES: Sequence[str] = (
     "appsettings.staging.json",
 )
 
+_ANALYSIS_WINDOW_CLAMP = 200_000
+
 
 @dataclass
 class JsonPlugin:
@@ -50,7 +52,7 @@ class JsonPlugin:
 
     name: str = "json"
     priority: int = 200
-    version: str = "0.0.2"
+    version: str = "0.0.3"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -71,7 +73,9 @@ class JsonPlugin:
         if not stripped:
             return None
 
-        first_char = stripped[0]
+        analysis_text, truncated = self._prepare_analysis_window(stripped)
+
+        first_char = analysis_text[0]
         if first_char in "{[":
             top_level_type = "object" if first_char == "{" else "array"
             metadata["top_level_type"] = top_level_type
@@ -81,31 +85,49 @@ class JsonPlugin:
                 return None
             metadata["top_level_type"] = "unknown"
 
-        has_comments = had_leading_comments or self._contains_comments(stripped)
+        has_comments = had_leading_comments or self._contains_comments(analysis_text)
         if has_comments:
             metadata["has_comments"] = True
             reasons.append("Detected comment tokens outside string literals")
 
-        key_signal = self._has_key_value_marker(stripped)
+        key_signal = self._has_key_value_marker(analysis_text)
         if key_signal:
             reasons.append("Found key/value signature indicative of JSON objects")
 
-        balanced = self._balanced_pairs(stripped)
+        balanced = self._balanced_pairs(analysis_text)
         if balanced:
             reasons.append("Curly/array delimiters appear balanced in sampled content")
 
-        structured_hint = self._is_structured_settings(lower_name, stripped)
+        structured_hint = self._is_structured_settings(lower_name, analysis_text)
         if structured_hint:
             metadata["settings_hint"] = structured_hint
             reasons.append("Matched appsettings-style configuration cues")
 
-        parse_result = self._attempt_parse(stripped, allow_comments=has_comments)
+        environment = self._extract_appsettings_environment(lower_name)
+        if environment is not None:
+            metadata["settings_environment"] = environment
+
+        parse_candidate = analysis_text
+        parsed_via_comment_strip = False
+        if has_comments:
+            cleaned, removed = self._strip_json_comments(analysis_text)
+            if removed:
+                parse_candidate = cleaned
+                parsed_via_comment_strip = True
+        allow_comments_flag = has_comments and not parsed_via_comment_strip
+        parse_result = self._attempt_parse(parse_candidate, allow_comments=allow_comments_flag)
         if parse_result.success:
             metadata.update(parse_result.metadata)
             reasons.append("Parsed JSON payload without errors within sample")
+            if parsed_via_comment_strip:
+                metadata["parsed_with_comment_stripping"] = True
         else:
             # Parsing failed despite JSON-like signals; flag for review.
-            if (first_char in "[{" or key_signal or balanced) and not has_comments:
+            if (
+                (first_char in "[{" or key_signal or balanced)
+                and not has_comments
+                and not truncated
+            ):
                 metadata["parse_failed"] = True
                 review_reasons.append("JSON parse failed under sample")
 
@@ -133,7 +155,7 @@ class JsonPlugin:
         if not is_json_extension and not (parse_result.success or key_signal):
             return None
 
-        variant: Optional[str] = None
+        variant: Optional[str]
         if structured_hint:
             variant = "structured-settings-json"
         elif has_comments or extension == ".jsonc":
@@ -157,8 +179,14 @@ class JsonPlugin:
             confidence += 0.07
         if has_comments and variant == "jsonc":
             confidence += 0.03
+        if parsed_via_comment_strip:
+            confidence += 0.02
 
         confidence = min(0.95, confidence)
+
+        if truncated:
+            metadata["analysis_window_truncated"] = True
+            metadata["analysis_window_chars"] = len(analysis_text)
 
         if review_reasons:
             metadata["needs_review"] = True
@@ -197,6 +225,11 @@ class JsonPlugin:
                 continue
             break
         return working[index:], consumed
+
+    def _prepare_analysis_window(self, text: str) -> Tuple[str, bool]:
+        if len(text) <= _ANALYSIS_WINDOW_CLAMP:
+            return text, False
+        return text[:_ANALYSIS_WINDOW_CLAMP], True
 
     def _contains_comments(self, text: str) -> bool:
         in_string = False
@@ -266,6 +299,17 @@ class JsonPlugin:
             return "content"
         return None
 
+    def _extract_appsettings_environment(self, filename: str) -> Optional[str]:
+        if not filename.startswith("appsettings."):
+            return None
+        parts = filename.split(".")
+        if len(parts) <= 2:
+            return None
+        environment = ".".join(parts[1:-1]).strip()
+        if not environment:
+            return None
+        return environment
+
     def _attempt_parse(self, text: str, *, allow_comments: bool) -> "ParseResult":
         if allow_comments:
             return ParseResult(success=False, metadata={})
@@ -319,6 +363,57 @@ class JsonPlugin:
             if depth_curly == 0 and depth_square == 0:
                 last_valid = index + 1
         return text[:last_valid].strip()
+
+    def _strip_json_comments(self, text: str) -> Tuple[str, bool]:
+        if "//" not in text and "/*" not in text:
+            return text, False
+
+        result: List[str] = []
+        in_string = False
+        escape = False
+        i = 0
+        length = len(text)
+        removed = False
+
+        while i < length:
+            char = text[i]
+            if in_string:
+                result.append(char)
+                if escape:
+                    escape = False
+                elif char == "\\":
+                    escape = True
+                elif char == '"':
+                    in_string = False
+                i += 1
+                continue
+
+            if char == '"':
+                in_string = True
+                result.append(char)
+                i += 1
+                continue
+
+            if char == "/" and i + 1 < length:
+                nxt = text[i + 1]
+                if nxt == "/":
+                    removed = True
+                    i += 2
+                    while i < length and text[i] not in "\r\n":
+                        i += 1
+                    continue
+                if nxt == "*":
+                    end = text.find("*/", i + 2)
+                    if end == -1:
+                        return text, False
+                    removed = True
+                    i = end + 2
+                    continue
+
+            result.append(char)
+            i += 1
+
+        return "".join(result), removed
 
 
 @dataclass(frozen=True)

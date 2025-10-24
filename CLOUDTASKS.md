@@ -581,13 +581,13 @@ highlight where to consume the artifact.
   - [x] 8.1.4 Document schema-driven hints in `docs/format-support.md`.
   - [x] 8.1.5 Capture anonymised XML fixtures with provenance notes under `fixtures/xml/README.md`.
   - [x] 8.1.6 Record legal review status for schema redistribution in `docs/legal-safeguards.md`.
-- [ ] 8.2 JSON (Priority 2).
-  - [ ] 8.2.1 Implement JSONC/appsettings variant support in `src/driftbuster/formats/json`.
-  - [ ] 8.2.2 Ensure sampling guardrails handle large vendor payloads.
-  - [ ] 8.2.3 Add coverage in `tests/formats/test_json_plugin.py` and `test_json_flags.py`.
-  - [ ] 8.2.4 Note rationale in `docs/format-addition-guide.md`.
-  - [ ] 8.2.5 Store large-sample validation outputs in `artifacts/formats/json/validation.md`.
-  - [ ] 8.2.6 Update privacy notes in `docs/legal-safeguards.md` for JSON samples.
+- [x] 8.2 JSON (Priority 2).
+  - [x] 8.2.1 Implement JSONC/appsettings variant support in `src/driftbuster/formats/json`.
+  - [x] 8.2.2 Ensure sampling guardrails handle large vendor payloads.
+  - [x] 8.2.3 Add coverage in `tests/formats/test_json_plugin.py` and `test_json_flags.py`.
+  - [x] 8.2.4 Note rationale in `docs/format-addition-guide.md`.
+  - [x] 8.2.5 Store large-sample validation outputs in `artifacts/formats/json/validation.md`.
+  - [x] 8.2.6 Update privacy notes in `docs/legal-safeguards.md` for JSON samples.
 - [ ] 8.3 INI lineage (Priority 3).
   - [ ] 8.3.1 Unify INI/key-value/dotenv detectors in `src/driftbuster/formats/ini`.
   - [ ] 8.3.2 Map remediation hints + secret classification.
