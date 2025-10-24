@@ -14,6 +14,8 @@ artifacts/*
 !artifacts/sql/**
 !artifacts/powershell/
 !artifacts/powershell/**
+!artifacts/coverage/
+!artifacts/coverage/**
 !artifacts/cli-plan/
 !artifacts/cli-plan/**
 !artifacts/gui-packaging/
