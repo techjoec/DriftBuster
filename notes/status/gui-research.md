@@ -62,6 +62,13 @@
 - `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary with Inter before the view tree spins up, ensuring the restored multi-server tab renders catalog headers and guidance text consistently in Release and Debug headless runs.
 - Persistence walkthrough published in `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` now directs operators through saving a session, validating restored hosts, and confirming the Inter preload guardrail stays intact after relaunches.
 
+### Diff planner MRU persistence (A2.1)
+
+- MRU entries persist to `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/mru.json` (or the overridable data root resolved by `DriftbusterPaths.GetCacheDirectory("diff-planner")`). The schema is versioned (`schema_version: 2`) with a bounded `max_entries` field (default 10) and an `entries` array.
+- Each entry stores `baseline_path`, an ordered `comparison_paths` list, optional `display_name`, `last_used_utc` (UTC timestamp), `payload_kind` (`unknown|sanitized|raw`), and `sanitized_digest` for future diff payload audits. Paths are trimmed and deduplicated case-insensitively before persistence.
+- `DiffPlannerMruStore.RecordAsync` promotes the most recent plan to the front while coalescing equivalent baselines/comparisons ignoring case, trimming the list to the configured limit, and rejecting empty/invalid payloads.
+- Legacy `diff-planner.json` snapshots migrate in-place: valid legacy entries are normalised into the new schema, the entry cap is clamped to ≤10, and the converted file materialises at `cache/diff-planner/mru.json` without mutating the source.
+
 #### Multi-server validation rollup (A1d)
 
 - 2025-10-23 Release rerun still fails: see [`artifacts/logs/gui-validation/gui-tests-release-2025-10-23-regression.txt`](../../artifacts/logs/gui-validation/gui-tests-release-2025-10-23-regression.txt) for the glyph alias + session cache migration misses. Failures surfaced before any window construction, keeping the regression evidence adjacent to the earlier failing log.

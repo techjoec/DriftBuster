@@ -205,11 +205,11 @@ Schema reference
 **ACCEPT GATES:** MRU spec documented; GUI + backend tests green; sanitized outputs validated and logged.
 
 **REQUIRED RELATED WORK:**
-- [ ] 2.1 Finalise MRU requirements.
-  - [ ] 2.1.1 Record UX notes and data contract in `notes/status/gui-research.md`.
-  - [ ] 2.1.2 Add persisted store (new `gui/DriftBuster.Gui/Services/DiffPlannerMruStore.cs`) leveraging `DriftbusterPaths`.
-  - [ ] 2.1.3 Cover serialization/deserialization paths in `gui/DriftBuster.Gui.Tests/Services/DiffPlannerMruStoreTests.cs`.
-  - [ ] 2.1.4 Provide migration logic for existing diff planner settings (versioned storage) with regression tests covering legacy data.
+- [x] 2.1 Finalise MRU requirements.
+  - [x] 2.1.1 Record UX notes and data contract in `notes/status/gui-research.md`.
+  - [x] 2.1.2 Add persisted store (new `gui/DriftBuster.Gui/Services/DiffPlannerMruStore.cs`) leveraging `DriftbusterPaths`.
+  - [x] 2.1.3 Cover serialization/deserialization paths in `gui/DriftBuster.Gui.Tests/Services/DiffPlannerMruStoreTests.cs`.
+  - [x] 2.1.4 Provide migration logic for existing diff planner settings (versioned storage) with regression tests covering legacy data.
 - [ ] 2.2 Update GUI surfaces.
   - [ ] 2.2.1 Extend `gui/DriftBuster.Gui/ViewModels/DiffViewModel.cs` with MRU dropdowns and dual-pane JSON viewer toggles.
   - [ ] 2.2.2 Modify `gui/DriftBuster.Gui/Views/DiffView.axaml` to render sanitized JSON panes with accessible automation IDs.
