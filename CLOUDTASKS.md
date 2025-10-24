@@ -383,8 +383,9 @@ highlight where to consume the artifact.
   - [x] 5.4.1 Update `docs/windows-gui-guide.md` (or appendix) with migration notes.
   - [x] 5.4.2 Reflect release-blocker resolution in `CHANGELOG.md`.
   - [x] 5.4.3 Cross-link updated guidance from `docs/ux-refresh.md` and `docs/release-notes.md`.
-- [ ] 5.5 Evidence.
+- [x] 5.5 Evidence.
   - [x] 5.5.1 Archive failing vs fixed test output in `artifacts/logs/results-catalog/`.
+  - [x] 5.5.2 Capture manifest tying logs + annotations with deterministic hashes.
 
 ## A6. Quality Sweep & Release Prep (Phase 6) [deps=A5]
 

@@ -1,0 +1,43 @@
+{
+  "area": "A5.ResultsCatalogAlignment",
+  "task": "5.5 Evidence",
+  "generated_utc": "2025-10-24T14:55:46Z",
+  "summary": {
+    "purpose": "Consolidates Avalonia 11.2 regression remediation evidence for the results catalog",
+    "notes": [
+      "Captures pre/post migration sort logs and GUI test transcripts.",
+      "Confirms passing Release GUI regression sweep alongside archived regression log.",
+      "Pairs scenario annotations with deterministic hashes for audit trails."
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "artifacts/logs/results-catalog/gui-tests-toasts-sorting-passing.log",
+      "sha256": "2fc31d7c3707357d61aacc54051271305720621f810aba890148903d5ff0a414",
+      "kind": "dotnet-test",
+      "status": "passing",
+      "description": "Release sweep covering toast dispatcher + sorting regression suites after Avalonia 11.2 migration"
+    },
+    {
+      "path": "artifacts/logs/results-catalog/gui-tests-toasts-sorting-regression.txt",
+      "sha256": "bd2b763db94faa9e1a4f9b849fc8eceff9b0feebdae3f968790e2ae69ebc07b9",
+      "kind": "dotnet-test",
+      "status": "regression-reference",
+      "description": "Archived failing Release run capturing pre-migration toast/sort issues"
+    },
+    {
+      "path": "artifacts/logs/results-catalog/sorting-pre-11-2.txt",
+      "sha256": "0ed0a5fefdeffabeed011a360a8adf4905b46fcc700f89be1b200144436ea835",
+      "kind": "notes",
+      "status": "before",
+      "description": "Narrative snippet summarising behaviour before Avalonia 11.2 sort API alignment"
+    },
+    {
+      "path": "artifacts/logs/results-catalog/sorting-11-2.txt",
+      "sha256": "fc957cf706adce04086c174974c2bd39881502628f287edd0d0b912e568b66eb",
+      "kind": "notes",
+      "status": "after",
+      "description": "Narrative snippet summarising behaviour after Avalonia 11.2 sort API alignment"
+    }
+  ]
+}

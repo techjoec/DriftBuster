@@ -149,6 +149,12 @@
 - Captured the publish transcript and SHA-256 checksum for the single-file output under `artifacts/builds/avalonia-11-2/` (`publish-release.log`, `publish-release.sha256`) so operators can verify hashes before sideloading builds.
 - Stored a machine-readable manifest (`publish-release-manifest.json`) enumerating published files with sizes + hashes, keeping the evidence aligned with the retention expectations for the A5 build validation gate.
 
+### Results catalog evidence manifest (A5 · 5.5)
+
+- Added `artifacts/logs/results-catalog/evidence-manifest.json` to consolidate the regression-to-fix trail for the Avalonia 11.2 sorting work. The manifest links the archived failing log, the passing GUI test sweep, and the pre/post narrative snippets with deterministic SHA-256 digests so auditors can diff the material without recalculating hashes.
+- Manifest `summary.notes` documents the intent behind the bundle (capturing the migration story, pairing logs with annotations, and recording the deterministic hashes) to make the evidence self-describing when reviewed outside this notebook.
+- This closes 5.5 by tying the evidence bundle back to the `ResultsCatalogAlignment` area—operators can trace the outcome straight from the queue to the exact artefacts without re-reading the full change log.
+
 ### Offline SQL snapshot validation (A1d · 16.4)
 
 - Seeded a minimal `accounts` SQLite database and executed `scripts.capture.run_sql_export` to validate the SQL snapshot export path with deterministic masking (`accounts.secret`) and hashing (`accounts.email`).
