@@ -7,9 +7,18 @@
              xmlns:automation="using:Avalonia.Automation"
              x:Class="DriftBuster.Gui.Views.ServerSelectionView"
              x:DataType="vm:ServerSelectionViewModel">
+  <UserControl.Resources>
+    <Thickness x:Key="ServerSelection.OuterMargin">0,0,0,24</Thickness>
+    <x:Double x:Key="ServerSelection.StackSpacing">18</x:Double>
+    <x:Double x:Key="ServerSelection.HeaderColumnSpacing">12</x:Double>
+    <x:Double x:Key="ServerSelection.SectionSpacing">16</x:Double>
+    <Thickness x:Key="ServerSelection.CardPadding">16</Thickness>
+    <Thickness x:Key="ServerSelection.CardMargin">0,0,0,16</Thickness>
+    <Thickness x:Key="ServerSelection.HighlightPadding">18</Thickness>
+  </UserControl.Resources>
   <ScrollViewer>
-    <StackPanel Margin="0,0,0,24" Spacing="18">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="12" VerticalAlignment="Center">
+    <StackPanel Margin="{DynamicResource ServerSelection.OuterMargin}" Spacing="{DynamicResource ServerSelection.StackSpacing}">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="{DynamicResource ServerSelection.HeaderColumnSpacing}" VerticalAlignment="Center">
         <Button Content="Setup"
                 Classes="outline"
                 Command="{Binding ShowSetupCommand}"
@@ -30,10 +39,10 @@
                    Text="{Binding StatusBanner}" />
       </Grid>
 
-      <StackPanel Spacing="16"
+      <StackPanel Spacing="{DynamicResource ServerSelection.SectionSpacing}"
                   IsVisible="{Binding IsViewingCatalog, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
-        <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <Border Classes="surface" Padding="{DynamicResource ServerSelection.CardPadding}" CornerRadius="{DynamicResource Radius.Large}">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource ServerSelection.HeaderColumnSpacing}">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
               <ToggleSwitch Content="Remember session" IsChecked="{Binding PersistSessionState}" />
               <Button Content="Save"
@@ -51,7 +60,7 @@
           </Grid>
         </Border>
 
-        <Border Padding="18" CornerRadius="{DynamicResource Radius.Large}" Background="#1E293B" Opacity="0.95">
+        <Border Padding="{DynamicResource ServerSelection.HighlightPadding}" CornerRadius="{DynamicResource Radius.Large}" Background="#1E293B" Opacity="0.95">
           <StackPanel Spacing="6">
             <TextBlock Text="Planning guidance" FontSize="16" FontWeight="SemiBold" Foreground="#E2E8F0" />
             <TextBlock TextWrapping="Wrap"
@@ -71,8 +80,8 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border Padding="16"
-                      Margin="0,0,0,16"
+              <Border Padding="{DynamicResource ServerSelection.CardPadding}"
+                      Margin="{DynamicResource ServerSelection.CardMargin}"
                       HorizontalAlignment="Stretch"
                       Classes="surface"
                       CornerRadius="{DynamicResource Radius.Large}"
@@ -172,8 +181,8 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border Padding="16"
-                      Margin="0,0,16,16"
+              <Border Padding="{DynamicResource ServerSelection.CardPadding}"
+                      Margin="{DynamicResource ServerSelection.CardMargin}"
                       HorizontalAlignment="Stretch"
                       Classes="surface"
                       CornerRadius="{DynamicResource Radius.Large}"

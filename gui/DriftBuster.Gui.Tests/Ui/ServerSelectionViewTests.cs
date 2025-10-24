@@ -202,6 +202,31 @@ public sealed class ServerSelectionViewTests
     }
 
     [AvaloniaFact]
+    public void ShouldAdjustResponsiveSpacingTokens()
+    {
+        var view = new ServerSelectionView
+        {
+            DataContext = CreateViewModel(),
+        };
+
+        ResponsiveLayoutService.Apply(view, 1200, ResponsiveSpacingProfiles.ServerSelection);
+        view.Resources["ServerSelection.OuterMargin"].Should().Be(new Thickness(0, 0, 0, 24));
+        view.Resources["ServerSelection.StackSpacing"].Should().Be(18d);
+
+        ResponsiveLayoutService.Apply(view, 1400, ResponsiveSpacingProfiles.ServerSelection);
+        view.Resources["ServerSelection.OuterMargin"].Should().Be(new Thickness(0, 0, 0, 28));
+        view.Resources["ServerSelection.StackSpacing"].Should().Be(20d);
+
+        ResponsiveLayoutService.Apply(view, 1700, ResponsiveSpacingProfiles.ServerSelection);
+        view.Resources["ServerSelection.OuterMargin"].Should().Be(new Thickness(0, 0, 0, 32));
+        view.Resources["ServerSelection.StackSpacing"].Should().Be(22d);
+
+        ResponsiveLayoutService.Apply(view, 2100, ResponsiveSpacingProfiles.ServerSelection);
+        view.Resources["ServerSelection.OuterMargin"].Should().Be(new Thickness(0, 0, 0, 36));
+        view.Resources["ServerSelection.StackSpacing"].Should().Be(24d);
+    }
+
+    [AvaloniaFact]
     public async Task CopyJsonCommandUpdatesStatus()
     {
         var toast = new ToastService(action => action());

@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 
 using DriftBuster.Gui.ViewModels;
+using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.Views
 {
@@ -14,10 +15,12 @@ namespace DriftBuster.Gui.Views
     {
         private const string ServerDragDataFormat = "driftbuster/server-slot";
         private ServerSelectionViewModel? _viewModel;
+        private readonly IDisposable _responsiveSubscription;
 
         public ServerSelectionView()
         {
             InitializeComponent();
+            _responsiveSubscription = ResponsiveLayoutService.Attach(this, ResponsiveSpacingProfiles.ServerSelection);
         }
 
         private void InitializeComponent()

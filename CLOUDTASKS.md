@@ -339,11 +339,11 @@ highlight where to consume the artifact.
   - [x] 4.1.2 Update `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs` to surface theme selectors.
   - [x] 4.1.3 Add theme migration tests in `gui/DriftBuster.Gui.Tests/ViewModels`.
   - [x] 4.1.4 Document palette tokens and migration defaults in `docs/windows-gui-guide.md#themes`.
-- [ ] 4.2 Responsive spacing.
-  - [ ] 4.2.1 Add breakpoint resources for 1280/1600/1920 widths in `gui/DriftBuster.Gui/Assets/Styles/Notifications.axaml` and layout-specific resource dictionaries.
-  - [ ] 4.2.2 Modify `gui/DriftBuster.Gui/Views/MainWindow.axaml` and `ServerSelectionView.axaml` to consume the spacing tokens.
-  - [ ] 4.2.3 Extend UI tests to validate layout shifts at different widths.
-  - [ ] 4.2.4 Capture layout change matrix in `notes/status/gui-research.md`.
+- [x] 4.2 Responsive spacing.
+  - [x] 4.2.1 Add breakpoint resources for 1280/1600/1920 widths in `gui/DriftBuster.Gui/Assets/Styles/Notifications.axaml` and layout-specific resource dictionaries.
+  - [x] 4.2.2 Modify `gui/DriftBuster.Gui/Views/MainWindow.axaml` and `ServerSelectionView.axaml` to consume the spacing tokens.
+  - [x] 4.2.3 Extend UI tests to validate layout shifts at different widths.
+  - [x] 4.2.4 Capture layout change matrix in `notes/status/gui-research.md`.
 - [ ] 4.3 Asset refresh.
   - [ ] 4.3.1 Capture new screenshots and store under `docs/ux-refresh.md`.
   - [ ] 4.3.2 Update `docs/windows-gui-guide.md` and `docs/release-notes.md` with visuals.

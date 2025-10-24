@@ -6,7 +6,43 @@
     <Thickness x:Key="Toast.Padding">14</Thickness>
     <Thickness x:Key="Toast.CardMargin">0,0,0,8</Thickness>
     <x:Double x:Key="Toast.IconFontSize">20</x:Double>
-    <Thickness x:Key="Toast.InnerSpacing">8</Thickness>
+    <x:Double x:Key="Toast.InnerSpacing">8</x:Double>
+
+    <!-- Responsive breakpoint tokens -->
+    <x:Double x:Key="Toast.Width.Base">320</x:Double>
+    <x:Double x:Key="Toast.Width.1280">360</x:Double>
+    <x:Double x:Key="Toast.Width.1600">400</x:Double>
+    <x:Double x:Key="Toast.Width.1920">440</x:Double>
+
+    <Thickness x:Key="Toast.Padding.Base">14</Thickness>
+    <Thickness x:Key="Toast.Padding.1280">16</Thickness>
+    <Thickness x:Key="Toast.Padding.1600">18</Thickness>
+    <Thickness x:Key="Toast.Padding.1920">20</Thickness>
+
+    <Thickness x:Key="Toast.CardMargin.Base">0,0,0,8</Thickness>
+    <Thickness x:Key="Toast.CardMargin.1280">0,0,0,10</Thickness>
+    <Thickness x:Key="Toast.CardMargin.1600">0,0,0,12</Thickness>
+    <Thickness x:Key="Toast.CardMargin.1920">0,0,0,16</Thickness>
+
+    <x:Double x:Key="Toast.IconFontSize.Base">20</x:Double>
+    <x:Double x:Key="Toast.IconFontSize.1280">22</x:Double>
+    <x:Double x:Key="Toast.IconFontSize.1600">24</x:Double>
+    <x:Double x:Key="Toast.IconFontSize.1920">24</x:Double>
+
+    <x:Double x:Key="Toast.InnerSpacing.Base">8</x:Double>
+    <x:Double x:Key="Toast.InnerSpacing.1280">10</x:Double>
+    <x:Double x:Key="Toast.InnerSpacing.1600">12</x:Double>
+    <x:Double x:Key="Toast.InnerSpacing.1920">12</x:Double>
+
+    <Thickness x:Key="Toast.HostMargin.Base">0,24,24,0</Thickness>
+    <Thickness x:Key="Toast.HostMargin.1280">0,28,28,0</Thickness>
+    <Thickness x:Key="Toast.HostMargin.1600">0,32,32,0</Thickness>
+    <Thickness x:Key="Toast.HostMargin.1920">0,36,36,0</Thickness>
+
+    <x:Double x:Key="Toast.StackSpacing.Base">8</x:Double>
+    <x:Double x:Key="Toast.StackSpacing.1280">10</x:Double>
+    <x:Double x:Key="Toast.StackSpacing.1600">12</x:Double>
+    <x:Double x:Key="Toast.StackSpacing.1920">12</x:Double>
 
     <Color x:Key="Color.Toast.Info">#FF1D4ED8</Color>
     <Color x:Key="Color.Toast.Success">#FF14532D</Color>

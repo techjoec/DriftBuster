@@ -13,8 +13,23 @@
         Height="720"
         Title="DrB DriftBuster">
 
+  <Window.Resources>
+    <Thickness x:Key="Layout.HeaderPadding">20,16</Thickness>
+    <Thickness x:Key="Layout.ContentMargin">20</Thickness>
+    <Thickness x:Key="Layout.SectionCardPadding">16</Thickness>
+    <Thickness x:Key="Layout.PrimaryCardPadding">24</Thickness>
+    <Thickness x:Key="Layout.SectionSpacing">0,16,0,0</Thickness>
+    <x:Double x:Key="Toast.Width">320</x:Double>
+    <Thickness x:Key="Toast.Padding">14</Thickness>
+    <Thickness x:Key="Toast.CardMargin">0,0,0,8</Thickness>
+    <x:Double x:Key="Toast.IconFontSize">20</x:Double>
+    <x:Double x:Key="Toast.InnerSpacing">8</x:Double>
+    <Thickness x:Key="Toast.HostMargin">0,24,24,0</Thickness>
+    <x:Double x:Key="Toast.StackSpacing">8</x:Double>
+  </Window.Resources>
+
   <Grid RowDefinitions="Auto,*">
-    <Border Padding="20,16" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.BorderStrong}">
+    <Border Padding="{DynamicResource Layout.HeaderPadding}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.BorderStrong}">
       <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
         <Border Width="48"
                 Height="48"
@@ -61,8 +76,8 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" Margin="20" RowDefinitions="Auto,*">
-      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
+    <Grid Grid.Row="1" Margin="{DynamicResource Layout.ContentMargin}" RowDefinitions="Auto,*">
+      <Border Classes="surface" Padding="{DynamicResource Layout.SectionCardPadding}" CornerRadius="{DynamicResource Radius.Large}">
         <WrapPanel VerticalAlignment="Center">
           <ToggleButton Content="Diff planner"
                         MinWidth="120"
@@ -90,9 +105,9 @@
       </Border>
 
       <Border Grid.Row="1"
-              Margin="0,16,0,0"
+              Margin="{DynamicResource Layout.SectionSpacing}"
               Classes="dashboard-card"
-              Padding="24"
+              Padding="{DynamicResource Layout.PrimaryCardPadding}"
               CornerRadius="{DynamicResource Radius.Large}">
         <TransitioningContentControl Content="{Binding CurrentView}">
           <TransitioningContentControl.PageTransition>

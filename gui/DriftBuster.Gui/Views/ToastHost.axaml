@@ -57,10 +57,10 @@
   </UserControl.Resources>
 
   <StackPanel Orientation="Vertical"
-              Spacing="8"
+              Spacing="{DynamicResource Toast.StackSpacing}"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
-              Margin="0,24,24,0">
+              Margin="{DynamicResource Toast.HostMargin}">
     <ItemsControl ItemsSource="{Binding ActiveToasts}"
                   ItemTemplate="{StaticResource ToastCardTemplate}"
                   HorizontalAlignment="Right">
@@ -76,7 +76,7 @@
               HorizontalAlignment="Right"
               IsVisible="{Binding OverflowToasts.Count, Converter={x:Static conv:CountToBooleanConverter.Instance}}">
       <Expander.Header>
-        <StackPanel Orientation="Horizontal" Spacing="6">
+          <StackPanel Orientation="Horizontal" Spacing="6">
           <TextBlock Text="More alerts"
                      Foreground="{DynamicResource Brush.Toast.OverflowHeader}" />
           <TextBlock Text="{Binding OverflowToasts.Count, StringFormat='({0})'}"

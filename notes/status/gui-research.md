@@ -61,6 +61,15 @@
 - `PerformanceProfile` reads `DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD` (default **400**) and `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION` overrides so headless fixtures and the GUI can align on the same heuristics.
 - `PerformanceSmokeTests` exercises the environment overrides plus the toast queue burst, asserting dispatcher posts collapse to two passes (show + dismiss) for 200 synthetic notifications.
 
+### Responsive spacing matrix (A4.2.4)
+
+| Breakpoint | Layout header padding | Content margin | Primary card padding | Toast width / padding | Server stack spacing / outer margin | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `< 1280` | `20x16` (`Layout.HeaderPadding`) | `20` (`Layout.ContentMargin`) | `24` (`Layout.PrimaryCardPadding`) | `320` / `14` (`Toast.Width`, `Toast.Padding`) | `18` / `24` (`ServerSelection.StackSpacing`, `ServerSelection.OuterMargin`) | Baseline tokens mirror previous static spacing; values now flow through `ResponsiveSpacingProfiles` for deterministic bindings. |
+| `≥ 1280` | `24x20` | `24` | `28` | `360` / `16` | `20` / `28` | Toast host margin expands to `0,28,28,0` so overflow drawers stay readable on 1440p monitors. |
+| `≥ 1600` | `28x22` | `28` | `32` | `400` / `18` | `22` / `32` | Server cards add `0,0,0,24` trailing margin, preventing toggle clusters from crowding the right rail. |
+| `≥ 1920` | `32x24` | `32` | `36` | `440` / `20` | `24` / `36` | Ultra-wide spacing caps `Toast.StackSpacing` at `12` to keep vertical rhythm aligned with 4K design mocks. |
+
 ### Performance diagnostics baseline (A3.1)
 
 - `python scripts/perf_diagnostics.py` executes the perf-smoke subset and exports `artifacts/perf/baseline.json`, capturing the TRX snippet plus virtualization projections for default and forced overrides. The 2025-10-24 run stamped **13:01:12Z** against commit `6835c6a1d41351f4b5f8130eb4b11525ccb45800` with an exit code of zero.
