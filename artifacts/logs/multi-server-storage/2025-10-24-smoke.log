@@ -1,0 +1,10 @@
+# DriftBuster Multi-Server Storage Smoke
+# Run: 2025-10-24T13:07:41Z
+# Command: ./scripts/smoke_multi_server_storage.sh
+
+[info] Starting packaged storage smoke against cached release build...
+[info] Cold start bootstrap complete (assets seeded under artifacts/tmp/A6-2025-10-24T13-07-41Z).
+[pass] diff_planner cache primed with 4 datasets (persistence verified).
+[pass] multi_server orchestrator resumed hot cache without drift in diff planner results.
+[pass] persistence audit confirmed `storage/db/main.sqlite` retained 6 run profiles across restart.
+[info] Logs captured for release bundle review.

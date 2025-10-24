@@ -18,6 +18,10 @@ artifacts/*
 !artifacts/coverage/**
 !artifacts/cli-plan/
 !artifacts/cli-plan/**
+!artifacts/release/
+!artifacts/release/**
+!artifacts/manual-runs/
+!artifacts/manual-runs/**
 !artifacts/gui-packaging/
 !artifacts/gui-packaging/**
 !artifacts/gui-accessibility/
