@@ -621,11 +621,6 @@ namespace DriftBuster.Backend
                     Directory.CreateDirectory(cacheDirectory);
                 }
 
-                if (Directory.GetFileSystemEntries(cacheDirectory).Length > 0)
-                {
-                    return;
-                }
-
                 foreach (var file in Directory.EnumerateFiles(legacyRoot, "*", SearchOption.TopDirectoryOnly))
                 {
                     var target = Path.Combine(cacheDirectory, Path.GetFileName(file)!);

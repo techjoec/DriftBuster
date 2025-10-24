@@ -10,6 +10,9 @@ using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Platform;
 
+using DriftBuster.Gui;
+using DriftBuster.Gui.Headless;
+
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
@@ -123,5 +126,17 @@ public sealed class HeadlessFixture : IAsyncLifetime
         _scope?.Dispose();
         _scope = null;
         return Task.CompletedTask;
+    }
+
+    public static void EnsureFonts()
+    {
+        if (Application.Current is App app)
+        {
+            App.EnsureFontResources(app);
+        }
+
+        var fontManager = FontManager.Current;
+        HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
+        HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
     }
 }

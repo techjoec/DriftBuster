@@ -26,6 +26,10 @@ internal static class HeadlessFontBootstrapper
             as Uri ?? new Uri("fonts:SystemFonts", UriKind.Absolute);
     private static readonly MethodInfo? AddFontCollectionMethod = typeof(FontManager)
         .GetMethod("AddFontCollection", BindingFlags.Instance | BindingFlags.NonPublic, new[] { typeof(Avalonia.Media.Fonts.IFontCollection) });
+    private static readonly PropertyInfo? SystemFontsProperty = typeof(FontManager)
+        .GetProperty("SystemFonts", BindingFlags.Instance | BindingFlags.Public);
+    private static readonly FieldInfo? SystemFontsField = typeof(FontManager)
+        .GetField("_systemFonts", BindingFlags.Instance | BindingFlags.NonPublic);
 
     public static void Ensure(AppBuilder builder)
     {
@@ -66,6 +70,7 @@ internal static class HeadlessFontBootstrapper
             var bootstrapperFailures = new List<string>();
             TryRefreshSystemFontCollection(fontManager, bootstrapperFailures);
             EnsureSystemFonts(fontManager, bootstrapperFailures);
+            EnsureSystemFontsDictionary(fontManager, bootstrapperFailures);
             if (!ReferenceEquals(fontManager, FontManager.Current))
             {
                 bootstrapperFailures.Add("current_font_manager_mismatch");
@@ -287,6 +292,75 @@ internal static class HeadlessFontBootstrapper
         {
             collection = new HeadlessAliasFontCollection(collection, DefaultFamilyName);
             dictionary[systemFontsKey] = collection;
+        }
+    }
+
+    internal static void EnsureSystemFontsDictionary(FontManager fontManager)
+        => EnsureSystemFontsDictionary(fontManager, new List<string>());
+
+    private static void EnsureSystemFontsDictionary(FontManager fontManager, ICollection<string> failures)
+    {
+        if (fontManager is null)
+        {
+            failures.Add("font_manager_null");
+            return;
+        }
+
+        IDictionary<string, FontFamily>? dictionary = null;
+
+        try
+        {
+            dictionary = SystemFontsProperty?.GetValue(fontManager) as IDictionary<string, FontFamily> ??
+                SystemFontsField?.GetValue(fontManager) as IDictionary<string, FontFamily>;
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"system_fonts_property_failed:{ex.GetType().Name}");
+        }
+
+        if (dictionary is null)
+        {
+            failures.Add("system_fonts_dictionary_unavailable");
+            return;
+        }
+
+        failures.Add($"system_fonts_type:{dictionary.GetType().FullName}");
+
+        static bool TryAdd(IDictionary<string, FontFamily> target, string alias, FontFamily family)
+        {
+            try
+            {
+                switch (target)
+                {
+                    case ConcurrentDictionary<string, FontFamily> concurrent:
+                        return concurrent.TryAdd(alias, family);
+                    default:
+                        if (!target.ContainsKey(alias))
+                        {
+                            target[alias] = family;
+                            return true;
+                        }
+
+                        return false;
+                }
+            }
+            catch (NotSupportedException)
+            {
+                return false;
+            }
+        }
+
+        foreach (var alias in RequiredFallbackFamilies)
+        {
+            if (TryAdd(dictionary, alias, new FontFamily(DefaultFamilyName)))
+            {
+                failures.Add($"system_fonts_seeded:{alias}");
+            }
+        }
+
+        if (TryAdd(dictionary, DefaultFamilyName, new FontFamily(DefaultFamilyName)))
+        {
+            failures.Add($"system_fonts_seeded:{DefaultFamilyName}");
         }
     }
 

@@ -17,6 +17,8 @@ public sealed class SecretScannerSettingsWindowTests
     [AvaloniaFact]
     public void Should_Bind_SecretScanner_ViewModel()
     {
+        HeadlessFixture.EnsureFonts();
+
         var options = new SecretScannerOptions
         {
             IgnoreRules = new[] { "rule-one" },
@@ -35,6 +37,8 @@ public sealed class SecretScannerSettingsWindowTests
     [AvaloniaFact]
     public void Confirm_closes_window()
     {
+        HeadlessFixture.EnsureFonts();
+
         var window = new SecretScannerSettingsWindow();
         Invoke(window, "OnConfirm", new Button(), new RoutedEventArgs(Button.ClickEvent));
     }
@@ -42,6 +46,8 @@ public sealed class SecretScannerSettingsWindowTests
     [AvaloniaFact]
     public void Cancel_closes_window()
     {
+        HeadlessFixture.EnsureFonts();
+
         var window = new SecretScannerSettingsWindow();
 
         Invoke(window, "OnCancel", new Button(), new RoutedEventArgs(Button.ClickEvent));

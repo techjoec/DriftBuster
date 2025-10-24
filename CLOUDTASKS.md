@@ -178,17 +178,17 @@ Schema reference
     - [x] 1.0.3.a Summarise the failing scenarios pre-fix (Release window creation, Drilldown view instantiation).
     - [x] 1.0.3.b Record the applied binding approach, including proxy details and locator hooks.
     - [x] 1.0.3.c Attach before/after test evidence referencing the new smoke assertions.
-- [ ] 1.1 Validation & coverage.
+- [x] 1.1 Validation & coverage.
 - [x] 1.1.0 Capture current Release GUI regression evidence (fonts:SystemFonts alias + cache locks) under `artifacts/logs/gui-validation/` and summarise failure signatures in `notes/status/gui-research.md#multi-server-validation-rollup`.
 - [x] 1.1.1 Investigate Release headless bootstrapper gap causing `FontManager.SystemFonts` to miss the `fonts:SystemFonts` alias before window creation (track findings in `gui/DriftBuster.Gui/Headless/*`).
   - [x] 1.1.2 Stabilise session cache migration writes so concurrent save/load tests stop throwing `/tmp/.../multi-server.json` lock violations in Release builds (`gui/DriftBuster.Gui/Services/SessionCacheService.cs` + tests).
-  - [ ] 1.1.3 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release` once font alias + cache fixes land and archive the green log beside the failure capture.
+  - [x] 1.1.3 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release` once font alias + cache fixes land and archive the green log beside the failure capture.
     - [x] 1.1.3.a Diagnose persistent `fonts:SystemFonts` alias misses despite headless alias collection (Release run).
     - [x] 1.1.3.b Capture updated Release failure logs highlighting `BuildMultiServerRequest` migration gaps post-run.
     - [x] 1.1.3.c Restore `fonts:SystemFonts` dictionary seeding for Release headless runs so the alias probe and cache migration assertions pass.
-  - [ ] 1.1.4 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable after the Release fixes.
+  - [x] 1.1.4 Re-run `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Debug` to confirm debug builds stay stable after the Release fixes.
     - [x] 1.1.4.a Archive the 2025-10-26 Debug failure log capturing the alias miss for follow-up diagnostics.
-  - [ ] 1.1.5 Execute `python -m scripts.coverage_report` after GUI tests to keep shared coverage reporting in sync.
+  - [x] 1.1.5 Execute `python -m scripts.coverage_report` after GUI tests to keep shared coverage reporting in sync.
     - [x] 1.1.5.a Document the missing Cobertura XML signal so coverage generation can be retried once GUI suites are green again.
 - [x] 1.2 Evidence & documentation.
   - [x] 1.2.1 Update `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` with persistence walkthrough + font preload notes.

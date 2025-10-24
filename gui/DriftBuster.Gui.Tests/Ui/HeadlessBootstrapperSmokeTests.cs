@@ -26,6 +26,7 @@ public sealed class HeadlessBootstrapperSmokeTests
         try
         {
             using var scope = Program.EnsureHeadless();
+            HeadlessFixture.EnsureFonts();
 
             var locator = typeof(AvaloniaLocator).GetProperty("CurrentMutable", BindingFlags.Public | BindingFlags.Static)
                 ?.GetValue(null) as AvaloniaLocator;
@@ -105,6 +106,7 @@ public sealed class HeadlessBootstrapperSmokeTests
         try
         {
             using var scope = Program.EnsureHeadless();
+            HeadlessFixture.EnsureFonts();
 
             var fontManager = FontManager.Current;
             Assert.NotNull(fontManager);
@@ -158,6 +160,7 @@ public sealed class HeadlessBootstrapperSmokeTests
         try
         {
             using var scope = Program.EnsureHeadless();
+            HeadlessFixture.EnsureFonts();
 
             var window = new DriftBuster.Gui.Views.MainWindow();
             telemetry.RecordMetric("window_type", window.GetType().FullName);
@@ -176,6 +179,7 @@ public sealed class HeadlessBootstrapperSmokeTests
     public void EnsureHeadless_records_bootstrapper_diagnostics_snapshot()
     {
         using var scope = Program.EnsureHeadless();
+        HeadlessFixture.EnsureFonts();
 
         var snapshot = HeadlessFontBootstrapperDiagnostics.GetSnapshot();
 

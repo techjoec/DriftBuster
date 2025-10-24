@@ -13,6 +13,8 @@ public sealed class MainWindowUiTests
     [AvaloniaFact]
     public void Should_Create_MainWindow_With_ViewModel()
     {
+        HeadlessFixture.EnsureFonts();
+
         var window = new MainWindow
         {
             DataContext = new MainWindowViewModel(),

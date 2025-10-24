@@ -28,6 +28,8 @@ public sealed class ViewInstantiationTests
     [AvaloniaFact]
     public void Theme_toggle_updates_requested_variant()
     {
+        HeadlessFixture.EnsureFonts();
+
         var window = new MainWindow
         {
             DataContext = new MainWindowViewModel(),

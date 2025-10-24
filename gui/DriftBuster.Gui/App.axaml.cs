@@ -59,6 +59,7 @@ namespace DriftBuster.Gui
 
             var fontManager = FontManager.Current;
             HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
+            HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
         }
     }
 }

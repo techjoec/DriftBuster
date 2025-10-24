@@ -56,10 +56,40 @@ namespace DriftBuster.Gui
                     return HeadlessScope.Instance;
                 }
 
+                if (Application.Current is App existingApp)
+                {
+                    App.EnsureFontResources(existingApp);
+                    var fontManager = FontManager.Current;
+                    HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
+                    HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
+                    _headlessInitialized = true;
+
+                    return HeadlessScope.Instance;
+                }
+
                 var builder = BuildAvaloniaApp();
                 builder = configure?.Invoke(builder) ?? builder;
 
-                builder.SetupWithoutStarting();
+                try
+                {
+                    builder.SetupWithoutStarting();
+                }
+                catch (InvalidOperationException)
+                {
+                    if (Application.Current is App fallbackApp)
+                    {
+                        App.EnsureFontResources(fallbackApp);
+                        var fallbackManager = FontManager.Current;
+                        HeadlessFontBootstrapper.EnsureSystemFonts(fallbackManager);
+                        HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fallbackManager);
+                        _headlessInitialized = true;
+
+                        return HeadlessScope.Instance;
+                    }
+
+                    throw;
+                }
+
                 HeadlessFontBootstrapper.Ensure(builder);
                 if (Application.Current is App app)
                 {
