@@ -73,7 +73,7 @@ Local guardrails:
 - Python threshold: `coverage report --fail-under=90`
 - .NET threshold (coverlet): `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
 
-Shortcut: `scripts/verify_coverage.sh` runs Python and .NET tests with the thresholds and prints the combined summary.
+Shortcut: run `scripts/verify_coverage.sh` (POSIX shells) or `python -m scripts.verify_coverage` for the cross-platform equivalent to execute both suites with thresholds and print the combined summary.
 
 ## Vendor Sample Acquisition
 

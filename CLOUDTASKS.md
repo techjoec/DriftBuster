@@ -443,11 +443,12 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Coverage gates met for Python/.NET; smoke runs recorded; changelog ready for tag.
 
 **REQUIRED RELATED WORK:**
-- [ ] 6.1 Coverage enforcement.
+- [x] 6.1 Coverage enforcement.
   - [x] 6.1.1 Run `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`.
 - [x] 6.1.2 Execute `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`.
   - [x] 6.1.3 Capture combined summary via `python -m scripts.coverage_report`.
   - [x] 6.1.4 Store coverage artefacts (HTML, XML) under `artifacts/coverage/final/`.
+  - [x] 6.1.5 Provide cross-platform automation via `scripts/verify_coverage.py`.
 - [ ] 6.2 Smoke & manual runs.
   - [x] 6.2.1 Trigger packaged smoke (`scripts/smoke_multi_server_storage.sh`) and log outputs in `notes/status/gui-research.md`.
   - [ ] 6.2.2 Execute manual multi-server session, verifying persistence + diff planner features.

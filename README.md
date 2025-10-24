@@ -245,7 +245,7 @@ Optional local checks:
 
 ### Coverage Enforcement
 
-- Quick all-in-one: `./scripts/verify_coverage.sh`
+- Quick all-in-one: `./scripts/verify_coverage.sh` (POSIX) or `python -m scripts.verify_coverage`
   - Runs Python tests with `coverage report --fail-under=90`
   - Runs .NET tests with `-p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
   - Prints a combined summary via `python -m scripts.coverage_report`
