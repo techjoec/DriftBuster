@@ -67,9 +67,9 @@ public sealed class MainWindowUserJourneyTests
                 runProfilesViewModel = new RunProfilesViewModel(s);
                 return runProfilesViewModel;
             },
-            serverSelectionFactory: (s, toast) =>
+            serverSelectionFactory: (s, toast, profile) =>
             {
-                serverSelection = new ServerSelectionViewModel(s, toast);
+                serverSelection = new ServerSelectionViewModel(s, toast, performanceProfile: profile);
                 foreach (var slot in serverSelection.Servers.Where(slot => slot.IsEnabled))
                 {
                     slot.ReplaceRoots(new[]

@@ -304,6 +304,7 @@ namespace DriftBuster.Gui.ViewModels
         private readonly ReadOnlyObservableCollection<ActivityEntryViewModel> _activityEntriesReadonly;
         private readonly RelayCommand<string> _showDrilldownForHostCommand;
         private readonly ILogger<ServerSelectionViewModel> _logger;
+        private readonly PerformanceProfile _performanceProfile;
         private static readonly EventId DrilldownTelemetryEventId = new(1001, "DrilldownTelemetry");
 
         private const int MaxActivityItems = 200;
@@ -312,12 +313,14 @@ namespace DriftBuster.Gui.ViewModels
             IDriftbusterService service,
             IToastService toastService,
             ISessionCacheService? cacheService = null,
-            ILogger<ServerSelectionViewModel>? logger = null)
+            ILogger<ServerSelectionViewModel>? logger = null,
+            PerformanceProfile? performanceProfile = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
             _cacheService = cacheService ?? new SessionCacheService();
             _logger = logger ?? new FileJsonLogger<ServerSelectionViewModel>(Path.Combine("artifacts", "logs", "drilldown-ready.json"));
+            _performanceProfile = performanceProfile ?? PerformanceProfile.FromEnvironment();
 
             ScopeOptions = new ReadOnlyCollection<ScanScopeOption>(new[]
             {
@@ -337,14 +340,18 @@ namespace DriftBuster.Gui.ViewModels
             _showDrilldownForHostCommand = new RelayCommand<string>(OnShowDrilldownForHost, CanShowDrilldownForHost);
 
             Servers = new ObservableCollection<ServerSlotViewModel>(CreateDefaultServers());
+            Servers.CollectionChanged += (_, _) => RefreshServerVirtualization();
             ReindexServers();
-            CatalogViewModel = new ResultsCatalogViewModel();
+            CatalogViewModel = new ResultsCatalogViewModel(_performanceProfile);
             CatalogViewModel.ReScanRequested += (_, hosts) => _ = RunScopedAsync(hosts);
             CatalogViewModel.DrilldownRequested += (_, entry) => LoadDrilldown(entry.ConfigId);
             CatalogViewModel.PropertyChanged += OnCatalogPropertyChanged;
 
             _activityEntriesReadonly = new ReadOnlyObservableCollection<ActivityEntryViewModel>(_activityEntries);
             FilteredActivityEntries = new ObservableCollection<ActivityEntryViewModel>();
+
+            RefreshServerVirtualization();
+            RefreshActivityVirtualization();
 
             ShowSetupCommand = new RelayCommand(() =>
             {
@@ -428,6 +435,12 @@ namespace DriftBuster.Gui.ViewModels
         public ObservableCollection<ActivityEntryViewModel> FilteredActivityEntries { get; }
 
         public bool HasActivityEntries => _activityEntries.Count > 0;
+
+        [ObservableProperty]
+        private bool _useVirtualizedServerList;
+
+        [ObservableProperty]
+        private bool _useVirtualizedActivityFeed;
 
         [ObservableProperty]
         private ActivityFilterOption _activityFilter = ActivityFilterOption.All;
@@ -564,6 +577,7 @@ namespace DriftBuster.Gui.ViewModels
                 }
 
                 _activityEntries.Clear();
+                RefreshActivityVirtualization();
                 if (snapshot.Activities is { Count: > 0 })
                 {
                     foreach (var activity in snapshot.Activities.OrderBy(entry => entry.Timestamp))
@@ -579,6 +593,7 @@ namespace DriftBuster.Gui.ViewModels
                         var entryVm = new ActivityEntryViewModel(severity, activity.Summary, activity.Detail ?? string.Empty, activity.Timestamp, category);
                         _activityEntries.Insert(0, entryVm);
                     }
+                    RefreshActivityVirtualization();
                     RefreshActivityFilter();
                     OnPropertyChanged(nameof(HasActivityEntries));
                 }
@@ -826,6 +841,7 @@ namespace DriftBuster.Gui.ViewModels
             _toastService.Show("History cleared", "Session cache removed for this view.", ToastLevel.Info, TimeSpan.FromSeconds(3));
             _activityEntries.Clear();
             FilteredActivityEntries.Clear();
+            RefreshActivityVirtualization();
             OnPropertyChanged(nameof(HasActivityEntries));
             LogActivity(ActivitySeverity.Info, "Cleared session history.");
             CatalogViewModel.Reset();
@@ -1334,6 +1350,7 @@ namespace DriftBuster.Gui.ViewModels
                 _activityEntries.RemoveAt(_activityEntries.Count - 1);
             }
 
+            RefreshActivityVirtualization();
             RefreshActivityFilter();
             OnPropertyChanged(nameof(HasActivityEntries));
         }
@@ -1359,6 +1376,18 @@ namespace DriftBuster.Gui.ViewModels
 
                 FilteredActivityEntries.Add(entry);
             }
+
+            RefreshActivityVirtualization();
+        }
+
+        private void RefreshServerVirtualization()
+        {
+            UseVirtualizedServerList = _performanceProfile.ShouldVirtualize(Servers.Count);
+        }
+
+        private void RefreshActivityVirtualization()
+        {
+            UseVirtualizedActivityFeed = _performanceProfile.ShouldVirtualize(_activityEntries.Count);
         }
 
         private static async Task CopyToClipboardAsync(string content)

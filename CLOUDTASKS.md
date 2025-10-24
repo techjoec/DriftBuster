@@ -305,9 +305,9 @@ highlight where to consume the artifact.
   - [ ] 3.1.2 Add guidance to `docs/windows-gui-guide.md#performance`.
   - [ ] 3.1.3 Store raw diagnostics export under `artifacts/perf/baseline.json`.
 - [ ] 3.2 Introduce virtualization.
-  - [ ] 3.2.1 Apply `ItemsRepeater` + `VirtualizingStackPanel` to high-volume views in `gui/DriftBuster.Gui/Views/ResultsCatalogView.axaml` and `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml`.
-  - [ ] 3.2.2 Guard virtualization behind heuristics in `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`.
-  - [ ] 3.2.3 Add UI tests in `gui/DriftBuster.Gui.Tests/Ui` covering virtualization toggles.
+  - [x] 3.2.1 Apply `ItemsRepeater` + `VirtualizingStackPanel` to high-volume views in `gui/DriftBuster.Gui/Views/ResultsCatalogView.axaml` and `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml`.
+  - [x] 3.2.2 Guard virtualization behind heuristics in `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`.
+  - [x] 3.2.3 Add UI tests in `gui/DriftBuster.Gui.Tests/Ui` covering virtualization toggles.
   - [ ] 3.2.4 Document virtualization fallback toggle for low-memory hosts in `docs/windows-gui-guide.md`.
 - [x] 3.3 Buffer dispatcher updates.
   - [x] 3.3.1 Implement buffered queue in `gui/DriftBuster.Gui/Services/ToastService.cs` (or new progress dispatcher service).

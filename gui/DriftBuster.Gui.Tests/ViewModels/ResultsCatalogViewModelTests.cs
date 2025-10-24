@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using DriftBuster.Backend.Models;
+using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using FluentAssertions;
 using Xunit;
@@ -114,5 +115,45 @@ public sealed class ResultsCatalogViewModelTests
         viewModel.FormatOptions.Should().Contain("Any");
         viewModel.FilteredEntries.Should().BeEmpty();
         viewModel.HasEntries.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Virtualization_follows_performance_profile()
+    {
+        var profile = new PerformanceProfile(virtualizationThreshold: 2);
+        var viewModel = new ResultsCatalogViewModel(profile);
+
+        var partialResponse = BuildPartialResponse(count: 3);
+        viewModel.LoadFromResponse(partialResponse, totalHosts: 2);
+
+        viewModel.UseVirtualizedPartialCoverage.Should().BeTrue();
+
+        var minimalResponse = BuildPartialResponse(count: 1);
+        viewModel.LoadFromResponse(minimalResponse, totalHosts: 2);
+
+        viewModel.UseVirtualizedPartialCoverage.Should().BeFalse();
+    }
+
+    private static ServerScanResponse BuildPartialResponse(int count)
+    {
+        var entries = Enumerable.Range(0, count)
+            .Select(index => new ConfigCatalogEntry
+            {
+                ConfigId = $"config-{index}",
+                DisplayName = $"config-{index}",
+                Format = "json",
+                DriftCount = 0,
+                Severity = "low",
+                PresentHosts = new[] { "server01" },
+                MissingHosts = new[] { "server02" },
+                CoverageStatus = "partial",
+                LastUpdated = DateTimeOffset.UtcNow,
+            })
+            .ToArray();
+
+        return new ServerScanResponse
+        {
+            Catalog = entries,
+        };
     }
 }

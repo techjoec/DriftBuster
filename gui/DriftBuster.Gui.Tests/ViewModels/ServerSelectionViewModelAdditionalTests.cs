@@ -250,4 +250,31 @@ public sealed class ServerSelectionViewModelAdditionalTests
                 host.GetProperty("hasDrilldown").GetBoolean())
             .Should().BeTrue();
     }
+
+    [Fact]
+    public void Virtualization_flags_follow_performance_profile()
+    {
+        var service = new FakeDriftbusterService();
+        var toast = new ToastService(action => action());
+
+        var conservativeProfile = new PerformanceProfile(virtualizationThreshold: 10);
+        var conservativeViewModel = new ServerSelectionViewModel(service, toast, performanceProfile: conservativeProfile);
+        conservativeViewModel.UseVirtualizedServerList.Should().BeFalse();
+
+        var profile = new PerformanceProfile(virtualizationThreshold: 2);
+        var viewModel = new ServerSelectionViewModel(service, toast, performanceProfile: profile);
+
+        viewModel.UseVirtualizedActivityFeed.Should().BeFalse();
+        viewModel.UseVirtualizedServerList.Should().BeTrue();
+
+        var logActivity = typeof(ServerSelectionViewModel)
+            .GetMethod("LogActivity", BindingFlags.Instance | BindingFlags.NonPublic);
+        logActivity.Should().NotBeNull();
+
+        logActivity!.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "one", null, ActivityCategory.General });
+        viewModel.UseVirtualizedActivityFeed.Should().BeFalse();
+
+        logActivity.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "two", null, ActivityCategory.General });
+        viewModel.UseVirtualizedActivityFeed.Should().BeTrue();
+    }
 }

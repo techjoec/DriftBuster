@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using DriftBuster.Backend.Models;
+using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.ViewModels
 {
@@ -147,8 +148,11 @@ namespace DriftBuster.Gui.ViewModels
     {
         private const string DefaultFormatOption = "Any";
 
-        public ResultsCatalogViewModel()
+        private readonly PerformanceProfile _performanceProfile;
+
+        public ResultsCatalogViewModel(PerformanceProfile? performanceProfile = null)
         {
+            _performanceProfile = performanceProfile ?? PerformanceProfile.FromEnvironment();
             Entries = new ObservableCollection<ConfigCatalogItemViewModel>();
             FilteredEntries = new ObservableCollection<ConfigCatalogItemViewModel>();
 
@@ -182,6 +186,7 @@ namespace DriftBuster.Gui.ViewModels
             ReScanAllPartialCommand = new RelayCommand(OnReScanAllPartial, () => PartialCoverageEntries.Any());
 
             ApplyFilters();
+            RefreshPartialCoverageVirtualization();
         }
 
         public ObservableCollection<ConfigCatalogItemViewModel> Entries { get; }
@@ -243,6 +248,9 @@ namespace DriftBuster.Gui.ViewModels
 
         public bool HasPartialCoverage => PartialCoverageEntries.Any();
 
+        [ObservableProperty]
+        private bool _useVirtualizedPartialCoverage;
+
         public IRelayCommand<ConfigCatalogItemViewModel> DrilldownCommand { get; }
 
         public IRelayCommand<ConfigCatalogItemViewModel> ReScanMissingCommand { get; }
@@ -297,6 +305,7 @@ namespace DriftBuster.Gui.ViewModels
             UpdateFormatOptions();
             ApplyFilters();
             OnPropertyChanged(nameof(HasEntries));
+            RefreshPartialCoverageVirtualization();
         }
 
         public void Reset()
@@ -309,6 +318,7 @@ namespace DriftBuster.Gui.ViewModels
             UpdateFormatOptions();
             ApplyFilters();
             OnPropertyChanged(nameof(HasEntries));
+            RefreshPartialCoverageVirtualization();
         }
 
         private void UpdateFormatOptions()
@@ -465,6 +475,13 @@ namespace DriftBuster.Gui.ViewModels
             OnPropertyChanged(nameof(HasPartialCoverage));
             OnPropertyChanged(nameof(PartialCoverageEntries));
             ReScanAllPartialCommand.NotifyCanExecuteChanged();
+            RefreshPartialCoverageVirtualization();
+        }
+
+        private void RefreshPartialCoverageVirtualization()
+        {
+            var partialCount = Entries.Count(entry => entry.IsPartialCoverage || entry.IsMissingCoverage);
+            UseVirtualizedPartialCoverage = _performanceProfile.ShouldVirtualize(partialCount);
         }
     }
 }

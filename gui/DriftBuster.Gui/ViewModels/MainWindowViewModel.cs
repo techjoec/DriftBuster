@@ -27,7 +27,8 @@ namespace DriftBuster.Gui.ViewModels
         private readonly Func<IDriftbusterService, object> _diffViewFactory;
         private readonly Func<IDriftbusterService, string?, object> _huntViewFactory;
         private readonly Func<IDriftbusterService, object> _profilesViewFactory;
-        private readonly Func<IDriftbusterService, IToastService, object> _serverSelectionFactory;
+        private readonly Func<IDriftbusterService, IToastService, PerformanceProfile, object> _serverSelectionFactory;
+        private readonly PerformanceProfile _performanceProfile;
 
         [ObservableProperty]
         private object? _currentView;
@@ -61,7 +62,8 @@ namespace DriftBuster.Gui.ViewModels
             Func<IDriftbusterService, object>? diffViewFactory = null,
             Func<IDriftbusterService, string?, object>? huntViewFactory = null,
             Func<IDriftbusterService, object>? profilesViewFactory = null,
-            Func<IDriftbusterService, IToastService, object>? serverSelectionFactory = null)
+            Func<IDriftbusterService, IToastService, PerformanceProfile, object>? serverSelectionFactory = null,
+            PerformanceProfile? performanceProfile = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
@@ -69,6 +71,7 @@ namespace DriftBuster.Gui.ViewModels
             _huntViewFactory = huntViewFactory ?? CreateHuntView;
             _profilesViewFactory = profilesViewFactory ?? CreateProfilesView;
             _serverSelectionFactory = serverSelectionFactory ?? CreateServerSelectionView;
+            _performanceProfile = performanceProfile ?? PerformanceProfile.FromEnvironment();
 
             PingCoreCommand = new AsyncRelayCommand(PingCoreAsync);
             CheckHealthCommand = new AsyncRelayCommand(CheckHealthAsync);
@@ -109,8 +112,10 @@ namespace DriftBuster.Gui.ViewModels
         public void ShowMultiServer()
         {
             ActiveView = MainViewSection.MultiServer;
-            CurrentView = _serverSelectionFactory(_service, _toastService);
+            CurrentView = _serverSelectionFactory(_service, _toastService, _performanceProfile);
         }
+
+        public PerformanceProfile PerformanceProfile => _performanceProfile;
 
         private async Task PingCoreAsync()
         {
@@ -191,9 +196,9 @@ namespace DriftBuster.Gui.ViewModels
             };
         }
 
-        private static object CreateServerSelectionView(IDriftbusterService service, IToastService toastService) => new ServerSelectionView
+        private static object CreateServerSelectionView(IDriftbusterService service, IToastService toastService, PerformanceProfile performanceProfile) => new ServerSelectionView
         {
-            DataContext = new ServerSelectionViewModel(service, toastService),
+            DataContext = new ServerSelectionViewModel(service, toastService, performanceProfile: performanceProfile),
         };
 
         partial void OnActiveViewChanged(MainViewSection value)

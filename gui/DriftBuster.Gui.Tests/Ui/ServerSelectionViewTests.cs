@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
+using DriftBuster.Gui.Views;
 
 using FluentAssertions;
 
@@ -519,6 +522,59 @@ public sealed class ServerSelectionViewTests
         toast.ActiveToasts.Should().NotBeEmpty();
         viewModel.FilteredActivityEntries.Should().Contain(entry => entry.Summary.Contains("cancelled", StringComparison.OrdinalIgnoreCase));
         viewModel.IsBusy.Should().BeFalse();
+    }
+
+    [AvaloniaFact]
+    public void Virtualization_components_toggle_visibility()
+    {
+        var profile = new PerformanceProfile(virtualizationThreshold: 2);
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), toast, performanceProfile: profile);
+
+        var logActivity = typeof(ServerSelectionViewModel)
+            .GetMethod("LogActivity", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        logActivity!.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "first", null, ActivityCategory.General });
+        logActivity.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "second", null, ActivityCategory.General });
+
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        view.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        view.Arrange(new Rect(view.DesiredSize));
+        view.UpdateLayout();
+
+        var serverRepeater = view.FindControl<ItemsRepeater>("ServerCardsVirtualRepeater");
+        var serverFallback = view.FindControl<ItemsControl>("ServerCardsFallback");
+        serverRepeater!.IsVisible.Should().BeTrue();
+        serverFallback!.IsVisible.Should().BeFalse();
+
+        var activityRepeater = view.FindControl<ItemsRepeater>("ActivityVirtualRepeater");
+        var activityFallback = view.FindControl<ItemsControl>("ActivityFallback");
+        activityRepeater!.IsVisible.Should().BeTrue();
+        activityFallback!.IsVisible.Should().BeFalse();
+
+        var conservativeProfile = new PerformanceProfile(virtualizationThreshold: 1000);
+        var nonVirtualViewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), toast, performanceProfile: conservativeProfile);
+        var nonVirtualView = new ServerSelectionView
+        {
+            DataContext = nonVirtualViewModel,
+        };
+
+        nonVirtualView.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        nonVirtualView.Arrange(new Rect(nonVirtualView.DesiredSize));
+        nonVirtualView.UpdateLayout();
+
+        var nonVirtualServerRepeater = nonVirtualView.FindControl<ItemsRepeater>("ServerCardsVirtualRepeater");
+        var nonVirtualServerFallback = nonVirtualView.FindControl<ItemsControl>("ServerCardsFallback");
+        nonVirtualServerRepeater!.IsVisible.Should().BeFalse();
+        nonVirtualServerFallback!.IsVisible.Should().BeTrue();
+
+        var nonVirtualActivityRepeater = nonVirtualView.FindControl<ItemsRepeater>("ActivityVirtualRepeater");
+        var nonVirtualActivityFallback = nonVirtualView.FindControl<ItemsControl>("ActivityFallback");
+        nonVirtualActivityRepeater!.IsVisible.Should().BeFalse();
+        nonVirtualActivityFallback!.IsVisible.Should().BeTrue();
     }
 
     private static ServerSelectionViewModel CreateViewModel(
