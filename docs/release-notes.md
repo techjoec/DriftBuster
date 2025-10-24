@@ -43,6 +43,12 @@ packaging script enforces these guards automatically.
   `docs/ux-refresh.md#theme-capture-manifest` so reviewers can trace when the
   visuals were last regenerated.
 
+### Avalonia 11.2 Results Catalog Alignment
+- Record the Avalonia 11.2 migration in the **GUI** section with a bullet similar to `- GUI: Updated results catalog sorting and toast resource lookups for Avalonia 11.2.` Keep the statement in present tense.
+- Link the bullet (or an accompanying Notes entry) to `docs/windows-gui-guide.md#avalonia-112-migration-notes` so operators can replay the release build and headless test steps without hunting through git history.
+- Reference the artefact bundle (`artifacts/builds/avalonia-11-2/`) when summarising evidence. This keeps diff reviewers and release managers aligned on where binaries and hashes live for regression audits.
+- If catalog sort regressions resurface, cross-link `docs/ux-refresh.md#avalonia-112-migration-follow-up` for the UX validation trace.
+
 ## Component Changelog Files
 - `notes/changelog/core.md`
 - `notes/changelog/gui.md`

@@ -33,6 +33,7 @@ by Added, Changed, Fixed, and Docs.
 
 ### Fixed
 - Test import collision for the `scripts` package during collection.
+- GUI: Cleared the Avalonia 11.2 release-blocker by realigning results catalog sorting and toast resource lookups with updated build/test guidance.
 
 ### Docs
 - Comprehensive registry docs: API, offline runner, and GUI notes.

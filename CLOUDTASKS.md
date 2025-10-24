@@ -379,10 +379,10 @@ highlight where to consume the artifact.
   - [ ] 5.3.1 Rebuild GUI with Avalonia 11.2 and capture results in `notes/status/gui-research.md`.
   - [ ] 5.3.2 Run headless UI tests ensuring toasts and sorting propagate.
   - [ ] 5.3.3 Store Release build artefacts and hash outputs in `artifacts/builds/avalonia-11-2/`.
-- [ ] 5.4 Documentation.
-  - [ ] 5.4.1 Update `docs/windows-gui-guide.md` (or appendix) with migration notes.
-  - [ ] 5.4.2 Reflect release-blocker resolution in `CHANGELOG.md`.
-  - [ ] 5.4.3 Cross-link updated guidance from `docs/ux-refresh.md` and `docs/release-notes.md`.
+- [x] 5.4 Documentation.
+  - [x] 5.4.1 Update `docs/windows-gui-guide.md` (or appendix) with migration notes.
+  - [x] 5.4.2 Reflect release-blocker resolution in `CHANGELOG.md`.
+  - [x] 5.4.3 Cross-link updated guidance from `docs/ux-refresh.md` and `docs/release-notes.md`.
 - [ ] 5.5 Evidence.
   - [ ] 5.5.1 Archive failing vs fixed test output in `artifacts/logs/results-catalog/`.
 

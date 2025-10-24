@@ -42,6 +42,11 @@ iterations have a concrete baseline.
 - Follow-up: populate `docs/assets/diff-planner/manifest.md` once the first sanitized capture set
   lands; include theme/resolution columns so refreshes remain auditable.
 
+## Avalonia 11.2 Migration Follow-up (P5)
+- Results catalog view and toast converters now target Avalonia 11.2 APIs. See `docs/windows-gui-guide.md#avalonia-112-migration-notes` for the build/test checklist captured during the release-blocker sweep.
+- When preparing release communications, link to the dedicated entry under `docs/release-notes.md#avalonia-112-results-catalog-alignment` so downstream teams inherit the migration summary without restating it here.
+- Store Release build artefacts and SHA-256 hashes in `artifacts/builds/avalonia-11-2/` for any future diffing runs; reference them when verifying toast stacks or catalog sort persistence regressions.
+
 ## Validation & Testing Checkpoints
 - Headless tests cover responsive host layout, catalog sort persistence, and the new clipboard
   command. Ensure `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` stays green
