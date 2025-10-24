@@ -1,50 +1,50 @@
 {
-  "generatedAt": "2025-10-23T21:38:00.0349063+00:00",
+  "generatedAt": "2025-10-24T00:17:05.5395985+00:00",
   "scenarios": [
     {
       "name": "EnsureHeadless_allows_main_window_instantiation",
-      "totalRuns": 5,
+      "totalRuns": 6,
       "passes": 2,
-      "failures": 3,
+      "failures": 4,
       "lastStatus": "fail",
-      "lastUpdated": "2025-10-23T21:38:00.0288323+00:00",
+      "lastUpdated": "2025-10-24T00:17:05.5264657+00:00",
       "lastDetails": {
-        "started_at": "2025-10-23T21:38:00.0283849\u002B00:00",
-        "completed_at": "2025-10-23T21:38:00.0287594\u002B00:00",
+        "started_at": "2025-10-24T00:17:05.5257837\u002B00:00",
+        "completed_at": "2025-10-24T00:17:05.5264434\u002B00:00",
         "error": "KeyNotFoundException: The given key \u0027fonts:SystemFonts\u0027 was not present in the dictionary."
       }
     },
     {
       "name": "EnsureHeadless_registers_inter_font_manager",
-      "totalRuns": 5,
-      "passes": 5,
+      "totalRuns": 6,
+      "passes": 6,
       "failures": 0,
       "lastStatus": "pass",
-      "lastUpdated": "2025-10-23T21:38:00.0349033+00:00",
+      "lastUpdated": "2025-10-24T00:17:05.5395934+00:00",
       "lastDetails": {
-        "started_at": "2025-10-23T21:38:00.0326005\u002B00:00",
+        "started_at": "2025-10-24T00:17:05.5373402\u002B00:00",
         "default_family": "Inter",
         "fallback_count": "3",
         "inter_fallback": "true",
         "system_fonts_alias": "true",
         "glyph_alias_success": "true",
         "glyph_family": "fonts:SystemFonts",
-        "completed_at": "2025-10-23T21:38:00.0348466\u002B00:00"
+        "completed_at": "2025-10-24T00:17:05.5395173\u002B00:00"
       }
     },
     {
       "name": "EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts",
-      "totalRuns": 5,
+      "totalRuns": 6,
       "passes": 2,
-      "failures": 3,
+      "failures": 4,
       "lastStatus": "fail",
-      "lastUpdated": "2025-10-23T21:38:00.0219792+00:00",
+      "lastUpdated": "2025-10-24T00:17:05.5189477+00:00",
       "lastDetails": {
-        "started_at": "2025-10-23T21:38:00.0039633\u002B00:00",
+        "started_at": "2025-10-24T00:17:05.5045013\u002B00:00",
         "resource_contains_system_fonts": "true",
         "resource_contains_inter": "true",
         "glyph_resolved": "false",
-        "completed_at": "2025-10-23T21:38:00.0136252\u002B00:00",
+        "completed_at": "2025-10-24T00:17:05.5055862\u002B00:00",
         "error": "TrueException: Expected fonts:SystemFonts#Inter alias to resolve via the font manager in release mode."
       }
     }

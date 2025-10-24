@@ -1,0 +1,422 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  DriftBuster.Backend -> /workspace/DriftBuster/gui/DriftBuster.Backend/bin/Release/net8.0/DriftBuster.Backend.dll
+/workspace/DriftBuster/gui/DriftBuster.Gui/Headless/HeadlessAliasFontCollection.cs(45,17): warning CS8767: Nullability of reference types in type of parameter 'glyphTypeface' of 'bool HeadlessAliasFontCollection.TryGetGlyphTypeface(string familyName, FontStyle style, FontWeight weight, FontStretch stretch, out IGlyphTypeface? glyphTypeface)' doesn't match implicitly implemented member 'bool IFontCollection.TryGetGlyphTypeface(string familyName, FontStyle style, FontWeight weight, FontStretch stretch, out IGlyphTypeface? glyphTypeface)' (possibly because of nullability attributes). [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(76,28): warning CS0618: 'DataObject' is obsolete: 'Use DataTransfer instead' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(78,22): warning CS0618: 'DataFormats.Text' is obsolete: 'Use DataFormat.Text instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(80,13): warning CS0618: 'DragDrop.DoDragDrop(PointerEventArgs, IDataObject, DragDropEffects)' is obsolete: 'Use DoDragDropAsync instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(80,13): warning CS4014: Because this call is not awaited, execution of the current method continues before the call is completed. Consider applying the 'await' operator to the result of the call. [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(58,28): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread. [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(90,32): warning CS0618: 'DragEventArgs.Data' is obsolete: 'Use DataTransfer instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+/workspace/DriftBuster/gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs(103,32): warning CS0618: 'DragEventArgs.Data' is obsolete: 'Use DataTransfer instead.' [/workspace/DriftBuster/gui/DriftBuster.Gui/DriftBuster.Gui.csproj]
+  DriftBuster.Gui -> /workspace/DriftBuster/gui/DriftBuster.Gui/bin/Release/net8.0/DriftBuster.Gui.dll
+  DriftBuster.Gui.Tests -> /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Release/net8.0/DriftBuster.Gui.Tests.dll
+Test run for /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/bin/Release/net8.0/DriftBuster.Gui.Tests.dll (.NETCoreApp,Version=v8.0)
+Microsoft (R) Test Execution Command Line Tool Version 17.8.0 (x64)
+Copyright (c) Microsoft Corporation.  All rights reserved.
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+  Failed DriftBuster.Gui.Tests.Backend.DriftbusterBackendTests.BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files [151 ms]
+  Error Message:
+   Expected File.Exists(migratedFile) to be true, but found False.
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Primitives.BooleanAssertions`1.BeTrue(String because, Object[] becauseArgs)
+   at DriftBuster.Gui.Tests.Backend.DriftbusterBackendTests.BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Backend/DriftbusterBackendTests.cs:line 132
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed DriftBuster.Gui.Tests.Views.ViewInstantiationTests.ConfigDrilldown_and_results_views_load [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Views.ViewInstantiationTests.Theme_toggle_updates_requested_variant [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.AppStartupTests.EnsureHeadless_Is_Idempotent [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.AppStartupTests.FrameworkInitialization_assigns_main_window [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.DiffViewInteractionTests.CopyRawJson_with_override_captures_text [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.DiffViewInteractionTests.BrowseFile_with_override_updates_path [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.DiffViewInteractionTests.BrowseFile_without_storage_provider_leaves_path_unset [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.DiffViewInteractionTests.CopyRawJson_without_clipboard_keeps_value [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.DiffViewTests.Should_Create_DiffView_With_Default_ViewModel [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_allows_main_window_instantiation [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_records_bootstrapper_diagnostics_snapshot [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.HeadlessBootstrapperSmokeTests.EnsureHeadless_registers_inter_font_manager [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.HuntViewInteractionTests.BrowseDirectory_with_overrides_sets_directory [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.HuntViewInteractionTests.BrowseDirectory_without_provider_keeps_value [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.MainWindowUiTests.Should_Create_MainWindow_With_ViewModel [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.MainWindowUserJourneyTests.User_flow_covers_main_sections_and_multi_server_results [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.BrowseFile_without_storage_provider_keeps_existing_path [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.SecretScannerSettings_with_override_applies_changes [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.BrowseFile_with_override_updates_path [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.BrowseFolder_with_override_updates_path [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.SecretScannerSettings_without_owner_exits_cleanly [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.PrepareOfflineCollector_without_storage_provider_skips_backend_call [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.BrowseFolder_without_storage_provider_keeps_existing_path [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.PrepareOfflineCollector_with_override_invokes_backend [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.RunProfilesViewInteractionTests.BuildOfflineCollectorName_sanitizes_profile_name [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Cancel_closes_window [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Should_Bind_SecretScanner_ViewModel [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.SecretScannerSettingsWindowTests.Confirm_closes_window [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.ShouldInitialiseWithDefaultHosts [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.LoadSessionRestoresCatalogSortDescriptor [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.ShouldValidateCustomRoots [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.DrilldownShouldSupportExportAndRescan [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.ShouldFilterCatalogEntries [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.ClearingHistoryShouldClearCacheWhenPersistenceEnabled [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.ShouldRunScanAndUpdateStatuses [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.RunAllProducesTimelineAndToast [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.CopyActivityCommandRaisesClipboardEvent [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.ShouldReScanMissingHostsFromCatalog [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.ShouldPersistSessionWhenUserRequestsSave [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.CancelRunsEmitsActivityAndToast [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.SaveSessionShouldCaptureCatalogSortDescriptor [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+  Failed DriftBuster.Gui.Tests.Ui.ServerSelectionViewTests.CopyJsonCommandUpdatesStatus [1 ms]
+  Error Message:
+   System.Collections.Generic.KeyNotFoundException : The given key 'fonts:SystemFonts' was not present in the dictionary.
+  Stack Trace:
+     at System.Collections.Concurrent.ConcurrentDictionary`2.ThrowKeyNotFoundException(TKey key)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.get_Item(TKey key)
+   at Avalonia.Media.FontManager.get_SystemFonts()
+   at Avalonia.Media.FontManager.TryGetGlyphTypeface(Typeface typeface, IGlyphTypeface& glyphTypeface)
+   at DriftBuster.Gui.Tests.Ui.HeadlessFixture.InitializeAsync() in /workspace/DriftBuster/gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs:line 79
+
+Failed!  - Failed:    44, Passed:    79, Skipped:     0, Total:   123, Duration: 5 s - DriftBuster.Gui.Tests.dll (net8.0)

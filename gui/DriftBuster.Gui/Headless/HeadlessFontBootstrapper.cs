@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -47,6 +48,17 @@ internal static class HeadlessFontBootstrapper
 
             BindFontOptions(locator);
 
+            var existingFontManager = Resolve(locator, typeof(FontManager)) as FontManager;
+            if (existingFontManager is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+
+            var fontManager = new FontManager(proxy);
+            Register(locator, typeof(FontManager), fontManager);
+
+            TryRefreshSystemFontCollection(fontManager);
+
             IDictionary<string, FontFamily>? fontsResource = null;
             if (Application.Current is App app)
             {
@@ -54,7 +66,7 @@ internal static class HeadlessFontBootstrapper
                 fontsResource = TryGetFontResourceDictionary(app);
             }
 
-            HeadlessFontBootstrapperDiagnostics.RecordSnapshot(CreateSnapshot(FontManager.Current, fontsResource));
+            HeadlessFontBootstrapperDiagnostics.RecordSnapshot(CreateSnapshot(fontManager, fontsResource));
         }
     }
 
@@ -180,6 +192,46 @@ internal static class HeadlessFontBootstrapper
         }
 
         return resource as IDictionary<string, FontFamily>;
+    }
+
+    private static readonly FieldInfo? FontCollectionsField = typeof(FontManager)
+        .GetField("_fontCollections", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly PropertyInfo? PlatformImplProperty = typeof(FontManager)
+        .GetProperty("PlatformImpl", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+    private static void TryRefreshSystemFontCollection(FontManager fontManager)
+    {
+        if (FontCollectionsField?.GetValue(fontManager) is not IDictionary dictionary)
+        {
+            return;
+        }
+
+        var systemFontsKey = new Uri("fonts:SystemFonts", UriKind.Absolute);
+        if (dictionary.Contains(systemFontsKey))
+        {
+            dictionary.Remove(systemFontsKey);
+        }
+
+        var type = Type.GetType("Avalonia.Media.Fonts.SystemFontCollection, Avalonia.Base");
+        if (type is null)
+        {
+            return;
+        }
+
+        if (Activator.CreateInstance(type, fontManager) is not Avalonia.Media.Fonts.IFontCollection inner)
+        {
+            return;
+        }
+
+        if (PlatformImplProperty?.GetValue(fontManager) is not IFontManagerImpl platformImpl)
+        {
+            return;
+        }
+
+        inner.Initialize(platformImpl);
+        var collection = new HeadlessAliasFontCollection(inner, DefaultFamilyName);
+
+        dictionary[systemFontsKey] = collection;
     }
 
     private static HeadlessFontBootstrapperDiagnostics.ProbeSnapshot CreateSnapshot(
