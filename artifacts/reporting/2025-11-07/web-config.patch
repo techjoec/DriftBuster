@@ -1,0 +1,8 @@
+=== web.config → web.Release.config (xml) ===
+--- web.config
++++ web.Release.config
+@@ -1,2 +1,2 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-<configuration><system.web><compilation debug="false" targetFramework="4.7.2" /></system.web><appSettings><add key="ServiceMode" value="[REDACTED]" /></appSettings></configuration>
++<configuration xmlns:ns0="http://schemas.microsoft.com/XML-Document-Transform"><appSettings><add key="ServiceMode" value="[REDACTED]" ns0:Transform="Replace" /></appSettings></configuration>
+Summary: added=0 removed=0 changed=1

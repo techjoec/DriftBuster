@@ -682,7 +682,7 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Adapters validated via manual audit; diff blueprint executed end-to-end; compliance checklist satisfied.
 
 **REQUIRED RELATED WORK:**
-- [ ] 11.1 Output targets.
+- [x] 11.1 Output targets.
   - [x] 11.1.1 Implement JSON lines emitter in `src/driftbuster/reporting/json_lines.py`.
 - [x] 11.1.2 Build HTML summary adapter in `src/driftbuster/reporting/html.py`.
   - Notes (2025-10-24): Implemented HTML renderer with path/stream writer helper and expanded regression
@@ -690,8 +690,10 @@ highlight where to consume the artifact.
   - [x] 11.1.3 Provide diff/patch CLI integration in `src/driftbuster/cli.py` (or successor) and GUI surfaces.
     - Notes (2025-11-05): Added `driftbuster diff` command with masking, context, and patch export, surfaced unified diff
       previews plus copy actions in the GUI diff planner, and extended backend summarisation to emit canonical patches.
-  - [ ] 11.1.4 Plan GUI shell (Windows) leveraging HTML/JSON once CLI stabilises.
-  - [ ] 11.1.5 Capture adapter smoke outputs (JSON/HTML/diff) under `artifacts/reporting/` with redaction proof.
+  - [x] 11.1.4 Plan GUI shell (Windows) leveraging HTML/JSON once CLI stabilises.
+    - Notes (2025-11-07): Documented phased GUI bridge in `docs/windows-gui-notes.md` and mirrored summary in `notes/status/gui-research.md`, covering CLI payload wiring, WebView hosting, diff pairing, and offline checksum validation.
+  - [x] 11.1.5 Capture adapter smoke outputs (JSON/HTML/diff) under `artifacts/reporting/` with redaction proof.
+    - Notes (2025-11-07): Stored `config-scan.jsonl`, `report.html`, and `web-config.patch` with regeneration snippet under `artifacts/reporting/2025-11-07/`, demonstrating `[REDACTED]` placeholders across adapters.
 - [ ] 11.2 Metadata consumption.
 - [x] 11.2.1 Ensure adapters share `summarise_metadata` outputs.
     - Notes (2025-10-24): Centralised detection payload preparation into `reporting._metadata.iter_detection_payloads` and wired HTML/JSON adapters through the helper.

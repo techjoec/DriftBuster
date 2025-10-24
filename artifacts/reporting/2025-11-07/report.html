@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Reporting adapters smoke capture</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #eee; }
+    h1, h2 { color: #f6c744; }
+    .meta { font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }
+    .warning { border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+      background: #f6c744;
+      color: #111;
+    }
+    .match,
+    .diff-block,
+    .profile-summary,
+    .hunt-section {
+      border: 1px solid #333;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #1a1a1a;
+    }
+    .match h3 { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }
+    .summary-table { margin-bottom: 1rem; }
+    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }
+    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }
+    .diff-stats li { font-size: 0.85rem; color: #ccc; }
+    .hunt-section ul { margin: 0.5rem 0 0 1rem; }
+    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }
+  </style>
+</head>
+<body>
+
+<div class="meta">Generated at 2025-10-24T21:39:04.967283Z</div>
+<div class="warning">Fixtures only. Verify evidence before sharing externally.<br/>Derived data only. Do not redistribute without legal approval.<br/>Tokens replaced with [REDACTED]. Original values are not stored in this report.<br/><span class="badge">Redaction active</span></div>
+<section class="match summary"><h2>Detection Summary</h2><table class="summary-table"><thead><tr><th>Format</th><th>Variant</th><th>Matches</th><th>Peak confidence</th></tr></thead><tbody><tr><td>env-file</td><td>dotenv</td><td>1</td><td>0.78</td></tr><tr><td>json</td><td>structured-settings-json</td><td>1</td><td>0.95</td></tr><tr><td>structured-config-xml</td><td>app-config</td><td>1</td><td>0.95</td></tr><tr><td>structured-config-xml</td><td>machine-config</td><td>1</td><td>0.95</td></tr><tr><td>structured-config-xml</td><td>web-config</td><td>1</td><td>0.95</td></tr><tr><td>structured-config-xml</td><td>web-config-transform</td><td>1</td><td>0.95</td></tr></tbody></table></section>
+<section class="match"><h3>Match 1: structured-config-xml</h3><p><strong>Plugin:</strong> xml | <strong>Variant:</strong> app-config</p><p><strong>Confidence:</strong> 0.95</p><h4>Reasons</h4><ul><li>Found &lt;Configuration&gt; Root Element</li><li>Matched Known Configuration Section Tags Used By Web Frameworks</li><li>Detected Root Element &lt;Configuration&gt;</li><li>Detected XML Declaration</li><li>XML Version Declared As 1.0</li><li>XML Declared Encoding Utf-8</li><li>Filename App.config Indicates Per-Application Configuration</li></ul><h4>Metadata</h4><table><tr><th>bytes_sampled</th><td>246</td></tr>
+<tr><th>catalog_format</th><td>structured-config-xml</td></tr>
+<tr><th>catalog_references</th><td>[&#x27;docs/detection-types.md#structuredconfigxml&#x27;]</td></tr>
+<tr><th>catalog_remediations</th><td>[{&#x27;id&#x27;: &#x27;structured-config-rotate-secrets&#x27;, &#x27;category&#x27;: &#x27;secrets&#x27;, &#x27;summary&#x27;: &#x27;Rotate credentials stored in configuration sections and confirm transforms match approved deployment scopes.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}, {&#x27;id&#x27;: &#x27;structured-config-hardening&#x27;, &#x27;category&#x27;: &#x27;hardening&#x27;, &#x27;summary&#x27;: &#x27;Review debug switches and permissive runtime settings before promoting captured configs to shared baselines.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}]</td></tr>
+<tr><th>catalog_severity</th><td>high</td></tr>
+<tr><th>catalog_severity_hint</th><td>Application configuration files expose secrets, connection strings, and runtime policy toggles that impact production systems.</td></tr>
+<tr><th>catalog_variant</th><td>app-config</td></tr>
+<tr><th>catalog_version</th><td>0.0.2</td></tr>
+<tr><th>config_original_filename</th><td>App.config</td></tr>
+<tr><th>config_role</th><td>app</td></tr>
+<tr><th>encoding</th><td>utf-8</td></tr>
+<tr><th>root_local_name</th><td>configuration</td></tr>
+<tr><th>root_tag</th><td>configuration</td></tr>
+<tr><th>run_id</th><td>reporting-smoke-2025-11-07</td></tr>
+<tr><th>source</th><td>/workspace/DriftBuster/fixtures/config</td></tr>
+<tr><th>xml_declaration</th><td>{&#x27;version&#x27;: &#x27;1.0&#x27;, &#x27;encoding&#x27;: &#x27;utf-8&#x27;}</td></tr></table></section>
+<section class="match"><h3>Match 2: json</h3><p><strong>Plugin:</strong> json | <strong>Variant:</strong> structured-settings-json</p><p><strong>Confidence:</strong> 0.95</p><h4>Reasons</h4><ul><li>File Extension .Json Suggests JSON Content</li><li>Detected JSON Object Opening Token &#x27;{&#x27;</li><li>Found Key/value Signature Indicative Of JSON Objects</li><li>Curly/array Delimiters Appear Balanced In [REDACTED]d Content</li><li>Matched Appsettings-Style Configuration Cues</li><li>Parsed JSON Payload Without Errors Within [REDACTED]</li><li>Decoded Content Using Utf-8 Encoding</li></ul><h4>Metadata</h4><table><tr><th>bytes_sampled</th><td>377</td></tr>
+<tr><th>catalog_format</th><td>json</td></tr>
+<tr><th>catalog_references</th><td>[&#x27;docs/detection-types.md#json&#x27;]</td></tr>
+<tr><th>catalog_remediations</th><td>[{&#x27;id&#x27;: &#x27;json-secret-rotation&#x27;, &#x27;category&#x27;: &#x27;secrets&#x27;, &#x27;summary&#x27;: &#x27;Rotate keys or tokens stored in captured JSON configs and ensure redacted copies replace archival snapshots.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#json&#x27;}, {&#x27;id&#x27;: &#x27;json-flag-review&#x27;, &#x27;category&#x27;: &#x27;review&#x27;, &#x27;summary&#x27;: &#x27;Audit feature toggles and environment overrides before applying configs to ensure they respect approved deployment policies.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#json&#x27;}]</td></tr>
+<tr><th>catalog_severity</th><td>medium</td></tr>
+<tr><th>catalog_severity_hint</th><td>JSON configuration files reveal feature flags, API endpoints, and secrets that map directly to runtime access.</td></tr>
+<tr><th>catalog_variant</th><td>structured-settings-json</td></tr>
+<tr><th>catalog_version</th><td>0.0.2</td></tr>
+<tr><th>encoding</th><td>utf-8</td></tr>
+<tr><th>run_id</th><td>reporting-smoke-2025-11-07</td></tr>
+<tr><th>settings_hint</th><td>filename</td></tr>
+<tr><th>source</th><td>/workspace/DriftBuster/fixtures/config</td></tr>
+<tr><th>top_level_keys</th><td>[&#x27;Logging&#x27;, &#x27;ConnectionStrings&#x27;, &#x27;AllowedHosts&#x27;, &#x27;FeatureFlags&#x27;]</td></tr>
+<tr><th>top_level_type</th><td>object</td></tr></table></section>
+<section class="match"><h3>Match 3: env-file</h3><p><strong>Plugin:</strong> ini | <strong>Variant:</strong> dotenv</p><p><strong>Confidence:</strong> 0.78</p><h4>Reasons</h4><ul><li>Detected Utf-8 Codec</li><li>Detected Key/value Assignments Typical Of INI-Style Configuration</li><li>Detected Environment-Style Export Assignments</li><li>File Extension .Env Suggests INI-Like Configuration</li><li>Detected Comment Markers (;, #, !) Used By INI Variants</li><li>Sectionless KEY=VALUE Or Export Assignments Resemble Dotenv Env Files</li></ul><h4>Metadata</h4><table><tr><th>bytes_sampled</th><td>123</td></tr>
+<tr><th>catalog_format</th><td>ini</td></tr>
+<tr><th>catalog_references</th><td>[&#x27;docs/detection-types.md#ini&#x27;]</td></tr>
+<tr><th>catalog_remediations</th><td>[{&#x27;id&#x27;: &#x27;ini-secret-rotation&#x27;, &#x27;category&#x27;: &#x27;secrets&#x27;, &#x27;summary&#x27;: &#x27;Rotate secrets surfaced in dotenv or credential sections and confirm masked samples replace raw exports.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#ini&#x27;}, {&#x27;id&#x27;: &#x27;ini-sanitisation-workflow&#x27;, &#x27;category&#x27;: &#x27;sanitisation&#x27;, &#x27;summary&#x27;: &#x27;Follow the sanitisation workflow before sharing dotenv fixtures to prevent leaking production values.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#ini&#x27;}, {&#x27;id&#x27;: &#x27;ini-dotenv-rotate-secrets&#x27;, &#x27;category&#x27;: &#x27;secrets&#x27;, &#x27;summary&#x27;: &#x27;Rotate keys stored in dotenv files and replace evidence copies with sanitised variants before sharing.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#ini-dotenv&#x27;}, {&#x27;id&#x27;: &#x27;ini-dotenv-sanitise-identifiers&#x27;, &#x27;category&#x27;: &#x27;sanitisation&#x27;, &#x27;summary&#x27;: &#x27;Strip hostnames and environment identifiers from dotenv exports prior to archiving or distribution.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#ini-dotenv&#x27;}]</td></tr>
+<tr><th>catalog_severity</th><td>high</td></tr>
+<tr><th>catalog_severity_hint</th><td>Dotenv environment files commonly store plaintext secrets, service URLs, and deployment toggles that require immediate rotation when discovered.</td></tr>
+<tr><th>catalog_variant</th><td>dotenv</td></tr>
+<tr><th>catalog_version</th><td>0.0.2</td></tr>
+<tr><th>comment_style</th><td>{&#x27;markers&#x27;: [&#x27;#&#x27;], &#x27;supports_inline_comments&#x27;: False, &#x27;uses_export_prefix&#x27;: True}</td></tr>
+<tr><th>detector_lineage</th><td>{&#x27;family&#x27;: &#x27;ini-lineage&#x27;, &#x27;format&#x27;: &#x27;env-file&#x27;, &#x27;variant&#x27;: &#x27;dotenv&#x27;, &#x27;signal_score&#x27;: 5, &#x27;signals&#x27;: {&#x27;section_count&#x27;: 0, &#x27;key_value_pairs&#x27;: 3, &#x27;directive_lines&#x27;: 0, &#x27;export_assignments&#x27;: 1, &#x27;comment_lines&#x27;: 1, &#x27;continuations&#x27;: 0, &#x27;has_sections&#x27;: False, &#x27;has_directives&#x27;: False, &#x27;has_export_prefix&#x27;: True, &#x27;dotenv_hint&#x27;: False, &#x27;extension_hint&#x27;: True}}</td></tr>
+<tr><th>encoding</th><td>utf-8</td></tr>
+<tr><th>encoding_info</th><td>{&#x27;codec&#x27;: &#x27;utf-8&#x27;, &#x27;bom_present&#x27;: False}</td></tr>
+<tr><th>equals_separator_pairs</th><td>3</td></tr>
+<tr><th>export_assignments</th><td>1</td></tr>
+<tr><th>key_density</th><td>1.0</td></tr>
+<tr><th>key_value_pairs</th><td>3</td></tr>
+<tr><th>remediations</th><td>[{&#x27;id&#x27;: &#x27;env-sanitisation-workflow&#x27;, &#x27;category&#x27;: &#x27;handling&#x27;, &#x27;summary&#x27;: &#x27;Sanitise dotenv fixtures via scripts/fixtures/README.md before sharing samples.&#x27;, &#x27;documentation&#x27;: &#x27;scripts/fixtures/README.md&#x27;}]</td></tr>
+<tr><th>run_id</th><td>reporting-smoke-2025-11-07</td></tr>
+<tr><th>source</th><td>/workspace/DriftBuster/fixtures/config</td></tr></table></section>
+<section class="match"><h3>Match 4: structured-config-xml</h3><p><strong>Plugin:</strong> xml | <strong>Variant:</strong> machine-config</p><p><strong>Confidence:</strong> 0.95</p><h4>Reasons</h4><ul><li>Found &lt;Configuration&gt; Root Element</li><li>Detected Root Element &lt;Configuration&gt;</li><li>Detected XML Declaration</li><li>XML Version Declared As 1.0</li><li>XML Declared Encoding Utf-8</li><li>Filename Machine.config Indicates Machine-Wide Configuration</li></ul><h4>Metadata</h4><table><tr><th>bytes_sampled</th><td>203</td></tr>
+<tr><th>catalog_format</th><td>structured-config-xml</td></tr>
+<tr><th>catalog_references</th><td>[&#x27;docs/detection-types.md#structuredconfigxml&#x27;]</td></tr>
+<tr><th>catalog_remediations</th><td>[{&#x27;id&#x27;: &#x27;structured-config-rotate-secrets&#x27;, &#x27;category&#x27;: &#x27;secrets&#x27;, &#x27;summary&#x27;: &#x27;Rotate credentials stored in configuration sections and confirm transforms match approved deployment scopes.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}, {&#x27;id&#x27;: &#x27;structured-config-hardening&#x27;, &#x27;category&#x27;: &#x27;hardening&#x27;, &#x27;summary&#x27;: &#x27;Review debug switches and permissive runtime settings before promoting captured configs to shared baselines.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}]</td></tr>
+<tr><th>catalog_severity</th><td>high</td></tr>
+<tr><th>catalog_severity_hint</th><td>Application configuration files expose secrets, connection strings, and runtime policy toggles that impact production systems.</td></tr>
+<tr><th>catalog_variant</th><td>machine-config</td></tr>
+<tr><th>catalog_version</th><td>0.0.2</td></tr>
+<tr><th>config_original_filename</th><td>machine.config</td></tr>
+<tr><th>config_role</th><td>machine</td></tr>
+<tr><th>encoding</th><td>utf-8</td></tr>
+<tr><th>root_local_name</th><td>configuration</td></tr>
+<tr><th>root_tag</th><td>configuration</td></tr>
+<tr><th>run_id</th><td>reporting-smoke-2025-11-07</td></tr>
+<tr><th>source</th><td>/workspace/DriftBuster/fixtures/config</td></tr>
+<tr><th>xml_declaration</th><td>{&#x27;version&#x27;: &#x27;1.0&#x27;, &#x27;encoding&#x27;: &#x27;utf-8&#x27;}</td></tr></table></section>
+<section class="match"><h3>Match 5: structured-config-xml</h3><p><strong>Plugin:</strong> xml | <strong>Variant:</strong> web-config-transform</p><p><strong>Confidence:</strong> 0.95</p><h4>Reasons</h4><ul><li>Found &lt;Configuration&gt; Root Element</li><li>Matched Known Configuration Section Tags Used By Web Frameworks</li><li>Detected Root Element &lt;Configuration&gt;</li><li>Detected XML Declaration</li><li>XML Version Declared As 1.0</li><li>XML Declared Encoding Utf-8</li><li>Recorded XML Namespace Declarations (Xdt→http://Schemas.microsoft.com/XML-Document-Transform @L2)</li><li>Filename Pattern Web|app.*.config Suggests A Build-Specific Transform</li><li>Detected XML-Document-Transform Namespace Declaration (Xdt)</li><li>Found Xdt:Transform Attribute Indicating Config Transform Instructions</li><li>Filename Stage &#x27;[REDACTED]&#x27; Indicates Transform Precedence</li></ul><h4>Metadata</h4><table><tr><th>bytes_sampled</th><td>239</td></tr>
+<tr><th>catalog_format</th><td>structured-config-xml</td></tr>
+<tr><th>catalog_references</th><td>[&#x27;docs/detection-types.md#structuredconfigxml&#x27;]</td></tr>
+<tr><th>catalog_remediations</th><td>[{&#x27;id&#x27;: &#x27;structured-config-rotate-secrets&#x27;, &#x27;category&#x27;: &#x27;secrets&#x27;, &#x27;summary&#x27;: &#x27;Rotate credentials stored in configuration sections and confirm transforms match approved deployment scopes.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}, {&#x27;id&#x27;: &#x27;structured-config-hardening&#x27;, &#x27;category&#x27;: &#x27;hardening&#x27;, &#x27;summary&#x27;: &#x27;Review debug switches and permissive runtime settings before promoting captured configs to shared baselines.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}]</td></tr>
+<tr><th>catalog_severity</th><td>high</td></tr>
+<tr><th>catalog_severity_hint</th><td>Application configuration files expose secrets, connection strings, and runtime policy toggles that impact production systems.</td></tr>
+<tr><th>catalog_variant</th><td>web-config-transform</td></tr>
+<tr><th>catalog_version</th><td>0.0.2</td></tr>
+<tr><th>config_original_filename</th><td>web.[REDACTED].config</td></tr>
+<tr><th>config_role</th><td>web</td></tr>
+<tr><th>config_transform</th><td>True</td></tr>
+<tr><th>config_transform_primary_stage</th><td>[REDACTED]</td></tr>
+<tr><th>config_transform_scope</th><td>web</td></tr>
+<tr><th>config_transform_stage_count</th><td>1</td></tr>
+<tr><th>config_transform_stages</th><td>[&#x27;[REDACTED]&#x27;]</td></tr>
+<tr><th>encoding</th><td>utf-8</td></tr>
+<tr><th>namespace_provenance</th><td>[{&#x27;attribute&#x27;: &#x27;xmlns:xdt&#x27;, &#x27;prefix&#x27;: &#x27;xdt&#x27;, &#x27;uri&#x27;: &#x27;http://schemas.microsoft.com/XML-Document-Transform&#x27;, &#x27;line&#x27;: 2, &#x27;column&#x27;: 16, &#x27;source&#x27;: &#x27;root-attribute&#x27;, &#x27;hash&#x27;: &#x27;66dd72c0f369&#x27;}]</td></tr>
+<tr><th>namespaces</th><td>{&#x27;xdt&#x27;: &#x27;http://schemas.microsoft.com/XML-Document-Transform&#x27;}</td></tr>
+<tr><th>root_attributes</th><td>{&#x27;xmlns:xdt&#x27;: &#x27;http://schemas.microsoft.com/XML-Document-Transform&#x27;}</td></tr>
+<tr><th>root_local_name</th><td>configuration</td></tr>
+<tr><th>root_tag</th><td>configuration</td></tr>
+<tr><th>run_id</th><td>reporting-smoke-2025-11-07</td></tr>
+<tr><th>source</th><td>/workspace/DriftBuster/fixtures/config</td></tr>
+<tr><th>xml_declaration</th><td>{&#x27;version&#x27;: &#x27;1.0&#x27;, &#x27;encoding&#x27;: &#x27;utf-8&#x27;}</td></tr></table></section>
+<section class="match"><h3>Match 6: structured-config-xml</h3><p><strong>Plugin:</strong> xml | <strong>Variant:</strong> web-config</p><p><strong>Confidence:</strong> 0.95</p><h4>Reasons</h4><ul><li>Found &lt;Configuration&gt; Root Element</li><li>Matched Known Configuration Section Tags Used By Web Frameworks</li><li>Detected Root Element &lt;Configuration&gt;</li><li>Detected XML Declaration</li><li>XML Version Declared As 1.0</li><li>XML Declared Encoding Utf-8</li><li>Filename Web.config Strongly Suggests Web-Hosted Configuration</li></ul><h4>Metadata</h4><table><tr><th>bytes_sampled</th><td>240</td></tr>
+<tr><th>catalog_format</th><td>structured-config-xml</td></tr>
+<tr><th>catalog_references</th><td>[&#x27;docs/detection-types.md#structuredconfigxml&#x27;]</td></tr>
+<tr><th>catalog_remediations</th><td>[{&#x27;id&#x27;: &#x27;structured-config-rotate-secrets&#x27;, &#x27;category&#x27;: &#x27;secrets&#x27;, &#x27;summary&#x27;: &#x27;Rotate credentials stored in configuration sections and confirm transforms match approved deployment scopes.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}, {&#x27;id&#x27;: &#x27;structured-config-hardening&#x27;, &#x27;category&#x27;: &#x27;hardening&#x27;, &#x27;summary&#x27;: &#x27;Review debug switches and permissive runtime settings before promoting captured configs to shared baselines.&#x27;, &#x27;documentation&#x27;: &#x27;docs/detection-types.md#structuredconfigxml&#x27;}]</td></tr>
+<tr><th>catalog_severity</th><td>high</td></tr>
+<tr><th>catalog_severity_hint</th><td>Application configuration files expose secrets, connection strings, and runtime policy toggles that impact production systems.</td></tr>
+<tr><th>catalog_variant</th><td>web-config</td></tr>
+<tr><th>catalog_version</th><td>0.0.2</td></tr>
+<tr><th>config_original_filename</th><td>web.config</td></tr>
+<tr><th>config_role</th><td>web</td></tr>
+<tr><th>encoding</th><td>utf-8</td></tr>
+<tr><th>root_local_name</th><td>configuration</td></tr>
+<tr><th>root_tag</th><td>configuration</td></tr>
+<tr><th>run_id</th><td>reporting-smoke-2025-11-07</td></tr>
+<tr><th>source</th><td>/workspace/DriftBuster/fixtures/config</td></tr>
+<tr><th>xml_declaration</th><td>{&#x27;version&#x27;: &#x27;1.0&#x27;, &#x27;encoding&#x27;: &#x27;utf-8&#x27;}</td></tr></table></section>
+<section class="diffs"><h2>Configuration Diffs</h2><article class="diff-block"><h3>web.config ↔ web.[REDACTED].config</h3><ul class="diff-stats"><li>added_lines: 0</li><li>removed_lines: 0</li><li>changed_lines: 1</li></ul><pre>--- web.config
++++ web.[REDACTED].config
+@@ -1,2 +1,2 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-&lt;configuration&gt;&lt;system.web&gt;&lt;compilation debug=&quot;false&quot; targetFramework=&quot;4.7.2&quot; /&gt;&lt;/system.web&gt;&lt;appSettings&gt;&lt;add key=&quot;ServiceMode&quot; value=&quot;[REDACTED]&quot; /&gt;&lt;/appSettings&gt;&lt;/configuration&gt;
++&lt;configuration xmlns:ns0=&quot;http://schemas.microsoft.com/XML-Document-Transform&quot;&gt;&lt;appSettings&gt;&lt;add key=&quot;ServiceMode&quot; value=&quot;[REDACTED]&quot; ns0:Transform=&quot;Replace&quot; /&gt;&lt;/appSettings&gt;&lt;/configuration&gt;</pre></article></section>
+<section class="hunt-section"><h2>Hunt Highlights</h2><ul><li><strong>fixtures/config/appsettings.json</strong> — line 9<br/><em>Detects sample placeholders to confirm masking contract.</em> <span class="badge">token: database_server</span><br/><code>&quot;DefaultConnection&quot;: &quot;Server={{ database_server }};Database=[REDACTED];&quot;</code></li></ul></section>
+<div class="redaction-summary">
+<h2>Redaction Summary</h2>
+<ul>
+<li>Release → [REDACTED] (occurrences: 6)</li>
+<li>Sample → [REDACTED] (occurrences: 3)</li>
+</ul>
+<p>Redaction placeholders recorded for audit trails.</p></div>
+</body></html>
