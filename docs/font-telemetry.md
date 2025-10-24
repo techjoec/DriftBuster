@@ -53,6 +53,11 @@ Running the summary now writes JSON logs to `artifacts/logs/font-staleness/` (ov
 Include the latest JSON log when filing investigations so reviewers can replay configuration and
 scenario metadata without rerunning telemetry.
 
+The CLI also maintains an aggregated snapshot at `font-staleness-summary.json` inside the same log
+directory (override with `--summary-path`; pass `-` to disable). The summary captures scenario
+status counts, highlights stale or missing `lastUpdated` entries, and records the evaluated
+configuration so operators can monitor drift at a glance.
+
 ## Troubleshooting cues
 
 - Clock skew or pipeline stalls usually present with `lastUpdated` gaps exceeding the configured

@@ -261,14 +261,47 @@ def test_cli_emits_structured_staleness_log(
 
     assert exit_code == 1
     written = sorted(log_dir.glob("font-staleness-*.json"))
-    assert len(written) == 1
-    payload = json.loads(written[0].read_text())
+    event_logs = [path for path in written if "-summary" not in path.name]
+    assert len(event_logs) == 1
+    payload = json.loads(event_logs[0].read_text())
     assert payload["hasIssues"] is True
     assert payload["maxLastUpdatedAgeSeconds"] == pytest.approx(0.72)
     assert payload["missingScenarios"] == []
     assert payload["scenarios"][1]["issues"]
     assert payload["scenarios"][1]["status"] == "drift"
     assert payload["scenarios"][0]["status"] == "ok"
+
+
+def test_cli_writes_summary_payload(
+    sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 293680, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    exit_code = font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+        ]
+    )
+
+    assert exit_code == 1
+    summary_path = log_dir / "font-staleness-summary.json"
+    assert summary_path.is_file()
+    summary = json.loads(summary_path.read_text())
+    assert summary["hasIssues"] is True
+    assert summary["scenarioCounts"] == {"drift": 1, "ok": 1}
+    assert summary["staleScenarioNames"] == ["flaky-debug"]
+    assert summary["missingScenarios"] == []
+    assert summary["issueCount"] >= 1
 
 
 def test_within_threshold_fixture_remains_healthy(tmp_path: Path) -> None:

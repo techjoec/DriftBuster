@@ -27,6 +27,9 @@ def test_render_html_report_includes_sections() -> None:
         canonical_after="b",
         diff="-a\n+b",
         stats={"added_lines": 1},
+        content_type="text",
+        from_label="before",
+        to_label="after",
         label="config",
     )
 

@@ -12,6 +12,26 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g++. Font Telemetry Summary Snapshot [deps=A0g+]
+
+**REASON:** Operators need a quick-glance rollup of staleness enforcement without parsing full
+scenario dumps.
+
+**MUST NOT:** Drop structured event logging or hide issue details required for incident review.
+
+**MUST:** Emit an aggregated summary artifact, provide configuration controls, cover regression
+behaviour, and document operator touchpoints.
+
+**ACCEPT GATES:** CLI runs produce a refreshed summary file, tests validate the payload, and docs
+highlight where to consume the artifact.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.15 Emit an aggregated summary log alongside staleness events in
+      `scripts/font_health_summary.py`.
+  - [x] 0.15.1 Implement the summary payload builder with a disable override and default location.
+  - [x] 0.15.2 Add regression coverage verifying the summary JSON content.
+- [x] 0.16 Document the summary artifact workflow in `docs/font-telemetry.md`.
+
 ## A0g+. Font Telemetry Staleness Follow-through [deps=A0g]
 
 **REASON:** The newly added stale timestamp guard needs production-grade polish so operators can tune, observe, and document the behaviour without reverse-engineering the initial patch.

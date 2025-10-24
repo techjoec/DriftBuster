@@ -24,6 +24,9 @@ def test_render_html_report_compiles_sections() -> None:
         canonical_after="new",
         diff="@@\n-old\n+new",
         stats={"added_lines": 1, "removed_lines": 1, "changed_lines": 0},
+        content_type="text",
+        from_label="before",
+        to_label="after",
         label="Config",
     )
 

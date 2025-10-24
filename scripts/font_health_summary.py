@@ -61,6 +61,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="NAME",
         help="Scenario that must appear in the telemetry (repeat this flag for multiple names).",
     )
+    parser.add_argument(
+        "--summary-path",
+        metavar="PATH",
+        help=(
+            "Write aggregated staleness summary JSON to PATH; defaults to "
+            "<log dir>/font-staleness-summary.json. Pass '-' to disable."
+        ),
+    )
     return parser
 
 
@@ -112,6 +120,73 @@ def _scenario_payload(
     return payload
 
 
+def _build_summary_payload(
+    evaluation: ReportEvaluation,
+    *,
+    evaluation_time: datetime,
+    source_path: Path,
+    max_last_updated_age: timedelta | None,
+    max_failure_rate: float,
+    min_total_runs: int,
+    require_last_pass: bool,
+) -> dict:
+    scenario_counts: dict[str, int] = {}
+    stale_names: set[str] = set()
+    missing_last_updated_names: set[str] = set()
+    latest_status_issue_names: set[str] = set()
+    low_run_names: set[str] = set()
+
+    for item in evaluation.scenarios:
+        scenario_counts[item.status] = scenario_counts.get(item.status, 0) + 1
+        scenario_name = item.scenario.name
+        for issue in item.issues:
+            if "lastUpdated" in issue:
+                stale_names.add(scenario_name)
+            if "missing lastUpdated" in issue:
+                missing_last_updated_names.add(scenario_name)
+            if "latest status" in issue:
+                latest_status_issue_names.add(scenario_name)
+            if "expected at least" in issue:
+                low_run_names.add(scenario_name)
+
+    report_generated_at = evaluation.report.generated_at
+    if report_generated_at is not None:
+        report_generated_at = _coerce_utc(report_generated_at)
+        report_age_seconds = (
+            _coerce_utc(evaluation_time) - report_generated_at
+        ).total_seconds()
+    else:
+        report_age_seconds = None
+
+    return {
+        "generatedAt": _coerce_utc(evaluation_time).isoformat(),
+        "source": str(source_path),
+        "hasIssues": evaluation.has_issues,
+        "issueCount": (
+            len(evaluation.missing_scenarios)
+            + sum(len(item.issues) for item in evaluation.scenarios)
+        ),
+        "missingScenarios": list(evaluation.missing_scenarios),
+        "scenarioCounts": dict(sorted(scenario_counts.items())),
+        "staleScenarioNames": sorted(stale_names),
+        "missingLastUpdatedScenarioNames": sorted(missing_last_updated_names),
+        "latestStatusIssueScenarioNames": sorted(latest_status_issue_names),
+        "lowRunScenarioNames": sorted(low_run_names),
+        "maxLastUpdatedAgeSeconds": (
+            max_last_updated_age.total_seconds()
+            if max_last_updated_age is not None
+            else None
+        ),
+        "maxFailureRate": max_failure_rate,
+        "minTotalRuns": min_total_runs,
+        "requireLastPass": require_last_pass,
+        "reportGeneratedAt": (
+            report_generated_at.isoformat() if report_generated_at is not None else None
+        ),
+        "reportAgeSeconds": report_age_seconds,
+    }
+
+
 def _write_staleness_event(
     evaluation: ReportEvaluation,
     *,
@@ -122,6 +197,7 @@ def _write_staleness_event(
     min_total_runs: int,
     require_last_pass: bool,
     log_dir: Path,
+    summary_path: Path | None,
 ) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -148,6 +224,21 @@ def _write_staleness_event(
     destination = log_dir / f"font-staleness-{timestamp}.json"
     destination.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
+    if summary_path is not None:
+        summary_payload = _build_summary_payload(
+            evaluation,
+            evaluation_time=evaluation_time,
+            source_path=source_path,
+            max_last_updated_age=max_last_updated_age,
+            max_failure_rate=max_failure_rate,
+            min_total_runs=min_total_runs,
+            require_last_pass=require_last_pass,
+        )
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(
+            json.dumps(summary_payload, indent=2, sort_keys=True) + "\n"
+        )
+
 
 def _emit_staleness_event(
     evaluation: ReportEvaluation,
@@ -157,6 +248,13 @@ def _emit_staleness_event(
     source_path: Path,
 ) -> None:
     try:
+        log_dir = _resolve_log_dir()
+        if args.summary_path is None:
+            summary_path = log_dir / "font-staleness-summary.json"
+        elif args.summary_path.strip() in {"", "-"}:
+            summary_path = None
+        else:
+            summary_path = Path(args.summary_path)
         _write_staleness_event(
             evaluation,
             evaluation_time=evaluation_time,
@@ -169,7 +267,8 @@ def _emit_staleness_event(
             max_failure_rate=args.max_failure_rate,
             min_total_runs=args.min_total_runs,
             require_last_pass=not args.allow_last_failure,
-            log_dir=_resolve_log_dir(),
+            log_dir=log_dir,
+            summary_path=summary_path,
         )
     except Exception as exc:  # pragma: no cover - defensive guard
         print(f"warning: failed to write staleness log: {exc}", file=sys.stderr)
