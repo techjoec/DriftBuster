@@ -35,7 +35,7 @@ public sealed class ResultsCatalogViewTests
         view.Arrange(new Rect(view.DesiredSize));
         view.UpdateLayout();
 
-        var virtualRepeater = view.FindControl<ItemsRepeater>("PartialCoverageVirtualRepeater");
+        var virtualRepeater = view.FindControl<ItemsControl>("PartialCoverageVirtualRepeater");
         var fallback = view.FindControl<ItemsControl>("PartialCoverageFallback");
 
         virtualRepeater.Should().NotBeNull();

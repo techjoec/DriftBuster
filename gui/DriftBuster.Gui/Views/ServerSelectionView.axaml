@@ -60,14 +60,16 @@
           </StackPanel>
         </Border>
 
-        <ItemsRepeater x:Name="ServerCardsVirtualRepeater"
-                        ItemsSource="{Binding Servers}"
-                        HorizontalAlignment="Stretch"
-                        IsVisible="{Binding UseVirtualizedServerList}">
-          <ItemsRepeater.Layout>
-            <StackLayout Orientation="Vertical" Spacing="16" />
-          </ItemsRepeater.Layout>
-          <ItemsRepeater.ItemTemplate>
+        <ItemsControl x:Name="ServerCardsVirtualRepeater"
+                       ItemsSource="{Binding Servers}"
+                       HorizontalAlignment="Stretch"
+                       IsVisible="{Binding UseVirtualizedServerList}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
             <DataTemplate>
               <Border Padding="16"
                       Margin="0,0,0,16"
@@ -155,8 +157,8 @@
                 </StackPanel>
               </Border>
             </DataTemplate>
-          </ItemsRepeater.ItemTemplate>
-        </ItemsRepeater>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
         <ItemsControl x:Name="ServerCardsFallback"
                        ItemsSource="{Binding Servers}"
                        HorizontalAlignment="Stretch"
@@ -304,13 +306,15 @@
                          Classes="subtitle"
                          HorizontalAlignment="Center"
                          IsVisible="{Binding HasActivityEntries, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
-              <ItemsRepeater x:Name="ActivityVirtualRepeater"
+              <ItemsControl x:Name="ActivityVirtualRepeater"
                              ItemsSource="{Binding FilteredActivityEntries}"
                              IsVisible="{Binding UseVirtualizedActivityFeed}">
-                <ItemsRepeater.Layout>
-                  <StackLayout Orientation="Vertical" Spacing="10" />
-                </ItemsRepeater.Layout>
-                <ItemsRepeater.ItemTemplate>
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Border Padding="12" Margin="0,0,0,10" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
                       <StackPanel Spacing="4">
@@ -329,8 +333,8 @@
                       </StackPanel>
                     </Border>
                   </DataTemplate>
-                </ItemsRepeater.ItemTemplate>
-              </ItemsRepeater>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
               <ItemsControl x:Name="ActivityFallback"
                             ItemsSource="{Binding FilteredActivityEntries}"
                             IsVisible="{Binding UseVirtualizedActivityFeed, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
