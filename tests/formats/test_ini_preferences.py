@@ -16,4 +16,8 @@ def test_colon_only_preferences_short_file():
     assert m is not None
     assert m.format_name == "ini"
     assert m.variant == "sectionless-ini"
+    assert m.metadata
+    lineage = m.metadata.get("detector_lineage")
+    assert lineage is not None
+    assert lineage["variant"] == "sectionless-ini"
 

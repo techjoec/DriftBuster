@@ -36,13 +36,13 @@ def ini_plugin() -> IniPlugin:
 
 @pytest.fixture()
 def dotenv_export_sample() -> str:
-    return dedent(
-        """
-        DATABASE_URL=postgres://localhost/app
-        export LOG_LEVEL=info
-        FEATURE_FLAG=1
-        """
-    ).strip()
+    sample_path = (
+        Path(__file__).resolve().parents[2]
+        / "fixtures"
+        / "config"
+        / "dotenv.sanitised.env"
+    )
+    return sample_path.read_text(encoding="utf-8").strip()
 
 
 @pytest.fixture()
@@ -164,6 +164,14 @@ def test_ini_plugin_classifies_env_files(
     assert comment_style["uses_export_prefix"] is True
     assert match.metadata.get("export_assignments") == 1
     assert any("dotenv" in reason.lower() for reason in match.reasons)
+    remediations = match.metadata.get("remediations")
+    assert isinstance(remediations, list)
+    assert any(
+        isinstance(entry, dict)
+        and entry.get("id") == "env-sanitisation-workflow"
+        and entry.get("documentation") == "scripts/fixtures/README.md"
+        for entry in remediations
+    )
 
 
 def test_ini_plugin_preserves_java_properties_classification(
@@ -349,9 +357,21 @@ def test_ini_plugin_records_bom_and_sensitive_hints(ini_plugin: IniPlugin) -> No
     assert ("db_password", "password") in hint_pairs
     assert ("api_token", "token") in hint_pairs
     assert any("Sensitive key" in reason for reason in match.reasons)
-    assert match.metadata.get("remediations") == [
-        "Rotate credentials referenced in sensitive_key_hints.",
-    ]
+    classification = match.metadata.get("secret_classification")
+    assert classification is not None
+    assert classification["category_counts"]["credential"] >= 1
+    classification_entries = classification["entries"]
+    assert any(entry["key"] == "db_password" for entry in classification_entries)
+    assert any(entry["key"] == "api_token" for entry in classification_entries)
+    focus_keys = match.metadata.get("security_focus_keys")
+    assert isinstance(focus_keys, list)
+    assert {"api_token", "db_password"}.issubset(set(focus_keys))
+    remediations = match.metadata.get("remediations")
+    assert isinstance(remediations, list)
+    credential_entry = next(
+        entry for entry in remediations if entry.get("category") == "credential"
+    )
+    assert "rotate" in credential_entry.get("summary", "").lower()
     assert any("utf-8-sig" in reason for reason in match.reasons)
 
 
@@ -388,6 +408,29 @@ def test_ini_plugin_reports_latin1_encoding(
     assert encoding_info["codec"] == "latin-1"
     assert encoding_info["bom_present"] is False
     assert any("latin-1" in reason for reason in match.reasons)
+
+
+def test_ini_plugin_reports_detector_lineage(
+    ini_plugin: IniPlugin, dotenv_export_sample: str
+) -> None:
+    match = _detect(
+        ini_plugin,
+        ".env.development",
+        dotenv_export_sample,
+    )
+
+    assert match is not None
+    metadata = match.metadata
+    assert metadata is not None
+    lineage = metadata.get("detector_lineage")
+    assert lineage is not None
+    assert lineage["family"] == "ini-lineage"
+    assert lineage["format"] == match.format_name
+    assert lineage["variant"] == match.variant
+    signals = lineage["signals"]
+    assert signals["key_value_pairs"] >= 3
+    assert signals["has_sections"] is False
+    assert lineage["signal_score"] >= 2
 
 
 def test_ini_plugin_rejects_plain_text(ini_plugin: IniPlugin) -> None:

@@ -71,6 +71,22 @@ format-specific exception.
 20. **PowerShell DSC MOF** (`.mof`) — formal standard (DMTF MOF). Desired State
     Configuration output used for audited state. [link](https://learn.microsoft.com/en-us/powershell/dsc/configurations/write-compile-apply-configuration)
 
+#### INI lineage consolidation
+
+- **Detector family:** `detector_lineage.family == "ini-lineage"` exposes a
+  single metadata surface for classic INI, Java properties, dotenv env files,
+  and directive-heavy Unix conf payloads. The detector persists a `signals`
+  snapshot (sections, directives, exports, density) so downstream adapters can
+  explain why a classification was chosen.
+- **Secret hygiene:** Sensitive key matches flow into
+  `secret_classification.entries` and the plugin emits remediation stubs per
+  category (credentials, tokens, key material). Env-file variants always append
+  the `env-sanitisation-workflow` remediation linking to
+  `scripts/fixtures/README.md` for scrubbed fixture generation.
+- **Variant parity:** `detector_lineage.variant` mirrors catalog variants
+  (`sectioned-ini`, `java-properties`, `dotenv`, `directive-conf`, etc.) so
+  catalogue reviews map 1:1 with runtime detections.
+
 ### Diff Tool Guidance
 
 - Favour text representations (`.reg`, XML plists, YAML/TOML) as canonical diff

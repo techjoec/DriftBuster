@@ -588,13 +588,13 @@ highlight where to consume the artifact.
   - [x] 8.2.4 Note rationale in `docs/format-addition-guide.md`.
   - [x] 8.2.5 Store large-sample validation outputs in `artifacts/formats/json/validation.md`.
   - [x] 8.2.6 Update privacy notes in `docs/legal-safeguards.md` for JSON samples.
-- [ ] 8.3 INI lineage (Priority 3).
-  - [ ] 8.3.1 Unify INI/key-value/dotenv detectors in `src/driftbuster/formats/ini`.
-  - [ ] 8.3.2 Map remediation hints + secret classification.
-  - [ ] 8.3.3 Extend tests `tests/formats/test_ini_plugin.py`, `test_ini_flags.py`, and `test_ini_preferences*.py`.
-  - [ ] 8.3.4 Update docs (`docs/format-playbook.md`) with consolidated lineage.
-  - [ ] 8.3.5 Add encoding/secret audit results to `notes/status/core-formats.md`.
-  - [ ] 8.3.6 Ensure dotenv fixtures reference sanitisation scripts stored under `scripts/fixtures/README.md`.
+- [x] 8.3 INI lineage (Priority 3).
+  - [x] 8.3.1 Unify INI/key-value/dotenv detectors in `src/driftbuster/formats/ini`.
+  - [x] 8.3.2 Map remediation hints + secret classification.
+  - [x] 8.3.3 Extend tests `tests/formats/test_ini_plugin.py`, `test_ini_flags.py`, and `test_ini_preferences*.py`.
+  - [x] 8.3.4 Update docs (`docs/format-playbook.md`) with consolidated lineage.
+  - [x] 8.3.5 Add encoding/secret audit results to `notes/status/core-formats.md`.
+  - [x] 8.3.6 Ensure dotenv fixtures reference sanitisation scripts stored under `scripts/fixtures/README.md`.
 - [ ] 8.4 Structured text (Priority 4).
   - [ ] 8.4.1 Harden YAML/TOML detectors in `src/driftbuster/formats/yaml` and `toml`.
   - [ ] 8.4.2 Codify whitespace tolerances.

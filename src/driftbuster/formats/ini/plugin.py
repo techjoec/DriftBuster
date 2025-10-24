@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import codecs
 import re
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from ..format_registry import decode_text, register
 from ...core.types import DetectionMatch
@@ -53,6 +54,80 @@ _SENSITIVE_KEY_PATTERNS: Sequence[Tuple[str, re.Pattern[str]]] = (
     ("key", re.compile(r"(^|[^a-z0-9])key([^a-z0-9]|$)", re.IGNORECASE)),
 )
 
+_SECRET_CATEGORY_MAP: Dict[str, str] = {
+    "password": "credential",
+    "passphrase": "credential",
+    "secret": "credential",
+    "token": "token",
+    "api-key": "token",
+    "client-id": "client-identifier",
+    "client-secret": "credential",
+    "private-key": "key-material",
+    "public-key": "key-material",
+    "access-key": "credential",
+    "secret-key": "credential",
+    "credential": "credential",
+    "auth": "credential",
+    "key": "key-material",
+}
+
+
+def _build_secret_metadata(
+    sensitive_hints: Sequence[Dict[str, str]],
+) -> Tuple[
+    Optional[Dict[str, Any]],
+    Optional[List[Dict[str, Any]]],
+    Optional[List[str]],
+]:
+    if not sensitive_hints:
+        return None, None, None
+
+    classification_entries: List[Dict[str, Any]] = []
+    category_counter: Counter[str] = Counter()
+    for hint in sensitive_hints:
+        keyword = hint.get("keyword", "")
+        key_name = hint.get("key", "")
+        category = _SECRET_CATEGORY_MAP.get(keyword, "credential")
+        classification_entries.append(
+            {
+                "key": key_name,
+                "keyword": keyword,
+                "category": category,
+            }
+        )
+        category_counter[category] += 1
+
+    classification = {
+        "entries": classification_entries,
+        "category_counts": dict(sorted(category_counter.items())),
+    }
+
+    remediations: List[Dict[str, Any]] = []
+    for category, count in sorted(category_counter.items()):
+        related_keys = sorted(
+            {
+                entry["key"]
+                for entry in classification_entries
+                if entry["category"] == category and entry["key"]
+            }
+        )
+        summary = (
+            f"Rotate or scrub {category.replace('-', ' ')} values referenced in configuration"
+        )
+        if related_keys:
+            summary += f" ({', '.join(related_keys)})"
+        remediations.append(
+            {
+                "id": f"ini-{category}-remediation",
+                "category": category,
+                "summary": summary,
+                "related_keys": related_keys,
+                "hint_count": count,
+            }
+        )
+
+    return classification, remediations, [entry["key"] for entry in classification_entries if entry["key"]]
+
 
 @dataclass
 class IniPlugin:
@@ -60,7 +135,7 @@ class IniPlugin:
 
     name: str = "ini"
     priority: int = 170
-    version: str = "0.0.2"
+    version: str = "0.0.3"
 
     def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
         if text is None:
@@ -179,22 +254,23 @@ class IniPlugin:
                     if hint_key in seen_sensitive:
                         continue
                     seen_sensitive.add(hint_key)
-                    sensitive_hints.append({"key": key_name, "keyword": keyword})
+                    hint = {"key": key_name, "keyword": keyword}
+                    sensitive_hints.append(hint)
                     reasons.append(
                         f"Sensitive key '{key_name}' matched keyword '{keyword}'"
                     )
 
         if sensitive_hints:
             metadata["sensitive_key_hints"] = sensitive_hints
-
-        remediations: List[str] = []
-        if sensitive_hints:
-            remediations.append(
-                "Rotate credentials referenced in sensitive_key_hints."
+            classification, remediations, classified_keys = _build_secret_metadata(
+                sensitive_hints
             )
-
-        if remediations:
-            metadata["remediations"] = remediations
+            if classification:
+                metadata["secret_classification"] = classification
+            if remediations:
+                metadata["remediations"] = remediations
+            if classified_keys:
+                metadata.setdefault("security_focus_keys", sorted(set(classified_keys)))
 
         directive_signal = bool(directive_lines)
         if directive_signal:
@@ -217,6 +293,20 @@ class IniPlugin:
         comment_signal = bool(comment_lines)
         if comment_signal:
             reasons.append("Detected comment markers (;, #, !) used by INI variants")
+
+        signals: Dict[str, Any] = {
+            "section_count": len(sections),
+            "key_value_pairs": key_pair_count,
+            "directive_lines": len(directive_lines),
+            "export_assignments": export_lines,
+            "comment_lines": len(comment_lines),
+            "continuations": continuation_lines,
+            "has_sections": bool(sections),
+            "has_directives": bool(directive_lines),
+            "has_export_prefix": bool(export_lines),
+            "dotenv_hint": dotenv_hint,
+            "extension_hint": extension in _INI_EXTENSIONS or lower_name.endswith(".ini"),
+        }
 
         # Oddities: bad section headers or colon-only assignments without .properties
         if any(re.match(r"^\s*\[[^\]]*$", ln) for ln in lines[:1000]):
@@ -256,23 +346,23 @@ class IniPlugin:
             else:
                 return None
 
-        signals = 0
+        signal_score = 0
         if sections:
-            signals += 1
+            signal_score += 1
         if key_pair_count:
-            signals += 1
+            signal_score += 1
         if key_density_strong:
-            signals += 1
+            signal_score += 1
         if extension_hint or dotenv_hint:
-            signals += 1
+            signal_score += 1
         if directive_signal:
-            signals += 1
+            signal_score += 1
         if export_lines:
-            signals += 1
+            signal_score += 1
         if comment_signal:
-            signals += 1
+            signal_score += 1
 
-        if signals < 2:
+        if signal_score < 2:
             if extension == ".preferences" and key_pair_count >= 2:
                 variant = "sectionless-ini"
                 reasons.append("Preferences file with colon assignments treated as INI")
@@ -453,6 +543,31 @@ class IniPlugin:
             )
 
         reasons.extend(classification_reasons)
+
+        metadata["detector_lineage"] = {
+            "family": "ini-lineage",
+            "format": format_name,
+            "variant": variant or "unspecified",
+            "signal_score": signal_score,
+            "signals": signals,
+        }
+
+        if format_name == "env-file":
+            existing_remediations: List[Dict[str, Any]] = []
+            current = metadata.get("remediations")
+            if isinstance(current, list):
+                for entry in current:
+                    if isinstance(entry, dict):
+                        existing_remediations.append(entry)
+            env_entry = {
+                "id": "env-sanitisation-workflow",
+                "category": "handling",
+                "summary": "Sanitise dotenv fixtures via scripts/fixtures/README.md before sharing samples.",
+                "documentation": "scripts/fixtures/README.md",
+            }
+            if env_entry not in existing_remediations:
+                existing_remediations.append(env_entry)
+            metadata["remediations"] = existing_remediations
 
         if review_reasons:
             metadata["needs_review"] = True

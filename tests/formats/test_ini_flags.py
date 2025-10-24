@@ -21,6 +21,9 @@ def test_ini_malformed_section_flag():
     if m is not None:
         assert m.metadata and m.metadata.get("needs_review") is True
         assert any("Malformed section" in r for r in m.metadata.get("review_reasons", []))
+        lineage = m.metadata.get("detector_lineage")
+        assert lineage is not None
+        assert lineage["signals"]["has_sections"] is True
 
 
 def test_ini_colon_only_flag_outside_properties():
@@ -32,4 +35,7 @@ def test_ini_colon_only_flag_outside_properties():
     if m is not None:
         assert m.metadata and m.metadata.get("needs_review") is True
         assert any("Colon-only" in r for r in m.metadata.get("review_reasons", []))
+        lineage = m.metadata.get("detector_lineage")
+        assert lineage is not None
+        assert lineage["signals"]["has_sections"] is False
 

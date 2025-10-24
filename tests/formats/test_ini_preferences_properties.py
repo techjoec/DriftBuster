@@ -16,6 +16,10 @@ def test_ini_preferences_fallback_sectionless():
     assert m is not None
     assert m.format_name == "ini"
     assert m.variant == "sectionless-ini"
+    assert m.metadata
+    lineage = m.metadata.get("detector_lineage")
+    assert lineage is not None
+    assert lineage["variant"] == "sectionless-ini"
 
 
 def test_properties_basic_java_properties_recognition():
@@ -25,3 +29,7 @@ def test_properties_basic_java_properties_recognition():
     assert m is not None
     assert m.format_name == "ini"
     assert m.variant == "java-properties"
+    assert m.metadata
+    lineage = m.metadata.get("detector_lineage")
+    assert lineage is not None
+    assert lineage["variant"] == "java-properties"
