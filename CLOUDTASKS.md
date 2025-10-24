@@ -491,10 +491,10 @@ highlight where to consume the artifact.
   - [x] 6.1.3 Capture combined summary via `python -m scripts.coverage_report`.
   - [x] 6.1.4 Store coverage artefacts (HTML, XML) under `artifacts/coverage/final/`.
   - [x] 6.1.5 Provide cross-platform automation via `scripts/verify_coverage.py`.
-- [ ] 6.2 Smoke & manual runs.
+- [x] 6.2 Smoke & manual runs.
   - [x] 6.2.1 Trigger packaged smoke (`scripts/smoke_multi_server_storage.sh`) and log outputs in `notes/status/gui-research.md`.
-  - [ ] 6.2.2 Execute manual multi-server session, verifying persistence + diff planner features.
-  - [ ] 6.2.3 Record session walkthrough (screen capture + notes) and archive under `artifacts/manual-runs/`.
+  - [x] 6.2.2 Execute manual multi-server session, verifying persistence + diff planner features.
+  - [x] 6.2.3 Record session walkthrough (screen capture + notes) and archive under `artifacts/manual-runs/`.
 - [x] 6.3 Docs & assets.
   - [x] 6.3.1 Refresh `docs/ux-refresh.md`, `docs/windows-gui-guide.md`, and `docs/release-notes.md` with final screenshots + notes.
   - [x] 6.3.2 Update `README.md` and `docs/multi-server-demo.md` with summary of new capabilities.
