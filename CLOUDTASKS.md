@@ -694,7 +694,7 @@ highlight where to consume the artifact.
     - Notes (2025-11-07): Documented phased GUI bridge in `docs/windows-gui-notes.md` and mirrored summary in `notes/status/gui-research.md`, covering CLI payload wiring, WebView hosting, diff pairing, and offline checksum validation.
   - [x] 11.1.5 Capture adapter smoke outputs (JSON/HTML/diff) under `artifacts/reporting/` with redaction proof.
     - Notes (2025-11-07): Stored `config-scan.jsonl`, `report.html`, and `web-config.patch` with regeneration snippet under `artifacts/reporting/2025-11-07/`, demonstrating `[REDACTED]` placeholders across adapters.
-- [ ] 11.2 Metadata consumption.
+- [x] 11.2 Metadata consumption.
 - [x] 11.2.1 Ensure adapters share `summarise_metadata` outputs.
     - Notes (2025-10-24): Centralised detection payload preparation into `reporting._metadata.iter_detection_payloads` and wired HTML/JSON adapters through the helper.
   - [x] 11.2.2 Add tests in `tests/reporting/test_adapters.py`.
@@ -703,6 +703,8 @@ highlight where to consume the artifact.
     - Notes (2025-11-06): Added reporting metadata contract guidance covering
       `iter_detection_payloads` usage, required keys, and hunt integration so
       adapters share a consistent payload surface.
+  - Notes (2025-11-09): Snapshot manifests now propagate run-level metadata into detection payloads and expose a `run_metadata`
+    block so capture tooling and downstream adapters inherit the enriched context automatically.
 - [x] 11.3 Diff canonicalisation & masking.
   - [x] 11.3.1 Finalise `canonicalise_text`/`canonicalise_xml` in `src/driftbuster/reporting/diff.py`.
   - [x] 11.3.2 Ensure `build_unified_diff` returns stats + masking flags.

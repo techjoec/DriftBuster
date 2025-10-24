@@ -21,11 +21,24 @@ def build_snapshot_manifest(
     mask_tokens: Sequence[str] | None = None,
     placeholder: str = "[REDACTED]",
     legal_metadata: Mapping[str, object] | None = None,
+    extra_metadata: Mapping[str, object] | None = None,
 ) -> Mapping[str, object]:
     """Return a manifest describing ``matches`` with compliance metadata attached."""
 
     active_redactor = resolve_redactor(redactor=redactor, mask_tokens=mask_tokens, placeholder=placeholder)
-    records = list(iter_json_records(matches, redactor=active_redactor))
+    run_metadata = dict(extra_metadata or {})
+    if operator:
+        run_metadata.setdefault("operator", operator)
+    if output_name:
+        run_metadata.setdefault("snapshot_output", output_name)
+
+    records = list(
+        iter_json_records(
+            matches,
+            redactor=active_redactor,
+            extra_metadata=run_metadata if run_metadata else None,
+        )
+    )
     legal_block: dict[str, object] = {
         "classification": "internal-only",
         "redaction_placeholder": placeholder,
@@ -48,6 +61,8 @@ def build_snapshot_manifest(
         "legal": legal_block,
         "matches": records,
     }
+    if run_metadata:
+        manifest["run_metadata"] = run_metadata
     return manifest
 
 
@@ -62,6 +77,7 @@ def write_snapshot(
     placeholder: str = "[REDACTED]",
     legal_metadata: Mapping[str, object] | None = None,
     indent: int = 2,
+    extra_metadata: Mapping[str, object] | None = None,
 ) -> None:
     """Write a snapshot manifest to ``destination`` including legal guardrails."""
 
@@ -73,6 +89,7 @@ def write_snapshot(
         mask_tokens=mask_tokens,
         placeholder=placeholder,
         legal_metadata=legal_metadata,
+        extra_metadata=extra_metadata,
     )
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", encoding="utf-8") as handle:
