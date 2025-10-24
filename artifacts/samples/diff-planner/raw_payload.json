@@ -1,0 +1,31 @@
+{
+  "versions": [
+    "baseline.json",
+    "release.json"
+  ],
+  "comparisons": [
+    {
+      "from": "baseline.json",
+      "to": "release.json",
+      "plan": {
+        "before": "{\n  \"port\": 80,\n  \"threads\": 4\n}\n",
+        "after": "{\n  \"port\": 443,\n  \"threads\": 8\n}\n",
+        "content_type": "text",
+        "from_label": "baseline.json",
+        "to_label": "release.json",
+        "label": "web-config",
+        "mask_tokens": [
+          "PASSWORD"
+        ],
+        "placeholder": "[REDACTED]",
+        "context_lines": 3
+      },
+      "metadata": {
+        "left_path": "C:/configs/baseline.json",
+        "right_path": "C:/configs/release.json",
+        "content_type": "text",
+        "context_lines": 3
+      }
+    }
+  ]
+}

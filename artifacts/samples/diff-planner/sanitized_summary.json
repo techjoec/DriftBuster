@@ -1,0 +1,41 @@
+{
+  "generated_at": "2025-01-14T12:00:00Z",
+  "versions": [
+    "baseline.json",
+    "release.json"
+  ],
+  "comparison_count": 1,
+  "comparisons": [
+    {
+      "from": "baseline.json",
+      "to": "release.json",
+      "plan": {
+        "content_type": "text",
+        "from_label": "baseline.json",
+        "to_label": "release.json",
+        "label": "web-config",
+        "mask_tokens": [
+          "PASSWORD"
+        ],
+        "placeholder": "[REDACTED]",
+        "context_lines": 3
+      },
+      "metadata": {
+        "content_type": "text",
+        "context_lines": 3,
+        "baseline_name": "baseline.json",
+        "comparison_name": "release.json"
+      },
+      "summary": {
+        "before_digest": "sha256:2e81f109c103e5463076d5d9ff4ca58b7aa7a003ba70b4fe1ffc4e03e29fae12",
+        "after_digest": "sha256:e8583f54307ee20b2669568fdc29d0f002a23b17e21d96e5f45b40b3ea01fc28",
+        "diff_digest": "sha256:c9323833846da349a74293a3121c3493ddb269401c0d0bfd6d39e97539398a09",
+        "before_lines": 4,
+        "after_lines": 4,
+        "added_lines": 0,
+        "removed_lines": 0,
+        "changed_lines": 2
+      }
+    }
+  ]
+}

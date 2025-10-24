@@ -47,6 +47,29 @@ This guide explains the capabilities, layout, and operational details of the Ava
   - **Copy raw JSON** copies the payload for downstream tooling or manual inspection.
 - Errors (e.g., missing files, permission issues) bubble into the red message banner.
 
+### JSON payload schema
+- The **Raw JSON** expander mirrors the backend response returned by `DriftbusterBackend.BuildDiffPlanAsync`. The payload is a
+  single object with the following shape:
+  - `versions`: ordered list of absolute or relative file paths exactly as submitted to the backend.
+  - `comparisons`: array of comparisons, each containing:
+    - `from` / `to`: resolved file names displayed in plan cards.
+    - `plan`: serialized content including `before`, `after`, `content_type`, labels, `mask_tokens`, `placeholder`, and
+      `context_lines`.
+    - `metadata`: source file paths (`left_path`, `right_path`), the resolved `content_type`, and the enforced `context_lines`.
+- The **Sanitized JSON** toggle emits the digest-only summary that the GUI stores in MRU entries. Sanitized payloads always
+  exclude raw file contents and instead provide:
+  - `generated_at`: UTC timestamp recorded when the diff ran.
+  - `versions`: file names with directory information stripped.
+  - `comparison_count`: convenience counter for paging bulk comparisons.
+  - `comparisons[]`: each entry includes `plan` metadata (labels, mask tokens, placeholder, context lines), `metadata`
+    (content type plus redacted path names), and a `summary` block exposing `before_digest`, `after_digest`, `diff_digest`,
+    and line statistics (`before_lines`, `after_lines`, `added_lines`, `removed_lines`, `changed_lines`).
+- Sanitized payloads are the only variant persisted to disk; MRU entries store the `sanitized_summary.json` format for replay
+  without risking sensitive data.
+- Redacted samples for both payloads live under `artifacts/samples/diff-planner/`:
+  - `raw_payload.json` demonstrates the direct backend contract.
+  - `sanitized_summary.json` shows the MRU-safe structure with digests and counts.
+
 ## 6. Hunt View Details
 ### Inputs
 - **Target** accepts either a directory or single file. The Browse button opens a folder picker first, falling back to file selection.
