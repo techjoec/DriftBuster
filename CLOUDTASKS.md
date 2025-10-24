@@ -12,6 +12,26 @@ Schema reference
 - Task IDs (`T-xxxxxx`) stay in CLOUDTASKS.md; cross-reference them inside subtasks when relevant.
 -->
 
+## A0g++++. Font Telemetry Log Retention Controls [deps=A0g+++]
+
+**REASON:** Event logs accumulate quickly in sandboxed triage environments, so operators need a
+bounded retention toggle without scripting manual clean-ups.
+
+**MUST NOT:** Remove the aggregated summary snapshot or loosen existing guardrail defaults.
+
+**MUST:** Provide a CLI switch that prunes historical logs, ensure regression coverage for pruning
+behaviour, and document the operational workflow.
+
+**ACCEPT GATES:** Flag deletes older event files deterministically, tests cover positive/negative
+paths, and docs tell operators how to configure retention.
+
+**REQUIRED RELATED WORK:**
+- [x] 0.18 Add a `--max-log-files` retention flag to `scripts/font_health_summary.py` with pruning
+      logic for structured events.
+  - [x] 0.18.1 Cover pruning scenarios (limited, disabled, error handling) in
+        `tests/scripts/test_font_health_summary.py`.
+  - [x] 0.18.2 Document retention guidance in `docs/font-telemetry.md`.
+
 ## A0g+++. Font Telemetry Log Overrides [deps=A0g++]
 
 **REASON:** Operators need to redirect structured staleness logs when triaging evidence in

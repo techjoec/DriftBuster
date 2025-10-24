@@ -238,6 +238,17 @@ def test_cli_flags_stale_exit_code(
     assert exit_code == 1
 
 
+def test_cli_rejects_negative_max_log_files(sample_payload: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        font_health_summary.main(
+            [str(sample_payload), "--max-log-files", "-2"]
+        )
+
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "--max-log-files must be non-negative" in err
+
+
 def test_cli_emits_structured_staleness_log(
     sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -294,6 +305,89 @@ def test_cli_writes_summary_payload(
     )
 
     assert exit_code == 1
+    summary_path = log_dir / "font-staleness-summary.json"
+    assert summary_path.is_file()
+
+
+def test_cli_prunes_old_logs_when_max_log_files_set(
+    sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+
+    moments = [
+        datetime(2025, 10, 23, 6, 5, 33, 0, tzinfo=timezone.utc),
+        datetime(2025, 10, 23, 6, 6, 33, 0, tzinfo=timezone.utc),
+        datetime(2025, 10, 23, 6, 7, 33, 0, tzinfo=timezone.utc),
+    ]
+
+    class _SequencedDateTime(datetime):
+        _index = -1
+
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            cls._index = min(cls._index + 1, len(moments) - 1)
+            moment = moments[cls._index]
+            if tz is not None:
+                return moment.astimezone(tz)
+            return moment
+
+    monkeypatch.setattr(font_health_summary, "datetime", _SequencedDateTime)
+
+    for _ in range(3):
+        font_health_summary.main(
+            [
+                str(sample_payload),
+                "--max-stale-hours",
+                "0.0002",
+                "--max-log-files",
+                "2",
+            ]
+        )
+
+    event_logs = sorted(
+        path
+        for path in log_dir.glob("font-staleness-*.json")
+        if "-summary" not in path.name
+    )
+    assert len(event_logs) == 2
+    assert all(path.name.endswith("Z.json") for path in event_logs)
+    assert event_logs[0].name.endswith("060533Z.json") is False
+
+    summary_path = log_dir / "font-staleness-summary.json"
+    assert summary_path.is_file()
+
+
+def test_cli_max_log_files_zero_removes_all_event_logs(
+    sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log_dir = tmp_path / "font-logs"
+    monkeypatch.setenv("FONT_STALENESS_LOG_DIR", str(log_dir))
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2025, 10, 23, 6, 5, 33, 0, tzinfo=tz)
+
+    monkeypatch.setattr(font_health_summary, "datetime", _FixedDateTime)
+
+    font_health_summary.main(
+        [
+            str(sample_payload),
+            "--max-stale-hours",
+            "0.0002",
+            "--max-log-files",
+            "0",
+        ]
+    )
+
+    event_logs = list(
+        path
+        for path in log_dir.glob("font-staleness-*.json")
+        if "-summary" not in path.name
+    )
+    assert event_logs == []
+
     summary_path = log_dir / "font-staleness-summary.json"
     assert summary_path.is_file()
     summary = json.loads(summary_path.read_text())

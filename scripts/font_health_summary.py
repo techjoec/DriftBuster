@@ -77,6 +77,15 @@ def build_parser() -> argparse.ArgumentParser:
             "Defaults to artifacts/logs/font-staleness/."
         ),
     )
+    parser.add_argument(
+        "--max-log-files",
+        type=int,
+        default=None,
+        help=(
+            "Maximum number of staleness event logs to retain. "
+            "Older files are pruned after writing a new event."
+        ),
+    )
     return parser
 
 
@@ -195,6 +204,29 @@ def _build_summary_payload(
     }
 
 
+def _prune_old_logs(log_dir: Path, *, keep: int) -> None:
+    if keep <= 0:
+        for path in log_dir.glob("font-staleness-*.json"):
+            if "-summary" not in path.name:
+                path.unlink(missing_ok=True)
+        return
+
+    candidates = sorted(
+        (
+            path
+            for path in log_dir.glob("font-staleness-*.json")
+            if "-summary" not in path.name
+        ),
+        key=lambda path: path.name,
+    )
+    excess = len(candidates) - keep
+    if excess <= 0:
+        return
+
+    for path in candidates[:excess]:
+        path.unlink(missing_ok=True)
+
+
 def _write_staleness_event(
     evaluation: ReportEvaluation,
     *,
@@ -206,6 +238,7 @@ def _write_staleness_event(
     require_last_pass: bool,
     log_dir: Path,
     summary_path: Path | None,
+    max_log_files: int | None,
 ) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -231,6 +264,9 @@ def _write_staleness_event(
     timestamp = _coerce_utc(evaluation_time).strftime("%Y%m%dT%H%M%SZ")
     destination = log_dir / f"font-staleness-{timestamp}.json"
     destination.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+    if max_log_files is not None and max_log_files >= 0:
+        _prune_old_logs(log_dir, keep=max_log_files)
 
     if summary_path is not None:
         summary_payload = _build_summary_payload(
@@ -281,6 +317,7 @@ def _emit_staleness_event(
             require_last_pass=not args.allow_last_failure,
             log_dir=log_dir,
             summary_path=summary_path,
+            max_log_files=args.max_log_files,
         )
     except Exception as exc:  # pragma: no cover - defensive guard
         print(f"warning: failed to write staleness log: {exc}", file=sys.stderr)
@@ -297,6 +334,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.max_stale_hours is not None and args.max_stale_hours < 0:
         parser.error("--max-stale-hours must be non-negative")
+    if args.max_log_files is not None and args.max_log_files < 0:
+        parser.error("--max-log-files must be non-negative")
 
     max_age = (
         timedelta(hours=args.max_stale_hours)

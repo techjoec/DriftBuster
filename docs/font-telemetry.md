@@ -51,6 +51,11 @@ and includes:
 - Scenario evaluations with status, issues, and computed `lastUpdatedAgeSeconds`.
 - Missing scenario names and whether the run surfaced any issues.
 
+Use `--max-log-files <count>` to prune older event files after each run when local storage or
+artifact retention needs to stay within a fixed window. Passing `0` deletes the event log that was
+just written (the aggregated summary remains) so that operators can rely solely on the summary
+snapshot when necessary.
+
 Include the latest JSON log when filing investigations so reviewers can replay configuration and
 scenario metadata without rerunning telemetry.
 
