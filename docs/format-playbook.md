@@ -126,6 +126,10 @@ format-specific exception.
   placeholders (hostnames, cert hashes, secrets). Route those fields through
   hunt mode (`docs/hunt-mode.md`) so reviewers can approve or reject expected
   churn explicitly.
+- When reporting needs to link hunt excerpts with reviewer sign-off, feed the
+  hunt payload into `collect_token_candidates` alongside a
+  `TokenApprovalStore`. The helper deduplicates hits, annotates approvals, and
+  keeps the JSON schema aligned with `notes/checklists/token-approval.md`.
 
 <a id="structured-text"></a>
 ### Structured-text whitespace policy

@@ -20,6 +20,13 @@ from .core import (
 )
 from .formats import FormatPlugin, get_plugins, register, registry_summary
 from .hunt import HuntHit, HuntRule, default_rules, hunt_path
+from .token_approvals import (
+    TokenApproval,
+    TokenApprovalStore,
+    TokenCandidate,
+    TokenCandidateSet,
+    collect_token_candidates,
+)
 from . import offline_runner
 __all__ = [
     "AppliedProfileConfig",
@@ -42,4 +49,9 @@ __all__ = [
     "scan_file",
     "scan_path",
     "offline_runner",
+    "TokenApproval",
+    "TokenApprovalStore",
+    "TokenCandidate",
+    "TokenCandidateSet",
+    "collect_token_candidates",
 ]

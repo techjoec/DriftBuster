@@ -38,3 +38,28 @@
 - [ ] Notify the profile maintainer if metadata needs an additional field.
 - [ ] Record any unresolved tokens or questions for user review in
       `notes/status/hold-log.md`.
+
+## JSON approval log schema
+
+Token approvals now live alongside this checklist in a machine-readable JSON
+log managed by `TokenApprovalStore`. Each entry is a dictionary containing:
+
+- `token_name` (string): Rule token identifier (`server_name`, `feature_flag`).
+- `placeholder` (string): Placeholder written into config templates
+  (`{{ server_name }}`).
+- `excerpt_hash` (string, optional): SHA256 of the excerpt or matched value.
+- `source_path` (string, optional): Relative path pointing to the reviewed
+  artifact.
+- `catalog_variant` (string, optional): Configuration variant label used when
+  generating token catalogues.
+- `sample_hash` (string, optional): Hash of a sanitised hunt payload when the
+  source was JSON.
+- `approved_by` (string, optional): Reviewer identifier.
+- `approved_at_utc` (string, optional): ISO8601 UTC timestamp of approval.
+- `expires_at_utc` (string, optional): Renewal or re-review deadline.
+- `secure_location` (string, optional): Reference to the vault or secret store
+  holding the raw value.
+- `notes` (string, optional): Free-form audit context.
+
+Persist approvals with `TokenApprovalStore.dump(path)` and load them back with
+`TokenApprovalStore.load(path)` when updating this checklist.

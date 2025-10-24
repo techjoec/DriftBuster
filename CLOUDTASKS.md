@@ -717,11 +717,14 @@ highlight where to consume the artifact.
   - [x] 11.4.1 Implement `execute_diff_plan` in `src/driftbuster/core/diffing.py`.
   - [x] 11.4.2 Update checklists `notes/snippets/xml-config-diffs.md` and `notes/checklists/reporting-tests.md`.
   - [x] 11.4.3 Run manual diff plan rehearsal against fixtures and log outputs in `notes/snippets/xml-config-diffs.md`.
-- [ ] 11.5 Token replacement API.
-  - [ ] 11.5.1 Implement `collect_token_candidates` pipeline with approvals store.
-  - [ ] 11.5.2 Add storage for approval log (JSON/SQLite decision) and tests.
-  - [ ] 11.5.3 Document API usage in `docs/hunt-mode.md` and updated reporting notes.
-  - [ ] 11.5.4 Publish approval-log storage schema in `notes/checklists/token-approval.md`.
+- [x] 11.5 Token replacement API.
+  - [x] 11.5.1 Implement `collect_token_candidates` pipeline with approvals store.
+  - [x] 11.5.2 Add storage for approval log (JSON/SQLite decision) and tests.
+  - [x] 11.5.3 Document API usage in `docs/hunt-mode.md` and updated reporting notes.
+  - [x] 11.5.4 Publish approval-log storage schema in `notes/checklists/token-approval.md`.
+  - Notes (2025-11-10): Added `token_approvals` module with `TokenApprovalStore` JSON
+    persistence, regression tests for store + candidate grouping, and docs/checklist
+    updates covering the approval schema plus collection workflow.
 - [ ] 11.6 Capture pipeline.
   - [ ] 11.6.1 Document capture workflow in `scripts/capture.py` and ensure output layout matches spec.
   - [ ] 11.6.2 Maintain manifest metadata requirements (environment, operator, reasons).

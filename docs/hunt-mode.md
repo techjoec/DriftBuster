@@ -80,6 +80,37 @@ transforms = build_plan_transforms(
 - Override `placeholder_template` to match your templating engine (e.g.,
   `<<token>>`, `%TOKEN%`).
 
+### Collecting token candidates for approval
+
+```python
+from pathlib import Path
+
+import json
+
+from driftbuster import collect_token_candidates, TokenApprovalStore
+
+hunts_payload = Path("hunt-results.json").read_text(encoding="utf-8")
+hunts = json.loads(hunts_payload)
+store = TokenApprovalStore.load(Path("token-approvals.json"))
+
+candidates = collect_token_candidates(hunts, approvals=store)
+
+for pending in candidates.pending:
+    print(pending.token_name, pending.placeholder, pending.relative_path)
+
+for approved in candidates.approved:
+    print("approved", approved.token_name, approved.approval.approved_by)
+```
+
+- `collect_token_candidates` understands the JSON dictionaries returned by
+  `hunt_path(..., return_json=True)` and aligns them with the approval store.
+- `TokenApprovalStore` persists JSON payloads mirroring the schema documented
+  in `notes/checklists/token-approval.md`. Use `TokenApprovalStore.dump` to
+  write updates back to disk once reviewers capture new approvals.
+- Approved entries surface `TokenApproval` metadata directly on the candidate
+  so tooling can record reviewer IDs, timestamps, or secure storage locations
+  alongside the pending queue.
+
 ## Bridging hunts with profiles
 
 Use the profile CLI to line up hunt hits with the configuration expectations
