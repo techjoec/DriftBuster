@@ -141,6 +141,26 @@ format-specific exception.
   section of this playbook, the addition guide, and related tests under
   `tests/formats/` to keep policy, documentation, and behaviour aligned.
 
+### Shared reporting metadata contract
+
+- Emit detection metadata through :func:`driftbuster.core.types.summarise_metadata`
+  and feed the resulting payloads into
+  :func:`driftbuster.reporting._metadata.iter_detection_payloads`.
+- Every payload must include the keys `plugin`, `format`, `variant`,
+  `confidence`, `reasons`, and `metadata` (a JSON-safe mapping). Keep optional
+  metadata values JSON serialisable so downstream adapters can persist them
+  without schema juggling.
+- Adapters may provide `extra_metadata` (e.g., `scan_id`, `report_version`,
+  `source_path`) when calling ``iter_detection_payloads``. The helper merges the
+  run-level metadata into each detection map without mutating the original
+  detector output, so repeated iterations stay deterministic.
+- When detectors attach catalog context (severity, remediation, references),
+  avoid overriding those keys in `extra_metadata`. Downstream reporting expects
+  detector-provided values to win if conflicts occur.
+- When diff or HTML adapters mask values or add approval IDs, record those as
+  explicit keys inside the nested `metadata` map (`redaction.applied=True`,
+  `token_approval_id=...`) instead of mutating the top-level structure.
+
 ## 3. Documentation Requirements
 
 - Update `docs/detection-types.md` with:

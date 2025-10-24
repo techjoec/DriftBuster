@@ -138,6 +138,22 @@ results = hunt_path(
 5. When capturing snapshots/diffs, store hunt results alongside detection output
    so future comparisons can highlight changes without re-running the scans.
 
+### Reporting metadata bridge
+
+- Pair hunt output with detection matches before emitting reports. Build a
+  ``DetectionMatch`` per format run, then iterate through
+  :func:`driftbuster.reporting._metadata.iter_detection_payloads` to keep
+  reporting payloads uniform across JSON, HTML, and diff adapters.
+- Ensure every detection map exposes the canonical keys (`plugin`, `format`,
+  `variant`, `confidence`, `reasons`, `metadata`). Populate hunt-derived fields
+  inside the nested `metadata` map (for example, `hunts.approved_tokens` or
+  `hunts.pending_reviews`) so downstream tooling can merge them with detector
+  metadata without schema drift.
+- Use ``extra_metadata`` when invoking ``iter_detection_payloads`` to append
+  run-level context such as the hunt manifest hash, operator ID, or approval log
+  reference. The helper returns new dictionaries, keeping the cached hunt
+  payload intact for repeat renders and follow-up audits.
+
 ## Transformation Roadmap
 
 - Integrate hunt findings into future diff/patch adapters so drift reports can
