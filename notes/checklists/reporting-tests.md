@@ -5,16 +5,17 @@
 - **Diff helper verification:**
   - Use the curated "good" and "bad" config pair stored in the secure sample
     share.
-  - Log both the `DiffPlan` and `plan_to_kwargs` output via
-    `driftbuster.core.diffing`. Feed the resulting kwargs into
-    `build_unified_diff` manually so the blueprint stays in sync.
+  - Record the `DiffPlan` plus `plan_to_kwargs` output via
+    `driftbuster.core.diffing` and then call
+    `execute_diff_plan(..., summarise=True, versions=(...), baseline_name=..., comparison_name=...)`
+    so rehearsal scripts stay aligned with adapter outputs.
   - Note the canonicalisation rationale while reviewing output: text inputs
     strip BOM/unicode newline noise, XML prologs/doctype blocks are preserved,
     attributes are sorted, and whitespace-only nodes collapse before diffs are
     generated.
-  - Combine every generated `DiffResult` with
-    `driftbuster.reporting.diff.summarise_diff_results` and store the JSON
-    payload alongside the raw diff to confirm reviewers get the bundled view.
+  - Archive both `execution.result.diff` and the
+    `execution.summary` payload (via `diff_summary_to_payload`) to confirm the
+    bundled metadata surfaces the same masking totals as the raw diff.
   - Paste the unified diff output into this checklist and record whether
     placeholders replaced every tracked token.
 - **JSON lines export:**

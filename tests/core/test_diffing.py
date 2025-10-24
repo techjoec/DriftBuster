@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from driftbuster.core.diffing import build_diff_plan, execute_diff_plan, plan_to_kwargs
+from driftbuster.core.diffing import (
+    DiffPlanExecution,
+    build_diff_plan,
+    execute_diff_plan,
+    plan_to_kwargs,
+)
 
 
 def test_build_diff_plan_returns_expected_values() -> None:
@@ -65,3 +70,29 @@ def test_execute_diff_plan_invokes_reporting_layer() -> None:
     assert "--- old" in result.diff
     assert "+++ new" in result.diff
     assert "***=1" in result.diff
+
+
+def test_execute_diff_plan_with_summary_returns_execution() -> None:
+    plan = build_diff_plan(
+        "<root>1</root>\n",
+        "<root>2</root>\n",
+        content_type="xml",
+        label="xml-config",
+        context_lines=2,
+    )
+
+    execution = execute_diff_plan(
+        plan,
+        summarise=True,
+        versions=("baseline:web", "release:web"),
+        baseline_name="Baseline config",
+        comparison_name="Release config",
+    )
+
+    assert isinstance(execution, DiffPlanExecution)
+    assert execution.plan == plan
+    assert execution.result.content_type == "xml"
+    assert execution.summary.versions == ("baseline:web", "release:web")
+    comparison = execution.summary.comparisons[0]
+    assert comparison.metadata.baseline_name == "Baseline config"
+    assert comparison.metadata.comparison_name == "Release config"

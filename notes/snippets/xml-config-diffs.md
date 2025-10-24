@@ -119,7 +119,10 @@ Last refresh: 2025-10-13 (structured-config metadata verified via Detector scan 
 
 ```bash
 PYTHONPATH=src python - <<'PY'
-from driftbuster.core.diffing import build_diff_plan, plan_to_kwargs
+import json
+
+from driftbuster.core.diffing import build_diff_plan, execute_diff_plan, plan_to_kwargs
+from driftbuster.reporting.diff import diff_summary_to_payload
 
 before = open("fixtures/config/web.config", "r", encoding="utf-8").read()
 after = open("fixtures/config/web.Release.config", "r", encoding="utf-8").read()
@@ -135,5 +138,25 @@ plan = build_diff_plan(
 
 print(plan)
 print(plan_to_kwargs(plan))
+
+execution = execute_diff_plan(
+    plan,
+    summarise=True,
+    versions=("fixtures:web.config", "fixtures:web.Release.config"),
+    baseline_name="fixtures/web.config",
+    comparison_name="fixtures/web.Release.config",
+)
+
+print(json.dumps(diff_summary_to_payload(execution.summary), indent=2))
+print("Unified diff sample:")
+print("\n".join(execution.result.diff.splitlines()[:12]))
 PY
 ```
+
+Manual rehearsal log:
+
+- 2025-10-24T21:52:15Z (UTC): confirmed `execute_diff_plan` returns a summary
+  matching the rehearsal diff by running the above snippet. Stored the full diff
+  output under secure evidence share and validated that the summary redaction
+  counts were empty (fixture already redacted) while canonicalisation preserved
+  XML namespace additions from the transform file.

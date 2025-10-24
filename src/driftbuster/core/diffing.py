@@ -1,30 +1,24 @@
-"""Planning helpers for future diff/patch generation.
-
-The core module does not execute diffs yet, but downstream tooling already
-expects helpers that mirror the future reporting contract. This module
-documents that surface so the eventual implementation can slot in without
-changing call sites while HOLD remains active.
+"""Diff plan helpers bridging the reporting diff builder.
 
 Helpers
 =======
 
-- ``build_diff_plan``: validate inputs and capture kwargs for future diff
-  execution via ``driftbuster.reporting.diff.build_unified_diff``.
-- ``plan_to_kwargs``: convert a :class:`DiffPlan` into a dictionary.
-  Manual scripts can hand the mapping to the reporting layer during
-  validation runs.
-
-Importing ``driftbuster.reporting`` is intentionally avoided so the core stays
-decoupled from reporting dependencies until the diff runner lands.
+- ``build_diff_plan``: validate inputs and capture kwargs for diff execution
+  via ``driftbuster.reporting.diff.build_unified_diff``.
+- ``plan_to_kwargs``: convert a :class:`DiffPlan` into a dictionary so manual
+  scripts can forward kwargs unchanged during rehearsal runs.
+- ``execute_diff_plan``: execute the plan, optionally producing an execution
+  summary compatible with ``driftbuster.reporting.diff.summarise_diff_result``.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Mapping, MutableMapping, Optional, Sequence
+from typing import Literal, overload
 
 if TYPE_CHECKING:  # pragma: no cover
-    from driftbuster.reporting.diff import DiffResult
+    from driftbuster.reporting.diff import DiffResult, DiffResultSummary
 
 
 @dataclass(frozen=True)
@@ -95,12 +89,67 @@ def plan_to_kwargs(plan: DiffPlan) -> Mapping[str, object]:
     return payload
 
 
-def execute_diff_plan(plan: DiffPlan) -> "DiffResult":
-    """Execute ``plan`` via the reporting diff builder."""
+@dataclass(frozen=True)
+class DiffPlanExecution:
+    """Executed diff with accompanying summary metadata."""
 
-    from driftbuster.reporting.diff import build_unified_diff
+    plan: DiffPlan
+    result: "DiffResult"
+    summary: "DiffResultSummary"
 
-    return build_unified_diff(**plan_to_kwargs(plan))
+
+@overload
+def execute_diff_plan(
+    plan: DiffPlan,
+    *,
+    summarise: Literal[False] = False,
+    versions: Optional[Sequence[str]] = ...,
+    baseline_name: Optional[str] = ...,
+    comparison_name: Optional[str] = ...,
+) -> "DiffResult":
+    ...
+
+
+@overload
+def execute_diff_plan(
+    plan: DiffPlan,
+    *,
+    summarise: Literal[True],
+    versions: Optional[Sequence[str]] = ...,
+    baseline_name: Optional[str] = ...,
+    comparison_name: Optional[str] = ...,
+) -> DiffPlanExecution:
+    ...
+
+
+def execute_diff_plan(
+    plan: DiffPlan,
+    *,
+    summarise: bool = False,
+    versions: Optional[Sequence[str]] = None,
+    baseline_name: Optional[str] = None,
+    comparison_name: Optional[str] = None,
+):
+    """Execute ``plan`` via the reporting diff builder.
+
+    When ``summarise`` is ``True`` a :class:`DiffPlanExecution` containing the
+    original plan, diff result, and summary metadata is returned. The summary
+    parameters mirror ``driftbuster.reporting.diff.summarise_diff_result`` so
+    rehearsal scripts stay aligned with adapter outputs.
+    """
+
+    from driftbuster.reporting.diff import build_unified_diff, summarise_diff_result
+
+    result = build_unified_diff(**plan_to_kwargs(plan))
+    if not summarise:
+        return result
+    summary = summarise_diff_result(
+        result,
+        versions=tuple(versions) if versions is not None else None,
+        baseline_name=baseline_name,
+        comparison_name=comparison_name,
+    )
+    return DiffPlanExecution(plan=plan, result=result, summary=summary)
 
 
 __all__ = [
@@ -108,4 +157,5 @@ __all__ = [
     "build_diff_plan",
     "plan_to_kwargs",
     "execute_diff_plan",
+    "DiffPlanExecution",
 ]
