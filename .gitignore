@@ -22,6 +22,8 @@ artifacts/*
 !artifacts/release/**
 !artifacts/manual-runs/
 !artifacts/manual-runs/**
+!artifacts/hold-exit/
+!artifacts/hold-exit/**
 !artifacts/gui-packaging/
 !artifacts/gui-packaging/**
 !artifacts/gui-accessibility/

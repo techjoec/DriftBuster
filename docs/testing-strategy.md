@@ -205,6 +205,7 @@ grounded in reproducible fixtures.
 - Cross-reference the decision summary in `notes/status/hold-log.md#decision-ready-summary` before expanding reporting coverage.
 - Confirm the sample inventory rows cited here still follow the vendor-neutral guardrails in `docs/legal-safeguards.md#hold-exit-briefing`.
 - Keep running the manual compile/lint block from `notes/checklists/core-scan.md`; log the results next to the HOLD exit review entry once approvals land.
+- 2025-10-24 validation: Confirmed `scripts/capture.py` defaults (`root='.'`, glob `**/*`, output dir `captures`, placeholder `[REDACTED]`) match this readiness packet; update this note if defaults change.
 - Document any capture manifest tweaks alongside the roadmap entry so `scripts/capture.py` defaults stay aligned with the readiness packet.
 
 ## Metadata Validation Routine

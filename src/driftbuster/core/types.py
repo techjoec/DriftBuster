@@ -40,8 +40,6 @@ class MetadataValidationError(ValueError):
     """Raised when detection metadata fails validation checks."""
 
 
-
-
 def _ensure_mapping(metadata: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
     if metadata is None:
         return {}

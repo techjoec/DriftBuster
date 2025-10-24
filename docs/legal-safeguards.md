@@ -122,3 +122,4 @@ These guardrails cover every feature, note, and capture helper.
 - Check `notes/status/hold-log.md#decision-ready-summary` before resuming reporting work.
 - Confirm the sample list in `docs/testing-strategy.md#hold-exit-checklist-hooks` sticks to the rules above and stays format-universal.
 - Record HOLD clearance in the status log when the guardrails still hold true.
+- 2025-10-24 audit: Reconfirmed sample names, placeholders, and remediation copy stay neutral; no vendor identifiers detected.

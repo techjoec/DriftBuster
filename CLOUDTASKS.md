@@ -651,14 +651,16 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** `notes/status/hold-log.md` updated to “decision ready”; legal compliance confirmed; manual workflows rehearsed.
 
 **REQUIRED RELATED WORK:**
-- [ ] 10.1 HOLD verification.
-  - [ ] 10.1.1 Review `notes/status/hold-log.md#decision-ready-summary` and document resolution steps in this queue.
-  - [ ] 10.1.2 Confirm neutral language guardrails via `docs/legal-safeguards.md#hold-exit-briefing`.
-  - [ ] 10.1.3 Update `notes/status/hold-log.md` entry with timestamped confirmation.
-- [ ] 10.2 Workflow alignment.
-  - [ ] 10.2.1 Rehearse manual compile/lint commands in `notes/checklists/core-scan.md`.
-  - [ ] 10.2.2 Validate `scripts/capture.py` defaults match guidance in `docs/testing-strategy.md#hold-exit-checklist-hooks`.
-  - [ ] 10.2.3 Capture command transcripts in `artifacts/hold-exit/compile-lint.txt`.
+- [x] 10.1 HOLD verification.
+  - [x] 10.1.1 Review `notes/status/hold-log.md#decision-ready-summary` and document resolution steps in this queue.
+  - [x] 10.1.2 Confirm neutral language guardrails via `docs/legal-safeguards.md#hold-exit-briefing`.
+  - [x] 10.1.3 Update `notes/status/hold-log.md` entry with timestamped confirmation.
+  - Notes (2025-10-24): Logged decision-ready replay in `notes/status/hold-log.md` with UTC timestamps and cross-linked neutral language audit + capture defaults review.
+- [x] 10.2 Workflow alignment.
+  - [x] 10.2.1 Rehearse manual compile/lint commands in `notes/checklists/core-scan.md`.
+  - [x] 10.2.2 Validate `scripts/capture.py` defaults match guidance in `docs/testing-strategy.md#hold-exit-checklist-hooks`.
+  - [x] 10.2.3 Capture command transcripts in `artifacts/hold-exit/compile-lint.txt`.
+  - Notes (2025-10-24): Stored compile/lint transcript under `artifacts/hold-exit/compile-lint.txt`, documented pycodestyle outcomes (line-length exceptions) in `notes/checklists/core-scan.md`, and annotated capture default verification in `docs/testing-strategy.md`.
 - [ ] 10.3 Evidence capture.
   - [ ] 10.3.1 Store verification notes in `notes/status/gui-research.md` and append summary to this queue once cleared.
   - [ ] 10.3.2 Ensure compliance approvals recorded in `docs/legal-safeguards.md`.

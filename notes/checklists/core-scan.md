@@ -66,6 +66,10 @@ PY
 
 ## Manual lint + style results
 
+- [x] `python -m compileall src` (2025-10-24) — succeeded; same Regex SyntaxWarnings as baseline; transcript stored at `artifacts/hold-exit/compile-lint.txt`.
+- [x] `python -m pycodestyle src/driftbuster/core` (2025-10-24) — passes after trimming excess blank lines in `core/types.py` (E303 addressed).
+- [x] `python -m pycodestyle src/driftbuster/formats/registry_live` (2025-10-24) — reports existing W391/E501 items (line-length) awaiting backlog cleanup.
+- [x] `python -m pycodestyle src/driftbuster/registry` (2025-10-24) — reports existing E501 line-length on legacy helper; documented for hold-exit replay.
 - [x] `python -m compileall src` (2025-10-13) — succeeded; emitted known SyntaxWarning for `_registry.py` string escape.
 - [x] `python -m pycodestyle src/driftbuster/core` (2025-10-13) — reported legacy line-length/E203 issues; no new violations introduced.
 - [x] `python -m pycodestyle src/driftbuster/formats/registry.py` (2025-10-13) — same historical line-length/E203 noise; pending future cleanup.
