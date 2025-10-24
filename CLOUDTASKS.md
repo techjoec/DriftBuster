@@ -607,7 +607,7 @@ highlight where to consume the artifact.
   - [ ] 8.5.2 Add fixtures under `fixtures/` with legal review tracked.
   - [ ] 8.5.3 Track binary diff adapters in `src/driftbuster/reporting/diff.py`.
   - [ ] 8.5.4 Document legal sign-off steps in `docs/legal-safeguards.md`.
-  - [ ] 8.5.5 Produce binary diff adapter design doc in `notes/design/binary-diff.md`.
+- [x] 8.5.5 Produce binary diff adapter design doc in `notes/design/binary-diff.md`.
   - [ ] 8.5.6 Capture anonymised binary fixture generation scripts under `scripts/fixtures/binary/`.
 
 ## A9. Metadata Enhancements [deps=A7]
