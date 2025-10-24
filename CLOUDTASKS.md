@@ -626,11 +626,11 @@ highlight where to consume the artifact.
   - [x] 9.1.2 Add coverage in `tests/catalog/test_metadata.py` (new).
   - [x] 9.1.3 Document hints in `docs/detection-types.md`.
   - [x] 9.1.4 Record legal review outcome for severity text in `docs/legal-safeguards.md`.
-- [ ] 9.2 Variant metadata expansion.
-  - [ ] 9.2.1 Surface remediation guidance once hunt tokens stabilize.
-  - [ ] 9.2.2 Update `src/driftbuster/reporting/summary.py` to include new keys.
-  - [ ] 9.2.3 Add tests `tests/reporting/test_summary.py`.
-  - [ ] 9.2.4 Update `docs/format-addition-guide.md` with metadata extension workflow.
+- [x] 9.2 Variant metadata expansion.
+  - [x] 9.2.1 Surface remediation guidance once hunt tokens stabilize.
+  - [x] 9.2.2 Update `src/driftbuster/reporting/summary.py` to include new keys.
+  - [x] 9.2.3 Add tests `tests/reporting/test_summary.py`.
+  - [x] 9.2.4 Update `docs/format-addition-guide.md` with metadata extension workflow.
 - [x] 9.3 Schema/reference links.
   - [x] 9.3.1 Attach reference URLs in metadata payload.
   - [x] 9.3.2 Update docs `docs/format-support.md` with link inventory.

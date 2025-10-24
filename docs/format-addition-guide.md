@@ -73,7 +73,11 @@ registration happens on module import alongside the built-ins.
    returning a positive match.
 4. **Metadata** – Populate `DetectionMatch.metadata` with catalog-aligned keys
    (e.g., `variant`, `top_level_type`). Reuse existing key names when extending a
-   family to keep downstream tooling stable.
+   family to keep downstream tooling stable. When you introduce new
+   severity/remediation hints, update `driftbuster.reporting.summary` so
+   `summarise_detections()` surfaces the additional fields and extend
+   `tests/reporting/test_summary.py` accordingly. This keeps CLI/HTML adapters in
+   sync with catalog metadata.
 5. **Confidence** – Start with a conservative baseline (≈0.5) and add small
    increments per independent signal. Clamp the final value at `0.95`.
 6. **Error handling** – Return `None` on uncertainty. Never raise for expected

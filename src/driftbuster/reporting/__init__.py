@@ -21,6 +21,7 @@ from .diff import (
     summarise_diff_results,
 )
 from .snapshot import build_snapshot_manifest, write_snapshot
+from .summary import summarise_detections
 
 __all__ = [
     "RedactionFilter",
@@ -41,4 +42,5 @@ __all__ = [
     "render_unified_diff",
     "build_snapshot_manifest",
     "write_snapshot",
+    "summarise_detections",
 ]
