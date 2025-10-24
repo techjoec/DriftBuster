@@ -375,10 +375,10 @@ highlight where to consume the artifact.
   - [x] 5.2.1 Update converters in `gui/DriftBuster.Gui/Converters` to use Avalonia 11.2 resource lookups.
   - [x] 5.2.2 Expand tests in `gui/DriftBuster.Gui.Tests/Converters`.
   - [x] 5.2.3 Document toast resource lookup changes in `docs/windows-gui-guide.md#notifications`.
-- [ ] 5.3 Build validation.
-  - [ ] 5.3.1 Rebuild GUI with Avalonia 11.2 and capture results in `notes/status/gui-research.md`.
+- [x] 5.3 Build validation.
+  - [x] 5.3.1 Rebuild GUI with Avalonia 11.2 and capture results in `notes/status/gui-research.md`.
   - [x] 5.3.2 Run headless UI tests ensuring toasts and sorting propagate.
-  - [ ] 5.3.3 Store Release build artefacts and hash outputs in `artifacts/builds/avalonia-11-2/`.
+  - [x] 5.3.3 Store Release build artefacts and hash outputs in `artifacts/builds/avalonia-11-2/`.
 - [x] 5.4 Documentation.
   - [x] 5.4.1 Update `docs/windows-gui-guide.md` (or appendix) with migration notes.
   - [x] 5.4.2 Reflect release-blocker resolution in `CHANGELOG.md`.

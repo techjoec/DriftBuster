@@ -1,0 +1,22 @@
+{
+  "generated_at_utc": "2025-10-24T14:50:52Z",
+  "publish_command": "dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true",
+  "output_directory": "gui/DriftBuster.Gui/bin/Release/net8.0/win-x64/publish",
+  "files": [
+    {
+      "name": "DriftBuster.Backend.pdb",
+      "size": 36508,
+      "sha256": "63a8863c6d11bed1be4768e8d961378150978c71f377b74352b0170d58c25cf1"
+    },
+    {
+      "name": "DriftBuster.Gui.exe",
+      "size": 28081590,
+      "sha256": "d0928538facbb3e6c31bdf925793811a1262aa2c920e34e7c3284f58e5e0dc8a"
+    },
+    {
+      "name": "DriftBuster.Gui.pdb",
+      "size": 133984,
+      "sha256": "4dd10c2f9020ced862e17b0aca0587674e4ff5a63d83912da35da28454d732dc"
+    }
+  ]
+}

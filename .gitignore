@@ -20,6 +20,8 @@ artifacts/*
 !artifacts/gui-packaging/**
 !artifacts/gui-accessibility/
 !artifacts/gui-accessibility/**
+!artifacts/builds/
+!artifacts/builds/**
 !artifacts/perf/
 !artifacts/perf/**
 Releases/

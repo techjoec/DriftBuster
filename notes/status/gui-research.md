@@ -143,6 +143,12 @@
 - Manual multi-server rehearsal: executed `PYTHONPATH=src scripts/smoke_multi_server_storage.sh` to validate cold/hot cache behaviour and note the session root for theme evidence capture. Extracted `Palette.DarkPlus`/`Palette.LightPlus` accent and background tokens via a quick XAML probe to document the Dark+/Light+ toggle deltas alongside the run log.
 - Recorded tool/version outcomes plus the contrast ratios in `notes/checklists/accessibility-report.md` so future audits can diff against this checkpoint.
 
+### Avalonia 11.2 Release rebuild (A5 · 5.3)
+
+- Re-ran the Release publish targeting win-x64 via `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true`, confirming the Avalonia 11.2 upgrade compiles cleanly aside from the known drag/drop deprecation warnings that remain tracked for follow-up.
+- Captured the publish transcript and SHA-256 checksum for the single-file output under `artifacts/builds/avalonia-11-2/` (`publish-release.log`, `publish-release.sha256`) so operators can verify hashes before sideloading builds.
+- Stored a machine-readable manifest (`publish-release-manifest.json`) enumerating published files with sizes + hashes, keeping the evidence aligned with the retention expectations for the A5 build validation gate.
+
 ### Offline SQL snapshot validation (A1d · 16.4)
 
 - Seeded a minimal `accounts` SQLite database and executed `scripts.capture.run_sql_export` to validate the SQL snapshot export path with deterministic masking (`accounts.secret`) and hashing (`accounts.email`).
