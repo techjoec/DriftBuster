@@ -42,7 +42,21 @@
         </StackPanel>
         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="16,0,0,0">
           <TextBlock Text="Theme" Classes="subtitle" VerticalAlignment="Center" />
-          <ToggleSwitch IsCheckedChanged="OnThemeToggled" />
+          <ComboBox x:Name="ThemeSelector"
+                    Width="150"
+                    ItemsSource="{Binding ThemeOptions}"
+                    SelectedItem="{Binding SelectedTheme, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding DisplayName}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+            <ComboBox.SelectionBoxItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding DisplayName}" />
+              </DataTemplate>
+            </ComboBox.SelectionBoxItemTemplate>
+          </ComboBox>
         </StackPanel>
       </Grid>
     </Border>

@@ -19,17 +19,24 @@ This guide explains the capabilities, layout, and operational details of the Ava
 1. Ensure prerequisites are installed (`dotnet --list-sdks`, `python --version`).
 2. Restore + build: `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` then `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-4. The “DrB DriftBuster” window opens with Diff view selected by default. The compact header presents the DrB badge, navigation summary, a live backend health dot with **Check core**, and a theme toggle (Dark/Light). A pillbox banner beneath the header shows the current view context and shortcuts.
+4. The “DrB DriftBuster” window opens with Diff view selected by default. The compact header presents the DrB badge, navigation summary, a live backend health dot with **Check core**, and a **Theme** selector (Dark+/Light+). A pillbox banner beneath the header shows the current view context and shortcuts.
 5. Demo data is bundled with the app under a `Samples/` directory in the output folder.
    See `docs/DEMO.md` for a guided walkthrough using these files.
 6. Registry scan results collected by the offline runner (JSON under `data/<alias>/registry_scan.json`)
    are displayed alongside file-based findings when present.
 
 ## 4. Layout Walkthrough
-- **Header strip:** DrB badge + title stack, navigation toggle group (Diff / Hunt / Profiles / Multi-server), backend health indicator with **Check core**, theme toggle, and a **Ping core** shortcut. Status messages from the active view flow into the headline banner so you can see scan progress even while switching tabs. Contextual toast notifications appear in the top-right overlay; each toast exposes copy actions for quick sharing of error details.
+- **Header strip:** DrB badge + title stack, navigation toggle group (Diff / Hunt / Profiles / Multi-server), backend health indicator with **Check core**, a **Theme** dropdown (Dark+/Light+), and a **Ping core** shortcut. Status messages from the active view flow into the headline banner so you can see scan progress even while switching tabs. Contextual toast notifications appear in the top-right overlay; each toast exposes copy actions for quick sharing of error details.
 - **Diff view:** Build diff plans from multiple snapshots. Primary action uses accent fill; secondary actions use outline style. Includes validation, plan/metadata cards, raw JSON expander, and copy control.
 - **Hunt view:** Targets directories/files, runs the hunt pipeline, and displays results as cards with rule metadata, counts, and status messaging.
 - **Multi-server view:** Configure up to six hosts, validate roots, and orchestrate runs. The refreshed layout moves host management, execution controls, and the activity audit feed into balanced columns, so you can compare hosts without scrolling. Toasts surface scan status (success, attention, failure) and each timeline card exposes copy shortcuts for rapid sharing.
+
+## Themes
+
+- **Palette catalog:** `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` now exposes `Palette.DarkPlus` and `Palette.LightPlus` resource dictionaries. Each dictionary defines the `Color.*` and `Brush.*` tokens consumed throughout the GUI so palette updates remain isolated to a single file.
+- **Migration defaults:** Legacy callers that rely on `Color.Accent`, `Brush.Surface`, and related keys continue to resolve without change. The base resources still point at the Dark+ palette until the selector applies a new option, preventing regressions for cached control templates and custom styles.
+- **Runtime selection:** `MainWindowViewModel` binds the header dropdown to these palette entries. Selecting an option updates `Application.Current.RequestedThemeVariant` and rewrites the shared color/brush tokens so view refreshes pick up the new palette immediately.
+- **Extending palettes:** To add additional themes, clone the structure used by `Palette.DarkPlus`, register a new `ThemeOption` in `ApplicationThemeRuntime`, and update the documentation matrix above. Keep the `Theme.DefaultPaletteId` resource in sync with the intended startup palette so migrations stay deterministic.
 
 ## 5. Diff Planner Details
 ### Inputs & Validation

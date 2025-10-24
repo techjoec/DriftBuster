@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Avalonia;
@@ -29,6 +30,7 @@ namespace DriftBuster.Gui.ViewModels
         private readonly Func<IDriftbusterService, object> _profilesViewFactory;
         private readonly Func<IDriftbusterService, IToastService, PerformanceProfile, object> _serverSelectionFactory;
         private readonly PerformanceProfile _performanceProfile;
+        private readonly IThemeRuntime _themeRuntime;
 
         [ObservableProperty]
         private object? _currentView;
@@ -51,6 +53,11 @@ namespace DriftBuster.Gui.ViewModels
         [ObservableProperty]
         private string _backendStatusText = "Checking…";
 
+        public IReadOnlyList<ThemeOption> ThemeOptions { get; }
+
+        [ObservableProperty]
+        private ThemeOption? _selectedTheme;
+
         public MainWindowViewModel()
             : this(new DriftbusterService(), new ToastService())
         {
@@ -63,7 +70,8 @@ namespace DriftBuster.Gui.ViewModels
             Func<IDriftbusterService, string?, object>? huntViewFactory = null,
             Func<IDriftbusterService, object>? profilesViewFactory = null,
             Func<IDriftbusterService, IToastService, PerformanceProfile, object>? serverSelectionFactory = null,
-            PerformanceProfile? performanceProfile = null)
+            PerformanceProfile? performanceProfile = null,
+            IThemeRuntime? themeRuntime = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
@@ -72,6 +80,7 @@ namespace DriftBuster.Gui.ViewModels
             _profilesViewFactory = profilesViewFactory ?? CreateProfilesView;
             _serverSelectionFactory = serverSelectionFactory ?? CreateServerSelectionView;
             _performanceProfile = performanceProfile ?? PerformanceProfile.FromEnvironment();
+            _themeRuntime = themeRuntime ?? ApplicationThemeRuntime.Instance;
 
             PingCoreCommand = new AsyncRelayCommand(PingCoreAsync);
             CheckHealthCommand = new AsyncRelayCommand(CheckHealthAsync);
@@ -81,6 +90,12 @@ namespace DriftBuster.Gui.ViewModels
             ShowMultiServerCommand = new RelayCommand(ShowMultiServer);
             ShowDiff();
             _ = CheckHealthCommand.ExecuteAsync(null);
+
+            ThemeOptions = _themeRuntime.GetAvailableThemes();
+            if (ThemeOptions.Count > 0)
+            {
+                SelectedTheme = _themeRuntime.GetDefaultTheme(ThemeOptions);
+            }
         }
 
         public bool IsDiffSelected => ActiveView == MainViewSection.Diff;
@@ -207,6 +222,16 @@ namespace DriftBuster.Gui.ViewModels
             OnPropertyChanged(nameof(IsHuntSelected));
             OnPropertyChanged(nameof(IsProfilesSelected));
             OnPropertyChanged(nameof(IsMultiServerSelected));
+        }
+
+        partial void OnSelectedThemeChanged(ThemeOption? value)
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            _themeRuntime.ApplyTheme(value);
         }
     }
 }

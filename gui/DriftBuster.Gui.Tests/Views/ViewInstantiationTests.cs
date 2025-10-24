@@ -1,8 +1,7 @@
-using System.Reflection;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
-using Avalonia.Interactivity;
 using Avalonia.Styling;
 using DriftBuster.Gui.Tests.Ui;
 using DriftBuster.Gui.ViewModels;
@@ -26,7 +25,7 @@ public sealed class ViewInstantiationTests
     }
 
     [AvaloniaFact]
-    public void Theme_toggle_updates_requested_variant()
+    public void Theme_selector_updates_requested_variant()
     {
         HeadlessFixture.EnsureFonts();
 
@@ -35,15 +34,17 @@ public sealed class ViewInstantiationTests
             DataContext = new MainWindowViewModel(),
         };
 
-        var toggle = new ToggleSwitch { IsChecked = true };
-        var method = typeof(MainWindow).GetMethod("OnThemeToggled", BindingFlags.Instance | BindingFlags.NonPublic);
-        method.Should().NotBeNull();
+        var combo = window.FindControl<ComboBox>("ThemeSelector");
+        combo.Should().NotBeNull();
 
-        method!.Invoke(window, new object?[] { toggle, new RoutedEventArgs() });
+        var viewModel = (MainWindowViewModel)window.DataContext!;
+        var light = viewModel.ThemeOptions.First(option => option.Variant == ThemeVariant.Light);
+        var dark = viewModel.ThemeOptions.First(option => option.Variant == ThemeVariant.Dark);
+
+        combo!.SelectedItem = light;
         Application.Current!.RequestedThemeVariant.Should().Be(ThemeVariant.Light);
 
-        toggle.IsChecked = false;
-        method.Invoke(window, new object?[] { toggle, new RoutedEventArgs() });
+        combo.SelectedItem = dark;
         Application.Current.RequestedThemeVariant.Should().Be(ThemeVariant.Dark);
     }
 }

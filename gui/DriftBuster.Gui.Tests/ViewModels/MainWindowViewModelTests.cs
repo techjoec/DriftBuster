@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using Avalonia.Styling;
 
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 
+using FluentAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
@@ -98,5 +102,59 @@ public class MainWindowViewModelTests
         viewModel.IsBackendHealthy.Should().BeFalse();
         viewModel.BackendStatusText.Should().Contain("Core unavailable");
         toastService.ActiveToasts.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Theme_selector_surfaces_options_and_applies_runtime()
+    {
+        var options = new List<ThemeOption>
+        {
+            new("dark-plus", "Dark+", ThemeVariant.Dark, "Palette.DarkPlus"),
+            new("light-plus", "Light+", ThemeVariant.Light, "Palette.LightPlus"),
+        };
+
+        var runtime = new FakeThemeRuntime(options);
+        var service = new FakeDriftbusterService { PingResponse = "pong" };
+        var toastService = new ToastService(action => action());
+
+        var viewModel = new MainWindowViewModel(
+            service,
+            toastService,
+            _ => new object(),
+            (_, _) => new object(),
+            _ => new object(),
+            performanceProfile: PerformanceProfile.FromEnvironment(),
+            themeRuntime: runtime);
+
+        viewModel.ThemeOptions.Should().Equal(options);
+        runtime.Applied.Should().ContainSingle().Which.Id.Should().Be("dark-plus");
+
+        viewModel.SelectedTheme = options[1];
+        runtime.Applied.Should().HaveCount(2);
+        runtime.Applied[^1].Id.Should().Be("light-plus");
+    }
+
+    private sealed class FakeThemeRuntime : IThemeRuntime
+    {
+        private readonly IReadOnlyList<ThemeOption> _options;
+
+        public FakeThemeRuntime(IReadOnlyList<ThemeOption> options)
+        {
+            _options = options;
+        }
+
+        public List<ThemeOption> Applied { get; } = new();
+
+        public IReadOnlyList<ThemeOption> GetAvailableThemes() => _options;
+
+        public ThemeOption GetDefaultTheme(IReadOnlyList<ThemeOption> options)
+        {
+            return options[0];
+        }
+
+        public void ApplyTheme(ThemeOption option)
+        {
+            Applied.Add(option);
+        }
     }
 }

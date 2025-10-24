@@ -1,7 +1,57 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <!-- Palette: cooler accent, higher contrast neutrals -->
+    <!-- Theme palette catalog -->
+    <ResourceDictionary x:Key="Palette.DarkPlus">
+      <Color x:Key="Color.Accent">#FF3B82F6</Color>
+      <Color x:Key="Color.AccentHover">#FF60A5FA</Color>
+      <Color x:Key="Color.Background">#FF0B0E14</Color>
+      <Color x:Key="Color.Surface">#FF111827</Color>
+      <Color x:Key="Color.SurfaceAlt">#FF0F172A</Color>
+      <Color x:Key="Color.SurfaceMuted">#FF1F2937</Color>
+      <Color x:Key="Color.Border">#FF2C3E50</Color>
+      <Color x:Key="Color.BorderStrong">#FF3B4A5A</Color>
+      <Color x:Key="Color.TextPrimary">#FFFFFFFF</Color>
+      <Color x:Key="Color.TextSecondary">#FFBEC8D8</Color>
+
+      <SolidColorBrush x:Key="Brush.Accent" Color="#FF3B82F6" />
+      <SolidColorBrush x:Key="Brush.AccentHover" Color="#FF60A5FA" />
+      <SolidColorBrush x:Key="Brush.WindowBackground" Color="#FF0B0E14" />
+      <SolidColorBrush x:Key="Brush.Surface" Color="#FF111827" />
+      <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="#FF0F172A" />
+      <SolidColorBrush x:Key="Brush.SurfaceMuted" Color="#FF1F2937" />
+      <SolidColorBrush x:Key="Brush.Border" Color="#FF2C3E50" />
+      <SolidColorBrush x:Key="Brush.BorderStrong" Color="#FF3B4A5A" />
+      <SolidColorBrush x:Key="Brush.TextPrimary" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="Brush.TextSecondary" Color="#FFBEC8D8" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Palette.LightPlus">
+      <Color x:Key="Color.Accent">#FF2563EB</Color>
+      <Color x:Key="Color.AccentHover">#FF1D4ED8</Color>
+      <Color x:Key="Color.Background">#FFF8FAFF</Color>
+      <Color x:Key="Color.Surface">#FFFFFFFF</Color>
+      <Color x:Key="Color.SurfaceAlt">#FFF1F5FF</Color>
+      <Color x:Key="Color.SurfaceMuted">#FFE2E8F0</Color>
+      <Color x:Key="Color.Border">#FFCBD5F5</Color>
+      <Color x:Key="Color.BorderStrong">#FF94A3B8</Color>
+      <Color x:Key="Color.TextPrimary">#FF0F172A</Color>
+      <Color x:Key="Color.TextSecondary">#FF475569</Color>
+
+      <SolidColorBrush x:Key="Brush.Accent" Color="#FF2563EB" />
+      <SolidColorBrush x:Key="Brush.AccentHover" Color="#FF1D4ED8" />
+      <SolidColorBrush x:Key="Brush.WindowBackground" Color="#FFF8FAFF" />
+      <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="#FFF1F5FF" />
+      <SolidColorBrush x:Key="Brush.SurfaceMuted" Color="#FFE2E8F0" />
+      <SolidColorBrush x:Key="Brush.Border" Color="#FFCBD5F5" />
+      <SolidColorBrush x:Key="Brush.BorderStrong" Color="#FF94A3B8" />
+      <SolidColorBrush x:Key="Brush.TextPrimary" Color="#FF0F172A" />
+      <SolidColorBrush x:Key="Brush.TextSecondary" Color="#FF475569" />
+    </ResourceDictionary>
+
+    <!-- Migration defaults keep the original dark palette active until selectors run -->
+    <x:String x:Key="Theme.DefaultPaletteId">dark-plus</x:String>
     <Color x:Key="Color.Accent">#FF3B82F6</Color>
     <Color x:Key="Color.AccentHover">#FF60A5FA</Color>
     <Color x:Key="Color.Background">#FF0B0E14</Color>

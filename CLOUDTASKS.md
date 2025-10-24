@@ -334,11 +334,11 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Contrast ratios ≥ WCAG AA recorded; updated screenshots stored under `docs/ux-refresh.md`; release notes refreshed.
 
 **REQUIRED RELATED WORK:**
-- [ ] 4.1 Theme tokens.
-  - [ ] 4.1.1 Extend `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` with new token sets and migration defaults.
-  - [ ] 4.1.2 Update `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs` to surface theme selectors.
-  - [ ] 4.1.3 Add theme migration tests in `gui/DriftBuster.Gui.Tests/ViewModels`.
-  - [ ] 4.1.4 Document palette tokens and migration defaults in `docs/windows-gui-guide.md#themes`.
+- [x] 4.1 Theme tokens.
+  - [x] 4.1.1 Extend `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` with new token sets and migration defaults.
+  - [x] 4.1.2 Update `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs` to surface theme selectors.
+  - [x] 4.1.3 Add theme migration tests in `gui/DriftBuster.Gui.Tests/ViewModels`.
+  - [x] 4.1.4 Document palette tokens and migration defaults in `docs/windows-gui-guide.md#themes`.
 - [ ] 4.2 Responsive spacing.
   - [ ] 4.2.1 Add breakpoint resources for 1280/1600/1920 widths in `gui/DriftBuster.Gui/Assets/Styles/Notifications.axaml` and layout-specific resource dictionaries.
   - [ ] 4.2.2 Modify `gui/DriftBuster.Gui/Views/MainWindow.axaml` and `ServerSelectionView.axaml` to consume the spacing tokens.
