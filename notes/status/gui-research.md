@@ -53,6 +53,7 @@
 
 - Synthetic dispatcher harness burst-testing 500 toast notifications recorded **22.34 ms** flush time across **500 UI posts** with the legacy dispatcher (`dotnet run` harness mirroring the pre-queue implementation).
 - The buffered queue drops the same scenario to **9.55 ms** across **2 UI posts**, keeping auto-dismiss scheduling intact while collapsing redundant dispatcher work.
+- Avalonia 11.2 Release rerun (`dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`) confirms the `PerformanceSmokeTests.ToastService_batches_dispatcher_work_during_burst` suite now drains the burst in a single dispatcher dispatch. Evidence archived alongside the regression trace under `artifacts/logs/results-catalog/gui-tests-toasts-sorting-{regression,passing}.log`.
 
 ### Performance smoke harness (A3.4)
 

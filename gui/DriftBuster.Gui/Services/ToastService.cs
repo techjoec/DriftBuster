@@ -143,7 +143,7 @@ namespace DriftBuster.Gui.Services
         private readonly ReadOnlyObservableCollection<ToastNotification> _visibleReadonly;
         private readonly ReadOnlyObservableCollection<ToastNotification> _overflowReadonly;
         private readonly Action<Action> _dispatcher;
-        private readonly Queue<Action> _pendingActions = new();
+        private readonly List<Action> _pendingActions = new();
         private readonly object _queueLock = new();
         private bool _isProcessing;
 
@@ -229,42 +229,35 @@ namespace DriftBuster.Gui.Services
 
         private void Enqueue(Action action)
         {
-            bool shouldSchedule;
+            List<Action>? batchToProcess = null;
             lock (_queueLock)
             {
-                _pendingActions.Enqueue(action);
-                shouldSchedule = !_isProcessing;
-                if (shouldSchedule)
+                _pendingActions.Add(action);
+                if (!_isProcessing)
                 {
                     _isProcessing = true;
+                    batchToProcess = DrainPendingActions();
                 }
             }
 
-            if (shouldSchedule)
+            if (batchToProcess is not null)
             {
-                _dispatcher(ProcessPendingActions);
+                _dispatcher(() => ProcessPendingActions(batchToProcess));
             }
         }
 
-        private void ProcessPendingActions()
+        private void ProcessPendingActions(List<Action> initialBatch)
         {
+            var batch = initialBatch;
+
             while (true)
             {
-                Action? next;
-                lock (_queueLock)
-                {
-                    if (_pendingActions.Count == 0)
-                    {
-                        _isProcessing = false;
-                        return;
-                    }
-
-                    next = _pendingActions.Dequeue();
-                }
-
                 try
                 {
-                    next();
+                    foreach (var action in batch)
+                    {
+                        action();
+                    }
                 }
                 catch
                 {
@@ -276,7 +269,25 @@ namespace DriftBuster.Gui.Services
 
                     throw;
                 }
+
+                lock (_queueLock)
+                {
+                    if (_pendingActions.Count == 0)
+                    {
+                        _isProcessing = false;
+                        return;
+                    }
+
+                    batch = DrainPendingActions();
+                }
             }
+        }
+
+        private List<Action> DrainPendingActions()
+        {
+            var batch = new List<Action>(_pendingActions);
+            _pendingActions.Clear();
+            return batch;
         }
 
         private void RebuildCollections()
