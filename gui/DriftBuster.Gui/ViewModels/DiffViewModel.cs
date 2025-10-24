@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,10 +21,20 @@ namespace DriftBuster.Gui.ViewModels
         private const int MaxVersions = 5;
 
         private readonly IDriftbusterService _service;
+        private readonly DiffPlannerMruStore _mruStore;
+        private readonly Func<DateTimeOffset> _clock;
+        private readonly ObservableCollection<DiffPlannerMruEntryView> _mruEntries = new();
+        private readonly RelayCommand<DiffJsonViewMode> _selectJsonViewModeCommand;
+        private readonly Task _initializationTask;
+        private bool _suppressMruSelection;
         private bool _updatingBaseline;
 
         public ObservableCollection<DiffInput> Inputs { get; } = new();
         public ObservableCollection<DiffComparisonView> Comparisons { get; } = new();
+
+        public ReadOnlyObservableCollection<DiffPlannerMruEntryView> MruEntries { get; }
+
+        public Task Initialization => _initializationTask;
 
         [ObservableProperty]
         private string? _errorMessage;
@@ -30,23 +42,55 @@ namespace DriftBuster.Gui.ViewModels
         [ObservableProperty]
         private string _rawJson = string.Empty;
 
+        [ObservableProperty]
+        private string _sanitizedJson = string.Empty;
+
+        [ObservableProperty]
+        private DiffJsonViewMode _jsonViewMode = DiffJsonViewMode.Raw;
+
+        [ObservableProperty]
+        private DiffPlannerMruEntryView? _selectedMruEntry;
+
         public IAsyncRelayCommand RunDiffCommand { get; }
         public IRelayCommand AddVersionCommand { get; }
         public IRelayCommand<DiffInput> RemoveVersionCommand { get; }
+        public IRelayCommand<DiffJsonViewMode> SelectJsonViewModeCommand { get; }
 
         public bool IsBusy => RunDiffCommand.IsRunning;
         public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
         public bool HasRawJson => !string.IsNullOrEmpty(RawJson);
+        public bool HasSanitizedJson => !string.IsNullOrEmpty(SanitizedJson);
+        public bool HasMruEntries => _mruEntries.Count > 0;
         public bool HasResult => Comparisons.Count > 0;
         public bool ShouldShowPlanHint => !HasResult;
+        public bool IsSanitizedViewActive => JsonViewMode == DiffJsonViewMode.Sanitized && HasSanitizedJson;
+        public bool IsRawViewActive => JsonViewMode == DiffJsonViewMode.Raw || !HasSanitizedJson;
+        public string ActiveJson => IsSanitizedViewActive ? SanitizedJson : RawJson;
+        public bool CanCopyActiveJson => !string.IsNullOrEmpty(ActiveJson);
 
-        public DiffViewModel(IDriftbusterService service)
+        public IReadOnlyList<JsonViewOption> JsonViewOptions { get; } = new[]
         {
-            _service = service;
+            new JsonViewOption(DiffJsonViewMode.Sanitized, "Sanitized"),
+            new JsonViewOption(DiffJsonViewMode.Raw, "Raw"),
+        };
+
+        public DiffViewModel(
+            IDriftbusterService service,
+            DiffPlannerMruStore? mruStore = null,
+            Func<DateTimeOffset>? clock = null)
+        {
+            _service = service ?? throw new ArgumentNullException(nameof(service));
+            _mruStore = mruStore ?? new DiffPlannerMruStore();
+            _clock = clock ?? (() => DateTimeOffset.UtcNow);
+
+            MruEntries = new ReadOnlyObservableCollection<DiffPlannerMruEntryView>(_mruEntries);
+            _mruEntries.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasMruEntries));
 
             RunDiffCommand = new AsyncRelayCommand(RunDiffAsync, CanRunDiff);
             AddVersionCommand = new RelayCommand(AddVersion, () => Inputs.Count < MaxVersions);
             RemoveVersionCommand = new RelayCommand<DiffInput>(RemoveVersion, input => input is not null && Inputs.Count > 2);
+            _selectJsonViewModeCommand = new RelayCommand<DiffJsonViewMode>(SetJsonViewMode, CanSetJsonViewMode);
+            SelectJsonViewModeCommand = _selectJsonViewModeCommand;
 
             RunDiffCommand.PropertyChanged += (_, args) =>
             {
@@ -64,6 +108,7 @@ namespace DriftBuster.Gui.ViewModels
                 OnPropertyChanged(nameof(ShouldShowPlanHint));
             };
 
+            _initializationTask = LoadMruEntriesAsync();
             InitializeInputs();
         }
 
@@ -75,6 +120,41 @@ namespace DriftBuster.Gui.ViewModels
         partial void OnRawJsonChanged(string value)
         {
             OnPropertyChanged(nameof(HasRawJson));
+            OnPropertyChanged(nameof(IsRawViewActive));
+            OnPropertyChanged(nameof(ActiveJson));
+            OnPropertyChanged(nameof(CanCopyActiveJson));
+        }
+
+        partial void OnSanitizedJsonChanged(string value)
+        {
+            OnPropertyChanged(nameof(HasSanitizedJson));
+            OnPropertyChanged(nameof(IsSanitizedViewActive));
+            OnPropertyChanged(nameof(ActiveJson));
+            OnPropertyChanged(nameof(CanCopyActiveJson));
+            _selectJsonViewModeCommand.NotifyCanExecuteChanged();
+
+            if (!HasSanitizedJson && JsonViewMode == DiffJsonViewMode.Sanitized)
+            {
+                JsonViewMode = DiffJsonViewMode.Raw;
+            }
+        }
+
+        partial void OnJsonViewModeChanged(DiffJsonViewMode value)
+        {
+            OnPropertyChanged(nameof(IsSanitizedViewActive));
+            OnPropertyChanged(nameof(IsRawViewActive));
+            OnPropertyChanged(nameof(ActiveJson));
+            OnPropertyChanged(nameof(CanCopyActiveJson));
+        }
+
+        partial void OnSelectedMruEntryChanged(DiffPlannerMruEntryView? value)
+        {
+            if (_suppressMruSelection)
+            {
+                return;
+            }
+
+            ApplyMruEntry(value);
         }
 
         private void InitializeInputs()
@@ -187,6 +267,21 @@ namespace DriftBuster.Gui.ViewModels
             return comparisonCount >= 1;
         }
 
+        private bool CanSetJsonViewMode(DiffJsonViewMode mode)
+        {
+            return mode != DiffJsonViewMode.Sanitized || HasSanitizedJson;
+        }
+
+        private void SetJsonViewMode(DiffJsonViewMode mode)
+        {
+            if (mode == DiffJsonViewMode.Sanitized && !HasSanitizedJson)
+            {
+                mode = DiffJsonViewMode.Raw;
+            }
+
+            JsonViewMode = mode;
+        }
+
         private async Task RunDiffAsync()
         {
             ErrorMessage = null;
@@ -222,17 +317,19 @@ namespace DriftBuster.Gui.ViewModels
                 orderedPaths.AddRange(comparisons);
 
                 var result = await _service.DiffAsync(orderedPaths).ConfigureAwait(false);
-                ApplyResult(result);
+                await ApplyResultAsync(result, orderedPaths).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
                 Comparisons.Clear();
                 RawJson = string.Empty;
+                SanitizedJson = string.Empty;
+                JsonViewMode = DiffJsonViewMode.Raw;
             }
         }
 
-        private void ApplyResult(DiffResult result)
+        private async Task ApplyResultAsync(DiffResult result, IReadOnlyList<string?> orderedPaths)
         {
             Comparisons.Clear();
 
@@ -241,7 +338,19 @@ namespace DriftBuster.Gui.ViewModels
                 Comparisons.Add(new DiffComparisonView(comparison));
             }
 
-            RawJson = result.RawJson;
+            RawJson = result.RawJson ?? string.Empty;
+            SanitizedJson = result.SanitizedJson ?? string.Empty;
+
+            if (HasSanitizedJson)
+            {
+                JsonViewMode = DiffJsonViewMode.Sanitized;
+            }
+            else
+            {
+                JsonViewMode = DiffJsonViewMode.Raw;
+            }
+
+            await RecordMruEntryAsync(orderedPaths).ConfigureAwait(false);
         }
 
         private void UpdateValidation()
@@ -259,6 +368,185 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             RunDiffCommand.NotifyCanExecuteChanged();
+        }
+
+        private async Task LoadMruEntriesAsync()
+        {
+            try
+            {
+                var snapshot = await _mruStore.LoadAsync().ConfigureAwait(false);
+                var ordered = snapshot.Entries
+                    .OrderByDescending(entry => entry.LastUsedUtc)
+                    .Select(entry => new DiffPlannerMruEntryView(entry))
+                    .ToList();
+
+                _mruEntries.Clear();
+                foreach (var entry in ordered)
+                {
+                    _mruEntries.Add(entry);
+                }
+            }
+            catch
+            {
+                _mruEntries.Clear();
+            }
+        }
+
+        private async Task RecordMruEntryAsync(IReadOnlyList<string?> orderedPaths)
+        {
+            if (orderedPaths.Count == 0)
+            {
+                return;
+            }
+
+            var baseline = orderedPaths[0];
+            if (string.IsNullOrWhiteSpace(baseline))
+            {
+                return;
+            }
+
+            var comparisons = orderedPaths
+                .Skip(1)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => path!.Trim())
+                .ToList();
+
+            if (comparisons.Count == 0)
+            {
+                return;
+            }
+
+            var entry = new DiffPlannerMruEntry
+            {
+                BaselinePath = baseline.Trim(),
+                ComparisonPaths = comparisons,
+                DisplayName = BuildDisplayName(baseline, comparisons),
+                LastUsedUtc = _clock(),
+                PayloadKind = DeterminePayloadKind(),
+                SanitizedDigest = ComputeSanitizedDigest(),
+            };
+
+            try
+            {
+                await _mruStore.RecordAsync(entry).ConfigureAwait(false);
+            }
+            catch
+            {
+                return;
+            }
+
+            PromoteMruEntry(entry);
+        }
+
+        private DiffPlannerPayloadKind DeterminePayloadKind()
+        {
+            if (HasSanitizedJson)
+            {
+                return DiffPlannerPayloadKind.Sanitized;
+            }
+
+            return HasRawJson ? DiffPlannerPayloadKind.Raw : DiffPlannerPayloadKind.Unknown;
+        }
+
+        private string? ComputeSanitizedDigest()
+        {
+            if (!HasSanitizedJson)
+            {
+                return null;
+            }
+
+            using var sha256 = SHA256.Create();
+            var data = Encoding.UTF8.GetBytes(SanitizedJson);
+            var hash = sha256.ComputeHash(data);
+            return Convert.ToHexString(hash).ToLowerInvariant();
+        }
+
+        private static string BuildDisplayName(string baseline, IReadOnlyList<string> comparisons)
+        {
+            var baselineName = Path.GetFileName(baseline);
+            var comparisonNames = comparisons
+                .Select(Path.GetFileName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToArray();
+
+            var comparisonLabel = comparisonNames.Length == 0
+                ? "(comparison)"
+                : string.Join(", ", comparisonNames);
+
+            return string.IsNullOrWhiteSpace(baselineName)
+                ? comparisonLabel
+                : $"{baselineName} vs {comparisonLabel}";
+        }
+
+        private void PromoteMruEntry(DiffPlannerMruEntry entry)
+        {
+            var existing = _mruEntries.FirstOrDefault(candidate => candidate.IsEquivalentTo(entry));
+            if (existing is not null)
+            {
+                _mruEntries.Remove(existing);
+            }
+
+            var view = new DiffPlannerMruEntryView(entry);
+            _mruEntries.Insert(0, view);
+
+            _suppressMruSelection = true;
+            try
+            {
+                SelectedMruEntry = view;
+            }
+            finally
+            {
+                _suppressMruSelection = false;
+            }
+        }
+
+        private void ApplyMruEntry(DiffPlannerMruEntryView? view)
+        {
+            if (view is null)
+            {
+                return;
+            }
+
+            var required = Math.Max(2, Math.Min(MaxVersions, view.Entry.ComparisonPaths.Count + 1));
+            EnsureInputCount(required);
+
+            var baselineInput = Inputs[0];
+            baselineInput.Path = view.Entry.BaselinePath;
+            SetBaseline(baselineInput);
+
+            for (var index = 0; index < view.Entry.ComparisonPaths.Count && index + 1 < Inputs.Count; index++)
+            {
+                Inputs[index + 1].Path = view.Entry.ComparisonPaths[index];
+            }
+
+            for (var index = view.Entry.ComparisonPaths.Count + 1; index < Inputs.Count; index++)
+            {
+                Inputs[index].Path = null;
+            }
+
+            UpdateValidation();
+
+            if (view.Entry.PayloadKind == DiffPlannerPayloadKind.Sanitized && HasSanitizedJson)
+            {
+                JsonViewMode = DiffJsonViewMode.Sanitized;
+            }
+            else if (view.Entry.PayloadKind == DiffPlannerPayloadKind.Raw)
+            {
+                JsonViewMode = DiffJsonViewMode.Raw;
+            }
+        }
+
+        private void EnsureInputCount(int required)
+        {
+            while (Inputs.Count < required)
+            {
+                Inputs.Add(new DiffInput(this));
+            }
+
+            while (Inputs.Count > required)
+            {
+                Inputs.RemoveAt(Inputs.Count - 1);
+            }
         }
 
         public static string FormatSequence(IReadOnlyList<string>? values)
@@ -280,6 +568,73 @@ namespace DriftBuster.Gui.ViewModels
 
             const int limit = 120;
             return text.Length <= limit ? text : text[..limit] + "…";
+        }
+
+        public sealed class DiffPlannerMruEntryView
+        {
+            public DiffPlannerMruEntryView(DiffPlannerMruEntry entry)
+            {
+                Entry = entry ?? throw new ArgumentNullException(nameof(entry));
+                DisplayName = string.IsNullOrWhiteSpace(entry.DisplayName)
+                    ? BuildDisplayName(entry.BaselinePath, entry.ComparisonPaths)
+                    : entry.DisplayName!;
+            }
+
+            public DiffPlannerMruEntry Entry { get; }
+
+            public string DisplayName { get; }
+
+            public DiffPlannerPayloadKind PayloadKind => Entry.PayloadKind;
+
+            public bool IsEquivalentTo(DiffPlannerMruEntry candidate)
+            {
+                if (candidate is null)
+                {
+                    return false;
+                }
+
+                if (!string.Equals(Entry.BaselinePath, candidate.BaselinePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                if (Entry.ComparisonPaths.Count != candidate.ComparisonPaths.Count)
+                {
+                    return false;
+                }
+
+                for (var index = 0; index < Entry.ComparisonPaths.Count; index++)
+                {
+                    if (!string.Equals(
+                            Entry.ComparisonPaths[index],
+                            candidate.ComparisonPaths[index],
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        public sealed class JsonViewOption
+        {
+            public JsonViewOption(DiffJsonViewMode mode, string displayName)
+            {
+                Mode = mode;
+                DisplayName = displayName;
+            }
+
+            public DiffJsonViewMode Mode { get; }
+
+            public string DisplayName { get; }
+        }
+
+        public enum DiffJsonViewMode
+        {
+            Sanitized = 0,
+            Raw = 1,
         }
 
         public sealed partial class DiffInput : ObservableObject

@@ -5,10 +5,9 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using DriftBuster.Backend.Models;
+using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
-
-using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
 
@@ -17,6 +16,7 @@ public class DiffViewModelTests
     [Fact]
     public async Task RunDiffCommand_populates_results_and_raw_json()
     {
+        using var temp = new TempDirectory();
         var comparison = new DiffComparison
         {
             From = "left.txt",
@@ -52,81 +52,62 @@ public class DiffViewModelTests
             },
         };
 
-        var left = Path.GetTempFileName();
-        var right = Path.GetTempFileName();
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(service, store);
+        viewModel.Inputs[0].Path = CreateFile(temp.Path, "left.json", "{}");
+        viewModel.Inputs[1].Path = CreateFile(temp.Path, "right.json", "{}");
 
-        try
-        {
-            var viewModel = new DiffViewModel(service);
-            viewModel.Inputs[0].Path = left;
-            viewModel.Inputs[1].Path = right;
+        viewModel.RunDiffCommand.CanExecute(null).Should().BeTrue();
+        viewModel.ShouldShowPlanHint.Should().BeTrue();
 
-            Assert.True(viewModel.RunDiffCommand.CanExecute(null));
-            Assert.True(viewModel.ShouldShowPlanHint);
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
 
-            await viewModel.RunDiffCommand.ExecuteAsync(null);
+        viewModel.HasResult.Should().BeTrue();
+        viewModel.HasError.Should().BeFalse();
+        viewModel.RawJson.Should().Be("{\"comparisons\":[{}]}");
+        viewModel.HasSanitizedJson.Should().BeFalse();
+        viewModel.JsonViewMode.Should().Be(DiffViewModel.DiffJsonViewMode.Raw);
+        viewModel.ActiveJson.Should().Be("{\"comparisons\":[{}]}");
+        viewModel.ShouldShowPlanHint.Should().BeFalse();
 
-            Assert.True(viewModel.HasResult);
-            Assert.False(viewModel.HasError);
-            Assert.Equal("{\"comparisons\":[{}]}", viewModel.RawJson);
-            Assert.False(viewModel.ShouldShowPlanHint);
+        var comparisonView = viewModel.Comparisons.Should().ContainSingle().Subject;
+        comparisonView.Title.Should().Be("left.txt → right.txt");
+        comparisonView.PlanEntries.Single(p => p.Name == "Mask tokens").Value.Should().Be("secret");
 
-            var comparisonView = Assert.Single(viewModel.Comparisons);
-            Assert.Equal("left.txt → right.txt", comparisonView.Title);
-            var maskEntry = comparisonView.PlanEntries.Single(p => p.Name == "Mask tokens");
-            Assert.Equal("secret", maskEntry.Value);
+        service.DiffAsyncHandler = (_, _) => Task.FromException<DiffResult>(new IOException("bad"));
 
-            service.DiffAsyncHandler = (_, _) => Task.FromException<DiffResult>(new IOException("bad"));
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
 
-            await viewModel.RunDiffCommand.ExecuteAsync(null);
-
-            Assert.True(viewModel.HasError);
-            Assert.Equal("bad", viewModel.ErrorMessage);
-            Assert.False(viewModel.HasResult);
-            Assert.True(viewModel.ShouldShowPlanHint);
-            Assert.Empty(viewModel.Comparisons);
-        }
-        finally
-        {
-            File.Delete(left);
-            File.Delete(right);
-        }
+        viewModel.HasError.Should().BeTrue();
+        viewModel.ErrorMessage.Should().Be("bad");
+        viewModel.HasResult.Should().BeFalse();
+        viewModel.ShouldShowPlanHint.Should().BeTrue();
+        viewModel.Comparisons.Should().BeEmpty();
     }
 
     [Fact]
     public void Validation_flags_missing_files()
     {
-        var service = new FakeDriftbusterService();
-        var viewModel = new DiffViewModel(service);
+        using var temp = new TempDirectory();
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), new DiffPlannerMruStore(temp.Path));
 
-        Assert.Equal("Select a baseline file", viewModel.Inputs[0].Error);
-        Assert.Null(viewModel.Inputs[1].Error);
+        viewModel.Inputs[0].Error.Should().Be("Select a baseline file");
+        viewModel.Inputs[1].Error.Should().BeNull();
 
-        viewModel.Inputs[0].Path = Path.GetTempFileName();
-        viewModel.Inputs[1].Path = Path.GetTempFileName();
+        viewModel.Inputs[0].Path = CreateFile(temp.Path, "baseline.json", "{}");
+        viewModel.Inputs[1].Path = CreateFile(temp.Path, "comparison.json", "{}");
 
-        try
-        {
-            Assert.Null(viewModel.Inputs[0].Error);
-            Assert.Null(viewModel.Inputs[1].Error);
-        }
-        finally
-        {
-            File.Delete(viewModel.Inputs[0].Path!);
-            File.Delete(viewModel.Inputs[1].Path!);
-        }
+        viewModel.Inputs[0].Error.Should().BeNull();
+        viewModel.Inputs[1].Error.Should().BeNull();
     }
 
     [Fact]
     public async Task Baseline_selection_controls_version_order()
     {
-        var left = Path.GetTempFileName();
-        var middle = Path.GetTempFileName();
-        var right = Path.GetTempFileName();
-
-        File.WriteAllText(left, "left");
-        File.WriteAllText(middle, "middle");
-        File.WriteAllText(right, "right");
+        using var temp = new TempDirectory();
+        var left = CreateFile(temp.Path, "left.txt", "left");
+        var middle = CreateFile(temp.Path, "middle.txt", "middle");
+        var right = CreateFile(temp.Path, "right.txt", "right");
 
         var captured = new List<string?>();
         var service = new FakeDriftbusterService
@@ -143,64 +124,44 @@ public class DiffViewModelTests
             },
         };
 
-        try
-        {
-            var viewModel = new DiffViewModel(service);
-            viewModel.Inputs[0].Path = left;
-            viewModel.Inputs[1].Path = middle;
-            viewModel.AddVersionCommand.Execute(null);
-            var third = viewModel.Inputs[2];
-            third.Path = right;
+        var viewModel = CreateViewModel(service, new DiffPlannerMruStore(temp.Path));
+        viewModel.Inputs[0].Path = left;
+        viewModel.Inputs[1].Path = middle;
+        viewModel.AddVersionCommand.Execute(null);
+        var third = viewModel.Inputs[2];
+        third.Path = right;
 
-            third.IsBaseline = true;
+        third.IsBaseline = true;
 
-            await viewModel.RunDiffCommand.ExecuteAsync(null);
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
 
-            Assert.Equal(new[] { right, left, middle }, captured);
-        }
-        finally
-        {
-            File.Delete(left);
-            File.Delete(middle);
-            File.Delete(right);
-        }
+        captured.Should().Equal(new[] { right, left, middle });
     }
 
     [Fact]
     public void AddVersionCommand_enforces_limit()
     {
-        var viewModel = new DiffViewModel(new FakeDriftbusterService());
-        viewModel.Inputs[0].Path = Path.GetTempFileName();
-        viewModel.Inputs[1].Path = Path.GetTempFileName();
+        using var temp = new TempDirectory();
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), new DiffPlannerMruStore(temp.Path));
+        viewModel.Inputs[0].Path = CreateFile(temp.Path, "baseline.json", "{}");
+        viewModel.Inputs[1].Path = CreateFile(temp.Path, "comparison-0.json", "{}");
 
-        try
+        for (var index = 0; index < 3; index++)
         {
-            for (var i = 0; i < 3; i++)
-            {
-                viewModel.AddVersionCommand.Execute(null);
-                viewModel.Inputs[^1].Path = Path.GetTempFileName();
-            }
-
-            viewModel.Inputs.Count.Should().Be(5);
             viewModel.AddVersionCommand.Execute(null);
-            viewModel.Inputs.Count.Should().Be(5);
+            viewModel.Inputs[^1].Path = CreateFile(temp.Path, $"comparison-{index + 1}.json", "{}");
         }
-        finally
-        {
-            foreach (var input in viewModel.Inputs)
-            {
-                if (!string.IsNullOrEmpty(input.Path) && File.Exists(input.Path))
-                {
-                    File.Delete(input.Path);
-                }
-            }
-        }
+
+        viewModel.Inputs.Count.Should().Be(5);
+        viewModel.AddVersionCommand.Execute(null);
+        viewModel.Inputs.Count.Should().Be(5);
     }
 
     [Fact]
     public void RemoveVersionCommand_requires_two_entries()
     {
-        var viewModel = new DiffViewModel(new FakeDriftbusterService());
+        using var temp = new TempDirectory();
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), new DiffPlannerMruStore(temp.Path));
         var removable = viewModel.Inputs[1];
         viewModel.RemoveVersionCommand.CanExecute(removable).Should().BeFalse();
 
@@ -214,35 +175,193 @@ public class DiffViewModelTests
     [Fact]
     public async Task RunDiffAsync_requires_baseline_path()
     {
-        var service = new FakeDriftbusterService();
-        var viewModel = new DiffViewModel(service);
-        viewModel.Inputs[1].Path = Path.GetTempFileName();
+        using var temp = new TempDirectory();
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), new DiffPlannerMruStore(temp.Path));
+        viewModel.Inputs[1].Path = CreateFile(temp.Path, "comparison.json", "{}");
 
         await InvokeRunDiffAsync(viewModel);
 
         viewModel.ErrorMessage.Should().Be("Select a baseline file");
-
-        File.Delete(viewModel.Inputs[1].Path!);
     }
 
     [Fact]
     public async Task RunDiffAsync_requires_comparison_file()
     {
-        var service = new FakeDriftbusterService();
-        var viewModel = new DiffViewModel(service);
-        viewModel.Inputs[0].Path = Path.GetTempFileName();
+        using var temp = new TempDirectory();
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), new DiffPlannerMruStore(temp.Path));
+        viewModel.Inputs[0].Path = CreateFile(temp.Path, "baseline.json", "{}");
 
         await InvokeRunDiffAsync(viewModel);
 
         viewModel.ErrorMessage.Should().Be("Select at least one comparison file.");
+    }
 
-        File.Delete(viewModel.Inputs[0].Path!);
+    [Fact]
+    public async Task SelectedMruEntry_populates_inputs()
+    {
+        using var temp = new TempDirectory();
+        var store = new DiffPlannerMruStore(temp.Path);
+        var baseline = CreateFile(temp.Path, "baseline.json", "{}");
+        var comparisonA = CreateFile(temp.Path, "comparison-a.json", "{}");
+        var comparisonB = CreateFile(temp.Path, "comparison-b.json", "{}");
+
+        var snapshot = new DiffPlannerMruSnapshot
+        {
+            Entries =
+            {
+                new DiffPlannerMruEntry
+                {
+                    BaselinePath = baseline,
+                    ComparisonPaths = new List<string> { comparisonA, comparisonB },
+                    DisplayName = "Example entry",
+                    PayloadKind = DiffPlannerPayloadKind.Raw,
+                    LastUsedUtc = DateTimeOffset.UtcNow,
+                },
+            },
+        };
+
+        await store.SaveAsync(snapshot);
+
+        var viewModel = CreateViewModel(new FakeDriftbusterService(), store);
+        viewModel.MruEntries.Should().HaveCount(1);
+
+        viewModel.SelectedMruEntry = viewModel.MruEntries[0];
+
+        viewModel.Inputs[0].Path.Should().Be(baseline);
+        viewModel.Inputs[1].Path.Should().Be(comparisonA);
+        viewModel.Inputs[2].Path.Should().Be(comparisonB);
+    }
+
+    [Fact]
+    public async Task RunDiffCommand_records_mru_entry_with_sanitized_payload()
+    {
+        using var temp = new TempDirectory();
+        var baseline = CreateFile(temp.Path, "baseline.json", "{}");
+        var comparison = CreateFile(temp.Path, "comparison.json", "{}");
+
+        var service = new FakeDriftbusterService
+        {
+            DiffResponse = new DiffResult
+            {
+                Comparisons = new[]
+                {
+                    new DiffComparison
+                    {
+                        From = baseline,
+                        To = comparison,
+                        Plan = new DiffPlan(),
+                        Metadata = new DiffMetadata(),
+                    },
+                },
+                RawJson = "{\"raw\":true}",
+                SanitizedJson = "{\"sanitized\":true}",
+            },
+        };
+
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(service, store, () => new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        viewModel.Inputs[0].Path = baseline;
+        viewModel.Inputs[1].Path = comparison;
+
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
+
+        viewModel.JsonViewMode.Should().Be(DiffViewModel.DiffJsonViewMode.Sanitized);
+        viewModel.ActiveJson.Should().Be("{\"sanitized\":true}");
+        viewModel.SelectedMruEntry.Should().NotBeNull();
+        viewModel.SelectedMruEntry!.Entry.BaselinePath.Should().Be(baseline);
+        viewModel.SelectJsonViewModeCommand.CanExecute(DiffViewModel.DiffJsonViewMode.Sanitized).Should().BeTrue();
+
+        var snapshot = await store.LoadAsync();
+        snapshot.Entries.Should().ContainSingle();
+        var entry = snapshot.Entries[0];
+        entry.BaselinePath.Should().Be(baseline);
+        entry.ComparisonPaths.Should().Equal(comparison);
+        entry.PayloadKind.Should().Be(DiffPlannerPayloadKind.Sanitized);
+        entry.SanitizedDigest.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task JsonViewMode_defaults_to_raw_when_sanitized_missing()
+    {
+        using var temp = new TempDirectory();
+        var baseline = CreateFile(temp.Path, "baseline.json", "{}");
+        var comparison = CreateFile(temp.Path, "comparison.json", "{}");
+
+        var service = new FakeDriftbusterService
+        {
+            DiffResponse = new DiffResult
+            {
+                Comparisons = Array.Empty<DiffComparison>(),
+                RawJson = "{\"raw\":true}",
+            },
+        };
+
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(service, store);
+        viewModel.Inputs[0].Path = baseline;
+        viewModel.Inputs[1].Path = comparison;
+
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
+
+        viewModel.HasSanitizedJson.Should().BeFalse();
+        viewModel.JsonViewMode.Should().Be(DiffViewModel.DiffJsonViewMode.Raw);
+        viewModel.ActiveJson.Should().Be("{\"raw\":true}");
+        viewModel.SelectJsonViewModeCommand.CanExecute(DiffViewModel.DiffJsonViewMode.Sanitized).Should().BeFalse();
+
+        var snapshot = await store.LoadAsync();
+        snapshot.Entries.Should().ContainSingle();
+        snapshot.Entries[0].PayloadKind.Should().Be(DiffPlannerPayloadKind.Raw);
+        snapshot.Entries[0].SanitizedDigest.Should().BeNull();
     }
 
     private static Task InvokeRunDiffAsync(DiffViewModel viewModel)
     {
-        var method = typeof(DiffViewModel).GetMethod("RunDiffAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var method = typeof(DiffViewModel).GetMethod(
+            "RunDiffAsync",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         method.Should().NotBeNull();
         return (Task)method!.Invoke(viewModel, Array.Empty<object>())!;
+    }
+
+    private static DiffViewModel CreateViewModel(
+        IDriftbusterService service,
+        DiffPlannerMruStore store,
+        Func<DateTimeOffset>? clock = null)
+    {
+        var viewModel = new DiffViewModel(service, store, clock);
+        viewModel.Initialization.GetAwaiter().GetResult();
+        return viewModel;
+    }
+
+    private static string CreateFile(string directory, string name, string content)
+    {
+        var path = Path.Combine(directory, name);
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    private sealed class TempDirectory : IDisposable
+    {
+        public TempDirectory()
+        {
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DriftBusterTests", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path);
+        }
+
+        public string Path { get; }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(Path))
+                {
+                    Directory.Delete(Path, recursive: true);
+                }
+            }
+            catch
+            {
+            }
+        }
     }
 }

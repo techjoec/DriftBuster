@@ -211,7 +211,7 @@ Schema reference
   - [x] 2.1.3 Cover serialization/deserialization paths in `gui/DriftBuster.Gui.Tests/Services/DiffPlannerMruStoreTests.cs`.
   - [x] 2.1.4 Provide migration logic for existing diff planner settings (versioned storage) with regression tests covering legacy data.
 - [ ] 2.2 Update GUI surfaces.
-  - [ ] 2.2.1 Extend `gui/DriftBuster.Gui/ViewModels/DiffViewModel.cs` with MRU dropdowns and dual-pane JSON viewer toggles.
+- [x] 2.2.1 Extend `gui/DriftBuster.Gui/ViewModels/DiffViewModel.cs` with MRU dropdowns and dual-pane JSON viewer toggles.
   - [ ] 2.2.2 Modify `gui/DriftBuster.Gui/Views/DiffView.axaml` to render sanitized JSON panes with accessible automation IDs.
   - [ ] 2.2.3 Ensure clipboard helpers refuse unsanitized payloads (`gui/DriftBuster.Gui/ViewModels/DiffViewModel.cs` logic + tests).
   - [ ] 2.2.4 Add UI automation coverage in `gui/DriftBuster.Gui.Tests/Ui/DiffViewUiTests.cs` verifying MRU selection and JSON pane toggles.

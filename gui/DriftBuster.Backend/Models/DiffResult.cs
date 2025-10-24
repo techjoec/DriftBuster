@@ -13,6 +13,9 @@ namespace DriftBuster.Backend.Models
 
         [JsonIgnore]
         public string RawJson { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public string SanitizedJson { get; set; } = string.Empty;
     }
 
     public sealed class DiffComparison
