@@ -6,6 +6,7 @@ from driftbuster.reporting.diff import (
     DiffResult,
     build_binary_diff,
     build_unified_diff,
+    canonicalise_json,
     canonicalise_text,
     canonicalise_xml,
     render_unified_diff,
@@ -23,6 +24,17 @@ def test_canonicalise_text_removes_bom_and_unicode_newlines() -> None:
     normalised = canonicalise_text(payload)
     assert normalised.endswith("\n")
     assert normalised.splitlines() == ["alpha", "beta", "gamma"]
+
+
+def test_canonicalise_json_sorts_keys_with_stable_indent() -> None:
+    payload = '{"b": 1, "a": {"z": 2, "y": 1}}'
+    canonical = canonicalise_json(payload)
+    assert canonical == '{\n  "a": {\n    "y": 1,\n    "z": 2\n  },\n  "b": 1\n}'
+
+
+def test_canonicalise_json_falls_back_on_invalid_payload() -> None:
+    malformed = "{not-json"
+    assert canonicalise_json(malformed) == canonicalise_text(malformed)
 
 
 def test_canonicalise_xml_preserves_prolog_and_handles_doctype() -> None:
@@ -53,6 +65,19 @@ def test_build_unified_diff_applies_redaction() -> None:
     assert result.stats["added_lines"] == 1
     assert result.mask_tokens == ("SECRET",)
     assert result.redaction_counts == {"SECRET": 2}
+
+
+def test_build_unified_diff_uses_json_canonicalisation() -> None:
+    before = '{"b": 1, "a": 2}'
+    after = '{"b": 2, "a": 2}'
+    result = build_unified_diff(before, after, content_type="json")
+
+    assert result.content_type == "json"
+    assert result.canonical_before.startswith('{\n  "a"')
+    assert '  "b": 1' in result.canonical_before
+    assert '  "b": 2' in result.canonical_after
+    assert '-  "b": 1' in result.diff
+    assert '+  "b": 2' in result.diff
 
 
 def test_render_unified_diff_and_errors() -> None:

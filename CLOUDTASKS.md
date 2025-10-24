@@ -744,7 +744,9 @@ highlight where to consume the artifact.
     - Notes (2025-11-13): Captured purge rehearsal row with MP sign-off and transcript location.
 - [ ] 11.8 Open questions.
   - [ ] 11.8.1 Resolve safe diff content thresholds.
-  - [ ] 11.8.2 Decide on canonicalisation options (sorted keys) with tests.
+  - [x] 11.8.2 Decide on canonicalisation options (sorted keys) with tests.
+    - Notes (2025-11-16): Added `canonicalise_json` with sorted-key normalisation and regression
+      coverage ensuring JSON diffs stabilise ordering when using the new content type.
   - [ ] 11.8.3 Evaluate storage backend for token approvals.
   - [ ] 11.8.4 Plan CLI surfacing for unresolved tokens without overwhelming reviewers.
   - [ ] 11.8.5 Revisit open questions monthly and update this queue with resolutions or blockers.

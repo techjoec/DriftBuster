@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher, unified_diff
 from datetime import datetime, timezone
@@ -48,6 +49,31 @@ def canonicalise_text(payload: str) -> str:
     normalised = working.replace("\r\n", "\n").replace("\r", "\n")
     lines = [line.rstrip() for line in normalised.split("\n")]
     return "\n".join(lines)
+
+
+def canonicalise_json(payload: str) -> str:
+    """Return JSON payload with deterministically ordered keys.
+
+    When ``payload`` does not contain valid JSON the function falls back to
+    :func:`canonicalise_text` so diff generation continues gracefully without
+    discarding the original formatting. Valid JSON payloads are normalised
+    using ``json.dumps`` with sorted keys and a stable indentation style so
+    reviewers see predictable diffs regardless of the source ordering.
+    """
+
+    if not payload:
+        return ""
+
+    stripped = payload.strip()
+    if not stripped:
+        return ""
+
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        return canonicalise_text(payload)
+
+    return json.dumps(parsed, ensure_ascii=False, sort_keys=True, indent=2)
 
 
 _XML_DECLARATION_PATTERN = re.compile(r"<\?xml[^>]*\?>", re.IGNORECASE)
@@ -135,6 +161,7 @@ def canonicalise_xml(payload: str) -> str:
 
 _NORMALISERS: Mapping[str, Callable[[str], str]] = {
     "text": canonicalise_text,
+    "json": canonicalise_json,
     "xml": canonicalise_xml,
 }
 
