@@ -754,8 +754,15 @@ highlight where to consume the artifact.
   - Notes (2025-11-21): Implemented SQLite persistence helpers alongside JSON,
     exercised round-trips in tests, and documented the new option for reviewers
     coordinating approvals from shared stores.
-  - [ ] 11.8.4 Plan CLI surfacing for unresolved tokens without overwhelming reviewers.
-  - [ ] 11.8.5 Revisit open questions monthly and update this queue with resolutions or blockers.
+  - [x] 11.8.4 Plan CLI surfacing for unresolved tokens without overwhelming reviewers.
+    - Notes (2025-11-24): Drafted `pending-tokens` CLI plan in `docs/hunt-mode.md`
+      outlining inputs, default output, and noise controls plus follow-up
+      coverage hooks.
+  - [x] 11.8.5 Revisit open questions monthly and update this queue with resolutions or blockers.
+    - Notes (2025-11-24): Added monthly cadence guidance to
+      `notes/checklists/token-approval.md` and a standing log at
+      `notes/status/token-approval-review.md` to capture each review cycle and
+      mirror blockers back into this area.
 
 ## A12. Compliance & Testing Framework [deps=A11]
 

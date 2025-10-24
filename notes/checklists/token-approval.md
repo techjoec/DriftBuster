@@ -39,6 +39,17 @@
 - [ ] Record any unresolved tokens or questions for user review in
       `notes/status/hold-log.md`.
 
+## Monthly review cadence
+
+- On the first Tuesday of every month run
+  `python -m driftbuster.profile_cli pending-tokens hunt-results.json --approvals token-approvals.json`
+  (adjusting paths as needed) to refresh the pending queue summary.
+- Capture the summary line, pending count, and any blockers inside
+  `notes/status/token-approval-review.md` using the current month section.
+- When the CLI output identifies new blockers, append them to Area A11.8 in
+  `CLOUDTASKS.md` before closing the monthly review so the backlog stays
+  current.
+
 ## JSON approval log schema
 
 Token approvals now live alongside this checklist in a machine-readable JSON

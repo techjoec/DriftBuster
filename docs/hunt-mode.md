@@ -114,6 +114,40 @@ for approved in candidates.approved:
   so tooling can record reviewer IDs, timestamps, or secure storage locations
   alongside the pending queue.
 
+### CLI surfacing plan for pending tokens
+
+To make unresolved tokens visible without burying reviewers in raw excerpts we
+will extend `driftbuster.profile_cli` with a `pending-tokens` subcommand that
+wraps `collect_token_candidates` and the approval store helpers.
+
+- **Inputs:**
+  - Hunt payload JSON (`hunt_path(..., return_json=True)`).
+  - Approval log path (JSON or SQLite) passed via `--approvals`.
+  - Optional `--limit` (default `10`) constraining how many individual tokens
+    are rendered in the default view.
+  - Optional `--rules` filter repeating per token name (e.g.,
+    `--rules database_server --rules hostname`).
+- **Default output:**
+  - Single-line summary showing total hunts inspected, number of approved
+    tokens matched, and pending token count.
+  - Top unresolved tokens table aggregated by `(token_name, relative_path)`
+    with placeholder, last-seen timestamp, and excerpt hash. Entries are sorted
+    by most recent detection so reviewers see fresh gaps first.
+- **Noise controls:**
+  - `--detail all` toggles the full pending list for auditors. Without this
+    flag the CLI keeps output to the summary + limited table.
+  - `--snooze-before <UTC>` hides tokens whose most recent detection predates a
+    cutoff so historical drift does not dominate every run.
+  - `--json` emits machine-readable payloads mirroring
+    `TokenApprovalStore.dump` structure for automated pipelines.
+- **Next steps:**
+  - Wire helpers into `src/driftbuster/profile_cli.py` alongside the existing
+    `summary`, `diff`, and `hunt-bridge` handlers.
+  - Add regression coverage under `tests/cli/test_profile_cli.py` to lock the
+    summary string, aggregation order, and noise filters.
+  - Document reviewer workflows in `notes/checklists/token-approval.md` once
+    the command ships.
+
 ## Bridging hunts with profiles
 
 Use the profile CLI to line up hunt hits with the configuration expectations
