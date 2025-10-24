@@ -59,6 +59,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SAMPLE_SIZE = 128 * 1024  # 128 KiB default clamp.
 _MAX_SAMPLE_SIZE = 512 * 1024  # Guardrail against excessive reads.
 
+_DEFAULT_TOTAL_SAMPLE_BUDGET = 16 * 1024 * 1024  # 16 MiB aggregate guardrail.
+
 
 class DetectorIOError(Exception):
     """Represents an I/O failure that occurred while scanning."""
@@ -92,6 +94,14 @@ def _validate_sample_size(sample_size: int) -> int:
         )
         return _MAX_SAMPLE_SIZE
     return sample_size
+
+
+def _validate_total_sample_budget(value: Optional[int]) -> Optional[int]:
+    if value is None:
+        return None
+    if value <= 0:
+        raise ValueError("max_total_sample_bytes must be a positive integer")
+    return value
 
 
 def _titleise_component(component: str) -> str:
@@ -159,6 +169,7 @@ class Detector:
         plugins: Optional[Sequence[registry.FormatPlugin]] = None,
         *,
         sample_size: Optional[int] = None,
+        max_total_sample_bytes: Optional[int] = None,
         sort_plugins: bool = True,
         on_error: Optional[Callable[[Path, Exception], None]] = None,
     ) -> None:
@@ -169,6 +180,10 @@ class Detector:
                 registry provided defaults are used.
             sample_size: Optional number of bytes to read from each file for
                 detection heuristics. ``None`` uses ``_DEFAULT_SAMPLE_SIZE``.
+            max_total_sample_bytes: Optional aggregate sampling budget. When
+                ``None`` the default guardrail of ``_DEFAULT_TOTAL_SAMPLE_BUDGET``
+                (16 MiB) is applied. Use a larger value when scanning very large
+                directories.
             sort_plugins: Controls whether plugins are re-sorted by priority.
                 Disable this when you inject a custom ordered sequence and want
                 registration order to win over priority values.
@@ -189,6 +204,13 @@ class Detector:
             _DEFAULT_SAMPLE_SIZE if sample_size is None else sample_size
         )
         self._sample_size = validated_sample
+        self._max_total_sample_bytes = _validate_total_sample_budget(
+            max_total_sample_bytes
+        )
+        if self._max_total_sample_bytes is None:
+            self._max_total_sample_bytes = _DEFAULT_TOTAL_SAMPLE_BUDGET
+        self._consumed_sample_bytes = 0
+        self._budget_exhausted = False
         self._on_error = on_error
 
     def _handle_error(
@@ -207,23 +229,68 @@ class Detector:
             raise error from cause
         raise error
 
+    def reset_sample_budget(self) -> None:
+        """Reset aggregate sampling counters for a fresh scan."""
+
+        self._consumed_sample_bytes = 0
+        self._budget_exhausted = False
+
+    @property
+    def sample_budget_exhausted(self) -> bool:
+        return self._budget_exhausted
+
+    @property
+    def sample_budget_remaining(self) -> Optional[int]:
+        if self._max_total_sample_bytes is None:
+            return None
+        remaining = self._max_total_sample_bytes - self._consumed_sample_bytes
+        return max(0, remaining)
+
     def scan_file(self, path: Path) -> Optional[DetectionMatch]:
         path = Path(path)
         if not path.is_file():
             raise FileNotFoundError(f"Expected file path, got: {path}")
 
+        if (
+            self._max_total_sample_bytes is not None
+            and self._consumed_sample_bytes >= self._max_total_sample_bytes
+        ):
+            self._budget_exhausted = True
+            logger.warning(
+                "Sample budget exhausted before scanning: %s", path
+            )
+            return None
+
         try:
             with path.open("rb") as handle:
-                raw = handle.read(self._sample_size + 1)
+                read_size = self._sample_size + 1
+                remaining = None
+                if self._max_total_sample_bytes is not None:
+                    remaining = (
+                        self._max_total_sample_bytes - self._consumed_sample_bytes
+                    )
+                    read_size = min(read_size, remaining + 1)
+                raw = handle.read(read_size)
         except OSError as exc:
             self._handle_error(path, _wrap_io_error(path, exc), cause=exc)
             return None
-        sample = raw[: self._sample_size]
+        if (
+            self._max_total_sample_bytes is not None
+            and remaining is not None
+        ):
+            sample = raw[: min(self._sample_size, remaining)]
+        else:
+            sample = raw[: self._sample_size]
         truncated = len(raw) > self._sample_size
         text: Optional[str] = None
         encoding: Optional[str] = None
         if registry.looks_text(sample):
             text, encoding = registry.decode_text(sample)
+
+        if self._max_total_sample_bytes is not None:
+            self._consumed_sample_bytes += len(sample)
+            if self._consumed_sample_bytes >= self._max_total_sample_bytes:
+                self._budget_exhausted = True
 
         for plugin in self._plugins:
             match = plugin.detect(path, sample, text)
@@ -244,6 +311,16 @@ class Detector:
                     reason = f"Truncated sample to {self._sample_size}B"
                     if reason not in match.reasons:
                         match.reasons.append(reason)
+                if (
+                    self._max_total_sample_bytes is not None
+                    and self._budget_exhausted
+                ):
+                    metadata["sample_budget_exhausted"] = True
+                    reason = (
+                        f"Sampling budget exhausted after {len(sample)}B"
+                    )
+                    if reason not in match.reasons:
+                        match.reasons.append(reason)
                 match.metadata = metadata or None
                 match.metadata = validate_detection_metadata(
                     match,
@@ -257,10 +334,21 @@ class Detector:
         self,
         root: Path,
         glob: str = "**/*",
+        *,
+        reset_budget: bool = True,
     ) -> List[tuple[Path, Optional[DetectionMatch]]]:
+        """Scan ``root`` while enforcing the aggregate sampling budget.
+
+        Args:
+            reset_budget: When ``True`` the detector resets its aggregate
+                sampling counter before scanning. Set to ``False`` to continue
+                consuming the existing budget across multiple directory roots.
+        """
         root = Path(root)
         try:
             if root.is_file():
+                if reset_budget:
+                    self.reset_sample_budget()
                 return [(root, self.scan_file(root))]
 
             if not root.is_dir():
@@ -269,6 +357,8 @@ class Detector:
             self._handle_error(root, _wrap_io_error(root, exc), cause=exc)
             return []
 
+        if reset_budget:
+            self.reset_sample_budget()
         results: List[tuple[Path, Optional[DetectionMatch]]] = []
         try:
             iterable = sorted(root.glob(glob))
@@ -279,6 +369,17 @@ class Detector:
             try:
                 if path.is_file():
                     results.append((path, self.scan_file(path)))
+                    if (
+                        self._max_total_sample_bytes is not None
+                        and self._budget_exhausted
+                    ):
+                        logger.warning(
+                            "Sample budget exhausted while scanning %s;"
+                            " skipping remaining paths under %s",
+                            path,
+                            root,
+                        )
+                        break
             except OSError as exc:
                 self._handle_error(path, _wrap_io_error(path, exc), cause=exc)
         return results

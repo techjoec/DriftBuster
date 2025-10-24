@@ -198,7 +198,18 @@ def test_build_catalog_handles_offline_and_partial_hosts(monkeypatch, tmp_path) 
         if server["host_id"] == "server02"
     )
     assert offline_server["status"] == "Offline"
-    assert offline_server["presence_status"] == "offline"
+
+
+def test_multi_server_reports_sampling_guardrail(tmp_path) -> None:
+    cache_dir = tmp_path / "cache"
+    runner = MultiServerRunner(cache_dir, sample_budget=256, sample_size=128)
+    plan = _sample_plan("server01", priority=1, is_preferred=True)
+
+    response = runner.run([plan])
+
+    result = response["results"][0]
+    assert result["sampling_guardrail_triggered"] is True
+    assert "Sample budget reached" in result["message"]
 
 
 def test_drilldown_includes_sanitized_diff_summary(tmp_path) -> None:

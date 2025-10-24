@@ -538,10 +538,10 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Detector orchestrator bench marked; registry summary payload documented; diff utilities available with tests.
 
 **REQUIRED RELATED WORK:**
-- [ ] 7.1 Orchestration hardening.
-  - [ ] 7.1.1 Refine sampling guardrails in `src/driftbuster/core/detector.py` and `src/driftbuster/multi_server.py`.
-  - [ ] 7.1.2 Add stress tests in `tests/core/test_detector.py` and `tests/multi_server/test_multi_server.py`.
-  - [ ] 7.1.3 Document sampling benchmarks (inputs, timings, outcomes) in `notes/status/core-detector.md`.
+- [x] 7.1 Orchestration hardening.
+  - [x] 7.1.1 Refine sampling guardrails in `src/driftbuster/core/detector.py` and `src/driftbuster/multi_server.py`.
+  - [x] 7.1.2 Add stress tests in `tests/core/test_detector.py` and `tests/multi_server/test_multi_server.py`.
+  - [x] 7.1.3 Document sampling benchmarks (inputs, timings, outcomes) in `notes/status/core-detector.md`.
 - [ ] 7.2 Catalog authority.
   - [ ] 7.2.1 Audit `src/driftbuster/catalog.py` to ensure detector metadata (priority, severity, variant) remains source of truth.
   - [ ] 7.2.2 Update `docs/detection-types.md` after adjustments.

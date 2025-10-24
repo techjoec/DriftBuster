@@ -199,6 +199,54 @@ def test_scan_path_rejects_unknown_root(tmp_path: Path) -> None:
     assert "Path does not exist" in str(exc.value)
 
 
+class _BudgetPlugin:
+    name = "budget"
+    priority = 1
+
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
+        if not sample:
+            return None
+        metadata = {
+            "catalog_format": "structured-config-xml",
+            "catalog_variant": "sample",
+        }
+        return DetectionMatch(
+            plugin_name=self.name,
+            format_name="structured-config-xml",
+            variant="sample",
+            confidence=0.5,
+            reasons=["budget test"],
+            metadata=metadata,
+        )
+
+
+def test_scan_path_enforces_total_sample_budget(tmp_path: Path) -> None:
+    root = tmp_path / "configs"
+    root.mkdir()
+    for index in range(3):
+        (root / f"config{index}.txt").write_text("x" * 512, encoding="utf-8")
+
+    detector = Detector(
+        plugins=(_BudgetPlugin(),),
+        sample_size=512,
+        max_total_sample_bytes=1024,
+        sort_plugins=False,
+    )
+
+    results = detector.scan_path(root)
+
+    assert len(results) == 2
+    assert detector.sample_budget_exhausted is True
+    remaining = detector.sample_budget_remaining
+    assert remaining == 0
+    final_match = results[-1][1]
+    assert final_match is not None
+    assert final_match.metadata is not None
+    assert final_match.metadata.get("sample_budget_exhausted") is True
+    reasons = final_match.reasons
+    assert any("sampling budget exhausted" in reason.lower() for reason in reasons)
+
+
 def test_scan_path_convenience_with_file(tmp_path: Path) -> None:
     target = tmp_path / "file.txt"
     target.write_text("content", encoding="utf-8")

@@ -282,9 +282,22 @@ class DiffCache:
         path.write_text(json.dumps(data, ensure_ascii=False, sort_keys=True), encoding="utf-8")
 
 
+_DEFAULT_MULTI_SERVER_SAMPLE_BUDGET = 64 * 1024 * 1024  # 64 MiB per host.
+
+
 class MultiServerRunner:
-    def __init__(self, cache_dir: Path) -> None:
-        self._detector = Detector()
+    def __init__(
+        self,
+        cache_dir: Path,
+        *,
+        sample_budget: int | None = None,
+        sample_size: int | None = None,
+    ) -> None:
+        budget = sample_budget if sample_budget is not None else _DEFAULT_MULTI_SERVER_SAMPLE_BUDGET
+        self._detector = Detector(
+            sample_size=sample_size,
+            max_total_sample_bytes=budget,
+        )
         self._cache = DiffCache(Path(cache_dir))
 
     def run(self, plans: Sequence[Plan]) -> Mapping[str, object]:
@@ -312,11 +325,28 @@ class MultiServerRunner:
 
             try:
                 secrets_by_host[plan.host_id] = self._collect_secret_hits(existing_roots)
-                configs, used_cache = self._scan_plan(plan, existing_roots, secrets_by_host[plan.host_id])
+                configs, used_cache, budget_reached = self._scan_plan(
+                    plan,
+                    existing_roots,
+                    secrets_by_host[plan.host_id],
+                )
                 host_configs[plan.host_id] = configs
                 host_availability[plan.host_id] = _CONFIG_STATUS_FOUND
                 status_message = f"Evaluated {len(configs)} configuration(s)."
-                host_results.append(self._result_payload(plan, status=_SERVER_STATUS_SUCCEEDED, availability=_CONFIG_STATUS_FOUND, message=status_message, roots=existing_roots, used_cache=used_cache))
+                sampling_triggered = bool(budget_reached)
+                if sampling_triggered:
+                    status_message += " Sample budget reached; additional files skipped."
+                host_results.append(
+                    self._result_payload(
+                        plan,
+                        status=_SERVER_STATUS_SUCCEEDED,
+                        availability=_CONFIG_STATUS_FOUND,
+                        message=status_message,
+                        roots=existing_roots,
+                        used_cache=used_cache,
+                        sampling_guardrail_triggered=sampling_triggered,
+                    )
+                )
                 emit_progress(plan.host_id, _SERVER_STATUS_SUCCEEDED, status_message)
             except DetectorIOError as error:
                 message = f"Permission denied: {error.path}"
@@ -363,15 +393,26 @@ class MultiServerRunner:
         plan: Plan,
         roots: Sequence[Path],
         secret_paths: set[str],
-    ) -> tuple[Dict[str, ConfigRecord], bool]:
+    ) -> tuple[Dict[str, ConfigRecord], bool, bool]:
         configs: Dict[str, ConfigRecord] = {}
         cached_entries = 0
         total_entries = 0
         root_fingerprint = hashlib.sha1("|".join(sorted(str(root.resolve()) for root in roots)).encode("utf-8")).hexdigest()
 
+        self._detector.reset_sample_budget()
+        budget_exhausted = False
         for root in roots:
-            for path, match in self._detector.scan_path(root, glob="**/*"):
+            for path, match in self._detector.scan_path(
+                root,
+                glob="**/*",
+                reset_budget=False,
+            ):
                 if not path.is_file():
+                    continue
+                if match is None:
+                    if self._detector.sample_budget_exhausted:
+                        budget_exhausted = True
+                        break
                     continue
                 relative = path.relative_to(root)
                 metadata = match.metadata or {}
@@ -414,9 +455,17 @@ class MultiServerRunner:
                     relative_path=relative.as_posix(),
                 )
                 configs[config_id] = config_record
+                if self._detector.sample_budget_exhausted:
+                    budget_exhausted = True
+                    break
+            if budget_exhausted:
+                break
+
+        budget_reached = budget_exhausted or self._detector.sample_budget_exhausted
+        self._detector.reset_sample_budget()
 
         used_cache = total_entries > 0 and cached_entries == total_entries
-        return configs, used_cache
+        return configs, used_cache, budget_reached
 
     def _display_name(self, metadata: Mapping[str, object], relative: Path) -> str:
         name = metadata.get("config_original_filename")
@@ -474,6 +523,7 @@ class MultiServerRunner:
         message: str,
         roots: Sequence[Path],
         used_cache: bool = False,
+        sampling_guardrail_triggered: bool = False,
     ) -> Mapping[str, object]:
         return {
             "host_id": plan.host_id,
@@ -484,6 +534,7 @@ class MultiServerRunner:
             "roots": [str(root) for root in roots],
             "used_cache": used_cache,
             "availability": availability,
+            "sampling_guardrail_triggered": sampling_guardrail_triggered,
         }
 
     def _build_catalog_and_drilldown(
