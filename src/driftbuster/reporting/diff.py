@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from difflib import SequenceMatcher, unified_diff
+from datetime import datetime, timezone
+from hashlib import sha256
 import re
 import xml.etree.ElementTree as ET
-from typing import Callable, Iterable, Mapping, Sequence
+from typing import Callable, Iterable, Mapping, MutableMapping, Sequence
 
 from .redaction import RedactionFilter, resolve_redactor
 
@@ -15,6 +17,10 @@ def _apply_redaction(lines: Iterable[str], redactor: RedactionFilter | None) -> 
     if not redactor:
         return list(lines)
     return [redactor.apply(line) for line in lines]
+
+
+def _digest(value: str) -> str:
+    return f"sha256:{sha256(value.encode('utf-8')).hexdigest()}"
 
 
 def canonicalise_text(payload: str) -> str:
@@ -121,7 +127,64 @@ class DiffResult:
     canonical_after: str
     diff: str
     stats: Mapping[str, int]
+    content_type: str
+    from_label: str
+    to_label: str
     label: str | None = None
+    mask_tokens: Sequence[str] | None = None
+    placeholder: str = "[REDACTED]"
+    context_lines: int = 3
+
+
+@dataclass(frozen=True)
+class DiffChangeSummary:
+    before_digest: str
+    after_digest: str
+    diff_digest: str
+    before_lines: int
+    after_lines: int
+    added_lines: int
+    removed_lines: int
+    changed_lines: int
+
+
+@dataclass(frozen=True)
+class DiffPlanSummary:
+    content_type: str
+    from_label: str | None
+    to_label: str | None
+    label: str | None
+    mask_tokens: tuple[str, ...]
+    placeholder: str
+    context_lines: int
+
+
+@dataclass(frozen=True)
+class DiffMetadataSummary:
+    content_type: str
+    context_lines: int
+    baseline_name: str | None
+    comparison_name: str | None
+
+
+@dataclass(frozen=True)
+class DiffComparisonSummary:
+    from_label: str
+    to_label: str
+    plan: DiffPlanSummary
+    metadata: DiffMetadataSummary
+    summary: DiffChangeSummary
+
+
+@dataclass(frozen=True)
+class DiffResultSummary:
+    generated_at: datetime
+    versions: tuple[str, ...]
+    comparisons: tuple[DiffComparisonSummary, ...]
+    comparison_count: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "comparison_count", len(self.comparisons))
 
 
 def _calculate_stats(before: list[str], after: list[str]) -> Mapping[str, int]:
@@ -175,13 +238,125 @@ def build_unified_diff(
     )
     diff_text = "\n".join(diff_iter)
     stats = _calculate_stats(before_lines, after_lines)
+    mask_tuple: Sequence[str] | None = None
+    if mask_tokens is not None:
+        mask_tuple = tuple(mask_tokens)
+
     return DiffResult(
         canonical_before=canonical_before,
         canonical_after=canonical_after,
         diff=diff_text,
         stats=stats,
+        content_type=content_type,
+        from_label=from_label,
+        to_label=to_label,
         label=label,
+        mask_tokens=mask_tuple,
+        placeholder=placeholder,
+        context_lines=context_lines,
     )
+
+
+def summarise_diff_result(
+    result: DiffResult,
+    *,
+    versions: Sequence[str] | None = None,
+    baseline_name: str | None = None,
+    comparison_name: str | None = None,
+) -> DiffResultSummary:
+    """Return :class:`DiffResultSummary` describing ``result``."""
+
+    before_lines = result.canonical_before.splitlines()
+    after_lines = result.canonical_after.splitlines()
+
+    stats = result.stats or {}
+    change_summary = DiffChangeSummary(
+        before_digest=_digest(result.canonical_before),
+        after_digest=_digest(result.canonical_after),
+        diff_digest=_digest(f"{result.canonical_before}\n---\n{result.canonical_after}"),
+        before_lines=len(before_lines),
+        after_lines=len(after_lines),
+        added_lines=int(stats.get("added_lines", 0)),
+        removed_lines=int(stats.get("removed_lines", 0)),
+        changed_lines=int(stats.get("changed_lines", 0)),
+    )
+
+    plan_summary = DiffPlanSummary(
+        content_type=result.content_type,
+        from_label=result.from_label,
+        to_label=result.to_label,
+        label=result.label,
+        mask_tokens=tuple(result.mask_tokens or ()),
+        placeholder=result.placeholder,
+        context_lines=result.context_lines,
+    )
+
+    metadata_summary = DiffMetadataSummary(
+        content_type=result.content_type,
+        context_lines=result.context_lines,
+        baseline_name=baseline_name or result.from_label,
+        comparison_name=comparison_name or result.to_label,
+    )
+
+    comparison_summary = DiffComparisonSummary(
+        from_label=result.from_label,
+        to_label=result.to_label,
+        plan=plan_summary,
+        metadata=metadata_summary,
+        summary=change_summary,
+    )
+
+    versions_tuple = tuple(versions or ())
+    return DiffResultSummary(
+        generated_at=datetime.now(timezone.utc),
+        versions=versions_tuple,
+        comparisons=(comparison_summary,),
+    )
+
+
+def diff_summary_to_payload(summary: DiffResultSummary) -> Mapping[str, object]:
+    """Return JSON-ready mapping for ``summary``."""
+
+    comparisons: list[MutableMapping[str, object]] = []
+    for comparison in summary.comparisons:
+        comparisons.append(
+            {
+                "from": comparison.from_label,
+                "to": comparison.to_label,
+                "plan": {
+                    "content_type": comparison.plan.content_type,
+                    "from_label": comparison.plan.from_label,
+                    "to_label": comparison.plan.to_label,
+                    "label": comparison.plan.label,
+                    "mask_tokens": list(comparison.plan.mask_tokens),
+                    "placeholder": comparison.plan.placeholder,
+                    "context_lines": comparison.plan.context_lines,
+                },
+                "metadata": {
+                    "content_type": comparison.metadata.content_type,
+                    "context_lines": comparison.metadata.context_lines,
+                    "baseline_name": comparison.metadata.baseline_name,
+                    "comparison_name": comparison.metadata.comparison_name,
+                },
+                "summary": {
+                    "before_digest": comparison.summary.before_digest,
+                    "after_digest": comparison.summary.after_digest,
+                    "diff_digest": comparison.summary.diff_digest,
+                    "before_lines": comparison.summary.before_lines,
+                    "after_lines": comparison.summary.after_lines,
+                    "added_lines": comparison.summary.added_lines,
+                    "removed_lines": comparison.summary.removed_lines,
+                    "changed_lines": comparison.summary.changed_lines,
+                },
+            }
+        )
+
+    return {
+        "generated_at": summary.generated_at.isoformat(),
+        "versions": list(summary.versions),
+        "comparison_count": summary.comparison_count,
+        "comparisons": comparisons,
+    }
 
 
 def render_unified_diff(

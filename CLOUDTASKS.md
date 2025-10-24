@@ -216,9 +216,9 @@ Schema reference
   - [x] 2.2.3 Ensure clipboard helpers refuse unsanitized payloads (`gui/DriftBuster.Gui/ViewModels/DiffViewModel.cs` logic + tests).
   - [x] 2.2.4 Add UI automation coverage in `gui/DriftBuster.Gui.Tests/Ui/DiffViewUiTests.cs` verifying MRU selection and JSON pane toggles.
 - [ ] 2.3 Extend backend contracts.
-  - [ ] 2.3.1 Update `gui/DriftBuster.Backend/DriftbusterBackend.cs` and `gui/DriftBuster.Backend/Models/DiffResult.cs` to emit raw + summarized JSON.
-  - [ ] 2.3.2 Mirror payload changes in `src/driftbuster/reporting/diff.py` and related helpers.
-  - [ ] 2.3.3 Add regression coverage in `gui/DriftBuster.Gui.Tests/ViewModels/DiffViewModelTests.cs` and `tests/multi_server/test_multi_server.py`.
+  - [x] 2.3.1 Update `gui/DriftBuster.Backend/DriftbusterBackend.cs` and `gui/DriftBuster.Backend/Models/DiffResult.cs` to emit raw + summarized JSON.
+  - [x] 2.3.2 Mirror payload changes in `src/driftbuster/reporting/diff.py` and related helpers.
+  - [x] 2.3.3 Add regression coverage in `gui/DriftBuster.Gui.Tests/ViewModels/DiffViewModelTests.cs` and `tests/multi_server/test_multi_server.py`.
   - [ ] 2.3.4 Document payload schema in `docs/windows-gui-guide.md#diff-planner` and store samples under `artifacts/samples/diff-planner/`.
 - [ ] 2.4 Documentation & validation.
   - [ ] 2.4.1 Refresh `docs/windows-gui-guide.md` and `docs/ux-refresh.md` with MRU instructions and sanitized screenshots.

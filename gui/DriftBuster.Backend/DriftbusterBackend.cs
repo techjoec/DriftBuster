@@ -15,6 +15,8 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 
 using Microsoft.Extensions.FileSystemGlobbing;
 
@@ -278,8 +280,498 @@ namespace DriftBuster.Backend
                 Comparisons = comparisons.ToArray(),
             };
 
+            var summary = BuildSanitizedSummary(result, resolved);
+            result.Summary = summary;
             result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
+            result.SanitizedJson = JsonSerializer.Serialize(summary, SerializerOptions);
             return result;
+        }
+
+        private static DiffResultSummary BuildSanitizedSummary(DiffResult result, IReadOnlyList<string?> resolved)
+        {
+            var versions = resolved
+                .Select(path => string.IsNullOrWhiteSpace(path) ? string.Empty : Path.GetFileName(path))
+                .ToArray();
+
+            var summaries = result.Comparisons
+                .Select(BuildComparisonSummary)
+                .ToArray();
+
+            return new DiffResultSummary
+            {
+                GeneratedAt = DateTimeOffset.UtcNow,
+                Versions = versions,
+                ComparisonCount = summaries.Length,
+                Comparisons = summaries,
+            };
+        }
+
+        private static DiffComparisonSummary BuildComparisonSummary(DiffComparison comparison)
+        {
+            var plan = comparison.Plan ?? new DiffPlan();
+            var metadata = comparison.Metadata ?? new DiffMetadata();
+
+            var canonicalBefore = CanonicaliseContent(plan.Before ?? string.Empty, plan.ContentType);
+            var canonicalAfter = CanonicaliseContent(plan.After ?? string.Empty, plan.ContentType);
+
+            var beforeLines = SplitLines(canonicalBefore);
+            var afterLines = SplitLines(canonicalAfter);
+            var stats = ComputeDiffStats(beforeLines, afterLines);
+
+            return new DiffComparisonSummary
+            {
+                From = comparison.From ?? string.Empty,
+                To = comparison.To ?? string.Empty,
+                Plan = new DiffPlanSummary
+                {
+                    ContentType = plan.ContentType ?? string.Empty,
+                    FromLabel = plan.FromLabel,
+                    ToLabel = plan.ToLabel,
+                    Label = plan.Label,
+                    MaskTokens = plan.MaskTokens?.Where(token => !string.IsNullOrWhiteSpace(token)).ToArray()
+                        ?? Array.Empty<string>(),
+                    Placeholder = plan.Placeholder ?? string.Empty,
+                    ContextLines = plan.ContextLines,
+                },
+                Metadata = new DiffMetadataSummary
+                {
+                    ContentType = metadata.ContentType ?? string.Empty,
+                    ContextLines = metadata.ContextLines,
+                    BaselineName = SafeFileName(metadata.LeftPath),
+                    ComparisonName = SafeFileName(metadata.RightPath),
+                },
+                Summary = new DiffChangeSummary
+                {
+                    BeforeDigest = ComputeDigest(canonicalBefore),
+                    AfterDigest = ComputeDigest(canonicalAfter),
+                    DiffDigest = ComputeDigest(BuildDiffDigestSeed(canonicalBefore, canonicalAfter)),
+                    BeforeLines = beforeLines.Count,
+                    AfterLines = afterLines.Count,
+                    AddedLines = stats.AddedLines,
+                    RemovedLines = stats.RemovedLines,
+                    ChangedLines = stats.ChangedLines,
+                },
+            };
+        }
+
+        private static string SafeFileName(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                return Path.GetFileName(path);
+            }
+            catch
+            {
+                return path;
+            }
+        }
+
+        private static string CanonicaliseContent(string value, string? contentType)
+        {
+            if (string.Equals(contentType, "xml", StringComparison.OrdinalIgnoreCase))
+            {
+                return CanonicaliseXml(value);
+            }
+
+            return CanonicaliseText(value);
+        }
+
+        private static string CanonicaliseText(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            var normalised = value.Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace("\r", "\n", StringComparison.Ordinal);
+            var lines = normalised.Split('\n');
+            for (var index = 0; index < lines.Length; index++)
+            {
+                lines[index] = lines[index].TrimEnd();
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static readonly Regex XmlDeclarationPattern = new("<\\?xml[^>]*\\?>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+        private static string CanonicaliseXml(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var working = value.TrimStart();
+            var declarationMatch = XmlDeclarationPattern.Match(working);
+            var xmlDeclaration = string.Empty;
+            if (declarationMatch.Success)
+            {
+                xmlDeclaration = declarationMatch.Value;
+                working = working[declarationMatch.Length..].TrimStart();
+            }
+
+            var doctype = ExtractDoctype(ref working, value);
+
+            try
+            {
+                var settings = new XmlReaderSettings
+                {
+                    DtdProcessing = DtdProcessing.Parse,
+                    IgnoreComments = false,
+                    IgnoreWhitespace = false,
+                };
+
+                using var reader = XmlReader.Create(new StringReader(working), settings);
+                var document = XDocument.Load(reader, LoadOptions.PreserveWhitespace);
+                if (document.Root is not null)
+                {
+                    NormaliseElement(document.Root);
+                }
+
+                var serialised = document.Root?.ToString(SaveOptions.DisableFormatting) ?? string.Empty;
+                var parts = new List<string>();
+                if (!string.IsNullOrEmpty(xmlDeclaration))
+                {
+                    parts.Add(xmlDeclaration);
+                }
+
+                if (!string.IsNullOrEmpty(doctype))
+                {
+                    parts.Add(doctype);
+                }
+
+                parts.Add(serialised);
+                return string.Join("\n", parts.Where(part => !string.IsNullOrEmpty(part)));
+            }
+            catch
+            {
+                return CanonicaliseText(value);
+            }
+        }
+
+        private static string ExtractDoctype(ref string working, string original)
+        {
+            if (!working.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder();
+            var depth = 0;
+            for (var index = 0; index < working.Length; index++)
+            {
+                var character = working[index];
+                builder.Append(character);
+                if (character == '[')
+                {
+                    depth++;
+                }
+                else if (character == ']')
+                {
+                    depth = Math.Max(0, depth - 1);
+                }
+                else if (character == '>' && depth == 0)
+                {
+                    working = working[(index + 1)..].TrimStart();
+                    return builder.ToString();
+                }
+            }
+
+            working = original;
+            return string.Empty;
+        }
+
+        private static void NormaliseElement(XElement element)
+        {
+            var attributes = element.Attributes()
+                .OrderBy(attribute => attribute.Name.ToString(), StringComparer.Ordinal)
+                .ToList();
+            element.RemoveAttributes();
+            foreach (var attribute in attributes)
+            {
+                var value = attribute.Value;
+                var trimmed = value.Trim();
+                element.SetAttributeValue(attribute.Name, string.IsNullOrEmpty(trimmed) ? trimmed : value);
+            }
+
+            if (element.FirstNode is XText firstText)
+            {
+                var trimmed = firstText.Value.Trim();
+                if (string.IsNullOrEmpty(trimmed))
+                {
+                    firstText.Value = trimmed;
+                }
+            }
+
+            foreach (var node in element.Nodes().ToList())
+            {
+                if (node is XElement child)
+                {
+                    NormaliseElement(child);
+                }
+                else if (node is XText textNode)
+                {
+                    var trimmed = textNode.Value.Trim();
+                    if (string.IsNullOrEmpty(trimmed))
+                    {
+                        textNode.Value = trimmed;
+                    }
+                }
+            }
+        }
+
+        private static IReadOnlyList<string> SplitLines(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return Array.Empty<string>();
+            }
+
+            var lines = new List<string>();
+            var start = 0;
+            for (var index = 0; index < value.Length; index++)
+            {
+                if (value[index] != '\n')
+                {
+                    continue;
+                }
+
+                lines.Add(value[start..index]);
+                start = index + 1;
+            }
+
+            if (start < value.Length)
+            {
+                lines.Add(value[start..]);
+            }
+
+            return lines;
+        }
+
+        private static string ComputeDigest(string value)
+        {
+            using var sha256 = SHA256.Create();
+            var data = Utf8.GetBytes(value);
+            var hash = sha256.ComputeHash(data);
+            return $"sha256:{Convert.ToHexString(hash).ToLowerInvariant()}";
+        }
+
+        private static string BuildDiffDigestSeed(string canonicalBefore, string canonicalAfter)
+        {
+            return $"{canonicalBefore}\n---\n{canonicalAfter}";
+        }
+
+        private static DiffStats ComputeDiffStats(IReadOnlyList<string> beforeLines, IReadOnlyList<string> afterLines)
+        {
+            if (beforeLines.Count == 0 && afterLines.Count == 0)
+            {
+                return new DiffStats();
+            }
+
+            var matcher = new SequenceMatcher(beforeLines, afterLines);
+            var added = 0;
+            var removed = 0;
+            var changed = 0;
+
+            foreach (var opcode in matcher.GetOpcodes())
+            {
+                switch (opcode.Tag)
+                {
+                    case SequenceOperation.Replace:
+                        changed += Math.Max(opcode.I2 - opcode.I1, opcode.J2 - opcode.J1);
+                        break;
+                    case SequenceOperation.Delete:
+                        removed += opcode.I2 - opcode.I1;
+                        break;
+                    case SequenceOperation.Insert:
+                        added += opcode.J2 - opcode.J1;
+                        break;
+                }
+            }
+
+            return new DiffStats(added, removed, changed);
+        }
+
+        private readonly record struct DiffStats(int AddedLines, int RemovedLines, int ChangedLines);
+
+        private enum SequenceOperation
+        {
+            Equal,
+            Replace,
+            Delete,
+            Insert,
+        }
+
+        private readonly record struct SequenceOpcode(SequenceOperation Tag, int I1, int I2, int J1, int J2);
+
+        private sealed class SequenceMatcher
+        {
+            private readonly IReadOnlyList<string> _a;
+            private readonly IReadOnlyList<string> _b;
+            private readonly Dictionary<string, List<int>> _bIndex;
+
+            public SequenceMatcher(IReadOnlyList<string> a, IReadOnlyList<string> b)
+            {
+                _a = a ?? throw new ArgumentNullException(nameof(a));
+                _b = b ?? throw new ArgumentNullException(nameof(b));
+                _bIndex = BuildIndex(b);
+            }
+
+            public IEnumerable<SequenceOpcode> GetOpcodes()
+            {
+                var matchingBlocks = GetMatchingBlocks();
+                matchingBlocks.Add((_a.Count, _b.Count, 0));
+
+                var i = 0;
+                var j = 0;
+                foreach (var (ai, bj, size) in matchingBlocks)
+                {
+                    if (i < ai && j < bj)
+                    {
+                        yield return new SequenceOpcode(SequenceOperation.Replace, i, ai, j, bj);
+                    }
+                    else if (i < ai)
+                    {
+                        yield return new SequenceOpcode(SequenceOperation.Delete, i, ai, j, j);
+                    }
+                    else if (j < bj)
+                    {
+                        yield return new SequenceOpcode(SequenceOperation.Insert, i, i, j, bj);
+                    }
+
+                    if (size > 0)
+                    {
+                        yield return new SequenceOpcode(SequenceOperation.Equal, ai, ai + size, bj, bj + size);
+                    }
+
+                    i = ai + size;
+                    j = bj + size;
+                }
+            }
+
+            private static Dictionary<string, List<int>> BuildIndex(IReadOnlyList<string> sequence)
+            {
+                var index = new Dictionary<string, List<int>>(StringComparer.Ordinal);
+                for (var position = 0; position < sequence.Count; position++)
+                {
+                    var value = sequence[position] ?? string.Empty;
+                    if (!index.TryGetValue(value, out var list))
+                    {
+                        list = new List<int>();
+                        index[value] = list;
+                    }
+
+                    list.Add(position);
+                }
+
+                return index;
+            }
+
+            private List<(int, int, int)> GetMatchingBlocks()
+            {
+                var queue = new Stack<(int alo, int ahi, int blo, int bhi)>();
+                queue.Push((0, _a.Count, 0, _b.Count));
+                var matchingBlocks = new List<(int, int, int)>();
+
+                while (queue.Count > 0)
+                {
+                    var (alo, ahi, blo, bhi) = queue.Pop();
+                    var (i, j, size) = FindLongestMatch(alo, ahi, blo, bhi);
+                    if (size <= 0)
+                    {
+                        continue;
+                    }
+
+                    matchingBlocks.Add((i, j, size));
+
+                    if (alo < i && blo < j)
+                    {
+                        queue.Push((alo, i, blo, j));
+                    }
+
+                    if (i + size < ahi && j + size < bhi)
+                    {
+                        queue.Push((i + size, ahi, j + size, bhi));
+                    }
+                }
+
+                matchingBlocks.Sort((x, y) =>
+                {
+                    var compare = x.Item1.CompareTo(y.Item1);
+                    return compare != 0 ? compare : x.Item2.CompareTo(y.Item2);
+                });
+
+                return matchingBlocks;
+            }
+
+            private (int i, int j, int size) FindLongestMatch(int alo, int ahi, int blo, int bhi)
+            {
+                var bestI = alo;
+                var bestJ = blo;
+                var bestSize = 0;
+                var j2len = new Dictionary<int, int>();
+
+                for (var i = alo; i < ahi; i++)
+                {
+                    var newJ2Len = new Dictionary<int, int>();
+                    var value = _a[i] ?? string.Empty;
+                    if (!_bIndex.TryGetValue(value, out var indices))
+                    {
+                        j2len = newJ2Len;
+                        continue;
+                    }
+
+                    foreach (var j in indices)
+                    {
+                        if (j < blo)
+                        {
+                            continue;
+                        }
+
+                        if (j >= bhi)
+                        {
+                            break;
+                        }
+
+                        var previous = j2len.TryGetValue(j - 1, out var length) ? length + 1 : 1;
+                        newJ2Len[j] = previous;
+                        if (previous > bestSize)
+                        {
+                            bestSize = previous;
+                            bestI = i - bestSize + 1;
+                            bestJ = j - bestSize + 1;
+                        }
+                    }
+
+                    j2len = newJ2Len;
+                }
+
+                while (bestI > alo && bestJ > blo && EqualsAt(bestI - 1, bestJ - 1))
+                {
+                    bestI--;
+                    bestJ--;
+                    bestSize++;
+                }
+
+                while (bestI + bestSize < ahi && bestJ + bestSize < bhi && EqualsAt(bestI + bestSize, bestJ + bestSize))
+                {
+                    bestSize++;
+                }
+
+                return (bestI, bestJ, bestSize);
+            }
+
+            private bool EqualsAt(int indexA, int indexB)
+            {
+                return string.Equals(_a[indexA], _b[indexB], StringComparison.Ordinal);
+            }
         }
 
 

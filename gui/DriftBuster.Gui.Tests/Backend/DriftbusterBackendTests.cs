@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
 
+using FluentAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Backend;
@@ -36,24 +37,33 @@ public sealed class DriftbusterBackendTests
     public async Task DiffAsync_builds_comparisons_and_serializes_raw_json()
     {
         var baseline = Path.GetTempFileName();
-        var comparison = Path.GetTempFileName();
+        var comparisonPath = Path.GetTempFileName();
 
         try
         {
             File.WriteAllText(baseline, "alpha");
-            File.WriteAllText(comparison, "beta");
+            File.WriteAllText(comparisonPath, "beta");
 
-            var result = await _backend.DiffAsync(new[] { baseline, comparison });
+            var result = await _backend.DiffAsync(new[] { baseline, comparisonPath });
 
             Assert.Single(result.Comparisons);
             Assert.Contains("alpha", result.Comparisons[0].Plan.Before);
             Assert.Contains("beta", result.Comparisons[0].Plan.After);
             Assert.False(string.IsNullOrWhiteSpace(result.RawJson));
+            Assert.False(string.IsNullOrWhiteSpace(result.SanitizedJson));
+            result.Summary.Should().NotBeNull();
+
+            using var document = JsonDocument.Parse(result.SanitizedJson);
+            var root = document.RootElement;
+            root.GetProperty("comparison_count").GetInt32().Should().Be(1);
+            var comparisonElement = root.GetProperty("comparisons")[0];
+            comparisonElement.GetProperty("summary").GetProperty("before_digest").GetString()
+                .Should().StartWith("sha256:");
         }
         finally
         {
             File.Delete(baseline);
-            File.Delete(comparison);
+            File.Delete(comparisonPath);
         }
     }
 

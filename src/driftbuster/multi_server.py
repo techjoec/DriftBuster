@@ -20,7 +20,13 @@ from pathlib import Path
 from typing import Dict, Iterable, Mapping, MutableMapping, Sequence
 
 from driftbuster.core.detector import Detector, DetectorIOError
-from driftbuster.reporting.diff import build_unified_diff, canonicalise_text, canonicalise_xml
+from driftbuster.reporting.diff import (
+    build_unified_diff,
+    canonicalise_text,
+    canonicalise_xml,
+    diff_summary_to_payload,
+    summarise_diff_result,
+)
 from driftbuster.hunt import default_rules, hunt_path
 
 SCHEMA_VERSION = "multi-server.v1"
@@ -520,10 +526,23 @@ class MultiServerRunner:
                 stats = diff.stats
                 drift_lines = int(stats.get("added_lines", 0)) + int(stats.get("removed_lines", 0)) + int(stats.get("changed_lines", 0))
                 drift_stats[host_id] = drift_lines
+                baseline_display = baseline_record.display_name if baseline_record else config_id
+                summary = diff_summary_to_payload(
+                    summarise_diff_result(
+                        diff,
+                        versions=(
+                            f"{hosts_by_id.get(baseline_host_id, hosts_by_id[host_id]).label}:{config_id}",
+                            f"{hosts_by_id[host_id].label}:{config_id}",
+                        ),
+                        baseline_name=baseline_display,
+                        comparison_name=record.display_name,
+                    )
+                )
                 unified_diffs[host_id] = {
                     "before": baseline_raw,
                     "after": record.raw,
                     "diff": diff.diff,
+                    "summary": summary,
                 }
 
             drift_count = sum(1 for value in drift_stats.values() if value > 0)
@@ -594,7 +613,7 @@ class MultiServerRunner:
             if chosen is None and unified_diffs:
                 chosen = next(iter(unified_diffs.values()))
             else:
-                chosen = chosen or {"before": baseline_raw, "after": baseline_raw, "diff": ""}
+                chosen = chosen or {"before": baseline_raw, "after": baseline_raw, "diff": "", "summary": None}
 
             drilldown_entries.append({
                 "config_id": config_id,
@@ -605,6 +624,7 @@ class MultiServerRunner:
                 "diff_before": chosen.get("before", ""),
                 "diff_after": chosen.get("after", ""),
                 "unified_diff": chosen.get("diff", ""),
+                "diff_summary": chosen.get("summary"),
                 "has_secrets": has_secrets,
                 "has_masked_tokens": has_masked,
                 "has_validation_issues": has_validation,

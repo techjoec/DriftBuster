@@ -194,3 +194,21 @@ def test_build_catalog_handles_offline_and_partial_hosts(monkeypatch, tmp_path) 
     )
     assert offline_server["status"] == "Offline"
     assert offline_server["presence_status"] == "offline"
+
+
+def test_drilldown_includes_sanitized_diff_summary(tmp_path) -> None:
+    cache_dir = tmp_path / "cache"
+    runner = MultiServerRunner(cache_dir)
+    plans = [
+        _sample_plan("server01", priority=10, is_preferred=True),
+        _sample_plan("server02", priority=5),
+    ]
+
+    response = runner.run(plans)
+
+    summaries = [entry.get("diff_summary") for entry in response["drilldown"] if entry.get("diff_summary")]
+    assert summaries, "expected sanitized diff summary payload"
+    summary = summaries[0]
+    assert summary["comparison_count"] >= 1
+    comparison = summary["comparisons"][0]
+    assert comparison["summary"]["before_digest"].startswith("sha256:")

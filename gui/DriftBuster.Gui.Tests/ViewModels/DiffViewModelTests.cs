@@ -2,12 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
+
+using FluentAssertions;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
 
@@ -361,6 +364,49 @@ public class DiffViewModelTests
         snapshot.Entries.Should().ContainSingle();
         snapshot.Entries[0].PayloadKind.Should().Be(DiffPlannerPayloadKind.Raw);
         snapshot.Entries[0].SanitizedDigest.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RunDiffCommand_exposes_sanitized_summary_payload()
+    {
+        using var temp = new TempDirectory();
+        var baseline = CreateFile(temp.Path, "baseline.json", "{}");
+        var comparison = CreateFile(temp.Path, "comparison.json", "{}");
+
+        var sanitizedPayload = "{\"generated_at\":\"2024-01-01T00:00:00+00:00\",\"versions\":[\"baseline.json\",\"comparison.json\"],\"comparison_count\":1,\"comparisons\":[{\"from\":\"baseline.json\",\"to\":\"comparison.json\",\"plan\":{\"content_type\":\"text\",\"from_label\":\"baseline\",\"to_label\":\"comparison\",\"label\":null,\"mask_tokens\":[],\"placeholder\":\"[REDACTED]\",\"context_lines\":3},\"metadata\":{\"content_type\":\"text\",\"context_lines\":3,\"baseline_name\":\"baseline.json\",\"comparison_name\":\"comparison.json\"},\"summary\":{\"before_digest\":\"sha256:111\",\"after_digest\":\"sha256:222\",\"diff_digest\":\"sha256:333\",\"before_lines\":1,\"after_lines\":1,\"added_lines\":0,\"removed_lines\":0,\"changed_lines\":1}}]}";
+
+        var service = new FakeDriftbusterService
+        {
+            DiffResponse = new DiffResult
+            {
+                Comparisons = new[]
+                {
+                    new DiffComparison
+                    {
+                        From = baseline,
+                        To = comparison,
+                        Plan = new DiffPlan(),
+                        Metadata = new DiffMetadata(),
+                    },
+                },
+                RawJson = "{}",
+                SanitizedJson = sanitizedPayload,
+            },
+        };
+
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(service, store);
+        viewModel.Inputs[0].Path = baseline;
+        viewModel.Inputs[1].Path = comparison;
+
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
+
+        viewModel.HasSanitizedJson.Should().BeTrue();
+        using var document = JsonDocument.Parse(viewModel.SanitizedJson);
+        var root = document.RootElement;
+        root.GetProperty("comparison_count").GetInt32().Should().Be(1);
+        var summary = root.GetProperty("comparisons")[0].GetProperty("summary");
+        summary.GetProperty("before_digest").GetString().Should().Be("sha256:111");
     }
 
     private static Task InvokeRunDiffAsync(DiffViewModel viewModel)
