@@ -31,7 +31,7 @@ negative and positive paths, and docs capture usage plus review expectations.
         `tests/scripts/test_font_health_summary.py`.
   - [x] 0.19.2 Document the age retention workflow in `docs/font-telemetry.md` and
         `notes/status/font-telemetry.md`.
-  - [ ] 0.19.3 Prototype a retention metrics sampler in `scripts/font_health_summary.py` to report
+- [x] 0.19.3 Prototype a retention metrics sampler in `scripts/font_health_summary.py` to report
         deleted counts for future automation.
 
 ## A0g++++. Font Telemetry Log Retention Controls [deps=A0g+++]

@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -218,7 +219,7 @@ def _event_log_candidates(log_dir: Path) -> list[Path]:
         (
             path
             for path in log_dir.glob("font-staleness-*.json")
-            if "-summary" not in path.name
+            if "-summary" not in path.name and "-retention" not in path.name
         ),
         key=lambda path: path.name,
     )
@@ -239,39 +240,64 @@ def _parse_event_timestamp(path: Path) -> datetime | None:
         return None
 
 
+def _retention_metrics_path(log_dir: Path) -> Path:
+    return log_dir / "font-retention-metrics.json"
+
+
+@dataclass
+class _RetentionMetrics:
+    deleted_by_count: int = 0
+    deleted_by_age: int = 0
+    remaining_logs: int = 0
+
+    @property
+    def total_deleted(self) -> int:
+        return self.deleted_by_count + self.deleted_by_age
+
+
 def _prune_old_logs(
     log_dir: Path,
     *,
     keep: int | None = None,
     max_age: timedelta | None = None,
     now: datetime | None = None,
-) -> None:
+) -> _RetentionMetrics:
+    deleted_by_count = 0
     if keep is not None:
         candidates = _event_log_candidates(log_dir)
         if keep <= 0:
             for path in candidates:
                 path.unlink(missing_ok=True)
+                deleted_by_count += 1
         else:
             excess = len(candidates) - keep
             for path in candidates[: max(excess, 0)]:
                 path.unlink(missing_ok=True)
+                deleted_by_count += 1
 
-    if max_age is None:
-        return
+    deleted_by_age = 0
+    if max_age is not None:
+        if now is None:
+            now = datetime.now(timezone.utc)
 
-    if now is None:
-        now = datetime.now(timezone.utc)
+        cutoff = _coerce_utc(now) - max_age
+        if max_age <= timedelta(0):
+            cutoff = _coerce_utc(now)
 
-    cutoff = _coerce_utc(now) - max_age
-    if max_age <= timedelta(0):
-        cutoff = _coerce_utc(now)
+        for path in _event_log_candidates(log_dir):
+            timestamp = _parse_event_timestamp(path)
+            if timestamp is None:
+                timestamp = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+            if timestamp < cutoff:
+                path.unlink(missing_ok=True)
+                deleted_by_age += 1
 
-    for path in _event_log_candidates(log_dir):
-        timestamp = _parse_event_timestamp(path)
-        if timestamp is None:
-            timestamp = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
-        if timestamp < cutoff:
-            path.unlink(missing_ok=True)
+    remaining_logs = len(_event_log_candidates(log_dir))
+    return _RetentionMetrics(
+        deleted_by_count=deleted_by_count,
+        deleted_by_age=deleted_by_age,
+        remaining_logs=remaining_logs,
+    )
 
 
 def _write_staleness_event(
@@ -313,15 +339,30 @@ def _write_staleness_event(
     destination = log_dir / f"font-staleness-{timestamp}.json"
     destination.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
-    keep = max_log_files if max_log_files is not None else None
-    if keep is not None and keep < 0:
-        keep = None
+    retention_keep = max_log_files if max_log_files is not None else None
+    if retention_keep is not None and retention_keep < 0:
+        retention_keep = None
 
-    _prune_old_logs(
+    retention_metrics = _prune_old_logs(
         log_dir,
-        keep=keep,
+        keep=retention_keep,
         max_age=max_log_age,
         now=evaluation_time,
+    )
+
+    retention_payload = {
+        "generatedAt": _coerce_utc(evaluation_time).isoformat(),
+        "maxLogFiles": retention_keep,
+        "maxLogAgeSeconds": (
+            max_log_age.total_seconds() if max_log_age is not None else None
+        ),
+        "deletedByCount": retention_metrics.deleted_by_count,
+        "deletedByAge": retention_metrics.deleted_by_age,
+        "deletedTotal": retention_metrics.total_deleted,
+        "remainingLogs": retention_metrics.remaining_logs,
+    }
+    _retention_metrics_path(log_dir).write_text(
+        json.dumps(retention_payload, indent=2, sort_keys=True) + "\n"
     )
 
     if summary_path is not None:

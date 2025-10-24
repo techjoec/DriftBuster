@@ -319,6 +319,15 @@ def test_cli_writes_summary_payload(
     summary_path = log_dir / "font-staleness-summary.json"
     assert summary_path.is_file()
 
+    metrics_path = log_dir / "font-retention-metrics.json"
+    metrics = json.loads(metrics_path.read_text())
+    assert metrics["deletedByCount"] == 0
+    assert metrics["deletedByAge"] == 0
+    assert metrics["deletedTotal"] == 0
+    assert metrics["remainingLogs"] == 1
+    assert metrics["maxLogFiles"] is None
+    assert metrics["maxLogAgeSeconds"] is None
+
 
 def test_cli_prunes_old_logs_when_max_log_files_set(
     sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -368,6 +377,15 @@ def test_cli_prunes_old_logs_when_max_log_files_set(
     summary_path = log_dir / "font-staleness-summary.json"
     assert summary_path.is_file()
 
+    metrics_path = log_dir / "font-retention-metrics.json"
+    metrics = json.loads(metrics_path.read_text())
+    assert metrics["deletedByCount"] == 1
+    assert metrics["deletedByAge"] == 0
+    assert metrics["deletedTotal"] == 1
+    assert metrics["remainingLogs"] == 2
+    assert metrics["maxLogFiles"] == 2
+    assert metrics["maxLogAgeSeconds"] is None
+
 
 def test_cli_prunes_logs_older_than_max_log_age(
     sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -413,6 +431,15 @@ def test_cli_prunes_logs_older_than_max_log_age(
     summary_path = log_dir / "font-staleness-summary.json"
     assert summary_path.is_file()
 
+    metrics_path = log_dir / "font-retention-metrics.json"
+    metrics = json.loads(metrics_path.read_text())
+    assert metrics["deletedByCount"] == 0
+    assert metrics["deletedByAge"] == 1
+    assert metrics["deletedTotal"] == 1
+    assert metrics["remainingLogs"] == 2
+    assert metrics["maxLogFiles"] is None
+    assert metrics["maxLogAgeSeconds"] == pytest.approx(0.0166667 * 3600, rel=1e-6)
+
 
 def test_cli_max_log_files_zero_removes_all_event_logs(
     sample_payload: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -452,6 +479,15 @@ def test_cli_max_log_files_zero_removes_all_event_logs(
     assert summary["staleScenarioNames"] == ["flaky-debug"]
     assert summary["missingScenarios"] == []
     assert summary["issueCount"] >= 1
+
+    metrics_path = log_dir / "font-retention-metrics.json"
+    metrics = json.loads(metrics_path.read_text())
+    assert metrics["deletedByCount"] == 1
+    assert metrics["deletedByAge"] == 0
+    assert metrics["deletedTotal"] == 1
+    assert metrics["remainingLogs"] == 0
+    assert metrics["maxLogFiles"] == 0
+    assert metrics["maxLogAgeSeconds"] is None
 
 
 def test_cli_log_dir_override_takes_precedence(
