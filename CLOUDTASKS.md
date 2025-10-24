@@ -661,13 +661,15 @@ highlight where to consume the artifact.
   - [x] 10.2.2 Validate `scripts/capture.py` defaults match guidance in `docs/testing-strategy.md#hold-exit-checklist-hooks`.
   - [x] 10.2.3 Capture command transcripts in `artifacts/hold-exit/compile-lint.txt`.
   - Notes (2025-10-24): Stored compile/lint transcript under `artifacts/hold-exit/compile-lint.txt`, documented pycodestyle outcomes (line-length exceptions) in `notes/checklists/core-scan.md`, and annotated capture default verification in `docs/testing-strategy.md`.
-- [ ] 10.3 Evidence capture.
-  - [ ] 10.3.1 Store verification notes in `notes/status/gui-research.md` and append summary to this queue once cleared.
-  - [ ] 10.3.2 Ensure compliance approvals recorded in `docs/legal-safeguards.md`.
-  - [ ] 10.3.3 List outstanding blockers (if any) directly in this area before closing.
-- [ ] 10.4 Access control.
-  - [ ] 10.4.1 Confirm capture outputs stored in restricted locations and log retention in `notes/checklists/legal-review.md`.
-  - [ ] 10.4.2 Update `notes/checklists/legal-review.md` with purge/retention owners for each storage path.
+- [x] 10.3 Evidence capture.
+  - [x] 10.3.1 Store verification notes in `notes/status/gui-research.md` and append summary to this queue once cleared.
+  - [x] 10.3.2 Ensure compliance approvals recorded in `docs/legal-safeguards.md`.
+  - [x] 10.3.3 List outstanding blockers (if any) directly in this area before closing.
+  - Notes (2025-10-31): Logged hold-exit evidence capture summary in `notes/status/gui-research.md`, recorded compliance approval in `docs/legal-safeguards.md`, and confirmed no blockers remain after mirroring the bundle + hash manifest.
+- [x] 10.4 Access control.
+  - [x] 10.4.1 Confirm capture outputs stored in restricted locations and log retention in `notes/checklists/legal-review.md`.
+  - [x] 10.4.2 Update `notes/checklists/legal-review.md` with purge/retention owners for each storage path.
+  - Notes (2025-10-31): Added hold-exit row + retention owner table to `notes/checklists/legal-review.md`, referencing restricted share `captures/reporting-hold/2025-10-31/` and 30-day purge schedule.
 
 ## A11. Reporting & Output Implementation [deps=A10]
 

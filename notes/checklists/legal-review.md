@@ -10,6 +10,7 @@ follow-up questions.
 | 2025-09-26 | Mixed fixture scan masked tokens ``API_KEY``/``DB_PASSWORD`` using ``[REDACTED]`` placeholder. | Verified via `render_json_lines` with token list; no raw secrets present. | `render_html_report` emitted warning banner and redaction summary. | `render_unified_diff` replaced secrets in config drift hunk. | Snapshot manifest logged classification=internal-only and redacted tokens. |
 | 2025-10-23 | SQL snapshot export masked ``accounts.secret`` and hashed ``accounts.email``. | `sql-manifest.json` lists policies per column; inspected masked rows for completeness. | N/A | N/A | Stored export under restricted `captures/sql-exports/2025-10-23/` with checksum pair in `artifacts/sql/`; retention expiry set for 2025-11-22. |
 | 2025-10-28 | Diff planner MRU telemetry captured sanitized payload rejection + replay confirmation. | `artifacts/logs/diff-planner-mru-telemetry.json` records sanitized summary digests only. | N/A | N/A | MRU cache capped at ten entries under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/`; retention note logged, no raw payloads persisted. |
+| 2025-10-31 | Reporting hold-exit evidence bundle (compile/lint verification). | `artifacts/hold-exit/compile-lint.txt` hashed via `verification-2025-10-31.sha256`. | N/A | N/A | Mirrored to restricted share `captures/reporting-hold/2025-10-31/`; purge scheduled for 2025-11-30 with owner rotation noted below. |
 
 ## Sample review log
 
@@ -33,6 +34,13 @@ follow-up questions.
   `artifacts/gui-packaging/certificates/` when available.
 - Update the entries above whenever the WebView2 runtime or Avalonia
   dependencies change to keep NOTICE references accurate.
+
+## Retention owners
+
+| Storage path | Retention window | Owner contact | Notes |
+|--------------|------------------|---------------|-------|
+| `artifacts/hold-exit/` | 30 days | `ops-evidence@localhost` | Repository copy limited to hashed transcripts; purge mirrors offline share schedule. |
+| `captures/reporting-hold/2025-10-31/` | 30 days | `ops-evidence@localhost` | Restricted network share (read-only for reviewers); purge booked for 2025-11-30 after confirming downstream exports. |
 
 ## Outstanding legal questions
 

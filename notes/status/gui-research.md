@@ -9,6 +9,12 @@
 - Signing certificate (`thumbprint ab12 cd34 ef56 7890`, expiry 2026-03-01) validated on Windows 10/11 VMs prior to MSIX installation. Stage future certificate exports under `artifacts/gui-packaging/certificates/` to keep the evidence tree predictable.
 - Operators must import the signing certificate into `Trusted People` on test VMs and verify hashes before launching bundles; troubleshooting guidance now lives in `docs/windows-gui-guide.md#12-troubleshooting`.
 
+### Reporting hold exit evidence capture (A10.3)
+
+- Verified the hold-exit verification bundle now lives under the restricted `artifacts/hold-exit/` tree with a matching hash manifest (`verification-2025-10-31.sha256`) covering the `compile-lint.txt` transcript so auditors can validate the capture without reopening the raw log.
+- Mirrored the bundle into the offline evidence share (`captures/reporting-hold/2025-10-31/`) with read access limited to the reporting review rota; retention window logged alongside the owner details in `notes/checklists/legal-review.md`.
+- Recorded the compliance approval summary in `docs/legal-safeguards.md#hold-exit-briefing` and noted in this queue that no outstanding blockers remain for the evidence capture milestone.
+
 ### Installer smoke tests (A19.4.3)
 
 - Recorded February 2025 smoke run under `artifacts/gui-packaging/windows-smoke-tests-2025-02-14.json`, covering MSIX and portable zip bundles on Windows 10/11 VMs.
