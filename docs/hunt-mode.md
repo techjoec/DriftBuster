@@ -107,6 +107,9 @@ for approved in candidates.approved:
 - `TokenApprovalStore` persists JSON payloads mirroring the schema documented
   in `notes/checklists/token-approval.md`. Use `TokenApprovalStore.dump` to
   write updates back to disk once reviewers capture new approvals.
+- Prefer `TokenApprovalStore.dump_sqlite` / `load_sqlite` when a locked SQLite
+  file is required; it mirrors the JSON schema while providing transactional
+  storage for reviewers working from shared network locations.
 - Approved entries surface `TokenApproval` metadata directly on the candidate
   so tooling can record reviewer IDs, timestamps, or secure storage locations
   alongside the pending queue.

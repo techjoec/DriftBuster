@@ -743,11 +743,17 @@ highlight where to consume the artifact.
   - [x] 11.7.4 Log audit evidence in `notes/checklists/legal-review.md` with sign-off initials.
     - Notes (2025-11-13): Captured purge rehearsal row with MP sign-off and transcript location.
 - [ ] 11.8 Open questions.
-  - [ ] 11.8.1 Resolve safe diff content thresholds.
+- [x] 11.8.1 Resolve safe diff content thresholds.
+  - Notes (2025-11-21): Added 256 KiB canonical and 128 KiB / 600 line diff clamps,
+    surfaced safety digests in `diff.py`, HTML output, and reporting docs so
+    oversized payloads emit deterministic notices instead of leaking full data.
   - [x] 11.8.2 Decide on canonicalisation options (sorted keys) with tests.
     - Notes (2025-11-16): Added `canonicalise_json` with sorted-key normalisation and regression
       coverage ensuring JSON diffs stabilise ordering when using the new content type.
-  - [ ] 11.8.3 Evaluate storage backend for token approvals.
+- [x] 11.8.3 Evaluate storage backend for token approvals.
+  - Notes (2025-11-21): Implemented SQLite persistence helpers alongside JSON,
+    exercised round-trips in tests, and documented the new option for reviewers
+    coordinating approvals from shared stores.
   - [ ] 11.8.4 Plan CLI surfacing for unresolved tokens without overwhelming reviewers.
   - [ ] 11.8.5 Revisit open questions monthly and update this queue with resolutions or blockers.
 

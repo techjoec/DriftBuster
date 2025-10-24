@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+import sqlite3
 from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
 from .hunt import PlanTransform
@@ -151,6 +152,82 @@ class TokenApprovalStore:
         if not isinstance(payload, Sequence):
             raise ValueError("Approval log must be a JSON array")
         return cls.from_json_payload(payload)
+
+    def dump_sqlite(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(path)
+        try:
+            connection.row_factory = sqlite3.Row
+            with connection:
+                connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS token_approvals (
+                        token_name TEXT NOT NULL,
+                        placeholder TEXT NOT NULL,
+                        excerpt_hash TEXT,
+                        source_path TEXT,
+                        catalog_variant TEXT,
+                        sample_hash TEXT,
+                        approved_by TEXT,
+                        approved_at_utc TEXT,
+                        expires_at_utc TEXT,
+                        secure_location TEXT,
+                        notes TEXT
+                    )
+                    """
+                )
+                connection.execute("DELETE FROM token_approvals")
+                connection.executemany(
+                    """
+                    INSERT INTO token_approvals (
+                        token_name,
+                        placeholder,
+                        excerpt_hash,
+                        source_path,
+                        catalog_variant,
+                        sample_hash,
+                        approved_by,
+                        approved_at_utc,
+                        expires_at_utc,
+                        secure_location,
+                        notes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            approval.token_name,
+                            approval.placeholder,
+                            approval.excerpt_hash,
+                            approval.source_path,
+                            approval.catalog_variant,
+                            approval.sample_hash,
+                            approval.approved_by,
+                            approval.approved_at_utc,
+                            approval.expires_at_utc,
+                            approval.secure_location,
+                            approval.notes,
+                        )
+                        for approval in self._entries
+                    ],
+                )
+        finally:
+            connection.close()
+
+    @classmethod
+    def load_sqlite(cls, path: Path) -> "TokenApprovalStore":
+        connection = sqlite3.connect(path)
+        try:
+            connection.row_factory = sqlite3.Row
+            with connection:
+                rows = connection.execute("SELECT * FROM token_approvals").fetchall()
+        finally:
+            connection.close()
+
+        approvals: list[TokenApproval] = []
+        for row in rows:
+            payload = {key: row[key] for key in row.keys()}
+            approvals.append(TokenApproval.from_mapping(payload))
+        return cls(approvals)
 
 
 @dataclass(frozen=True)

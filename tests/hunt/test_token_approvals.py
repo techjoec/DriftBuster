@@ -58,6 +58,29 @@ def test_token_approval_store_roundtrip(tmp_path: Path) -> None:
     assert loaded.entries() == (updated,)
 
 
+def test_token_approval_store_sqlite_roundtrip(tmp_path: Path) -> None:
+    approval = TokenApproval(
+        token_name="api_key",
+        placeholder="{{ api_key }}",
+        excerpt_hash="deadbeef",
+        source_path="configs/settings.json",
+        catalog_variant="structured-settings-json",
+        sample_hash="hash://sample",
+        approved_by="carol",
+        approved_at_utc="2025-02-01T00:00:00Z",
+        secure_location="vault:prod/api",
+        notes="Rotate annually",
+    )
+    store = TokenApprovalStore([approval])
+
+    database = tmp_path / "approvals.sqlite"
+    store.dump_sqlite(database)
+
+    assert database.exists()
+
+    loaded = TokenApprovalStore.load_sqlite(database)
+    assert loaded.entries() == (approval,)
+
 def test_collect_token_candidates_groups_results(tmp_path: Path) -> None:
     approval = TokenApproval(
         token_name="server_name",

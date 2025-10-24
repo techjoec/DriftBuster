@@ -31,6 +31,10 @@ def _digest_bytes(payload: bytes) -> str:
 _BOM = "\ufeff"
 _UNICODE_NEWLINES = ("\u2028", "\u2029", "\u0085")
 
+_SAFE_DIFF_MAX_CANONICAL_BYTES = 256 * 1024  # 256 KiB clamp per canonical payload.
+_SAFE_DIFF_MAX_DIFF_BYTES = 128 * 1024  # 128 KiB clamp for unified diff output.
+_SAFE_DIFF_MAX_DIFF_LINES = 600  # Hard limit for rendered diff lines.
+
 
 def canonicalise_text(payload: str) -> str:
     """Return ``payload`` with normalised newlines and trimmed trailing spaces."""
@@ -166,6 +170,129 @@ _NORMALISERS: Mapping[str, Callable[[str], str]] = {
 }
 
 
+def _append_notice(text: str, notice: str) -> str:
+    stripped = text.rstrip("\n")
+    if stripped:
+        return f"{stripped}\n{notice}"
+    return notice
+
+
+def _truncate_canonical_payload(
+    payload: str,
+    *,
+    label: str,
+    limits: MutableMapping[str, object],
+) -> tuple[str, Mapping[str, object] | None]:
+    encoded = payload.encode("utf-8")
+    size_bytes = len(encoded)
+    if size_bytes <= _SAFE_DIFF_MAX_CANONICAL_BYTES:
+        return payload, None
+
+    digest = _digest(payload)
+    truncated_bytes = size_bytes - _SAFE_DIFF_MAX_CANONICAL_BYTES
+    safe_bytes = encoded[:_SAFE_DIFF_MAX_CANONICAL_BYTES]
+    safe_payload = safe_bytes.decode("utf-8", "ignore")
+    notice = (
+        f"… [canonical {label} truncated {truncated_bytes} bytes for safety; digest={digest}]"
+    )
+    clamped = _append_notice(safe_payload, notice)
+
+    canonical_limits = limits.get("canonical")
+    if canonical_limits is None:
+        canonical_limits = {}
+        limits["canonical"] = canonical_limits
+    canonical_limits[label] = {
+        "size_bytes": size_bytes,
+        "truncated_bytes": truncated_bytes,
+        "digest": digest,
+    }
+    return clamped, canonical_limits[label]
+
+
+def _truncate_diff_output(
+    diff_text: str,
+    *,
+    limits: MutableMapping[str, object],
+) -> tuple[str, Mapping[str, object] | None]:
+    if not diff_text:
+        return diff_text, None
+
+    lines = diff_text.splitlines()
+    total_lines = len(lines)
+    total_bytes = len(diff_text.encode("utf-8"))
+    digest = _digest(diff_text)
+
+    truncated_lines = 0
+    truncated_bytes = 0
+
+    if total_lines > _SAFE_DIFF_MAX_DIFF_LINES:
+        truncated_lines = total_lines - _SAFE_DIFF_MAX_DIFF_LINES
+        lines = lines[:_SAFE_DIFF_MAX_DIFF_LINES]
+
+    working_text = "\n".join(lines)
+    working_bytes = working_text.encode("utf-8")
+    if len(working_bytes) > _SAFE_DIFF_MAX_DIFF_BYTES:
+        truncated_bytes = len(working_bytes) - _SAFE_DIFF_MAX_DIFF_BYTES
+        working_bytes = working_bytes[:_SAFE_DIFF_MAX_DIFF_BYTES]
+        working_text = working_bytes.decode("utf-8", "ignore")
+
+    if truncated_lines == 0 and truncated_bytes == 0:
+        if total_bytes > _SAFE_DIFF_MAX_DIFF_BYTES:
+            truncated_bytes = total_bytes - _SAFE_DIFF_MAX_DIFF_BYTES
+            working_bytes = diff_text.encode("utf-8")[:_SAFE_DIFF_MAX_DIFF_BYTES]
+            working_text = working_bytes.decode("utf-8", "ignore")
+        else:
+            return diff_text, None
+
+    segments = []
+    if truncated_lines:
+        segments.append(f"{truncated_lines} lines")
+    if truncated_bytes:
+        segments.append(f"{truncated_bytes} bytes")
+
+    notice_detail = " and ".join(segments) if segments else "output"
+    notice = f"… [diff truncated {notice_detail} for safety; digest={digest}]"
+    clamped = _append_notice(working_text, notice)
+
+    limits["diff"] = {
+        "total_lines": total_lines,
+        "total_bytes": total_bytes,
+        "truncated_lines": truncated_lines,
+        "truncated_bytes": truncated_bytes,
+        "digest": digest,
+    }
+    return clamped, limits["diff"]
+
+
+def _enforce_diff_safety_limits(
+    canonical_before: str,
+    canonical_after: str,
+    diff_text: str,
+) -> tuple[str, str, str, Mapping[str, object] | None]:
+    limits: MutableMapping[str, object] = {
+        "thresholds": {
+            "canonical_bytes": _SAFE_DIFF_MAX_CANONICAL_BYTES,
+            "diff_bytes": _SAFE_DIFF_MAX_DIFF_BYTES,
+            "diff_lines": _SAFE_DIFF_MAX_DIFF_LINES,
+        }
+    }
+
+    clamped_before, before_info = _truncate_canonical_payload(
+        canonical_before, label="before", limits=limits
+    )
+    clamped_after, after_info = _truncate_canonical_payload(
+        canonical_after, label="after", limits=limits
+    )
+
+    diff_clamped, diff_info = _truncate_diff_output(diff_text, limits=limits)
+
+    has_truncation = any((before_info, after_info, diff_info))
+    if not has_truncation:
+        return canonical_before, canonical_after, diff_text, None
+
+    return clamped_before, clamped_after, diff_clamped, limits
+
+
 @dataclass(frozen=True)
 class BinarySegmentEvidence:
     label: str
@@ -194,6 +321,7 @@ class DiffResult:
     context_lines: int = 3
     redaction_counts: Mapping[str, int] | None = None
     binary_evidence: Sequence[BinarySegmentEvidence] | None = None
+    safety_limits: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -219,6 +347,7 @@ class DiffPlanSummary:
     context_lines: int
     redaction_counts: tuple[tuple[str, int], ...] = field(default_factory=tuple)
     binary_evidence: tuple[BinarySegmentEvidence, ...] = field(default_factory=tuple)
+    safety_limits: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -314,10 +443,14 @@ def build_unified_diff(
     elif mask_tokens is not None:
         mask_tuple = tuple(mask_tokens)
 
+    safe_before, safe_after, safe_diff, safety_limits = _enforce_diff_safety_limits(
+        canonical_before, canonical_after, diff_text
+    )
+
     return DiffResult(
-        canonical_before=canonical_before,
-        canonical_after=canonical_after,
-        diff=diff_text,
+        canonical_before=safe_before,
+        canonical_after=safe_after,
+        diff=safe_diff,
         stats=stats,
         content_type=content_type,
         from_label=from_label,
@@ -328,6 +461,7 @@ def build_unified_diff(
         context_lines=context_lines,
         redaction_counts=redaction_counts,
         binary_evidence=None,
+        safety_limits=safety_limits,
     )
 
 
@@ -417,6 +551,7 @@ def _build_comparison_summary(
         context_lines=result.context_lines,
         redaction_counts=tuple(sorted((result.redaction_counts or {}).items())),
         binary_evidence=tuple(result.binary_evidence or ()),
+        safety_limits=result.safety_limits,
     )
 
     metadata_summary = DiffMetadataSummary(
@@ -523,6 +658,11 @@ def diff_summary_to_payload(summary: DiffResultSummary) -> Mapping[str, object]:
                         }
                         for evidence in comparison.plan.binary_evidence
                     ],
+                    "safety_limits": (
+                        dict(comparison.plan.safety_limits)
+                        if comparison.plan.safety_limits
+                        else None
+                    ),
                 },
                 "metadata": {
                     "content_type": comparison.metadata.content_type,

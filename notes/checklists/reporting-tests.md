@@ -18,6 +18,10 @@
     bundled metadata surfaces the same masking totals as the raw diff.
   - Paste the unified diff output into this checklist and record whether
     placeholders replaced every tracked token.
+  - Trigger a large diff rehearsal (e.g., via repeated lines) to confirm safety
+    notices appear when canonical payloads exceed 256 KiB or the unified diff
+    crosses the 128 KiB / 600 line clamp. Record the appended digest string so
+    reviewers know how to request the full artefact securely.
 - **JSON lines export:**
   - Call `render_json_lines` (or the future CLI `--json`) with detection
     matches, `ProfileStore.summary()`, and hunt results.

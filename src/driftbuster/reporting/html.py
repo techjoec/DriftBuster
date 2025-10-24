@@ -52,6 +52,7 @@ _HTML_HEADER = """<!doctype html>
     .diff-block pre {{ background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }}
     .diff-stats {{ list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }}
     .diff-stats li {{ font-size: 0.85rem; color: #ccc; }}
+    .diff-safety {{ font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }}
     .hunt-section ul {{ margin: 0.5rem 0 0 1rem; }}
     .redaction-summary {{ margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }}
   </style>
@@ -124,12 +125,73 @@ def _render_detection_summary(matches: Sequence[Mapping[str, object]]) -> str:
 
 def _serialise_diff(diff: DiffResult | Mapping[str, object]) -> Mapping[str, object]:
     if isinstance(diff, DiffResult):
-        return {
+        payload: dict[str, object] = {
             "label": diff.label or "Diff",
             "diff": diff.diff,
             "stats": dict(diff.stats),
         }
+        if diff.safety_limits:
+            payload["safety_limits"] = dict(diff.safety_limits)
+        return payload
     return dict(diff)
+
+
+def _format_safety_notice(safety: Mapping[str, object] | None) -> str:
+    if not isinstance(safety, Mapping):
+        return ""
+
+    segments: list[str] = []
+    canonical = safety.get("canonical")
+    if isinstance(canonical, Mapping):
+        for label, info in canonical.items():
+            if not isinstance(info, Mapping):
+                continue
+            truncated_bytes = info.get("truncated_bytes")
+            if not truncated_bytes:
+                continue
+            digest = info.get("digest")
+            piece = f"{label} canonical truncated {truncated_bytes} bytes"
+            if digest:
+                piece += f" (digest {digest})"
+            segments.append(piece)
+
+    diff_info = safety.get("diff")
+    if isinstance(diff_info, Mapping):
+        truncated_lines = diff_info.get("truncated_lines")
+        truncated_bytes = diff_info.get("truncated_bytes")
+        diff_parts: list[str] = []
+        if truncated_lines:
+            diff_parts.append(f"{truncated_lines} lines")
+        if truncated_bytes:
+            diff_parts.append(f"{truncated_bytes} bytes")
+        if diff_parts:
+            diff_segment = "diff truncated " + " and ".join(diff_parts)
+        else:
+            diff_segment = "diff output truncated"
+        digest = diff_info.get("digest")
+        if digest:
+            diff_segment += f" (digest {digest})"
+        segments.append(diff_segment)
+
+    if not segments:
+        return ""
+
+    thresholds = safety.get("thresholds")
+    if isinstance(thresholds, Mapping):
+        threshold_parts: list[str] = []
+        canonical_bytes = thresholds.get("canonical_bytes")
+        diff_bytes = thresholds.get("diff_bytes")
+        diff_lines = thresholds.get("diff_lines")
+        if canonical_bytes:
+            threshold_parts.append(f"canonical≤{canonical_bytes} bytes")
+        if diff_bytes:
+            threshold_parts.append(f"diff≤{diff_bytes} bytes")
+        if diff_lines:
+            threshold_parts.append(f"diff≤{diff_lines} lines")
+        if threshold_parts:
+            segments.append("thresholds: " + ", ".join(threshold_parts))
+
+    return "Diff output truncated for safety: " + "; ".join(segments)
 
 
 def _render_diff_section(diffs: Sequence[Mapping[str, object]]) -> str:
@@ -148,6 +210,9 @@ def _render_diff_section(diffs: Sequence[Mapping[str, object]]) -> str:
             for key, value in stats.items():
                 stat_lines.append(f"<li>{escape(str(key))}: {escape(str(value))}</li>")
             sections.append("<ul class=\"diff-stats\">" + "".join(stat_lines) + "</ul>")
+        notice_text = _format_safety_notice(entry.get("safety_limits"))
+        if notice_text:
+            sections.append(f"<p class=\"diff-safety\">{escape(notice_text)}</p>")
         sections.append(f"<pre>{diff_text}</pre>")
         sections.append("</article>")
     sections.append("</section>")

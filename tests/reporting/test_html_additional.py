@@ -70,3 +70,32 @@ def test_render_html_report_compiles_sections() -> None:
     assert "Configuration Diffs" in html
     assert "Hunt Highlights" in html
     assert "Profile Summary" in html
+
+
+def test_render_diff_section_shows_safety_notice() -> None:
+    html = _render_diff_section(
+        [
+            {
+                "label": "Large",
+                "diff": "-old\n+new",
+                "stats": {"added_lines": 1},
+                "safety_limits": {
+                    "diff": {
+                        "total_lines": 6,
+                        "total_bytes": 120,
+                        "truncated_lines": 2,
+                        "truncated_bytes": 16,
+                        "digest": "sha256:abc",
+                    },
+                    "thresholds": {
+                        "canonical_bytes": 10,
+                        "diff_bytes": 20,
+                        "diff_lines": 2,
+                    },
+                },
+            }
+        ]
+    )
+
+    assert "Diff output truncated for safety" in html
+    assert "diff truncated 2 lines" in html

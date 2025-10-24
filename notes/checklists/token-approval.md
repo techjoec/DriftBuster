@@ -63,3 +63,13 @@ log managed by `TokenApprovalStore`. Each entry is a dictionary containing:
 
 Persist approvals with `TokenApprovalStore.dump(path)` and load them back with
 `TokenApprovalStore.load(path)` when updating this checklist.
+
+### SQLite backend option
+
+- Use `TokenApprovalStore.dump_sqlite(path)` when reviewers prefer a locked
+  SQLite file with transaction history instead of JSON. The helper creates a
+  `token_approvals` table mirroring the JSON schema and replaces existing rows
+  on each dump so manual edits stay deterministic.
+- Load SQLite approvals with `TokenApprovalStore.load_sqlite(path)` before
+  reconciling this checklist. The loader returns the same `TokenApproval`
+  objects, ensuring JSON and SQLite workflows stay interchangeable.

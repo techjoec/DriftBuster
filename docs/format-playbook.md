@@ -97,6 +97,10 @@ format-specific exception.
   HOCON/EDN ➜ library validators, Dhall ➜ type checker.
 - Windows-first baseline: ensure `.reg`, `.ini`, `.inf`, `.admx`/`.adml`, and
   `.psd1` flows are covered early—they represent common enterprise scenarios.
+- Diff renderers clamp canonical payloads to 256 KiB and unified diffs to 128 KiB
+  / 600 lines. When those thresholds trigger a safety notice is appended with the
+  original digests so reviewers can request full artefacts through secure
+  channels without exposing oversized payloads in standard reports.
 
 ### Residual Uncertainty
 

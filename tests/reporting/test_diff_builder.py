@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pytest
 
 from driftbuster.reporting.diff import (
@@ -100,3 +102,35 @@ def test_build_binary_diff_tracks_evidence() -> None:
     assert evidence.changed is True
     assert evidence.before_size == 2
     assert evidence.after_size == 3
+
+
+def test_build_unified_diff_truncates_large_payloads(monkeypatch: pytest.MonkeyPatch) -> None:
+    from driftbuster.reporting import diff as diff_module
+
+    monkeypatch.setattr(diff_module, "_SAFE_DIFF_MAX_CANONICAL_BYTES", 32)
+    monkeypatch.setattr(diff_module, "_SAFE_DIFF_MAX_DIFF_BYTES", 48)
+    monkeypatch.setattr(diff_module, "_SAFE_DIFF_MAX_DIFF_LINES", 2)
+
+    before = "alpha\n" + "x" * 64
+    after = "beta\n" + "y" * 64
+
+    result = diff_module.build_unified_diff(before, after, content_type="text")
+
+    assert result.safety_limits is not None
+    safety = dict(result.safety_limits)
+    canonical_limits = safety.get("canonical")
+    assert isinstance(canonical_limits, Mapping)
+    assert "before" in canonical_limits and "after" in canonical_limits
+    before_info = canonical_limits["before"]
+    after_info = canonical_limits["after"]
+    assert isinstance(before_info, Mapping) and isinstance(after_info, Mapping)
+    assert before_info["truncated_bytes"] > 0
+    assert after_info["truncated_bytes"] > 0
+    assert "truncated" in result.canonical_before
+    assert "digest=" in result.canonical_after
+
+    diff_limits = safety.get("diff")
+    assert isinstance(diff_limits, Mapping)
+    assert diff_limits.get("truncated_lines", 0) >= 0
+    assert diff_limits.get("truncated_bytes", 0) >= 0
+    assert "diff truncated" in result.diff
