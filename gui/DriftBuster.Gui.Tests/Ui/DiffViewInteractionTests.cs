@@ -49,7 +49,7 @@ public sealed class DiffViewInteractionTests
     }
 
     [AvaloniaFact]
-    public void CopyRawJson_without_clipboard_keeps_value()
+    public void CopyActiveJson_without_clipboard_keeps_value()
     {
         var service = new FakeDriftbusterService();
         var viewModel = new DiffViewModel(service)
@@ -62,19 +62,22 @@ public sealed class DiffViewInteractionTests
             DataContext = viewModel,
         };
 
-        Invoke(view, "OnCopyRawJson", new Button(), new RoutedEventArgs(Button.ClickEvent));
+        Invoke(view, "OnCopyActiveJson", new Button(), new RoutedEventArgs(Button.ClickEvent));
 
         viewModel.RawJson.Should().Be("{\"value\":42}");
     }
 
     [AvaloniaFact]
-    public void CopyRawJson_with_override_captures_text()
+    public void CopyActiveJson_with_override_captures_sanitized_payload()
     {
         var captured = new List<string>();
         var viewModel = new DiffViewModel(new FakeDriftbusterService())
         {
             RawJson = "{\"key\":1}",
+            SanitizedJson = "{\"safe\":true}",
         };
+
+        viewModel.JsonViewMode = DiffViewModel.DiffJsonViewMode.Sanitized;
 
         var view = new DiffView
         {
@@ -86,9 +89,37 @@ public sealed class DiffViewInteractionTests
             },
         };
 
-        Invoke(view, "OnCopyRawJson", new Button(), new RoutedEventArgs(Button.ClickEvent));
+        Invoke(view, "OnCopyActiveJson", new Button(), new RoutedEventArgs(Button.ClickEvent));
 
-        captured.Should().ContainSingle().Which.Should().Be("{\"key\":1}");
+        captured.Should().ContainSingle().Which.Should().Be("{\"safe\":true}");
+    }
+
+    [AvaloniaFact]
+    public void CopyActiveJson_refuses_unsanitized_payload_when_sanitized_available()
+    {
+        var captured = new List<string>();
+        var viewModel = new DiffViewModel(new FakeDriftbusterService())
+        {
+            RawJson = "{\"raw\":true}",
+            SanitizedJson = "{\"safe\":true}",
+        };
+
+        viewModel.JsonViewMode = DiffViewModel.DiffJsonViewMode.Raw;
+
+        var view = new DiffView
+        {
+            DataContext = viewModel,
+            ClipboardSetTextOverride = text =>
+            {
+                captured.Add(text);
+                return Task.CompletedTask;
+            },
+        };
+
+        Invoke(view, "OnCopyActiveJson", new Button(), new RoutedEventArgs(Button.ClickEvent));
+
+        captured.Should().BeEmpty();
+        viewModel.CanCopyActiveJson.Should().BeFalse();
     }
 
     private static void Invoke(object target, string methodName, params object?[] args)

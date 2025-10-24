@@ -72,16 +72,22 @@ namespace DriftBuster.Gui.Views
             return files[0].TryGetLocalPath();
         }
 
-        private async void OnCopyRawJson(object? sender, RoutedEventArgs e)
+        private async void OnCopyActiveJson(object? sender, RoutedEventArgs e)
         {
-            if (DataContext is not DiffViewModel vm || string.IsNullOrEmpty(vm.RawJson))
+            if (DataContext is not DiffViewModel vm || !vm.CanCopyActiveJson)
+            {
+                return;
+            }
+
+            var payload = vm.ActiveJson;
+            if (string.IsNullOrEmpty(payload))
             {
                 return;
             }
 
             if (ClipboardSetTextOverride is not null)
             {
-                await ClipboardSetTextOverride(vm.RawJson).ConfigureAwait(true);
+                await ClipboardSetTextOverride(payload).ConfigureAwait(true);
                 return;
             }
 
@@ -91,7 +97,7 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
-            await clipboard.SetTextAsync(vm.RawJson).ConfigureAwait(true);
+            await clipboard.SetTextAsync(payload).ConfigureAwait(true);
         }
     }
 }

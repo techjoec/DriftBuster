@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="using:Avalonia.Automation"
              xmlns:conv="using:DriftBuster.Gui.Converters"
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
              x:Class="DriftBuster.Gui.Views.DiffView"
@@ -14,6 +15,31 @@
 
       <Border Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}">
         <StackPanel Spacing="18">
+          <StackPanel Orientation="Horizontal"
+                      Spacing="12"
+                      VerticalAlignment="Center"
+                      IsVisible="{Binding HasMruEntries}">
+            <TextBlock Text="Recent plans"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="360"
+                      ItemsSource="{Binding MruEntries}"
+                      SelectedItem="{Binding SelectedMruEntry, Mode=TwoWay}"
+                      PlaceholderText="Select a previous diff"
+                      automation:AutomationProperties.AutomationId="DiffPlanner.MruSelector"
+                      automation:AutomationProperties.Name="Recent diff planner entries">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DiffViewModel+DiffPlannerMruEntryView">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding DisplayName}" />
+                    <TextBlock Text="{Binding PayloadKind}"
+                               Classes="subtitle" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+
           <ItemsControl ItemsSource="{Binding Inputs}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
@@ -84,11 +110,45 @@
                        Text="Preview generated diff plans for each comparison." />
           </StackPanel>
 
-          <Button Content="Copy raw JSON" Classes="outline"
-                  HorizontalAlignment="Right"
-                  IsEnabled="{Binding HasRawJson}"
-                  IsVisible="{Binding HasRawJson}"
-                  Click="OnCopyRawJson" />
+          <StackPanel Orientation="Horizontal"
+                      HorizontalAlignment="Right"
+                      Spacing="8"
+                      IsVisible="{Binding HasAnyJson}">
+            <ItemsControl x:Name="JsonViewToggleList"
+                          ItemsSource="{Binding JsonViewOptions}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="6" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DiffViewModel+JsonViewOption">
+                  <ToggleButton Classes="outline"
+                                MinWidth="96"
+                                Padding="6,4"
+                                Tag="{Binding Mode}"
+                                Content="{Binding DisplayName}"
+                                Command="{Binding DataContext.SelectJsonViewModeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding Mode}"
+                                automation:AutomationProperties.AutomationId="{Binding Mode}"
+                                automation:AutomationProperties.Name="{Binding DisplayName}">
+                    <ToggleButton.IsChecked>
+                      <MultiBinding Converter="{x:Static conv:DiffJsonViewModeMatchConverter.Instance}">
+                        <Binding Path="Mode" />
+                        <Binding Path="DataContext.JsonViewMode" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                      </MultiBinding>
+                    </ToggleButton.IsChecked>
+                  </ToggleButton>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Classes="outline"
+                    Content="Copy JSON"
+                    Click="OnCopyActiveJson"
+                    IsEnabled="{Binding CanCopyActiveJson}"
+                    automation:AutomationProperties.AutomationId="DiffPlanner.CopyJsonButton"
+                    automation:AutomationProperties.Name="Copy active diff JSON" />
+          </StackPanel>
 
           <ItemsControl ItemsSource="{Binding Comparisons}" IsVisible="{Binding HasResult}">
             <ItemsControl.ItemTemplate>
@@ -153,15 +213,33 @@
                      HorizontalAlignment="Center"
                      IsVisible="{Binding ShouldShowPlanHint}" />
 
-          <Expander Header="Raw JSON" IsExpanded="False" IsVisible="{Binding HasRawJson}">
-            <Border Background="{DynamicResource Brush.SurfaceAlt}" Padding="16" CornerRadius="{DynamicResource Radius.Medium}">
-              <ScrollViewer Height="160">
-                <TextBlock Text="{Binding RawJson}"
-                           FontFamily="Consolas"
-                           TextWrapping="Wrap" />
-              </ScrollViewer>
-            </Border>
-          </Expander>
+          <Border x:Name="SanitizedJsonPane"
+                  Background="{DynamicResource Brush.SurfaceAlt}"
+                  Padding="16"
+                  CornerRadius="{DynamicResource Radius.Medium}"
+                  IsVisible="{Binding IsSanitizedViewActive}"
+                  automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Sanitized"
+                  automation:AutomationProperties.Name="Sanitized diff JSON">
+            <ScrollViewer Height="160">
+              <TextBlock Text="{Binding SanitizedJson}"
+                         FontFamily="Consolas"
+                         TextWrapping="Wrap" />
+            </ScrollViewer>
+          </Border>
+
+          <Border x:Name="RawJsonPane"
+                  Background="{DynamicResource Brush.SurfaceAlt}"
+                  Padding="16"
+                  CornerRadius="{DynamicResource Radius.Medium}"
+                  IsVisible="{Binding IsRawViewActive}"
+                  automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Raw"
+                  automation:AutomationProperties.Name="Raw diff JSON">
+            <ScrollViewer Height="160">
+              <TextBlock Text="{Binding RawJson}"
+                         FontFamily="Consolas"
+                         TextWrapping="Wrap" />
+            </ScrollViewer>
+          </Border>
         </StackPanel>
       </Border>
     </StackPanel>

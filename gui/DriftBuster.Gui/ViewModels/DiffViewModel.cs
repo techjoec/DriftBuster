@@ -66,7 +66,10 @@ namespace DriftBuster.Gui.ViewModels
         public bool IsSanitizedViewActive => JsonViewMode == DiffJsonViewMode.Sanitized && HasSanitizedJson;
         public bool IsRawViewActive => JsonViewMode == DiffJsonViewMode.Raw || !HasSanitizedJson;
         public string ActiveJson => IsSanitizedViewActive ? SanitizedJson : RawJson;
-        public bool CanCopyActiveJson => !string.IsNullOrEmpty(ActiveJson);
+        public bool CanCopyActiveJson => HasSanitizedJson
+            ? JsonViewMode == DiffJsonViewMode.Sanitized && !string.IsNullOrEmpty(SanitizedJson)
+            : HasRawJson;
+        public bool HasAnyJson => HasRawJson || HasSanitizedJson;
 
         public IReadOnlyList<JsonViewOption> JsonViewOptions { get; } = new[]
         {
@@ -123,6 +126,7 @@ namespace DriftBuster.Gui.ViewModels
             OnPropertyChanged(nameof(IsRawViewActive));
             OnPropertyChanged(nameof(ActiveJson));
             OnPropertyChanged(nameof(CanCopyActiveJson));
+            OnPropertyChanged(nameof(HasAnyJson));
         }
 
         partial void OnSanitizedJsonChanged(string value)
@@ -131,6 +135,7 @@ namespace DriftBuster.Gui.ViewModels
             OnPropertyChanged(nameof(IsSanitizedViewActive));
             OnPropertyChanged(nameof(ActiveJson));
             OnPropertyChanged(nameof(CanCopyActiveJson));
+            OnPropertyChanged(nameof(HasAnyJson));
             _selectJsonViewModeCommand.NotifyCanExecuteChanged();
 
             if (!HasSanitizedJson && JsonViewMode == DiffJsonViewMode.Sanitized)

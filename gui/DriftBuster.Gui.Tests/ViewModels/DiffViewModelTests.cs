@@ -66,6 +66,7 @@ public class DiffViewModelTests
         viewModel.HasError.Should().BeFalse();
         viewModel.RawJson.Should().Be("{\"comparisons\":[{}]}");
         viewModel.HasSanitizedJson.Should().BeFalse();
+        viewModel.HasAnyJson.Should().BeTrue();
         viewModel.JsonViewMode.Should().Be(DiffViewModel.DiffJsonViewMode.Raw);
         viewModel.ActiveJson.Should().Be("{\"comparisons\":[{}]}");
         viewModel.ShouldShowPlanHint.Should().BeFalse();
@@ -99,6 +100,54 @@ public class DiffViewModelTests
 
         viewModel.Inputs[0].Error.Should().BeNull();
         viewModel.Inputs[1].Error.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RunDiffCommand_prefers_sanitized_payloads()
+    {
+        using var temp = new TempDirectory();
+        var comparison = new DiffComparison
+        {
+            From = "left", To = "right",
+            Plan = new DiffPlan(),
+            Metadata = new DiffMetadata(),
+        };
+
+        var service = new FakeDriftbusterService
+        {
+            DiffResponse = new DiffResult
+            {
+                Comparisons = new[] { comparison },
+                RawJson = "{\"raw\":true}",
+                SanitizedJson = "{\"safe\":true}",
+            },
+        };
+
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(service, store);
+        await viewModel.Initialization;
+
+        viewModel.Inputs[0].Path = CreateFile(temp.Path, "baseline.json", "{}");
+        viewModel.Inputs[1].Path = CreateFile(temp.Path, "comparison.json", "{}");
+
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
+
+        viewModel.HasSanitizedJson.Should().BeTrue();
+        viewModel.HasAnyJson.Should().BeTrue();
+        viewModel.JsonViewMode.Should().Be(DiffViewModel.DiffJsonViewMode.Sanitized);
+        viewModel.IsSanitizedViewActive.Should().BeTrue();
+        viewModel.ActiveJson.Should().Be("{\"safe\":true}");
+        viewModel.CanCopyActiveJson.Should().BeTrue();
+
+        viewModel.SelectJsonViewModeCommand.Execute(DiffViewModel.DiffJsonViewMode.Raw);
+
+        viewModel.IsRawViewActive.Should().BeTrue();
+        viewModel.CanCopyActiveJson.Should().BeFalse();
+
+        viewModel.SelectJsonViewModeCommand.Execute(DiffViewModel.DiffJsonViewMode.Sanitized);
+
+        viewModel.IsSanitizedViewActive.Should().BeTrue();
+        viewModel.CanCopyActiveJson.Should().BeTrue();
     }
 
     [Fact]
