@@ -602,13 +602,13 @@ highlight where to consume the artifact.
   - [x] 8.4.4 Update docs `docs/format-support.md` + `docs/format-addition-guide.md`.
   - [x] 8.4.5 Publish indentation tolerance policy in `docs/format-playbook.md#structured-text`.
   - [x] 8.4.6 Capture multi-document YAML samples with provenance notes under `fixtures/yaml/README.md`.
-- [ ] 8.5 Binary/Hybrid (Priority 5).
-  - [ ] 8.5.1 Design adapters for embedded SQL, property lists, markdown front matter in `src/driftbuster/formats`.
-  - [ ] 8.5.2 Add fixtures under `fixtures/` with legal review tracked.
-  - [ ] 8.5.3 Track binary diff adapters in `src/driftbuster/reporting/diff.py`.
-  - [ ] 8.5.4 Document legal sign-off steps in `docs/legal-safeguards.md`.
-- [x] 8.5.5 Produce binary diff adapter design doc in `notes/design/binary-diff.md`.
-  - [ ] 8.5.6 Capture anonymised binary fixture generation scripts under `scripts/fixtures/binary/`.
+- [x] 8.5 Binary/Hybrid (Priority 5).
+  - [x] 8.5.1 Design adapters for embedded SQL, property lists, markdown front matter in `src/driftbuster/formats`.
+  - [x] 8.5.2 Add fixtures under `fixtures/` with legal review tracked.
+  - [x] 8.5.3 Track binary diff adapters in `src/driftbuster/reporting/diff.py`.
+  - [x] 8.5.4 Document legal sign-off steps in `docs/legal-safeguards.md`.
+  - [x] 8.5.5 Produce binary diff adapter design doc in `notes/design/binary-diff.md`.
+  - [x] 8.5.6 Capture anonymised binary fixture generation scripts under `scripts/fixtures/binary/`.
 
 ## A9. Metadata Enhancements [deps=A7]
 

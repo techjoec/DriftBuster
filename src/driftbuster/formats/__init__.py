@@ -20,6 +20,7 @@ from . import text as _text_plugin  # noqa: F401
 from . import toml as _toml_plugin  # noqa: F401
 from . import hcl as _hcl_plugin  # noqa: F401
 from . import dockerfile as _dockerfile_plugin  # noqa: F401
+from . import binary as _binary_plugin  # noqa: F401
 
 __all__ = [
     "FormatPlugin",

@@ -37,3 +37,9 @@
 ## Audit linkage
 - Detection metadata now emits an `env-sanitisation-workflow` remediation entry pointing back to this README so reviewers can trace how shared fixtures were prepared.
 - Commit messages should highlight when new fixtures are produced via this workflow.
+
+## Binary adapters
+- Run `python scripts/fixtures/binary/generate_samples.py` to regenerate the
+  SQLite, binary plist, and markdown front matter fixtures used by the binary
+  format detector. The script overwrites the existing fixtures and refreshes
+  `MANIFEST.json` with hashes for legal review.

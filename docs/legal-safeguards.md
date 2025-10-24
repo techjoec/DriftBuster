@@ -26,6 +26,17 @@ These guardrails cover every feature, note, and capture helper.
 - When recording validation evidence, summarise detector metadata instead of
   storing raw JSON; note when the analysis window truncated the sample.
 
+## Binary fixtures
+
+- Store generated SQLite, binary plist, and markdown front matter samples under
+  `fixtures/binary/` with hashes recorded in `MANIFEST.json`.
+- Regenerate the fixtures via `scripts/fixtures/binary/generate_samples.py` so
+  the provenance script doubles as documentation.
+- Keep placeholder values generic (environment labels, feature flags) and avoid
+  importing third-party binaries or leaked production data.
+- Reference the manifest entry when logging legal review updates so reviewers
+  can verify digests quickly.
+
 ## GUI frameworks
 
 - **WinUI 3 / Windows App SDK**

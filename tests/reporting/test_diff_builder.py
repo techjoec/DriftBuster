@@ -4,6 +4,7 @@ import pytest
 
 from driftbuster.reporting.diff import (
     DiffResult,
+    build_binary_diff,
     build_unified_diff,
     canonicalise_text,
     canonicalise_xml,
@@ -51,3 +52,17 @@ def test_render_unified_diff_and_errors() -> None:
 
     with pytest.raises(ValueError):
         build_unified_diff("a", "b", content_type="unknown")
+
+
+def test_build_binary_diff_tracks_evidence() -> None:
+    before = b"\x00\x01"
+    after = b"\x00\x01\x02"
+    result = build_binary_diff(before, after, label="sqlite")
+
+    assert result.content_type == "binary"
+    assert "binary:sqlite" in result.diff
+    assert result.binary_evidence is not None
+    evidence = result.binary_evidence[0]
+    assert evidence.changed is True
+    assert evidence.before_size == 2
+    assert evidence.after_size == 3

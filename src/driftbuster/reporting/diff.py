@@ -23,6 +23,10 @@ def _digest(value: str) -> str:
     return f"sha256:{sha256(value.encode('utf-8')).hexdigest()}"
 
 
+def _digest_bytes(payload: bytes) -> str:
+    return f"sha256:{sha256(payload).hexdigest()}"
+
+
 def canonicalise_text(payload: str) -> str:
     """Return ``payload`` with normalised newlines and trimmed trailing spaces."""
 
@@ -120,6 +124,17 @@ _NORMALISERS: Mapping[str, Callable[[str], str]] = {
 
 
 @dataclass(frozen=True)
+class BinarySegmentEvidence:
+    label: str
+    before_size: int
+    after_size: int
+    before_digest: str
+    after_digest: str
+    changed: bool
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
 class DiffResult:
     """Structured diff artefact for downstream adapters."""
 
@@ -134,6 +149,7 @@ class DiffResult:
     mask_tokens: Sequence[str] | None = None
     placeholder: str = "[REDACTED]"
     context_lines: int = 3
+    binary_evidence: Sequence[BinarySegmentEvidence] | None = None
 
 
 @dataclass(frozen=True)
@@ -157,6 +173,7 @@ class DiffPlanSummary:
     mask_tokens: tuple[str, ...]
     placeholder: str
     context_lines: int
+    binary_evidence: tuple[BinarySegmentEvidence, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -254,6 +271,60 @@ def build_unified_diff(
         mask_tokens=mask_tuple,
         placeholder=placeholder,
         context_lines=context_lines,
+        binary_evidence=None,
+    )
+
+
+def build_binary_diff(
+    before: bytes,
+    after: bytes,
+    *,
+    from_label: str = "before",
+    to_label: str = "after",
+    label: str | None = None,
+    reason: str | None = None,
+) -> DiffResult:
+    """Return :class:`DiffResult` summarising binary payload changes."""
+
+    before_digest = _digest_bytes(before)
+    after_digest = _digest_bytes(after)
+    evidence = BinarySegmentEvidence(
+        label=label or "binary",
+        before_size=len(before),
+        after_size=len(after),
+        before_digest=before_digest,
+        after_digest=after_digest,
+        changed=before != after,
+        reason=reason,
+    )
+    delta = len(after) - len(before)
+    summary_lines = [
+        f"binary:{evidence.label}",
+        f"- before size={evidence.before_size} digest={before_digest}",
+        f"+ after size={evidence.after_size} digest={after_digest}",
+    ]
+    if delta:
+        summary_lines.append(f"Δ bytes: {delta:+d}")
+
+    stats = {
+        "added_lines": 0,
+        "removed_lines": 0,
+        "changed_lines": 1 if evidence.changed else 0,
+    }
+
+    return DiffResult(
+        canonical_before=before_digest,
+        canonical_after=after_digest,
+        diff="\n".join(summary_lines),
+        stats=stats,
+        content_type="binary",
+        from_label=from_label,
+        to_label=to_label,
+        label=label,
+        mask_tokens=None,
+        placeholder="[REDACTED]",
+        context_lines=0,
+        binary_evidence=(evidence,),
     )
 
 
@@ -287,6 +358,7 @@ def _build_comparison_summary(
         mask_tokens=tuple(result.mask_tokens or ()),
         placeholder=result.placeholder,
         context_lines=result.context_lines,
+        binary_evidence=tuple(result.binary_evidence or ()),
     )
 
     metadata_summary = DiffMetadataSummary(
@@ -378,6 +450,18 @@ def diff_summary_to_payload(summary: DiffResultSummary) -> Mapping[str, object]:
                     "mask_tokens": list(comparison.plan.mask_tokens),
                     "placeholder": comparison.plan.placeholder,
                     "context_lines": comparison.plan.context_lines,
+                    "binary_evidence": [
+                        {
+                            "label": evidence.label,
+                            "before_size": evidence.before_size,
+                            "after_size": evidence.after_size,
+                            "before_digest": evidence.before_digest,
+                            "after_digest": evidence.after_digest,
+                            "changed": evidence.changed,
+                            "reason": evidence.reason,
+                        }
+                        for evidence in comparison.plan.binary_evidence
+                    ],
                 },
                 "metadata": {
                     "content_type": comparison.metadata.content_type,
