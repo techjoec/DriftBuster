@@ -143,6 +143,9 @@ namespace DriftBuster.Gui.Services
         private readonly ReadOnlyObservableCollection<ToastNotification> _visibleReadonly;
         private readonly ReadOnlyObservableCollection<ToastNotification> _overflowReadonly;
         private readonly Action<Action> _dispatcher;
+        private readonly Queue<Action> _pendingActions = new();
+        private readonly object _queueLock = new();
+        private bool _isProcessing;
 
         public ToastService(Action<Action>? dispatcher = null)
         {
@@ -173,7 +176,7 @@ namespace DriftBuster.Gui.Services
                 secondaryAction,
                 Dismiss);
 
-            _dispatcher(() =>
+            Enqueue(() =>
             {
                 _allToasts.Insert(0, toast);
                 var cts = new CancellationTokenSource();
@@ -187,7 +190,7 @@ namespace DriftBuster.Gui.Services
 
         public void Dismiss(Guid id)
         {
-            _dispatcher(() =>
+            Enqueue(() =>
             {
                 if (_tokens.Remove(id, out var cts))
                 {
@@ -210,7 +213,7 @@ namespace DriftBuster.Gui.Services
 
         public void DismissAll()
         {
-            _dispatcher(() =>
+            Enqueue(() =>
             {
                 foreach (var token in _tokens.Values)
                 {
@@ -222,6 +225,58 @@ namespace DriftBuster.Gui.Services
                 _allToasts.Clear();
                 RebuildCollections();
             });
+        }
+
+        private void Enqueue(Action action)
+        {
+            bool shouldSchedule;
+            lock (_queueLock)
+            {
+                _pendingActions.Enqueue(action);
+                shouldSchedule = !_isProcessing;
+                if (shouldSchedule)
+                {
+                    _isProcessing = true;
+                }
+            }
+
+            if (shouldSchedule)
+            {
+                _dispatcher(ProcessPendingActions);
+            }
+        }
+
+        private void ProcessPendingActions()
+        {
+            while (true)
+            {
+                Action? next;
+                lock (_queueLock)
+                {
+                    if (_pendingActions.Count == 0)
+                    {
+                        _isProcessing = false;
+                        return;
+                    }
+
+                    next = _pendingActions.Dequeue();
+                }
+
+                try
+                {
+                    next();
+                }
+                catch
+                {
+                    lock (_queueLock)
+                    {
+                        _pendingActions.Clear();
+                        _isProcessing = false;
+                    }
+
+                    throw;
+                }
+            }
         }
 
         private void RebuildCollections()

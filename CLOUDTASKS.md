@@ -309,11 +309,11 @@ highlight where to consume the artifact.
   - [ ] 3.2.2 Guard virtualization behind heuristics in `gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs`.
   - [ ] 3.2.3 Add UI tests in `gui/DriftBuster.Gui.Tests/Ui` covering virtualization toggles.
   - [ ] 3.2.4 Document virtualization fallback toggle for low-memory hosts in `docs/windows-gui-guide.md`.
-- [ ] 3.3 Buffer dispatcher updates.
-  - [ ] 3.3.1 Implement buffered queue in `gui/DriftBuster.Gui/Services/ToastService.cs` (or new progress dispatcher service).
-  - [ ] 3.3.2 Add async unit tests in `gui/DriftBuster.Gui.Tests/Services`.
-  - [ ] 3.3.3 Mirror progress throttling in Python `src/driftbuster/multi_server.py` for CLI parity with tests in `tests/multi_server/test_multi_server.py`.
-  - [ ] 3.3.4 Record timing metrics before/after in `notes/status/gui-research.md`.
+- [x] 3.3 Buffer dispatcher updates.
+  - [x] 3.3.1 Implement buffered queue in `gui/DriftBuster.Gui/Services/ToastService.cs` (or new progress dispatcher service).
+  - [x] 3.3.2 Add async unit tests in `gui/DriftBuster.Gui.Tests/Services`.
+  - [x] 3.3.3 Mirror progress throttling in Python `src/driftbuster/multi_server.py` for CLI parity with tests in `tests/multi_server/test_multi_server.py`.
+  - [x] 3.3.4 Record timing metrics before/after in `notes/status/gui-research.md`.
 - [ ] 3.4 Perf harness + validation.
   - [ ] 3.4.1 Create `gui/DriftBuster.Gui.Tests/Ui/PerformanceSmokeTests.cs` exercising virtualization/perf toggles.
   - [ ] 3.4.2 Wire optional perf flag into `scripts/verify_coverage.sh`.

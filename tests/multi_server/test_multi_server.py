@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import io
+import json
 import os
+import sys
 from unittest import mock
 
 from driftbuster.core.detector import DetectorIOError
@@ -12,7 +15,9 @@ from driftbuster.multi_server import (
     MultiServerRunner,
     Plan,
     SCHEMA_VERSION,
+    _reset_progress_throttle_state,
     _resolve_cache_dir,
+    emit_progress,
 )
 
 
@@ -212,3 +217,39 @@ def test_drilldown_includes_sanitized_diff_summary(tmp_path) -> None:
     assert summary["comparison_count"] >= 1
     comparison = summary["comparisons"][0]
     assert comparison["summary"]["before_digest"].startswith("sha256:")
+
+def test_emit_progress_throttles_duplicate_messages(monkeypatch) -> None:
+    buffer = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", buffer, raising=False)
+    _reset_progress_throttle_state()
+
+    emit_progress("host-a", "running", "Scanning", _now=1.0)
+    emit_progress("host-a", "running", "Scanning", _now=1.01)
+
+    payloads = [line for line in buffer.getvalue().splitlines() if line.strip()]
+    assert len(payloads) == 1
+
+
+def test_emit_progress_emits_when_message_changes(monkeypatch) -> None:
+    buffer = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", buffer, raising=False)
+    _reset_progress_throttle_state()
+
+    emit_progress("host-a", "running", "Scanning", _now=2.0)
+    emit_progress("host-a", "running", "Finishing", _now=2.01)
+
+    payloads = [json.loads(line) for line in buffer.getvalue().splitlines() if line.strip()]
+    messages = [payload["payload"]["message"] for payload in payloads]
+    assert messages == ["Scanning", "Finishing"]
+
+
+def test_emit_progress_emits_after_interval(monkeypatch) -> None:
+    buffer = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", buffer, raising=False)
+    _reset_progress_throttle_state()
+
+    emit_progress("host-a", "running", "Scanning", _now=5.0)
+    emit_progress("host-a", "running", "Scanning", _now=5.2)
+
+    payloads = [json.loads(line) for line in buffer.getvalue().splitlines() if line.strip()]
+    assert len(payloads) == 2

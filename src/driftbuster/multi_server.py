@@ -8,12 +8,13 @@ records that map to the .NET `ServerScanResponse` contract. It is invoked via
 
 from __future__ import annotations
 
-import json
 import hashlib
 import os
 import shutil
 import sys
 import time
+import json
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,6 +47,15 @@ _CANONICAL_NORMALISERS = {
 }
 
 DATA_ROOT_ENV = "DRIFTBUSTER_DATA_ROOT"
+
+_PROGRESS_THROTTLE_SECONDS = 0.05
+_progress_events: dict[str, tuple[float, str, str]] = {}
+_progress_lock = threading.Lock()
+
+
+def _reset_progress_throttle_state() -> None:
+    with _progress_lock:
+        _progress_events.clear()
 
 
 def _resolve_data_root() -> Path:
@@ -665,7 +675,20 @@ def plans_order(plans: Sequence[Plan]) -> list[str]:
     return [plan.host_id for plan in plans]
 
 
-def emit_progress(host_id: str, status: str, message: str) -> None:
+def emit_progress(host_id: str, status: str, message: str, *, _now: float | None = None) -> None:
+    timestamp = _now if _now is not None else time.monotonic()
+    with _progress_lock:
+        last = _progress_events.get(host_id)
+        if (
+            last
+            and last[1] == status
+            and last[2] == message
+            and (timestamp - last[0]) < _PROGRESS_THROTTLE_SECONDS
+        ):
+            return
+
+        _progress_events[host_id] = (timestamp, status, message)
+
     payload = {
         "type": "progress",
         "payload": {

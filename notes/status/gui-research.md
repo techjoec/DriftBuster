@@ -49,6 +49,11 @@
     failure-count: 0
   ```
 
+### Toast dispatcher buffering (A3.3)
+
+- Synthetic dispatcher harness burst-testing 500 toast notifications recorded **22.34 ms** flush time across **500 UI posts** with the legacy dispatcher (`dotnet run` harness mirroring the pre-queue implementation).
+- The buffered queue drops the same scenario to **9.55 ms** across **2 UI posts**, keeping auto-dismiss scheduling intact while collapsing redundant dispatcher work.
+
 ### Headless font issues (A1d)
 
 - Pre-fix failures hit both the Release `MainWindow` smoke test and the drilldown view instantiation path because Avalonia attempted to resolve `fonts:SystemFonts` before any headless locator bindings existed. The captured stack trace remains in [`artifacts/logs/headless-font-release-stacktrace.txt`](../../artifacts/logs/headless-font-release-stacktrace.txt) for release window crashes, while the matching drilldown failure reproduced under `[Collection(HeadlessCollection.Name)]` until the bootstrap landed.
