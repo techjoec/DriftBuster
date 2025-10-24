@@ -348,10 +348,10 @@ highlight where to consume the artifact.
   - [x] 4.3.1 Capture new screenshots and store under `docs/ux-refresh.md`.
   - [x] 4.3.2 Update `docs/windows-gui-guide.md` and `docs/release-notes.md` with visuals.
   - [x] 4.3.3 Maintain screenshot manifest in `docs/ux-refresh.md#asset-inventory`.
-- [ ] 4.4 Validation.
-  - [ ] 4.4.1 Run contrast tooling (`scripts/coverage_report.py` optional hook + manual audit) and log results.
-  - [ ] 4.4.2 Execute regression tests: `dotnet test`, `pytest`, and manual multi-server run with theme toggles documented in `notes/status/gui-research.md`.
-  - [ ] 4.4.3 Log accessibility audit results (tool, version, outcome) in `notes/checklists/accessibility-report.md`.
+- [x] 4.4 Validation.
+  - [x] 4.4.1 Run contrast tooling (`scripts/coverage_report.py` optional hook + manual audit) and log results.
+  - [x] 4.4.2 Execute regression tests: `dotnet test`, `pytest`, and manual multi-server run with theme toggles documented in `notes/status/gui-research.md`.
+  - [x] 4.4.3 Log accessibility audit results (tool, version, outcome) in `notes/checklists/accessibility-report.md`.
 - [x] 4.5 Release communication.
   - [x] 4.5.1 Add theme change summary to `CHANGELOG.md` and note screenshot refresh in `docs/release-notes.md`.
 

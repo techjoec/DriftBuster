@@ -126,6 +126,16 @@
 - Bootstrapper smoke telemetry now persists to [`artifacts/logs/headless-font-health.json`](../../artifacts/logs/headless-font-health.json), capturing per-scenario totals (`totalRuns`, `passes`, `failures`) and the latest metrics. The current snapshot shows all three headless smoke tests green after the alias/lookup retries, making it easy to spot regressions when the counts drift.
 - `scripts/font_health_summary.py` turns the telemetry into a quick drift report, failing the session when pass rates dip or the latest status regresses so the Release/Debug parity checks stay honest.
 
+### Validation checkpoint (A4 · 4.4)
+
+- Ran `python -m scripts.accessibility_summary` against `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` to confirm every Narrator/Inspect section remained complete before logging new evidence.
+- Contrast audit: computed WCAG ratios for the palette pairs using the theme tokens (Dark+ text 17.74:1, Dark+ accent 5.25:1, Light+ text 17.85:1, Light+ accent 4.95:1). Captured the figures in the accessibility report log for traceability.
+- Regression sweep:
+  - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` (150 tests, warnings limited to known drag/drop API migrations still pending).
+  - `pytest` (405 passed, 1 skipped) to confirm core detectors and CLI flows stay green with the refreshed theme assets.
+- Manual multi-server rehearsal: executed `PYTHONPATH=src scripts/smoke_multi_server_storage.sh` to validate cold/hot cache behaviour and note the session root for theme evidence capture. Extracted `Palette.DarkPlus`/`Palette.LightPlus` accent and background tokens via a quick XAML probe to document the Dark+/Light+ toggle deltas alongside the run log.
+- Recorded tool/version outcomes plus the contrast ratios in `notes/checklists/accessibility-report.md` so future audits can diff against this checkpoint.
+
 ### Offline SQL snapshot validation (A1d · 16.4)
 
 - Seeded a minimal `accounts` SQLite database and executed `scripts.capture.run_sql_export` to validate the SQL snapshot export path with deterministic masking (`accounts.secret`) and hashing (`accounts.email`).
