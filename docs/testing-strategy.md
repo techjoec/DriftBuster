@@ -124,6 +124,9 @@ grounded in reproducible fixtures.
   configuration profile name or identifier.
 - For each entry, document the token placeholders you expect to approve (e.g.,
   `server_name`, `certificate_thumbprint`) and confirm the redaction method.
+- Capture the `build_plan_transforms` output (or the
+  `metadata.plan_transform` block from JSON hunts) alongside approvals so future
+  diff plans inherit the same masking tokens without manual re-entry.
 - Keep approval snapshots outside the repository; reference the location in
   `notes/checklists/hunt-profile-review.md`.
 
@@ -158,6 +161,8 @@ grounded in reproducible fixtures.
 - Document how to reproduce fuzz runs manually; no automated fuzzing yet.
 - Track dynamic token samples (hostnames, thumbprints, versions) so hunt-mode
   rules can be verified against real-world data.
+- Record the resulting placeholders from `build_plan_transforms` next to the
+  fuzzed sample so masking expectations remain reproducible.
 
 ### Format-Specific Fuzz Heuristics
 

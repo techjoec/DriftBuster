@@ -50,6 +50,35 @@ for entry in payload:
 - Feed the `token_name` column into configuration profile metadata (see
   `docs/configuration-profiles.md`) so drift reviews know which values are
   expected.
+- When a rule exposes a `token_name`, the entry includes
+  `metadata.plan_transform` containing the detected value and templated
+  placeholder (defaults to `{{ token_name }}`) for diff plans or approval logs.
+
+### Plan transforms & placeholders
+
+```python
+from driftbuster import build_plan_transforms, default_rules, hunt_path
+
+hits = hunt_path("./deployments/prod-web-01", rules=default_rules())
+transforms = build_plan_transforms(hits)
+
+for transform in transforms:
+    print(transform.token_name, "=>", transform.placeholder, transform.value)
+
+# Custom placeholder style
+transforms = build_plan_transforms(
+    hits,
+    placeholder_template="<<{token_name}>>",
+)
+```
+
+- `build_plan_transforms` deduplicates hits per file/line and pairs each
+  `token_name` with the matched value.
+- Feed the resulting placeholders into diff plans
+  (`driftbuster.core.diffing.build_diff_plan(mask_tokens=[...])`) or token
+  catalog scripts without re-parsing hunt excerpts.
+- Override `placeholder_template` to match your templating engine (e.g.,
+  `<<token>>`, `%TOKEN%`).
 
 ## Bridging hunts with profiles
 

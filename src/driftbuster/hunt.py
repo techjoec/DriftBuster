@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from .formats import format_registry as registry
 
@@ -40,6 +40,20 @@ class HuntHit:
     path: Path
     line_number: int
     excerpt: str
+    matches: Tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class PlanTransform:
+    """Suggested token substitution derived from a hunt hit."""
+
+    token_name: str
+    value: str
+    placeholder: str
+    rule_name: str
+    path: Path
+    line_number: int
+    excerpt: str
 
 
 def _iter_text(path: Path, sample_size: int) -> Optional[str]:
@@ -55,6 +69,20 @@ def _matches_keywords(text: str, keywords: Sequence[str]) -> bool:
     return all(keyword in text.lower() for keyword in keywords)
 
 
+def _deduplicate_preserving_order(values: Iterable[str]) -> Tuple[str, ...]:
+    seen: set[str] = set()
+    ordered: List[str] = []
+    for value in values:
+        candidate = value.strip()
+        if not candidate:
+            continue
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        ordered.append(candidate)
+    return tuple(ordered)
+
+
 def _extract_hits(text: str, rule: HuntRule, path: Path) -> List[HuntHit]:
     hits: List[HuntHit] = []
     lines = text.splitlines()
@@ -63,16 +91,38 @@ def _extract_hits(text: str, rule: HuntRule, path: Path) -> List[HuntHit]:
         if rule.keywords and not any(keyword in line_lower for keyword in rule.keywords):
             continue
         matched = False
+        matched_values: List[str] = []
         if rule.patterns:
             for pattern in rule.patterns:
-                if pattern.search(line):
+                for match in pattern.finditer(line):
                     matched = True
-                    break
+                    group_values: List[str] = []
+                    if match.lastindex:
+                        for group_index in range(1, match.lastindex + 1):
+                            value = match.group(group_index)
+                            if value:
+                                group_values.append(value.strip())
+                    if group_values:
+                        matched_values.extend(group_values)
+                    whole_match = match.group(0)
+                    if whole_match:
+                        matched_values.append(whole_match.strip())
+            if matched and not matched_values:
+                matched_values.append(line.strip())
         else:
             matched = True
+            matched_values.append(line.strip())
         if matched:
             excerpt = line.strip()
-            hits.append(HuntHit(rule=rule, path=path, line_number=idx, excerpt=excerpt))
+            hits.append(
+                HuntHit(
+                    rule=rule,
+                    path=path,
+                    line_number=idx,
+                    excerpt=excerpt,
+                    matches=_deduplicate_preserving_order(matched_values),
+                )
+            )
     return hits
 
 
@@ -98,6 +148,7 @@ def hunt_path(
     sample_size: int = 128 * 1024,
     exclude_patterns: Optional[Sequence[str]] = None,
     return_json: bool = False,
+    placeholder_template: str = "{{{{ {token_name} }}}}",
 ) -> List[HuntHit] | List[dict[str, Any]]:
     """Search ``root`` for dynamic configuration signals.
 
@@ -148,22 +199,93 @@ def hunt_path(
             relative_text = relative_path.as_posix()
         except ValueError:
             relative_text = hit.path.name
-        json_ready.append(
-            {
-                "rule": {
-                    "name": hit.rule.name,
-                    "description": hit.rule.description,
-                    "token_name": hit.rule.token_name,
-                    "keywords": hit.rule.keywords,
-                    "patterns": tuple(pattern.pattern for pattern in hit.rule.patterns),
-                },
-                "path": str(hit.path),
-                "relative_path": relative_text,
-                "line_number": hit.line_number,
-                "excerpt": hit.excerpt,
+        entry: dict[str, Any] = {
+            "rule": {
+                "name": hit.rule.name,
+                "description": hit.rule.description,
+                "token_name": hit.rule.token_name,
+                "keywords": hit.rule.keywords,
+                "patterns": tuple(pattern.pattern for pattern in hit.rule.patterns),
+            },
+            "path": str(hit.path),
+            "relative_path": relative_text,
+            "line_number": hit.line_number,
+            "excerpt": hit.excerpt,
+        }
+        transform = _plan_transform_for_hit(hit, placeholder_template=placeholder_template)
+        if transform is not None:
+            entry["metadata"] = {
+                "plan_transform": {
+                    "token_name": transform.token_name,
+                    "value": transform.value,
+                    "placeholder": transform.placeholder,
+                    "rule_name": transform.rule_name,
+                }
             }
-        )
+        json_ready.append(entry)
     return json_ready
+
+
+def _plan_transform_for_hit(
+    hit: HuntHit,
+    *,
+    placeholder_template: str,
+) -> PlanTransform | None:
+    token_name = hit.rule.token_name
+    if not token_name:
+        return None
+    match_value: Optional[str] = None
+    if hit.matches:
+        for candidate in hit.matches:
+            if any(marker in candidate for marker in (".", ":", "/", "\\")):
+                match_value = candidate
+                break
+        if match_value is None:
+            match_value = hit.matches[0]
+    elif hit.excerpt:
+        match_value = hit.excerpt
+    if not match_value:
+        return None
+    try:
+        placeholder = placeholder_template.format(token_name=token_name)
+    except KeyError as exc:  # pragma: no cover - defensive guard
+        raise ValueError("placeholder_template must include {token_name} placeholder") from exc
+    return PlanTransform(
+        token_name=token_name,
+        value=match_value,
+        placeholder=placeholder,
+        rule_name=hit.rule.name,
+        path=hit.path,
+        line_number=hit.line_number,
+        excerpt=hit.excerpt,
+    )
+
+
+def build_plan_transforms(
+    hits: Sequence[HuntHit],
+    *,
+    placeholder_template: str = "{{{{ {token_name} }}}}",
+) -> Tuple[PlanTransform, ...]:
+    """Return plan transforms derived from ``hits``.
+
+    Each transform pairs a detected ``token_name`` with the matched value and a
+    templated placeholder (e.g. ``{{ server_name }}``). Consumers can feed the
+    resulting payload into diff plans, token catalog builders, or manual
+    approval workflows.
+    """
+
+    transforms: List[PlanTransform] = []
+    seen: set[tuple[str, str, Path, int]] = set()
+    for hit in hits:
+        transform = _plan_transform_for_hit(hit, placeholder_template=placeholder_template)
+        if transform is None:
+            continue
+        key = (transform.token_name, transform.value, transform.path, transform.line_number)
+        if key in seen:
+            continue
+        seen.add(key)
+        transforms.append(transform)
+    return tuple(transforms)
 
 
 def default_rules() -> Tuple[HuntRule, ...]:
@@ -226,4 +348,11 @@ def default_rules() -> Tuple[HuntRule, ...]:
     )
 
 
-__all__ = ["HuntRule", "HuntHit", "default_rules", "hunt_path"]
+__all__ = [
+    "HuntRule",
+    "HuntHit",
+    "PlanTransform",
+    "build_plan_transforms",
+    "default_rules",
+    "hunt_path",
+]

@@ -19,6 +19,13 @@
   sync the results with `notes/checklists/token-approval.md` before closing the
   review.
 
+### Sample plan transforms (automation reference)
+
+| token_name | placeholder | sample value | source (relative) |
+| --- | --- | --- | --- |
+| `server_name` | `{{ server_name }}` | `app.local` | `deployments/prod-web-01/config.txt` |
+| `database_server` | `<<database_server>>` | `db.internal.local` | `deployments/prod-web-01/settings.config` |
+
 ## Follow-up
 - [ ] Profile metadata updated (commit hash / file reference):
 - [ ] Hunt output archived (location outside repo):
