@@ -824,10 +824,10 @@ highlight where to consume the artifact.
   - [x] 13.2.3 Add ignore controls to CLI/GUI (`src/driftbuster/cli.py`, `gui/DriftBuster.Gui/ViewModels/SecretScannerSettingsViewModel.cs`).
   - [x] 13.2.4 Extend tests `tests/secret_scanning/test_realtime.py`.
   - [x] 13.2.5 Update `docs/legal-safeguards.md` with realtime masking guardrails.
-- [ ] 13.3 Logging & docs.
-  - [ ] 13.3.1 Document flow in `docs/hunt-mode.md` and `docs/windows-gui-guide.md`.
-  - [ ] 13.3.2 Capture validation logs in `notes/status/gui-research.md`.
-  - [ ] 13.3.3 Add troubleshooting appendix to `docs/encryption.md` for realtime failures.
+- [x] 13.3 Logging & docs.
+  - [x] 13.3.1 Document flow in `docs/hunt-mode.md` and `docs/windows-gui-guide.md`.
+  - [x] 13.3.2 Capture validation logs in `notes/status/gui-research.md`.
+  - [x] 13.3.3 Add troubleshooting appendix to `docs/encryption.md` for realtime failures.
 - [ ] 13.4 Validation.
   - [ ] 13.4.1 Run end-to-end scans across `fixtures/` and record masked output evidence.
   - [ ] 13.4.2 Ensure coverage scripts reflect new paths (≥90%).

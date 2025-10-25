@@ -1,0 +1,2 @@
+secret candidate redacted (PasswordAssignment) from Profiles/secret-scan/config.txt:1 -> [SECRET]
+scrubbed 1 potential secret line(s) from Profiles/secret-scan/config.txt

@@ -148,6 +148,34 @@ wraps `collect_token_candidates` and the approval store helpers.
   - Document reviewer workflows in `notes/checklists/token-approval.md` once
     the command ships.
 
+## Realtime secret scanner telemetry
+
+Run profile captures now mirror the offline encryption pipeline by running the
+secret scrubber in-place before copying any source file. The flow is wired
+through `run_profiles.execute_profile`, which hydrates a
+`SecretDetectionContext` and streams log messages into the metadata payload
+written alongside every run. Key behaviours to keep in mind:
+
+- Each copied file is passed through `secret_scanning.copy_with_secret_filter`
+  when textual data is detected. Matching rules replace the sensitive span with
+  `[SECRET]`, append a `SecretFinding` entry, and emit messages such as
+  `secret candidate redacted (PasswordAssignment) from ...` for audit trails.
+  These logs persist in `metadata.json → secrets.messages` and are surfaced via
+  the `ProfileRunResult.secrets` dictionary returned to callers.
+- Ignore lists are honoured at two layers: profile options may specify
+  `secret_ignore_rules` / `secret_ignore_patterns`, while the GUI and future CLI
+  feed structured `secret_scanner` overrides. Both paths normalise values into
+  sorted lists before the scan begins so deterministic manifests and hashes are
+  produced.
+- When no matches trigger, files are copied byte-for-byte and `rules_loaded`
+  stays `True`, proving the ruleset executed without falling back to a noop.
+  Binary files skip redaction automatically based on the lightweight
+  `looks_binary` probe documented in `secret_scanning.py`.
+- The resulting manifest enumerates rule version, ignored entries, and every
+  finding (path, rule name, line, snippet). Use this metadata as the single
+  source of truth when curating approvals or verifying realtime scrubber runs
+  inside automated pipelines.
+
 ## Bridging hunts with profiles
 
 Use the profile CLI to line up hunt hits with the configuration expectations

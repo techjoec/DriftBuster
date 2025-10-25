@@ -2,6 +2,15 @@
 
 ## Decisions & Findings
 
+### Realtime secret scanner validation (A13.3.2)
+
+- Captured a dedicated realtime scrubber log at
+  `artifacts/secret-scanning/realtime-validation-20251025T065645Z.log`. The run
+  exercises the GUI profile pipeline with custom ignore-free rules and records
+  the redaction trace (`secret candidate redacted …`, `scrubbed … line(s)`)
+  referenced by the new documentation updates. Use this artefact when proving
+  the GUI aligns with the Python runner’s manifest messages.
+
 ### Reporting adapters GUI bridge (A11.1.4)
 
 - Mapped four-step integration so the Avalonia shell keeps delegating detection work to the Python CLI while surfacing HTML and JSON artefacts inline. Phase 1 keeps the backend bridge streaming JSON lines into view-models; phase 2 hosts HTML summaries inside a WebView2 panel with quick actions; phase 3 adds a split diff view pairing the rendered summary with raw patches; phase 4 layers checksum validation before export to keep evidence bundles honest.

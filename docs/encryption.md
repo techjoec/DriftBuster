@@ -106,6 +106,26 @@ Operators can verify integrity offline without the keyset by:
 See `tests/offline/test_encryption.py` for end-to-end expectations baked into
 the regression suite.
 
+### Troubleshooting realtime runs
+
+- If the runner reports `ValueError: Runner 'encryption' must be a mapping`,
+  inspect the `encryption` block in your offline config. The loader requires a
+  mapping; JSON strings or arrays will fail before any staging work begins.
+- `ValueError: Encryption requires compression to be enabled.` indicates that
+  `runner.compress` is `false`. Flip it back to `true` so the ZIP exists before
+  `_apply_package_encryption` executes.
+- When the scrubber removes plaintext after encryption, the manifest appends
+  `removed_plaintext: true` alongside the encrypted filename and SHA-256 hash.
+  If you expect the plaintext to remain for manual inspection, set
+  `remove_plaintext: false` and confirm the log file does not report
+  `removed plaintext package after encryption`.
+- Real-time secret scanning runs share the same manifest conventions. Look for
+  `secrets.messages` entries such as
+  `secret candidate redacted (PasswordAssignment)` when verifying that scrubbed
+  files were copied before encryption. Capture these messages in validation logs
+  (see `artifacts/secret-scanning/realtime-validation-20251025T065645Z.log`) so
+  auditors can match encrypted payloads with the sanitised evidence trail.
+
 ----
 
 ## Historical plan (PowerShell path, retained for reference)

@@ -28,6 +28,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 ## 4. Layout Walkthrough
 - **Header strip:** DrB badge + title stack, navigation toggle group (Diff / Hunt / Profiles / Multi-server), backend health indicator with **Check core**, a **Theme** dropdown (Dark+/Light+), and a **Ping core** shortcut. Status messages from the active view flow into the headline banner so you can see scan progress even while switching tabs. Contextual toast notifications appear in the top-right overlay; each toast exposes copy actions for quick sharing of error details.
 - **Diff view:** Build diff plans from multiple snapshots. Primary action uses accent fill; secondary actions use outline style. Includes validation, plan/metadata cards, raw JSON expander, and copy control.
+- **Run profiles view:** Capture filesystem snapshots using saved profiles. The command bar exposes **Run profile**, **Run missing only**, and a **Secret scanner settings** dialog so you can review ignores before the scrubber runs.
 - **Hunt view:** Targets directories/files, runs the hunt pipeline, and displays results as cards with rule metadata, counts, and status messaging.
 - **Multi-server view:** Configure up to six hosts, validate roots, and orchestrate runs. The refreshed layout moves host management, execution controls, and the activity audit feed into balanced columns, so you can compare hosts without scrolling. Toasts surface scan status (success, attention, failure) and each timeline card exposes copy shortcuts for rapid sharing.
 
@@ -111,6 +112,12 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
   addition in `docs/ux-refresh.md#diff-planner-mru`.
 - Mask any lingering filesystem paths or operator names by overlaying solid rectangles before committing assets. Re-run the
   capture if masking would obscure key UI elements.
+
+### Run profiles secret scanner workflow
+- Switch to **Run profiles** and open **Secret scanner settings** to review ignore lists. The dialog (`SecretScannerSettingsViewModel`) clones the active profile configuration, so cancelling leaves the persisted options untouched.
+- Saving applies the ignore rules/patterns plus optional inline ruleset JSON to the profile and updates the summary string beneath the button. The view model emits the same payload consumed by `run_profiles.execute_profile`, guaranteeing the GUI and Python runners stay aligned.
+- When a run executes, the backend writes redaction messages (for example, `secret candidate redacted (PasswordAssignment) …`) into the activity timeline and into `metadata.json → secrets.messages`. Rows associated with scrubbed files surface a **Secrets** pill, mirroring the `HasSecrets` flag in the results view models.
+- Sanitised copies persist under the profile output directory alongside `metadata.json`. The manifest exposes rule version, ignored lists, findings, and the logged messages so auditors can reconcile GUI output with stored evidence. Pair these manifests with `artifacts/secret-scanning/realtime-validation-20251025T065645Z.log` when capturing validation proof for A13.3.
 
 ## 6. Hunt View Details
 ### Inputs
