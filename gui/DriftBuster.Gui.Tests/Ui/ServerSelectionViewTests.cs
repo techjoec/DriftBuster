@@ -4,7 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
 using Avalonia.Headless.XUnit;
 
 using DriftBuster.Backend.Models;
@@ -547,6 +550,52 @@ public sealed class ServerSelectionViewTests
         toast.ActiveToasts.Should().NotBeEmpty();
         viewModel.FilteredActivityEntries.Should().Contain(entry => entry.Summary.Contains("cancelled", StringComparison.OrdinalIgnoreCase));
         viewModel.IsBusy.Should().BeFalse();
+    }
+
+    [AvaloniaFact]
+    public void Server_cards_surface_validation_summaries_in_tooltips()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.UseVirtualizedServerList = false;
+
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        var fallback = view.FindControl<ItemsControl>("ServerCardsFallback");
+        fallback.Should().NotBeNull();
+        fallback!.ItemTemplate.Should().NotBeNull();
+
+        var slot = viewModel.Servers[0];
+        var template = (IDataTemplate)fallback.ItemTemplate!;
+        var card = (Border)template.Build(slot)!;
+        card.DataContext = slot;
+
+        ToolTip.GetTip(card).Should().Be(slot.ValidationSummary);
+        AutomationProperties.GetName(card).Should().Be(slot.ValidationSummary);
+
+        slot.RootInputError = "Absolute root path required.";
+
+        SpinWait.SpinUntil(
+                () => string.Equals(ToolTip.GetTip(card) as string, slot.ValidationSummary, StringComparison.Ordinal),
+                TimeSpan.FromSeconds(1))
+            .Should().BeTrue();
+        AutomationProperties.GetName(card).Should().Be(slot.ValidationSummary);
+
+        slot.RootInputError = null;
+        foreach (var root in slot.Roots)
+        {
+            root.ValidationState = RootValidationState.Pending;
+            root.StatusMessage = string.Empty;
+        }
+        slot.RefreshValidationSummary();
+
+        SpinWait.SpinUntil(
+                () => string.Equals(ToolTip.GetTip(card) as string, slot.ValidationSummary, StringComparison.Ordinal),
+                TimeSpan.FromSeconds(1))
+            .Should().BeTrue();
+        AutomationProperties.GetName(card).Should().Be(slot.ValidationSummary);
     }
 
     [AvaloniaFact]

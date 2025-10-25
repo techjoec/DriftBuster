@@ -23,11 +23,11 @@ Schema reference
 **ACCEPT GATES:** `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total` passes with the new suites; `artifacts/logs/gui-validation/` captures refreshed transcripts; coverage report highlights increased lines for the touched classes.
 
 **REQUIRED RELATED WORK:**
-- [ ] 1.1 Expand validation summary coverage for host cards `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:178`.
-  - [ ] 1.1.1 Add unit tests covering root error precedence, pending counts, and disabled states in `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelValidationTests.cs`.
-  - [ ] 1.1.2 Assert tooltip/automation bindings surface updated summaries in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
+- [x] 1.1 Expand validation summary coverage for host cards `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:178`.
+  - [x] 1.1.1 Add unit tests covering root error precedence, pending counts, and disabled states in `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelValidationTests.cs`.
+  - [x] 1.1.2 Assert tooltip/automation bindings surface updated summaries in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
 - [ ] 1.2 Cover `CanAcceptReorder` busy gating and identity checks `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:1096`.
-  - [ ] 1.2.1 Extend `ServerSelectionViewModelAdditionalTests` to exercise busy-state false negatives and identical-host rejection `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
+  - [x] 1.2.1 Extend `ServerSelectionViewModelAdditionalTests` to exercise busy-state false negatives and identical-host rejection `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
 - [ ] 1.3 Exercise drag/drop handlers for server cards `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs:42`.
   - [ ] 1.3.1 Build a headless drag/drop harness covering pointer press and drop callbacks in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
   - [ ] 1.3.2 Verify lower-half drops place hosts after the target slot and maintain indexes `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.

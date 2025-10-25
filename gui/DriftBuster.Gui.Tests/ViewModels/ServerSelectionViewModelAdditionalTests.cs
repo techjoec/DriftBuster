@@ -192,6 +192,28 @@ public sealed class ServerSelectionViewModelAdditionalTests
     }
 
     [Fact]
+    public void CanAcceptReorder_rejects_busy_or_identical_requests()
+    {
+        var service = new FakeDriftbusterService();
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        var target = viewModel.Servers[0];
+        var source = viewModel.Servers[1];
+
+        viewModel.IsBusy = true;
+        viewModel.CanAcceptReorder(source.HostId, target).Should().BeFalse();
+
+        viewModel.IsBusy = false;
+        viewModel.CanAcceptReorder(target.HostId, target).Should().BeFalse();
+        viewModel.CanAcceptReorder(source.HostId.ToUpperInvariant(), source).Should().BeFalse();
+        viewModel.CanAcceptReorder(null, target).Should().BeFalse();
+        viewModel.CanAcceptReorder(string.Empty, target).Should().BeFalse();
+
+        viewModel.CanAcceptReorder(source.HostId, target).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Provides_deterministic_drilldown_gating_and_telemetry()
     {
         var logPath = Path.Combine("artifacts", "logs", "drilldown-ready.json");

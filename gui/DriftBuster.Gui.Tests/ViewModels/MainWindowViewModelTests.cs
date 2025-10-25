@@ -35,7 +35,8 @@ public class MainWindowViewModelTests
         object ProfilesFactory(IDriftbusterService _) => profilesView;
 
         var toastService = new ToastService(action => action());
-        var viewModel = new MainWindowViewModel(service, toastService, DiffFactory, HuntFactory, ProfilesFactory);
+        var runtime = CreateDefaultThemeRuntime();
+        var viewModel = new MainWindowViewModel(service, toastService, DiffFactory, HuntFactory, ProfilesFactory, themeRuntime: runtime);
 
         Assert.Same(diffView, viewModel.CurrentView);
         Assert.True(viewModel.IsDiffSelected);
@@ -70,7 +71,8 @@ public class MainWindowViewModelTests
         }
 
         var toastService = new ToastService(action => action());
-        var viewModel = new MainWindowViewModel(service, toastService, _ => new object(), HuntFactory, _ => new object());
+        var runtime = CreateDefaultThemeRuntime();
+        var viewModel = new MainWindowViewModel(service, toastService, _ => new object(), HuntFactory, _ => new object(), themeRuntime: runtime);
 
         await viewModel.PingCoreCommand.ExecuteAsync(null);
 
@@ -88,7 +90,8 @@ public class MainWindowViewModelTests
     {
         var service = new FakeDriftbusterService { PingResponse = "healthy" };
         var toastService = new ToastService(action => action());
-        var viewModel = new MainWindowViewModel(service, toastService, _ => new object(), (_, _) => new object(), _ => new object());
+        var runtime = CreateDefaultThemeRuntime();
+        var viewModel = new MainWindowViewModel(service, toastService, _ => new object(), (_, _) => new object(), _ => new object(), themeRuntime: runtime);
 
         await viewModel.CheckHealthCommand.ExecuteAsync(null);
 
@@ -132,6 +135,14 @@ public class MainWindowViewModelTests
         viewModel.SelectedTheme = options[1];
         runtime.Applied.Should().HaveCount(2);
         runtime.Applied[^1].Id.Should().Be("light-plus");
+    }
+
+    private static FakeThemeRuntime CreateDefaultThemeRuntime()
+    {
+        return new FakeThemeRuntime(new List<ThemeOption>
+        {
+            new("dark-plus", "Dark+", ThemeVariant.Dark, "Palette.DarkPlus"),
+        });
     }
 
     private sealed class FakeThemeRuntime : IThemeRuntime
