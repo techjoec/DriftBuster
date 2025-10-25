@@ -17,6 +17,8 @@ namespace DriftBuster.Gui.Views
         private ServerSelectionViewModel? _viewModel;
         private readonly IDisposable _responsiveSubscription;
 
+        internal IDragDropService DragDropService { get; set; } = AvaloniaDragDropService.Instance;
+
         public ServerSelectionView()
         {
             InitializeComponent();
@@ -58,7 +60,7 @@ namespace DriftBuster.Gui.Views
             }
         }
 
-        private async void OnServerCardPointerPressed(object? sender, PointerPressedEventArgs e)
+        private void OnServerCardPointerPressed(object? sender, PointerPressedEventArgs e)
         {
             if (_viewModel is null || _viewModel.IsBusy)
             {
@@ -76,11 +78,13 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
+#pragma warning disable 618
             var data = new DataObject();
             data.Set(ServerDragDataFormat, slot.HostId);
             data.Set(DataFormats.Text, slot.Label);
+#pragma warning restore 618
 
-            DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+            _ = DragDropService.DoDragDrop(e, data, DragDropEffects.Move);
         }
 
         private void OnServerCardDragOver(object? sender, DragEventArgs e)
@@ -90,7 +94,9 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
+#pragma warning disable 618
             var sourceHostId = e.Data.Get(ServerDragDataFormat) as string;
+#pragma warning restore 618
             var canAccept = _viewModel.CanAcceptReorder(sourceHostId, slot);
             e.DragEffects = canAccept ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
@@ -103,7 +109,9 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
+#pragma warning disable 618
             var sourceHostId = e.Data.Get(ServerDragDataFormat) as string;
+#pragma warning restore 618
             if (!_viewModel.CanAcceptReorder(sourceHostId, slot) || sourceHostId is null)
             {
                 e.DragEffects = DragDropEffects.None;
@@ -118,4 +126,21 @@ namespace DriftBuster.Gui.Views
             e.Handled = true;
         }
     }
+
+#pragma warning disable 618
+    internal interface IDragDropService
+    {
+        Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects);
+    }
+
+    internal sealed class AvaloniaDragDropService : IDragDropService
+    {
+        public static AvaloniaDragDropService Instance { get; } = new();
+
+        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
+        {
+            return DragDrop.DoDragDrop(args, data, effects);
+        }
+    }
+#pragma warning restore 618
 }

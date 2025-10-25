@@ -28,9 +28,9 @@ Schema reference
   - [x] 1.1.2 Assert tooltip/automation bindings surface updated summaries in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
 - [ ] 1.2 Cover `CanAcceptReorder` busy gating and identity checks `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:1096`.
   - [x] 1.2.1 Extend `ServerSelectionViewModelAdditionalTests` to exercise busy-state false negatives and identical-host rejection `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
-- [ ] 1.3 Exercise drag/drop handlers for server cards `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs:42`.
-  - [ ] 1.3.1 Build a headless drag/drop harness covering pointer press and drop callbacks in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
-  - [ ] 1.3.2 Verify lower-half drops place hosts after the target slot and maintain indexes `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
+- [x] 1.3 Exercise drag/drop handlers for server cards `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs:42`.
+  - [x] 1.3.1 Build a headless drag/drop harness covering pointer press and drop callbacks in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
+  - [x] 1.3.2 Verify lower-half drops place hosts after the target slot and maintain indexes `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
 - [ ] 1.4 Assert toast warning telemetry fires for attention-required hosts `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:1004`.
   - [ ] 1.4.1 Craft mixed-availability scan responses and validate toast invocations plus activity entries in `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
 

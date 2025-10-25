@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Headless.XUnit;
 
 using DriftBuster.Backend.Models;
@@ -205,6 +206,100 @@ public sealed class ServerSelectionViewTests
     }
 
     [AvaloniaFact]
+    public void ServerCardPointerPressInitiatesDragWithHostMetadata()
+    {
+        var viewModel = CreateViewModel();
+
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        var harness = new RecordingDragDropService();
+        view.DragDropService = harness;
+
+        view.Measure(new Size(1024, 768));
+        view.Arrange(new Rect(view.DesiredSize));
+        view.UpdateLayout();
+
+        var slotViewModel = viewModel.Servers.First(server => server.IsEnabled);
+        var card = new Border
+        {
+            DataContext = slotViewModel,
+        };
+        var cardSize = new Size(320, 180);
+        card.Measure(cardSize);
+        card.Arrange(new Rect(cardSize));
+
+        var pointerHandler = typeof(ServerSelectionView)
+            .GetMethod("OnServerCardPointerPressed", BindingFlags.Instance | BindingFlags.NonPublic);
+        pointerHandler.Should().NotBeNull();
+
+        var pointer = new Avalonia.Input.Pointer(1, PointerType.Mouse, true);
+        var properties = new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed);
+        var args = new PointerPressedEventArgs(card, pointer, view, new Point(10, 10), 0, properties, KeyModifiers.None, 1);
+
+        pointerHandler!.Invoke(view, new object?[] { card, args });
+
+        harness.LastArgs.Should().NotBeNull();
+        harness.LastData.Should().NotBeNull();
+        harness.LastEffects.Should().Be(DragDropEffects.Move);
+
+#pragma warning disable 618
+        harness.LastData!.Contains("driftbuster/server-slot").Should().BeTrue();
+        harness.LastData!.Get("driftbuster/server-slot").Should().Be(slotViewModel.HostId);
+        harness.LastData.Get(DataFormats.Text).Should().Be(slotViewModel.Label);
+#pragma warning restore 618
+    }
+
+    [AvaloniaFact]
+    public void LowerHalfDropMovesHostAfterTarget()
+    {
+        var viewModel = CreateViewModel();
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        view.Measure(new Size(1024, 768));
+        view.Arrange(new Rect(view.DesiredSize));
+        view.UpdateLayout();
+
+        var sourceSlot = viewModel.Servers[0];
+        var targetSlot = viewModel.Servers[1];
+
+        var dropHandler = typeof(ServerSelectionView)
+            .GetMethod("OnServerCardDrop", BindingFlags.Instance | BindingFlags.NonPublic);
+        dropHandler.Should().NotBeNull();
+
+        var targetCard = new Border
+        {
+            DataContext = targetSlot,
+        };
+        var layoutSize = new Size(320, 160);
+        targetCard.Measure(layoutSize);
+        targetCard.Arrange(new Rect(layoutSize));
+
+#pragma warning disable 618
+        var data = new DataObject();
+        data.Set("driftbuster/server-slot", sourceSlot.HostId);
+        data.Set(DataFormats.Text, sourceSlot.Label);
+#pragma warning restore 618
+
+        var dropPoint = new Point(layoutSize.Width / 2, layoutSize.Height * 0.75);
+        var dropArgs = new DragEventArgs(DragDrop.DropEvent, data, targetCard, dropPoint, KeyModifiers.None);
+
+        dropHandler!.Invoke(view, new object?[] { targetCard, dropArgs });
+
+        dropArgs.Handled.Should().BeTrue();
+        dropArgs.DragEffects.Should().Be(DragDropEffects.Move);
+
+        viewModel.Servers[0].HostId.Should().Be(targetSlot.HostId);
+        viewModel.Servers[1].HostId.Should().Be(sourceSlot.HostId);
+        viewModel.Servers.Select(slot => slot.Index).Should().Equal(Enumerable.Range(0, viewModel.Servers.Count));
+    }
+
+    [AvaloniaFact]
     public void ShouldAdjustResponsiveSpacingTokens()
     {
         var view = new ServerSelectionView
@@ -227,6 +322,23 @@ public sealed class ServerSelectionViewTests
         ResponsiveLayoutService.Apply(view, 2100, ResponsiveSpacingProfiles.ServerSelection);
         view.Resources["ServerSelection.OuterMargin"].Should().Be(new Thickness(0, 0, 0, 36));
         view.Resources["ServerSelection.StackSpacing"].Should().Be(24d);
+    }
+
+    private sealed class RecordingDragDropService : IDragDropService
+    {
+        public PointerEventArgs? LastArgs { get; private set; }
+
+        public DataObject? LastData { get; private set; }
+
+        public DragDropEffects? LastEffects { get; private set; }
+
+        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
+        {
+            LastArgs = args;
+            LastData = data as DataObject;
+            LastEffects = effects;
+            return Task.FromResult(effects);
+        }
     }
 
     [AvaloniaFact]
