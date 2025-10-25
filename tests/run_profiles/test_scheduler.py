@@ -95,3 +95,23 @@ def test_schedule_window_contains_handles_overnight_bounds() -> None:
     assert window.contains(inside)
     assert window.contains(after_midnight)
     assert not window.contains(outside)
+
+
+def test_snapshot_and_restore_state_preserves_pending_runs() -> None:
+    start = datetime(2025, 6, 1, 8, 0, tzinfo=timezone.utc)
+    spec = ScheduleSpec(
+        name="nightly",
+        profile="profiles/nightly.json",
+        interval=timedelta(days=1),
+        start_at=start,
+    )
+    scheduler = ProfileScheduler([spec])
+    # Trigger a pending run so the snapshot captures both fields.
+    scheduler.due(reference=start)
+    snapshot = scheduler.snapshot_state()
+    assert snapshot["nightly"]["pending"] == start.isoformat()
+
+    restored = ProfileScheduler([spec])
+    restored.apply_state(snapshot)
+    restored_state = restored.snapshot_state()
+    assert restored_state["nightly"]["pending"] == start.isoformat()

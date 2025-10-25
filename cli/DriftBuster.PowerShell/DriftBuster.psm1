@@ -930,4 +930,209 @@ function Export-DriftBusterSqlSnapshot {
     return $null
 }
 
+function Invoke-DriftBusterScheduleCli {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]
+        $Arguments,
+
+        [Parameter()]
+        [string]
+        $PythonPath = "python",
+
+        [Parameter()]
+        [switch]
+        $Raw
+    )
+
+    Write-Verbose ("Invoking {0} {1}" -f $PythonPath, ($Arguments -join ' '))
+    $output = & $PythonPath @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $message = "driftbuster schedule command failed with exit code $LASTEXITCODE"
+        if ($output) {
+            $message += "`n" + ($output -join [Environment]::NewLine)
+        }
+        throw $message
+    }
+
+    $text = if ($output -is [System.Array]) {
+        ($output -join [Environment]::NewLine)
+    }
+    else {
+        [string]$output
+    }
+
+    $trimmed = $text.Trim()
+    if (-not $trimmed) {
+        return $null
+    }
+
+    if ($Raw) {
+        return $trimmed
+    }
+
+    return ConvertFrom-DriftBusterJson -Json $trimmed
+}
+
+function Get-DriftBusterSchedule {
+    [CmdletBinding()]
+    param(
+        [string]
+        $BaseDir,
+
+        [string]
+        $ConfigPath,
+
+        [string]
+        $StatePath,
+
+        [string]
+        $PythonPath = "python",
+
+        [switch]
+        $Raw
+    )
+
+    $arguments = @('-m', 'driftbuster.run_profiles_cli')
+    if ($BaseDir) {
+        $arguments += @('--base-dir', $BaseDir)
+    }
+    $arguments += @('schedule', 'list')
+    if ($ConfigPath) {
+        $arguments += @('--config', $ConfigPath)
+    }
+    if ($StatePath) {
+        $arguments += @('--state', $StatePath)
+    }
+
+    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+}
+
+function Get-DriftBusterScheduleDue {
+    [CmdletBinding()]
+    param(
+        [string]
+        $BaseDir,
+
+        [string]
+        $ConfigPath,
+
+        [string]
+        $StatePath,
+
+        [string]
+        $At,
+
+        [string]
+        $PythonPath = "python",
+
+        [switch]
+        $Raw
+    )
+
+    $arguments = @('-m', 'driftbuster.run_profiles_cli')
+    if ($BaseDir) {
+        $arguments += @('--base-dir', $BaseDir)
+    }
+    $arguments += @('schedule', 'due')
+    if ($ConfigPath) {
+        $arguments += @('--config', $ConfigPath)
+    }
+    if ($StatePath) {
+        $arguments += @('--state', $StatePath)
+    }
+    if ($At) {
+        $arguments += @('--at', $At)
+    }
+
+    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+}
+
+function Complete-DriftBusterSchedule {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name,
+
+        [string]
+        $BaseDir,
+
+        [string]
+        $ConfigPath,
+
+        [string]
+        $StatePath,
+
+        [string]
+        $CompletedAt,
+
+        [string]
+        $PythonPath = "python",
+
+        [switch]
+        $Raw
+    )
+
+    $arguments = @('-m', 'driftbuster.run_profiles_cli')
+    if ($BaseDir) {
+        $arguments += @('--base-dir', $BaseDir)
+    }
+    $arguments += @('schedule', 'mark-complete', '--name', $Name)
+    if ($ConfigPath) {
+        $arguments += @('--config', $ConfigPath)
+    }
+    if ($StatePath) {
+        $arguments += @('--state', $StatePath)
+    }
+    if ($CompletedAt) {
+        $arguments += @('--completed-at', $CompletedAt)
+    }
+
+    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+}
+
+function Skip-DriftBusterSchedule {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ResumeAt,
+
+        [string]
+        $BaseDir,
+
+        [string]
+        $ConfigPath,
+
+        [string]
+        $StatePath,
+
+        [string]
+        $PythonPath = "python",
+
+        [switch]
+        $Raw
+    )
+
+    $arguments = @('-m', 'driftbuster.run_profiles_cli')
+    if ($BaseDir) {
+        $arguments += @('--base-dir', $BaseDir)
+    }
+    $arguments += @('schedule', 'skip-until', '--name', $Name, '--resume-at', $ResumeAt)
+    if ($ConfigPath) {
+        $arguments += @('--config', $ConfigPath)
+    }
+    if ($StatePath) {
+        $arguments += @('--state', $StatePath)
+    }
+
+    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+}
+
 Export-ModuleMember -Function *-DriftBuster*

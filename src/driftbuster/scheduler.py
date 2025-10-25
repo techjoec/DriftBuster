@@ -28,6 +28,20 @@ def _ensure_aware(moment: datetime) -> datetime:
     return moment.astimezone(timezone.utc)
 
 
+def _parse_timestamp(value: object) -> datetime:
+    try:
+        text = str(value)
+    except Exception as exc:  # pragma: no cover - defensive guard
+        raise ScheduleError(f"Invalid timestamp payload: {value!r}") from exc
+    if not text:
+        raise ScheduleError("Timestamp payload must not be empty.")
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError as exc:  # pragma: no cover - defensive guard
+        raise ScheduleError(f"Unable to parse timestamp: {value!r}") from exc
+    return _ensure_aware(parsed)
+
+
 def parse_interval(value: float | int | str | timedelta) -> timedelta:
     """Normalise the scheduling interval to a ``timedelta``.
 
@@ -366,6 +380,30 @@ class ProfileScheduler:
             raise ScheduleError(f"Unknown schedule: {name}")
         del self._specs[name]
         del self._state[name]
+
+    def snapshot_state(self) -> Mapping[str, Mapping[str, str | None]]:
+        snapshot: dict[str, dict[str, str | None]] = {}
+        for name, state in self._state.items():
+            entry: dict[str, str | None] = {
+                "next_run": state.next_run.isoformat(),
+            }
+            entry["pending"] = state.pending.isoformat() if state.pending else None
+            snapshot[name] = entry
+        return snapshot
+
+    def apply_state(self, state: Mapping[str, Mapping[str, object]]) -> None:
+        for name, payload in state.items():
+            if name not in self._state:
+                continue
+            entry = self._state[name]
+            next_run_raw = payload.get("next_run")
+            if next_run_raw:
+                entry.next_run = _parse_timestamp(next_run_raw)
+            pending_raw = payload.get("pending")
+            if pending_raw:
+                entry.pending = _parse_timestamp(pending_raw)
+            else:
+                entry.pending = None
 
 
 __all__ = [

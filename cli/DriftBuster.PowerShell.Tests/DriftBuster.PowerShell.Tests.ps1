@@ -164,6 +164,68 @@ Describe 'DriftBuster PowerShell module' {
         }
     }
 
+    Context 'Scheduler workflows' {
+        BeforeAll {
+            $script:originalPythonPath = $env:PYTHONPATH
+            $srcPath = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'src')).Path
+            $repoPath = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..' '..')).Path
+            $separator = [IO.Path]::PathSeparator
+
+            $pythonPaths = @($srcPath, $repoPath)
+            if ($script:originalPythonPath) {
+                $pythonPaths += $script:originalPythonPath
+            }
+
+            $env:PYTHONPATH = ($pythonPaths -join $separator)
+        }
+
+        AfterAll {
+            $env:PYTHONPATH = $script:originalPythonPath
+        }
+
+        It 'manages schedules via the Python CLI bridge' {
+            $baseDir = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString('N')))
+            $script:tempArtifacts += $baseDir.FullName
+
+            $profilesRoot = New-Item -ItemType Directory -Path (Join-Path $baseDir.FullName 'Profiles')
+            $schedulePath = Join-Path $profilesRoot.FullName 'schedules.json'
+            $statePath = Join-Path $profilesRoot.FullName 'scheduler-state.json'
+
+            $scheduleJson = @'
+{
+  "schedules": [
+    {
+      "name": "nightly",
+      "profile": "nightly",
+      "every": "24h",
+      "start_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+'@
+            Set-Content -LiteralPath $schedulePath -Value $scheduleJson -Encoding UTF8
+
+            $due = Get-DriftBusterScheduleDue -BaseDir $baseDir.FullName -ConfigPath $schedulePath -StatePath $statePath -At '2025-01-02T00:00:00Z' -PythonPath 'python'
+            $due | Should -HaveCount 1
+            $due[0].name | Should -Be 'nightly'
+            $due[0].scheduled_for | Should -Be '2025-01-01T00:00:00+00:00'
+
+            $stateContent = Get-Content -LiteralPath $statePath -Raw
+            $state = $stateContent | ConvertFrom-Json
+            $state.nightly.pending | Should -Be '2025-01-01T00:00:00+00:00'
+
+            $completion = Complete-DriftBusterSchedule -Name 'nightly' -BaseDir $baseDir.FullName -ConfigPath $schedulePath -StatePath $statePath -CompletedAt '2025-01-01T00:00:00Z' -PythonPath 'python'
+            $completion.next_run | Should -Be '2025-01-02T00:00:00+00:00'
+
+            $skip = Skip-DriftBusterSchedule -Name 'nightly' -ResumeAt '2025-01-05T09:30:00Z' -BaseDir $baseDir.FullName -ConfigPath $schedulePath -StatePath $statePath -PythonPath 'python'
+            $skip.next_run | Should -Be '2025-01-05T09:30:00+00:00'
+
+            $list = Get-DriftBusterSchedule -BaseDir $baseDir.FullName -ConfigPath $schedulePath -StatePath $statePath -PythonPath 'python'
+            $list | Should -HaveCount 1
+            $list[0].next_run | Should -Be '2025-01-05T09:30:00+00:00'
+        }
+    }
+
     Context 'SQL export workflows' -Tag 'sql-export' {
         BeforeAll {
             $script:originalPythonPath = $env:PYTHONPATH
