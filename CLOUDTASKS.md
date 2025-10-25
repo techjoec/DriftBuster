@@ -873,24 +873,24 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Remote scanner validated; registry snapshots integrated; docs updated.
 
 **REQUIRED RELATED WORK:**
-- [ ] 15.1 PowerShell bundle.
-  - [ ] 15.1.1 Enhance `cli/DriftBuster.PowerShell` scripts for remote admin shares and WinRM.
-  - [ ] 15.1.2 Add tests in `cli/DriftBuster.PowerShell.Tests` (create if absent) using mocked remoting.
-  - [ ] 15.1.3 Document usage in `docs/windows-gui-guide.md` and `docs/registry.md`.
-  - [ ] 15.1.4 Archive remote command transcripts and sample outputs in `artifacts/remote-scans/`.
+- [x] 15.1 PowerShell bundle.
+  - [x] 15.1.1 Enhance `cli/DriftBuster.PowerShell` scripts for remote admin shares and WinRM.
+  - [x] 15.1.2 Add tests in `cli/DriftBuster.PowerShell.Tests` (create if absent) using mocked remoting.
+  - [x] 15.1.3 Document usage in `docs/windows-gui-guide.md` and `docs/registry.md`.
+  - [x] 15.1.4 Archive remote command transcripts and sample outputs in `artifacts/remote-scans/`.
 - [x] 15.2 Config schema.
   - [x] 15.2.1 Extend schema for remote credentials/batching in `docs/registry.md` and `src/driftbuster/registry_cli.py`.
   - [x] 15.2.2 Add validation tests `tests/registry/test_remote_schema.py`.
   - [x] 15.2.3 Update configuration examples in `docs/configuration-profiles.md` for remote targets.
-- [ ] 15.3 Live registry scanning.
-  - [ ] 15.3.1 Map hive traversal into `src/driftbuster/registry_cli.py` and offline runner.
-  - [ ] 15.3.2 Add manifest integration in `scripts/capture.py`.
-  - [ ] 15.3.3 Create tests `tests/registry/test_live_hives.py`.
-  - [ ] 15.3.4 Record Windows registry hive traversal notes in `notes/status/gui-research.md`.
-- [ ] 15.4 Documentation.
-  - [ ] 15.4.1 Update `docs/registry.md` and `docs/windows-gui-guide.md`.
-  - [ ] 15.4.2 Record manual verification in `notes/status/gui-research.md`.
-  - [ ] 15.4.3 Capture credential handling guidance in `docs/legal-safeguards.md`.
+- [x] 15.3 Live registry scanning.
+  - [x] 15.3.1 Map hive traversal into `src/driftbuster/registry_cli.py` and offline runner.
+  - [x] 15.3.2 Add manifest integration in `scripts/capture.py`.
+  - [x] 15.3.3 Create tests `tests/registry/test_live_hives.py`.
+  - [x] 15.3.4 Record Windows registry hive traversal notes in `notes/status/gui-research.md`.
+- [x] 15.4 Documentation.
+  - [x] 15.4.1 Update `docs/registry.md` and `docs/windows-gui-guide.md`.
+  - [x] 15.4.2 Record manual verification in `notes/status/gui-research.md`.
+  - [x] 15.4.3 Capture credential handling guidance in `docs/legal-safeguards.md`.
 
 ## A16. SQL & Database Snapshot Support [deps=A15]
 

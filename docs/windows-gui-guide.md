@@ -153,6 +153,13 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 - Font preload guardrail: `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary during `BuildAvaloniaApp()`, so Release/Debug headless runs hydrate Inter before the multi-server view instantiates catalog headers or guidance text.
 - Manual walkthrough recorded in `artifacts/manual-runs/2025-10-24-multi-server-notes.md` exercises save/restore, confirms cached diff planner MRU entries, and maps the persisted timeline filter shown in the Dark+ capture above.
 
+
+### Remote capture orchestration
+- Use the PowerShell module when coordinating multi-host captures without launching the GUI: `Invoke-DriftBusterRemoteScan -ComputerName branch-01 -RemotePath "ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json` mounts the admin share and runs `scripts/capture.py` locally against the UNC path.
+- For environments where SMB access is blocked, flip to WinRM with `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath "C:\\ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -RemoteWorkingDirectory "$env:ProgramData\\DriftBusterRemote"`. The cmdlet stages the capture helper remotely, runs it, and copies manifests back into `<output>/<host>/` alongside GUI evidence.
+- Generate offline runner snippets with `python -m driftbuster.registry_cli emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` so the multi-server view and manifests can display the requested hive list next to each host.
+- After pulling results back, run `scripts/capture.py run --registry-scan <output>/<host>/registry_scan.json ...` to embed the registry summary alongside filesystem detections before importing evidence into the GUI session archive.
+
 #### Persistence walkthrough
 1. Click **Save session** after a successful multi-server run. The awaitable `SessionCacheService` writes the snapshot to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or the `$XDG_DATA_HOME` equivalent) while recording migration counters.
 2. Relaunch the GUI; `ServerSelectionViewModel` loads the snapshot, reapplies host enablement, restores catalog/drilldown/timeline state, and logs a **Loaded saved session** activity entry summarising the number of restored servers.

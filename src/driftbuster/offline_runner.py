@@ -50,6 +50,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from .sql import build_sqlite_snapshot
 from . import secret_scanning
+from .registry import RegistryRoot, parse_registry_root_descriptor
 
 
 MANIFEST_SCHEMA = "https://driftbuster.dev/offline-runner/manifest/v1"
@@ -170,6 +171,46 @@ def _path_within(path: Path, parent: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _normalise_registry_roots(value: Any) -> Tuple[RegistryRoot, ...]:
+    if not value:
+        return ()
+
+    entries: Iterable[Any]
+    if isinstance(value, (str, Mapping)) or not isinstance(value, Iterable):
+        entries = (value,)
+    else:
+        entries = value
+
+    normalised: list[RegistryRoot] = []
+    for entry in entries:
+        if isinstance(entry, RegistryRoot):
+            normalised.append(entry)
+            continue
+        if isinstance(entry, str):
+            normalised.append(parse_registry_root_descriptor(entry))
+            continue
+        if isinstance(entry, Mapping):
+            hive = str(entry.get("hive", "")).strip()
+            path = str(entry.get("path", "")).strip()
+            if not hive or not path:
+                raise ValueError("registry_scan roots entries require 'hive' and 'path'")
+            view_raw = entry.get("view")
+            view: str | None = None
+            if view_raw is not None and str(view_raw).strip():
+                candidate = str(view_raw).strip().upper()
+                if candidate == "AUTO":
+                    view = None
+                elif candidate in {"32", "64"}:
+                    view = candidate
+                else:
+                    raise ValueError("registry_scan root view must be 32, 64, or auto")
+            normalised.append(RegistryRoot(hive=hive.upper(), path=path, view=view))
+            continue
+        raise ValueError("registry_scan roots entries must be strings or mappings")
+
+    return tuple(normalised)
 
 
 @dataclass(frozen=True)
@@ -318,6 +359,7 @@ class OfflineRegistryScanSource:
     alias: str | None = None
     remote: RemoteRegistryTarget | None = None
     remote_batch: Tuple[RemoteRegistryTarget, ...] = field(default_factory=tuple)
+    roots: Tuple[RegistryRoot, ...] = field(default_factory=tuple)
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineRegistryScanSource":
@@ -370,6 +412,7 @@ class OfflineRegistryScanSource:
             alias=str(alias) if alias else None,
             remote=remote,
             remote_batch=tuple(batch),
+            roots=_normalise_registry_roots(spec.get("roots")),
         )
 
     def destination_name(self, *, fallback_index: int) -> str:
@@ -1187,8 +1230,12 @@ def execute_config(
                 source_summaries.append(summary)
                 continue
             log(f"registry scan started for token: {source.token}")
-            apps = enumerate_installed_apps()
-            roots = find_app_registry_roots(source.token, installed=apps)
+            requested_roots = tuple(root.as_tuple() for root in source.roots)
+            if requested_roots:
+                roots = requested_roots
+            else:
+                apps = enumerate_installed_apps()
+                roots = find_app_registry_roots(source.token, installed=apps)
             spec = SearchSpec(
                 keywords=tuple(source.keywords),
                 patterns=tuple(re.compile(p) for p in source.patterns),
@@ -1217,6 +1264,11 @@ def execute_config(
                     for h in hits
                 ],
             }
+            if source.roots:
+                result_payload["requested_roots"] = [
+                    {"hive": root.hive, "path": root.path, "view": root.view}
+                    for root in source.roots
+                ]
             result_path.write_text(json.dumps(result_payload, indent=2), encoding="utf-8")
             files.append(
                 CollectedFile(
@@ -1237,6 +1289,18 @@ def execute_config(
                     "roots": [f"{h} \\ {p}" for (h, p, _v) in roots],
                     "hits": len(hits),
                     "output": result_path.as_posix(),
+                    **(
+                        {
+                            "requested_roots": [
+                                f"{root.hive} \\ {root.path}"
+                                if root.view is None
+                                else f"{root.hive} \\ {root.path} (view {root.view})"
+                                for root in source.roots
+                            ]
+                        }
+                        if source.roots
+                        else {}
+                    ),
                 }
             )
             # Done with this source

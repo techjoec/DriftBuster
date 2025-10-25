@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from functools import wraps
 import time
 from typing import Callable, Dict, Mapping, Tuple, TypeVar, cast
+import re
 
 from .scan import (
     is_windows,
@@ -81,6 +82,65 @@ _OPERATIONS = (
 _USAGE: Dict[str, _UsageCounters] = {name: _UsageCounters() for name in _OPERATIONS}
 
 
+@dataclass(frozen=True)
+class RegistryRoot:
+    """Descriptor pointing at a registry hive path."""
+
+    hive: str
+    path: str
+    view: str | None = None
+
+    def as_tuple(self) -> tuple[str, str, str | None]:
+        return self.hive, self.path, self.view
+
+
+_ROOT_DESCRIPTOR_RE = re.compile(r"^(HKLM|HKCU)\\(.+)$", re.IGNORECASE)
+
+
+def parse_registry_root_descriptor(text: str) -> RegistryRoot:
+    """Parse a CLI/config-friendly hive path descriptor."""
+
+    value = (text or "").strip()
+    if not value:
+        raise ValueError("Registry root descriptor must be non-empty")
+
+    segments = [segment.strip() for segment in value.split(",") if segment.strip()]
+    base = segments[0].replace("/", "\\")
+    match = _ROOT_DESCRIPTOR_RE.match(base)
+    if not match:
+        raise ValueError(
+            "Registry root descriptor must start with HKLM\\ or HKCU\\"
+        )
+
+    hive = match.group(1).upper()
+    path = match.group(2).strip()
+    if not path:
+        raise ValueError("Registry root path segment must be non-empty")
+
+    view: str | None = None
+    for option in segments[1:]:
+        if "=" not in option:
+            raise ValueError(
+                f"Registry root option '{option}' must be formatted as key=value"
+            )
+        key, raw_value = option.split("=", 1)
+        key = key.strip().lower()
+        raw_value = raw_value.strip()
+        if key != "view":
+            raise ValueError(f"Unsupported registry root option '{key}'")
+        if not raw_value:
+            raise ValueError("Registry root view must be non-empty when provided")
+        normalised = raw_value.upper()
+        if normalised == "AUTO":
+            view = None
+        elif normalised in {"32", "64"}:
+            view = normalised
+        else:
+            raise ValueError("Registry root view must be 32, 64, or auto")
+
+    return RegistryRoot(hive=hive, path=path, view=view)
+
+
 def _instrument(name: str, func: _Operation) -> _Operation:
     counters = _USAGE[name]
 
@@ -139,10 +199,12 @@ __all__ = [
     "is_windows",
     "RegistryApp",
     "RegistryHit",
+    "RegistryRoot",
     "SearchSpec",
     "enumerate_installed_apps",
     "find_app_registry_roots",
     "search_registry",
     "registry_summary",
+    "parse_registry_root_descriptor",
 ]
 

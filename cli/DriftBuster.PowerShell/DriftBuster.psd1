@@ -14,6 +14,7 @@
         'Get-DriftBusterRunProfile'
         'Save-DriftBusterRunProfile'
         'Invoke-DriftBusterRunProfile'
+        'Invoke-DriftBusterRemoteScan'
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()

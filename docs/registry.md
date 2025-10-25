@@ -25,6 +25,7 @@ CLI Helper
   - List apps: `python -m driftbuster.registry_cli list-apps`
   - Suggest roots: `python -m driftbuster.registry_cli suggest-roots "Vendor App"`
   - Search: `python -m driftbuster.registry_cli search "Vendor App" --keyword server --pattern "api\\.internal\\.local"`
+  - Emit config with pinned hive roots: `python -m driftbuster.registry_cli emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"`
 
 SQL Snapshot Exports
 --------------------
@@ -54,6 +55,9 @@ Offline Runner
           "token": "VendorA AppA",
           "keywords": ["server", "api"],
           "patterns": ["https://", "api\\.internal\\.local"],
+          "roots": [
+            {"hive": "HKLM", "path": "Software\\VendorA\\AppA", "view": "64"}
+          ],
           "max_depth": 12,
           "max_hits": 200,
           "time_budget_s": 10.0
@@ -66,6 +70,14 @@ Offline Runner
 
 - Results are written to `data/<alias>/registry_scan.json` and summarised in the manifest.
 - Non‑Windows hosts skip registry sources, recording a clear reason in the manifest/logs.
+- Requested roots appear in the manifest (`requested_roots`) alongside the resolved traversal list so reviewers can confirm the collector stayed within scope.
+
+Explicit Hive Roots
+-------------------
+- Use the CLI `--root` option when generating snippets to capture the exact hive paths and views you intend to traverse (`HKLM\\Software\\VendorA` or `HKLM\\Software\\VendorA,view=32`).
+- Parsed roots populate the `registry_scan.roots` array; when present, the offline runner skips heuristic discovery and walks only the supplied descriptors.
+- Manifest entries mirror both `roots` and `requested_roots` so auditors can reconcile requested scope with the resolved traversal.
+- Feed generated outputs into manual manifests with `scripts/capture.py run --registry-scan data/vendorA/registry_scan.json` to embed token/roots/hit metadata alongside filesystem capture notes.
 
 Remote Targets
 --------------
@@ -109,6 +121,10 @@ Remote Targets
   `remote` block and populate `remote_batch` with mappings or host strings.
 - Generate JSON snippets from the CLI instead of hand-editing:
   `python -m driftbuster.registry_cli emit-config "VendorA" --remote-target "hq-gateway.internal,username=DOMAIN\\\\collector,password-env=DRIFTBUSTER_REMOTE_PASS" --remote-target branch-02.internal`.
+- PowerShell operators can mirror the same workflow with `Invoke-DriftBusterRemoteScan`:
+  - `Invoke-DriftBusterRemoteScan -ComputerName branch-01 -RemotePath 'ProgramData\\VendorA' -RunProfilePath profiles\\vendor.json`
+  - `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath 'C:\\ProgramData\\VendorA' -RunProfilePath profiles\\vendor.json -RemoteWorkingDirectory '$env:ProgramData\\DriftBusterRemote'`
+  The cmdlet mounts admin shares when available, falls back to WinRM staging when `-UseWinRM` is specified, and copies the capture manifest back into `<output>/<host>/` for audit trails.
 
 Profile Scheduler (Preview)
 ---------------------------

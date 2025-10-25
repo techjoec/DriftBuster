@@ -19,6 +19,12 @@
 - New editable **Profile** dropdown surfaces every saved run profile and keeps the active draft name pinned at the top. Verified renaming the profile updates blank schedule rows while leaving custom overrides intact; evidence noted in the validation screenshots above.
 - Multi-server backend tests pass after decoupling the Python `offline_runner` import from the default package surface, unblocking environments without the `cryptography` wheel.
 
+### Live registry traversal validation (A15.3.4)
+
+- Generated profile snippets with `python -m driftbuster.registry_cli emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` and confirmed the offline runner respected the explicit hive/view pair without invoking heuristic root discovery.
+- Captured manifest evidence showing both `roots` and `requested_roots` entries alongside the exported `registry_scan.json` so reviewers can reconcile requested scope with the resolved traversal.
+- Ran `scripts/capture.py run --registry-scan data/vendorA-registry/registry_scan.json --operator QA --environment lab --reason "registry-live-validation"` to embed the registry summary in the manual capture manifest; artefact cross-referenced from `artifacts/remote-scans/20250312-remote-scan-notes.md`.
+
 ### Reporting adapters GUI bridge (A11.1.4)
 
 - Mapped four-step integration so the Avalonia shell keeps delegating detection work to the Python CLI while surfacing HTML and JSON artefacts inline. Phase 1 keeps the backend bridge streaming JSON lines into view-models; phase 2 hosts HTML summaries inside a WebView2 panel with quick actions; phase 3 adds a split diff view pairing the rendered summary with raw patches; phase 4 layers checksum validation before export to keep evidence bundles honest.

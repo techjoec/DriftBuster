@@ -136,6 +136,60 @@ def _load_profile_store(path: Path) -> ProfileStore:
     return _store_from_payload(payload)
 
 
+def _summarise_registry_scan(path: Path) -> Mapping[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Failed to parse registry scan {path}: {exc}") from exc
+
+    roots: list[str] = []
+    for entry in payload.get("roots", []) or []:
+        if not isinstance(entry, Mapping):
+            continue
+        hive = str(entry.get("hive", "")).strip()
+        key_path = str(entry.get("path", "")).strip()
+        if not hive or not key_path:
+            continue
+        view = entry.get("view")
+        label = f"{hive} \\ {key_path}"
+        if view:
+            label = f"{label} (view {view})"
+        roots.append(label)
+
+    requested: list[str] = []
+    for entry in payload.get("requested_roots", []) or []:
+        if not isinstance(entry, Mapping):
+            continue
+        hive = str(entry.get("hive", "")).strip()
+        key_path = str(entry.get("path", "")).strip()
+        if not hive or not key_path:
+            continue
+        view = entry.get("view")
+        label = f"{hive} \\ {key_path}"
+        if view:
+            label = f"{label} (view {view})"
+        requested.append(label)
+
+    return {
+        "file": path.name,
+        "path": str(path),
+        "token": payload.get("token"),
+        "roots": roots,
+        "requested_roots": requested,
+        "hit_count": len(payload.get("hits", []) or []),
+    }
+
+
+def _load_registry_scan_summaries(paths: Sequence[str]) -> Sequence[Mapping[str, Any]]:
+    summaries: list[Mapping[str, Any]] = []
+    for entry in paths:
+        scan_path = Path(entry).expanduser().resolve()
+        if not scan_path.exists():
+            raise FileNotFoundError(f"registry scan file not found: {scan_path}")
+        summaries.append(_summarise_registry_scan(scan_path))
+    return summaries
+
+
 def _parse_column_arguments(values: Sequence[str] | None) -> dict[str, tuple[str, ...]]:
     mapping: dict[str, list[str]] = {}
     for entry in values or ():
@@ -218,8 +272,10 @@ def _build_manifest_payload(
     placeholder: str,
     mask_token_count: int,
     total_redactions: int,
+    registry_scans: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     profile_summary = profile_summary or {}
+    registry_scans = tuple(registry_scans or ())
     return {
         "schema_version": CAPTURE_MANIFEST_SCHEMA_VERSION,
         "capture": {
@@ -242,6 +298,7 @@ def _build_manifest_payload(
             "detections": detection_count,
             "profile_matches": profile_match_count,
             "hunt_hits": hunt_count,
+            "registry_scans": len(registry_scans),
         },
         "profile_summary": {
             "total_profiles": profile_summary.get("total_profiles", 0),
@@ -252,6 +309,7 @@ def _build_manifest_payload(
             "mask_token_count": mask_token_count,
             "total_redactions": total_redactions,
         },
+        "registry_scans": [dict(summary) for summary in registry_scans],
     }
 
 
@@ -344,6 +402,12 @@ def run_capture(args: argparse.Namespace) -> int:
 
     total_duration = time.monotonic() - start_time
 
+    try:
+        registry_scan_summaries = _load_registry_scan_summaries(args.registry_scan or [])
+    except Exception as exc:
+        sys.stderr.write(f"error: {exc}\n")
+        return 1
+
     redactor = resolve_redactor(mask_tokens=args.mask_tokens, placeholder=args.placeholder)
 
     snapshot_payload = _build_snapshot_payload(
@@ -385,6 +449,7 @@ def run_capture(args: argparse.Namespace) -> int:
         placeholder=args.placeholder,
         mask_token_count=len(args.mask_tokens or ()),
         total_redactions=total_redactions,
+        registry_scans=registry_scan_summaries,
     )
 
     manifest_path.write_text(json.dumps(manifest_payload, indent=2, sort_keys=True))
@@ -651,6 +716,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-unmasked",
         action="store_true",
         help="Skip the redaction guard when no mask tokens are required.",
+    )
+    capture.add_argument(
+        "--registry-scan",
+        action="append",
+        default=[],
+        help="Path to registry_scan.json outputs to embed in the manifest (repeatable).",
     )
     capture.set_defaults(func=run_capture)
 

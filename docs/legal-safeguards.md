@@ -50,6 +50,18 @@ These guardrails cover every feature, note, and capture helper.
 - Reference the manifest entry when logging legal review updates so reviewers
   can verify digests quickly.
 
+## Registry remoting safeguards
+
+- Store registry remoting credentials in environment variables or credential
+  profiles; never commit inline `password` fields to JSON or PowerShell calls.
+- Limit explicit hive roots to the minimum scope required for the investigation
+  and review manifests for the `requested_roots` trace before sharing evidence.
+- When staging remote captures, keep the WinRM working directory under a
+  restricted path (`$env:ProgramData\DriftBusterRemote`) and purge the staging
+  folder once manifests and `registry_scan.json` outputs are archived.
+- Run `scripts/capture.py run --registry-scan ...` on secured workstations so
+  registry summaries join filesystem manifests without copying raw hive exports.
+
 ## GUI frameworks
 
 - **WinUI 3 / Windows App SDK**

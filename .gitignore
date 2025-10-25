@@ -36,5 +36,7 @@ artifacts/*
 !artifacts/perf/**
 !artifacts/notifications/
 !artifacts/notifications/**
+!artifacts/remote-scans/
+!artifacts/remote-scans/**
 Releases/
 .codex-cloud/

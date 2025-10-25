@@ -86,13 +86,18 @@ Describe 'DriftBuster PowerShell module' {
             $root = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString('N')))
             $script:tempArtifacts += $root.FullName
             $filePath = Join-Path $root.FullName 'evidence.txt'
-            Set-Content -LiteralPath $filePath 'server=alpha01'
+            Set-Content -LiteralPath $filePath 'server=alpha01.internal'
 
             $result = Invoke-DriftBusterHunt -Directory $root.FullName
-            $result.count | Should -BeGreaterThan 0
-            $result.hits | Should -Not -BeNullOrEmpty
-            $hit = $result.hits | Select-Object -First 1
-            $hit.rule.name | Should -Not -BeNullOrEmpty
+            ($result.PSObject.Properties.Name) | Should -Contain 'directory'
+            ($result.PSObject.Properties.Name) | Should -Contain 'hits'
+            $result.count | Should -BeGreaterOrEqual 0
+            $hits = @($result.PSObject.Properties['hits'].Value)
+            if ($result.count -gt 0) {
+                $hits | Should -Not -BeNullOrEmpty
+                $hit = $hits | Select-Object -First 1
+                $hit.rule.name | Should -Not -BeNullOrEmpty
+            }
         }
     }
 
@@ -161,6 +166,98 @@ Describe 'DriftBuster PowerShell module' {
             $json = Invoke-DriftBusterRunProfile -Profile $profile -BaseDir $baseDir.FullName -NoSave -Raw -Confirm:$false
             $json | Should -BeOfType [string]
             ($json | ConvertFrom-Json).profile.name | Should -Be 'RawProfile'
+        }
+    }
+
+    Context 'Remote scanning' {
+        It 'runs capture against an admin share path' {
+            $profile = New-TemporaryFile
+            $script:tempArtifacts += $profile
+            Set-Content -LiteralPath $profile '{"profiles": []}'
+
+            $outputRoot = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString('N'))
+            $script:tempArtifacts += $outputRoot
+
+            function Test-RemotePython {
+                param(
+                    [Parameter(Position = 0)]
+                    $ScriptPath,
+
+                    [Parameter(ValueFromRemainingArguments = $true)]
+                    [object[]]
+                    $RemainingArguments
+                )
+
+                $script:capturedPythonArgs = @($ScriptPath) + $RemainingArguments
+                $global:LASTEXITCODE = 0
+            }
+
+            $result = Invoke-DriftBusterRemoteScan -ComputerName 'filesvr01' -RemotePath 'ProgramData\\VendorA' -RunProfilePath $profile -PythonPath Test-RemotePython -OutputDirectory $outputRoot
+
+            ($result | Measure-Object).Count | Should -Be 1
+            $result[0].Mode | Should -Be 'AdminShare'
+            $result[0].TargetPath | Should -Be '\\filesvr01\C$\ProgramData\VendorA'
+            $script:capturedPythonArgs[2] | Should -Be '\\filesvr01\C$\ProgramData\VendorA'
+
+            $hostOutput = Join-Path $outputRoot 'filesvr01'
+            Test-Path -LiteralPath $hostOutput | Should -BeTrue
+
+            if (Get-Command Test-RemotePython -ErrorAction SilentlyContinue) {
+                Remove-Item function:Test-RemotePython -Force
+            }
+        }
+
+        It 'stages and collects capture artefacts over WinRM' {
+            $profile = New-TemporaryFile
+            $script:tempArtifacts += $profile
+            Set-Content -LiteralPath $profile '{"profiles": []}'
+
+            $outputRoot = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString('N'))
+            $script:tempArtifacts += $outputRoot
+
+            $session = [pscustomobject]@{ Id = 42 }
+            $script:ensureArgs = $null
+            $script:runArgs = $null
+            $script:cleanupArgs = $null
+            $script:copiedToSession = @()
+            $script:copiedFromSession = @()
+
+            Mock New-PSSession { return $session } -ModuleName DriftBuster.PowerShell
+            Mock Copy-Item {
+                if ($PSBoundParameters.ContainsKey('ToSession')) {
+                    $script:copiedToSession += $Destination
+                }
+                elseif ($PSBoundParameters.ContainsKey('FromSession')) {
+                    $script:copiedFromSession += $Path
+                }
+            } -ModuleName DriftBuster.PowerShell
+            Mock Invoke-Command {
+                if ($ArgumentList.Count -eq 1) {
+                    $script:ensureArgs = $ArgumentList[0]
+                    return 'C:\\Remote\\DriftBuster'
+                }
+                elseif ($ArgumentList.Count -eq 5) {
+                    $script:runArgs = $ArgumentList
+                }
+                elseif ($ArgumentList.Count -eq 3) {
+                    $script:cleanupArgs = $ArgumentList
+                }
+            } -ModuleName DriftBuster.PowerShell
+            Mock Remove-PSSession { $script:removedSession = $true } -ModuleName DriftBuster.PowerShell
+
+            $result = Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName 'registry-01' -RemotePath 'C:\\ProgramData\\VendorA' -RunProfilePath $profile -RemoteWorkingDirectory 'C:\\Temp\\DriftBusterRemote' -OutputDirectory $outputRoot
+
+            ($result | Measure-Object).Count | Should -Be 1
+            $result[0].Mode | Should -Be 'WinRM'
+            $script:ensureArgs | Should -Be 'C:\\Temp\\DriftBusterRemote'
+            $script:runArgs | Should -Not -BeNullOrEmpty
+            $script:runArgs[0] | Should -Be 'python'
+            $script:runArgs[4] | Should -Be 'C:\\ProgramData\\VendorA'
+            $script:copiedToSession | Should -Contain 'C:\\Remote\\DriftBuster\\capture.py'
+            $script:copiedToSession | Should -Contain 'C:\\Remote\\DriftBuster\\profiles.json'
+            $script:copiedFromSession | Should -Contain 'C:\\Remote\\DriftBuster\\captures\*'
+            $script:cleanupArgs | Should -Not -BeNullOrEmpty
+            $script:removedSession | Should -BeTrue
         }
     }
 

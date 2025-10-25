@@ -250,7 +250,13 @@ function Get-DriftBusterSerializerOptions {
     $options = [System.Text.Json.JsonSerializerOptions]::new()
     $options.DefaultIgnoreCondition = [System.Text.Json.Serialization.JsonIgnoreCondition]::WhenWritingNull
     $options.PropertyNameCaseInsensitive = $true
-    $options.Converters.Add([System.Text.Json.Serialization.JsonStringEnumMemberConverter]::new())
+    $converterType = [System.Type]::GetType('System.Text.Json.Serialization.JsonStringEnumMemberConverter, System.Text.Json', $false)
+    if ($converterType) {
+        $options.Converters.Add([System.Activator]::CreateInstance($converterType))
+    }
+    else {
+        $options.Converters.Add([System.Text.Json.Serialization.JsonStringEnumConverter]::new())
+    }
 
     $script:SerializerOptions = $options
     return $script:SerializerOptions
@@ -928,6 +934,346 @@ function Export-DriftBusterSqlSnapshot {
     }
 
     return $null
+}
+
+function Invoke-DriftBusterRemoteScan {
+<#
+.SYNOPSIS
+Runs the DriftBuster capture helper against remote hosts.
+
+.DESCRIPTION
+Coordinates remote capture runs using either administrative SMB shares or
+WinRM remoting. Administrative shares run the capture locally against a UNC
+path, while WinRM sessions stage the capture helper on the remote host,
+execute it, and pull the resulting artefacts back to the caller.
+
+.PARAMETER ComputerName
+Target host name(s) to scan.
+
+.PARAMETER RemotePath
+Directory on the target host to capture. UNC paths are respected as-is; drive
+roots (for example `C:\ProgramData`) are converted to relative segments when
+admin share access is requested.
+
+.PARAMETER RunProfilePath
+ProfileStore JSON passed to `scripts/capture.py run --profiles`.
+
+.PARAMETER PythonPath
+Python executable (or shim) used to invoke `scripts/capture.py`.
+
+.PARAMETER OutputDirectory
+Local directory that stores copied capture artefacts for each host.
+
+.PARAMETER AdminShare
+Administrative share (defaults to `C$`) when using SMB access.
+
+.PARAMETER UseWinRM
+Switch to enable WinRM staging instead of direct SMB access.
+
+.PARAMETER RemoteWorkingDirectory
+Directory created on the remote host to stage capture helpers when WinRM is
+used.
+
+.PARAMETER Port
+Custom WinRM port when the remote endpoint does not use the default.
+
+.PARAMETER UseSSL
+Toggle WinRM SSL negotiation for remote endpoints.
+
+.PARAMETER KeepRemoteArtifacts
+Skips remote clean-up when WinRM staging is used so operators can examine the
+artefacts in place.
+
+.PARAMETER Credential
+Optional credential applied to the SMB drive mapping or WinRM session.
+
+.EXAMPLE
+Invoke-DriftBusterRemoteScan -ComputerName 'branch-01' -RemotePath 'ProgramData\\Vendor' -RunProfilePath profiles\hq.json
+
+.EXAMPLE
+Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramData\\Vendor' -RunProfilePath profiles\hq.json -UseWinRM -RemoteWorkingDirectory '$env:ProgramData\\DriftBusterRemote'
+#>
+    [CmdletBinding(DefaultParameterSetName = 'AdminShare')]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+        [ValidateNotNullOrEmpty()]
+        [Alias('Host')]
+        [string[]]
+        $ComputerName,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $RemotePath,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $RunProfilePath,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $PythonPath = 'python',
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $OutputDirectory = (Join-Path (Get-Location) 'driftbuster-remote'),
+
+        [Parameter(ParameterSetName = 'AdminShare')]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $AdminShare = 'C$',
+
+        [Parameter(ParameterSetName = 'AdminShare')]
+        [switch]
+        $PersistShare,
+
+        [Parameter(ParameterSetName = 'WinRM', Mandatory = $true)]
+        [switch]
+        $UseWinRM,
+
+        [Parameter(ParameterSetName = 'WinRM')]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $RemoteWorkingDirectory = '$env:ProgramData\DriftBuster\RemoteScan',
+
+        [Parameter(ParameterSetName = 'WinRM')]
+        [int]
+        $Port,
+
+        [Parameter(ParameterSetName = 'WinRM')]
+        [switch]
+        $UseSSL,
+
+        [Parameter(ParameterSetName = 'WinRM')]
+        [switch]
+        $KeepRemoteArtifacts,
+
+        [Parameter(ParameterSetName = 'AdminShare')]
+        [Parameter(ParameterSetName = 'WinRM')]
+        [System.Management.Automation.PSCredential]
+        $Credential
+    )
+
+    begin {
+        $resolvedProfile = (Resolve-Path -LiteralPath $RunProfilePath -ErrorAction Stop).Path
+        $captureScriptCandidate = Join-Path $PSScriptRoot '..' '..' 'scripts' 'capture.py'
+        if (-not (Test-Path -LiteralPath $captureScriptCandidate)) {
+            throw "Capture helper not found at $captureScriptCandidate"
+        }
+
+        $resolvedCaptureScript = (Resolve-Path -LiteralPath $captureScriptCandidate -ErrorAction Stop).Path
+        $scriptDirectory = Split-Path -Parent $resolvedCaptureScript
+
+        if (-not (Test-Path -LiteralPath $OutputDirectory)) {
+            $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
+        }
+
+        function Get-AdminShareTargetPath {
+            param(
+                [string] $Computer,
+                [string] $Share,
+                [string] $Path
+            )
+
+            if ([string]::IsNullOrWhiteSpace($Computer)) {
+                throw 'Computer name cannot be empty.'
+            }
+
+            if ($Path.StartsWith('\\')) {
+                return $Path
+            }
+
+            $shareRoot = "\\{0}\{1}" -f $Computer, $Share
+
+            if ($Path -match '^[A-Za-z]:\\') {
+                $relative = $Path.Substring(3)
+            }
+            else {
+                $relative = $Path.TrimStart('\\')
+            }
+
+            if ([string]::IsNullOrWhiteSpace($relative)) {
+                return $shareRoot
+            }
+
+            return Join-Path -Path $shareRoot -ChildPath $relative
+        }
+
+        function Get-AdminShareDrivePath {
+            param(
+                [string] $DriveName,
+                [string] $Path
+            )
+
+            if ($Path.StartsWith('\\')) {
+                $trimmed = $Path -replace '^\\\\[^\\]+\\[^\\]+\\?', ''
+            }
+            elseif ($Path -match '^[A-Za-z]:\\') {
+                $trimmed = $Path.Substring(3)
+            }
+            else {
+                $trimmed = $Path.TrimStart('\\')
+            }
+
+            $driveRoot = '{0}:' -f $DriveName
+
+            if ([string]::IsNullOrWhiteSpace($trimmed)) {
+                return $driveRoot
+            }
+
+            return Join-Path -Path $driveRoot -ChildPath $trimmed
+        }
+
+        $results = New-Object System.Collections.Generic.List[object]
+    }
+
+    process {
+        foreach ($computer in $ComputerName) {
+            if ([string]::IsNullOrWhiteSpace($computer)) {
+                continue
+            }
+
+            $localOutput = Join-Path $OutputDirectory $computer
+            if (-not (Test-Path -LiteralPath $localOutput)) {
+                $null = New-Item -ItemType Directory -Path $localOutput -Force
+            }
+
+            if ($PSCmdlet.ParameterSetName -eq 'WinRM') {
+                $sessionParams = @{ ComputerName = $computer }
+                if ($Credential) {
+                    $sessionParams.Credential = $Credential
+                }
+                if ($PSBoundParameters.ContainsKey('Port')) {
+                    $sessionParams.Port = $Port
+                }
+                if ($UseSSL) {
+                    $sessionParams.UseSSL = $true
+                }
+
+                $session = New-PSSession @sessionParams
+                try {
+                    $remoteRoot = Invoke-Command -Session $session -ScriptBlock {
+                        param($path)
+                        $expanded = $ExecutionContext.InvokeCommand.ExpandString($path)
+                        if (-not (Test-Path -LiteralPath $expanded)) {
+                            $null = New-Item -ItemType Directory -Path $expanded -Force
+                        }
+
+                        return (Resolve-Path -LiteralPath $expanded).Path
+                    } -ArgumentList $RemoteWorkingDirectory
+
+                    $remoteScriptPath = Join-Path $remoteRoot 'capture.py'
+                    $remoteProfilesPath = Join-Path $remoteRoot 'profiles.json'
+                    $remoteOutput = Join-Path $remoteRoot 'captures'
+
+                    Copy-Item -ToSession $session -LiteralPath $resolvedCaptureScript -Destination $remoteScriptPath -Force
+                    Copy-Item -ToSession $session -LiteralPath $resolvedProfile -Destination $remoteProfilesPath -Force
+
+                    Invoke-Command -Session $session -ScriptBlock {
+                        param($python, $workDir, $profiles, $outputDir, $targetPath)
+
+                        if (-not (Test-Path -LiteralPath $outputDir)) {
+                            $null = New-Item -ItemType Directory -Path $outputDir -Force
+                        }
+
+                        Push-Location $workDir
+                        try {
+                            & $python 'capture.py' 'run' $targetPath '--profiles' $profiles '--output-dir' $outputDir
+                            $code = $LASTEXITCODE
+                        }
+                        finally {
+                            Pop-Location
+                        }
+
+                        if ($code -ne 0) {
+                            throw "capture.py exited with code $code"
+                        }
+                    } -ArgumentList @($PythonPath, $remoteRoot, $remoteProfilesPath, $remoteOutput, $RemotePath)
+
+                    Copy-Item -FromSession $session -Path (Join-Path $remoteOutput '*') -Destination $localOutput -Recurse -Force -ErrorAction SilentlyContinue
+
+                    if (-not $KeepRemoteArtifacts) {
+                        Invoke-Command -Session $session -ScriptBlock {
+                            param($profiles, $scriptPath, $outputDir)
+                            Remove-Item -LiteralPath $profiles -Force -ErrorAction SilentlyContinue
+                            Remove-Item -LiteralPath $scriptPath -Force -ErrorAction SilentlyContinue
+                        } -ArgumentList @($remoteProfilesPath, $remoteScriptPath, $remoteOutput)
+                    }
+
+                    $results.Add([pscustomobject]@{
+                        ComputerName    = $computer
+                        Mode            = 'WinRM'
+                        OutputDirectory = $localOutput
+                    }) | Out-Null
+                }
+                finally {
+                    if ($session) {
+                        Remove-PSSession -Session $session
+                    }
+                }
+            }
+            else {
+                $uncPath = Get-AdminShareTargetPath -Computer $computer -Share $AdminShare -Path $RemotePath
+                $driveName = $null
+                $targetPath = $uncPath
+
+                if ($Credential) {
+                    $driveName = 'DBR{0}' -f ([Guid]::NewGuid().ToString('N').Substring(0, 8).ToUpper())
+                    $driveRoot = "\\{0}\{1}" -f $computer, $AdminShare
+
+                    $driveParams = @{
+                        Name       = $driveName
+                        PSProvider = 'FileSystem'
+                        Root       = $driveRoot
+                        Scope      = 'Script'
+                        Credential = $Credential
+                    }
+
+                    if ($PersistShare) {
+                        $driveParams.Persist = $true
+                    }
+
+                    $null = New-PSDrive @driveParams
+                    $targetPath = Get-AdminShareDrivePath -DriveName $driveName -Path $RemotePath
+                }
+
+                try {
+                    Push-Location $scriptDirectory
+                    try {
+                        & $PythonPath $resolvedCaptureScript 'run' $targetPath '--profiles' $resolvedProfile '--output-dir' $localOutput
+                        $exitCode = $LASTEXITCODE
+                    }
+                    finally {
+                        Pop-Location
+                    }
+
+                    if ($exitCode -ne 0) {
+                        throw "Remote capture via admin share failed for $computer with exit code $exitCode."
+                    }
+
+                    $results.Add([pscustomobject]@{
+                        ComputerName    = $computer
+                        Mode            = 'AdminShare'
+                        OutputDirectory = $localOutput
+                        TargetPath      = $targetPath
+                    }) | Out-Null
+                }
+                finally {
+                    if ($driveName -and -not $PersistShare) {
+                        Remove-PSDrive -Name $driveName -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+        }
+    }
+
+    end {
+        return $results
+    }
 }
 
 function Invoke-DriftBusterScheduleCli {

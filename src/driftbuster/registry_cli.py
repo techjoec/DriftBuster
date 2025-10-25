@@ -8,6 +8,7 @@ from typing import Any, Sequence
 from .registry import (
     enumerate_installed_apps,
     find_app_registry_roots,
+    parse_registry_root_descriptor,
     search_registry,
     SearchSpec,
     is_windows,
@@ -30,6 +31,12 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--max-depth", type=int, default=12)
     search.add_argument("--max-hits", type=int, default=200)
     search.add_argument("--time-budget", type=float, default=10.0)
+    search.add_argument(
+        "--root",
+        action="append",
+        default=[],
+        help="Explicit hive path, e.g. HKLM\\Software\\Vendor[,view=64] (repeatable)",
+    )
 
     emit = sub.add_parser(
         "emit-config",
@@ -51,6 +58,12 @@ def build_parser() -> argparse.ArgumentParser:
             "Remote host descriptor. Repeat to add a batch. Supported keys: "
             "username, password-env, credential-profile, transport, port, use-ssl, alias"
         ),
+    )
+    emit.add_argument(
+        "--root",
+        action="append",
+        default=[],
+        help="Explicit hive path, e.g. HKLM\\Software\\Vendor[,view=64] (repeatable)",
     )
 
     return parser
@@ -98,6 +111,11 @@ def _parse_remote_target_arg(value: str) -> dict[str, Any]:
     return payload
 
 
+def _parse_root_argument(value: str) -> tuple[str, str, str | None]:
+    root = parse_registry_root_descriptor(value)
+    return root.hive, root.path, root.view
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     if not is_windows():
         raise SystemExit("Registry scanning requires Windows.")
@@ -122,7 +140,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "search":
-        roots = find_app_registry_roots(args.token, installed=apps)
+        try:
+            explicit_roots = tuple(_parse_root_argument(value) for value in args.root)
+        except ValueError as exc:
+            raise SystemExit(f"invalid --root value: {exc}") from exc
+
+        if explicit_roots:
+            roots = explicit_roots
+        else:
+            roots = find_app_registry_roots(args.token, installed=apps)
         patterns = tuple(re.compile(p) for p in (args.pattern or ()))
         spec = SearchSpec(
             keywords=tuple(args.keyword or ()),
@@ -149,6 +175,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
         if args.alias:
             snippet["alias"] = args.alias
+
+        try:
+            explicit_roots = [
+                _parse_root_argument(value)
+                for value in args.root
+            ]
+        except ValueError as exc:
+            raise SystemExit(f"invalid --root value: {exc}") from exc
+        if explicit_roots:
+            snippet["registry_scan"]["roots"] = [
+                {"hive": hive, "path": path, **({"view": view} if view else {})}
+                for hive, path, view in explicit_roots
+            ]
 
         remote_targets = [
             _parse_remote_target_arg(value)
