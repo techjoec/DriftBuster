@@ -815,9 +815,9 @@ highlight where to consume the artifact.
 **REQUIRED RELATED WORK:**
 - [ ] 13.1 Encryption loader.
   - [x] 13.1.1 Implement DPAPI/AES flow in `src/driftbuster/offline_runner.py`.
-  - [ ] 13.1.2 Update `docs/encryption.md` with usage instructions.
+  - [x] 13.1.2 Update `docs/encryption.md` with usage instructions.
   - [x] 13.1.3 Add tests `tests/offline/test_encryption.py`.
-  - [ ] 13.1.4 Store DPAPI/AES configuration samples (anonymised) under `artifacts/encryption/README.md`.
+  - [x] 13.1.4 Store DPAPI/AES configuration samples (anonymised) under `artifacts/encryption/README.md`.
 - [ ] 13.2 Realtime secret scanning.
   - [ ] 13.2.1 Load `src/driftbuster/secret_rules.json` in realtime path.
   - [ ] 13.2.2 Mask suspect lines before persistence; record masked context.
