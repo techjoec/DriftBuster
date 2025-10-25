@@ -130,6 +130,47 @@ with `ProfileScheduler`. Pending runs bubble out via `ProfileScheduler.due()`
 as `ScheduledRun` instances and remain pending until you call
 `ProfileScheduler.mark_complete(...)`.
 
+## Registry Scan Sources
+
+- `registry_scan` entries live under `profile.sources` when you extend offline
+  collection plans. Supply a token plus optional keyword/regex filters. Remote
+  capture targets are configured via `remote` (single host) and `remote_batch`
+  (additional hosts) objects.
+- Supported remote keys mirror the offline runner schema:
+  `host` (required), `username`, `password_env`, `credential_profile`,
+  `transport`, `port`, `use_ssl`, and `alias`. Raw `password` values are
+  rejected – reference environment variables instead.
+- Example profile snippet covering one headquarters host plus a branch batch:
+
+  ```json
+  {
+    "profile": {
+      "name": "remote-registry-collection",
+      "sources": [
+        {
+          "alias": "hq-registry",
+          "registry_scan": {
+            "token": "VendorA",
+            "keywords": ["server"],
+            "remote": {
+              "host": "hq-gateway.internal",
+              "username": "DOMAIN\\\\collector",
+              "password_env": "DRIFTBUSTER_REMOTE_PASS"
+            },
+            "remote_batch": [
+              {"host": "branch-01.internal", "username": "DOMAIN\\\\collector"},
+              "branch-02.internal"
+            ]
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+- Generate ready-to-paste JSON with
+  `python -m driftbuster.registry_cli emit-config "VendorA" --remote-target "hq-gateway.internal,username=DOMAIN\\\\collector,password-env=DRIFTBUSTER_REMOTE_PASS" --remote-target branch-02.internal` to keep schemas consistent.
+
 ## Defining Profiles
 
 ```python

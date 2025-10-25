@@ -209,6 +209,105 @@ class OfflineCollectionSource:
 
 
 @dataclass(frozen=True)
+class RemoteRegistryTarget:
+    host: str
+    transport: str = "winrm"
+    port: int | None = None
+    use_ssl: bool | None = None
+    username: str | None = None
+    password_env: str | None = None
+    credential_profile: str | None = None
+    alias: str | None = None
+
+    @staticmethod
+    def _coerce_bool(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        text = str(value).strip().lower()
+        if text in {"1", "true", "yes", "on"}:
+            return True
+        if text in {"0", "false", "no", "off"}:
+            return False
+        raise ValueError(f"Unsupported boolean value '{value}' for remote target")
+
+    @classmethod
+    def from_payload(cls, payload: Any) -> "RemoteRegistryTarget":
+        if isinstance(payload, str):
+            host = payload.strip()
+            if not host:
+                raise ValueError("remote target host must be non-empty")
+            return cls(host=host)
+        if not isinstance(payload, Mapping):
+            raise ValueError("remote target must be a string host or mapping")
+
+        host_value = payload.get("host") or payload.get("hostname")
+        if not host_value or not str(host_value).strip():
+            raise ValueError("remote target requires 'host'")
+
+        if "password" in payload:
+            raise ValueError("remote target must not embed raw passwords; use password_env")
+
+        if "password_env" in payload:
+            password_env_value = payload["password_env"]
+        elif "password-env" in payload:
+            password_env_value = payload["password-env"]
+        else:
+            password_env_value = None
+        if password_env_value is not None and not str(password_env_value).strip():
+            raise ValueError("remote target password_env must be non-empty when provided")
+
+        username_value = payload.get("username") or payload.get("user")
+        if "credential_profile" in payload:
+            credential_profile = payload["credential_profile"]
+        elif "credential-profile" in payload:
+            credential_profile = payload["credential-profile"]
+        else:
+            credential_profile = None
+        transport_value = payload.get("transport", "winrm")
+        transport = str(transport_value).strip().lower() if transport_value else "winrm"
+        alias_value = payload.get("alias")
+
+        port_value = payload.get("port")
+        if port_value is not None:
+            port = int(port_value)
+            if port <= 0:
+                raise ValueError("remote target port must be positive")
+        else:
+            port = None
+
+        if "use_ssl" in payload:
+            use_ssl_value = payload["use_ssl"]
+        elif "use-ssl" in payload:
+            use_ssl_value = payload["use-ssl"]
+        else:
+            use_ssl_value = None
+        if use_ssl_value is not None:
+            use_ssl = cls._coerce_bool(use_ssl_value)
+        else:
+            use_ssl = None
+
+        alias = str(alias_value).strip() if alias_value and str(alias_value).strip() else None
+        username = str(username_value).strip() if username_value and str(username_value).strip() else None
+        password_env = (
+            str(password_env_value).strip() if password_env_value and str(password_env_value).strip() else None
+        )
+        credential_profile_value = (
+            str(credential_profile).strip() if credential_profile and str(credential_profile).strip() else None
+        )
+
+        return cls(
+            host=str(host_value).strip(),
+            transport=transport,
+            port=port,
+            use_ssl=use_ssl,
+            username=username,
+            password_env=password_env,
+            credential_profile=credential_profile_value,
+            alias=alias,
+        )
+
+
+@dataclass(frozen=True)
 class OfflineRegistryScanSource:
     token: str
     keywords: Tuple[str, ...] = ()
@@ -217,6 +316,8 @@ class OfflineRegistryScanSource:
     max_hits: int = 200
     time_budget_s: float = 10.0
     alias: str | None = None
+    remote: RemoteRegistryTarget | None = None
+    remote_batch: Tuple[RemoteRegistryTarget, ...] = field(default_factory=tuple)
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineRegistryScanSource":
@@ -237,6 +338,28 @@ class OfflineRegistryScanSource:
         alias = payload.get("alias")
         if alias is not None and not str(alias).strip():
             alias = None
+        remote_spec = spec.get("remote")
+        remote_batch_spec = (
+            spec.get("remote_batch")
+            or spec.get("remoteTargets")
+            or spec.get("remote_targets")
+            or spec.get("batch")
+        )
+
+        remote: RemoteRegistryTarget | None = None
+        if remote_spec is not None:
+            remote = RemoteRegistryTarget.from_payload(remote_spec)
+
+        batch: list[RemoteRegistryTarget] = []
+        if remote_batch_spec is not None:
+            if isinstance(remote_batch_spec, Mapping):
+                batch.append(RemoteRegistryTarget.from_payload(remote_batch_spec))
+            elif isinstance(remote_batch_spec, Sequence) and not isinstance(remote_batch_spec, (str, bytes)):
+                for entry in remote_batch_spec:
+                    batch.append(RemoteRegistryTarget.from_payload(entry))
+            else:
+                batch.append(RemoteRegistryTarget.from_payload(remote_batch_spec))
+
         return cls(
             token=str(token_raw).strip(),
             keywords=_norm_seq(spec.get("keywords")),
@@ -245,6 +368,8 @@ class OfflineRegistryScanSource:
             max_hits=int(spec.get("max_hits", 200)),
             time_budget_s=float(spec.get("time_budget_s", 10.0)),
             alias=str(alias) if alias else None,
+            remote=remote,
+            remote_batch=tuple(batch),
         )
 
     def destination_name(self, *, fallback_index: int) -> str:
@@ -1431,6 +1556,8 @@ __all__ = [
     "MANIFEST_SCHEMA",
     "CollectedFile",
     "OfflineCollectionSource",
+    "RemoteRegistryTarget",
+    "OfflineRegistryScanSource",
     "OfflineEncryptionSettings",
     "OfflineRunnerConfig",
     "OfflineRunnerProfile",

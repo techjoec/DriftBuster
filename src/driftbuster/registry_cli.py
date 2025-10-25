@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
-from typing import Sequence
+from typing import Any, Sequence
 
 from .registry import (
     enumerate_installed_apps,
@@ -30,7 +31,71 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--max-hits", type=int, default=200)
     search.add_argument("--time-budget", type=float, default=10.0)
 
+    emit = sub.add_parser(
+        "emit-config",
+        help="Render a registry_scan source snippet for remote or local runs",
+    )
+    emit.add_argument("token", help="Token to feed into registry_scan entries")
+    emit.add_argument("--alias", help="Optional alias for manifest output")
+    emit.add_argument("--keyword", action="append", default=[], help="Keyword to require (repeatable)")
+    emit.add_argument("--pattern", action="append", default=[], help="Regex to match (repeatable)")
+    emit.add_argument("--max-depth", type=int, default=12)
+    emit.add_argument("--max-hits", type=int, default=200)
+    emit.add_argument("--time-budget", type=float, default=10.0)
+    emit.add_argument(
+        "--remote-target",
+        action="append",
+        default=[],
+        metavar="HOST[,key=value]...",
+        help=(
+            "Remote host descriptor. Repeat to add a batch. Supported keys: "
+            "username, password-env, credential-profile, transport, port, use-ssl, alias"
+        ),
+    )
+
     return parser
+
+
+def _parse_remote_target_arg(value: str) -> dict[str, Any]:
+    parts = [segment.strip() for segment in value.split(",") if segment.strip()]
+    if not parts:
+        raise ValueError("remote target requires a host segment")
+    host_segment = parts[0]
+    if "=" in host_segment:
+        raise ValueError("remote target must start with the host name")
+
+    payload: dict[str, Any] = {"host": host_segment}
+    for entry in parts[1:]:
+        if "=" not in entry:
+            raise ValueError(f"Remote target entry '{entry}' must include '='")
+        key, raw_value = entry.split("=", 1)
+        key_normalised = key.strip().lower().replace("-", "_")
+        raw_value = raw_value.strip()
+        if not raw_value:
+            raise ValueError(f"Remote target value for '{key}' must be non-empty")
+        if key_normalised in {"port"}:
+            payload[key_normalised] = int(raw_value)
+        elif key_normalised in {"use_ssl"}:
+            lowered = raw_value.lower()
+            if lowered in {"1", "true", "yes", "on"}:
+                payload[key_normalised] = True
+            elif lowered in {"0", "false", "no", "off"}:
+                payload[key_normalised] = False
+            else:
+                raise ValueError(f"Unsupported boolean value '{raw_value}' for use-ssl")
+        elif key_normalised in {"username", "user"}:
+            payload["username"] = raw_value
+        elif key_normalised in {"password_env"}:
+            payload["password_env"] = raw_value
+        elif key_normalised in {"credential_profile"}:
+            payload["credential_profile"] = raw_value
+        elif key_normalised in {"transport"}:
+            payload["transport"] = raw_value
+        elif key_normalised in {"alias"}:
+            payload["alias"] = raw_value
+        else:
+            raise ValueError(f"Unsupported remote target key '{key}'")
+    return payload
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -69,6 +134,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         hits = search_registry(roots, spec)
         for hit in hits:
             print(f"{hit.hive} \\ {hit.path} :: {hit.value_name} = {hit.data_preview}")
+        return 0
+
+    if args.command == "emit-config":
+        snippet: dict[str, Any] = {
+            "registry_scan": {
+                "token": args.token,
+                "keywords": [kw for kw in args.keyword if kw],
+                "patterns": [pat for pat in args.pattern if pat],
+                "max_depth": args.max_depth,
+                "max_hits": args.max_hits,
+                "time_budget_s": args.time_budget,
+            }
+        }
+        if args.alias:
+            snippet["alias"] = args.alias
+
+        remote_targets = [
+            _parse_remote_target_arg(value)
+            for value in args.remote_target
+        ]
+        if remote_targets:
+            primary = remote_targets[0]
+            snippet["registry_scan"]["remote"] = primary
+            if len(remote_targets) > 1:
+                snippet["registry_scan"]["remote_batch"] = remote_targets[1:]
+
+        # Drop empty sequences to keep output tight.
+        for key in ("keywords", "patterns"):
+            if not snippet["registry_scan"][key]:
+                snippet["registry_scan"].pop(key)
+
+        print(json.dumps(snippet, indent=2, sort_keys=True))
         return 0
 
     parser.print_help()

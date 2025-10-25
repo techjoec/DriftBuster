@@ -67,6 +67,49 @@ Offline Runner
 - Results are written to `data/<alias>/registry_scan.json` and summarised in the manifest.
 - Non‑Windows hosts skip registry sources, recording a clear reason in the manifest/logs.
 
+Remote Targets
+--------------
+- Add remote credentials without storing passwords in JSON by populating the
+  optional `remote` and `remote_batch` blocks:
+
+  ```json
+  {
+    "profile": {
+      "name": "collect-config-and-registry",
+      "sources": [
+        {
+          "alias": "hq-registry",
+          "registry_scan": {
+            "token": "VendorA AppA",
+            "keywords": ["server"],
+            "remote": {
+              "host": "hq-gateway.internal",
+              "username": "DOMAIN\\\\collector",
+              "password_env": "DRIFTBUSTER_REMOTE_PASS",
+              "transport": "winrm",
+              "port": 5986,
+              "use_ssl": true
+            },
+            "remote_batch": [
+              {"host": "branch-01.internal", "username": "DOMAIN\\\\collector"},
+              "branch-02.internal"
+            ]
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+- The first entry under `remote` is used for the primary connection; any
+  additional entries feed secondary hosts. Each target accepts these keys:
+  `host` (required), `username`, `password_env`, `credential_profile`,
+  `transport`, `port`, `use_ssl`, and `alias`. Inline `password` fields are
+  rejected to prevent accidental leaks. When only a batch is required, skip the
+  `remote` block and populate `remote_batch` with mappings or host strings.
+- Generate JSON snippets from the CLI instead of hand-editing:
+  `python -m driftbuster.registry_cli emit-config "VendorA" --remote-target "hq-gateway.internal,username=DOMAIN\\\\collector,password-env=DRIFTBUSTER_REMOTE_PASS" --remote-target branch-02.internal`.
+
 Profile Scheduler (Preview)
 ---------------------------
 - Schedules let you trigger profile runs on a cadence without wiring a full job
