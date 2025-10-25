@@ -110,6 +110,18 @@ Shortcut: run `scripts/verify_coverage.sh` (POSIX shells) or `python -m scripts.
 - Replace real identifiers with neutral placeholders before saving snippets or
   notes inside the repo.
 
+### Reporting compliance hooks
+
+- Treat font telemetry retention runs as compliance-sensitive. When enabling
+  `--print-retention-metrics` or overriding `--retention-metrics-path`, record
+  the resulting evidence location in `notes/checklists/legal-review.md` and
+  follow the guardrails documented in `docs/legal-safeguards.md#font-telemetry-retention-compliance`.
+- If the metrics file is disabled (`-`), capture the inline output in a
+  restricted transcript and avoid copying it into public runbooks or issue
+  trackers.
+- Confirm that deleted filename references remain anonymised before attaching
+  the metrics payload to investigations or review bundles.
+
 ## Profile & hunt sample logistics
 
 Maintain a parallel inventory for configuration profiles so hunt approvals stay

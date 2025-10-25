@@ -128,6 +128,25 @@ These guardrails cover every feature, note, and capture helper.
 - When sharing artefacts externally, duplicate them into a fresh directory and
   re-run masking to avoid reusing long-lived copies.
 
+## Font telemetry retention compliance
+
+- Treat `font-retention-metrics.json` and the inline output from
+  `--print-retention-metrics` as restricted evidence. The payload lists deleted
+  filenames plus an evaluated `ageCutoff` timestamp, so store it alongside the
+  corresponding log bundle instead of general evidence directories.
+- When overriding the metrics destination with `--retention-metrics-path`, pick
+  a location under `artifacts/logs/font-staleness/` (or another restricted
+  folder) and record the override in the legal review log.
+- If operators disable the metrics file by passing `-`, capture the printed
+  line in the run transcript and treat that transcript as restricted material.
+  Do not copy the inline summary into public runbooks or issue trackers.
+- Deleted event filenames must remain anonymised outside the legal review flow.
+  When attaching metrics to investigations, replace file stems with hashed
+  aliases or redact them entirely before sharing externally.
+- Document retention window decisions (including count- or age-based pruning)
+  in `notes/checklists/legal-review.md` so reviewers can map each deletion to
+  an approved policy.
+
 ## HOLD Exit Briefing
 
 - Check `notes/status/hold-log.md#decision-ready-summary` before resuming reporting work.

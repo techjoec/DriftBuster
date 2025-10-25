@@ -779,10 +779,13 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Legal documentation updated; fuzz plan drafted; coverage scripts validated.
 
 **REQUIRED RELATED WORK:**
-- [ ] 12.1 Legal guardrails.
-  - [ ] 12.1.1 Update `docs/legal-safeguards.md` with current restrictions.
-  - [ ] 12.1.2 Align docs with reporting compliance sections.
-  - [ ] 12.1.3 Capture legal sign-off in `notes/checklists/legal-review.md`.
+- [x] 12.1 Legal guardrails.
+  - [x] 12.1.1 Update `docs/legal-safeguards.md` with current restrictions.
+  - [x] 12.1.2 Align docs with reporting compliance sections.
+  - [x] 12.1.3 Capture legal sign-off in `notes/checklists/legal-review.md`.
+  - Notes (2025-11-27): Added font telemetry retention compliance guardrails, cross-linked
+    reporting hooks in the testing strategy, and logged the audit entry plus override
+    evidence in the legal review checklist.
 - [ ] 12.2 Vendor samples strategy.
   - [ ] 12.2.1 Draft sourcing plan in `docs/testing-strategy.md`.
   - [ ] 12.2.2 Add fixtures under `fixtures/` with anonymised data.

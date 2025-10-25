@@ -12,6 +12,7 @@ follow-up questions.
 | 2025-10-28 | Diff planner MRU telemetry captured sanitized payload rejection + replay confirmation. | `artifacts/logs/diff-planner-mru-telemetry.json` records sanitized summary digests only. | N/A | N/A | MRU cache capped at ten entries under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/`; retention note logged, no raw payloads persisted. |
 | 2025-10-31 | Reporting hold-exit evidence bundle (compile/lint verification). | `artifacts/hold-exit/compile-lint.txt` hashed via `verification-2025-10-31.sha256`. | N/A | N/A | Mirrored to restricted share `captures/reporting-hold/2025-10-31/`; purge scheduled for 2025-11-30 with owner rotation noted below. |
 | 2025-11-13 | Reporting artefact purge rehearsal. | `python scripts/purge_reporting_retention.py captures/ artifacts/reporting/` dry-run transcript stored in `artifacts/reporting/purge-dryrun-2025-11-13.txt`. | Spot-checked `report.html` confirms `[REDACTED]` placeholders. | Diff sample `web-config.patch` verified for token masking. | MP (sign-off) confirmed purge candidates and placeholder audit before recording approvals. |
+| 2025-11-27 | Font telemetry retention metrics guardrails audit. | `artifacts/logs/font-staleness/font-retention-metrics.json` relocated under restricted folder with hashed filename aliases. | N/A | N/A | Verified `--print-retention-metrics` transcript captured in secure run log; override path recorded in this checklist per new compliance hook. |
 
 ## Sample review log
 
