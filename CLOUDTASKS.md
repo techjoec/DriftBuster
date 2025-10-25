@@ -84,10 +84,10 @@ Schema reference
 **ACCEPT GATES:** `git status` stays clean after `dotnet test`; telemetry evidence is captured in a temp path with assertions on in-memory JSON; CLOUDTASKS entry moved to completed once verified.
 
 **REQUIRED RELATED WORK:**
-- [ ] 3.1 Refactor toast telemetry test to use a temp directory instead of `artifacts/logs/gui-validation` `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs:317`.
-  - [ ] 3.1.1 Ensure temp path creation respects OS-specific temp dirs and is cleaned up after assertions `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
-- [ ] 3.2 Add guard assertion that repo state remains clean post-test by verifying no files under `artifacts/logs/gui-validation` changed `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
-- [ ] 3.3 Document the new temp evidence approach in test comments to prevent regressions `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
+- [x] 3.1 Refactor toast telemetry test to use a temp directory instead of `artifacts/logs/gui-validation` `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs:317`.
+  - [x] 3.1.1 Ensure temp path creation respects OS-specific temp dirs and is cleaned up after assertions `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
+- [x] 3.2 Add guard assertion that repo state remains clean post-test by verifying no files under `artifacts/logs/gui-validation` changed `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
+- [x] 3.3 Document the new temp evidence approach in test comments to prevent regressions `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
 
 # End of priority queue
 <!-- PR prepared: 2025-02-14T18:45:00Z -->

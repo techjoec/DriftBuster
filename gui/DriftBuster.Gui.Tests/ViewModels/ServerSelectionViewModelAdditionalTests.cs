@@ -247,6 +247,10 @@ public sealed class ServerSelectionViewModelAdditionalTests
     [Fact]
     public async Task Emits_attention_toast_and_activity_for_unavailable_hosts()
     {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var logDirectory = Path.Combine(repositoryRoot, "artifacts", "logs", "gui-validation");
+        var originalLogSnapshot = SnapshotLogDirectory(logDirectory);
+
         var service = new FakeDriftbusterService
         {
             RunServerScansHandler = (plans, progress, _) =>
@@ -314,35 +318,45 @@ public sealed class ServerSelectionViewModelAdditionalTests
             entry.Severity == ActivitySeverity.Warning &&
             entry.Detail.Contains("Supporting App: Offline"));
 
-        var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-        var logDirectory = Path.Combine(repositoryRoot, "artifacts", "logs", "gui-validation");
-        Directory.CreateDirectory(logDirectory);
-        var payload = new
+        using var evidenceDirectory = new TempDirectory("server-selection-attention-toast");
+        try
         {
-            generatedAt = DateTimeOffset.UtcNow,
-            warningToast = new
+            var payload = new
             {
-                warning.Title,
-                warning.Message,
-            },
-            activities = viewModel.ActivityEntries
-                .Where(entry => string.Equals(entry.Summary, "Hosts require attention", StringComparison.Ordinal))
-                .Select(entry => new
+                generatedAt = DateTimeOffset.UtcNow,
+                warningToast = new
                 {
-                    entry.Summary,
-                    entry.Detail,
-                    Severity = entry.Severity.ToString(),
-                })
-                .ToArray(),
-        };
+                    warning.Title,
+                    warning.Message,
+                },
+                activities = viewModel.ActivityEntries
+                    .Where(entry => string.Equals(entry.Summary, "Hosts require attention", StringComparison.Ordinal))
+                    .Select(entry => new
+                    {
+                        entry.Summary,
+                        entry.Detail,
+                        Severity = entry.Severity.ToString(),
+                    })
+                    .ToArray(),
+            };
 
-        var logPath = Path.Combine(logDirectory, "server-selection-attention-toast.json");
-        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            var logPath = Path.Combine(evidenceDirectory.Path, "server-selection-attention-toast.json");
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+            });
+
+            // Persist evidence in a disposable temp directory so repository logs remain untouched.
+            await File.WriteAllTextAsync(logPath, json + Environment.NewLine);
+
+            var savedEvidence = await File.ReadAllTextAsync(logPath);
+            savedEvidence.Should().Contain("Hosts require attention");
+        }
+        finally
         {
-            WriteIndented = true,
-        });
-
-        await File.WriteAllTextAsync(logPath, json + Environment.NewLine);
+            var currentLogSnapshot = SnapshotLogDirectory(logDirectory);
+            currentLogSnapshot.Should().BeEquivalentTo(originalLogSnapshot);
+        }
     }
 
     [Fact]
@@ -430,5 +444,46 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
         logActivity.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "two", null, ActivityCategory.General });
         viewModel.UseVirtualizedActivityFeed.Should().BeTrue();
+    }
+
+    private static IReadOnlyDictionary<string, LogFileSnapshot> SnapshotLogDirectory(string directory)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return new Dictionary<string, LogFileSnapshot>(StringComparer.Ordinal);
+        }
+
+        return Directory
+            .GetFiles(directory, "*", SearchOption.AllDirectories)
+            .ToDictionary(
+                path => path,
+                path => new LogFileSnapshot(File.GetLastWriteTimeUtc(path), File.ReadAllText(path)),
+                StringComparer.Ordinal);
+    }
+
+    private readonly record struct LogFileSnapshot(DateTime LastWriteUtc, string Content);
+
+    private sealed class TempDirectory : IDisposable
+    {
+        public TempDirectory(string? hint = null)
+        {
+            var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DriftBuster.Gui.Tests");
+            Directory.CreateDirectory(root);
+            var folderName = string.IsNullOrWhiteSpace(hint)
+                ? Guid.NewGuid().ToString("N")
+                : $"{hint}-{Guid.NewGuid():N}";
+            Path = System.IO.Path.Combine(root, folderName);
+            Directory.CreateDirectory(Path);
+        }
+
+        public string Path { get; }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Path))
+            {
+                Directory.Delete(Path, recursive: true);
+            }
+        }
     }
 }
