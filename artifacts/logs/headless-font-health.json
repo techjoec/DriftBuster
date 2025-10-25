@@ -1,52 +1,52 @@
 {
-  "generatedAt": "2025-10-25T08:39:12.7137599+00:00",
+  "generatedAt": "2025-10-25T10:46:27.5517009+00:00",
   "scenarios": [
     {
       "name": "EnsureHeadless_allows_main_window_instantiation",
-      "totalRuns": 20,
-      "passes": 6,
+      "totalRuns": 22,
+      "passes": 8,
       "failures": 14,
       "lastStatus": "pass",
-      "lastUpdated": "2025-10-25T08:39:12.7010769+00:00",
+      "lastUpdated": "2025-10-25T10:46:27.5420917+00:00",
       "lastDetails": {
-        "started_at": "2025-10-25T08:39:12.6286243\u002B00:00",
+        "started_at": "2025-10-25T10:46:27.4618613\u002B00:00",
         "window_type": "DriftBuster.Gui.Views.MainWindow",
-        "completed_at": "2025-10-25T08:39:12.7010603\u002B00:00"
+        "completed_at": "2025-10-25T10:46:27.5420788\u002B00:00"
       }
     },
     {
       "name": "EnsureHeadless_registers_inter_font_manager",
-      "totalRuns": 20,
-      "passes": 20,
+      "totalRuns": 22,
+      "passes": 22,
       "failures": 0,
       "lastStatus": "pass",
-      "lastUpdated": "2025-10-25T08:39:12.7137564+00:00",
+      "lastUpdated": "2025-10-25T10:46:27.5516978+00:00",
       "lastDetails": {
-        "started_at": "2025-10-25T08:39:12.7119486\u002B00:00",
+        "started_at": "2025-10-25T10:46:27.5500692\u002B00:00",
         "default_family": "Inter",
         "fallback_count": "3",
         "inter_fallback": "true",
         "system_fonts_alias": "true",
         "glyph_alias_success": "true",
         "glyph_family": "fonts:SystemFonts",
-        "completed_at": "2025-10-25T08:39:12.7137421\u002B00:00"
+        "completed_at": "2025-10-25T10:46:27.5516858\u002B00:00"
       }
     },
     {
       "name": "EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts",
-      "totalRuns": 20,
-      "passes": 6,
+      "totalRuns": 22,
+      "passes": 8,
       "failures": 14,
       "lastStatus": "pass",
-      "lastUpdated": "2025-10-25T08:39:12.6251399+00:00",
+      "lastUpdated": "2025-10-25T10:46:27.4570349+00:00",
       "lastDetails": {
-        "started_at": "2025-10-25T08:39:12.6170748\u002B00:00",
+        "started_at": "2025-10-25T10:46:27.4489703\u002B00:00",
         "resource_contains_system_fonts": "true",
         "resource_contains_inter": "true",
         "glyph_resolved": "true",
         "glyph_family": "Inter",
         "glyph_family_normalised": "true",
-        "completed_at": "2025-10-25T08:39:12.6179890\u002B00:00"
+        "completed_at": "2025-10-25T10:46:27.4497419\u002B00:00"
       }
     }
   ]

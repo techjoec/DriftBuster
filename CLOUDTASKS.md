@@ -26,7 +26,7 @@ Schema reference
 - [x] 1.1 Expand validation summary coverage for host cards `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:178`.
   - [x] 1.1.1 Add unit tests covering root error precedence, pending counts, and disabled states in `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelValidationTests.cs`.
   - [x] 1.1.2 Assert tooltip/automation bindings surface updated summaries in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
-- [ ] 1.2 Cover `CanAcceptReorder` busy gating and identity checks `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:1096`.
+- [x] 1.2 Cover `CanAcceptReorder` busy gating and identity checks `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:1096`.
   - [x] 1.2.1 Extend `ServerSelectionViewModelAdditionalTests` to exercise busy-state false negatives and identical-host rejection `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
 - [x] 1.3 Exercise drag/drop handlers for server cards `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs:42`.
   - [x] 1.3.1 Build a headless drag/drop harness covering pointer press and drop callbacks in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.

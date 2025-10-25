@@ -207,10 +207,41 @@ public sealed class ServerSelectionViewModelAdditionalTests
         viewModel.IsBusy = false;
         viewModel.CanAcceptReorder(target.HostId, target).Should().BeFalse();
         viewModel.CanAcceptReorder(source.HostId.ToUpperInvariant(), source).Should().BeFalse();
-        viewModel.CanAcceptReorder(null, target).Should().BeFalse();
-        viewModel.CanAcceptReorder(string.Empty, target).Should().BeFalse();
 
         viewModel.CanAcceptReorder(source.HostId, target).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CanAcceptReorder_rejects_missing_source_ids(string? sourceHostId)
+    {
+        var service = new FakeDriftbusterService();
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        var target = viewModel.Servers[0];
+
+        viewModel.IsBusy.Should().BeFalse();
+        viewModel.CanAcceptReorder(sourceHostId, target).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ReorderServer_ignores_requests_when_busy()
+    {
+        var service = new FakeDriftbusterService();
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        var source = viewModel.Servers[1];
+        var target = viewModel.Servers[0];
+        var before = viewModel.Servers.Select(slot => slot.HostId).ToList();
+
+        viewModel.IsBusy = true;
+        viewModel.ReorderServer(source.HostId, target.HostId, insertBefore: true);
+
+        viewModel.Servers.Select(slot => slot.HostId).Should().Equal(before);
     }
 
     [Fact]
