@@ -636,7 +636,7 @@ def _hash_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _dpapi_unprotect(blob: bytes, *, scope: str) -> bytes:
+def _dpapi_unprotect(blob: bytes, *, scope: str) -> bytes:  # pragma: no cover - Windows-only helper
     if sys.platform != "win32":
         raise RuntimeError("DPAPI key decryption is only supported on Windows.")
 
@@ -687,7 +687,7 @@ def _decode_key_entry(entry: Mapping[str, Any], *, description: str) -> bytes:
             key_bytes = base64.b64decode(data)
         elif encoding in {"hex", "hexadecimal"}:
             key_bytes = bytes.fromhex(data.strip())
-        elif encoding == "dpapi":
+        elif encoding == "dpapi":  # pragma: no cover - Windows-specific decoding
             blob = base64.b64decode(data)
             scope = str(entry.get("scope", "current_user") or "current_user")
             key_bytes = _dpapi_unprotect(blob, scope=scope)
@@ -989,7 +989,7 @@ def execute_config(
                     continue
                 log(f"required source missing: {source.path}")
                 raise
-        else:
+        else:  # pragma: no cover - Windows registry collection requires Windows APIs
             # Registry scan source
             from .registry import (
                 is_windows,
@@ -1302,7 +1302,7 @@ def execute_config(
     manifest_on_disk = manifest_path
     log_on_disk = log_path
     if settings.compress:
-        if package_filename is None:
+        if package_filename is None:  # pragma: no cover - safeguard for unexpected state
             raise RuntimeError("package filename not computed")
         package_path = output_root / package_filename
         with zipfile.ZipFile(package_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:

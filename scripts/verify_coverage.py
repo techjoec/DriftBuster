@@ -8,10 +8,11 @@ combined coverage summary used in release evidence.
 from __future__ import annotations
 
 import argparse
+import json
 import shlex
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, List, Sequence
 
@@ -37,6 +38,9 @@ class VerifyOptions:
     pytest_args: Sequence[str] = ("-q",)
     extra_python_args: Sequence[str] = ()
     skip_python_json: bool = False
+    python_module_thresholds: dict[str, int] = field(
+        default_factory=lambda: {"src/driftbuster/offline_runner.py": 90}
+    )
 
 
 def run_command(command: Command) -> None:
@@ -129,10 +133,56 @@ def execute(commands: Iterable[Command], runner: Runner) -> None:
         runner(command)
 
 
+def enforce_python_module_thresholds(opts: VerifyOptions) -> None:
+    if not opts.python_module_thresholds:
+        return
+    if opts.skip_python_json:
+        raise RuntimeError(
+            "Module thresholds require coverage json output; remove --skip-python-json."
+        )
+
+    coverage_path = Path(opts.python_json)
+    if not coverage_path.exists():
+        raise FileNotFoundError(
+            f"Python coverage json not found at {coverage_path} for module enforcement."
+        )
+
+    payload = json.loads(coverage_path.read_text(encoding="utf-8"))
+    files = payload.get("files")
+    if not isinstance(files, dict):
+        raise RuntimeError("coverage json missing 'files' mapping")
+
+    errors: list[str] = []
+    for target, threshold in opts.python_module_thresholds.items():
+        record = files.get(target)
+        if not isinstance(record, dict):
+            errors.append(f"coverage entry not found for {target}")
+            continue
+        summary = record.get("summary")
+        if not isinstance(summary, dict):
+            errors.append(f"coverage summary missing for {target}")
+            continue
+        percent = summary.get("percent_covered")
+        try:
+            percent_value = float(percent)
+        except (TypeError, ValueError):
+            errors.append(f"invalid percent_covered for {target}: {percent!r}")
+            continue
+        if percent_value < threshold:
+            errors.append(
+                f"{target} coverage {percent_value:.2f}% below required {threshold}%"
+            )
+
+    if errors:
+        joined = "\n- ".join(errors)
+        raise RuntimeError(f"Python module coverage check failed:\n- {joined}")
+
+
 def verify(opts: VerifyOptions, runner: Runner = run_command) -> None:
     if opts.run_python:
         print("-- Python coverage sweep")
         execute(build_python_commands(opts), runner)
+        enforce_python_module_thresholds(opts)
     if opts.run_dotnet:
         print("-- .NET coverage sweep")
         execute(build_dotnet_commands(opts), runner)
@@ -215,6 +265,16 @@ def parse_args(argv: Sequence[str] | None = None) -> VerifyOptions:
         default="",
         help="Additional arguments inserted before pytest args for coverage run.",
     )
+    parser.add_argument(
+        "--python-module-threshold",
+        action="append",
+        default=[],
+        metavar="PATH=PERCENT",
+        help=(
+            "Require PATH in coverage json to meet PERCENT (integer) coverage; "
+            "may be specified multiple times."
+        ),
+    )
 
     args, pytest_args = parser.parse_known_args(argv)
 
@@ -224,7 +284,21 @@ def parse_args(argv: Sequence[str] | None = None) -> VerifyOptions:
     else:
         extra_args = ()
 
-    return VerifyOptions(
+    module_thresholds: dict[str, int] = {}
+    for entry in args.python_module_threshold:
+        if "=" not in entry:
+            parser.error("--python-module-threshold entries must be PATH=PERCENT")
+        path, value = entry.split("=", 1)
+        path = path.strip()
+        if not path:
+            parser.error("--python-module-threshold requires non-empty path")
+        try:
+            percent = int(value)
+        except ValueError as exc:  # pragma: no cover - argparse error path
+            parser.error(f"Invalid percent for module threshold '{entry}': {exc}")
+        module_thresholds[path] = percent
+
+    kwargs = dict(
         run_python=not args.skip_python,
         run_dotnet=not args.skip_dotnet,
         run_summary=not args.skip_summary,
@@ -240,6 +314,10 @@ def parse_args(argv: Sequence[str] | None = None) -> VerifyOptions:
         extra_python_args=extra_args,
         skip_python_json=args.skip_python_json,
     )
+    if module_thresholds:
+        kwargs["python_module_thresholds"] = module_thresholds
+
+    return VerifyOptions(**kwargs)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

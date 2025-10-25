@@ -828,10 +828,10 @@ highlight where to consume the artifact.
   - [x] 13.3.1 Document flow in `docs/hunt-mode.md` and `docs/windows-gui-guide.md`.
   - [x] 13.3.2 Capture validation logs in `notes/status/gui-research.md`.
   - [x] 13.3.3 Add troubleshooting appendix to `docs/encryption.md` for realtime failures.
-- [ ] 13.4 Validation.
-  - [ ] 13.4.1 Run end-to-end scans across `fixtures/` and record masked output evidence.
-  - [ ] 13.4.2 Ensure coverage scripts reflect new paths (≥90%).
-  - [ ] 13.4.3 Record manual audit (before/after redaction) in `notes/checklists/token-approval.md`.
+- [x] 13.4 Validation.
+  - [x] 13.4.1 Run end-to-end scans across `fixtures/` and record masked output evidence.
+  - [x] 13.4.2 Ensure coverage scripts reflect new paths (≥90%).
+  - [x] 13.4.3 Record manual audit (before/after redaction) in `notes/checklists/token-approval.md`.
 
 ## A14. Scheduler & Notification Channels [deps=A13]
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import List
@@ -11,6 +12,7 @@ from scripts.verify_coverage import (
     build_dotnet_commands,
     build_python_commands,
     build_summary_commands,
+    enforce_python_module_thresholds,
     parse_args,
     verify,
 )
@@ -26,7 +28,20 @@ class CommandRecorder:
 
 def test_default_verify_runs_all_sections(tmp_path: Path) -> None:
     recorder = CommandRecorder()
-    opts = VerifyOptions(dotnet_results_dir=str(tmp_path / "coverage"))
+    coverage_path = tmp_path / "coverage.json"
+    coverage_payload = {
+        "files": {
+            "src/driftbuster/offline_runner.py": {
+                "summary": {"percent_covered": 100.0}
+            }
+        }
+    }
+    coverage_path.write_text(json.dumps(coverage_payload), encoding="utf-8")
+
+    opts = VerifyOptions(
+        dotnet_results_dir=str(tmp_path / "coverage"),
+        python_json=str(coverage_path),
+    )
     verify(opts, runner=recorder)
 
     assert recorder.commands[0][:4] == [
@@ -90,3 +105,53 @@ def test_build_summary_commands_uses_configured_paths() -> None:
     opts = VerifyOptions(python_json="out.json", dotnet_results_dir="dotnet-out")
     commands = build_summary_commands(opts)
     assert commands[0][-2:] == ["--dotnet-root", "dotnet-out"]
+
+
+def test_enforce_python_module_thresholds_pass(tmp_path: Path) -> None:
+    coverage_path = tmp_path / "coverage.json"
+    coverage_payload = {
+        "files": {
+            "src/driftbuster/offline_runner.py": {
+                "summary": {"percent_covered": 95.0}
+            }
+        }
+    }
+    coverage_path.write_text(json.dumps(coverage_payload), encoding="utf-8")
+
+    opts = VerifyOptions(
+        python_json=str(coverage_path),
+        python_module_thresholds={"src/driftbuster/offline_runner.py": 90},
+    )
+    enforce_python_module_thresholds(opts)
+
+
+def test_enforce_python_module_thresholds_raises_for_low_coverage(tmp_path: Path) -> None:
+    coverage_path = tmp_path / "coverage.json"
+    coverage_payload = {
+        "files": {
+            "src/driftbuster/offline_runner.py": {
+                "summary": {"percent_covered": 42.0}
+            }
+        }
+    }
+    coverage_path.write_text(json.dumps(coverage_payload), encoding="utf-8")
+
+    opts = VerifyOptions(
+        python_json=str(coverage_path),
+        python_module_thresholds={"src/driftbuster/offline_runner.py": 90},
+    )
+    with pytest.raises(RuntimeError):
+        enforce_python_module_thresholds(opts)
+
+
+def test_enforce_python_module_thresholds_raises_for_missing_entry(tmp_path: Path) -> None:
+    coverage_path = tmp_path / "coverage.json"
+    coverage_payload = {"files": {}}
+    coverage_path.write_text(json.dumps(coverage_payload), encoding="utf-8")
+
+    opts = VerifyOptions(
+        python_json=str(coverage_path),
+        python_module_thresholds={"src/driftbuster/offline_runner.py": 90},
+    )
+    with pytest.raises(RuntimeError):
+        enforce_python_module_thresholds(opts)

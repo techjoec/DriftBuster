@@ -1,0 +1,34 @@
+{
+  "schema": "https://driftbuster.dev/offline-runner/evidence/masking/v1",
+  "generated_from": "tests/offline/test_offline_runner_masking_integration.py::test_execute_config_masks_secret_samples",
+  "generated_at_utc": "2025-10-25T07:00:00Z",
+  "fixtures": [
+    {
+      "path": "fixtures/secret_samples/auth_secrets.txt",
+      "sanitized_sha256": "29162f76d3a73c6b2499cfcc6eb13bc31652cef1635f57c1b09f75cfa9af166e",
+      "masked_lines": [
+        "[SECRET]",
+        "[SECRET]",
+        "aws_access_key_id=[SECRET]"
+      ],
+      "findings": [
+        {
+          "rule": "PasswordAssignment",
+          "path": "secret-fixtures/auth_secrets.txt",
+          "line": 2
+        },
+        {
+          "rule": "GenericApiToken",
+          "path": "secret-fixtures/auth_secrets.txt",
+          "line": 3
+        },
+        {
+          "rule": "AwsAccessKeyId",
+          "path": "secret-fixtures/auth_secrets.txt",
+          "line": 4
+        }
+      ]
+    }
+  ],
+  "notes": "Sanitized output recorded after executing OfflineRunner with encryption enabled on 2025-10-25 UTC."
+}

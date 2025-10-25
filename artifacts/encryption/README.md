@@ -64,3 +64,11 @@ the plaintext copy.
 
 Keep the keyset path outside the collection directory so encrypted packages can
 be shared without leaking key material.
+
+## Masked output evidence
+
+- `masked-fixtures-sample.json` records the sanitized hashes and rules observed
+  when running the offline runner against `fixtures/secret_samples/auth_secrets.txt`
+  with encryption enabled (see
+  `tests/offline/test_offline_runner_masking_integration.py`). Use the recorded
+  SHA256 to confirm scrubbed outputs without redistributing raw payloads.

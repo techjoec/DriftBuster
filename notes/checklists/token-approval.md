@@ -53,6 +53,17 @@
   `notes/status/reporting-open-questions.md` so the register reflects the
   latest review findings before updating Area A11.8.
 
+## Offline runner encryption validation (2025-10-25)
+
+- Executed `tests/offline/test_offline_runner_masking_integration.py::test_execute_config_masks_secret_samples`
+  to capture before/after evidence for DPAPI/AES packaging with secret masking
+  enabled. Raw fixture tokens from `fixtures/secret_samples/auth_secrets.txt`
+  were scrubbed to `[SECRET]` placeholders inside the staging package.
+- Confirmed the manifest recorded redaction findings for `PasswordAssignment`,
+  `GenericApiToken`, and `AwsAccessKeyId`, and stored sanitized hashes in
+  `artifacts/encryption/masked-fixtures-sample.json` for auditors verifying the
+  scrubbed payload.
+
 ## JSON approval log schema
 
 Token approvals now live alongside this checklist in a machine-readable JSON
