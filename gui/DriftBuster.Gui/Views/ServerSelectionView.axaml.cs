@@ -60,7 +60,12 @@ namespace DriftBuster.Gui.Views
             }
         }
 
-        private void OnServerCardPointerPressed(object? sender, PointerPressedEventArgs e)
+        private async void OnServerCardPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            await HandleServerCardPointerPressedAsync(sender, e).ConfigureAwait(true);
+        }
+
+        internal async Task HandleServerCardPointerPressedAsync(object? sender, PointerPressedEventArgs e)
         {
             if (_viewModel is null || _viewModel.IsBusy)
             {
@@ -84,7 +89,7 @@ namespace DriftBuster.Gui.Views
             data.Set(DataFormats.Text, slot.Label);
 #pragma warning restore 618
 
-            _ = DragDropService.DoDragDrop(e, data, DragDropEffects.Move);
+            await DragDropService.DoDragDrop(e, data, DragDropEffects.Move).ConfigureAwait(true);
         }
 
         private void OnServerCardDragOver(object? sender, DragEventArgs e)

@@ -206,7 +206,7 @@ public sealed class ServerSelectionViewTests
     }
 
     [AvaloniaFact]
-    public void ServerCardPointerPressInitiatesDragWithHostMetadata()
+    public async Task ServerCardPointerPressInitiatesDragWithHostMetadata()
     {
         var viewModel = CreateViewModel();
 
@@ -231,15 +231,11 @@ public sealed class ServerSelectionViewTests
         card.Measure(cardSize);
         card.Arrange(new Rect(cardSize));
 
-        var pointerHandler = typeof(ServerSelectionView)
-            .GetMethod("OnServerCardPointerPressed", BindingFlags.Instance | BindingFlags.NonPublic);
-        pointerHandler.Should().NotBeNull();
-
         var pointer = new Avalonia.Input.Pointer(1, PointerType.Mouse, true);
         var properties = new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed);
         var args = new PointerPressedEventArgs(card, pointer, view, new Point(10, 10), 0, properties, KeyModifiers.None, 1);
 
-        pointerHandler!.Invoke(view, new object?[] { card, args });
+        var invocation = view.HandleServerCardPointerPressedAsync(card, args);
 
         harness.LastArgs.Should().NotBeNull();
         harness.LastData.Should().NotBeNull();
@@ -250,6 +246,45 @@ public sealed class ServerSelectionViewTests
         harness.LastData!.Get("driftbuster/server-slot").Should().Be(slotViewModel.HostId);
         harness.LastData.Get(DataFormats.Text).Should().Be(slotViewModel.Label);
 #pragma warning restore 618
+
+        harness.Complete(DragDropEffects.Move);
+        await invocation;
+    }
+
+    [AvaloniaFact]
+    public async Task DragDropExceptionsBubbleToCaller()
+    {
+        var viewModel = CreateViewModel();
+
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        var harness = new ThrowingDragDropService(new InvalidOperationException("drag failed"));
+        view.DragDropService = harness;
+
+        view.Measure(new Size(1024, 768));
+        view.Arrange(new Rect(view.DesiredSize));
+        view.UpdateLayout();
+
+        var slotViewModel = viewModel.Servers.First(server => server.IsEnabled);
+        var card = new Border
+        {
+            DataContext = slotViewModel,
+        };
+        var cardSize = new Size(320, 180);
+        card.Measure(cardSize);
+        card.Arrange(new Rect(cardSize));
+
+        var pointer = new Avalonia.Input.Pointer(1, PointerType.Mouse, true);
+        var properties = new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed);
+        var args = new PointerPressedEventArgs(card, pointer, view, new Point(10, 10), 0, properties, KeyModifiers.None, 1);
+
+        var action = () => view.HandleServerCardPointerPressedAsync(card, args);
+
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("drag failed");
     }
 
     [AvaloniaFact]
@@ -326,6 +361,8 @@ public sealed class ServerSelectionViewTests
 
     private sealed class RecordingDragDropService : IDragDropService
     {
+        private readonly TaskCompletionSource<DragDropEffects> _completion = new();
+
         public PointerEventArgs? LastArgs { get; private set; }
 
         public DataObject? LastData { get; private set; }
@@ -337,7 +374,24 @@ public sealed class ServerSelectionViewTests
             LastArgs = args;
             LastData = data as DataObject;
             LastEffects = effects;
-            return Task.FromResult(effects);
+            return _completion.Task;
+        }
+
+        public void Complete(DragDropEffects result) => _completion.TrySetResult(result);
+    }
+
+    private sealed class ThrowingDragDropService : IDragDropService
+    {
+        private readonly Exception _exception;
+
+        public ThrowingDragDropService(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
+        {
+            return Task.FromException<DragDropEffects>(_exception);
         }
     }
 

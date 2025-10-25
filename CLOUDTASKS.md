@@ -23,10 +23,10 @@ Schema reference
 **ACCEPT GATES:** Headless drag/drop tests pass (`dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`), no swallowed exceptions remain, and manual smoke confirms drag errors still surface to the UI thread.
 
 **REQUIRED RELATED WORK:**
-- [ ] 0.1 Restore awaited drag/drop invocation `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs:63`.
-  - [ ] 0.1.1 Adjust `ServerSelectionViewTests` harness to handle awaited drag operations `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
-  - [ ] 0.1.2 Ensure `IDragDropService` contract returns a `Task` that propagates faults without suppression `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs`.
-- [ ] 0.2 Add regression coverage validating drag errors bubble to callers (mock service throwing) `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
+- [x] 0.1 Restore awaited drag/drop invocation `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs:63`.
+  - [x] 0.1.1 Adjust `ServerSelectionViewTests` harness to handle awaited drag operations `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
+  - [x] 0.1.2 Ensure `IDragDropService` contract returns a `Task` that propagates faults without suppression `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs`.
+- [x] 0.2 Add regression coverage validating drag errors bubble to callers (mock service throwing) `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
 
 ## A1. Multi-Server Card Validation Coverage [deps=]
 
