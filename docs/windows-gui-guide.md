@@ -32,6 +32,14 @@ This guide explains the capabilities, layout, and operational details of the Ava
 - **Hunt view:** Targets directories/files, runs the hunt pipeline, and displays results as cards with rule metadata, counts, and status messaging.
 - **Multi-server view:** Configure up to six hosts, validate roots, and orchestrate runs. The refreshed layout moves host management, execution controls, and the activity audit feed into balanced columns, so you can compare hosts without scrolling. Toasts surface scan status (success, attention, failure) and each timeline card exposes copy shortcuts for rapid sharing.
 
+### Run profile scheduling workflow
+
+1. Open the **Profiles** view and either load an existing profile or enter the sources/baseline for a new one.
+2. Scroll past the options list to find the schedule cards. Each card requires a **Name**, **Profile** reference (typically the profile name), and an **Every** interval (shorthand like `15m`, `24h`, or ISO 8601). The **Profile** field is now an editable dropdown that lists every saved profile plus the in-progress draft name so you can reuse definitions without retyping. Optional **Start at**, **Window start/end/timezone**, **Tags**, and metadata rows capture quiet hours, labels, and notification contacts.
+3. Renaming the active profile updates any blank schedule rows automatically so cadence entries continue targeting the right definition; schedule cards with custom profile overrides keep their values intact.
+4. Click **Save profile** to persist both the `profile.json` definition and the consolidated `Profiles/schedules.json` manifest. The GUI normalises tag lists and metadata keys before writing to disk.
+5. Use the Python CLI parity commands when automating: `python -m driftbuster.run_profiles_cli schedule list` to inspect schedules, `due` to surface pending runs, `mark-complete` to advance cadence after a run, and `skip-until` to defer execution. The GUI and CLI share the manifest and `scheduler-state.json` files so state remains aligned.
+
 ## Themes
 
 - **Palette catalog:** `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` now exposes `Palette.DarkPlus` and `Palette.LightPlus` resource dictionaries. Each dictionary defines the `Color.*` and `Brush.*` tokens consumed throughout the GUI so palette updates remain isolated to a single file.

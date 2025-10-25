@@ -5,6 +5,11 @@ the XML-focused format plugin implementation. The API is intentionally
 small while we build out the foundation described in the DEV PLAN.
 """
 
+from __future__ import annotations
+
+import importlib
+from typing import TYPE_CHECKING
+
 from .core import (
     AppliedProfileConfig,
     ConfigurationProfile,
@@ -27,7 +32,10 @@ from .token_approvals import (
     TokenCandidateSet,
     collect_token_candidates,
 )
-from . import offline_runner
+
+if TYPE_CHECKING:  # pragma: no cover - import only for type hints
+    from . import offline_runner as offline_runner_module
+
 __all__ = [
     "AppliedProfileConfig",
     "ConfigurationProfile",
@@ -55,3 +63,13 @@ __all__ = [
     "TokenCandidateSet",
     "collect_token_candidates",
 ]
+
+
+def __getattr__(name: str):
+    """Lazily import optional modules to avoid heavy dependencies at import."""
+
+    if name == "offline_runner":
+        module = importlib.import_module(".offline_runner", __name__)
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

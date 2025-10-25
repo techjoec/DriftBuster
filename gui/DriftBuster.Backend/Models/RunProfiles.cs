@@ -24,6 +24,53 @@ namespace DriftBuster.Backend.Models
         public SecretScannerOptions SecretScanner { get; set; } = new();
     }
 
+    public sealed class ScheduleDefinition
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("profile")]
+        public string Profile { get; set; } = string.Empty;
+
+        [JsonPropertyName("every")]
+        public string Every { get; set; } = string.Empty;
+
+        [JsonPropertyName("start_at")]
+        public string? StartAt { get; set; }
+            = null;
+
+        [JsonPropertyName("window")]
+        public ScheduleWindowDefinition? Window { get; set; }
+            = null;
+
+        [JsonPropertyName("tags")]
+        public string[] Tags { get; set; } = System.Array.Empty<string>();
+
+        [JsonPropertyName("metadata")]
+        public Dictionary<string, string> Metadata { get; set; } = new(System.StringComparer.Ordinal);
+    }
+
+    public sealed class ScheduleWindowDefinition
+    {
+        [JsonPropertyName("start")]
+        public string? Start { get; set; }
+            = null;
+
+        [JsonPropertyName("end")]
+        public string? End { get; set; }
+            = null;
+
+        [JsonPropertyName("timezone")]
+        public string? Timezone { get; set; }
+            = null;
+    }
+
+    public sealed class ScheduleListResult
+    {
+        [JsonPropertyName("schedules")]
+        public ScheduleDefinition[] Schedules { get; set; } = Array.Empty<ScheduleDefinition>();
+    }
+
     public sealed class SecretScannerOptions
     {
         [JsonPropertyName("ignore_rules")]

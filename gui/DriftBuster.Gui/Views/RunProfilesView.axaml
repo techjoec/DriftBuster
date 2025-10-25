@@ -114,6 +114,86 @@
             </StackPanel>
           </StackPanel>
 
+          <StackPanel Spacing="8">
+            <TextBlock Text="Schedules" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding Schedules}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,10" Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
+                    <StackPanel Spacing="8">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox Width="160"
+                                 Text="{Binding Name, Mode=TwoWay}"
+                                 Watermark="Name" />
+                        <ComboBox Width="200"
+                                  IsEditable="True"
+                                  ItemsSource="{Binding DataContext.ProfileSuggestions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  SelectedItem="{Binding Profile, Mode=TwoWay}"
+                                  Text="{Binding Profile, Mode=TwoWay}"
+                                  PlaceholderText="Profile" />
+                        <TextBox Width="140"
+                                 Text="{Binding Every, Mode=TwoWay}"
+                                 Watermark="Interval (e.g. 24h)" />
+                        <Button Content="Remove"
+                                Classes="outline"
+                                Command="{Binding DataContext.RemoveScheduleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox Width="200"
+                                 Text="{Binding StartAt, Mode=TwoWay}"
+                                 Watermark="Start at (UTC, optional)" />
+                        <TextBox Width="120"
+                                 Text="{Binding WindowStart, Mode=TwoWay}"
+                                 Watermark="Window start" />
+                        <TextBox Width="120"
+                                 Text="{Binding WindowEnd, Mode=TwoWay}"
+                                 Watermark="Window end" />
+                        <TextBox Width="120"
+                                 Text="{Binding WindowTimezone, Mode=TwoWay}"
+                                 Watermark="Timezone" />
+                      </StackPanel>
+                      <TextBox Text="{Binding TagsText, Mode=TwoWay}"
+                               Watermark="Tags (comma separated)" />
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="Metadata" FontWeight="SemiBold" />
+                        <ItemsControl ItemsSource="{Binding Metadata}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+                                <TextBox Width="160"
+                                         Text="{Binding Key, Mode=TwoWay}"
+                                         Watermark="Key" />
+                                <TextBox Width="220"
+                                         Text="{Binding Value, Mode=TwoWay}"
+                                         Watermark="Value" />
+                                <Button Content="Remove"
+                                        Classes="outline"
+                                        Command="{Binding DataContext.RemoveMetadataCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}" />
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="Add metadata"
+                                Classes="outline"
+                                Command="{Binding AddMetadataCommand}"
+                                HorizontalAlignment="Left" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding Error}"
+                                 Classes="subtitle"
+                                 Foreground="{DynamicResource Brush.Accent}"
+                                 IsVisible="{Binding Error, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Add schedule"
+                    Command="{Binding AddScheduleCommand}"
+                    HorizontalAlignment="Left" />
+          </StackPanel>
+
           <StackPanel Orientation="Horizontal" Spacing="12">
             <Button Content="Save profile" Classes="primary" Command="{Binding SaveCommand}" />
             <Button Content="Run profile" Classes="primary" Command="{Binding RunCommand}" />

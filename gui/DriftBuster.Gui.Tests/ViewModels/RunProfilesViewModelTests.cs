@@ -181,6 +181,127 @@ public class RunProfilesViewModelTests
     }
 
     [Fact]
+    public async Task Save_persists_schedule_manifest()
+    {
+        var baseline = Path.GetTempFileName();
+
+        try
+        {
+            var service = new FakeDriftbusterService
+            {
+                ListSchedulesHandler = _ => Task.FromResult(new ScheduleListResult()),
+            };
+
+            var captured = new List<ScheduleDefinition>();
+            service.SaveSchedulesHandler = (schedules, _) =>
+            {
+                captured = schedules.ToList();
+                return Task.CompletedTask;
+            };
+
+            service.SaveProfileHandler = (profile, _) => Task.CompletedTask;
+
+            var viewModel = new RunProfilesViewModel(service)
+            {
+                ProfileName = "nightly",
+            };
+
+            viewModel.Sources[0].Path = baseline;
+            viewModel.AddScheduleCommand.Execute(null);
+            var schedule = Assert.Single(viewModel.Schedules);
+            schedule.Name = "nightly-run";
+            schedule.Every = "24h";
+            schedule.TagsText = "env:prod, nightly";
+            schedule.Metadata.Add(new RunProfilesViewModel.KeyValueEntry { Key = "contact", Value = "oncall@example.com" });
+
+            await viewModel.SaveCommand.ExecuteAsync(null);
+
+            var saved = Assert.Single(captured);
+            Assert.Equal("nightly-run", saved.Name);
+            Assert.Equal("nightly", saved.Profile);
+            Assert.Equal("24h", saved.Every);
+            Assert.Equal(new[] { "env:prod", "nightly" }, saved.Tags);
+            Assert.Equal("oncall@example.com", saved.Metadata["contact"]);
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
+    public void ProfileSuggestions_include_existing_profiles_and_current_name()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new RunProfilesViewModel(service)
+        {
+            ProfileName = "Nightly",
+        };
+
+        viewModel.Profiles.Add(new RunProfileDefinition { Name = "Weekly" });
+        viewModel.Profiles.Add(new RunProfileDefinition { Name = "daily" });
+        viewModel.Profiles.Add(new RunProfileDefinition { Name = "Nightly" });
+
+        viewModel.ProfileSuggestions.Should().ContainInOrder("Nightly", "daily", "Weekly");
+        viewModel.ProfileSuggestions.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void ProfileName_updates_blank_schedule_profiles_but_preserves_custom_names()
+    {
+        var service = new FakeDriftbusterService();
+        var viewModel = new RunProfilesViewModel(service)
+        {
+            ProfileName = "Alpha",
+        };
+
+        viewModel.AddScheduleCommand.Execute(null);
+        var schedule = Assert.Single(viewModel.Schedules);
+        schedule.Profile.Should().Be("Alpha");
+
+        viewModel.ProfileName = "Beta";
+        schedule.Profile.Should().Be("Beta");
+
+        schedule.Profile = "Custom";
+        viewModel.ProfileName = "Gamma";
+        schedule.Profile.Should().Be("Custom");
+    }
+
+    [Fact]
+    public void Schedule_validation_requires_required_fields()
+    {
+        var baseline = Path.GetTempFileName();
+
+        try
+        {
+            var service = new FakeDriftbusterService();
+            var viewModel = new RunProfilesViewModel(service)
+            {
+                ProfileName = "nightly",
+            };
+
+            viewModel.Sources[0].Path = baseline;
+            viewModel.AddScheduleCommand.Execute(null);
+
+            Assert.False(viewModel.SaveCommand.CanExecute(null));
+
+            var schedule = Assert.Single(viewModel.Schedules);
+            schedule.Name = "nightly";
+            schedule.Profile = "nightly";
+
+            Assert.False(viewModel.SaveCommand.CanExecute(null));
+
+            schedule.Every = "24h";
+
+            Assert.True(viewModel.SaveCommand.CanExecute(null));
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
     public async Task RefreshCommand_populates_profiles_and_preserves_selection()
     {
         var service = new FakeDriftbusterService

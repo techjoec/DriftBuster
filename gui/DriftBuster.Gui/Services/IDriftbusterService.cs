@@ -23,5 +23,9 @@ namespace DriftBuster.Gui.Services
         Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, CancellationToken cancellationToken = default);
 
         Task<ServerScanResponse> RunServerScansAsync(IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default);
+
+        Task<ScheduleListResult> ListSchedulesAsync(CancellationToken cancellationToken = default);
+
+        Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, CancellationToken cancellationToken = default);
     }
 }

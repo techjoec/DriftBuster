@@ -26,6 +26,10 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
 
     public Func<IEnumerable<ServerScanPlan>, IProgress<ScanProgress>?, CancellationToken, Task<ServerScanResponse>>? RunServerScansHandler { get; set; }
 
+    public Func<CancellationToken, Task<ScheduleListResult>>? ListSchedulesHandler { get; set; }
+
+    public Func<IEnumerable<ScheduleDefinition>, CancellationToken, Task>? SaveSchedulesHandler { get; set; }
+
     public string PingResponse { get; set; } = "pong";
 
     public DiffResult DiffResponse { get; set; } = new();
@@ -33,6 +37,8 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
     public HuntResult HuntResponse { get; set; } = new();
 
     public ServerScanResponse ServerScanResponse { get; set; } = new();
+
+    public ScheduleListResult ScheduleListResponse { get; set; } = new();
 
     public Task<string> PingAsync(CancellationToken cancellationToken = default)
     {
@@ -112,5 +118,25 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
         }
 
         return Task.FromResult(ServerScanResponse);
+    }
+
+    public Task<ScheduleListResult> ListSchedulesAsync(CancellationToken cancellationToken = default)
+    {
+        if (ListSchedulesHandler is not null)
+        {
+            return ListSchedulesHandler(cancellationToken);
+        }
+
+        return Task.FromResult(ScheduleListResponse);
+    }
+
+    public Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, CancellationToken cancellationToken = default)
+    {
+        if (SaveSchedulesHandler is not null)
+        {
+            return SaveSchedulesHandler(schedules, cancellationToken) ?? Task.CompletedTask;
+        }
+
+        return Task.CompletedTask;
     }
 }

@@ -28,6 +28,11 @@ public sealed class DriftbusterServiceTests
         {
             new ServerScanPlan { HostId = "host-01", Label = "Primary" },
         });
+        await service.ListSchedulesAsync();
+        await service.SaveSchedulesAsync(new[]
+        {
+            new ScheduleDefinition { Name = "nightly", Profile = "nightly", Every = "24h" },
+        });
 
         backend.PingCalled.Should().BeTrue();
         backend.DiffVersions.Should().Equal("a", "b");
@@ -37,6 +42,8 @@ public sealed class DriftbusterServiceTests
         backend.RunInvocations.Should().Be(1);
         backend.OfflineCollectorCalls.Should().Be(1);
         backend.ScanPlans.Should().ContainSingle(plan => plan.HostId == "host-01");
+        backend.ListSchedulesCalls.Should().Be(1);
+        backend.SavedSchedules.Should().ContainSingle(schedule => schedule.Name == "nightly" && schedule.Profile == "nightly");
     }
 
     private sealed class RecordingBackend : IDriftbusterBackend
@@ -49,6 +56,8 @@ public sealed class DriftbusterServiceTests
         public int RunInvocations { get; private set; }
         public int OfflineCollectorCalls { get; private set; }
         public List<ServerScanPlan> ScanPlans { get; private set; } = new();
+        public int ListSchedulesCalls { get; private set; }
+        public List<ScheduleDefinition> SavedSchedules { get; private set; } = new();
 
         public Task<string> PingAsync(CancellationToken cancellationToken = default)
         {
@@ -96,6 +105,18 @@ public sealed class DriftbusterServiceTests
         {
             ScanPlans = plans.ToList();
             return Task.FromResult(new ServerScanResponse());
+        }
+
+        public Task<ScheduleListResult> ListSchedulesAsync(string? baseDir = null, CancellationToken cancellationToken = default)
+        {
+            ListSchedulesCalls++;
+            return Task.FromResult(new ScheduleListResult());
+        }
+
+        public Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, string? baseDir = null, CancellationToken cancellationToken = default)
+        {
+            SavedSchedules = schedules.ToList();
+            return Task.CompletedTask;
         }
     }
 }

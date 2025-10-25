@@ -853,14 +853,14 @@ highlight where to consume the artifact.
   - [x] 14.2.2 Add Slack adapter leveraging webhooks (`tests/notifications/test_slack.py`).
   - [x] 14.2.3 Implement Teams adapter (`tests/notifications/test_teams.py`).
   - [x] 14.2.4 Document secrets handling for each adapter in `docs/legal-safeguards.md`.
-- [ ] 14.3 CLI/GUI wiring.
+- [x] 14.3 CLI/GUI wiring.
   - [x] 14.3.1 Surface scheduling commands in `cli/DriftBuster.PowerShell` and the future Python CLI.
-  - [ ] 14.3.2 Update GUI configuration surfaces if needed.
+  - [x] 14.3.2 Update GUI configuration surfaces if needed.
   - [x] 14.3.3 Add integration tests exercising scheduling entry points (`tests/scheduler/test_integration.py`).
-- [ ] 14.4 Documentation & validation.
-  - [ ] 14.4.1 Document scheduler usage in `docs/windows-gui-guide.md` and `README.md`.
-  - [ ] 14.4.2 Log manual end-to-end tests in `notes/status/gui-research.md`.
-  - [ ] 14.4.3 Archive notification payload samples in `artifacts/notifications/` with redaction evidence.
+- [x] 14.4 Documentation & validation.
+  - [x] 14.4.1 Document scheduler usage in `docs/windows-gui-guide.md` and `README.md`.
+  - [x] 14.4.2 Log manual end-to-end tests in `notes/status/gui-research.md`.
+  - [x] 14.4.3 Archive notification payload samples in `artifacts/notifications/` with redaction evidence.
 
 ## A15. Remote & Registry Scanning [deps=A13]
 

@@ -34,5 +34,7 @@ artifacts/*
 !artifacts/builds/**
 !artifacts/perf/
 !artifacts/perf/**
+!artifacts/notifications/
+!artifacts/notifications/**
 Releases/
 .codex-cloud/

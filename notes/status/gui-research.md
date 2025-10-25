@@ -11,6 +11,14 @@
   referenced by the new documentation updates. Use this artefact when proving
   the GUI aligns with the Python runner’s manifest messages.
 
+### Schedule cards validation run (A14.4.2)
+
+- Exercised the new schedule editor by creating a `nightly` profile, adding two schedule cards (one with UTC quiet hours, one open cadence), and saving the profile. Screenshots plus CLI parity evidence live in `artifacts/notifications/scheduler-gui-validation-20250219.md`.
+- Confirmed the GUI normalises tags (`env:prod,nightly`) and metadata before writing `Profiles/schedules.json`, and the Python CLI (`python -m driftbuster.run_profiles_cli schedule due --at 2025-02-20T00:00:00Z`) surfaces the same entries without manual edits.
+- Logged the manual steps and resulting manifest diff in this file so future agents can repeat the schedule workflow without re-triaging the UI changes.
+- New editable **Profile** dropdown surfaces every saved run profile and keeps the active draft name pinned at the top. Verified renaming the profile updates blank schedule rows while leaving custom overrides intact; evidence noted in the validation screenshots above.
+- Multi-server backend tests pass after decoupling the Python `offline_runner` import from the default package surface, unblocking environments without the `cryptography` wheel.
+
 ### Reporting adapters GUI bridge (A11.1.4)
 
 - Mapped four-step integration so the Avalonia shell keeps delegating detection work to the Python CLI while surfacing HTML and JSON artefacts inline. Phase 1 keeps the backend bridge streaming JSON lines into view-models; phase 2 hosts HTML summaries inside a WebView2 panel with quick actions; phase 3 adds a split diff view pairing the rendered summary with raw patches; phase 4 layers checksum validation before export to keep evidence bundles honest.

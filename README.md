@@ -94,6 +94,13 @@ Tips:
 - Use the header theme toggle to switch Dark/Light.
 - Click “Check core” to verify backend health (status dot shows green/red).
 - Primary actions are accent-filled; secondary are outline for quick scanning.
+- The Profiles view now includes schedule cards. Add a schedule name, profile reference, and interval (e.g. `24h`, `PT1H30M`) to persist cadence metadata alongside `Profiles/schedules.json`. Optional window start/end/timezone fields narrow execution windows, while metadata rows capture contacts or ticket IDs for notification runs.
+
+### Schedule recurring runs
+
+- Build or load a profile, then add schedule entries in the GUI to define cadence, window, tags, and metadata. Saving the profile writes both `profile.json` and the consolidated `Profiles/schedules.json` manifest.
+- Use the editable **Profile** dropdown on each schedule card to pick an existing profile name quickly. The view keeps the current draft name pinned to the top of the list and updates any blank schedule profiles automatically when you rename the active profile, so cadence entries always point at the right run definition.
+- Inspect or act on the same schedules from the shell with `python -m driftbuster.run_profiles_cli schedule list`, `due`, `mark-complete`, or `skip-until`. CLI commands share the GUI’s manifest and `scheduler-state.json`, keeping automation hooks in sync.
 
 ### Multi-server quickstart
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -19,6 +20,7 @@ namespace DriftBuster.Gui.ViewModels;
 public partial class RunProfilesViewModel : ObservableObject
 {
     private readonly IDriftbusterService _service;
+    private readonly ObservableCollection<string> _profileSuggestions = new();
 
     internal Func<ProcessStartInfo, Process?>? ProcessStarterOverride { get; set; }
 
@@ -28,12 +30,16 @@ public partial class RunProfilesViewModel : ObservableObject
     public ObservableCollection<SourceEntry> Sources { get; } = new();
     public ObservableCollection<KeyValueEntry> Options { get; } = new();
     public ObservableCollection<RunResultEntry> RunResults { get; } = new();
+    public ObservableCollection<ScheduleEntry> Schedules { get; } = new();
+    public ReadOnlyObservableCollection<string> ProfileSuggestions { get; }
 
     [ObservableProperty]
     private SecretScannerOptions _secretScanner = new();
 
     [ObservableProperty]
     private string _profileName = string.Empty;
+
+    private string _previousProfileName = string.Empty;
 
     [ObservableProperty]
     private string? _profileDescription;
@@ -57,6 +63,8 @@ public partial class RunProfilesViewModel : ObservableObject
     public IRelayCommand<SourceEntry> RemoveSourceCommand { get; }
     public IRelayCommand AddOptionCommand { get; }
     public IRelayCommand<KeyValueEntry> RemoveOptionCommand { get; }
+    public IRelayCommand AddScheduleCommand { get; }
+    public IRelayCommand<ScheduleEntry> RemoveScheduleCommand { get; }
     public IRelayCommand<RunProfileDefinition> LoadProfileCommand { get; }
     public IRelayCommand OpenOutputCommand { get; }
 
@@ -89,10 +97,16 @@ public partial class RunProfilesViewModel : ObservableObject
         RemoveSourceCommand = new RelayCommand<SourceEntry>(RemoveSource, source => source is not null && Sources.Count > 1);
         AddOptionCommand = new RelayCommand(AddOption);
         RemoveOptionCommand = new RelayCommand<KeyValueEntry>(RemoveOption, option => option is not null);
+        AddScheduleCommand = new RelayCommand(AddSchedule);
+        RemoveScheduleCommand = new RelayCommand<ScheduleEntry>(RemoveSchedule, schedule => schedule is not null);
         LoadProfileCommand = new RelayCommand<RunProfileDefinition>(LoadProfile, profile => profile is not null);
         OpenOutputCommand = new RelayCommand(OpenOutput, () => !string.IsNullOrWhiteSpace(OutputDirectory) && Directory.Exists(OutputDirectory));
 
         RunResults.CollectionChanged += OnRunResultsChanged;
+        Schedules.CollectionChanged += OnSchedulesCollectionChanged;
+        Profiles.CollectionChanged += OnProfilesCollectionChanged;
+
+        ProfileSuggestions = new ReadOnlyObservableCollection<string>(_profileSuggestions);
 
         if (Sources.Count == 0)
         {
@@ -100,6 +114,7 @@ public partial class RunProfilesViewModel : ObservableObject
         }
 
         ValidateSources();
+        RebuildProfileSuggestions();
     }
 
     partial void OnSecretScannerChanged(SecretScannerOptions value)
@@ -109,6 +124,10 @@ public partial class RunProfilesViewModel : ObservableObject
 
     partial void OnProfileNameChanged(string value)
     {
+        var trimmed = value?.Trim() ?? string.Empty;
+        UpdateScheduleProfileDefaults(trimmed);
+        _previousProfileName = trimmed;
+        RebuildProfileSuggestions();
         NotifyCommands();
     }
 
@@ -160,6 +179,68 @@ public partial class RunProfilesViewModel : ObservableObject
         Options.Remove(entry);
     }
 
+    private void AddSchedule()
+    {
+        var profile = string.IsNullOrWhiteSpace(ProfileName)
+            ? SelectedProfile?.Name ?? string.Empty
+            : ProfileName.Trim();
+        var entry = new ScheduleEntry(this)
+        {
+            Profile = profile,
+        };
+        Schedules.Add(entry);
+    }
+
+    private void RemoveSchedule(ScheduleEntry? entry)
+    {
+        if (entry is null)
+        {
+            return;
+        }
+
+        entry.Detach();
+        Schedules.Remove(entry);
+    }
+
+    private void OnSchedulesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            foreach (var schedule in Schedules)
+            {
+                schedule.PropertyChanged -= OnScheduleEntryPropertyChanged;
+                schedule.PropertyChanged += OnScheduleEntryPropertyChanged;
+            }
+        }
+        else
+        {
+            if (e.OldItems is not null)
+            {
+                foreach (ScheduleEntry schedule in e.OldItems)
+                {
+                    schedule.PropertyChanged -= OnScheduleEntryPropertyChanged;
+                    schedule.Detach();
+                }
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (ScheduleEntry schedule in e.NewItems)
+                {
+                    schedule.PropertyChanged += OnScheduleEntryPropertyChanged;
+                }
+            }
+        }
+
+        RemoveScheduleCommand.NotifyCanExecuteChanged();
+        ValidateSchedules();
+    }
+
+    private void OnScheduleEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        ValidateSchedules();
+    }
+
     private async Task RefreshAsync()
     {
         try
@@ -172,6 +253,9 @@ public partial class RunProfilesViewModel : ObservableObject
             {
                 Profiles.Add(profile);
             }
+            var scheduleResponse = await _service.ListSchedulesAsync().ConfigureAwait(false);
+            ApplySchedules(scheduleResponse.Schedules ?? Array.Empty<ScheduleDefinition>());
+            RebuildProfileSuggestions();
             StatusMessage = Profiles.Count == 0 ? "No saved profiles." : $"Loaded {Profiles.Count} profile(s).";
             if (!string.IsNullOrWhiteSpace(previous))
             {
@@ -231,7 +315,25 @@ public partial class RunProfilesViewModel : ObservableObject
             }
         }
 
-        return hasValid;
+        if (!hasValid)
+        {
+            return false;
+        }
+
+        foreach (var schedule in Schedules)
+        {
+            if (schedule.IsBlank)
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(schedule.Error))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private async Task SaveAsync()
@@ -240,7 +342,9 @@ public partial class RunProfilesViewModel : ObservableObject
         {
             IsBusy = true;
             var profile = BuildCurrentProfile();
+            var schedules = BuildCurrentSchedules();
             await _service.SaveProfileAsync(profile).ConfigureAwait(false);
+            await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
             StatusMessage = $"Saved profile '{profile.Name}'.";
             await RefreshAsync().ConfigureAwait(true);
         }
@@ -267,6 +371,8 @@ public partial class RunProfilesViewModel : ObservableObject
         {
             IsBusy = true;
             var profile = BuildCurrentProfile();
+            var schedules = BuildCurrentSchedules();
+            await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
             var result = await _service.RunProfileAsync(profile, saveProfile: true).ConfigureAwait(false);
             PopulateRunResults(result);
             StatusMessage = result.Files.Length == 0
@@ -308,7 +414,9 @@ public partial class RunProfilesViewModel : ObservableObject
         try
         {
             IsBusy = true;
+            var schedules = BuildCurrentSchedules();
             await _service.SaveProfileAsync(profile).ConfigureAwait(false);
+            await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
 
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -369,6 +477,14 @@ public partial class RunProfilesViewModel : ObservableObject
         };
     }
 
+    private ScheduleDefinition[] BuildCurrentSchedules()
+    {
+        return Schedules
+            .Where(schedule => !schedule.IsBlank)
+            .Select(schedule => schedule.ToDefinition())
+            .ToArray();
+    }
+
     public void ApplySecretScanner(SecretScannerOptions? options)
     {
         SecretScanner = CloneSecretScannerOptions(options);
@@ -411,6 +527,52 @@ public partial class RunProfilesViewModel : ObservableObject
         SelectedProfile = profile;
         StatusMessage = $"Loaded profile '{profile.Name}'.";
         NotifyCommands();
+    }
+
+    private void ApplySchedules(IEnumerable<ScheduleDefinition> schedules)
+    {
+        foreach (var existing in Schedules.ToArray())
+        {
+            existing.PropertyChanged -= OnScheduleEntryPropertyChanged;
+            existing.Detach();
+        }
+
+        Schedules.Clear();
+
+        if (schedules is null)
+        {
+            ValidateSchedules();
+            return;
+        }
+
+        foreach (var definition in schedules.OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var entry = new ScheduleEntry(this)
+            {
+                Name = definition.Name ?? string.Empty,
+                Profile = definition.Profile ?? string.Empty,
+                Every = definition.Every ?? string.Empty,
+                StartAt = string.IsNullOrWhiteSpace(definition.StartAt) ? null : definition.StartAt?.Trim(),
+                WindowStart = definition.Window?.Start?.Trim(),
+                WindowEnd = definition.Window?.End?.Trim(),
+                WindowTimezone = definition.Window?.Timezone?.Trim(),
+                TagsText = definition.Tags is { Length: > 0 }
+                    ? string.Join(", ", definition.Tags)
+                    : string.Empty,
+            };
+
+            if (definition.Metadata is not null)
+            {
+                foreach (var pair in definition.Metadata)
+                {
+                    entry.Metadata.Add(new KeyValueEntry { Key = pair.Key, Value = pair.Value });
+                }
+            }
+
+            Schedules.Add(entry);
+        }
+
+        ValidateSchedules();
     }
 
     private SourceEntry AddSourceEntry(string path, bool isBaseline)
@@ -558,6 +720,16 @@ public partial class RunProfilesViewModel : ObservableObject
         NotifyCommands();
     }
 
+    private void ValidateSchedules()
+    {
+        foreach (var schedule in Schedules)
+        {
+            schedule.Error = ValidateScheduleEntry(schedule);
+        }
+
+        NotifyCommands();
+    }
+
     private static string? ValidateSourceEntry(SourceEntry entry)
     {
         var path = entry.Path?.Trim() ?? string.Empty;
@@ -589,6 +761,48 @@ public partial class RunProfilesViewModel : ObservableObject
         if (!File.Exists(path) && !Directory.Exists(path))
         {
             return "Path does not exist.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateScheduleEntry(ScheduleEntry entry)
+    {
+        if (entry.IsBlank)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.Name))
+        {
+            return "Schedule name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.Profile))
+        {
+            return "Schedule profile is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.Every))
+        {
+            return "Schedule interval is required.";
+        }
+
+        var hasWindowStart = !string.IsNullOrWhiteSpace(entry.WindowStart);
+        var hasWindowEnd = !string.IsNullOrWhiteSpace(entry.WindowEnd);
+        var hasWindowTimezone = !string.IsNullOrWhiteSpace(entry.WindowTimezone);
+
+        if (hasWindowStart || hasWindowEnd || hasWindowTimezone)
+        {
+            if (!hasWindowStart || !hasWindowEnd)
+            {
+                return "Specify both window start and end times.";
+            }
+
+            if (!hasWindowTimezone)
+            {
+                return "Specify a timezone when defining a window.";
+            }
         }
 
         return null;
@@ -634,6 +848,58 @@ public partial class RunProfilesViewModel : ObservableObject
         OnPropertyChanged(nameof(HasRunResults));
     }
 
+    private void OnProfilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RebuildProfileSuggestions();
+    }
+
+    private void UpdateScheduleProfileDefaults(string trimmedProfileName)
+    {
+        foreach (var schedule in Schedules)
+        {
+            if (!string.IsNullOrWhiteSpace(schedule.Profile))
+            {
+                if (!string.IsNullOrWhiteSpace(_previousProfileName) &&
+                    string.Equals(schedule.Profile, _previousProfileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    schedule.Profile = trimmedProfileName;
+                }
+
+                continue;
+            }
+
+            if (schedule.IsBlank || string.IsNullOrWhiteSpace(schedule.Profile))
+            {
+                schedule.Profile = trimmedProfileName;
+            }
+        }
+    }
+
+    private void RebuildProfileSuggestions()
+    {
+        var draftName = string.IsNullOrWhiteSpace(ProfileName) ? null : ProfileName.Trim();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        _profileSuggestions.Clear();
+
+        if (!string.IsNullOrWhiteSpace(draftName) && seen.Add(draftName))
+        {
+            _profileSuggestions.Add(draftName);
+        }
+
+        foreach (var name in Profiles
+                     .Select(profile => profile?.Name)
+                     .Where(name => !string.IsNullOrWhiteSpace(name))
+                     .Select(name => name!.Trim())
+                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (seen.Add(name))
+            {
+                _profileSuggestions.Add(name);
+            }
+        }
+    }
+
     public sealed partial class SourceEntry : ObservableObject
     {
         [ObservableProperty]
@@ -665,6 +931,225 @@ public partial class RunProfilesViewModel : ObservableObject
 
         [ObservableProperty]
         private string? _value;
+    }
+
+    public sealed partial class ScheduleEntry : ObservableObject
+    {
+        private static readonly char[] TagSeparators = { ',', ';', '\n' };
+
+        public ScheduleEntry(RunProfilesViewModel parent)
+        {
+            Parent = parent;
+            Metadata = new ObservableCollection<KeyValueEntry>();
+            AddMetadataCommand = new RelayCommand(AddMetadata);
+            RemoveMetadataCommand = new RelayCommand<KeyValueEntry>(RemoveMetadata, entry => entry is not null);
+            Metadata.CollectionChanged += OnMetadataCollectionChanged;
+        }
+
+        public RunProfilesViewModel Parent { get; }
+
+        public ObservableCollection<KeyValueEntry> Metadata { get; }
+
+        public IRelayCommand AddMetadataCommand { get; }
+
+        public IRelayCommand<KeyValueEntry> RemoveMetadataCommand { get; }
+
+        [ObservableProperty]
+        private string _name = string.Empty;
+
+        [ObservableProperty]
+        private string _profile = string.Empty;
+
+        [ObservableProperty]
+        private string _every = string.Empty;
+
+        [ObservableProperty]
+        private string? _startAt;
+
+        [ObservableProperty]
+        private string? _windowStart;
+
+        [ObservableProperty]
+        private string? _windowEnd;
+
+        [ObservableProperty]
+        private string? _windowTimezone;
+
+        [ObservableProperty]
+        private string _tagsText = string.Empty;
+
+        [ObservableProperty]
+        private string? _error;
+
+        public bool IsBlank =>
+            string.IsNullOrWhiteSpace(Name) &&
+            string.IsNullOrWhiteSpace(Profile) &&
+            string.IsNullOrWhiteSpace(Every) &&
+            string.IsNullOrWhiteSpace(StartAt) &&
+            string.IsNullOrWhiteSpace(WindowStart) &&
+            string.IsNullOrWhiteSpace(WindowEnd) &&
+            string.IsNullOrWhiteSpace(WindowTimezone) &&
+            string.IsNullOrWhiteSpace(TagsText) &&
+            Metadata.All(IsMetadataBlank);
+
+        partial void OnNameChanged(string value) => Parent.ValidateSchedules();
+
+        partial void OnProfileChanged(string value) => Parent.ValidateSchedules();
+
+        partial void OnEveryChanged(string value) => Parent.ValidateSchedules();
+
+        partial void OnStartAtChanged(string? value) => Parent.ValidateSchedules();
+
+        partial void OnWindowStartChanged(string? value) => Parent.ValidateSchedules();
+
+        partial void OnWindowEndChanged(string? value) => Parent.ValidateSchedules();
+
+        partial void OnWindowTimezoneChanged(string? value) => Parent.ValidateSchedules();
+
+        partial void OnTagsTextChanged(string value) => Parent.ValidateSchedules();
+
+        internal ScheduleDefinition ToDefinition()
+        {
+            var definition = new ScheduleDefinition
+            {
+                Name = Name.Trim(),
+                Profile = Profile.Trim(),
+                Every = Every.Trim(),
+                StartAt = string.IsNullOrWhiteSpace(StartAt) ? null : StartAt.Trim(),
+            };
+
+            var window = BuildWindow();
+            if (window is not null)
+            {
+                definition.Window = window;
+            }
+
+            var tags = BuildTags();
+            if (tags.Length > 0)
+            {
+                definition.Tags = tags;
+            }
+
+            var metadata = BuildMetadata();
+            definition.Metadata = metadata.Count > 0
+                ? metadata
+                : new Dictionary<string, string>(System.StringComparer.Ordinal);
+
+            return definition;
+        }
+
+        internal void Detach()
+        {
+            Metadata.CollectionChanged -= OnMetadataCollectionChanged;
+            foreach (var entry in Metadata)
+            {
+                entry.PropertyChanged -= OnMetadataEntryPropertyChanged;
+            }
+        }
+
+        private void AddMetadata()
+        {
+            Metadata.Add(new KeyValueEntry { Key = string.Empty, Value = string.Empty });
+            Parent.ValidateSchedules();
+        }
+
+        private void RemoveMetadata(KeyValueEntry? entry)
+        {
+            if (entry is null)
+            {
+                return;
+            }
+
+            entry.PropertyChanged -= OnMetadataEntryPropertyChanged;
+            Metadata.Remove(entry);
+            Parent.ValidateSchedules();
+        }
+
+        private void OnMetadataCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems is not null)
+            {
+                foreach (KeyValueEntry entry in e.NewItems)
+                {
+                    entry.PropertyChanged += OnMetadataEntryPropertyChanged;
+                }
+            }
+
+            if (e.OldItems is not null)
+            {
+                foreach (KeyValueEntry entry in e.OldItems)
+                {
+                    entry.PropertyChanged -= OnMetadataEntryPropertyChanged;
+                }
+            }
+
+            Parent.ValidateSchedules();
+        }
+
+        private void OnMetadataEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            Parent.ValidateSchedules();
+        }
+
+        private static bool IsMetadataBlank(KeyValueEntry entry)
+        {
+            return string.IsNullOrWhiteSpace(entry.Key) && string.IsNullOrWhiteSpace(entry.Value);
+        }
+
+        private ScheduleWindowDefinition? BuildWindow()
+        {
+            var start = string.IsNullOrWhiteSpace(WindowStart) ? null : WindowStart.Trim();
+            var end = string.IsNullOrWhiteSpace(WindowEnd) ? null : WindowEnd.Trim();
+            var timezone = string.IsNullOrWhiteSpace(WindowTimezone) ? null : WindowTimezone.Trim();
+            if (start is null && end is null && timezone is null)
+            {
+                return null;
+            }
+
+            return new ScheduleWindowDefinition
+            {
+                Start = start,
+                End = end,
+                Timezone = timezone,
+            };
+        }
+
+        private string[] BuildTags()
+        {
+            if (string.IsNullOrWhiteSpace(TagsText))
+            {
+                return System.Array.Empty<string>();
+            }
+
+            return TagsText
+                .Split(TagSeparators, StringSplitOptions.RemoveEmptyEntries)
+                .Select(tag => tag.Trim())
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        private Dictionary<string, string> BuildMetadata()
+        {
+            var metadata = new Dictionary<string, string>(System.StringComparer.Ordinal);
+            foreach (var entry in Metadata)
+            {
+                if (string.IsNullOrWhiteSpace(entry.Key))
+                {
+                    continue;
+                }
+
+                var key = entry.Key.Trim();
+                if (metadata.ContainsKey(key))
+                {
+                    continue;
+                }
+
+                metadata[key] = entry.Value?.Trim() ?? string.Empty;
+            }
+
+            return metadata;
+        }
     }
 
     private bool _updatingBaseline;

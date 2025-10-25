@@ -38,6 +38,10 @@ namespace DriftBuster.Backend
 
         Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default);
 
+        Task<ScheduleListResult> ListSchedulesAsync(string? baseDir = null, CancellationToken cancellationToken = default);
+
+        Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, string? baseDir = null, CancellationToken cancellationToken = default);
+
         Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(
             RunProfileDefinition profile,
             OfflineCollectorRequest request,
@@ -153,6 +157,16 @@ namespace DriftBuster.Backend
         public Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default)
         {
             return Task.Run(() => RunProfileManager.RunProfile(profile, saveProfile, baseDir, timestamp, cancellationToken), cancellationToken);
+        }
+
+        public Task<ScheduleListResult> ListSchedulesAsync(string? baseDir = null, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => RunProfileManager.ListSchedules(baseDir, cancellationToken), cancellationToken);
+        }
+
+        public Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, string? baseDir = null, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => RunProfileManager.SaveSchedules(schedules, baseDir, cancellationToken), cancellationToken);
         }
 
         public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir = null, CancellationToken cancellationToken = default)
@@ -1916,6 +1930,321 @@ namespace DriftBuster.Backend
                 {
                     TryDeleteDirectory(tempRoot);
                 }
+            }
+
+            public static ScheduleListResult ListSchedules(string? baseDir, CancellationToken cancellationToken)
+            {
+                var path = ScheduleManifestPath(baseDir);
+                if (!File.Exists(path))
+                {
+                    return new ScheduleListResult();
+                }
+
+                using var stream = File.OpenRead(path);
+                using var document = JsonDocument.Parse(stream);
+                var root = document.RootElement;
+                JsonElement schedulesElement;
+                if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("schedules", out var schedulesProperty))
+                {
+                    schedulesElement = schedulesProperty;
+                }
+                else if (root.ValueKind == JsonValueKind.Array)
+                {
+                    schedulesElement = root;
+                }
+                else
+                {
+                    return new ScheduleListResult();
+                }
+
+                var entries = new List<ScheduleDefinition>();
+                foreach (var element in schedulesElement.EnumerateArray())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (element.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    if (TryParseSchedule(element, out var schedule))
+                    {
+                        entries.Add(schedule);
+                    }
+                }
+
+                return new ScheduleListResult
+                {
+                    Schedules = entries
+                        .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+                        .ToArray(),
+                };
+            }
+
+            public static void SaveSchedules(IEnumerable<ScheduleDefinition> schedules, string? baseDir, CancellationToken cancellationToken)
+            {
+                if (schedules is null)
+                {
+                    throw new ArgumentNullException(nameof(schedules));
+                }
+
+                var manifestPath = ScheduleManifestPath(baseDir);
+                var manifestDirectory = Path.GetDirectoryName(manifestPath);
+                if (!string.IsNullOrEmpty(manifestDirectory))
+                {
+                    Directory.CreateDirectory(manifestDirectory);
+                }
+
+                var payload = new List<Dictionary<string, object?>>();
+                foreach (var schedule in schedules)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (schedule is null)
+                    {
+                        continue;
+                    }
+
+                    var name = schedule.Name?.Trim();
+                    var profile = schedule.Profile?.Trim();
+                    var every = schedule.Every?.Trim();
+
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        throw new InvalidOperationException("Schedule name is required.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(profile))
+                    {
+                        throw new InvalidOperationException($"Schedule '{name}' is missing a profile reference.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(every))
+                    {
+                        throw new InvalidOperationException($"Schedule '{name}' is missing an interval.");
+                    }
+
+                    payload.Add(SerialiseSchedule(new ScheduleDefinition
+                    {
+                        Name = name,
+                        Profile = profile,
+                        Every = every,
+                        StartAt = string.IsNullOrWhiteSpace(schedule.StartAt) ? null : schedule.StartAt.Trim(),
+                        Window = NormaliseWindow(schedule.Window),
+                        Tags = schedule.Tags ?? System.Array.Empty<string>(),
+                        Metadata = schedule.Metadata ?? new Dictionary<string, string>(System.StringComparer.Ordinal),
+                    }));
+                }
+
+                var json = JsonSerializer.Serialize(
+                    new Dictionary<string, object?>
+                    {
+                        ["schedules"] = payload,
+                    },
+                    new JsonSerializerOptions(SerializerOptions)
+                    {
+                        WriteIndented = true,
+                    });
+
+                if (!json.EndsWith(Environment.NewLine, StringComparison.Ordinal))
+                {
+                    json += Environment.NewLine;
+                }
+
+                File.WriteAllText(manifestPath, json);
+            }
+
+            private static bool TryParseSchedule(JsonElement element, out ScheduleDefinition schedule)
+            {
+                schedule = new ScheduleDefinition();
+                if (!element.TryGetProperty("name", out var nameProperty))
+                {
+                    return false;
+                }
+
+                if (!element.TryGetProperty("profile", out var profileProperty))
+                {
+                    return false;
+                }
+
+                if (!element.TryGetProperty("every", out var everyProperty))
+                {
+                    return false;
+                }
+
+                var name = nameProperty.ToString().Trim();
+                var profile = profileProperty.ToString().Trim();
+                var every = everyProperty.ToString().Trim();
+
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(profile) || string.IsNullOrWhiteSpace(every))
+                {
+                    return false;
+                }
+
+                schedule.Name = name;
+                schedule.Profile = profile;
+                schedule.Every = every;
+                schedule.StartAt = element.TryGetProperty("start_at", out var startAtProperty)
+                    ? startAtProperty.ToString()?.Trim()
+                    : null;
+
+                if (element.TryGetProperty("window", out var windowProperty) && windowProperty.ValueKind == JsonValueKind.Object)
+                {
+                    var window = new ScheduleWindowDefinition
+                    {
+                        Start = windowProperty.TryGetProperty("start", out var startProperty)
+                            ? startProperty.ToString()?.Trim()
+                            : null,
+                        End = windowProperty.TryGetProperty("end", out var endProperty)
+                            ? endProperty.ToString()?.Trim()
+                            : null,
+                        Timezone = windowProperty.TryGetProperty("timezone", out var timezoneProperty)
+                            ? timezoneProperty.ToString()?.Trim()
+                            : null,
+                    };
+
+                    if (!string.IsNullOrWhiteSpace(window.Start) || !string.IsNullOrWhiteSpace(window.End) || !string.IsNullOrWhiteSpace(window.Timezone))
+                    {
+                        schedule.Window = window;
+                    }
+                }
+
+                if (element.TryGetProperty("tags", out var tagsProperty))
+                {
+                    schedule.Tags = ExtractTags(tagsProperty);
+                }
+
+                if (element.TryGetProperty("metadata", out var metadataProperty) && metadataProperty.ValueKind == JsonValueKind.Object)
+                {
+                    var metadata = new Dictionary<string, string>(System.StringComparer.Ordinal);
+                    foreach (var property in metadataProperty.EnumerateObject())
+                    {
+                        metadata[property.Name] = property.Value.ValueKind == JsonValueKind.Null
+                            ? string.Empty
+                            : property.Value.ToString();
+                    }
+
+                    schedule.Metadata = metadata;
+                }
+
+                return true;
+            }
+
+            private static ScheduleWindowDefinition? NormaliseWindow(ScheduleWindowDefinition? window)
+            {
+                if (window is null)
+                {
+                    return null;
+                }
+
+                var start = string.IsNullOrWhiteSpace(window.Start) ? null : window.Start.Trim();
+                var end = string.IsNullOrWhiteSpace(window.End) ? null : window.End.Trim();
+                var timezone = string.IsNullOrWhiteSpace(window.Timezone) ? null : window.Timezone.Trim();
+
+                if (start is null && end is null && timezone is null)
+                {
+                    return null;
+                }
+
+                return new ScheduleWindowDefinition
+                {
+                    Start = start,
+                    End = end,
+                    Timezone = timezone,
+                };
+            }
+
+            private static Dictionary<string, object?> SerialiseSchedule(ScheduleDefinition schedule)
+            {
+                var entry = new Dictionary<string, object?>(System.StringComparer.Ordinal)
+                {
+                    ["name"] = schedule.Name,
+                    ["profile"] = schedule.Profile,
+                    ["every"] = schedule.Every,
+                };
+
+                if (!string.IsNullOrWhiteSpace(schedule.StartAt))
+                {
+                    entry["start_at"] = schedule.StartAt;
+                }
+
+                if (schedule.Window is not null)
+                {
+                    var windowPayload = new Dictionary<string, string>(System.StringComparer.Ordinal);
+                    if (!string.IsNullOrWhiteSpace(schedule.Window.Start))
+                    {
+                        windowPayload["start"] = schedule.Window.Start!;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(schedule.Window.End))
+                    {
+                        windowPayload["end"] = schedule.Window.End!;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(schedule.Window.Timezone))
+                    {
+                        windowPayload["timezone"] = schedule.Window.Timezone!;
+                    }
+
+                    if (windowPayload.Count > 0)
+                    {
+                        entry["window"] = windowPayload;
+                    }
+                }
+
+                var tags = schedule.Tags ?? System.Array.Empty<string>();
+                var cleanedTags = tags
+                    .Select(tag => tag?.Trim())
+                    .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                    .Select(tag => tag!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                if (cleanedTags.Length > 0)
+                {
+                    entry["tags"] = cleanedTags;
+                }
+
+                if (schedule.Metadata is not null && schedule.Metadata.Count > 0)
+                {
+                    var metadata = new Dictionary<string, string>(System.StringComparer.Ordinal);
+                    foreach (var pair in schedule.Metadata)
+                    {
+                        if (string.IsNullOrWhiteSpace(pair.Key))
+                        {
+                            continue;
+                        }
+
+                        metadata[pair.Key.Trim()] = pair.Value ?? string.Empty;
+                    }
+
+                    if (metadata.Count > 0)
+                    {
+                        entry["metadata"] = metadata;
+                    }
+                }
+
+                return entry;
+            }
+
+            private static string[] ExtractTags(JsonElement element)
+            {
+                if (element.ValueKind == JsonValueKind.Array)
+                {
+                    return element.EnumerateArray()
+                        .Select(tag => tag.ToString()?.Trim())
+                        .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                        .Select(tag => tag!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                }
+
+                var single = element.ToString()?.Trim();
+                return string.IsNullOrWhiteSpace(single)
+                    ? System.Array.Empty<string>()
+                    : new[] { single };
+            }
+
+            private static string ScheduleManifestPath(string? baseDir)
+            {
+                return Path.Combine(ProfilesRoot(baseDir), "schedules.json");
             }
 
             private static RunProfileDefinition CloneProfile(RunProfileDefinition profile)

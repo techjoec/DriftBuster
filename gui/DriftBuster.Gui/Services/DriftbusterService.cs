@@ -60,5 +60,15 @@ namespace DriftBuster.Gui.Services
         {
             return _backend.RunServerScansAsync(plans, progress, cancellationToken);
         }
+
+        public Task<ScheduleListResult> ListSchedulesAsync(CancellationToken cancellationToken = default)
+        {
+            return _backend.ListSchedulesAsync(baseDir: null, cancellationToken);
+        }
+
+        public Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, CancellationToken cancellationToken = default)
+        {
+            return _backend.SaveSchedulesAsync(schedules, baseDir: null, cancellationToken);
+        }
     }
 }
