@@ -787,10 +787,10 @@ highlight where to consume the artifact.
   - [ ] 12.2.1 Draft sourcing plan in `docs/testing-strategy.md`.
   - [ ] 12.2.2 Add fixtures under `fixtures/` with anonymised data.
   - [ ] 12.2.3 Document provenance for each fixture set in `fixtures/README.md`.
-- [ ] 12.3 Fuzz inputs.
-  - [ ] 12.3.1 Extend `scripts/score_configsamples.py` to generate fuzz inputs.
-  - [ ] 12.3.2 Add tests ensuring detectors stay within guardrails.
-  - [ ] 12.3.3 Record fuzz input catalogue in `notes/checklists/fuzz-plan.md`.
+- [x] 12.3 Fuzz inputs.
+  - [x] 12.3.1 Extend `scripts/score_configsamples.py` to generate fuzz inputs.
+  - [x] 12.3.2 Add tests ensuring detectors stay within guardrails.
+  - [x] 12.3.3 Record fuzz input catalogue in `notes/checklists/fuzz-plan.md`.
 - [ ] 12.4 Coverage validation.
   - [ ] 12.4.1 Run existing coverage scripts and log results in `notes/status/gui-research.md`.
   - [ ] 12.4.2 Ensure per-module coverage data remains ≥90%.
