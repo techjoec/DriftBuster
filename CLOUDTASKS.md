@@ -844,10 +844,10 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Scheduler orchestrates recurring backups; adapters tested with mocks; docs updated.
 
 **REQUIRED RELATED WORK:**
-- [ ] 14.1 Scheduler design.
-  - [ ] 14.1.1 Prototype scheduler service in `src/driftbuster/run_profiles.py` or new `src/driftbuster/scheduler.py`.
-  - [ ] 14.1.2 Add configuration schema updates in `docs/registry.md`.
-  - [ ] 14.1.3 Document scheduler JSON schema in `docs/configuration-profiles.md`.
+- [x] 14.1 Scheduler design.
+  - [x] 14.1.1 Prototype scheduler service in `src/driftbuster/run_profiles.py` or new `src/driftbuster/scheduler.py`.
+  - [x] 14.1.2 Add configuration schema updates in `docs/registry.md`.
+  - [x] 14.1.3 Document scheduler JSON schema in `docs/configuration-profiles.md`.
 - [ ] 14.2 Notification adapters.
   - [ ] 14.2.1 Implement SMTP adapter with tests `tests/notifications/test_smtp.py`.
   - [ ] 14.2.2 Add Slack adapter leveraging webhooks (`tests/notifications/test_slack.py`).

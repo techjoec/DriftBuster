@@ -92,6 +92,44 @@ return here for data model details.
   mutating stored profiles. Reference the excerpts from the hunt checklist
   rather than embedding sensitive data in the metadata itself.
 
+### `ScheduleSpec`
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `name` | `str` | — | Unique identifier for the scheduled run. |
+| `profile` | `str` | — | Path or key passed to your profile loader. |
+| `every` | `str` / `int` / `float` | — | Interval parsed via `parse_interval` (e.g. `"15m"`, `"PT1H"`, `900`). |
+| `start_at` | ISO 8601 string or `None` | `None` | Optional first-run anchor. Defaults to “now” when omitted. |
+| `window.start` / `window.end` | `HH:MM[:SS]` | — | Optional quiet-hours window in local time. When start > end the window is treated as overnight. |
+| `window.timezone` | IANA zone string | `"UTC"` | Time zone used to evaluate the window. Requires Python `zoneinfo`. |
+| `tags` | array of strings | `[]` | Free-form labels surfaced on `ScheduledRun` objects. |
+| `metadata` | object | `{}` | Arbitrary JSON metadata mirrored into schedule payloads. |
+
+Serialise schedules by storing them alongside your profile payloads:
+
+```json
+{
+  "profiles": [...],
+  "schedules": [
+    {
+      "name": "nightly-backup",
+      "profile": "profiles/nightly.json",
+      "every": "24h",
+      "start_at": "2025-01-01T02:00:00Z",
+      "window": { "start": "01:00", "end": "05:00", "timezone": "UTC" },
+      "tags": ["env:prod"],
+      "metadata": { "contact": "oncall@example.com" }
+    }
+  ]
+}
+```
+
+Feed the resulting dictionaries through
+`ScheduleSpec.from_dict(payload, profile_loader=...)` before registering them
+with `ProfileScheduler`. Pending runs bubble out via `ProfileScheduler.due()`
+as `ScheduledRun` instances and remain pending until you call
+`ProfileScheduler.mark_complete(...)`.
+
 ## Defining Profiles
 
 ```python

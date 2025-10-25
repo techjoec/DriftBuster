@@ -13,6 +13,14 @@ from .core.run_profiles import (
     profiles_root,
     save_profile,
 )
+from .scheduler import (
+    ProfileScheduler,
+    ScheduleError,
+    ScheduleSpec,
+    ScheduleWindow,
+    ScheduledRun,
+    parse_interval,
+)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -31,6 +39,12 @@ __all__ = [
     "save_profile",
     "list_profiles",
     "execute_profile",
+    "ProfileScheduler",
+    "ScheduleSpec",
+    "ScheduleWindow",
+    "ScheduledRun",
+    "ScheduleError",
+    "parse_interval",
     "main",
 ]
 

@@ -67,6 +67,36 @@ Offline Runner
 - Results are written to `data/<alias>/registry_scan.json` and summarised in the manifest.
 - Non‑Windows hosts skip registry sources, recording a clear reason in the manifest/logs.
 
+Profile Scheduler (Preview)
+---------------------------
+- Schedules let you trigger profile runs on a cadence without wiring a full job
+  runner. Add a `schedules` block alongside your `profile` definition when you
+  want DriftBuster to orchestrate recurring captures.
+
+  ```json
+  {
+    "profile": { "name": "collect-config-and-registry", "sources": ["C:/App"] },
+    "schedules": [
+      {
+        "name": "nightly-backup",
+        "profile": "profiles/nightly.json",
+        "every": "24h",
+        "start_at": "2025-01-01T02:00:00Z",
+        "window": { "start": "01:00", "end": "05:00", "timezone": "UTC" },
+        "tags": ["env:prod"],
+        "metadata": { "contact": "oncall@example.com" }
+      }
+    ]
+  }
+  ```
+- The `every` field accepts shorthand strings understood by
+  `driftbuster.run_profiles.parse_interval` (`15m`, `1h30m`, `PT45M`, etc.). Use
+  `start_at` to anchor the first run and optionally constrain execution to a
+  quiet window with `window.start`/`window.end` in local time.
+- Feed parsed entries into `driftbuster.scheduler.ProfileScheduler` to poll for
+  due work and hand the resulting `ScheduledRun` objects to your execution
+  harness.
+
 GUI Focus (\.NET 8)
 -------------------
 - The GUI consumes the same packaged output and surfaces registry scan results
