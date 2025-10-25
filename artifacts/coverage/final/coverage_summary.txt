@@ -1,2 +1,3 @@
-Python coverage: 98.20692997334626%
-.NET coverage: Cobertura XML not found
+Python coverage: 94.34%
+.NET coverage: 77.26% (Cobertura)
+Compliance watch floor: 90.27%

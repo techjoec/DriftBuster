@@ -53,6 +53,9 @@ coverage run --source=src/driftbuster -m pytest -q
 coverage report --fail-under=90
 coverage json -o coverage.json
 
+echo "-- Compliance coverage guardrail"
+python -m scripts.coverage_watch --python-json coverage.json
+
 echo "-- .NET tests with line coverage threshold (90%)"
 dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj \
   -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total \
@@ -61,6 +64,12 @@ dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj \
 
 echo "-- Repo-wide coverage summary"
 python -m scripts.coverage_report || true
+
+echo "-- Coverage history snapshot"
+python -m scripts.coverage_history --python-json coverage.json \
+  --dotnet-root artifacts/coverage-dotnet \
+  --output artifacts/coverage/history.csv \
+  --notes "verify_coverage"
 
 if [[ "${RUN_PERF_SMOKE}" == "true" ]]; then
   echo "-- Performance smoke suite (${PERF_FILTER})"

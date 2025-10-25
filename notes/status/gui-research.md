@@ -138,6 +138,13 @@
 
 - `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` (Debug) — ✅ `coverlet.collector` reported 155 passing tests without tripping the 90 % line-coverage gate. Console transcript stored at `artifacts/logs/gui-validation/gui-tests-coverage-2025-10-30.txt` for the release evidence bundle.
 
+#### 2025-10-25 compliance coverage snapshot (A12.4)
+
+- Regenerated coverage via `bash scripts/verify_coverage.sh`; Python suite hit 94.34 % with the compliance watch floor pinned at **90.27 %** (guarded by `scripts/coverage_watch.py`).
+- Offline compliance regression tests now drive `src/driftbuster/offline_compliance.py` to **96 %** coverage, keeping packaging evidence checks within the ≥90 % gate.
+- Appended a history row to `artifacts/coverage/history.csv` (2025-10-25T06:10:16Z) capturing Python 94.34 % and .NET 77.26 % Cobertura results for trend tracking.
+- Updated `artifacts/coverage/final/coverage_summary.txt` with the refreshed metrics and recorded the compliance watch floor alongside the totals.
+
 #### 2025-10-24 multi-server smoke storage sweep (A6.2.1)
 
 - Ran `./scripts/smoke_multi_server_storage.sh` to exercise the packaged storage smoke covering cold/hot cache reuse.
