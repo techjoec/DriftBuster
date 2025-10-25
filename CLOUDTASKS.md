@@ -818,12 +818,12 @@ highlight where to consume the artifact.
   - [x] 13.1.2 Update `docs/encryption.md` with usage instructions.
   - [x] 13.1.3 Add tests `tests/offline/test_encryption.py`.
   - [x] 13.1.4 Store DPAPI/AES configuration samples (anonymised) under `artifacts/encryption/README.md`.
-- [ ] 13.2 Realtime secret scanning.
-  - [ ] 13.2.1 Load `src/driftbuster/secret_rules.json` in realtime path.
-  - [ ] 13.2.2 Mask suspect lines before persistence; record masked context.
-  - [ ] 13.2.3 Add ignore controls to CLI/GUI (`src/driftbuster/cli.py`, `gui/DriftBuster.Gui/ViewModels/SecretScannerSettingsViewModel.cs`).
-  - [ ] 13.2.4 Extend tests `tests/secret_scanning/test_realtime.py`.
-  - [ ] 13.2.5 Update `docs/legal-safeguards.md` with realtime masking guardrails.
+- [x] 13.2 Realtime secret scanning.
+  - [x] 13.2.1 Load `src/driftbuster/secret_rules.json` in realtime path.
+  - [x] 13.2.2 Mask suspect lines before persistence; record masked context.
+  - [x] 13.2.3 Add ignore controls to CLI/GUI (`src/driftbuster/cli.py`, `gui/DriftBuster.Gui/ViewModels/SecretScannerSettingsViewModel.cs`).
+  - [x] 13.2.4 Extend tests `tests/secret_scanning/test_realtime.py`.
+  - [x] 13.2.5 Update `docs/legal-safeguards.md` with realtime masking guardrails.
 - [ ] 13.3 Logging & docs.
   - [ ] 13.3.1 Document flow in `docs/hunt-mode.md` and `docs/windows-gui-guide.md`.
   - [ ] 13.3.2 Capture validation logs in `notes/status/gui-research.md`.

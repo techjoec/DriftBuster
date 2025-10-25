@@ -529,6 +529,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         argv = list(sys.argv[1:])
     else:
         argv = list(argv)
+    if argv and argv[0] == "run-profile":
+        from .run_profiles_cli import main as run_profiles_main
+
+        return run_profiles_main(argv[1:])
     if argv and argv[0] == "export-sql":
         return _run_export_sql(argv[1:])
     if argv and argv[0] == "diff":

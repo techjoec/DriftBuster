@@ -38,6 +38,8 @@ def test_create_list_show_and_run(tmp_path, capsys) -> None:
         baseline=str(source),
         option=["key=value"],
         base_dir=base_dir,
+        secret_ignore_rules=["Skip"],
+        secret_ignore_patterns=["ALLOW"],
     )
 
     exit_code = _create(args)
@@ -54,6 +56,10 @@ def test_create_list_show_and_run(tmp_path, capsys) -> None:
     payload = json.loads(shown)
     assert payload["name"] == "demo"
     assert payload["options"] == {"key": "value"}
+    assert payload["secret_scanner"] == {
+        "ignore_rules": ["Skip"],
+        "ignore_patterns": ["ALLOW"],
+    }
 
     profile_file = base_dir / "Profiles" / "demo" / "profile.json"
     run_args = argparse.Namespace(
@@ -62,6 +68,8 @@ def test_create_list_show_and_run(tmp_path, capsys) -> None:
         base_dir=base_dir,
         save=True,
         timestamp="20240101T000000Z",
+        secret_ignore_rules=[],
+        secret_ignore_patterns=[],
     )
     exit_code = _run(run_args)
     assert exit_code == 0
@@ -82,6 +90,8 @@ def test_run_command_loads_by_name(tmp_path, capsys) -> None:
         base_dir=tmp_path,
         save=False,
         timestamp=None,
+        secret_ignore_rules=[],
+        secret_ignore_patterns=[],
     )
     _run(args)
     output = capsys.readouterr().out

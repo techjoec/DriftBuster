@@ -15,6 +15,7 @@ def test_save_and_load_profile(tmp_path: Path) -> None:
         description="VDI configuration set",
         sources=("*.json",),
         options={"sample_size": 65536},
+        secret_scanner={"ignore_rules": ["db"], "ignore_patterns": ["ALLOW"]},
     )
 
     run_profiles.save_profile(profile, base_dir=tmp_path)
@@ -23,6 +24,8 @@ def test_save_and_load_profile(tmp_path: Path) -> None:
     assert loaded.name == "vdi"
     assert loaded.sources == ("*.json",)
     assert loaded.options["sample_size"] == "65536"
+    assert tuple(loaded.secret_scanner.get("ignore_rules", ())) == ("db",)
+    assert tuple(loaded.secret_scanner.get("ignore_patterns", ())) == ("ALLOW",)
 
 
 def test_execute_profile_collects_files(tmp_path: Path) -> None:
@@ -45,8 +48,11 @@ def test_execute_profile_collects_files(tmp_path: Path) -> None:
     metadata = json.loads((result.output_dir / "metadata.json").read_text(encoding="utf-8"))
     assert metadata["profile"]["name"] == "demo"
     assert len(metadata["files"]) == 2
+    assert metadata["secrets"]["findings"] == []
+    assert "ruleset_version" in metadata["secrets"]
     snapshot = result.to_dict()
     assert snapshot["profile"]["name"] == "demo"
+    assert snapshot["secrets"]["findings"] == []
 
 
 def test_execute_profile_respects_baseline_order(tmp_path: Path) -> None:

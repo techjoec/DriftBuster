@@ -8,7 +8,10 @@ from datetime import datetime, timezone
 from glob import glob
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Iterable, List, Mapping, MutableMapping, Sequence
+from types import MappingProxyType
+from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Sequence
+
+from .. import secret_scanning
 
 
 def _timestamp() -> str:
@@ -57,6 +60,39 @@ def _normalise_options(options: Mapping[str, Any] | None) -> Mapping[str, str]:
     return {str(key): "" if value is None else str(value) for key, value in options.items()}
 
 
+def _normalise_secret_scanner(
+    secret_scanner: Mapping[str, Any] | None,
+) -> Mapping[str, Any]:
+    if not secret_scanner:
+        return MappingProxyType({})
+
+    normalised: dict[str, Any] = {}
+    for key, value in secret_scanner.items():
+        key_text = str(key)
+        if key_text in {"ignore_rules", "ignore_patterns"}:
+            normalised[key_text] = tuple(
+                secret_scanning.secret_option_values(value)
+            )
+        elif key_text == "ruleset" and isinstance(value, Mapping):
+            normalised[key_text] = dict(value)
+        else:
+            normalised[key_text] = value
+    return MappingProxyType(normalised)
+
+
+def _serialise_secret_scanner(secret_scanner: Mapping[str, Any]) -> Mapping[str, Any]:
+    if not secret_scanner:
+        return {}
+
+    payload: dict[str, Any] = {}
+    for key, value in secret_scanner.items():
+        if key in {"ignore_rules", "ignore_patterns"}:
+            payload[key] = list(value)
+        else:
+            payload[key] = value
+    return payload
+
+
 def _validate_profile(profile: "RunProfile") -> None:
     if not profile.sources:
         raise ValueError("At least one source must be provided.")
@@ -101,6 +137,7 @@ class RunProfile:
     sources: Sequence[str] = field(default_factory=tuple)
     baseline: str | None = None
     options: Mapping[str, str] = field(default_factory=dict)
+    secret_scanner: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "name", str(self.name))
@@ -111,6 +148,7 @@ class RunProfile:
 
         object.__setattr__(self, "sources", tuple(str(entry) for entry in self.sources))
         object.__setattr__(self, "options", dict(_normalise_options(self.options)))
+        object.__setattr__(self, "secret_scanner", _normalise_secret_scanner(self.secret_scanner))
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "RunProfile":
@@ -120,6 +158,7 @@ class RunProfile:
             sources=tuple(payload.get("sources", ())),
             baseline=payload.get("baseline"),
             options=_normalise_options(payload.get("options", {})),
+            secret_scanner=payload.get("secret_scanner", {}),
         )
 
     def to_dict(self) -> Mapping[str, Any]:
@@ -129,6 +168,7 @@ class RunProfile:
             "sources": list(self.sources),
             "baseline": self.baseline,
             "options": dict(self.options),
+            "secret_scanner": _serialise_secret_scanner(self.secret_scanner),
         }
 
 
@@ -146,9 +186,10 @@ class ProfileRunResult:
     timestamp: str
     output_dir: Path
     files: Sequence[ProfileFile]
+    secrets: Mapping[str, Any] | None = None
 
     def to_dict(self) -> Mapping[str, Any]:
-        return {
+        payload = {
             "profile": self.profile.to_dict(),
             "timestamp": self.timestamp,
             "output_dir": str(self.output_dir),
@@ -162,6 +203,9 @@ class ProfileRunResult:
                 for entry in self.files
             ],
         }
+        if self.secrets is not None:
+            payload["secrets"] = self.secrets
+        return payload
 
 
 def profiles_root(base_dir: Path | None = None) -> Path:
@@ -220,6 +264,12 @@ def execute_profile(
     run_root = profile_dir / "raw" / run_timestamp
     run_root.mkdir(parents=True, exist_ok=True)
 
+    secret_context = secret_scanning.build_context(profile.options, profile.secret_scanner)
+    secret_logs: list[str] = []
+
+    def _secret_log(message: str) -> None:
+        secret_logs.append(message)
+
     files: List[ProfileFile] = []
 
     source_strings = list(profile.sources)
@@ -244,6 +294,8 @@ def execute_profile(
                                 file=file,
                                 base=match,
                                 destination_root=destination_root,
+                                secret_context=secret_context,
+                                secret_log=_secret_log,
                             )
                         )
             elif match.is_file():
@@ -253,8 +305,28 @@ def execute_profile(
                         file=match,
                         base=match.parent,
                         destination_root=destination_root,
+                        secret_context=secret_context,
+                        secret_log=_secret_log,
                     )
                 )
+
+    secret_metadata = {
+        "ruleset_version": secret_context.version,
+        "rules_loaded": bool(secret_context.rules) and secret_context.rules_loaded,
+        "ignored_rules": sorted(secret_context.ignore_rules),
+        "ignored_patterns": list(secret_context.ignore_pattern_text),
+        "findings": [
+            {
+                "path": finding.path,
+                "rule": finding.rule,
+                "line": finding.line,
+                "snippet": finding.snippet,
+            }
+            for finding in secret_context.findings
+        ],
+    }
+    if secret_logs:
+        secret_metadata["messages"] = list(secret_logs)
 
     metadata_path = run_root / "metadata.json"
     metadata_path.write_text(
@@ -276,6 +348,7 @@ def execute_profile(
                     }
                     for entry in files
                 ],
+                "secrets": secret_metadata,
             },
             indent=2,
             sort_keys=True,
@@ -288,6 +361,7 @@ def execute_profile(
         timestamp=run_timestamp,
         output_dir=run_root,
         files=files,
+        secrets=secret_metadata,
     )
 
 
@@ -308,23 +382,35 @@ def _copy_file(
     file: Path,
     base: Path,
     destination_root: Path,
+    secret_context: secret_scanning.SecretDetectionContext | None = None,
+    secret_log: Callable[[str], None] | None = None,
 ) -> ProfileFile:
     if file.is_relative_to(base):
         relative = file.relative_to(base)
     else:
-        relative = file.name
+        relative = Path(file.name)
     destination = destination_root / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(file, destination)
-
-    digest = sha256()
-    with destination.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(64 * 1024), b""):
-            digest.update(chunk)
+    if secret_context is not None and secret_log is not None:
+        size, digest_hex = secret_scanning.copy_with_secret_filter(
+            file,
+            destination,
+            display_path=relative.as_posix(),
+            context=secret_context,
+            log=secret_log,
+        )
+    else:
+        shutil.copy2(file, destination)
+        size = destination.stat().st_size
+        digest = sha256()
+        with destination.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(64 * 1024), b""):
+                digest.update(chunk)
+        digest_hex = digest.hexdigest()
 
     return ProfileFile(
         source=source,
         destination=destination,
-        size=destination.stat().st_size,
-        sha256=digest.hexdigest(),
+        size=size,
+        sha256=digest_hex,
     )

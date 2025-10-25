@@ -46,6 +46,7 @@ public partial class SecretScannerSettingsViewModel : ObservableObject
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Select(value => value!)
             .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
             .ToArray();
     }
 

@@ -81,6 +81,13 @@ These guardrails cover every feature, note, and capture helper.
   - Record any third-party dependency updates (e.g., WebView2 runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh the NOTICE file before release builds.
   - Confirm that all redistributables shipped with the bundle allow offline redistribution and include their licence text within the package.
 
+## Realtime secret scanning safeguards
+
+- Realtime profile runs must persist only scrubbed artefacts. Validate that captured files replace matched secrets with the `[SECRET]` placeholder before sharing evidence.
+- Document every CLI or GUI override that adds secret ignore rules or patterns. Record the justification and reviewer in `notes/checklists/legal-review.md`.
+- Treat the realtime metadata `secrets` block as restricted telemetry. Store it alongside the run output and never detach the findings list from its redacted files.
+- When reviewing manual redactions, diff the captured snippets against the original sources to confirm masking preserved surrounding context without leaking the secret value.
+
 ## Diff planner MRU storage
 
 - Persist only sanitized summaries. MRU entries must never include raw file contents, secrets, or unmasked configuration values; the GUI enforces this by rejecting payloads where `payload_kind` resolves to `raw`.
