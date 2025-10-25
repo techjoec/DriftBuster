@@ -31,8 +31,8 @@ Schema reference
 - [x] 1.3 Exercise drag/drop handlers for server cards `gui/DriftBuster.Gui/Views/ServerSelectionView.axaml.cs:42`.
   - [x] 1.3.1 Build a headless drag/drop harness covering pointer press and drop callbacks in `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
   - [x] 1.3.2 Verify lower-half drops place hosts after the target slot and maintain indexes `gui/DriftBuster.Gui.Tests/Ui/ServerSelectionViewTests.cs`.
-- [ ] 1.4 Assert toast warning telemetry fires for attention-required hosts `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:1004`.
-  - [ ] 1.4.1 Craft mixed-availability scan responses and validate toast invocations plus activity entries in `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
+- [x] 1.4 Assert toast warning telemetry fires for attention-required hosts `gui/DriftBuster.Gui/ViewModels/ServerSelectionViewModel.cs:1004`.
+  - [x] 1.4.1 Craft mixed-availability scan responses and validate toast invocations plus activity entries in `gui/DriftBuster.Gui.Tests/ViewModels/ServerSelectionViewModelAdditionalTests.cs`.
 
 ## A2. Run Profiles Schedule Card Tests [deps=A1]
 

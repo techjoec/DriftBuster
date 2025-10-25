@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2025-10-25T10:40:43.8716269+00:00",
+  "warningToast": {
+    "Title": "Hosts require attention",
+    "Message": "Supporting App: Offline, FreakyFriday: PermissionDenied"
+  },
+  "activities": [
+    {
+      "Summary": "Hosts require attention",
+      "Detail": "Supporting App: Offline, FreakyFriday: PermissionDenied",
+      "Severity": "Warning"
+    }
+  ]
+}

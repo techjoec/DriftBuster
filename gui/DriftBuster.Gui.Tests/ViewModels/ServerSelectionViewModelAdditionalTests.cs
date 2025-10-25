@@ -214,6 +214,107 @@ public sealed class ServerSelectionViewModelAdditionalTests
     }
 
     [Fact]
+    public async Task Emits_attention_toast_and_activity_for_unavailable_hosts()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, progress, _) =>
+            {
+                var list = plans.ToList();
+                foreach (var plan in list)
+                {
+                    progress?.Report(new ScanProgress
+                    {
+                        HostId = plan.HostId,
+                        Status = ServerScanStatus.Running,
+                        Message = "Scanning",
+                        Timestamp = DateTimeOffset.UtcNow,
+                    });
+                }
+
+                var results = list.Select((plan, index) => new ServerScanResult
+                {
+                    HostId = plan.HostId,
+                    Label = plan.Label,
+                    Status = index switch
+                    {
+                        0 => ServerScanStatus.Succeeded,
+                        1 => ServerScanStatus.Failed,
+                        _ => ServerScanStatus.Failed,
+                    },
+                    Message = index switch
+                    {
+                        0 => "Completed",
+                        1 => "Host offline",
+                        _ => "Permission denied",
+                    },
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Availability = index switch
+                    {
+                        0 => ServerAvailabilityStatus.Found,
+                        1 => ServerAvailabilityStatus.Offline,
+                        _ => ServerAvailabilityStatus.PermissionDenied,
+                    },
+                }).ToArray();
+
+                return Task.FromResult(new ServerScanResponse
+                {
+                    Results = results,
+                });
+            },
+        };
+
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        var warningToasts = toast.ActiveToasts
+            .Where(notification => notification.Level == ToastLevel.Warning)
+            .ToList();
+        warningToasts.Should().ContainSingle();
+        var warning = warningToasts.Single();
+        warning.Title.Should().Be("Hosts require attention");
+        warning.Message.Should().Contain("Supporting App: Offline");
+        warning.Message.Should().Contain("FreakyFriday: PermissionDenied");
+
+        viewModel.ActivityEntries.Should().Contain(entry =>
+            entry.Summary == "Hosts require attention" &&
+            entry.Severity == ActivitySeverity.Warning &&
+            entry.Detail.Contains("Supporting App: Offline"));
+
+        var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var logDirectory = Path.Combine(repositoryRoot, "artifacts", "logs", "gui-validation");
+        Directory.CreateDirectory(logDirectory);
+        var payload = new
+        {
+            generatedAt = DateTimeOffset.UtcNow,
+            warningToast = new
+            {
+                warning.Title,
+                warning.Message,
+            },
+            activities = viewModel.ActivityEntries
+                .Where(entry => string.Equals(entry.Summary, "Hosts require attention", StringComparison.Ordinal))
+                .Select(entry => new
+                {
+                    entry.Summary,
+                    entry.Detail,
+                    Severity = entry.Severity.ToString(),
+                })
+                .ToArray(),
+        };
+
+        var logPath = Path.Combine(logDirectory, "server-selection-attention-toast.json");
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+        {
+            WriteIndented = true,
+        });
+
+        await File.WriteAllTextAsync(logPath, json + Environment.NewLine);
+    }
+
+    [Fact]
     public async Task Provides_deterministic_drilldown_gating_and_telemetry()
     {
         var logPath = Path.Combine("artifacts", "logs", "drilldown-ready.json");
