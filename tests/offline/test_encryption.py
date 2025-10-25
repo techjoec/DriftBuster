@@ -149,3 +149,73 @@ def test_execute_config_requires_compress_for_encryption(tmp_path):
 
     with pytest.raises(ValueError):
         offline_runner.execute_config(config, base_dir=tmp_path, timestamp="20240101T000000Z")
+
+
+def test_execute_config_path_supports_relative_paths(tmp_path):
+    config_dir = tmp_path / "bundle"
+    config_dir.mkdir()
+
+    source_file = config_dir / "secrets.txt"
+    source_file.write_text("token-456", encoding="utf-8")
+
+    keyset_path = config_dir / "keyset.json"
+    aes_key = b"C" * 32
+    hmac_key = b"D" * 32
+    _build_keyset(keyset_path, aes_key=aes_key, hmac_key=hmac_key)
+
+    config_payload = {
+        "schema": offline_runner.CONFIG_SCHEMA,
+        "profile": {
+            "name": "relative-paths",
+            "sources": [
+                {
+                    "path": "secrets.txt",
+                }
+            ],
+            "options": {},
+            "secret_scanner": {},
+        },
+        "runner": {
+            "compress": True,
+            "cleanup_staging": True,
+            "encryption": {
+                "enabled": True,
+                "mode": "dpapi-aes",
+                "keyset_path": "keyset.json",
+                "output_extension": ".enc",
+                "remove_plaintext": True,
+            },
+        },
+        "metadata": {},
+    }
+
+    config_path = config_dir / "config.json"
+    config_path.write_text(json.dumps(config_payload, indent=2), encoding="utf-8")
+
+    result = offline_runner.execute_config_path(config_path, timestamp="20240202T120000Z")
+
+    assert result.package_path is not None
+    assert result.package_path.parent == config_dir
+    assert result.package_path.suffix == ".enc"
+    assert result.encrypted_package_path == result.package_path
+
+    assert result.unencrypted_package_path is not None
+    assert not result.unencrypted_package_path.exists()
+
+    payload = result.encryption_payload
+    assert payload is not None
+    assert payload["package"]["original_name"].endswith(".zip")
+
+    iv = base64.b64decode(payload["iv"])
+    ciphertext = base64.b64decode(payload["ciphertext"])
+
+    cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    padded = decryptor.update(ciphertext) + decryptor.finalize()
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    plaintext = unpadder.update(padded) + unpadder.finalize()
+
+    with zipfile.ZipFile(io.BytesIO(plaintext)) as archive:
+        names = archive.namelist()
+        assert any(name.endswith("secrets.txt") for name in names)
+        assert "manifest.json" in names

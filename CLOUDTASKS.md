@@ -813,7 +813,7 @@ highlight where to consume the artifact.
 **ACCEPT GATES:** Encryption helpers land with docs/tests; realtime secret masking verified; audit trail recorded.
 
 **REQUIRED RELATED WORK:**
-- [ ] 13.1 Encryption loader.
+- [x] 13.1 Encryption loader.
   - [x] 13.1.1 Implement DPAPI/AES flow in `src/driftbuster/offline_runner.py`.
   - [x] 13.1.2 Update `docs/encryption.md` with usage instructions.
   - [x] 13.1.3 Add tests `tests/offline/test_encryption.py`.

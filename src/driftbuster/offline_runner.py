@@ -138,6 +138,12 @@ def _expand_path(text: str) -> Path:
     return Path(expanded)
 
 
+def _resolve_with_base(path: Path, *, base_dir: Path | None) -> Path:
+    if base_dir is None or path.is_absolute():
+        return path
+    return (base_dir / path).expanduser()
+
+
 def _has_magic(pattern: str) -> bool:
     return any(char in pattern for char in "*?[]")
 
@@ -813,19 +819,41 @@ def _should_exclude(relative: Path, patterns: Sequence[str]) -> bool:
     return False
 
 
-def _iter_source_matches(path_text: str) -> Iterable[Path]:
-    candidate = _expand_path(path_text)
-    if candidate.exists():
-        yield candidate
-        return
+def _iter_source_matches(path_text: str, *, base_dir: Path | None = None) -> Iterable[Path]:
+    expanded_text = os.path.expanduser(os.path.expandvars(path_text))
 
-    if _has_magic(path_text):
-        expanded_pattern = os.path.expanduser(os.path.expandvars(path_text))
-        for match in sorted(glob(expanded_pattern, recursive=True)):
-            yield Path(match)
-        return
+    patterns: list[str] = []
+    if base_dir is not None:
+        base_dir = Path(base_dir)
+        expanded_path = Path(expanded_text)
+        if not expanded_path.is_absolute():
+            base_pattern = str(base_dir / expanded_path)
+            patterns.append(base_pattern)
 
-    raise FileNotFoundError(f"Path does not exist: {path_text}")
+    if expanded_text not in patterns:
+        patterns.append(expanded_text)
+
+    if not _has_magic(path_text):
+        for pattern in patterns:
+            candidate = Path(pattern)
+            if candidate.exists():
+                yield candidate
+                return
+        raise FileNotFoundError(f"Path does not exist: {path_text}")
+
+    matches: list[str] = []
+    seen: set[str] = set()
+    for pattern in patterns:
+        matches.extend(sorted(glob(pattern, recursive=True)))
+
+    for match in matches:
+        if match in seen:
+            continue
+        seen.add(match)
+        yield Path(match)
+
+    if not matches:
+        raise FileNotFoundError(f"Path does not exist: {path_text}")
 
 
 def execute_config(
@@ -838,7 +866,25 @@ def execute_config(
     run_timestamp = timestamp or _timestamp()
     settings = config.settings
 
-    output_root = settings.output_directory or base_dir or Path.cwd()
+    if config_path is not None:
+        config_path = Path(config_path)
+
+    effective_base_dir: Path | None
+    if base_dir is not None:
+        effective_base_dir = Path(base_dir)
+    elif config_path is not None:
+        effective_base_dir = config_path.parent
+    else:
+        effective_base_dir = None
+
+    output_root: Path
+    if settings.output_directory is not None:
+        output_root = settings.output_directory
+        if effective_base_dir is not None and not output_root.is_absolute():
+            output_root = effective_base_dir / output_root
+    else:
+        output_root = effective_base_dir or Path.cwd()
+
     output_root = Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
 
@@ -878,7 +924,11 @@ def execute_config(
 
         matches: list[Path] = []
         if isinstance(source, OfflineSqlSnapshotSource):
-            candidate = _expand_path(source.path)
+            candidate_raw = _expand_path(source.path)
+            candidate = _resolve_with_base(candidate_raw, base_dir=effective_base_dir)
+            if not candidate.exists() and candidate_raw.exists():
+                candidate = candidate_raw
+
             if not candidate.exists():
                 if source.optional:
                     log(f"optional sql snapshot skipped: {source.path}")
@@ -969,7 +1019,7 @@ def execute_config(
 
         if isinstance(source, OfflineCollectionSource):
             try:
-                for candidate in _iter_source_matches(source.path):
+                for candidate in _iter_source_matches(source.path, base_dir=effective_base_dir):
                     matches.append(candidate)
             except FileNotFoundError:
                 if source.optional:
@@ -1318,7 +1368,7 @@ def execute_config(
             encrypted_package_path, original_package_path, encryption_payload_result, removed_plaintext = _apply_package_encryption(
                 package_path,
                 settings.encryption,
-                base_dir=base_dir,
+                base_dir=effective_base_dir,
                 log=log,
             )
             package_path = encrypted_package_path
