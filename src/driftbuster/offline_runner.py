@@ -1024,6 +1024,7 @@ def execute_config(
             except FileNotFoundError:
                 if source.optional:
                     log(f"optional source skipped: {source.path}")
+                    reason = "no-matches" if _has_magic(source.path) else "missing"
                     source_summaries.append(
                         {
                             "type": "file",
@@ -1032,7 +1033,7 @@ def execute_config(
                             "optional": True,
                             "matched": [],
                             "skipped": True,
-                            "reason": "missing",
+                            "reason": reason,
                             "exclude": list(source.exclude),
                         }
                     )

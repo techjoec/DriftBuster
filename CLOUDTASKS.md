@@ -848,11 +848,11 @@ highlight where to consume the artifact.
   - [x] 14.1.1 Prototype scheduler service in `src/driftbuster/run_profiles.py` or new `src/driftbuster/scheduler.py`.
   - [x] 14.1.2 Add configuration schema updates in `docs/registry.md`.
   - [x] 14.1.3 Document scheduler JSON schema in `docs/configuration-profiles.md`.
-- [ ] 14.2 Notification adapters.
-  - [ ] 14.2.1 Implement SMTP adapter with tests `tests/notifications/test_smtp.py`.
-  - [ ] 14.2.2 Add Slack adapter leveraging webhooks (`tests/notifications/test_slack.py`).
-  - [ ] 14.2.3 Implement Teams adapter (`tests/notifications/test_teams.py`).
-  - [ ] 14.2.4 Document secrets handling for each adapter in `docs/legal-safeguards.md`.
+- [x] 14.2 Notification adapters.
+  - [x] 14.2.1 Implement SMTP adapter with tests `tests/notifications/test_smtp.py`.
+  - [x] 14.2.2 Add Slack adapter leveraging webhooks (`tests/notifications/test_slack.py`).
+  - [x] 14.2.3 Implement Teams adapter (`tests/notifications/test_teams.py`).
+  - [x] 14.2.4 Document secrets handling for each adapter in `docs/legal-safeguards.md`.
 - [ ] 14.3 CLI/GUI wiring.
   - [ ] 14.3.1 Surface scheduling commands in `cli/DriftBuster.PowerShell` and the future Python CLI.
   - [ ] 14.3.2 Update GUI configuration surfaces if needed.

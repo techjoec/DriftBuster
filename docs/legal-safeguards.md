@@ -88,6 +88,13 @@ These guardrails cover every feature, note, and capture helper.
 - Treat the realtime metadata `secrets` block as restricted telemetry. Store it alongside the run output and never detach the findings list from its redacted files.
 - When reviewing manual redactions, diff the captured snippets against the original sources to confirm masking preserved surrounding context without leaking the secret value.
 
+## Scheduler notification secrets
+
+- Store SMTP usernames and passwords in an operator-managed secret store (Key Vault, 1Password, etc.) and hydrate the scheduler via environment variables or encrypted config blobs. Never hardcode credentials inside JSON manifests or PowerShell profiles.
+- Restrict Slack and Teams webhook URLs to the same secret stores. Treat the URLs as credentials: scope them to the DriftBuster channel, disable re-use across staging/production, and rotate immediately if leaked.
+- Keep notification payload logs free from credentials. Scrub SMTP transcripts before archiving, and redact webhook URLs from scheduler debug output prior to attaching evidence to reviews.
+- Record credential hand-offs and rotations in `notes/checklists/legal-review.md`, noting which operator approved the change and where the updated secret now lives.
+
 ## Diff planner MRU storage
 
 - Persist only sanitized summaries. MRU entries must never include raw file contents, secrets, or unmasked configuration values; the GUI enforces this by rejecting payloads where `payload_kind` resolves to `raw`.
