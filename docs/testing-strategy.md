@@ -94,6 +94,27 @@ Shortcut: run `scripts/verify_coverage.sh` (POSIX shells) or `python -m scripts.
 | JSON telemetry | Open audit log example published under community governance docs | Open documentation terms | Remove timestamps older than 30 days; hash node names with deterministic salt. |
 | Binary blob | Public CA certificate bundle metadata snapshot | Open documentation terms | Retain only certificate metadata headers; truncate bodies after first block to minimise sensitive material. |
 
+Prioritised sourcing for the current compliance push lives below.
+
+### Vendor sample sourcing plan (2025-10-25)
+
+1. **Telemetry retention bundle** — Track retention-focused JSON configs inside
+   `fixtures/vendor_samples/telemetry_collector_sample.json`. Source structure
+   from public pruning guidance, convert real hostnames to the `example.invalid`
+   domain, and swap tokens for environment variable placeholders. During manual
+   rehearsals, pair this fixture with the retention metrics CLI flag to confirm
+   pruning guardrails stay aligned with compliance docs.
+2. **Directory sync export** — Maintain the YAML payload at
+   `fixtures/vendor_samples/identity_directory_sample.yaml` to rehearse identity
+   integrations. Derive the payload layout from open standards documentation,
+   inject deterministic hashing guidance for identifiers, and log any
+   incremental sync deviations in `notes/checklists/manual-tests.md`.
+3. **Review cadence** — Every time new vendor formats are requested, log the
+   proposed sample in `notes/checklists/manual-tests.md`, prepare a synthetic
+   fixture in `fixtures/vendor_samples/`, and append a provenance row to
+   `fixtures/README.md`. Decline samples that cannot be built from public or
+   synthetic material without exposing proprietary data.
+
 - Expand the table row-by-row as new detectors appear. Keep the first column
   aligned with catalog format identifiers so cross-referencing stays painless.
 - Store only the links to these samples or short extraction scripts in a

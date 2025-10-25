@@ -786,10 +786,13 @@ highlight where to consume the artifact.
   - Notes (2025-11-27): Added font telemetry retention compliance guardrails, cross-linked
     reporting hooks in the testing strategy, and logged the audit entry plus override
     evidence in the legal review checklist.
-- [ ] 12.2 Vendor samples strategy.
-  - [ ] 12.2.1 Draft sourcing plan in `docs/testing-strategy.md`.
-  - [ ] 12.2.2 Add fixtures under `fixtures/` with anonymised data.
-  - [ ] 12.2.3 Document provenance for each fixture set in `fixtures/README.md`.
+- [x] 12.2 Vendor samples strategy.
+  - [x] 12.2.1 Draft sourcing plan in `docs/testing-strategy.md`.
+  - [x] 12.2.2 Add fixtures under `fixtures/` with anonymised data.
+  - [x] 12.2.3 Document provenance for each fixture set in `fixtures/README.md`.
+  - Notes (2025-10-25): Added vendor sourcing plan covering telemetry retention
+    and directory sync samples, published anonymised fixtures under
+    `fixtures/vendor_samples/`, and recorded provenance in `fixtures/README.md`.
 - [x] 12.3 Fuzz inputs.
   - [x] 12.3.1 Extend `scripts/score_configsamples.py` to generate fuzz inputs.
   - [x] 12.3.2 Add tests ensuring detectors stay within guardrails.

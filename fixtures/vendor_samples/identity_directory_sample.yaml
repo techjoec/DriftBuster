@@ -1,0 +1,31 @@
+schemaVersion: 1
+provider: NeutralDirectorySync
+endpoints:
+  - name: sync-primary
+    url: https://directory-sync.example.invalid/v2/export
+    method: POST
+    headers:
+      X-REQUEST-ID: "{{ request_guid }}"
+      X-AUTH-TOKEN: "ENV:NEUTRAL_DIRECTORY_TOKEN"
+    payload:
+      includeGroups: true
+      includeRoles: true
+      incrementalSync: true
+      watermarkHours: 4
+      filters:
+        - attribute: status
+          operator: equals
+          value: active
+retentionPolicy:
+  maxExports: 20
+  maxAgeHours: 240
+  purgeWindowHours: 48
+auditing:
+  exportLog: artifacts/directory-sync/log.jsonl
+  anonymisation:
+    userIdentifiers: hash
+    groupIdentifiers: truncate
+notes: |
+  Adapted from open standards documentation. All organisation names, hostnames,
+  and identifiers have been replaced with neutral placeholders. Hashing relies
+  on SHA-256 with a project-scoped salt stored outside the repository.

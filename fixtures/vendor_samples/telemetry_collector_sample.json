@@ -1,0 +1,44 @@
+{
+  "collector": "NeutralTelemetryCollector",
+  "version": "2025.4",
+  "ingestTargets": [
+    {
+      "name": "metrics-primary",
+      "endpoint": "https://logs.example.invalid/api/v1/ingest",
+      "auth": {
+        "type": "token",
+        "environmentVariable": "NEUTRAL_TELEMETRY_TOKEN"
+      },
+      "retention": {
+        "maxFiles": 120,
+        "maxAgeHours": 168
+      }
+    },
+    {
+      "name": "metrics-dr",
+      "endpoint": "https://logs-dr.example.invalid/api/v1/ingest",
+      "auth": {
+        "type": "token",
+        "environmentVariable": "NEUTRAL_TELEMETRY_TOKEN"
+      },
+      "retention": {
+        "maxFiles": 48,
+        "maxAgeHours": 72
+      }
+    }
+  ],
+  "pruning": {
+    "mode": "delete-oldest",
+    "includePatterns": [
+      "**/staleness/*.json",
+      "**/summary/*.json"
+    ],
+    "excludePatterns": [
+      "**/evidence/archive/**"
+    ]
+  },
+  "evidence": {
+    "retentionMetricsPath": "artifacts/telemetry-metrics/latest.json",
+    "notes": "Derived from public documentation sample; identifiers replaced with neutral placeholders."
+  }
+}
