@@ -15,6 +15,9 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "cryptography>=42.0.0",
+]
 
 [project.scripts]
 driftbuster = "driftbuster.cli:console_main"

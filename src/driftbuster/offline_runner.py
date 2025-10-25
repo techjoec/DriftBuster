@@ -23,6 +23,9 @@ structure is shared with the PowerShell runner so the two paths remain
 consistent.
 """
 
+import base64
+import binascii
+import ctypes
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import fnmatch
@@ -32,6 +35,8 @@ import json
 import os
 import platform
 import re
+import sys
+import hmac
 from hashlib import sha256
 from pathlib import Path
 import shutil
@@ -39,12 +44,18 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence, T
 import zipfile
 from glob import glob
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
 from .sql import build_sqlite_snapshot
 
 
 MANIFEST_SCHEMA = "https://driftbuster.dev/offline-runner/manifest/v1"
 CONFIG_SCHEMA = "https://driftbuster.dev/offline-runner/config/v1"
 SECRET_RULES_RESOURCE = "secret_rules.json"
+ENCRYPTION_KEYSET_SCHEMA = "https://driftbuster.dev/offline-runner/encryption/keyset/v1"
+ENCRYPTED_PACKAGE_SCHEMA = "https://driftbuster.dev/offline-runner/encryption/dpapi-aes/v1"
 
 
 @dataclass(frozen=True)
@@ -672,6 +683,49 @@ class OfflineRunnerProfile:
 
 
 @dataclass(frozen=True)
+class OfflineEncryptionSettings:
+    enabled: bool = False
+    mode: str = "dpapi-aes"
+    keyset_path: Path | None = None
+    output_extension: str = ".enc"
+    remove_plaintext: bool = True
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any] | None) -> "OfflineEncryptionSettings":
+        if not payload:
+            return cls()
+
+        if not isinstance(payload, Mapping):
+            raise ValueError("Runner 'encryption' must be a mapping if provided.")
+
+        mode = str(payload.get("mode", "dpapi-aes"))
+        enabled = bool(payload.get("enabled", True))
+        keyset_path: Path | None = None
+        keyset_value = payload.get("keyset_path") or payload.get("keyset")
+        if keyset_value:
+            keyset_path = _expand_path(str(keyset_value))
+
+        output_extension = str(payload.get("output_extension", ".enc"))
+        if output_extension and not output_extension.startswith("."):
+            output_extension = f".{output_extension}"
+
+        remove_plaintext = bool(payload.get("remove_plaintext", True))
+
+        settings = cls(
+            enabled=enabled,
+            mode=mode.strip().lower() or "dpapi-aes",
+            keyset_path=keyset_path,
+            output_extension=output_extension or ".enc",
+            remove_plaintext=remove_plaintext,
+        )
+
+        if settings.enabled and settings.keyset_path is None:
+            raise ValueError("Encryption is enabled but no 'keyset_path' was provided.")
+
+        return settings
+
+
+@dataclass(frozen=True)
 class OfflineRunnerSettings:
     output_directory: Path | None = None
     package_name: str | None = None
@@ -685,6 +739,7 @@ class OfflineRunnerSettings:
     logs_directory_name: str = "logs"
     max_total_bytes: int | None = None
     cleanup_staging: bool = True
+    encryption: OfflineEncryptionSettings | None = None
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any] | None) -> "OfflineRunnerSettings":
@@ -709,6 +764,11 @@ class OfflineRunnerSettings:
             if max_total_bytes <= 0:
                 raise ValueError("max_total_bytes must be positive if provided.")
 
+        encryption_settings = payload.get("encryption") if isinstance(payload, Mapping) else None
+        encryption: OfflineEncryptionSettings | None = None
+        if encryption_settings:
+            encryption = OfflineEncryptionSettings.from_dict(encryption_settings)
+
         return cls(
             output_directory=output_directory,
             package_name=str(package_name) if package_name else None,
@@ -722,6 +782,7 @@ class OfflineRunnerSettings:
             logs_directory_name=str(logs_directory_name),
             max_total_bytes=max_total_bytes,
             cleanup_staging=bool(payload.get("cleanup_staging", True)),
+            encryption=encryption,
         )
 
 
@@ -786,6 +847,9 @@ class OfflineRunnerResult:
     package_path: Path | None
     files: Sequence[CollectedFile]
     timestamp: str
+    encrypted_package_path: Path | None = None
+    unencrypted_package_path: Path | None = None
+    encryption_payload: Mapping[str, Any] | None = None
 
 
 def load_config(path: Path | str) -> OfflineRunnerConfig:
@@ -804,6 +868,173 @@ def _hash_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _dpapi_unprotect(blob: bytes, *, scope: str) -> bytes:
+    if sys.platform != "win32":
+        raise RuntimeError("DPAPI key decryption is only supported on Windows.")
+
+    class DATA_BLOB(ctypes.Structure):
+        _fields_ = [
+            ("cbData", ctypes.c_uint32),
+            ("pbData", ctypes.POINTER(ctypes.c_ubyte)),
+        ]
+
+    buffer = ctypes.create_string_buffer(blob, len(blob))
+    data_in = DATA_BLOB(len(blob), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte)))
+    data_out = DATA_BLOB()
+
+    flags = 0
+    if scope.lower() in {"machine", "local_machine", "machinekey", "local-machine"}:
+        flags = 0x00000004  # CRYPTPROTECT_LOCAL_MACHINE
+
+    if not ctypes.windll.crypt32.CryptUnprotectData(  # type: ignore[attr-defined]
+        ctypes.byref(data_in),
+        None,
+        None,
+        None,
+        None,
+        flags,
+        ctypes.byref(data_out),
+    ):
+        raise RuntimeError("CryptUnprotectData failed to decrypt the key material.")
+
+    try:
+        return ctypes.string_at(data_out.pbData, data_out.cbData)
+    finally:
+        if data_out.pbData:
+            ctypes.windll.kernel32.LocalFree(data_out.pbData)  # type: ignore[attr-defined]
+
+
+def _decode_key_entry(entry: Mapping[str, Any], *, description: str) -> bytes:
+    if not isinstance(entry, Mapping):
+        raise ValueError(f"{description} must be a mapping.")
+
+    data = entry.get("data") or entry.get("value") or entry.get("key")
+    if not isinstance(data, str) or not data.strip():
+        raise ValueError(f"{description} is missing key material.")
+
+    encoding = str(entry.get("encoding", "base64")).strip().lower()
+
+    try:
+        if encoding in {"base64", "b64"}:
+            key_bytes = base64.b64decode(data)
+        elif encoding in {"hex", "hexadecimal"}:
+            key_bytes = bytes.fromhex(data.strip())
+        elif encoding == "dpapi":
+            blob = base64.b64decode(data)
+            scope = str(entry.get("scope", "current_user") or "current_user")
+            key_bytes = _dpapi_unprotect(blob, scope=scope)
+        else:
+            raise ValueError(f"Unsupported encoding '{encoding}' for {description}.")
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError(f"Failed to decode {description}: {exc}") from exc
+
+    minimum_length = entry.get("min_length") or entry.get("minimum_length") or entry.get("length")
+    if minimum_length is not None:
+        minimum = int(minimum_length)
+        if len(key_bytes) < minimum:
+            raise ValueError(f"{description} must be at least {minimum} bytes.")
+
+    return key_bytes
+
+
+def _load_encryption_keyset(path: Path) -> tuple[bytes, bytes]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise ValueError("Encryption keyset must be a JSON object.")
+
+    schema = payload.get("schema")
+    if schema and schema != ENCRYPTION_KEYSET_SCHEMA:
+        raise ValueError("Unsupported encryption keyset schema.")
+
+    aes_entry = payload.get("aes_key") or payload.get("aes")
+    hmac_entry = payload.get("hmac_key") or payload.get("hmac") or payload.get("mac_key")
+    if not isinstance(aes_entry, Mapping) or not isinstance(hmac_entry, Mapping):
+        raise ValueError("Encryption keyset must include 'aes_key' and 'hmac_key' mappings.")
+
+    aes_key = _decode_key_entry(aes_entry, description="aes_key")
+    hmac_key = _decode_key_entry(hmac_entry, description="hmac_key")
+
+    if len(aes_key) not in {16, 24, 32}:
+        raise ValueError("AES key must be 16, 24, or 32 bytes.")
+    if len(aes_key) != 32:
+        raise ValueError("AES-256 encryption requires a 32-byte AES key.")
+    if len(hmac_key) < 32:
+        raise ValueError("HMAC key must be at least 32 bytes.")
+
+    return aes_key, hmac_key
+
+
+def _encrypt_package_file(
+    source: Path,
+    destination: Path,
+    *,
+    aes_key: bytes,
+    hmac_key: bytes,
+) -> Mapping[str, Any]:
+    plaintext = source.read_bytes()
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded = padder.update(plaintext) + padder.finalize()
+
+    iv = os.urandom(16)
+    cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded) + encryptor.finalize()
+
+    mac = hmac.new(hmac_key, iv + ciphertext, sha256).digest()
+
+    payload = {
+        "schema": ENCRYPTED_PACKAGE_SCHEMA,
+        "algorithm": "aes-256-cbc+hmac-sha256",
+        "iv": base64.b64encode(iv).decode("ascii"),
+        "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+        "mac": base64.b64encode(mac).decode("ascii"),
+        "package": {
+            "original_name": source.name,
+            "size": len(plaintext),
+        },
+    }
+
+    destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return payload
+
+
+def _apply_package_encryption(
+    package_path: Path,
+    settings: OfflineEncryptionSettings,
+    *,
+    base_dir: Path | None,
+    log: Callable[[str], None],
+) -> tuple[Path, Path, Mapping[str, Any], bool]:
+    if settings.keyset_path is None:
+        raise ValueError("Encryption is enabled but keyset_path is missing.")
+
+    resolved_keyset = settings.keyset_path
+    if not resolved_keyset.is_absolute() and base_dir is not None:
+        resolved_keyset = (base_dir / resolved_keyset).expanduser()
+    resolved_keyset = resolved_keyset.expanduser()
+
+    if not resolved_keyset.exists():
+        raise FileNotFoundError(f"Encryption keyset not found: {resolved_keyset}")
+
+    aes_key, hmac_key = _load_encryption_keyset(resolved_keyset)
+    log(f"loaded encryption keyset from {resolved_keyset}")
+
+    encrypted_path = package_path.with_suffix(package_path.suffix + settings.output_extension)
+    payload = _encrypt_package_file(package_path, encrypted_path, aes_key=aes_key, hmac_key=hmac_key)
+    log(f"encrypted package -> {encrypted_path.name}")
+
+    removed_plaintext = False
+    if settings.remove_plaintext:
+        try:
+            package_path.unlink()
+            removed_plaintext = True
+            log("removed plaintext package after encryption")
+        except FileNotFoundError:
+            pass
+
+    return encrypted_path, package_path, payload, removed_plaintext
 
 
 def _should_exclude(relative: Path, patterns: Sequence[str]) -> bool:
@@ -858,6 +1089,12 @@ def execute_config(
         log_entries.append(f"[{stamp}] {message}")
 
     log("offline collection started")
+
+    package_filename: str | None = None
+    if settings.compress:
+        package_filename = settings.package_name or f"{_safe_name(config.profile.name)}-{run_timestamp}.zip"
+        if not package_filename.lower().endswith(".zip"):
+            package_filename = f"{package_filename}.zip"
 
     secret_context = _build_secret_context(config.profile.options, config.profile.secret_scanner)
     if not secret_context.rules_loaded:
@@ -1190,8 +1427,9 @@ def execute_config(
         _write_log(log_path, log_entries)
 
     manifest_path: Path | None = None
+    manifest_payload: MutableMapping[str, Any] | None = None
     if settings.include_manifest:
-        manifest_payload: MutableMapping[str, Any] = {
+        manifest_payload = {
             "schema": MANIFEST_SCHEMA,
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "timestamp": run_timestamp,
@@ -1251,6 +1489,25 @@ def execute_config(
             },
         }
 
+        if package_filename:
+            manifest_payload["package"]["package_name"] = package_filename
+
+        encryption_settings = settings.encryption
+        if encryption_settings and encryption_settings.enabled:
+            encrypted_name = package_filename or f"{_safe_name(config.profile.name)}-{run_timestamp}.zip"
+            encrypted_name = f"{encrypted_name}{encryption_settings.output_extension}" if not encrypted_name.endswith(encryption_settings.output_extension) else encrypted_name
+            manifest_payload["package"]["encryption"] = {
+                "enabled": True,
+                "mode": encryption_settings.mode,
+                "output_name": encrypted_name,
+                "remove_plaintext": encryption_settings.remove_plaintext,
+                "keyset_path": str(encryption_settings.keyset_path) if encryption_settings.keyset_path else None,
+                "schema": ENCRYPTED_PACKAGE_SCHEMA,
+                "algorithm": "aes-256-cbc+hmac-sha256",
+            }
+        else:
+            manifest_payload["package"]["encryption"] = {"enabled": False}
+
         if sql_metadata:
             metadata_payload = dict(manifest_payload["metadata"])
             metadata_payload["sql_exports"] = sql_metadata
@@ -1272,14 +1529,16 @@ def execute_config(
         shutil.copy2(config_path, staging_dir / Path(config_path.name))
 
     package_path: Path | None = None
+    encrypted_package_path: Path | None = None
+    unencrypted_package_path: Path | None = None
+    encryption_payload_result: Mapping[str, Any] | None = None
     staging_dir_on_disk: Path | None = staging_dir
     manifest_on_disk = manifest_path
     log_on_disk = log_path
     if settings.compress:
-        package_name = settings.package_name or f"{_safe_name(config.profile.name)}-{run_timestamp}.zip"
-        if not package_name.lower().endswith(".zip"):
-            package_name = f"{package_name}.zip"
-        package_path = output_root / package_name
+        if package_filename is None:
+            raise RuntimeError("package filename not computed")
+        package_path = output_root / package_filename
         with zipfile.ZipFile(package_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
             for path in sorted(staging_dir.rglob("*")):
                 if path.is_dir():
@@ -1287,11 +1546,41 @@ def execute_config(
                 arcname = path.relative_to(staging_dir).as_posix()
                 zf.write(path, arcname)
 
+        unencrypted_package_path = package_path
+
+        if settings.encryption and settings.encryption.enabled:
+            encrypted_package_path, original_package_path, encryption_payload_result, removed_plaintext = _apply_package_encryption(
+                package_path,
+                settings.encryption,
+                base_dir=base_dir,
+                log=log,
+            )
+            package_path = encrypted_package_path
+            unencrypted_package_path = original_package_path
+
+            if manifest_payload is not None:
+                encryption_manifest = manifest_payload.get("package", {}).get("encryption")
+                if isinstance(encryption_manifest, MutableMapping):
+                    encryption_manifest.update(
+                        {
+                            "output_name": encrypted_package_path.name,
+                            "sha256": _hash_file(encrypted_package_path),
+                            "removed_plaintext": removed_plaintext,
+                        }
+                    )
+                if manifest_path:
+                    manifest_path.write_text(
+                        json.dumps(manifest_payload, indent=2, sort_keys=True),
+                        encoding="utf-8",
+                    )
+
         if settings.cleanup_staging:
             shutil.rmtree(staging_dir, ignore_errors=True)
             staging_dir_on_disk = None
             manifest_on_disk = None
             log_on_disk = None
+    elif settings.encryption and settings.encryption.enabled:
+        raise ValueError("Encryption requires compression to be enabled.")
 
     return OfflineRunnerResult(
         config=config,
@@ -1301,6 +1590,9 @@ def execute_config(
         package_path=package_path,
         files=tuple(files),
         timestamp=run_timestamp,
+        encrypted_package_path=encrypted_package_path,
+        unencrypted_package_path=unencrypted_package_path,
+        encryption_payload=encryption_payload_result,
     )
 
 
@@ -1316,10 +1608,13 @@ def execute_config_path(
 
 
 __all__ = [
+    "ENCRYPTED_PACKAGE_SCHEMA",
+    "ENCRYPTION_KEYSET_SCHEMA",
     "CONFIG_SCHEMA",
     "MANIFEST_SCHEMA",
     "CollectedFile",
     "OfflineCollectionSource",
+    "OfflineEncryptionSettings",
     "OfflineRunnerConfig",
     "OfflineRunnerProfile",
     "OfflineRunnerResult",
