@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
+
+using CommunityToolkit.Mvvm.ComponentModel;
 
 using Xunit;
 
@@ -299,6 +302,176 @@ public class RunProfilesViewModelTests
         {
             File.Delete(baseline);
         }
+    }
+
+    [Fact]
+    public void Blank_schedule_cards_remain_optional_until_edited()
+    {
+        var baseline = Path.GetTempFileName();
+
+        try
+        {
+            var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+
+            viewModel.Sources[0].Path = baseline;
+            viewModel.AddScheduleCommand.Execute(null);
+
+            var schedule = Assert.Single(viewModel.Schedules);
+            schedule.IsBlank.Should().BeTrue();
+            schedule.Error.Should().BeNull();
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
+    public void Partially_filled_schedule_cards_surface_required_errors()
+    {
+        var baseline = Path.GetTempFileName();
+
+        try
+        {
+            var viewModel = new RunProfilesViewModel(new FakeDriftbusterService())
+            {
+                ProfileName = "nightly",
+            };
+
+            viewModel.Sources[0].Path = baseline;
+            viewModel.AddScheduleCommand.Execute(null);
+
+            var schedule = Assert.Single(viewModel.Schedules);
+            schedule.Profile = string.Empty;
+
+            schedule.Name = "nightly";
+            schedule.Error.Should().Be("Schedule profile is required.");
+
+            schedule.Profile = "nightly";
+            schedule.Error.Should().Be("Schedule interval is required.");
+
+            schedule.Every = "24h";
+            schedule.Error.Should().BeNull();
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
+    public void Schedule_window_fields_require_pairs_and_timezone()
+    {
+        var baseline = Path.GetTempFileName();
+
+        try
+        {
+            var viewModel = new RunProfilesViewModel(new FakeDriftbusterService())
+            {
+                ProfileName = "nightly",
+            };
+
+            viewModel.Sources[0].Path = baseline;
+            viewModel.AddScheduleCommand.Execute(null);
+
+            var schedule = Assert.Single(viewModel.Schedules);
+            schedule.Name = "nightly";
+            schedule.Profile = "nightly";
+            schedule.Every = "24h";
+
+            schedule.WindowStart = "08:00";
+            schedule.Error.Should().Be("Specify both window start and end times.");
+
+            schedule.WindowEnd = "17:00";
+            schedule.Error.Should().Be("Specify a timezone when defining a window.");
+
+            schedule.WindowTimezone = "UTC";
+            schedule.Error.Should().BeNull();
+        }
+        finally
+        {
+            File.Delete(baseline);
+        }
+    }
+
+    [Fact]
+    public void Schedule_definition_trims_window_values()
+    {
+        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+        viewModel.AddScheduleCommand.Execute(null);
+
+        var schedule = Assert.Single(viewModel.Schedules);
+        schedule.Name = " nightly ";
+        schedule.Profile = " daily ";
+        schedule.Every = " 24h ";
+        schedule.WindowStart = " 08:00 ";
+        schedule.WindowEnd = " 17:00 ";
+        schedule.WindowTimezone = " UTC ";
+
+        var definition = schedule.ToDefinition();
+        definition.Window.Should().NotBeNull();
+        definition.Window!.Start.Should().Be("08:00");
+        definition.Window.End.Should().Be("17:00");
+        definition.Window.Timezone.Should().Be("UTC");
+    }
+
+    [Fact]
+    public void Metadata_add_command_revalidates_schedule_entries()
+    {
+        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+        viewModel.AddScheduleCommand.Execute(null);
+
+        var schedule = Assert.Single(viewModel.Schedules);
+        schedule.Error.Should().BeNull();
+
+        schedule.AddMetadataCommand.Execute(null);
+        var metadata = schedule.Metadata.Should().ContainSingle().Subject;
+
+        metadata.Key = "Environment";
+        schedule.Error.Should().Be("Schedule name is required.");
+    }
+
+    [Fact]
+    public void Removing_metadata_entries_clears_errors_and_detaches_listeners()
+    {
+        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+        viewModel.AddScheduleCommand.Execute(null);
+
+        var schedule = Assert.Single(viewModel.Schedules);
+        schedule.AddMetadataCommand.Execute(null);
+        var entry = schedule.Metadata.Should().ContainSingle().Subject;
+
+        metadata_Key_causes_error();
+
+        schedule.RemoveMetadataCommand.Execute(entry);
+        schedule.Error.Should().BeNull();
+
+        var propertyChangedField = typeof(ObservableObject)
+            .GetField("PropertyChanged", BindingFlags.Instance | BindingFlags.NonPublic);
+        var invocationList = (propertyChangedField?.GetValue(entry) as MulticastDelegate)?.GetInvocationList() ?? Array.Empty<Delegate>();
+        invocationList.Should().NotContain(handler => handler.Method.Name == "OnMetadataEntryPropertyChanged");
+
+        void metadata_Key_causes_error()
+        {
+            entry.Key = "Environment";
+            schedule.Error.Should().Be("Schedule name is required.");
+        }
+    }
+
+    [Fact]
+    public void Tags_are_trimmed_and_deduplicated_in_definitions()
+    {
+        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
+        viewModel.AddScheduleCommand.Execute(null);
+
+        var schedule = Assert.Single(viewModel.Schedules);
+        schedule.Name = "nightly";
+        schedule.Profile = "nightly";
+        schedule.Every = "24h";
+        schedule.TagsText = "prod; Prod , staging\n staging ";
+
+        var definition = schedule.ToDefinition();
+        definition.Tags.Should().BeEquivalentTo(new[] { "prod", "staging" });
     }
 
     [Fact]

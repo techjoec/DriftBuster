@@ -45,17 +45,17 @@ Schema reference
 **ACCEPT GATES:** New tests pass under the same coverage command as A1; saved transcripts in `artifacts/logs/gui-validation/` reference the added suites; coverage for `RunProfilesViewModel` schedule branches rises above the current baseline.
 
 **REQUIRED RELATED WORK:**
-- [ ] 2.1 Verify `ScheduleEntry.IsBlank` treats untouched cards as optional `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:984`.
-  - [ ] 2.1.1 Add unit tests asserting blank schedules remain error-free after validation in `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
-  - [ ] 2.1.2 Confirm partially-filled cards surface required-field errors once any value is provided `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
-- [ ] 2.2 Cover schedule window/timezone combinations `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:791`.
-  - [ ] 2.2.1 Add tests for missing start/end pairs and timezone enforcement in `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
-  - [ ] 2.2.2 Validate trimmed window values land in `ScheduleDefinition.Window` via `ToDefinition()` `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
-- [ ] 2.3 Exercise metadata commands triggering revalidation `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:1050`.
-  - [ ] 2.3.1 Ensure `AddMetadataCommand` registers change handlers and re-validates schedules in `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
-  - [ ] 2.3.2 Confirm removing metadata updates error state and unhooks listeners `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
-- [ ] 2.4 Lock in tag parsing deduplication for schedule cards `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:1117`.
-  - [ ] 2.4.1 Add tests ensuring mixed separators collapse into distinct, trimmed tags during `ToDefinition()` `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
+- [x] 2.1 Verify `ScheduleEntry.IsBlank` treats untouched cards as optional `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:984`.
+  - [x] 2.1.1 Add unit tests asserting blank schedules remain error-free after validation in `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
+  - [x] 2.1.2 Confirm partially-filled cards surface required-field errors once any value is provided `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
+- [x] 2.2 Cover schedule window/timezone combinations `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:791`.
+  - [x] 2.2.1 Add tests for missing start/end pairs and timezone enforcement in `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
+  - [x] 2.2.2 Validate trimmed window values land in `ScheduleDefinition.Window` via `ToDefinition()` `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
+- [x] 2.3 Exercise metadata commands triggering revalidation `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:1050`.
+  - [x] 2.3.1 Ensure `AddMetadataCommand` registers change handlers and re-validates schedules in `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
+  - [x] 2.3.2 Confirm removing metadata updates error state and unhooks listeners `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
+- [x] 2.4 Lock in tag parsing deduplication for schedule cards `gui/DriftBuster.Gui/ViewModels/RunProfilesViewModel.cs:1117`.
+  - [x] 2.4.1 Add tests ensuring mixed separators collapse into distinct, trimmed tags during `ToDefinition()` `gui/DriftBuster.Gui.Tests/ViewModels/RunProfilesViewModelTests.cs`.
 
 # End of priority queue
 <!-- PR prepared: 2025-02-14T18:45:00Z -->
