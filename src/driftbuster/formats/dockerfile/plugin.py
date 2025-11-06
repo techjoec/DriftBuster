@@ -77,4 +77,3 @@ class DockerfilePlugin:
 
 
 register(DockerfilePlugin())
-

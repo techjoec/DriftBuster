@@ -88,7 +88,9 @@ class _WinRegBackend(_Backend):
             reg.CloseKey(handle)
         return results
 
-    def enum_values(self, hive: str, path: str, view: Optional[str]) -> List[Tuple[str, object]]:  # pragma: no cover - integration on Windows only
+    def enum_values(
+        self, hive: str, path: str, view: Optional[str]
+    ) -> List[Tuple[str, object]]:  # pragma: no cover - integration on Windows only
         reg = self._reg
         try:
             handle = self._open(hive, path, view)

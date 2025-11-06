@@ -1226,5 +1226,4 @@ class XmlPlugin:
         )
 
 
-
 register(XmlPlugin())

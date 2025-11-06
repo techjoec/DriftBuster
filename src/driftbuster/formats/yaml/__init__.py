@@ -3,4 +3,3 @@
 from .plugin import YamlPlugin
 
 __all__ = ["YamlPlugin"]
-

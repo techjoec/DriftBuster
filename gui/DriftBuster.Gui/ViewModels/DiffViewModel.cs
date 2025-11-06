@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DriftBuster.Gui.ViewModels
 {
-    public partial class DiffViewModel : ObservableObject
+    public partial class DiffViewModel : ObservableObject, IDisposable
     {
         private const int MaxVersions = 5;
 
@@ -33,6 +33,7 @@ namespace DriftBuster.Gui.ViewModels
         private static readonly EventId RawPayloadRejectedEventId = new(2102, "DiffPlannerRawPayloadRejected");
         private bool _suppressMruSelection;
         private bool _updatingBaseline;
+        private bool _disposed;
 
         public ObservableCollection<DiffInput> Inputs { get; } = new();
         public ObservableCollection<DiffComparisonView> Comparisons { get; } = new();
@@ -812,6 +813,18 @@ namespace DriftBuster.Gui.ViewModels
             public int RawLength { get; init; }
 
             public int SanitizedLength { get; init; }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _mruEntries.CollectionChanged -= (_, _) => OnPropertyChanged(nameof(HasMruEntries));
+            Inputs.CollectionChanged -= OnInputsChanged;
+            _disposed = true;
         }
     }
 }

@@ -100,18 +100,32 @@ def load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
     if _RULE_CACHE is not None and _RULE_VERSION is not None and _RULE_LOADED is not None:
         return _RULE_CACHE, _RULE_VERSION, _RULE_LOADED
 
+    # Try resources API first, but fall back to Path-based loading for editable installs
+    payload = None
     try:
         resource = resources.files(__package__).joinpath(SECRET_RULES_RESOURCE)
-    except FileNotFoundError:
-        _RULE_CACHE = ()
-        _RULE_VERSION = "none"
-        _RULE_LOADED = False
-        return _RULE_CACHE, _RULE_VERSION, _RULE_LOADED
+        # Check if resource exists (may not have is_file in mocked contexts)
+        try:
+            if hasattr(resource, 'is_file') and not resource.is_file():
+                raise FileNotFoundError("Resource not available via importlib")
+        except AttributeError:
+            pass  # is_file not available, try to open anyway
 
-    try:
+        # Try to open via resources API
         with resource.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
-    except FileNotFoundError:
+    except (FileNotFoundError, AttributeError, OSError):
+        # Fallback: check alongside this module file for editable installs
+        try:
+            module_dir = Path(__file__).parent
+            resource_path = module_dir / SECRET_RULES_RESOURCE
+            if resource_path.is_file():
+                with open(resource_path, "r", encoding="utf-8") as handle:
+                    payload = json.load(handle)
+        except (FileNotFoundError, OSError):
+            pass
+
+    if payload is None:
         _RULE_CACHE = ()
         _RULE_VERSION = "none"
         _RULE_LOADED = False

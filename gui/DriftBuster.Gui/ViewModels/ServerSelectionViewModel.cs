@@ -279,7 +279,7 @@ namespace DriftBuster.Gui.ViewModels
         }
     }
 
-    public sealed partial class ServerSelectionViewModel : ObservableObject
+    public sealed partial class ServerSelectionViewModel : ObservableObject, IDisposable
     {
         internal const string DefaultRootPath = "C:\\Program Files";
 
@@ -306,6 +306,7 @@ namespace DriftBuster.Gui.ViewModels
         private readonly ILogger<ServerSelectionViewModel> _logger;
         private readonly PerformanceProfile _performanceProfile;
         private static readonly EventId DrilldownTelemetryEventId = new(1001, "DrilldownTelemetry");
+        private bool _disposed;
 
         private const int MaxActivityItems = 200;
 
@@ -1614,5 +1615,18 @@ namespace DriftBuster.Gui.ViewModels
             string Label,
             bool IsEnabled,
             bool HasDrilldown);
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            CatalogViewModel.PropertyChanged -= OnCatalogPropertyChanged;
+            _runGate.Dispose();
+            _runCancellation?.Dispose();
+            _disposed = true;
+        }
     }
 }

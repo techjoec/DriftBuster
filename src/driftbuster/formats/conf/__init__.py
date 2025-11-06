@@ -3,4 +3,3 @@
 from .plugin import ConfPlugin
 
 __all__ = ["ConfPlugin"]
-

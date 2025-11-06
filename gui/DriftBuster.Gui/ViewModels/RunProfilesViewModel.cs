@@ -17,10 +17,11 @@ using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.ViewModels;
 
-public partial class RunProfilesViewModel : ObservableObject
+public partial class RunProfilesViewModel : ObservableObject, IDisposable
 {
     private readonly IDriftbusterService _service;
     private readonly ObservableCollection<string> _profileSuggestions = new();
+    private bool _disposed;
 
     internal Func<ProcessStartInfo, Process?>? ProcessStarterOverride { get; set; }
 
@@ -1208,5 +1209,18 @@ public partial class RunProfilesViewModel : ObservableObject
             var formatted = size.ToString("N0", CultureInfo.InvariantCulture);
             return $"{formatted} bytes";
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        RunResults.CollectionChanged -= OnRunResultsChanged;
+        Schedules.CollectionChanged -= OnSchedulesCollectionChanged;
+        Profiles.CollectionChanged -= OnProfilesCollectionChanged;
+        _disposed = true;
     }
 }

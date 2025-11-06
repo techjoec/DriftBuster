@@ -241,11 +241,15 @@ public sealed class ServerSelectionViewTests
         harness.LastData.Should().NotBeNull();
         harness.LastEffects.Should().Be(DragDropEffects.Move);
 
-#pragma warning disable 618
-        harness.LastData!.Contains("driftbuster/server-slot").Should().BeTrue();
-        harness.LastData!.Get("driftbuster/server-slot").Should().Be(slotViewModel.HostId);
-        harness.LastData.Get(DataFormats.Text).Should().Be(slotViewModel.Label);
-#pragma warning restore 618
+        var serverSlotFormat = DataFormat.CreateStringPlatformFormat("driftbuster/server-slot");
+        harness.LastData!.Formats.Should().Contain(f => f.Identifier == serverSlotFormat.Identifier);
+        harness.LastData.Formats.Should().Contain(f => f.Identifier == DataFormat.Text.Identifier);
+
+        var serverSlotItem = harness.LastData.Items.First(i => i.Formats.Any(f => f.Identifier == serverSlotFormat.Identifier));
+        serverSlotItem.TryGetRaw(serverSlotFormat).Should().Be(slotViewModel.HostId);
+
+        var textItem = harness.LastData.Items.First(i => i.Formats.Any(f => f.Identifier == DataFormat.Text.Identifier));
+        textItem.TryGetRaw(DataFormat.Text).Should().Be(slotViewModel.Label);
 
         harness.Complete(DragDropEffects.Move);
         await invocation;
@@ -315,11 +319,10 @@ public sealed class ServerSelectionViewTests
         targetCard.Measure(layoutSize);
         targetCard.Arrange(new Rect(layoutSize));
 
-#pragma warning disable 618
-        var data = new DataObject();
-        data.Set("driftbuster/server-slot", sourceSlot.HostId);
-        data.Set(DataFormats.Text, sourceSlot.Label);
-#pragma warning restore 618
+        var serverSlotFormat = DataFormat.CreateStringPlatformFormat("driftbuster/server-slot");
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.Create(serverSlotFormat, sourceSlot.HostId));
+        data.Add(DataTransferItem.CreateText(sourceSlot.Label));
 
         var dropPoint = new Point(layoutSize.Width / 2, layoutSize.Height * 0.75);
         var dropArgs = new DragEventArgs(DragDrop.DropEvent, data, targetCard, dropPoint, KeyModifiers.None);
@@ -365,14 +368,14 @@ public sealed class ServerSelectionViewTests
 
         public PointerEventArgs? LastArgs { get; private set; }
 
-        public DataObject? LastData { get; private set; }
+        public IDataTransfer? LastData { get; private set; }
 
         public DragDropEffects? LastEffects { get; private set; }
 
-        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
         {
             LastArgs = args;
-            LastData = data as DataObject;
+            LastData = data;
             LastEffects = effects;
             return _completion.Task;
         }
@@ -389,7 +392,7 @@ public sealed class ServerSelectionViewTests
             _exception = exception;
         }
 
-        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
         {
             return Task.FromException<DragDropEffects>(_exception);
         }

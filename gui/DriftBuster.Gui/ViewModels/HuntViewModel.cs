@@ -12,9 +12,10 @@ using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.ViewModels
 {
-    public partial class HuntViewModel : ObservableObject
+    public partial class HuntViewModel : ObservableObject, IDisposable
     {
         private readonly IDriftbusterService _service;
+        private bool _disposed;
 
         public ObservableCollection<HuntHitView> Hits { get; } = new();
 
@@ -211,6 +212,17 @@ namespace DriftBuster.Gui.ViewModels
 
                 return text[..limit] + "…";
             }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            Hits.CollectionChanged -= OnHitsChanged;
+            _disposed = true;
         }
     }
 }

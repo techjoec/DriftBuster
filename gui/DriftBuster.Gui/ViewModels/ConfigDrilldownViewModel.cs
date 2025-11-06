@@ -60,9 +60,10 @@ namespace DriftBuster.Gui.ViewModels
             : Detail.LastSeen.ToLocalTime().ToString("g");
     }
 
-    public sealed partial class ConfigDrilldownViewModel : ObservableObject
+    public sealed partial class ConfigDrilldownViewModel : ObservableObject, IDisposable
     {
         private readonly ConfigDrilldown _source;
+        private bool _disposed;
 
         public ConfigDrilldownViewModel(ConfigDrilldown source)
         {
@@ -391,6 +392,17 @@ namespace DriftBuster.Gui.ViewModels
         {
             Html,
             Json,
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            Servers.CollectionChanged -= OnServersCollectionChanged;
+            _disposed = true;
         }
     }
 

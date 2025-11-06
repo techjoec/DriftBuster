@@ -127,7 +127,10 @@ class TomlPlugin:
         if re.search(r",\s*\]", text):
             review_reasons.append("Array with trailing comma before closing bracket")
         # lines that look like bare keys without '=' (risky, keep conservative)
-        bare_key_lines = [ln for ln in text.splitlines()[:500] if ln.strip() and not ln.lstrip().startswith(('#',';','[')) and ('=' not in ln) and (':' not in ln)]
+        bare_key_lines = [
+            ln for ln in text.splitlines()[:500]
+            if ln.strip() and not ln.lstrip().startswith(('#', ';', '[')) and ('=' not in ln) and (':' not in ln)
+        ]
         if len(bare_key_lines) >= 3 and has_table_headers is False:
             review_reasons.append("Multiple bare key lines without '=' suggest malformed TOML")
 

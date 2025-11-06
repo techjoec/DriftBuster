@@ -135,4 +135,3 @@ def write_json_lines(
     ):
         stream.write(json.dumps(record, ensure_ascii=False, sort_keys=sort_keys))
         stream.write("\n")
-

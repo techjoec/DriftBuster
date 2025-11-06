@@ -119,7 +119,9 @@ def _build_schedule_specs(
     *,
     base_dir: Path | None,
 ) -> list[ScheduleSpec]:
-    loader = lambda name: run_profiles.load_profile(name, base_dir=base_dir)
+    def loader(name):
+        return run_profiles.load_profile(name, base_dir=base_dir)
+
     specs: list[ScheduleSpec] = []
     for entry in entries:
         try:

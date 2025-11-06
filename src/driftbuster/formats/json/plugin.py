@@ -323,7 +323,7 @@ class JsonPlugin:
         metadata: Dict[str, Any] = {}
         if isinstance(parsed, dict):
             metadata["top_level_type"] = "object"
-            metadata["top_level_keys"] = list(list(parsed.keys())[:5])
+            metadata["top_level_keys"] = list(parsed.keys())[:5]
         elif isinstance(parsed, list):
             metadata["top_level_type"] = "array"
             if parsed:

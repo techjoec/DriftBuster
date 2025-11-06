@@ -72,6 +72,8 @@ def test_load_secret_rules_handles_missing_resource(monkeypatch: pytest.MonkeyPa
             raise FileNotFoundError
 
     monkeypatch.setattr(offline_runner.resources, "files", lambda _pkg: MissingResource())
+    # Also mock __file__ to prevent fallback to filesystem
+    monkeypatch.setattr(offline_runner, "__file__", "/nonexistent/offline_runner.py")
 
     rules, version, loaded = _load_secret_rules()
 
@@ -92,6 +94,8 @@ def test_load_secret_rules_handles_missing_file(monkeypatch: pytest.MonkeyPatch)
             raise FileNotFoundError
 
     monkeypatch.setattr(offline_runner.resources, "files", lambda _pkg: NoFile())
+    # Also mock __file__ to prevent fallback to filesystem
+    monkeypatch.setattr(offline_runner, "__file__", "/nonexistent/offline_runner.py")
 
     rules, version, loaded = _load_secret_rules()
 

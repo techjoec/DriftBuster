@@ -135,7 +135,7 @@ class BinaryHybridPlugin:
         key_candidates = [line.split(":", 1)[0].strip() for line in block.splitlines() if ":" in line]
         metadata = {
             "front_matter_keys": sorted({key for key in key_candidates if key}),
-            "has_body": bool(working_text[match.end() :].strip()),
+            "has_body": bool(working_text[match.end():].strip()),
         }
         reasons = [
             "Detected YAML front matter fenced with '---' markers",

@@ -195,7 +195,7 @@ def _validate_sha256_file(path: Path) -> str | None:
         return None
 
     target = parts[1] if len(parts) > 1 else "<unknown>"
-    return f"Checksum digest {digest[:8]}… recorded for {target}" 
+    return f"Checksum digest {digest[:8]}… recorded for {target}"
 
 
 def _evaluate_smoke_report(path: Path) -> Sequence[str]:

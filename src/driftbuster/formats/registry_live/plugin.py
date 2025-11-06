@@ -103,7 +103,12 @@ class RegistryLivePlugin:
                     plugin_name=self.name,
                     format_name="registry-live",
                     variant="scan-definition",
-                    confidence=min(0.9, 0.65 + 0.05 * (1 if metadata.get("token") else 0) + 0.05 * (1 if metadata.get("keywords") else 0) + 0.05 * (1 if metadata.get("patterns") else 0)),
+                    confidence=min(
+                        0.9,
+                        0.65 + 0.05 * (1 if metadata.get("token") else 0)
+                        + 0.05 * (1 if metadata.get("keywords") else 0)
+                        + 0.05 * (1 if metadata.get("patterns") else 0)
+                    ),
                     reasons=reasons or ["JSON manifest indicates registry live scan"],
                     metadata=metadata or None,
                 )
@@ -137,4 +142,3 @@ class RegistryLivePlugin:
 
 
 register(RegistryLivePlugin())
-

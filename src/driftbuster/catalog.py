@@ -116,15 +116,15 @@ DETECTION_CATALOG = DetectionCatalog(
             priority=10,
             default_severity="high",
             extensions=(".reg",),
-            filename_patterns=("(?i)^.*\.reg$",),
+            filename_patterns=(r"(?i)^.*\.reg$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
-                    pattern="^(Windows Registry Editor Version (4|5)\.00|REGEDIT4)\r?\n",
+                    pattern=r"^(Windows Registry Editor Version (4|5)\.00|REGEDIT4)\r?\n",
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\[HKEY_(LOCAL_MACHINE|CURRENT_USER|CLASSES_ROOT|USERS|CURRENT_CONFIG)\\.+\]$",
+                    pattern=r"^\[HKEY_(LOCAL_MACHINE|CURRENT_USER|CLASSES_ROOT|USERS|CURRENT_CONFIG)\\.+\]$",
                 ),
             ),
             mime_hints=("application/regedit", "text/plain"),
@@ -152,8 +152,8 @@ DETECTION_CATALOG = DetectionCatalog(
             extensions=(".json", ".yml", ".yaml"),
             default_variant="scan-definition",
             filename_patterns=(
-                "(?i)^.*\.(regscan\.json|registry\.json)$",
-                "(?i)^(registry|reg).*\.(json|ya?ml)$",
+                r"(?i)^.*\.(regscan\.json|registry\.json)$",
+                r"(?i)^(registry|reg).*\.(json|ya?ml)$",
             ),
             content_signatures=(
                 ContentSignature(
@@ -194,10 +194,10 @@ DETECTION_CATALOG = DetectionCatalog(
             extensions=(".config",),
             default_variant="web-or-app-config",
             aliases=("structured-config",),
-            filename_patterns=("(?i)^.*\.(config)$", "(?i)^(app|web|machine)\.config$"),
+            filename_patterns=(r"(?i)^.*\.(config)$", r"(?i)^(app|web|machine)\.config$"),
             content_signatures=(
-                ContentSignature(type="contains_regex", pattern="<configuration(\s|>)"),
-                ContentSignature(type="contains_regex", pattern="<(appSettings|runtime|system\.web)(\s|>)"),
+                ContentSignature(type="contains_regex", pattern=r"<configuration(\s|>)"),
+                ContentSignature(type="contains_regex", pattern=r"<(appSettings|runtime|system\.web)(\s|>)"),
             ),
             mime_hints=("application/xml", "text/xml"),
             examples=(
@@ -254,7 +254,10 @@ DETECTION_CATALOG = DetectionCatalog(
                     aliases=("sample",),
                 ),
             ),
-            severity_hint="Application configuration files expose secrets, connection strings, and runtime policy toggles that impact production systems.",
+            severity_hint=(
+                "Application configuration files expose secrets, connection strings, and runtime policy toggles "
+                "that impact production systems."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="structured-config-rotate-secrets",
@@ -281,7 +284,7 @@ DETECTION_CATALOG = DetectionCatalog(
             extensions=(".xml", ".manifest", ".resx", ".xaml"),
             default_variant="generic",
             aliases=("xml-generic",),
-            filename_patterns=("(?i)^.*\.(xml|manifest|resx|xaml)$",),
+            filename_patterns=(r"(?i)^.*\.(xml|manifest|resx|xaml)$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
@@ -289,12 +292,15 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\s*<[^!?][\w:.-]+(\s|>)",
+                    pattern=r"^\s*<[^!?][\w:.-]+(\s|>)",
                 ),
             ),
             mime_hints=("application/xml", "text/xml"),
             examples=(
-                "<assembly xmlns=\"urn:example:driftbuster:manifest\" xmlns:compat=\"urn:example:driftbuster:compatibility\">...</assembly>",
+                (
+                    "<assembly xmlns=\"urn:example:driftbuster:manifest\" "
+                    "xmlns:compat=\"urn:example:driftbuster:compatibility\">...</assembly>"
+                ),
             ),
             subtypes=(
                 FormatSubtype(
@@ -319,9 +325,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     name="WindowsManifestXml",
                     priority=34,
                     variant="app-manifest-xml",
-                    filename_patterns=("(?i)^.*\.manifest$",),
+                    filename_patterns=(r"(?i)^.*\.manifest$",),
                     content_signatures=(
-                        ContentSignature(type="contains_regex", pattern="<assembly(\s|>)"),
+                        ContentSignature(type="contains_regex", pattern=r"<assembly(\s|>)"),
                         ContentSignature(
                             type="contains_regex",
                             pattern=r'xmlns="urn:schemas-microsoft-com:asm\.v1"',
@@ -333,9 +339,9 @@ DETECTION_CATALOG = DetectionCatalog(
                     name="ResxXml",
                     priority=35,
                     variant="resource-xml",
-                    filename_patterns=("(?i)^.*\.resx$",),
+                    filename_patterns=(r"(?i)^.*\.resx$",),
                     content_signatures=(
-                        ContentSignature(type="contains_regex", pattern="<root(\s|>)"),
+                        ContentSignature(type="contains_regex", pattern=r"<root(\s|>)"),
                         ContentSignature(type="contains_regex", pattern=r'<data\s+name="'),
                     ),
                     severity="medium",
@@ -344,7 +350,7 @@ DETECTION_CATALOG = DetectionCatalog(
                     name="XamlUiXml",
                     priority=36,
                     variant="interface-xml",
-                    filename_patterns=("(?i)^.*\.xaml$",),
+                    filename_patterns=(r"(?i)^.*\.xaml$",),
                     content_signatures=(
                         ContentSignature(
                             type="contains_regex",
@@ -352,7 +358,7 @@ DETECTION_CATALOG = DetectionCatalog(
                         ),
                         ContentSignature(
                             type="contains_regex",
-                            pattern="<(Window|UserControl|Page|Application|ResourceDictionary)(\s|>)",
+                            pattern=r"<(Window|UserControl|Page|Application|ResourceDictionary)(\s|>)",
                         ),
                     ),
                     severity="medium",
@@ -364,18 +370,27 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="medium",
                 ),
             ),
-            severity_hint="Generic XML manifests advertise capabilities, endpoints, and policy grants that can expose infrastructure layout when leaked.",
+            severity_hint=(
+                "Generic XML manifests advertise capabilities, endpoints, and policy grants that can expose "
+                "infrastructure layout when leaked."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="xml-provenance-review",
                     category="review",
-                    summary="Confirm manifest namespaces and deployment identifiers map to approved environments before sharing samples externally.",
+                    summary=(
+                        "Confirm manifest namespaces and deployment identifiers map to approved environments "
+                        "before sharing samples externally."
+                    ),
                     documentation="docs/detection-types.md#xml",
                 ),
                 RemediationHint(
                     id="xml-sanitise-identifiers",
                     category="sanitisation",
-                    summary="Strip unique identifiers or replace them with anonymised tokens prior to archiving manifests in shared stores.",
+                    summary=(
+                        "Strip unique identifiers or replace them with anonymised tokens prior to archiving manifests "
+                        "in shared stores."
+                    ),
                     documentation="docs/detection-types.md#xml",
                 ),
             ),
@@ -390,12 +405,12 @@ DETECTION_CATALOG = DetectionCatalog(
             default_severity="medium",
             extensions=(".json", ".jsonc"),
             default_variant="generic",
-            filename_patterns=("(?i)^.*\.(json|jsonc)$",),
+            filename_patterns=(r"(?i)^.*\.(json|jsonc)$",),
             content_signatures=(
-                ContentSignature(type="starts_with_regex", pattern="^\s*[\[{]"),
+                ContentSignature(type="starts_with_regex", pattern=r"^\s*[\[{]"),
                 ContentSignature(
                     type="not_contains_regex",
-                    pattern="\/\/|/\*",
+                    pattern=r"\/\/|/\*",
                     optional=True,
                 ),
                 ContentSignature(type="json_parse_probe", max_bytes=2_097_152),
@@ -406,11 +421,11 @@ DETECTION_CATALOG = DetectionCatalog(
                     name="JsonWithComments",
                     priority=41,
                     variant="jsonc",
-                    filename_patterns=("(?i)^.*\.jsonc$",),
+                    filename_patterns=(r"(?i)^.*\.jsonc$",),
                     content_signatures=(
                         ContentSignature(
                             type="contains_regex",
-                            pattern="(^|\n)\s*(\/\/|/\*)",
+                            pattern=r"(^|\n)\s*(\/\/|/\*)",
                         ),
                     ),
                     mime_hints=("application/json", "text/plain"),
@@ -419,15 +434,15 @@ DETECTION_CATALOG = DetectionCatalog(
                     name="StructuredSettingsJson",
                     priority=42,
                     variant="structured-settings-json",
-                    filename_patterns=("(?i)^appsettings(\.[A-Za-z0-9_-]+)?\.json$",),
+                    filename_patterns=(r"(?i)^appsettings(\.[A-Za-z0-9_-]+)?\.json$",),
                     content_signatures=(
                         ContentSignature(
                             type="contains_regex",
-                            pattern='"Logging"\s*:\s*\{',
+                            pattern=r'"Logging"\s*:\s*\{',
                         ),
                         ContentSignature(
                             type="contains_regex",
-                            pattern='"ConnectionStrings"\s*:\s*\{',
+                            pattern=r'"ConnectionStrings"\s*:\s*\{',
                             optional=True,
                         ),
                     ),
@@ -444,7 +459,10 @@ DETECTION_CATALOG = DetectionCatalog(
                 RemediationHint(
                     id="json-flag-review",
                     category="review",
-                    summary="Audit feature toggles and environment overrides before applying configs to ensure they respect approved deployment policies.",
+                    summary=(
+                        "Audit feature toggles and environment overrides before applying configs to ensure they respect "
+                        "approved deployment policies."
+                    ),
                     documentation="docs/detection-types.md#json",
                 ),
             ),
@@ -459,16 +477,16 @@ DETECTION_CATALOG = DetectionCatalog(
             default_severity="medium",
             extensions=(".yml", ".yaml"),
             default_variant="generic",
-            filename_patterns=("(?i)^.*\.(ya?ml)$",),
+            filename_patterns=(r"(?i)^.*\.(ya?ml)$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
-                    pattern="^\s*---\s*$",
+                    pattern=r"^\s*---\s*$",
                     optional=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[ \\t]*[A-Za-z0-9_\\-\"']+[ \\t]*:(\\s|$)",
+                    pattern=r"^[ \t]*[A-Za-z0-9_\-\"']+[ \t]*:(\s|$)",
                     multiline=True,
                 ),
             ),
@@ -481,18 +499,27 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="medium",
                 ),
             ),
-            severity_hint="YAML manifests encode infrastructure state, secrets references, and rollout policies that leak environment topology.",
+            severity_hint=(
+                "YAML manifests encode infrastructure state, secrets references, and rollout policies that leak "
+                "environment topology."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="yaml-secret-reference-audit",
                     category="review",
-                    summary="Audit Secret and ConfigMap references before distributing manifests and scrub environment identifiers when possible.",
+                    summary=(
+                        "Audit Secret and ConfigMap references before distributing manifests and scrub environment "
+                        "identifiers when possible."
+                    ),
                     documentation="docs/detection-types.md#yaml",
                 ),
                 RemediationHint(
                     id="yaml-deployment-scope",
                     category="hardening",
-                    summary="Verify namespace and replica settings to prevent accidental cross-environment rollouts when replaying manifests.",
+                    summary=(
+                        "Verify namespace and replica settings to prevent accidental cross-environment rollouts "
+                        "when replaying manifests."
+                    ),
                     documentation="docs/detection-types.md#yaml",
                 ),
             ),
@@ -507,16 +534,16 @@ DETECTION_CATALOG = DetectionCatalog(
             default_severity="medium",
             extensions=(".toml",),
             default_variant="generic",
-            filename_patterns=("(?i)^.*\.toml$",),
+            filename_patterns=(r"(?i)^.*\.toml$",),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\s*\[[A-Za-z0-9_.\-]+\]\s*$",
+                    pattern=r"^\s*\[[A-Za-z0-9_.\-]+\]\s*$",
                     multiline=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[A-Za-z0-9_\-]+\s*=\s*[^\n]+$",
+                    pattern=r"^[A-Za-z0-9_\-]+\s*=\s*[^\n]+$",
                     multiline=True,
                 ),
             ),
@@ -532,23 +559,29 @@ DETECTION_CATALOG = DetectionCatalog(
                     name="PackageManifestToml",
                     priority=62,
                     variant="package-manifest-toml",
-                    filename_patterns=("^Cargo\.toml$",),
+                    filename_patterns=(r"^Cargo\.toml$",),
                     severity="medium",
                 ),
                 FormatSubtype(
                     name="ProjectSettingsToml",
                     priority=63,
                     variant="project-settings-toml",
-                    filename_patterns=("^pyproject\.toml$",),
+                    filename_patterns=(r"^pyproject\.toml$",),
                     severity="medium",
                 ),
             ),
-            severity_hint="TOML project manifests reveal dependency feeds, signing requirements, and build output paths that identify release pipelines.",
+            severity_hint=(
+                "TOML project manifests reveal dependency feeds, signing requirements, and build output paths "
+                "that identify release pipelines."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="toml-feed-audit",
                     category="review",
-                    summary="Review [[tool]] sections for internal registries or credentials and relocate them to secure secret stores before sharing manifests.",
+                    summary=(
+                        "Review [[tool]] sections for internal registries or credentials and relocate them to secure "
+                        "secret stores before sharing manifests."
+                    ),
                     documentation="docs/detection-types.md#toml",
                 ),
                 RemediationHint(
@@ -570,16 +603,16 @@ DETECTION_CATALOG = DetectionCatalog(
             extensions=(".ini", ".cfg", ".cnf"),
             default_variant="sectioned-ini",
             aliases=("env-file", "ini-json-hybrid", "hcl"),
-            filename_patterns=("(?i)^.*\.(ini|cfg|cnf)$", "(?i)^desktop\.ini$"),
+            filename_patterns=(r"(?i)^.*\.(ini|cfg|cnf)$", r"(?i)^desktop\.ini$"),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^\s*\[[^\]\n]+\]\s*$",
+                    pattern=r"^\s*\[[^\]\n]+\]\s*$",
                     multiline=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[A-Za-z0-9_.\-]+\s*=\s*[^\n]*$",
+                    pattern=r"^[A-Za-z0-9_.\-]+\s*=\s*[^\n]*$",
                     multiline=True,
                 ),
             ),
@@ -602,7 +635,7 @@ DETECTION_CATALOG = DetectionCatalog(
                     priority=73,
                     variant="desktop-ini",
                     severity="medium",
-                    filename_patterns=("(?i)^desktop\.ini$",),
+                    filename_patterns=(r"(?i)^desktop\.ini$",),
                 ),
                 FormatSubtype(
                     name="IniJsonHybrid",
@@ -624,7 +657,10 @@ DETECTION_CATALOG = DetectionCatalog(
                         RemediationHint(
                             id="ini-dotenv-rotate-secrets",
                             category="secrets",
-                            summary="Rotate keys stored in dotenv files and replace evidence copies with sanitised variants before sharing.",
+                            summary=(
+                                "Rotate keys stored in dotenv files and replace evidence copies with sanitised variants "
+                                "before sharing."
+                            ),
                             documentation="docs/detection-types.md#ini-dotenv",
                         ),
                         RemediationHint(
@@ -642,7 +678,10 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="medium",
                 ),
             ),
-            severity_hint="INI and dotenv style files often embed credentials, tokens, and environment toggles that impact access control immediately.",
+            severity_hint=(
+                "INI and dotenv style files often embed credentials, tokens, and environment toggles "
+                "that impact access control immediately."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="ini-secret-rotation",
@@ -668,22 +707,25 @@ DETECTION_CATALOG = DetectionCatalog(
             default_severity="medium",
             extensions=(".properties",),
             default_variant="java-properties",
-            filename_patterns=("(?i)^.*\.properties$",),
+            filename_patterns=(r"(?i)^.*\.properties$",),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[#!].*$",
+                    pattern=r"^[#!].*$",
                     multiline=True,
                     optional=True,
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^[A-Za-z0-9_.\-]+\s*(=|:)\s*.*$",
+                    pattern=r"^[A-Za-z0-9_.\-]+\s*(=|:)\s*.*$",
                     multiline=True,
                 ),
             ),
             mime_hints=("text/plain",),
-            severity_hint="Java-style properties files concentrate service endpoints, credentials, and feature toggles for entire JVM applications.",
+            severity_hint=(
+                "Java-style properties files concentrate service endpoints, credentials, and feature toggles "
+                "for entire JVM applications."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="properties-credential-scan",
@@ -709,11 +751,11 @@ DETECTION_CATALOG = DetectionCatalog(
             default_severity="high",
             extensions=(".conf",),
             default_variant="directive-conf",
-            filename_patterns=("(?i)^.*\.conf$",),
+            filename_patterns=(r"(?i)^.*\.conf$",),
             content_signatures=(
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^(\s*#|\s*;|\s*[A-Za-z0-9_.\-]+\s+[^\n]+)$",
+                    pattern=r"^(\s*#|\s*;|\s*[A-Za-z0-9_.\-]+\s+[^\n]+)$",
                     multiline=True,
                 ),
             ),
@@ -756,12 +798,18 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="high",
                 ),
             ),
-            severity_hint="Unix configuration files govern listeners, crypto policies, and authentication hooks that immediately influence service exposure.",
+            severity_hint=(
+                "Unix configuration files govern listeners, crypto policies, and authentication hooks "
+                "that immediately influence service exposure."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="unix-conf-hardening",
                     category="hardening",
-                    summary="Review captured directives against hardened baselines and disable permissive modules before redeploying configs.",
+                    summary=(
+                        "Review captured directives against hardened baselines and disable permissive modules "
+                        "before redeploying configs."
+                    ),
                     documentation="docs/detection-types.md#unixconf",
                 ),
                 RemediationHint(
@@ -783,7 +831,7 @@ DETECTION_CATALOG = DetectionCatalog(
             extensions=(".ps1", ".bat", ".cmd", ".vbs"),
             default_variant="generic",
             aliases=("dockerfile",),
-            filename_patterns=("(?i)^.*\.(ps1|bat|cmd|vbs)$",),
+            filename_patterns=(r"(?i)^.*\.(ps1|bat|cmd|vbs)$",),
             content_signatures=(
                 ContentSignature(
                     type="starts_with_regex",
@@ -792,7 +840,7 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
                 ContentSignature(
                     type="contains_regex",
-                    pattern="^(?:@?echo\s+off|set\s+\w+=)",
+                    pattern=r"^(?:@?echo\s+off|set\s+\w+=)",
                     multiline=True,
                     optional=True,
                 ),
@@ -836,7 +884,10 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="high",
                 ),
             ),
-            severity_hint="Script-based configs can execute arbitrary changes, embed credentials, and provision infrastructure when replayed without review.",
+            severity_hint=(
+                "Script-based configs can execute arbitrary changes, embed credentials, and provision infrastructure "
+                "when replayed without review."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="script-config-scope",
@@ -863,7 +914,7 @@ DETECTION_CATALOG = DetectionCatalog(
             extensions=(".sqlite", ".db"),
             default_variant="generic",
             aliases=("embedded-sql", "embedded-sqlite", "sqlite"),
-            filename_patterns=("(?i)^.*\.(sqlite|db)$",),
+            filename_patterns=(r"(?i)^.*\.(sqlite|db)$",),
             content_signatures=(
                 ContentSignature(
                     type="binary_magic",
@@ -872,12 +923,18 @@ DETECTION_CATALOG = DetectionCatalog(
                 ),
             ),
             mime_hints=("application/vnd.sqlite3", "application/octet-stream"),
-            severity_hint="Embedded SQLite databases retain raw operational data, including user records and tokens, making them high-risk evidence.",
+            severity_hint=(
+                "Embedded SQLite databases retain raw operational data, including user records and tokens, "
+                "making them high-risk evidence."
+            ),
             remediation_hints=(
                 RemediationHint(
                     id="embedded-sql-redaction",
                     category="sanitisation",
-                    summary="Mask or drop sensitive rows before distributing captured databases and document transformations in the evidence log.",
+                    summary=(
+                        "Mask or drop sensitive rows before distributing captured databases and document transformations "
+                        "in the evidence log."
+                    ),
                     documentation="docs/detection-types.md#embeddedsqldb",
                 ),
                 RemediationHint(
@@ -899,7 +956,7 @@ DETECTION_CATALOG = DetectionCatalog(
             extensions=(".dat", ".bin"),
             default_variant="generic",
             aliases=("binary",),
-            filename_patterns=("(?i)^.*\.(dat|bin)$",),
+            filename_patterns=(r"(?i)^.*\.(dat|bin)$",),
             content_signatures=(
                 ContentSignature(
                     type="binary_threshold",
@@ -913,7 +970,10 @@ DETECTION_CATALOG = DetectionCatalog(
                 RemediationHint(
                     id="binary-dat-triage",
                     category="review",
-                    summary="Triages samples with dedicated tooling before storing them long term to determine whether further sanitisation is required.",
+                    summary=(
+                        "Triages samples with dedicated tooling before storing them long term to determine whether "
+                        "further sanitisation is required."
+                    ),
                     documentation="docs/detection-types.md#genericbinarydat",
                 ),
                 RemediationHint(
@@ -994,7 +1054,10 @@ FORMAT_SURVEY = FormatSurvey(
             variant="web-or-app-config",
             extensions=(".config",),
             mime_hints=("application/xml",),
-            context="Enterprise XML configuration files (e.g., app.config, web.config, machine.config) used by general web frameworks; detector logs namespace provenance hashes with line numbers for audit trails.",
+            context=(
+                "Enterprise XML configuration files (e.g., app.config, web.config, machine.config) used by general "
+                "web frameworks; detector logs namespace provenance hashes with line numbers for audit trails."
+            ),
             approx_usage_percent=12,
             confidence_model="schema+namespace",
         ),
@@ -1003,7 +1066,10 @@ FORMAT_SURVEY = FormatSurvey(
             variant="generic",
             extensions=(".xml", ".manifest", ".resx", ".xaml"),
             mime_hints=("application/xml", "text/xml"),
-            context="Generic or declarative XML configuration; also includes system manifests, .resx resources, and XAML-style UI files with line-level namespace provenance logging.",
+            context=(
+                "Generic or declarative XML configuration; also includes system manifests, .resx resources, and "
+                "XAML-style UI files with line-level namespace provenance logging."
+            ),
             approx_usage_percent=14,
             confidence_model="doctype+element-scan",
             variants=(

@@ -115,7 +115,8 @@ public class DiffViewModelTests
         using var temp = new TempDirectory();
         var comparison = new DiffComparison
         {
-            From = "left", To = "right",
+            From = "left",
+            To = "right",
             Plan = new DiffPlan(),
             Metadata = new DiffMetadata(),
         };

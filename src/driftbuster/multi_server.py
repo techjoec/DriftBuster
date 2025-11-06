@@ -317,7 +317,10 @@ class MultiServerRunner:
             existing_roots = [root for root in plan.roots if root.exists()]
             if not existing_roots:
                 message = "No accessible roots."
-                host_results.append(self._result_payload(plan, status=_SERVER_STATUS_FAILED, availability=_CONFIG_STATUS_NOT_FOUND, message=message, roots=plan.roots))
+                host_results.append(
+                    self._result_payload(plan, status=_SERVER_STATUS_FAILED, availability=_CONFIG_STATUS_NOT_FOUND,
+                                         message=message, roots=plan.roots)
+                )
                 host_configs[plan.host_id] = {}
                 host_availability[plan.host_id] = _CONFIG_STATUS_NOT_FOUND
                 emit_progress(plan.host_id, _SERVER_STATUS_FAILED, message)
@@ -350,13 +353,19 @@ class MultiServerRunner:
                 emit_progress(plan.host_id, _SERVER_STATUS_SUCCEEDED, status_message)
             except DetectorIOError as error:
                 message = f"Permission denied: {error.path}"
-                host_results.append(self._result_payload(plan, status=_SERVER_STATUS_FAILED, availability=_CONFIG_STATUS_PERMISSION_DENIED, message=message, roots=plan.roots))
+                host_results.append(
+                    self._result_payload(plan, status=_SERVER_STATUS_FAILED, availability=_CONFIG_STATUS_PERMISSION_DENIED,
+                                         message=message, roots=plan.roots)
+                )
                 host_configs[plan.host_id] = {}
                 host_availability[plan.host_id] = _CONFIG_STATUS_PERMISSION_DENIED
                 emit_progress(plan.host_id, _SERVER_STATUS_FAILED, message)
             except Exception as exc:  # pragma: no cover - defensive fallback
                 message = f"Scan failed: {exc}"[:160]
-                host_results.append(self._result_payload(plan, status=_SERVER_STATUS_FAILED, availability=_CONFIG_STATUS_OFFLINE, message=message, roots=plan.roots))
+                host_results.append(
+                    self._result_payload(plan, status=_SERVER_STATUS_FAILED, availability=_CONFIG_STATUS_OFFLINE,
+                                         message=message, roots=plan.roots)
+                )
                 host_configs[plan.host_id] = {}
                 host_availability[plan.host_id] = _CONFIG_STATUS_OFFLINE
                 emit_progress(plan.host_id, _SERVER_STATUS_FAILED, message)
@@ -563,7 +572,7 @@ class MultiServerRunner:
                 # Fallback baseline when preferred host missing the config
                 fallback_host_id = sorted(per_host.keys())[0]
                 baseline_record = per_host[fallback_host_id]
-            
+
             format_id = baseline_record.format_id if baseline_record else next(iter(per_host.values())).format_id
             content_type = baseline_record.content_type if baseline_record else "text"
             present_host_ids = [host_id for host_id in plans_order(plans) if per_host.get(host_id)]
@@ -641,7 +650,10 @@ class MultiServerRunner:
             })
 
             servers: list[Mapping[str, object]] = []
-            chosen_diff_host = baseline_host_id if baseline_host_id in unified_diffs else (present_host_ids[0] if present_host_ids else baseline_host_id)
+            chosen_diff_host = (
+                baseline_host_id if baseline_host_id in unified_diffs
+                else (present_host_ids[0] if present_host_ids else baseline_host_id)
+            )
             for host_id in plans_order(plans):
                 plan = hosts_by_id[host_id]
                 record = per_host.get(host_id)

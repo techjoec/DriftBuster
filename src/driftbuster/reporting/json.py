@@ -13,4 +13,3 @@ from __future__ import annotations
 from .json_lines import iter_json_records, render_json_lines, write_json_lines
 
 __all__ = ["iter_json_records", "render_json_lines", "write_json_lines"]
-

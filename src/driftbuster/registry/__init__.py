@@ -207,4 +207,3 @@ __all__ = [
     "registry_summary",
     "parse_registry_root_descriptor",
 ]
-

@@ -105,7 +105,7 @@ def canonicalise_xml(payload: str) -> str:
     declaration_match = _XML_DECLARATION_PATTERN.match(working)
     if declaration_match:
         xml_declaration = declaration_match.group(0)
-        working = working[declaration_match.end() :].lstrip()
+        working = working[declaration_match.end():].lstrip()
 
     if working.upper().startswith("<!DOCTYPE"):
         end = 0

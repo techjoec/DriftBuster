@@ -212,7 +212,7 @@ public sealed class DriftbusterBackendTests
             var method = typeof(DriftbusterBackend).GetMethod("EnumerateFilesSafely", BindingFlags.NonPublic | BindingFlags.Static);
             Assert.NotNull(method);
 
-            var results = ((IEnumerable<string>)method!.Invoke(null, new object[] { root.FullName, CancellationToken.None })! ).ToArray();
+            var results = ((IEnumerable<string>)method!.Invoke(null, new object[] { root.FullName, CancellationToken.None })!).ToArray();
 
             Assert.Contains(file, results);
         }

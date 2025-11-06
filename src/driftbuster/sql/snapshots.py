@@ -221,4 +221,3 @@ def write_sqlite_snapshot(
     payload = json.dumps(snapshot.to_dict(), indent=2, sort_keys=True)
     destination.write_text(payload, encoding="utf-8")
     return snapshot
-

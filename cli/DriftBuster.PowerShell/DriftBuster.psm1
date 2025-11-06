@@ -5,7 +5,7 @@ $script:BackendVersion = $null
 $script:BackendAssemblyPath = $null
 $script:SerializerOptions = $null
 
-function New-DriftBusterBackendMissingError {
+function Write-DriftBusterBackendMissingError {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -169,7 +169,7 @@ function Get-DriftBusterBackendAssembly {
 
     $candidatePaths = $candidatePaths | Where-Object { $_ } | Select-Object -Unique
     if (-not $candidatePaths) {
-        throw (New-DriftBusterBackendMissingError -SearchedPaths $searchedPaths)
+        throw (Write-DriftBusterBackendMissingError -SearchedPaths $searchedPaths)
     }
 
     $selectedCandidate = $candidatePaths |
@@ -178,7 +178,7 @@ function Get-DriftBusterBackendAssembly {
         Select-Object -First 1
 
     if (-not $selectedCandidate) {
-        throw (New-DriftBusterBackendMissingError -SearchedPaths $candidatePaths)
+        throw (Write-DriftBusterBackendMissingError -SearchedPaths $candidatePaths)
     }
 
     $resolvedCandidate = (Resolve-Path -LiteralPath $selectedCandidate).Path
@@ -242,7 +242,7 @@ function Get-DriftBusterBackendAssembly {
     return $script:BackendAssemblyPath
 }
 
-function Get-DriftBusterSerializerOptions {
+function Get-DriftBusterSerializerOption {
     if ($script:SerializerOptions) {
         return $script:SerializerOptions
     }
@@ -289,7 +289,7 @@ function ConvertFrom-DriftBusterModel {
         return $null
     }
 
-    $options = Get-DriftBusterSerializerOptions
+    $options = Get-DriftBusterSerializerOption
     $modelType = $Model.GetType()
     $json = [System.Text.Json.JsonSerializer]::Serialize($Model, $modelType, $options)
     return ConvertFrom-DriftBusterJson -Json $json
@@ -322,7 +322,7 @@ function Get-DriftBusterPropertyValue {
                 }
             }
         }
-        elseif ($Object -ne $null -and $Object.PSObject) {
+        elseif ($null -ne $Object -and $Object.PSObject) {
             $member = $Object.PSObject.Properties |
                 Where-Object { $_.Name.Equals($name, [System.StringComparison]::OrdinalIgnoreCase) } |
                 Select-Object -First 1
@@ -367,30 +367,30 @@ function ConvertTo-DriftBusterRunProfileDefinition {
             return ConvertTo-DriftBusterRunProfileDefinition -InputObject $parsed
         }
 
-        $profile = [DriftBuster.Backend.Models.RunProfileDefinition]::new()
+        $profileDef = [DriftBuster.Backend.Models.RunProfileDefinition]::new()
 
         $name = Get-DriftBusterPropertyValue -Object $InputObject -Names @('name', 'Name')
         if ($null -ne $name) {
-            $profile.Name = [string]$name
+            $profileDef.Name = [string]$name
         }
 
         $description = Get-DriftBusterPropertyValue -Object $InputObject -Names @('description', 'Description')
         if ($null -ne $description) {
-            $profile.Description = [string]$description
+            $profileDef.Description = [string]$description
         }
 
         $baseline = Get-DriftBusterPropertyValue -Object $InputObject -Names @('baseline', 'Baseline')
         if ($null -ne $baseline) {
-            $profile.Baseline = [string]$baseline
+            $profileDef.Baseline = [string]$baseline
         }
 
         $sources = Get-DriftBusterPropertyValue -Object $InputObject -Names @('sources', 'Sources')
         if ($null -ne $sources) {
             if ($sources -is [System.Collections.IEnumerable] -and -not ($sources -is [string])) {
-                $profile.Sources = @($sources | ForEach-Object { [string]$_ })
+                $profileDef.Sources = @($sources | ForEach-Object { [string]$_ })
             }
             else {
-                $profile.Sources = @([string]$sources)
+                $profileDef.Sources = @([string]$sources)
             }
         }
 
@@ -398,12 +398,12 @@ function ConvertTo-DriftBusterRunProfileDefinition {
         if ($null -ne $options) {
             if ($options -is [System.Collections.IDictionary]) {
                 foreach ($key in $options.Keys) {
-                    $profile.Options[[string]$key] = [string]$options[$key]
+                    $profileDef.Options[[string]$key] = [string]$options[$key]
                 }
             }
-            elseif ($options -ne $null -and $options.PSObject) {
+            elseif ($null -ne $options -and $options.PSObject) {
                 foreach ($property in $options.PSObject.Properties) {
-                    $profile.Options[[string]$property.Name] = [string]$property.Value
+                    $profileDef.Options[[string]$property.Name] = [string]$property.Value
                 }
             }
         }
@@ -413,25 +413,25 @@ function ConvertTo-DriftBusterRunProfileDefinition {
             $ignoreRules = Get-DriftBusterPropertyValue -Object $secretScanner -Names @('ignore_rules', 'IgnoreRules')
             if ($ignoreRules) {
                 if ($ignoreRules -is [System.Collections.IEnumerable] -and -not ($ignoreRules -is [string])) {
-                    $profile.SecretScanner.IgnoreRules = @($ignoreRules | ForEach-Object { [string]$_ })
+                    $profileDef.SecretScanner.IgnoreRules = @($ignoreRules | ForEach-Object { [string]$_ })
                 }
                 else {
-                    $profile.SecretScanner.IgnoreRules = @([string]$ignoreRules)
+                    $profileDef.SecretScanner.IgnoreRules = @([string]$ignoreRules)
                 }
             }
 
             $ignorePatterns = Get-DriftBusterPropertyValue -Object $secretScanner -Names @('ignore_patterns', 'IgnorePatterns')
             if ($ignorePatterns) {
                 if ($ignorePatterns -is [System.Collections.IEnumerable] -and -not ($ignorePatterns -is [string])) {
-                    $profile.SecretScanner.IgnorePatterns = @($ignorePatterns | ForEach-Object { [string]$_ })
+                    $profileDef.SecretScanner.IgnorePatterns = @($ignorePatterns | ForEach-Object { [string]$_ })
                 }
                 else {
-                    $profile.SecretScanner.IgnorePatterns = @([string]$ignorePatterns)
+                    $profileDef.SecretScanner.IgnorePatterns = @([string]$ignorePatterns)
                 }
             }
         }
 
-        return $profile
+        return $profileDef
     }
 }
 
@@ -674,9 +674,9 @@ Get-DriftBusterRunProfile | Where-Object name -eq 'Baseline'
             $profiles = $profiles | Where-Object { $_.name -eq $Name }
         }
 
-        foreach ($profile in $profiles) {
-            if ($profile) {
-                Write-Output $profile
+        foreach ($profileDef in $profiles) {
+            if ($profileDef) {
+                Write-Output $profileDef
             }
         }
     }
@@ -813,7 +813,7 @@ Invoke-DriftBusterRunProfile -Profile $profile -BaseDir .\.driftbuster
             $result = $script:DriftBusterBackend.RunProfileAsync($definition, $saveProfile, $BaseDir, $Timestamp).GetAwaiter().GetResult()
 
             if ($Raw) {
-                $options = Get-DriftBusterSerializerOptions
+                $options = Get-DriftBusterSerializerOption
                 $json = [System.Text.Json.JsonSerializer]::Serialize($result, $result.GetType(), $options)
                 return $json
             }
@@ -1157,14 +1157,13 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
                 $session = New-PSSession @sessionParams
                 try {
                     $remoteRoot = Invoke-Command -Session $session -ScriptBlock {
-                        param($path)
-                        $expanded = $ExecutionContext.InvokeCommand.ExpandString($path)
+                        $expanded = $ExecutionContext.InvokeCommand.ExpandString($using:RemoteWorkingDirectory)
                         if (-not (Test-Path -LiteralPath $expanded)) {
                             $null = New-Item -ItemType Directory -Path $expanded -Force
                         }
 
                         return (Resolve-Path -LiteralPath $expanded).Path
-                    } -ArgumentList $RemoteWorkingDirectory
+                    }
 
                     $remoteScriptPath = Join-Path $remoteRoot 'capture.py'
                     $remoteProfilesPath = Join-Path $remoteRoot 'profiles.json'
@@ -1174,15 +1173,13 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
                     Copy-Item -ToSession $session -LiteralPath $resolvedProfile -Destination $remoteProfilesPath -Force
 
                     Invoke-Command -Session $session -ScriptBlock {
-                        param($python, $workDir, $profiles, $outputDir, $targetPath)
-
-                        if (-not (Test-Path -LiteralPath $outputDir)) {
-                            $null = New-Item -ItemType Directory -Path $outputDir -Force
+                        if (-not (Test-Path -LiteralPath $using:remoteOutput)) {
+                            $null = New-Item -ItemType Directory -Path $using:remoteOutput -Force
                         }
 
-                        Push-Location $workDir
+                        Push-Location $using:remoteRoot
                         try {
-                            & $python 'capture.py' 'run' $targetPath '--profiles' $profiles '--output-dir' $outputDir
+                            & $using:PythonPath 'capture.py' 'run' $using:RemotePath '--profiles' $using:remoteProfilesPath '--output-dir' $using:remoteOutput
                             $code = $LASTEXITCODE
                         }
                         finally {
@@ -1192,16 +1189,16 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
                         if ($code -ne 0) {
                             throw "capture.py exited with code $code"
                         }
-                    } -ArgumentList @($PythonPath, $remoteRoot, $remoteProfilesPath, $remoteOutput, $RemotePath)
+                    }
 
                     Copy-Item -FromSession $session -Path (Join-Path $remoteOutput '*') -Destination $localOutput -Recurse -Force -ErrorAction SilentlyContinue
 
                     if (-not $KeepRemoteArtifacts) {
                         Invoke-Command -Session $session -ScriptBlock {
-                            param($profiles, $scriptPath, $outputDir)
-                            Remove-Item -LiteralPath $profiles -Force -ErrorAction SilentlyContinue
-                            Remove-Item -LiteralPath $scriptPath -Force -ErrorAction SilentlyContinue
-                        } -ArgumentList @($remoteProfilesPath, $remoteScriptPath, $remoteOutput)
+                            Remove-Item -LiteralPath $using:remoteProfilesPath -Force -ErrorAction SilentlyContinue
+                            Remove-Item -LiteralPath $using:remoteScriptPath -Force -ErrorAction SilentlyContinue
+                            Remove-Item -LiteralPath $using:remoteOutput -Recurse -Force -ErrorAction SilentlyContinue
+                        }
                     }
 
                     $results.Add([pscustomobject]@{

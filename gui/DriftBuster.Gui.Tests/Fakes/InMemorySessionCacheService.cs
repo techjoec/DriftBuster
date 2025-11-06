@@ -9,8 +9,13 @@ namespace DriftBuster.Gui.Tests.Fakes;
 internal sealed class InMemorySessionCacheService : ISessionCacheService
 {
     private ConcurrentUpgradeHandle? _upgradeHandle;
+    private ServerSelectionCache? _snapshot;
 
-    public ServerSelectionCache? Snapshot { get; set; }
+    public ServerSelectionCache? Snapshot
+    {
+        get => Volatile.Read(ref _snapshot);
+        set => Volatile.Write(ref _snapshot, value);
+    }
 
     public bool Cleared { get; private set; }
 

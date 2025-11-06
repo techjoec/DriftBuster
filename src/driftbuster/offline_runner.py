@@ -60,7 +60,6 @@ ENCRYPTION_KEYSET_SCHEMA = "https://driftbuster.dev/offline-runner/encryption/ke
 ENCRYPTED_PACKAGE_SCHEMA = "https://driftbuster.dev/offline-runner/encryption/dpapi-aes/v1"
 
 
-
 SecretDetectionRule = secret_scanning.SecretDetectionRule
 SecretFinding = secret_scanning.SecretFinding
 SecretDetectionContext = secret_scanning.SecretDetectionContext
@@ -86,17 +85,32 @@ def _load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
     if _SECRET_RULE_CACHE is not None and _SECRET_RULE_VERSION is not None:
         return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
 
+    # Try resources API first, but fall back to Path-based loading for editable installs
+    payload = None
     try:
         resource = resources.files(__package__).joinpath(SECRET_RULES_RESOURCE)
-    except FileNotFoundError:
-        _SECRET_RULE_CACHE = ()
-        _SECRET_RULE_VERSION = "none"
-        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
+        # Check if resource exists (may not have is_file in mocked contexts)
+        try:
+            if hasattr(resource, 'is_file') and not resource.is_file():
+                raise FileNotFoundError("Resource not available via importlib")
+        except AttributeError:
+            pass  # is_file not available, try to open anyway
 
-    try:
+        # Try to open via resources API
         with resource.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
-    except FileNotFoundError:
+    except (FileNotFoundError, AttributeError, OSError):
+        # Fallback: check alongside this module file for editable installs
+        try:
+            module_dir = Path(__file__).parent
+            resource_path = module_dir / SECRET_RULES_RESOURCE
+            if resource_path.is_file():
+                with open(resource_path, "r", encoding="utf-8") as handle:
+                    payload = json.load(handle)
+        except (FileNotFoundError, OSError):
+            pass
+
+    if payload is None:
         _SECRET_RULE_CACHE = ()
         _SECRET_RULE_VERSION = "none"
         return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
@@ -114,8 +128,6 @@ def _load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
     return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
 
 
-
-
 def _copy_with_secret_filter(
     source: Path,
     destination: Path,
@@ -131,7 +143,6 @@ def _copy_with_secret_filter(
         context=context,
         log=log,
     )
-
 
 
 def _expand_path(text: str) -> Path:
@@ -369,6 +380,7 @@ class OfflineRegistryScanSource:
         token_raw = spec.get("token")
         if not token_raw or not str(token_raw).strip():
             raise ValueError("registry_scan requires non-empty 'token'.")
+
         def _norm_seq(value: Any) -> Tuple[str, ...]:
             if not value:
                 return ()
@@ -605,7 +617,10 @@ class OfflineRunnerProfile:
         secret_scanner_payload = payload.get("secret_scanner", {})
         if secret_scanner_payload and not isinstance(secret_scanner_payload, Mapping):
             raise ValueError("Profile 'secret_scanner' must be a mapping if provided.")
-        secret_scanner = {str(key): secret_scanner_payload[key] for key in secret_scanner_payload} if isinstance(secret_scanner_payload, Mapping) else {}
+        secret_scanner = (
+            {str(key): secret_scanner_payload[key] for key in secret_scanner_payload}
+            if isinstance(secret_scanner_payload, Mapping) else {}
+        )
 
         description = payload.get("description")
         if description is not None:
@@ -1501,7 +1516,11 @@ def execute_config(
         encryption_settings = settings.encryption
         if encryption_settings and encryption_settings.enabled:
             encrypted_name = package_filename or f"{_safe_name(config.profile.name)}-{run_timestamp}.zip"
-            encrypted_name = f"{encrypted_name}{encryption_settings.output_extension}" if not encrypted_name.endswith(encryption_settings.output_extension) else encrypted_name
+            encrypted_name = (
+                f"{encrypted_name}{encryption_settings.output_extension}"
+                if not encrypted_name.endswith(encryption_settings.output_extension)
+                else encrypted_name
+            )
             manifest_payload["package"]["encryption"] = {
                 "enabled": True,
                 "mode": encryption_settings.mode,

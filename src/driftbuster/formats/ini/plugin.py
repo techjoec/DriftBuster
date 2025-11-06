@@ -362,6 +362,9 @@ class IniPlugin:
         if comment_signal:
             signal_score += 1
 
+        # Initialize confidence early so it can be used in early returns
+        confidence = 0.4
+
         if signal_score < 2:
             if extension == ".preferences" and key_pair_count >= 2:
                 variant = "sectionless-ini"
@@ -380,7 +383,7 @@ class IniPlugin:
                 commented_pairs = 0
                 for line in lines[:1000]:
                     s = line.lstrip()
-                    if s.startswith(('#',';')) and ("=" in s or ":" in s):
+                    if s.startswith(('#', ';')) and ("=" in s or ":" in s):
                         commented_pairs += 1
                 if commented_pairs >= 10:
                     reasons.append("Found numerous commented key/value examples in .properties file")
@@ -391,7 +394,7 @@ class IniPlugin:
             else:
                 return None
 
-        confidence = 0.4
+        # Continue building confidence from base
         confidence += min(key_density, 0.6) * 0.25
         if sections:
             confidence += 0.2
