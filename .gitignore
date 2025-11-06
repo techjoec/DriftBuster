@@ -1,11 +1,51 @@
 .serena/
+
+# Python build artifacts
 __pycache__/
 *.py[cod]
 *.egg-info/
-*.log
 .venv/
+
+# Python test artifacts
+.pytest_cache/
+.hypothesis/
+.coverage
+coverage.json
+htmlcov/
+.tox/
+
+# .NET build artifacts
 bin/
 obj/
+*.user
+*.suo
+*.cache
+
+# .NET test artifacts
+TestResults/
+**/TestResults/
+coverage.cobertura.xml
+*.trx
+
+# Logs
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
 !artifacts/
 artifacts/*
 !artifacts/logs/
