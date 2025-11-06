@@ -5,6 +5,9 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+dist/
+*.whl
+*.egg
 
 # Python test artifacts
 .pytest_cache/
