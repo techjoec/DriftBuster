@@ -7,9 +7,9 @@ from pathlib import Path
 from scripts import purge_reporting_retention as purge_mod
 
 
-def _set_mtime(path: Path, *, days_ago: int) -> None:
-    now = dt.datetime.now().timestamp()
-    mtime = now - days_ago * 86400
+def _set_mtime(path: Path, *, days_ago: int, reference: dt.datetime | None = None) -> None:
+    ref = reference or dt.datetime.now(tz=dt.timezone.utc)
+    mtime = ref.timestamp() - days_ago * 86400
     os.utime(path, times=(mtime, mtime))
 
 
@@ -20,10 +20,11 @@ def test_discover_candidates_filters_by_retention(tmp_path: Path) -> None:
     old_dir.mkdir()
     new_dir = root / "2025-11-01"
     new_dir.mkdir()
-    _set_mtime(old_dir, days_ago=60)
-    _set_mtime(new_dir, days_ago=5)
 
     now = dt.datetime(2025, 11, 13, tzinfo=purge_mod.UTC)
+    _set_mtime(old_dir, days_ago=60, reference=now)
+    _set_mtime(new_dir, days_ago=5, reference=now)
+
     candidates = purge_mod.discover_candidates(
         [root], retention_days=30, now=now
     )
@@ -38,9 +39,10 @@ def test_discover_candidates_ignores_missing_paths(tmp_path: Path) -> None:
     existing.mkdir()
     stale_file = existing / "report.txt"
     stale_file.write_text("placeholder")
-    _set_mtime(stale_file, days_ago=45)
 
     now = dt.datetime(2025, 11, 13, tzinfo=purge_mod.UTC)
+    _set_mtime(stale_file, days_ago=45, reference=now)
+
     candidates = purge_mod.discover_candidates(
         [missing, existing], retention_days=30, now=now
     )

@@ -17,7 +17,7 @@ Current registry order example (`driftbuster.formats.registry_summary()`; actual
 | 4     | `hcl`          | `driftbuster.formats.hcl.plugin.HclPlugin`                    | 158      | 0.0.1   |
 | 5     | `yaml`         | `driftbuster.formats.yaml.plugin.YamlPlugin`                  | 160      | 0.0.3   |
 | 6     | `toml`         | `driftbuster.formats.toml.plugin.TomlPlugin`                  | 165      | 0.0.3   |
-| 7     | `ini`          | `driftbuster.formats.ini.plugin.IniPlugin`                    | 170      | 0.0.1   |
+| 7     | `ini`          | `driftbuster.formats.ini.plugin.IniPlugin`                    | 170      | 0.0.2   |
 | 8     | `json`         | `driftbuster.formats.json.plugin.JsonPlugin`                  | 200      | 0.0.3   |
 | 9     | `text`         | `driftbuster.formats.text.plugin.TextPlugin`                  | 1000     | 0.0.1   |
 

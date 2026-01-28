@@ -241,15 +241,13 @@ public sealed class ServerSelectionViewTests
         harness.LastData.Should().NotBeNull();
         harness.LastEffects.Should().Be(DragDropEffects.Move);
 
-        var serverSlotFormat = DataFormat.CreateStringPlatformFormat("driftbuster/server-slot");
-        harness.LastData!.Formats.Should().Contain(f => f.Identifier == serverSlotFormat.Identifier);
-        harness.LastData.Formats.Should().Contain(f => f.Identifier == DataFormat.Text.Identifier);
+        // IDataObject uses string format names, not DataFormat objects
+        const string serverSlotFormat = "driftbuster/server-slot";
+        harness.LastData!.Contains(serverSlotFormat).Should().BeTrue();
+        harness.LastData.Contains(DataFormats.Text).Should().BeTrue();
 
-        var serverSlotItem = harness.LastData.Items.First(i => i.Formats.Any(f => f.Identifier == serverSlotFormat.Identifier));
-        serverSlotItem.TryGetRaw(serverSlotFormat).Should().Be(slotViewModel.HostId);
-
-        var textItem = harness.LastData.Items.First(i => i.Formats.Any(f => f.Identifier == DataFormat.Text.Identifier));
-        textItem.TryGetRaw(DataFormat.Text).Should().Be(slotViewModel.Label);
+        harness.LastData.Get(serverSlotFormat).Should().Be(slotViewModel.HostId);
+        harness.LastData.Get(DataFormats.Text).Should().Be(slotViewModel.Label);
 
         harness.Complete(DragDropEffects.Move);
         await invocation;
@@ -319,10 +317,11 @@ public sealed class ServerSelectionViewTests
         targetCard.Measure(layoutSize);
         targetCard.Arrange(new Rect(layoutSize));
 
-        var serverSlotFormat = DataFormat.CreateStringPlatformFormat("driftbuster/server-slot");
-        var data = new DataTransfer();
-        data.Add(DataTransferItem.Create(serverSlotFormat, sourceSlot.HostId));
-        data.Add(DataTransferItem.CreateText(sourceSlot.Label));
+#pragma warning disable 618
+        var data = new DataObject();
+        data.Set("driftbuster/server-slot", sourceSlot.HostId);
+        data.Set(DataFormats.Text, sourceSlot.Label);
+#pragma warning restore 618
 
         var dropPoint = new Point(layoutSize.Width / 2, layoutSize.Height * 0.75);
         var dropArgs = new DragEventArgs(DragDrop.DropEvent, data, targetCard, dropPoint, KeyModifiers.None);
@@ -362,17 +361,18 @@ public sealed class ServerSelectionViewTests
         view.Resources["ServerSelection.StackSpacing"].Should().Be(24d);
     }
 
+#pragma warning disable 618
     private sealed class RecordingDragDropService : IDragDropService
     {
         private readonly TaskCompletionSource<DragDropEffects> _completion = new();
 
         public PointerEventArgs? LastArgs { get; private set; }
 
-        public IDataTransfer? LastData { get; private set; }
+        public IDataObject? LastData { get; private set; }
 
         public DragDropEffects? LastEffects { get; private set; }
 
-        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
         {
             LastArgs = args;
             LastData = data;
@@ -392,11 +392,12 @@ public sealed class ServerSelectionViewTests
             _exception = exception;
         }
 
-        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
         {
             return Task.FromException<DragDropEffects>(_exception);
         }
     }
+#pragma warning restore 618
 
     [AvaloniaFact]
     public async Task CopyJsonCommandUpdatesStatus()

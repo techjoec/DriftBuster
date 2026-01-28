@@ -1,5 +1,8 @@
 # DriftBuster Installer Changelog
 
+## 0.0.3
+- None.
+
 ## 0.0.2
 - Velopack release script and release notes template.
 

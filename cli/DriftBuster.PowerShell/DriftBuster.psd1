@@ -19,6 +19,6 @@
     CmdletsToExport   = @()
     AliasesToExport   = @()
     PrivateData       = @{
-                                        BackendVersion = '0.0.2'
+                                                        BackendVersion = '0.0.1'
     }
 }

@@ -142,14 +142,14 @@ def main() -> None:
 
     update_file(
         ROOT / "docs" / "format-addition-guide.md",
-        r"JsonPlugin` \| 200 \| [0-9.]+",
-        f"JsonPlugin` | 200 | {formats.get('json')}",
+        r"JsonPlugin`\s+\|\s+200\s+\|\s+[0-9.]+",
+        f"JsonPlugin`                  | 200      | {formats.get('json')}",
         count=1,
     )
     update_file(
         ROOT / "docs" / "format-addition-guide.md",
-        r"IniPlugin` \| 170 \| [0-9.]+",
-        f"IniPlugin` | 170 | {formats.get('ini')}",
+        r"IniPlugin`\s+\|\s+170\s+\|\s+[0-9.]+",
+        f"IniPlugin`                    | 170      | {formats.get('ini')}",
         count=1,
     )
     update_file(

@@ -102,7 +102,7 @@ class DetectionCatalog:
 
 
 DETECTION_CATALOG = DetectionCatalog(
-    version="0.0.2",
+    version="0.0.3",
     updated="2025-10-10",
     notes=(
         "Detection runs in priority order; the first positive match wins.",
