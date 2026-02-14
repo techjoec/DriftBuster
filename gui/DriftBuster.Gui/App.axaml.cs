@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
-
+using DriftBuster.Gui.Headless;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
-using DriftBuster.Gui.Headless;
 
 namespace DriftBuster.Gui
 {
