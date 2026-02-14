@@ -124,12 +124,19 @@ namespace DriftBuster.Gui.Services
                     ? Math.Min(snapshot.MaxEntries, DefaultEntryLimit)
                     : DefaultEntryLimit;
 
-                snapshot.Entries.RemoveAll(existing => AreEquivalent(existing, normalisedEntry));
+                for (var i = snapshot.Entries.Count - 1; i >= 0; i--)
+                {
+                    if (AreEquivalent(snapshot.Entries[i], normalisedEntry))
+                    {
+                        snapshot.Entries.RemoveAt(i);
+                    }
+                }
+
                 snapshot.Entries.Insert(0, normalisedEntry);
 
-                if (snapshot.Entries.Count > limit)
+                while (snapshot.Entries.Count > limit)
                 {
-                    snapshot.Entries.RemoveRange(limit, snapshot.Entries.Count - limit);
+                    snapshot.Entries.RemoveAt(snapshot.Entries.Count - 1);
                 }
 
                 snapshot.SchemaVersion = CurrentSchemaVersion;
@@ -228,11 +235,10 @@ namespace DriftBuster.Gui.Services
                 }
             }
 
-            normalised.Entries.Sort((left, right) => right.LastUsedUtc.CompareTo(left.LastUsedUtc));
-            if (normalised.Entries.Count > limit)
-            {
-                normalised.Entries.RemoveRange(limit, normalised.Entries.Count - limit);
-            }
+            normalised.Entries = normalised.Entries
+                .OrderByDescending(entry => entry.LastUsedUtc)
+                .Take(limit)
+                .ToList();
 
             return normalised;
         }
@@ -393,7 +399,10 @@ namespace DriftBuster.Gui.Services
 
                 var limit = legacy.ResolveEntryLimit();
                 var snapshot = CreateEmptySnapshot(limit);
-                snapshot.Entries.AddRange(entries.Take(snapshot.MaxEntries));
+                foreach (var migrated in entries.Take(snapshot.MaxEntries))
+                {
+                    snapshot.Entries.Add(migrated);
+                }
 
                 await using var target = new FileStream(
                     destinationPath,
@@ -578,7 +587,7 @@ namespace DriftBuster.Gui.Services
         public int MaxEntries { get; set; } = DiffPlannerMruStore.DefaultEntryLimit;
 
         [JsonPropertyName("entries")]
-        public List<DiffPlannerMruEntry> Entries { get; set; } = new();
+        public IList<DiffPlannerMruEntry> Entries { get; set; } = new List<DiffPlannerMruEntry>();
     }
 
     public sealed class DiffPlannerMruEntry
@@ -587,7 +596,7 @@ namespace DriftBuster.Gui.Services
         public string BaselinePath { get; set; } = string.Empty;
 
         [JsonPropertyName("comparison_paths")]
-        public List<string> ComparisonPaths { get; set; } = new();
+        public IList<string> ComparisonPaths { get; set; } = new List<string>();
 
         [JsonPropertyName("display_name")]
         public string? DisplayName { get; set; }

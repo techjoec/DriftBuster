@@ -2330,7 +2330,7 @@ namespace DriftBuster.Backend
 
             private static object BuildOfflineConfigPayload(
                 RunProfileDefinition profile,
-                Dictionary<string, string>? metadata,
+                IDictionary<string, string>? metadata,
                 JsonElement secretRules)
             {
                 var sources = profile.Sources

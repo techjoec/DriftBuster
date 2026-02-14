@@ -236,10 +236,10 @@ namespace DriftBuster.Gui.Services
         public bool PersistSession { get; set; }
 
         [JsonPropertyName("servers")]
-        public List<ServerSelectionCacheEntry> Servers { get; set; } = new();
+        public IList<ServerSelectionCacheEntry> Servers { get; set; } = new List<ServerSelectionCacheEntry>();
 
         [JsonPropertyName("activities")]
-        public List<ActivityCacheEntry> Activities { get; set; } = new();
+        public IList<ActivityCacheEntry> Activities { get; set; } = new List<ActivityCacheEntry>();
 
         [JsonPropertyName("catalog_sort")]
         public CatalogSortCache? CatalogSort { get; set; }

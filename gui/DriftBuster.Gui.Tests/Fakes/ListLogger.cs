@@ -16,7 +16,7 @@ public sealed class ListLogger<T> : ILogger<T>
         }
     }
 
-    public List<LogEntry> Entries { get; } = new();
+    public IList<LogEntry> Entries { get; } = new List<LogEntry>();
 
     public IDisposable BeginScope<TState>(TState state) where TState : notnull => NoopScope.Instance;
 

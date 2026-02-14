@@ -499,7 +499,7 @@ namespace DriftBuster.Gui.ViewModels
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
 
-        private static string BuildDisplayName(string baseline, IReadOnlyList<string> comparisons)
+        private static string BuildDisplayName(string baseline, IEnumerable<string> comparisons)
         {
             var baselineName = Path.GetFileName(baseline);
             var comparisonNames = comparisons

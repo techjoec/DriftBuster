@@ -18,7 +18,7 @@ namespace DriftBuster.Backend.Models
         public string? Baseline { get; set; }
 
         [JsonPropertyName("options")]
-        public Dictionary<string, string> Options { get; set; } = new(StringComparer.Ordinal);
+        public IDictionary<string, string> Options { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
         [JsonPropertyName("secret_scanner")]
         public SecretScannerOptions SecretScanner { get; set; } = new();
@@ -47,7 +47,7 @@ namespace DriftBuster.Backend.Models
         public string[] Tags { get; set; } = System.Array.Empty<string>();
 
         [JsonPropertyName("metadata")]
-        public Dictionary<string, string> Metadata { get; set; } = new(System.StringComparer.Ordinal);
+        public IDictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>(System.StringComparer.Ordinal);
     }
 
     public sealed class ScheduleWindowDefinition
@@ -84,7 +84,7 @@ namespace DriftBuster.Backend.Models
     {
         public string PackagePath { get; set; } = string.Empty;
 
-        public Dictionary<string, string> Metadata { get; set; } = new(StringComparer.Ordinal);
+        public IDictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
         public string? ConfigFileName { get; set; }
     }
