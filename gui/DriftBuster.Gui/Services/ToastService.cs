@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -69,7 +70,7 @@ namespace DriftBuster.Gui.Services
 
         public DateTimeOffset Timestamp { get; }
 
-        public string TimestampText => Timestamp.ToLocalTime().ToString("t");
+        public string TimestampText => Timestamp.ToLocalTime().ToString("t", CultureInfo.InvariantCulture);
 
         public string LevelLabel => Level.ToString();
 

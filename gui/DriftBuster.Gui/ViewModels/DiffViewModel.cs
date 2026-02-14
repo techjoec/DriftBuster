@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -725,7 +726,7 @@ namespace DriftBuster.Gui.ViewModels
                         new NameValuePair("Label", comparison.Plan.Label ?? "—"),
                         new NameValuePair("Mask tokens", FormatSequence(comparison.Plan.MaskTokens ?? Array.Empty<string>())),
                         new NameValuePair("Placeholder", comparison.Plan.Placeholder),
-                        new NameValuePair("Context lines", comparison.Plan.ContextLines.ToString()),
+                        new NameValuePair("Context lines", comparison.Plan.ContextLines.ToString(CultureInfo.InvariantCulture)),
                     });
 
                 MetadataEntries = new ObservableCollection<NameValuePair>(
@@ -734,7 +735,7 @@ namespace DriftBuster.Gui.ViewModels
                         new NameValuePair("Baseline path", comparison.Metadata.LeftPath),
                         new NameValuePair("Comparison path", comparison.Metadata.RightPath),
                         new NameValuePair("Content type", comparison.Metadata.ContentType),
-                        new NameValuePair("Context lines", comparison.Metadata.ContextLines.ToString()),
+                        new NameValuePair("Context lines", comparison.Metadata.ContextLines.ToString(CultureInfo.InvariantCulture)),
                     });
             }
 

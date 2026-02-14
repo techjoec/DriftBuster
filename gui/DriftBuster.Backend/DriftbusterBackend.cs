@@ -679,7 +679,7 @@ namespace DriftBuster.Backend
                 var bEnd = last.J2;
                 var aLen = Math.Max(aEnd - aStart, 0);
                 var bLen = Math.Max(bEnd - bStart, 0);
-                builder.AppendLine($"@@ -{aStart + 1},{aLen} +{bStart + 1},{bLen} @@");
+                builder.Append(CultureInfo.InvariantCulture, $"@@ -{aStart + 1},{aLen} +{bStart + 1},{bLen} @@").AppendLine();
 
                 foreach (var opcode in group)
                 {

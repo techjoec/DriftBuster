@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -42,7 +43,7 @@ namespace DriftBuster.Gui.ViewModels
 
         public ActivityCategory Category { get; }
 
-        public string TimestampText => Timestamp.ToLocalTime().ToString("g");
+        public string TimestampText => Timestamp.ToLocalTime().ToString("g", CultureInfo.InvariantCulture);
 
         public string SeverityLabel => Severity.ToString();
 

@@ -111,7 +111,7 @@ namespace DriftBuster.Gui.ViewModels
 
         public DateTimeOffset LastUpdated => _entry.LastUpdated;
 
-        public string LastUpdatedText => LastUpdated.ToLocalTime().ToString("g");
+        public string LastUpdatedText => LastUpdated.ToLocalTime().ToString("g", CultureInfo.InvariantCulture);
 
         public bool HasAnyAlerts => HasSecrets || HasValidationIssues || HasMaskedTokens || DriftCount > 0;
 

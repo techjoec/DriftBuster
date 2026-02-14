@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -57,7 +58,7 @@ namespace DriftBuster.Gui.ViewModels
 
         public string LastSeenText => Detail.LastSeen == DateTimeOffset.MinValue
             ? "Not scanned"
-            : Detail.LastSeen.ToLocalTime().ToString("g");
+            : Detail.LastSeen.ToLocalTime().ToString("g", CultureInfo.InvariantCulture);
     }
 
     public sealed partial class ConfigDrilldownViewModel : ObservableObject, IDisposable
@@ -131,7 +132,7 @@ namespace DriftBuster.Gui.ViewModels
 
         public DateTimeOffset LastUpdated => _source.LastUpdated;
 
-        public string LastUpdatedText => LastUpdated.ToLocalTime().ToString("g");
+        public string LastUpdatedText => LastUpdated.ToLocalTime().ToString("g", CultureInfo.InvariantCulture);
 
         public string Provenance => string.IsNullOrWhiteSpace(_source.Provenance) ? "Unknown provenance" : _source.Provenance;
 
@@ -316,7 +317,7 @@ namespace DriftBuster.Gui.ViewModels
             builder.AppendLine("</head>");
             builder.AppendLine("<body>");
             builder.AppendLine($"  <h1>{System.Net.WebUtility.HtmlEncode(DisplayName)}</h1>");
-            builder.AppendLine($"  <p><strong>Format:</strong> {System.Net.WebUtility.HtmlEncode(Format)} | <strong>Drift count:</strong> {DriftCount} | <strong>Updated:</strong> {LastUpdatedText}</p>");
+            builder.Append(CultureInfo.InvariantCulture, $"  <p><strong>Format:</strong> {System.Net.WebUtility.HtmlEncode(Format)} | <strong>Drift count:</strong> {DriftCount} | <strong>Updated:</strong> {LastUpdatedText}</p>").AppendLine();
             builder.AppendLine("  <h2>Servers</h2>");
             builder.AppendLine("  <table>");
             builder.AppendLine("    <thead><tr><th>Server</th><th>Status</th><th>Drift lines</th><th>Present</th></tr></thead>");
