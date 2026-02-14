@@ -193,7 +193,7 @@ pip-licenses
 - **State persistence**: Schedule cards persist to `Profiles/schedules.json`
 
 **Tests** (`DriftBuster.Gui.Tests/`):
-- 180 headless xUnit tests with `[AvaloniaFact]` attributes
+- Headless xUnit tests with `[AvaloniaFact]` attributes
 - User journey tests: `MainWindowUserJourneyTests` (run before claiming GUI parity)
 - Coverage requirement: ≥90% line coverage
 - Test helpers: `InMemorySessionCacheService`, `FakeDriftbusterService`
@@ -250,42 +250,30 @@ pip-licenses
 ## Testing Strategy
 
 **Coverage Policy** (HARD REQUIREMENT):
-- Python: ≥90% for all modules under `src/driftbuster/` (currently 93%)
-- .NET: ≥90% total line coverage for GUI + Backend (currently ≥90%)
-- PowerShell: 4 tests (skipped when pwsh runtime < .NET 10; zero PSScriptAnalyzer warnings)
+- Python: ≥90% for all modules under `src/driftbuster/`
+- .NET: ≥90% total line coverage for GUI + Backend
+- PowerShell: Tests skipped when pwsh runtime < .NET 10; zero PSScriptAnalyzer warnings
 - New format plugins: ≥90% per-file coverage with focused tests
 
 **Test Organization**:
-- Python: `tests/` mirrors `src/driftbuster/` structure (537 tests total)
+- Python: `tests/` mirrors `src/driftbuster/` structure
 - `tests/formats/` contains plugin-specific suites
 - `tests/multi_server/` validates orchestration logic
 - `tests/registry/` Windows Registry tests
 - `tests/powershell/` PowerShell module integration
-- .NET: `gui/DriftBuster.Gui.Tests/` with headless Avalonia tests (180 tests total)
+- .NET: `gui/DriftBuster.Gui.Tests/` with headless Avalonia tests
 
-**Quality Metrics** (Current Status):
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| Python Coverage | ≥90% | 93% | ✅ |
-| Python Tests | All pass | 537/537 | ✅ |
-| .NET Coverage | ≥90% | ≥90% | ✅ |
-| .NET Tests | All pass | 180/180 | ✅ |
-| PowerShell Tests | All pass | 4/4 skipped (pwsh < .NET 10) | ⏭️ |
-| Python Style | Zero | 0 violations | ✅ |
-| .NET Warnings | Zero | 0 warnings | ✅ |
-| PowerShell Linting | Zero | 0 warnings | ✅ |
-
-**Running Tests Efficiently**:
+**Running Tests**:
 ```bash
 # All tests with coverage verification
 ./scripts/verify_coverage.sh
 
-# Python only
+# Python
 pytest -q                                    # Quick run
 pytest tests/formats/ -v                     # Specific directory
 pytest tests/formats/test_json_plugin.py::test_name -v  # Single test
 
-# .NET only
+# .NET
 dotnet test --verbosity minimal              # All tests
 dotnet test --filter MainWindowUserJourneyTests    # Test class
 dotnet test --filter "FullyQualifiedName~Handles"  # Pattern match
@@ -299,18 +287,6 @@ unset __JOE_PROFILE_ENV && bash --login -c 'python -m pytest tests/powershell/ -
 - Memory leaks from ViewModels? Implement `IDisposable` and unsubscribe from events
 - Async test timeouts? Add polling with timeout instead of immediate assertions
 - Cross-thread property access? Use `Volatile.Read/Write` semantics
-
-**Running Specific Tests**:
-```bash
-# Single Python test
-pytest tests/formats/test_json_plugin.py -q
-
-# Single .NET test class
-dotnet test --filter MainWindowUserJourneyTests
-
-# Specific .NET test method
-dotnet test gui/DriftBuster.Gui.Tests/Services/ToastServiceTests.cs --filter Overflow_moves_extra_toasts
-```
 
 **Sample Management**:
 - Public fixtures in `fixtures/`, `samples/`
@@ -333,136 +309,36 @@ dotnet test gui/DriftBuster.Gui.Tests/Services/ToastServiceTests.cs --filter Ove
 
 ## Common Issues and Fixes
 
-### Build & Test Issues
-
 **dotnet Command Not Found**
-- **Symptom**: `FileNotFoundError: [Errno 2] No such file or directory: 'dotnet'`
-- **Root cause**: `__JOE_PROFILE_ENV` guard variable exported in parent shell, preventing `.profile` from running in child shells
-- **Fix**:
-  ```bash
-  # Temporary
-  unset __JOE_PROFILE_ENV && bash --login -c 'dotnet --version'
-  # Permanent: Remove 'export __JOE_PROFILE_ENV' from ~/.profile
-  ```
-
-**Python Invalid Escape Sequence Warnings**
-- **Symptom**: `SyntaxWarning: invalid escape sequence '\.'`
-- **Root cause**: Regular strings used for regex patterns instead of raw strings
-- **Fix**: Use raw string prefix `r""` for all regex patterns
-  ```python
-  pattern = r"^\[HKEY_.*\]$"  # Good
-  ```
+- `__JOE_PROFILE_ENV` guard variable blocks `.profile` in child shells
+- Fix: `unset __JOE_PROFILE_ENV && bash --login -c 'dotnet --version'`
 
 **Resource Loading Failure in Editable Install**
-- **Symptom**: `secret_rules.json` not found when running tests
-- **Root cause**: `importlib.resources` doesn't follow compatibility shim at project root
-- **Fix**: Implement fallback to filesystem loading (used in `offline_runner.py` and `secret_scanning.py`)
-
-**Missing Closing Brace in C# Nested Class**
-- **Symptom**: `error CS1513: } expected`
-- **Root cause**: Nested class missing closing brace before next method
-- **Fix**: Verify all nested classes/records have closing braces
-
-### Flaky Test Issues
+- `secret_rules.json` not found — `importlib.resources` doesn't follow compatibility shim
+- Fix: Fallback to filesystem loading (see `offline_runner.py`, `secret_scanning.py`)
 
 **Test Passes Standalone, Fails with Coverage**
-- **Symptom**: Test fails with coverage instrumentation but passes without it
-- **Root cause**: Race condition where async operations complete slower under coverage overhead
-- **Fix**: Add robust synchronization with polling and timeout
-  ```csharp
-  await viewModel.SaveSessionCommand.ExecuteAsync(null);
-  var deadline = DateTime.UtcNow.AddMilliseconds(1000);
-  while (cache.Snapshot is null && DateTime.UtcNow < deadline) {
-      await Task.Delay(10);
-  }
-  cache.Snapshot.Should().NotBeNull();
-  ```
+- Race condition: async operations slower under coverage instrumentation
+- Fix: Poll with timeout instead of immediate assertions
 
-**Memory Visibility Issue in Concurrent Code**
-- **Symptom**: Thread A sets property, Thread B doesn't see updated value
-- **Root cause**: CPU caching prevents visibility across threads without volatile semantics
-- **Fix**: Use `Volatile.Read/Write` for cross-thread properties
-  ```csharp
-  private ServerSelectionCache? _snapshot;
-  public ServerSelectionCache? Snapshot {
-      get => Volatile.Read(ref _snapshot);
-      set => Volatile.Write(ref _snapshot, value);
-  }
-  ```
+**Memory Visibility in Concurrent Code**
+- Cross-thread property changes not visible without volatile semantics
+- Fix: `Volatile.Read/Write` for shared properties
 
-### Memory Leak Issues
+**ViewModels Must Implement IDisposable**
+- Event subscriptions create strong references causing memory leaks
+- All ViewModels unsubscribe from events in `Dispose()`
 
-**Event Handler Not Unsubscribed**
-- **Symptom**: Memory leak from ViewModels that never get garbage collected
-- **Root cause**: Event subscriptions create strong references
-- **Fix**: Implement `IDisposable` and unsubscribe in `Dispose()`:
-  ```csharp
-  public sealed partial class MyViewModel : ObservableObject, IDisposable {
-      private bool _disposed;
+**Avalonia Drag/Drop API**
+- Uses Avalonia 11.x `DataTransfer`/`DataTransferItem`/`DataFormat` API (not deprecated `DataObject`)
+- Custom formats: `DataFormat.CreateStringApplicationFormat("dot.separated.name")` — ASCII letters, digits, dots, hyphens only
+- Read from `DragEventArgs`: iterate `e.DataTransfer.Items`, cast to `DataTransferItem`, call `TryGetRaw(format)`
 
-      public MyViewModel(...) {
-          CatalogViewModel.PropertyChanged += OnPropertyChanged;
-      }
-
-      public void Dispose() {
-          if (_disposed) return;
-          CatalogViewModel.PropertyChanged -= OnPropertyChanged;
-          _runGate.Dispose();
-          _disposed = true;
-      }
-  }
-  ```
-
-### API Deprecation Issues
-
-**Obsolete Avalonia Drag/Drop APIs**
-- **Symptom**: `warning CS0618: 'DataObject' is obsolete: 'Use DataTransfer instead'`
-- **Root cause**: Using old Avalonia 10.x API instead of Avalonia 11.x API
-- **Fix**: Migrate to new API
-  ```csharp
-  // Before
-  var data = new DataObject();
-  data.Set("custom-format", value);
-
-  // After
-  var data = new DataTransfer();
-  var customFormat = DataFormat.CreateStringPlatformFormat("custom-format");
-  data.Add(DataTransferItem.Create(customFormat, value));
-  ```
-
-### PowerShell Linting Issues
-
-**Variable Collision with Automatic Variables**
-- **Symptom**: `PSAvoidAssignmentToAutomaticVariable: The Variable '$profile' is an automatic variable`
-- **Fix**: Rename to avoid collision (`$profileDef` instead of `$profile`)
-
-**Null Comparison Order**
-- **Symptom**: `PSPossibleIncorrectComparisonWithNull: $null should be on the left side`
-- **Fix**: `if ($null -ne $variable)` instead of `if ($variable -ne $null)`
-
-**Missing Using Scope Modifier**
-- **Symptom**: `PSUseUsingScopeModifierInNewRunspaces: The variable '$variableName' is not declared within this ScriptBlock`
-- **Fix**: Add `$using:` prefix for parent scope variables in scriptblocks
-
-**Plural Noun in Cmdlet Name**
-- **Symptom**: `PSUseSingularNouns: The cmdlet 'Get-Options' uses a plural noun`
-- **Fix**: Use singular noun (`Get-Option` not `Get-Options`)
-
-### Style Issues
-
-**Line Length Violations (E501)**
-- **Symptom**: `line too long (155 > 140 characters)`
-- **Fix**: Break long lines using parentheses
-  ```python
-  severity_hint = (
-      "Application configuration files expose secrets, connection strings, "
-      "and runtime policy toggles that impact production systems."
-  )
-  ```
-
-**Extra Blank Lines (E303)**
-- **Symptom**: `too many blank lines (3)`
-- **Fix**: Reduce to 2 blank lines between top-level definitions
+**PowerShell Linting Gotchas**
+- `$null` on left side of comparisons: `if ($null -ne $variable)`
+- Avoid automatic variable names (`$profile` → `$profileDef`)
+- `$using:` prefix for parent-scope variables in scriptblocks
+- Singular nouns for cmdlet names
 
 ## Project-Specific Constraints
 
