@@ -90,5 +90,3 @@ artifacts/*
 !artifacts/samples/**
 !artifacts/diff-planner-validation/
 !artifacts/diff-planner-validation/**
-!artifacts/day0-demo/
-!artifacts/day0-demo/**

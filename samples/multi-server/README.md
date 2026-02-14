@@ -26,11 +26,6 @@ PY`
 - Diff appsettings vs. baseline (server01) and render a report:
   - `python -m scripts.demo_multi_server --root samples/multi-server --baseline server01 --html artifacts/demo-multi-server.html`
 
-Day 0 baseline demo
-- Build a proposed baseline snapshot + profile store from these samples in one command:
-  - `./scripts/demo_day0_baseline.sh`
-  - See outputs under `artifacts/day0-demo/` and open `day0-baseline.html` to review diffs.
-
 Notes
 - Hosts use neutral domains (corp.local) and generic paths for safe sharing.
 - Add or edit per-server files to simulate additional drift.

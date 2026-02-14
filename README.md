@@ -230,7 +230,6 @@ Check `docs/` for deeper dives:
   lifecycles.
 - `docs/testing-strategy.md` – how we validate detectors and reporting.
 - `docs/multi-server-demo.md` – multi-server orchestration walkthrough covering GUI callouts, CLI parity, and troubleshooting.
-- `docs/day0-baseline.md` – create a Day 0 baseline across many servers without an existing reference.
 - `docs/DEMO.md` – GUI walkthrough using the bundled demo data.
 - `docs/versioning.md` – component version workflow and sync tooling.
 - `docs/registry.md` – Windows Registry live scan overview and API usage.
