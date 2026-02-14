@@ -1,16 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text.Json;
-using System.Threading.Tasks;
-using AwesomeAssertions;
+
+using CommunityToolkit.Mvvm.Input;
+
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
-using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
 
@@ -119,6 +115,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
         viewModel.PersistSessionState = true;
         PopulateActivityDetailViaReflection(viewModel);
 
+        await PollUntilCanExecuteAsync(viewModel.SaveSessionCommand);
         await viewModel.SaveSessionCommand.ExecuteAsync(null);
         await PollForSnapshotAsync(cache);
 
@@ -437,6 +434,18 @@ public sealed class ServerSelectionViewModelAdditionalTests
                     detailProp.SetValue(entry, string.Empty);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Poll until a command's CanExecute returns true (coverage instrumentation can delay IsBusy transitions).
+    /// </summary>
+    private static async Task PollUntilCanExecuteAsync(IAsyncRelayCommand command, int timeoutMs = 10000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (!command.CanExecute(null) && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50).ConfigureAwait(false);
         }
     }
 
