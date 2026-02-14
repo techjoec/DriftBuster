@@ -10,7 +10,7 @@ public static class ResponsiveSpacingProfiles
     {
         new ResponsiveBreakpoint(
             MinWidth: 0,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["Layout.HeaderPadding"] = new Thickness(20, 16, 20, 16),
                 ["Layout.ContentMargin"] = new Thickness(20),
@@ -27,7 +27,7 @@ public static class ResponsiveSpacingProfiles
             }),
         new ResponsiveBreakpoint(
             MinWidth: 1280,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["Layout.HeaderPadding"] = new Thickness(24, 20, 24, 20),
                 ["Layout.ContentMargin"] = new Thickness(24),
@@ -44,7 +44,7 @@ public static class ResponsiveSpacingProfiles
             }),
         new ResponsiveBreakpoint(
             MinWidth: 1600,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["Layout.HeaderPadding"] = new Thickness(28, 22, 28, 22),
                 ["Layout.ContentMargin"] = new Thickness(28),
@@ -61,7 +61,7 @@ public static class ResponsiveSpacingProfiles
             }),
         new ResponsiveBreakpoint(
             MinWidth: 1920,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["Layout.HeaderPadding"] = new Thickness(32, 24, 32, 24),
                 ["Layout.ContentMargin"] = new Thickness(32),
@@ -82,7 +82,7 @@ public static class ResponsiveSpacingProfiles
     {
         new ResponsiveBreakpoint(
             MinWidth: 0,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["ServerSelection.OuterMargin"] = new Thickness(0, 0, 0, 24),
                 ["ServerSelection.StackSpacing"] = 18d,
@@ -94,7 +94,7 @@ public static class ResponsiveSpacingProfiles
             }),
         new ResponsiveBreakpoint(
             MinWidth: 1280,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["ServerSelection.OuterMargin"] = new Thickness(0, 0, 0, 28),
                 ["ServerSelection.StackSpacing"] = 20d,
@@ -106,7 +106,7 @@ public static class ResponsiveSpacingProfiles
             }),
         new ResponsiveBreakpoint(
             MinWidth: 1600,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["ServerSelection.OuterMargin"] = new Thickness(0, 0, 0, 32),
                 ["ServerSelection.StackSpacing"] = 22d,
@@ -118,7 +118,7 @@ public static class ResponsiveSpacingProfiles
             }),
         new ResponsiveBreakpoint(
             MinWidth: 1920,
-            Resources: new Dictionary<string, object>
+            Resources: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["ServerSelection.OuterMargin"] = new Thickness(0, 0, 0, 36),
                 ["ServerSelection.StackSpacing"] = 24d,

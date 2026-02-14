@@ -168,7 +168,7 @@ public sealed class DriftbusterBackendTests
                 Name = "Profile One",
                 Baseline = baselineFile,
                 Sources = new[] { baselineFile, Path.Combine(sourceDir.FullName, "*.txt") },
-                Options = new Dictionary<string, string> { ["key"] = "value" },
+                Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["key"] = "value" },
             };
 
             var result = await _backend.RunProfileAsync(profile, saveProfile: true, baseDir: baseDir);

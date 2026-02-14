@@ -473,7 +473,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             Baseline = baseline?.Path?.Trim() ?? orderedSources.FirstOrDefault(),
             Options = Options
                 .Where(option => !string.IsNullOrWhiteSpace(option.Key))
-                .ToDictionary(option => option.Key.Trim(), option => option.Value ?? string.Empty),
+                .ToDictionary(option => option.Key.Trim(), option => option.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase),
             SecretScanner = CloneSecretScannerOptions(SecretScanner),
         };
     }

@@ -344,12 +344,12 @@ namespace DriftBuster.Gui.ViewModels
             var beforeLines = (before ?? string.Empty).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             var afterLines = (after ?? string.Empty).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             var lines = new List<string>();
-            foreach (var line in beforeLines.Except(afterLines))
+            foreach (var line in beforeLines.Except(afterLines, StringComparer.Ordinal))
             {
                 lines.Add($"- {line}");
             }
 
-            foreach (var line in afterLines.Except(beforeLines))
+            foreach (var line in afterLines.Except(beforeLines, StringComparer.Ordinal))
             {
                 lines.Add($"+ {line}");
             }

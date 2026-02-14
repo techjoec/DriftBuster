@@ -200,7 +200,7 @@ namespace DriftBuster.Gui.ViewModels
             var invalidMessages = Roots
                 .Where(root => root.ValidationState == RootValidationState.Invalid)
                 .Select(root => string.IsNullOrWhiteSpace(root.StatusMessage) ? "Root requires attention." : root.StatusMessage!)
-                .Distinct()
+                .Distinct(StringComparer.Ordinal)
                 .ToList();
 
             if (invalidMessages.Count > 0)
@@ -558,7 +558,7 @@ namespace DriftBuster.Gui.ViewModels
                         CatalogViewModel.SelectedFormat = snapshot.CatalogFilters.Format;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Baseline) && CatalogViewModel.BaselineOptions.Contains(snapshot.CatalogFilters.Baseline))
+                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Baseline) && CatalogViewModel.BaselineOptions.Contains(snapshot.CatalogFilters.Baseline, StringComparer.OrdinalIgnoreCase))
                     {
                         CatalogViewModel.SelectedBaseline = snapshot.CatalogFilters.Baseline;
                     }

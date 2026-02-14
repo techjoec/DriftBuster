@@ -693,7 +693,7 @@ public class RunProfilesViewModelTests
             Name = "Loaded",
             Description = "  description ",
             Sources = new[] { "/baseline.txt", "/other.txt" },
-            Options = new Dictionary<string, string>
+            Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Key"] = "Value",
             },

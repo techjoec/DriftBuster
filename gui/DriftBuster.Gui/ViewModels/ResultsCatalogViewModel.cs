@@ -346,7 +346,7 @@ namespace DriftBuster.Gui.ViewModels
                 FormatOptions.Add(format);
             }
 
-            SelectedFormat = FormatOptions.Contains(previous) ? previous : DefaultFormatOption;
+            SelectedFormat = FormatOptions.Contains(previous, StringComparer.OrdinalIgnoreCase) ? previous : DefaultFormatOption;
         }
 
         private bool MatchesFilters(ConfigCatalogItemViewModel entry)
