@@ -34,7 +34,7 @@ from .token_approvals import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type hints
-    from . import offline_runner as offline_runner_module
+    from . import offline_runner as offline_runner_module  # noqa: F401
 
 __all__ = [
     "AppliedProfileConfig",

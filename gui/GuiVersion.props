@@ -1,5 +1,5 @@
 <Project>
   <PropertyGroup>
-    <DriftBusterGuiVersion>0.0.3</DriftBusterGuiVersion>
+    <DriftBusterGuiVersion>0.1.0</DriftBusterGuiVersion>
   </PropertyGroup>
 </Project>

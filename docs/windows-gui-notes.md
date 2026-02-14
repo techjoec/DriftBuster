@@ -4,19 +4,19 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 
 ## Current Base Assets (2025-10 audit)
 
-- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net8.0` with Avalonia 11.2.0. The refined header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
+- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net10.0` with Avalonia 11.3.11. The refined header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
 - **Backend library**: `gui/DriftBuster.Backend` hosts shared diff, hunt, and run-profile helpers consumed by both the GUI and the PowerShell module.
 - **Execution contract**: Operations run on background tasks, returning the same JSON payloads previously emitted by the Python helper so the UI bindings stay untouched.
 - **UI snapshot**: Diff view validates inputs, renders plan/metadata cards, and offers a copy-raw-JSON action. Hunt view adds directory picker, status messaging, and card-style findings with token badges. The multi-server screen now uses tidy host cards, side-by-side execution/timeline panels, and a lean guidance banner to keep the orchestration workflow focused.
 - **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists using the built-in rule set.
-- **Assets**: `Directory.Build.props` centralises net8.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
+- **Assets**: `Directory.Build.props` centralises net10.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
 
 ## Host Dependencies
 
-- **.NET SDK 8.0.x** installed locally for restore, build, run, and publish steps.
+- **.NET SDK 10.0.x** installed locally for restore, build, run, and publish steps.
 - **Optional tooling**: Avalonia preview support in editor (Rider, VS Code extension) improves XAML edits but is not required.
-- **Runtime checks**: Confirm `dotnet --list-sdks` includes 8.x before running the GUI.
-- **NuGet footprint**: Restore succeeds with Avalonia 11.2.0 packages (`Avalonia`, `Avalonia.Desktop`, `Avalonia.Fonts.Inter`, `Avalonia.Themes.Fluent`, `Avalonia.Diagnostics`). No FluentAvalonia dependency is required.
+- **Runtime checks**: Confirm `dotnet --list-sdks` includes 10.x before running the GUI.
+- **NuGet footprint**: Restore succeeds with Avalonia 11.3.11 packages (`Avalonia`, `Avalonia.Desktop`, `Avalonia.Fonts.Inter`, `Avalonia.Themes.Fluent`, `Avalonia.Diagnostics`). No FluentAvalonia dependency is required.
 - **Assets**: `Assets/app.ico` already contains the DrB badge; replace it with design-approved artwork before shipping installers.
 
 ## Integration Milestones
@@ -50,7 +50,7 @@ Follow the restore + publish flow below so each bundle lands with reproducible f
 2. Compress the publish folder (`publish/`) into `DriftBuster.Gui-portable-win-x64.zip` and store it under `artifacts/gui-packaging/portable/` (create the folder when capturing release evidence).
 3. Copy `MicrosoftEdgeWebView2RuntimeInstallerX64.exe` beside the zip; bundle both into the operator hand-off package.
 4. Capture SHA256 hashes for the zip + WebView2 installer via `Get-FileHash` (PowerShell) and record them in `artifacts/gui-packaging/portable/hashes.txt` (or append the values to `artifacts/gui-packaging/publish-framework-dependent.sha256` to mirror the tracked evidence format).
-5. Note the required pre-installed dependencies (host must have .NET 8.0 Desktop Runtime + WebView2) in the release notes.
+5. Note the required pre-installed dependencies (host must have .NET 10.0 Desktop Runtime + WebView2) in the release notes.
 
 ### Self-contained bundle workflow (ships .NET runtime)
 

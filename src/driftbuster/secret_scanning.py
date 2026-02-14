@@ -6,7 +6,7 @@ import shutil
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence, Tuple
+from typing import Any, Callable, Mapping, Sequence
 
 import importlib.resources as resources
 

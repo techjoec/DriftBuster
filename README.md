@@ -4,7 +4,7 @@ DriftBuster inspects configuration trees, recognises familiar formats, and
 describes the differences so you can rein in infrastructure drift before it
 becomes an outage.
 
-Note: The primary experience is a .NET 8 Windows GUI backed by a shared
+Note: The primary experience is a .NET 10 Windows GUI backed by a shared
 backend. The Python engine provides the detection core, offline runner, and
 developer tooling used by the GUI and PowerShell module.
 
@@ -26,7 +26,7 @@ developer tooling used by the GUI and PowerShell module.
 ## Requirements
 
 - Python 3.12 or newer
-- `dotnet` 8.0 SDK (only for the GUI or .NET build pipeline)
+- `dotnet` 10.0 SDK (only for the GUI or .NET build pipeline)
 
 ## Installation
 
@@ -41,7 +41,9 @@ python -m pip install -e .
 Install optional tooling used by the compliance workflow:
 
 ```sh
-python -m pip install detect-secrets pip-licenses
+python -m pip install pip-licenses
+# Secrets scanning (gitleaks binary, see https://github.com/gitleaks/gitleaks)
+# Install via: brew install gitleaks  OR  download from GitHub releases
 ```
 
 ## Quick Start
@@ -241,7 +243,7 @@ python -m pytest
 ```
 
 Optional local checks:
-- Secret scanning: `detect-secrets scan`
+- Secret scanning: `gitleaks detect --source . -v`
 - License audit: `pip-licenses`
 
 ### Coverage Policy
@@ -292,7 +294,7 @@ src/driftbuster/
 ├─ reporting/       # Emit JSON/text/HTML reports
 └─ …                # CLI entrypoints and hunt utilities
 
-gui/                # Avalonia desktop app (C# / .NET 8)
+gui/                # Avalonia desktop app (C# / .NET 10)
 tests/              # Python unit tests covering detectors and CLI
 docs/               # Developer guides, roadmaps, and playbooks
 scripts/            # Release helpers and capture tooling

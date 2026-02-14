@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
+# Disabled — all checks are local-only (see CLAUDE.md / CONTRIBUTING.md).
+# Kept up-to-date so it can be re-enabled if the policy changes.
 name: CLA & Provenance Check
 
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   verify-cla:

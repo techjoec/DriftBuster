@@ -156,7 +156,7 @@ Profile Scheduler (Preview)
   due work and hand the resulting `ScheduledRun` objects to your execution
   harness.
 
-GUI Focus (\.NET 8)
+GUI Focus (\.NET 10)
 -------------------
 - The GUI consumes the same packaged output and surfaces registry scan results
   beside file-based findings. It remains the primary workflow; the Python

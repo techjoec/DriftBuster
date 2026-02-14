@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -17,10 +18,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
-
-using Microsoft.Extensions.FileSystemGlobbing;
-
 using DriftBuster.Backend.Models;
+using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace DriftBuster.Backend
 {
@@ -808,6 +807,7 @@ namespace DriftBuster.Backend
             return new DiffStats(added, removed, changed);
         }
 
+        [StructLayout(LayoutKind.Auto)]
         private readonly record struct DiffStats(int AddedLines, int RemovedLines, int ChangedLines);
 
         private enum SequenceOperation
@@ -818,6 +818,7 @@ namespace DriftBuster.Backend
             Insert,
         }
 
+        [StructLayout(LayoutKind.Auto)]
         private readonly record struct SequenceOpcode(SequenceOperation Tag, int I1, int I2, int J1, int J2);
 
         private sealed class SequenceMatcher
@@ -2036,6 +2037,7 @@ namespace DriftBuster.Backend
 
                 var json = JsonSerializer.Serialize(
                     new Dictionary<string, object?>
+(StringComparer.Ordinal)
                     {
                         ["schedules"] = payload,
                     },
@@ -2256,7 +2258,7 @@ namespace DriftBuster.Backend
                     Description = profile.Description,
                     Baseline = profile.Baseline,
                     Sources = profile.Sources is null ? Array.Empty<string>() : profile.Sources.Where(source => !string.IsNullOrWhiteSpace(source)).Select(source => source.Trim()).ToArray(),
-                    Options = new Dictionary<string, string>(profile.Options ?? new Dictionary<string, string>(), StringComparer.Ordinal),
+                    Options = new Dictionary<string, string>(profile.Options ?? new Dictionary<string, string>(StringComparer.Ordinal), StringComparer.Ordinal),
                     SecretScanner = CloneSecretScanner(profile.SecretScanner),
                 };
             }

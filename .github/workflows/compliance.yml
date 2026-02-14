@@ -1,9 +1,9 @@
+# Disabled — all checks are local-only (see CLAUDE.md / CONTRIBUTING.md).
+# Kept up-to-date so it can be re-enabled if the policy changes.
 name: Compliance & Tests
 
 on:
-  pull_request:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-test-licensing:
@@ -14,15 +14,15 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Install compliance tools
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install detect-secrets pip-licenses || true
+          pip3 install pip-licenses || true
 
       - name: Secret scan
-        run: detect-secrets scan --all-files > .secrets.baseline || true
+        run: gitleaks detect --source . -v || true
 
       - name: Restore & build
         run: |

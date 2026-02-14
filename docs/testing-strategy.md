@@ -35,8 +35,7 @@ for new and modified components.
 - `pwsh scripts/lint_powershell.ps1` — runs PSScriptAnalyzer across the
   PowerShell module and fails if any warnings or errors are detected.
 - `python -m compileall src` — sanity compiles the entire Python tree.
-- `python -m pycodestyle src` — style-checks all Python modules using the
-  defaults codified in `setup.cfg` (currently 140-character lines).
+- `ruff check src` — style-checks all Python modules (140-character line limit).
 - `dotnet format gui/DriftBuster.Backend/DriftBuster.Backend.csproj --verify-no-changes`
   — validates the backend library formatting against analyzer defaults.
 - `dotnet format gui/DriftBuster.Gui/DriftBuster.Gui.csproj --verify-no-changes`
@@ -277,20 +276,20 @@ grounded in reproducible fixtures.
   pytest -q
   dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj
   python -m compileall src
-  python -m pycodestyle src/driftbuster/core
-  python -m pycodestyle src/driftbuster/formats/registry_live
-  python -m pycodestyle src/driftbuster/registry
+  ruff check src/driftbuster/core
+  ruff check src/driftbuster/formats/registry_live
+  ruff check src/driftbuster/registry
   ```
 
 - `pytest` and `dotnet test` confirm behaviour across detector, plugins, hunt,
   CLI, API, and GUI layers.
 - `python -m compileall src` — confirms helper modules (e.g.,
   `_validate_sample_size`) remain syntax safe across Python versions.
-- `python -m pycodestyle src/driftbuster/core` — spot-checks detector style
+- `ruff check src/driftbuster/core` — spot-checks detector style
   before pushing shared guardrails wider.
-- `python -m pycodestyle src/driftbuster/formats/registry_live` — confirms the
+- `ruff check src/driftbuster/formats/registry_live` — confirms the
   registry-live plugin follows the same conventions as the detector module.
-- `python -m pycodestyle src/driftbuster/registry` — confirms runtime registry
+- `ruff check src/driftbuster/registry` — confirms runtime registry
   helpers follow the same conventions.
 - Capture results in `notes/checklists/core-scan.md` along with fixture
   metadata so the troubleshooting table in `README.md` stays trustworthy.

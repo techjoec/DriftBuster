@@ -34,7 +34,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional
 
 from ..format_registry import register
 from ...core.types import DetectionMatch

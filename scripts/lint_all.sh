@@ -8,8 +8,8 @@ python_bin="${repo_root}/.venv/bin/python"
 echo "[lint] python compileall"
 "${python_bin}" -m compileall "${repo_root}/src"
 
-echo "[lint] pycodestyle"
-"${python_bin}" -m pycodestyle "${repo_root}/src"
+echo "[lint] ruff"
+"${python_bin}" -m ruff check "${repo_root}/src"
 
 echo "[lint] powershell"
 pwsh "${repo_root}/scripts/lint_powershell.ps1"

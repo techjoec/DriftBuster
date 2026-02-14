@@ -9,7 +9,7 @@ from glob import glob
 from hashlib import sha256
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Sequence
+from typing import Any, Callable, List, Mapping, Sequence
 
 from .. import secret_scanning
 

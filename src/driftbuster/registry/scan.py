@@ -4,7 +4,7 @@ import sys
 import time
 import re
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 
 def is_windows() -> bool:

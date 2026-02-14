@@ -4,13 +4,13 @@ This guide explains the capabilities, layout, and operational details of the Ava
 
 ## 1. Overview
 - **Purpose:** Provide a Windows-first experience for building diff plans and running hunt scans powered by the new .NET backend.
-- **Architecture:** Avalonia (net8.0) desktop app backed by the shared `DriftBuster.Backend` library used by the PowerShell module.
+- **Architecture:** Avalonia (net10.0) desktop app backed by the shared `DriftBuster.Backend` library used by the PowerShell module.
 - **Audience:** Analysts validating configuration drift manually, as well as developers exercising the core engine without the CLI.
 
 ## 2. Prerequisites
 | Dependency | Notes |
 |------------|-------|
-| .NET SDK 8.0.x | Required to restore, run, and publish the GUI. |
+| .NET SDK 10.0.x | Required to restore, run, and publish the GUI. |
 | DriftBuster repo checkout | Required for fixtures and sample data referenced by the UI. |
 | Optional editor tooling | JetBrains Rider, VS Code + Avalonia extension, or equivalent for XAML previews. |
 | Microsoft Edge WebView2 Evergreen Runtime | Bundle the offline installer alongside portable/self-contained builds; confirm version recorded in `artifacts/gui-packaging/`. |
@@ -53,13 +53,13 @@ This guide explains the capabilities, layout, and operational details of the Ava
 
 The captures above follow the asset naming convention documented in `docs/ux-refresh.md#theme-capture-manifest`. Reuse them in release material whenever the palettes change, and regenerate fresh captures after significant visual adjustments to keep the manifest traceable. The Dark+ capture also records the diff planner MRU dropdown and export timeline pairing validated in `artifacts/manual-runs/2025-10-24-multi-server-notes.md`.
 
-## Avalonia 11.2 Migration Notes
+## Avalonia 11.3.11 Migration Notes
 
-- **Release build recipe:** Run `dotnet build -c Release gui/DriftBuster.Gui/DriftBuster.Gui.csproj` to capture the Avalonia 11.2 output. Store the publish folder and the generated `DriftBuster.Gui.*.dll` hashes under `artifacts/builds/avalonia-11-2/` so regression reviewers can diff binaries against earlier builds.
-- **Headless validation:** Execute `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter DisplayClass=ResultsCatalog` (or the full suite) immediately after rebuilding. The tests assert the updated sort pipeline and toast resource lookups so the 11.2 swap does not regress catalog ordering or notifications.
+- **Release build recipe:** Run `dotnet build -c Release gui/DriftBuster.Gui/DriftBuster.Gui.csproj` to capture the Avalonia 11.3.11 output. Store the publish folder and the generated `DriftBuster.Gui.*.dll` hashes under `artifacts/builds/avalonia-11-3/` so regression reviewers can diff binaries against earlier builds.
+- **Headless validation:** Execute `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter DisplayClass=ResultsCatalog` (or the full suite) immediately after rebuilding. The tests assert the updated sort pipeline and toast resource lookups so the 11.3.11 swap does not regress catalog ordering or notifications.
 - **Manual smoke:** Launch the Release build once (`dotnet run -c Release --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`) and confirm: (1) catalog sort toggles update headers and persisted descriptors, (2) toast stacks resolve dark/light palette resources without missing icons, and (3) activity timeline export entries continue to log in the overflow tray.
 - **Troubleshooting:** If the Release build fails to locate Avalonia resources, verify `gui/DriftBuster.Gui/Assets/Styles/Notifications.axaml` still references the migrated token names and re-run `dotnet clean` before rebuilding. Missing toast colours typically indicate stale ResourceDictionary caches from earlier versions.
-- **Documentation trail:** Cross-reference the migration summary in `docs/ux-refresh.md#avalonia-112-migration-follow-up` and note the GUI release entry guidance in `docs/release-notes.md#avalonia-112-results-catalog-alignment` when publishing notes.
+- **Documentation trail:** Cross-reference the migration summary in `docs/ux-refresh.md#avalonia-1311-migration-follow-up` and note the GUI release entry guidance in `docs/release-notes.md#avalonia-1311-results-catalog-alignment` when publishing notes.
 
 ## 5. Diff Planner Details
 ### Inputs & Validation
@@ -173,7 +173,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 
 ### Notifications & Timeline
 - Toast alerts now surface in a compact stack with at most three visible at once; additional messages collapse into an overflow tray so long-running scans don't flood the viewport.
-- Toast styling now reads Avalonia 11.2 theme dictionaries directly: override `Brush.Toast.*` or `Toast.Icon.*` resources under `ThemeVariant.Dark` / `ThemeVariant.Light` to tailor per-theme palettes without touching the converters.
+- Toast styling now reads Avalonia 11.3.11 theme dictionaries directly: override `Brush.Toast.*` or `Toast.Icon.*` resources under `ThemeVariant.Dark` / `ThemeVariant.Light` to tailor per-theme palettes without touching the converters.
 - Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter plus the last opened drilldown host persist with the rest of the multi-server session.
 - Clipboard/export actions write to the timeline with the new **Exports** filter so analysts can isolate delivery events quickly.
 - Diff planner exports from the manual run evidence file appear in the **Exports** view alongside the MRU replay, demonstrating how sanitized payloads and timeline entries stay in sync for audits.

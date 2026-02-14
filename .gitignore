@@ -1,40 +1,43 @@
-.serena/
-
-# Python build artifacts
+# ── Python ────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.egg-info/
+*.egg
+*.whl
 .venv/
 dist/
 build/
-*.whl
-*.egg
-
-# Python test artifacts
 .pytest_cache/
 .hypothesis/
 .coverage
 coverage.json
 htmlcov/
 .tox/
+.ruff_cache/
+.mypy_cache/
+.nox/
 
-# .NET build artifacts
+# ── .NET ──────────────────────────────────────────────────────────
 bin/
 obj/
+publish/
 *.user
 *.suo
 *.cache
-
-# .NET test artifacts
+*.nupkg
+*.snupkg
 TestResults/
 **/TestResults/
 coverage.cobertura.xml
 *.trx
 
-# Logs
+# ── Secrets / scanning ───────────────────────────────────────────
+.gitleaks/
+
+# ── Logs ──────────────────────────────────────────────────────────
 *.log
 
-# IDE and editor files
+# ── IDE and editor files ─────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
@@ -42,24 +45,25 @@ coverage.cobertura.xml
 *~
 .vs/
 
-# OS files
+# ── OS files ─────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# ── Temporary files ──────────────────────────────────────────────
 *.tmp
 *.temp
 
+# ── Releases / cloud ─────────────────────────────────────────────
+Releases/
+.codex-cloud/
+
+# ── Artifacts (deny-all, then allowlist evidence dirs) ───────────
 !artifacts/
 artifacts/*
 !artifacts/logs/
 !artifacts/logs/**
 !artifacts/sql/
 !artifacts/sql/**
-!artifacts/powershell/
-!artifacts/powershell/**
-!artifacts/coverage/
-!artifacts/coverage/**
 !artifacts/cli-plan/
 !artifacts/cli-plan/**
 !artifacts/release/
@@ -68,8 +72,6 @@ artifacts/*
 !artifacts/manual-runs/**
 !artifacts/encryption/
 !artifacts/encryption/**
-!artifacts/hold-exit/
-!artifacts/hold-exit/**
 !artifacts/gui-packaging/
 !artifacts/gui-packaging/**
 !artifacts/gui-accessibility/
@@ -80,7 +82,13 @@ artifacts/*
 !artifacts/perf/**
 !artifacts/notifications/
 !artifacts/notifications/**
-!artifacts/remote-scans/
-!artifacts/remote-scans/**
-Releases/
-.codex-cloud/
+!artifacts/reporting/
+!artifacts/reporting/**
+!artifacts/formats/
+!artifacts/formats/**
+!artifacts/samples/
+!artifacts/samples/**
+!artifacts/diff-planner-validation/
+!artifacts/diff-planner-validation/**
+!artifacts/day0-demo/
+!artifacts/day0-demo/**

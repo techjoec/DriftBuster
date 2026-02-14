@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 DriftBuster detects and explains configuration drift across file trees with format-aware diffing, profiles, and hunt tooling. The project consists of:
 
 - **Python 3.12+ engine** (`src/driftbuster/`) - Core detection, CLI, offline runner, multi-server orchestration
-- **.NET 8 Avalonia GUI** (`gui/`) - Cross-platform desktop interface using shared backend
+- **.NET 10 Avalonia GUI** (`gui/`) - Cross-platform desktop interface using shared backend
 - **PowerShell module** (`cli/DriftBuster.PowerShell/`) - Windows automation layer
 
 All automation checks remain **local-only** - never add GitHub Actions/workflows.
@@ -20,7 +20,9 @@ All automation checks remain **local-only** - never add GitHub Actions/workflows
 python -m pip install -e .
 
 # Install optional compliance tooling
-python -m pip install detect-secrets pip-licenses
+python -m pip install pip-licenses
+# Secrets scanning (gitleaks binary, see https://github.com/gitleaks/gitleaks)
+# Install via: brew install gitleaks  OR  download from GitHub releases
 ```
 
 ### Testing & Coverage
@@ -44,8 +46,8 @@ python -m scripts.coverage_report  # repo-wide summary
 
 ### Linting & Formatting
 ```bash
-# Python style (140-character limit)
-python -m pycodestyle src
+# Python style (140-character limit, ruff linter)
+ruff check src
 
 # .NET formatting validation (run for all three projects)
 dotnet format gui/DriftBuster.Backend/DriftBuster.Backend.csproj --verify-no-changes
@@ -115,7 +117,7 @@ python scripts/release_build.py --no-installer
 ### Security & Compliance
 ```bash
 # Secrets scanning (before commits)
-detect-secrets scan --exclude-files "\.git/|\.venv/|node_modules/"
+gitleaks detect --source . -v
 
 # License audit
 pip-licenses
@@ -175,7 +177,7 @@ pip-licenses
 - Contains `DriftbusterPaths` helper for OS-specific data directory resolution
 
 **Avalonia GUI** (`DriftBuster.Gui/`):
-- Target: .NET 8, nullable + implicit usings enabled
+- Target: .NET 10, nullable + implicit usings enabled
 - **ViewModels** (all implement `IDisposable` for proper cleanup):
   - `ServerSelectionViewModel` - Main orchestration, drag/drop server management
   - `ConfigDrilldownViewModel` - Configuration detail exploration
@@ -219,13 +221,13 @@ pip-licenses
 ## Coding Standards
 
 ### Python
-- Style: `pycodestyle` with **140-character line limit**
+- Style: `ruff` with **140-character line limit** (E/W/F rules)
 - Coverage: **≥90% line coverage** for all touched modules (enforced locally)
 - Functional blocks prioritized, sparse commenting for non-obvious logic
 - Follow existing plugin patterns for consistency
 
 ### .NET
-- Target: net8.0, nullable enabled, implicit usings
+- Target: net10.0, nullable enabled, implicit usings
 - Formatting: `dotnet format --verify-no-changes` for Backend, GUI, Tests
 - Coverage: **≥90% line coverage** (enforced via `-p:Threshold=90`)
 - Analyzer warnings must be resolved before commit
@@ -250,7 +252,7 @@ pip-licenses
 **Coverage Policy** (HARD REQUIREMENT):
 - Python: ≥90% for all modules under `src/driftbuster/` (currently 93%)
 - .NET: ≥90% total line coverage for GUI + Backend (currently ≥90%)
-- PowerShell: 4 tests must pass with zero PSScriptAnalyzer warnings
+- PowerShell: 4 tests (skipped when pwsh runtime < .NET 10; zero PSScriptAnalyzer warnings)
 - New format plugins: ≥90% per-file coverage with focused tests
 
 **Test Organization**:
@@ -268,7 +270,7 @@ pip-licenses
 | Python Tests | All pass | 537/537 | ✅ |
 | .NET Coverage | ≥90% | ≥90% | ✅ |
 | .NET Tests | All pass | 180/180 | ✅ |
-| PowerShell Tests | All pass | 4/4 | ✅ |
+| PowerShell Tests | All pass | 4/4 skipped (pwsh < .NET 10) | ⏭️ |
 | Python Style | Zero | 0 violations | ✅ |
 | .NET Warnings | Zero | 0 warnings | ✅ |
 | PowerShell Linting | Zero | 0 warnings | ✅ |
@@ -467,5 +469,5 @@ dotnet test gui/DriftBuster.Gui.Tests/Services/ToastServiceTests.cs --filter Ove
 
 1. **No CI/CD**: All checks are local-only. Never add `.github/workflows/` or automation hooks.
 2. **No telemetry**: No analytics without explicit user opt-in.
-3. **Secrets scanning**: Run `detect-secrets scan` before commits.
+3. **Secrets scanning**: Run `gitleaks detect --source . -v` before commits.
 4. **Version sync**: Update `versions.json` and run `python scripts/sync_versions.py` when bumping component versions.

@@ -9,9 +9,33 @@ from pathlib import Path
 import pytest
 
 
-pytestmark = pytest.mark.skipif(
-    shutil.which("pwsh") is None, reason="PowerShell (pwsh) is not available"
-)
+def _pwsh_runtime_version() -> tuple[int, ...]:
+    """Return the .NET runtime version PowerShell is running on."""
+    if shutil.which("pwsh") is None:
+        return (0,)
+    try:
+        result = subprocess.run(
+            ["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+             "[System.Environment]::Version.ToString()"],
+            capture_output=True, text=True, timeout=15,
+        )
+        parts = result.stdout.strip().split(".")
+        return tuple(int(p) for p in parts if p.isdigit())
+    except Exception:
+        return (0,)
+
+
+_PWSH_RUNTIME = _pwsh_runtime_version()
+
+pytestmark = [
+    pytest.mark.skipif(
+        shutil.which("pwsh") is None, reason="PowerShell (pwsh) is not available"
+    ),
+    pytest.mark.skipif(
+        _PWSH_RUNTIME < (10,),
+        reason=f"Backend targets net10.0; PowerShell runtime is .NET {'.'.join(str(v) for v in _PWSH_RUNTIME)} (need >=10)",
+    ),
+]
 
 
 MODULE_PATH = Path("cli/DriftBuster.PowerShell/DriftBuster.psm1")

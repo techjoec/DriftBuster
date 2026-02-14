@@ -39,5 +39,5 @@
       "totalRuns": 5
     }
   ],
-  "source": "/tmp/pytest-of-joe/pytest-56/test_cli_flags_stale_exit_code0/headless-font-health.json"
+  "source": "/tmp/pytest-of-joe/pytest-5/test_cli_flags_stale_exit_code0/headless-font-health.json"
 }

@@ -18,7 +18,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, MutableMapping, Sequence
+from typing import Dict, Mapping, Sequence
 
 from driftbuster.core.detector import Detector, DetectorIOError
 from driftbuster.reporting.diff import (

@@ -1,3 +1,0 @@
-Python coverage: 94.34%
-.NET coverage: 77.26% (Cobertura)
-Compliance watch floor: 90.27%

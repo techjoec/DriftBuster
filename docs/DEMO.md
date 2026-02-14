@@ -4,7 +4,7 @@ This demo ships with the GUI and includes a realistic, multi-server sample set.
 Use it to explore format detection, diffs, and hunts without any setup.
 
 Prerequisites
-- .NET 8 SDK installed.
+- .NET 10 SDK installed.
 
 Launch the GUI
 - `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`
