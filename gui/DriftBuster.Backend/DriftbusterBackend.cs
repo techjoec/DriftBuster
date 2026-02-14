@@ -54,7 +54,7 @@ namespace DriftBuster.Backend
     }
 
     [ExcludeFromCodeCoverage]
-    public sealed class DriftbusterBackend : IDriftbusterBackend
+    public sealed partial class DriftbusterBackend : IDriftbusterBackend
     {
         private const int HuntSampleSize = 128 * 1024;
         private const string RedactedPlaceholder = "[REDACTED]";
@@ -93,7 +93,7 @@ namespace DriftBuster.Backend
                 new[] { "server", "host" },
                 new[]
                 {
-                    new Regex(@"\b[a-z0-9_-]+\.(local|lan|corp|com|net|internal)\b", RegexOptions.IgnoreCase | RegexOptions.Multiline),
+                    ServerNamePattern(),
                 }),
             new HuntRuleDefinition(
                 "certificate-thumbprint",
@@ -102,8 +102,8 @@ namespace DriftBuster.Backend
                 new[] { "thumbprint", "certificate" },
                 new[]
                 {
-                    new Regex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase),
-                    new Regex(@"\b[0-9a-f]{64}\b", RegexOptions.IgnoreCase),
+                    CertThumbprint40Pattern(),
+                    CertThumbprint64Pattern(),
                 }),
             new HuntRuleDefinition(
                 "version-number",
@@ -112,7 +112,7 @@ namespace DriftBuster.Backend
                 new[] { "version" },
                 new[]
                 {
-                    new Regex(@"\b\d+\.\d+\.\d+(?:\.\d+)?\b", RegexOptions.IgnoreCase),
+                    VersionNumberPattern(),
                 }),
             new HuntRuleDefinition(
                 "install-path",
@@ -121,10 +121,28 @@ namespace DriftBuster.Backend
                 new[] { "path", "install" },
                 new[]
                 {
-                    new Regex(@"[A-Za-z]:\\\\[\\\\\w\-\. ]+", RegexOptions.IgnoreCase),
-                    new Regex(@"/opt/[\w\-\.]+", RegexOptions.IgnoreCase),
+                    WindowsPathPattern(),
+                    UnixOptPathPattern(),
                 }),
         };
+
+        [GeneratedRegex(@"\b[a-z0-9_-]+\.(?:local|lan|corp|com|net|internal)\b", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking)]
+        private static partial Regex ServerNamePattern();
+
+        [GeneratedRegex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+        private static partial Regex CertThumbprint40Pattern();
+
+        [GeneratedRegex(@"\b[0-9a-f]{64}\b", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+        private static partial Regex CertThumbprint64Pattern();
+
+        [GeneratedRegex(@"\b\d+\.\d+\.\d+(?:\.\d+)?\b", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+        private static partial Regex VersionNumberPattern();
+
+        [GeneratedRegex(@"[A-Za-z]:\\\\[\\\\\w\-\. ]+", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+        private static partial Regex WindowsPathPattern();
+
+        [GeneratedRegex(@"/opt/[\w\-\.]+", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+        private static partial Regex UnixOptPathPattern();
 
         private static readonly char[] GlobCharacters = { '*', '?', '[' };
 
@@ -452,7 +470,8 @@ namespace DriftBuster.Backend
             return string.Join("\n", lines);
         }
 
-        private static readonly Regex XmlDeclarationPattern = new("<\\?xml[^>]*\\?>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+        [GeneratedRegex(@"<\?xml[^>]*\?>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+        private static partial Regex XmlDeclarationPattern();
 
         private static string CanonicaliseXml(string value)
         {
@@ -462,7 +481,7 @@ namespace DriftBuster.Backend
             }
 
             var working = value.TrimStart();
-            var declarationMatch = XmlDeclarationPattern.Match(working);
+            var declarationMatch = XmlDeclarationPattern().Match(working);
             var xmlDeclaration = string.Empty;
             if (declarationMatch.Success)
             {
