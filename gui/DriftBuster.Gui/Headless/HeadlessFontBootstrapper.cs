@@ -13,7 +13,7 @@ namespace DriftBuster.Gui.Headless;
 internal static class HeadlessFontBootstrapper
 {
     private const string DefaultFamilyName = "Inter";
-    private static readonly object Sync = new();
+    private static readonly Lock Sync = new();
 
     private static readonly PropertyInfo? CurrentMutableProperty = typeof(AvaloniaLocator)
         .GetProperty("CurrentMutable", BindingFlags.Public | BindingFlags.Static);

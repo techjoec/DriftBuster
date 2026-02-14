@@ -144,7 +144,7 @@ namespace DriftBuster.Gui.Services
         private readonly ReadOnlyObservableCollection<ToastNotification> _overflowReadonly;
         private readonly Action<Action> _dispatcher;
         private readonly List<Action> _pendingActions = new();
-        private readonly object _queueLock = new();
+        private readonly Lock _queueLock = new();
         private bool _isProcessing;
 
         public ToastService(Action<Action>? dispatcher = null)

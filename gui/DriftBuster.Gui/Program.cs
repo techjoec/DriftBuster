@@ -44,7 +44,7 @@ namespace DriftBuster.Gui
                 })
                 .LogToTrace();
 
-        private static readonly object HeadlessSync = new();
+        private static readonly Lock HeadlessSync = new();
         private static bool _headlessInitialized;
 
         internal static IDisposable EnsureHeadless(Func<AppBuilder, AppBuilder>? configure = null)

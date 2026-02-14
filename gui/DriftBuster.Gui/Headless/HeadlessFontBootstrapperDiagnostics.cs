@@ -6,7 +6,7 @@ namespace DriftBuster.Gui.Headless;
 
 internal static class HeadlessFontBootstrapperDiagnostics
 {
-    private static readonly object Sync = new();
+    private static readonly Lock Sync = new();
     private static ProbeSnapshot _snapshot = ProbeSnapshot.Empty;
 
     public static void RecordSnapshot(ProbeSnapshot snapshot)

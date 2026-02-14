@@ -9,7 +9,7 @@ namespace DriftBuster.Gui.Tests.Headless;
 
 internal static class HeadlessFontHealthTelemetry
 {
-    private static readonly object Sync = new();
+    private static readonly Lock Sync = new();
     private static readonly Dictionary<string, ScenarioRecord> Records = new(StringComparer.OrdinalIgnoreCase);
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {

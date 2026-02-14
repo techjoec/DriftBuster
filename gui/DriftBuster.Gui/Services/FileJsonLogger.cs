@@ -14,7 +14,7 @@ namespace DriftBuster.Gui.Services;
 public sealed class FileJsonLogger<T> : ILogger<T>
 {
     private readonly string _path;
-    private readonly object _syncRoot = new();
+    private readonly Lock _syncRoot = new();
     private readonly JsonSerializerOptions _serializerOptions;
 
     public FileJsonLogger(string path)
