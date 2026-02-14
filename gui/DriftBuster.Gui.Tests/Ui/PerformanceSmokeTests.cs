@@ -52,7 +52,7 @@ public sealed class PerformanceSmokeTests
         var dispatcher = new Action<Action>(action =>
         {
             dispatchCount++;
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
                 action();
                 if (service is not null && service.OverflowToasts.Count == expectedOverflow)
@@ -79,7 +79,7 @@ public sealed class PerformanceSmokeTests
 
         var dispatchCountBeforeDismiss = dispatchCount;
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             while (service.ActiveToasts.Count > 0 || service.OverflowToasts.Count > 0)
             {
