@@ -139,7 +139,7 @@ namespace DriftBuster.Gui.ViewModels
 
         public string BaselineHostId => _source.BaselineHostId;
 
-        public ConfigDrilldownServerViewModel? BaselineServer => Servers.FirstOrDefault(server => server.HostId == BaselineHostId);
+        public ConfigDrilldownServerViewModel? BaselineServer => Servers.FirstOrDefault(server => string.Equals(server.HostId, BaselineHostId, StringComparison.Ordinal));
 
         public string BaselineLabel => BaselineServer?.Label ?? "Not assigned";
 

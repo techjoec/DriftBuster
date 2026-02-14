@@ -178,7 +178,7 @@ public sealed class DriftbusterBackendTests
             Assert.NotNull(result.Profile);
 
             var listed = await _backend.ListProfilesAsync(baseDir);
-            Assert.Contains(listed.Profiles, p => p.Name == "Profile One");
+            Assert.Contains(listed.Profiles, p => string.Equals(p.Name, "Profile One", StringComparison.Ordinal));
 
             var savedProfilePath = Path.Combine(baseDir, "Profiles", "Profile-One", "profile.json");
             Assert.True(File.Exists(savedProfilePath));
@@ -293,8 +293,8 @@ public sealed class DriftbusterBackendTests
 
         Assert.Equal("multi-server.v1", response.Version);
         Assert.Equal(2, response.Results.Length);
-        Assert.Contains(response.Results, result => result.HostId == "baseline" && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);
-        Assert.Contains(response.Results, result => result.HostId == "drift" && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);
+        Assert.Contains(response.Results, result => string.Equals(result.HostId, "baseline", StringComparison.Ordinal) && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);
+        Assert.Contains(response.Results, result => string.Equals(result.HostId, "drift", StringComparison.Ordinal) && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);
         Assert.NotEmpty(response.Catalog);
         var appEntry = response.Catalog.First(entry => entry.DisplayName.EndsWith("appsettings.json", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(2, appEntry.PresentHosts.Length);

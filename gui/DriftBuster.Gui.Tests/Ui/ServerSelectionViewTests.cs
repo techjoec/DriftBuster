@@ -518,7 +518,7 @@ public sealed class ServerSelectionViewTests
                             HostId = plan.HostId,
                             Label = string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label,
                             Present = !missing.Contains(string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label, StringComparer.OrdinalIgnoreCase),
-                            IsBaseline = plan.HostId == (batch.FirstOrDefault()?.HostId ?? string.Empty),
+                            IsBaseline = string.Equals(plan.HostId, batch.FirstOrDefault()?.HostId ?? string.Empty, StringComparison.Ordinal),
                             Status = missing.Contains(plan.Label ?? plan.HostId, StringComparer.OrdinalIgnoreCase) ? "Missing" : "Match",
                             DriftLineCount = 0,
                             HasSecrets = false,

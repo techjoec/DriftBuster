@@ -121,7 +121,7 @@ public sealed class DiffViewTests
         return root
             .GetLogicalDescendants()
             .OfType<T>()
-            .First(control => AutomationProperties.GetAutomationId(control) == automationId);
+            .First(control => string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
     }
 
     private sealed class TempDirectory : IDisposable

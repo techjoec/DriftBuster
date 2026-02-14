@@ -619,12 +619,12 @@ namespace DriftBuster.Gui.ViewModels
 
                 ReindexServers();
                 var activeView = (snapshot.ActiveView ?? string.Empty).Trim().ToLowerInvariant();
-                if (activeView == "catalog" && CatalogViewModel.HasEntries)
+                if (string.Equals(activeView, "catalog", StringComparison.Ordinal) && CatalogViewModel.HasEntries)
                 {
                     IsViewingCatalog = true;
                     IsViewingDrilldown = false;
                 }
-                else if (activeView == "drilldown" && DrilldownViewModel is not null)
+                else if (string.Equals(activeView, "drilldown", StringComparison.Ordinal) && DrilldownViewModel is not null)
                 {
                     IsViewingCatalog = false;
                     IsViewingDrilldown = true;

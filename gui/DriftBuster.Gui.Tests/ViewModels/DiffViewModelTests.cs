@@ -78,7 +78,7 @@ public class DiffViewModelTests
 
         var comparisonView = viewModel.Comparisons.Should().ContainSingle().Subject;
         comparisonView.Title.Should().Be("left.txt → right.txt");
-        comparisonView.PlanEntries.Single(p => p.Name == "Mask tokens").Value.Should().Be("secret");
+        comparisonView.PlanEntries.Single(p => string.Equals(p.Name, "Mask tokens", StringComparison.Ordinal)).Value.Should().Be("secret");
         comparisonView.HasDiff.Should().BeTrue();
         comparisonView.UnifiedDiff.Should().Contain("@@");
 

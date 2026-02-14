@@ -192,7 +192,7 @@ namespace DriftBuster.Gui.ViewModels
 
             public string TokenName { get; }
 
-            public bool HasToken => TokenName != "—";
+            public bool HasToken => !string.Equals(TokenName, "—", StringComparison.Ordinal);
 
             public string RelativePath { get; }
 
