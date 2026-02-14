@@ -136,7 +136,7 @@ namespace DriftBuster.Gui.ViewModels
         {
             try
             {
-                var response = await _service.PingAsync();
+                var response = await _service.PingAsync().ConfigureAwait(true);
                 ShowHunt($"Ping reply: {response}");
                 _toastService.Show("Ping succeeded", "Core responded successfully.", ToastLevel.Success, TimeSpan.FromSeconds(3));
             }
@@ -156,7 +156,7 @@ namespace DriftBuster.Gui.ViewModels
         {
             try
             {
-                var response = await _service.PingAsync();
+                var response = await _service.PingAsync().ConfigureAwait(true);
                 IsBackendHealthy = true;
                 BackendStatusText = $"Core OK: {response}";
                 _toastService.Show("Core healthy", "Health check succeeded.", ToastLevel.Success, TimeSpan.FromSeconds(3));

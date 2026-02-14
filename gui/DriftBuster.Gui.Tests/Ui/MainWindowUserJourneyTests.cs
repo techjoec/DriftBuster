@@ -177,7 +177,7 @@ public sealed class MainWindowUserJourneyTests
                 return;
             }
 
-            await Task.Delay(25);
+            await Task.Delay(25).ConfigureAwait(false);
         }
 
         predicate().Should().BeTrue("expected condition to be satisfied within timeout");

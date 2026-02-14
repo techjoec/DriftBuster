@@ -715,12 +715,12 @@ namespace DriftBuster.Gui.ViewModels
 
         private async Task RunAllAsync()
         {
-            await ExecuteRunAsync(retryOnly: false);
+            await ExecuteRunAsync(retryOnly: false).ConfigureAwait(false);
         }
 
         private async Task RunMissingAsync()
         {
-            await ExecuteRunAsync(retryOnly: true);
+            await ExecuteRunAsync(retryOnly: true).ConfigureAwait(false);
         }
 
         private async Task RunScopedAsync(IReadOnlyCollection<string>? hostIds)
@@ -731,7 +731,7 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             var wasDrilldown = IsViewingDrilldown;
-            await ExecuteRunAsync(retryOnly: false, scopedHostIds: hostIds);
+            await ExecuteRunAsync(retryOnly: false, scopedHostIds: hostIds).ConfigureAwait(true);
             if (wasDrilldown && DrilldownViewModel is not null)
             {
                 LoadDrilldown(DrilldownViewModel.ConfigId);

@@ -176,25 +176,27 @@ namespace DriftBuster.Gui.Services
                 return CreateEmptySnapshot(DefaultEntryLimit);
             }
 
-            await using var stream = new FileStream(
+            var stream = new FileStream(
                 _storePath,
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
                 bufferSize: 4096,
                 useAsync: true);
-
-            try
+            await using (stream.ConfigureAwait(false))
             {
-                var snapshot = await JsonSerializer
-                    .DeserializeAsync<DiffPlannerMruSnapshot>(stream, SerializerOptions, cancellationToken)
-                    .ConfigureAwait(false);
+                try
+                {
+                    var snapshot = await JsonSerializer
+                        .DeserializeAsync<DiffPlannerMruSnapshot>(stream, SerializerOptions, cancellationToken)
+                        .ConfigureAwait(false);
 
-                return NormaliseSnapshot(snapshot, overrideLimit: null);
-            }
-            catch (JsonException)
-            {
-                return CreateEmptySnapshot(DefaultEntryLimit);
+                    return NormaliseSnapshot(snapshot, overrideLimit: null);
+                }
+                catch (JsonException)
+                {
+                    return CreateEmptySnapshot(DefaultEntryLimit);
+                }
             }
         }
 
@@ -203,15 +205,17 @@ namespace DriftBuster.Gui.Services
             var directory = Path.GetDirectoryName(_storePath)!;
             Directory.CreateDirectory(directory);
 
-            await using var stream = new FileStream(
+            var stream = new FileStream(
                 _storePath,
                 FileMode.Create,
                 FileAccess.Write,
                 FileShare.None,
                 bufferSize: 4096,
                 useAsync: true);
-
-            await JsonSerializer.SerializeAsync(stream, snapshot, SerializerOptions, cancellationToken).ConfigureAwait(false);
+            await using (stream.ConfigureAwait(false))
+            {
+                await JsonSerializer.SerializeAsync(stream, snapshot, SerializerOptions, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         private static DiffPlannerMruSnapshot NormaliseSnapshot(
@@ -367,53 +371,57 @@ namespace DriftBuster.Gui.Services
 
                 Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
 
-                await using var source = new FileStream(
+                var source = new FileStream(
                     legacyPath,
                     FileMode.Open,
                     FileAccess.Read,
                     FileShare.Read,
                     bufferSize: 4096,
                     useAsync: true);
-
-                var legacy = await JsonSerializer
-                    .DeserializeAsync<LegacyDiffPlannerSettings>(source, LegacySerializerOptions, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (legacy is null)
+                await using (source.ConfigureAwait(false))
                 {
-                    return;
+                    var legacy = await JsonSerializer
+                        .DeserializeAsync<LegacyDiffPlannerSettings>(source, LegacySerializerOptions, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (legacy is null)
+                    {
+                        return;
+                    }
+
+                    var entries = legacy.ResolveEntries()
+                        .Select(entry => entry.ToEntry())
+                        .Where(entry => entry is not null)
+                        .Select(NormaliseEntry)
+                        .Where(entry => entry is not null)
+                        .Cast<DiffPlannerMruEntry>()
+                        .ToList();
+
+                    if (entries.Count == 0)
+                    {
+                        return;
+                    }
+
+                    var limit = legacy.ResolveEntryLimit();
+                    var snapshot = CreateEmptySnapshot(limit);
+                    foreach (var migrated in entries.Take(snapshot.MaxEntries))
+                    {
+                        snapshot.Entries.Add(migrated);
+                    }
+
+                    var target = new FileStream(
+                        destinationPath,
+                        FileMode.CreateNew,
+                        FileAccess.Write,
+                        FileShare.None,
+                        bufferSize: 4096,
+                        useAsync: true);
+                    await using (target.ConfigureAwait(false))
+                    {
+                        await JsonSerializer.SerializeAsync(target, snapshot, SerializerOptions, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
                 }
-
-                var entries = legacy.ResolveEntries()
-                    .Select(entry => entry.ToEntry())
-                    .Where(entry => entry is not null)
-                    .Select(NormaliseEntry)
-                    .Where(entry => entry is not null)
-                    .Cast<DiffPlannerMruEntry>()
-                    .ToList();
-
-                if (entries.Count == 0)
-                {
-                    return;
-                }
-
-                var limit = legacy.ResolveEntryLimit();
-                var snapshot = CreateEmptySnapshot(limit);
-                foreach (var migrated in entries.Take(snapshot.MaxEntries))
-                {
-                    snapshot.Entries.Add(migrated);
-                }
-
-                await using var target = new FileStream(
-                    destinationPath,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    bufferSize: 4096,
-                    useAsync: true);
-
-                await JsonSerializer.SerializeAsync(target, snapshot, SerializerOptions, cancellationToken)
-                    .ConfigureAwait(false);
             }
             catch
             {

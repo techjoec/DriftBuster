@@ -81,15 +81,18 @@ namespace DriftBuster.Gui.Services
                     return null;
                 }
 
-                await using var stream = new FileStream(
+                var stream = new FileStream(
                     _cachePath,
                     FileMode.Open,
                     FileAccess.Read,
                     FileShare.Read,
                     bufferSize: 4096,
                     useAsync: true);
-                return await JsonSerializer.DeserializeAsync<ServerSelectionCache>(stream, SerializerOptions, cancellationToken)
-                    .ConfigureAwait(false);
+                await using (stream.ConfigureAwait(false))
+                {
+                    return await JsonSerializer.DeserializeAsync<ServerSelectionCache>(stream, SerializerOptions, cancellationToken)
+                        .ConfigureAwait(false);
+                }
             }
             finally
             {
@@ -110,14 +113,17 @@ namespace DriftBuster.Gui.Services
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
-                await using var stream = new FileStream(
+                var stream = new FileStream(
                     _cachePath,
                     FileMode.Create,
                     FileAccess.Write,
                     FileShare.None,
                     bufferSize: 4096,
                     useAsync: true);
-                await JsonSerializer.SerializeAsync(stream, snapshot, SerializerOptions, cancellationToken).ConfigureAwait(false);
+                await using (stream.ConfigureAwait(false))
+                {
+                    await JsonSerializer.SerializeAsync(stream, snapshot, SerializerOptions, cancellationToken).ConfigureAwait(false);
+                }
             }
             finally
             {
@@ -166,21 +172,27 @@ namespace DriftBuster.Gui.Services
                 await cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    await using var source = new FileStream(
+                    var source = new FileStream(
                         legacyPath,
                         FileMode.Open,
                         FileAccess.Read,
                         FileShare.Read,
                         bufferSize: 4096,
                         useAsync: true);
-                    await using var target = new FileStream(
-                        destination,
-                        FileMode.CreateNew,
-                        FileAccess.Write,
-                        FileShare.None,
-                        bufferSize: 4096,
-                        useAsync: true);
-                    await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+                    await using (source.ConfigureAwait(false))
+                    {
+                        var target = new FileStream(
+                            destination,
+                            FileMode.CreateNew,
+                            FileAccess.Write,
+                            FileShare.None,
+                            bufferSize: 4096,
+                            useAsync: true);
+                        await using (target.ConfigureAwait(false))
+                        {
+                            await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
                     SessionCacheMigrationCounters.RecordSuccess();
                 }
                 finally

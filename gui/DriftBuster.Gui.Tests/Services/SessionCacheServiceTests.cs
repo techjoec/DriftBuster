@@ -238,7 +238,7 @@ public sealed class SessionCacheServiceTests
             }),
             Task.Run(async () =>
             {
-                var loaded = await service.LoadAsync();
+                var loaded = await service.LoadAsync().ConfigureAwait(false);
                 loaded.Should().NotBeNull();
             }),
         }).ToArray();
@@ -286,9 +286,15 @@ public sealed class SessionCacheServiceTests
         started.TrySetResult(true);
         await release.Task.ConfigureAwait(false);
 
-        await using var source = new FileStream(legacy, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
-        await using var target = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
-        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+        var source = new FileStream(legacy, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        await using (source.ConfigureAwait(false))
+        {
+            var target = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
+            await using (target.ConfigureAwait(false))
+            {
+                await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+            }
+        }
         SessionCacheMigrationCounters.RecordSuccess();
     }
 }

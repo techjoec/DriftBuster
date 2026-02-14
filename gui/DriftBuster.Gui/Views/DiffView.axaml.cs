@@ -39,7 +39,7 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
-            var file = await PickSingleFileAsync();
+            var file = await PickSingleFileAsync().ConfigureAwait(true);
             if (file is not null)
             {
                 input.Path = file;
@@ -62,7 +62,7 @@ namespace DriftBuster.Gui.Views
             var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 AllowMultiple = false,
-            });
+            }).ConfigureAwait(true);
 
             if (files.Count == 0)
             {

@@ -83,7 +83,7 @@ public sealed class PerformanceSmokeTests
         {
             while (service.ActiveToasts.Count > 0 || service.OverflowToasts.Count > 0)
             {
-                await Task.Delay(10);
+                await Task.Delay(10).ConfigureAwait(false);
             }
 
             emptyReset.Set();

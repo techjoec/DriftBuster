@@ -223,6 +223,6 @@ public sealed class DiffPlannerMruStoreTests
         await release.Task.ConfigureAwait(false);
 
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        await File.WriteAllTextAsync(destination, JsonSerializer.Serialize(new DiffPlannerMruSnapshot(), SerializerOptions), cancellationToken);
+        await File.WriteAllTextAsync(destination, JsonSerializer.Serialize(new DiffPlannerMruSnapshot(), SerializerOptions), cancellationToken).ConfigureAwait(false);
     }
 }
