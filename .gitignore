@@ -1,6 +1,8 @@
 # ── Python ────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
+*.pyd
+*.so
 *.egg-info/
 *.egg
 *.whl
@@ -16,6 +18,7 @@ htmlcov/
 .ruff_cache/
 .mypy_cache/
 .nox/
+pip-log.txt
 
 # ── .NET ──────────────────────────────────────────────────────────
 bin/
@@ -26,13 +29,14 @@ publish/
 *.cache
 *.nupkg
 *.snupkg
+*.cobertura.xml
 TestResults/
 **/TestResults/
-coverage.cobertura.xml
 *.trx
 
 # ── Secrets / scanning ───────────────────────────────────────────
 .gitleaks/
+.secrets.baseline
 
 # ── Logs ──────────────────────────────────────────────────────────
 *.log
@@ -44,9 +48,11 @@ coverage.cobertura.xml
 *.swo
 *~
 .vs/
+*.code-workspace
 
 # ── OS files ─────────────────────────────────────────────────────
 .DS_Store
+._*
 Thumbs.db
 
 # ── Temporary files ──────────────────────────────────────────────
@@ -57,11 +63,15 @@ Thumbs.db
 Releases/
 .codex-cloud/
 
-# ── Artifacts (deny-all, then allowlist evidence dirs) ───────────
+# ── Artifacts (deny-all, then allowlist curated evidence only) ───
+#
+# Everything under artifacts/ is ignored by default.  Only checked-in
+# evidence directories are allowlisted below.  Ephemeral outputs
+# (logs, coverage, build transcripts, hashes) must NEVER be tracked.
 !artifacts/
 artifacts/*
-!artifacts/logs/
-!artifacts/logs/**
+
+# Per-directory allowlists — keep tight, no blanket ** for logs
 !artifacts/sql/
 !artifacts/sql/**
 !artifacts/cli-plan/
@@ -90,3 +100,9 @@ artifacts/*
 !artifacts/samples/**
 !artifacts/diff-planner-validation/
 !artifacts/diff-planner-validation/**
+
+# Block ephemeral files even inside allowlisted dirs
+artifacts/**/*.log
+artifacts/**/*.sha256
+artifacts/gui-packaging/*.json
+artifacts/builds/**/*.log
