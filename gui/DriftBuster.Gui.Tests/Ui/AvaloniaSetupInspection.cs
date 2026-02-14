@@ -13,6 +13,7 @@ using Xunit.Abstractions;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
+[Collection(HeadlessCollection.Name)]
 public sealed class AvaloniaSetupInspection
 {
     private readonly ITestOutputHelper _output;

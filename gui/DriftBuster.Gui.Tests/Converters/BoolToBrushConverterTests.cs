@@ -4,11 +4,13 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Threading;
 using DriftBuster.Gui.Converters;
+using DriftBuster.Gui.Tests.Ui;
 using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Converters;
 
+[Collection(HeadlessCollection.Name)]
 public sealed class BoolToBrushConverterTests
 {
     [AvaloniaFact]

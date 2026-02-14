@@ -10,11 +10,13 @@ using Avalonia.Threading;
 
 using DriftBuster.Gui.Converters;
 using DriftBuster.Gui.Services;
+using DriftBuster.Gui.Tests.Ui;
 
 using AwesomeAssertions;
 
 namespace DriftBuster.Gui.Tests.Converters;
 
+[Collection(HeadlessCollection.Name)]
 public sealed class ToastLevelConverterTests
 {
     [AvaloniaFact]
