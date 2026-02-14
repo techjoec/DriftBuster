@@ -8,17 +8,14 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using Avalonia.Input;
 using Avalonia.Headless.XUnit;
-
+using Avalonia.Input;
+using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
-
-using AwesomeAssertions;
-
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
@@ -51,7 +48,7 @@ public sealed class ServerSelectionViewTests
         server.Roots.Last().StatusMessage.Should().Contain("absolute");
     }
 
-    #pragma warning disable MA0051
+#pragma warning disable MA0051
     [AvaloniaFact]
     public async Task ShouldRunScanAndUpdateStatuses()
     {
@@ -146,7 +143,7 @@ public sealed class ServerSelectionViewTests
         viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
         viewModel.IsViewingCatalog.Should().BeTrue();
     }
-    #pragma warning restore MA0051
+#pragma warning restore MA0051
 
     [AvaloniaFact]
     public async Task ShouldPersistSessionWhenUserRequestsSave()
@@ -243,16 +240,18 @@ public sealed class ServerSelectionViewTests
         harness.LastData.Should().NotBeNull();
         harness.LastEffects.Should().Be(DragDropEffects.Move);
 
-        // IDataObject uses string format names, not DataFormat objects
-        const string serverSlotFormat = "driftbuster/server-slot";
-        harness.LastData!.Contains(serverSlotFormat).Should().BeTrue();
-        harness.LastData.Contains(DataFormats.Text).Should().BeTrue();
+        var serverSlotFormat = DataFormat.CreateStringApplicationFormat("driftbuster.server-slot");
+        var asyncData = (IAsyncDataTransfer)harness.LastData!;
+        asyncData.Contains(serverSlotFormat).Should().BeTrue();
+        asyncData.Contains(DataFormat.Text).Should().BeTrue();
 
-        harness.LastData.Get(serverSlotFormat).Should().Be(slotViewModel.HostId);
-        harness.LastData.Get(DataFormats.Text).Should().Be(slotViewModel.Label);
+        var hostId = await asyncData.TryGetValueAsync(serverSlotFormat).ConfigureAwait(false);
+        hostId.Should().Be(slotViewModel.HostId);
+        var label = await asyncData.TryGetValueAsync(DataFormat.Text).ConfigureAwait(false);
+        label.Should().Be(slotViewModel.Label);
 
         harness.Complete(DragDropEffects.Move);
-        await invocation;
+        await invocation.ConfigureAwait(false);
     }
 
     [AvaloniaFact]
@@ -319,11 +318,10 @@ public sealed class ServerSelectionViewTests
         targetCard.Measure(layoutSize);
         targetCard.Arrange(new Rect(layoutSize));
 
-#pragma warning disable 618
-        var data = new DataObject();
-        data.Set("driftbuster/server-slot", sourceSlot.HostId);
-        data.Set(DataFormats.Text, sourceSlot.Label);
-#pragma warning restore 618
+        var serverSlotFormat = DataFormat.CreateStringApplicationFormat("driftbuster.server-slot");
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.Create(serverSlotFormat, sourceSlot.HostId));
+        data.Add(DataTransferItem.Create(DataFormat.Text, sourceSlot.Label));
 
         var dropPoint = new Point(layoutSize.Width / 2, layoutSize.Height * 0.75);
         var dropArgs = new DragEventArgs(DragDrop.DropEvent, data, targetCard, dropPoint, KeyModifiers.None);
@@ -363,18 +361,17 @@ public sealed class ServerSelectionViewTests
         view.Resources["ServerSelection.StackSpacing"].Should().Be(24d);
     }
 
-#pragma warning disable 618
     private sealed class RecordingDragDropService : IDragDropService
     {
         private readonly TaskCompletionSource<DragDropEffects> _completion = new();
 
         public PointerEventArgs? LastArgs { get; private set; }
 
-        public IDataObject? LastData { get; private set; }
+        public IDataTransfer? LastData { get; private set; }
 
         public DragDropEffects? LastEffects { get; private set; }
 
-        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDropAsync(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
         {
             LastArgs = args;
             LastData = data;
@@ -394,12 +391,11 @@ public sealed class ServerSelectionViewTests
             _exception = exception;
         }
 
-        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDropAsync(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
         {
             return Task.FromException<DragDropEffects>(_exception);
         }
     }
-#pragma warning restore 618
 
     [AvaloniaFact]
     public async Task CopyJsonCommandUpdatesStatus()
@@ -450,7 +446,7 @@ public sealed class ServerSelectionViewTests
             .Should().OnlyContain(entry => entry.DisplayName.Contains("appsettings", StringComparison.OrdinalIgnoreCase));
     }
 
-    #pragma warning disable MA0051
+#pragma warning disable MA0051
     [AvaloniaFact]
     public async Task ShouldReScanMissingHostsFromCatalog()
     {
@@ -557,9 +553,9 @@ public sealed class ServerSelectionViewTests
         rescopedPlans.Should().HaveCount(1);
         rescopedPlans[0].Label.Should().Be(partial.MissingHosts.First());
     }
-    #pragma warning restore MA0051
+#pragma warning restore MA0051
 
-    #pragma warning disable MA0051
+#pragma warning disable MA0051
     [AvaloniaFact]
     public async Task DrilldownShouldSupportExportAndRescan()
     {
@@ -671,7 +667,7 @@ public sealed class ServerSelectionViewTests
         var rescanned = await rescans.Task;
         rescanned.Should().ContainSingle(plan => plan.HostId == viewModel.DrilldownViewModel.Servers.First().HostId);
     }
-    #pragma warning restore MA0051
+#pragma warning restore MA0051
 
     [AvaloniaFact]
     public async Task RunAllProducesTimelineAndToast()
@@ -827,7 +823,7 @@ public sealed class ServerSelectionViewTests
         nonVirtualActivityFallback!.IsVisible.Should().BeTrue();
     }
 
-    #pragma warning disable MA0051
+#pragma warning disable MA0051
     private static ServerSelectionViewModel CreateViewModel(
         FakeDriftbusterService? service = null,
         InMemorySessionCacheService? cache = null,
@@ -927,5 +923,5 @@ public sealed class ServerSelectionViewTests
 
         return viewModel;
     }
-    #pragma warning restore MA0051
+#pragma warning restore MA0051
 }

@@ -5,11 +5,11 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
+using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
-using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
@@ -432,7 +432,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
             if (entry != null)
             {
                 var detailProp = entry.GetType().GetProperty("Detail");
-                if (detailProp?.GetValue(entry) is null && detailProp.CanWrite)
+                if (detailProp is not null && detailProp.GetValue(entry) is null && detailProp.CanWrite)
                 {
                     detailProp.SetValue(entry, string.Empty);
                 }

@@ -1,6 +1,3 @@
-using System;
-using System.Threading.Tasks;
-
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -13,7 +10,7 @@ namespace DriftBuster.Gui.Views
 {
     public partial class ServerSelectionView : UserControl
     {
-        private const string ServerDragDataFormat = "driftbuster/server-slot";
+        private static readonly DataFormat<string> ServerDragDataFormat = DataFormat.CreateStringApplicationFormat("driftbuster.server-slot");
         private ServerSelectionViewModel? _viewModel;
         private readonly IDisposable _responsiveSubscription;
 
@@ -84,13 +81,11 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
-#pragma warning disable 618
-            var data = new DataObject();
-            data.Set(ServerDragDataFormat, slot.HostId);
-            data.Set(DataFormats.Text, slot.Label);
-#pragma warning restore 618
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(ServerDragDataFormat, slot.HostId));
+            data.Add(DataTransferItem.Create(DataFormat.Text, slot.Label));
 
-            await DragDropService.DoDragDrop(e, data, DragDropEffects.Move).ConfigureAwait(true);
+            await DragDropService.DoDragDropAsync(e, data, DragDropEffects.Move).ConfigureAwait(true);
         }
 
         private void OnServerCardDragOver(object? sender, DragEventArgs e)
@@ -100,9 +95,7 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
-#pragma warning disable 618
-            var sourceHostId = e.Data.Get(ServerDragDataFormat) as string;
-#pragma warning restore 618
+            var sourceHostId = ReadDragSlotId(e);
             var canAccept = _viewModel.CanAcceptReorder(sourceHostId, slot);
             e.DragEffects = canAccept ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
@@ -115,9 +108,7 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
-#pragma warning disable 618
-            var sourceHostId = e.Data.Get(ServerDragDataFormat) as string;
-#pragma warning restore 618
+            var sourceHostId = ReadDragSlotId(e);
             if (!_viewModel.CanAcceptReorder(sourceHostId, slot) || sourceHostId is null)
             {
                 e.DragEffects = DragDropEffects.None;
@@ -130,6 +121,19 @@ namespace DriftBuster.Gui.Views
             _viewModel.ReorderServer(sourceHostId, slot.HostId, insertBefore);
             e.DragEffects = DragDropEffects.Move;
             e.Handled = true;
+        }
+
+        private static string? ReadDragSlotId(DragEventArgs e)
+        {
+            foreach (var item in e.DataTransfer.Items)
+            {
+                if (item is DataTransferItem concrete && concrete.TryGetRaw(ServerDragDataFormat) is string hostId)
+                {
+                    return hostId;
+                }
+            }
+
+            return null;
         }
     }
 }
