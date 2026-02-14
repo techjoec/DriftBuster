@@ -38,16 +38,7 @@ public class DriftbusterBackendOfflineCollectorTests
         File.Copy(scriptSource, Path.Combine(scriptsDir, "driftbuster-offline-runner.ps1"), overwrite: true);
 
         var rulesPath = LocateRepoFile("src", "driftbuster", "secret_rules.json");
-        var backupPath = rulesPath + ".bak";
-        var backupCreated = false;
-
-        if (File.Exists(backupPath))
-        {
-            File.Delete(backupPath);
-        }
-
-        File.Move(rulesPath, backupPath);
-        backupCreated = true;
+        using var hiddenFile = TemporarilyHideFile(rulesPath);
 
         try
         {
@@ -60,36 +51,10 @@ public class DriftbusterBackendOfflineCollectorTests
 
             Assert.Equal(packagePath, result.PackagePath);
             Assert.True(File.Exists(packagePath));
-
-            using var archive = ZipFile.OpenRead(packagePath);
-            var entry = archive.GetEntry(result.ConfigFileName);
-            Assert.NotNull(entry);
-
-            using var stream = entry!.Open();
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
-            using var document = JsonDocument.Parse(json);
-
-            var ruleset = document.RootElement
-                .GetProperty("profile")
-                .GetProperty("secret_scanner")
-                .GetProperty("ruleset");
-
-            Assert.True(ruleset.TryGetProperty("rules", out var rulesProperty));
-            Assert.True(rulesProperty.GetArrayLength() > 0);
+            ValidateSecretRulesInZip(packagePath, result.ConfigFileName);
         }
         finally
         {
-            if (backupCreated && File.Exists(backupPath))
-            {
-                if (File.Exists(rulesPath))
-                {
-                    File.Delete(rulesPath);
-                }
-
-                File.Move(backupPath, rulesPath);
-            }
-
             if (File.Exists(packagePath))
             {
                 File.Delete(packagePath);
@@ -100,6 +65,38 @@ public class DriftbusterBackendOfflineCollectorTests
                 Directory.Delete(tempBase, recursive: true);
             }
         }
+    }
+
+    private static IDisposable TemporarilyHideFile(string filePath)
+    {
+        var backupPath = filePath + ".bak";
+        if (File.Exists(backupPath))
+        {
+            File.Delete(backupPath);
+        }
+
+        File.Move(filePath, backupPath);
+        return new FileRestorer(filePath, backupPath);
+    }
+
+    private static void ValidateSecretRulesInZip(string packagePath, string configFileName)
+    {
+        using var archive = ZipFile.OpenRead(packagePath);
+        var entry = archive.GetEntry(configFileName);
+        Assert.NotNull(entry);
+
+        using var stream = entry!.Open();
+        using var reader = new StreamReader(stream);
+        var json = reader.ReadToEnd();
+        using var document = JsonDocument.Parse(json);
+
+        var ruleset = document.RootElement
+            .GetProperty("profile")
+            .GetProperty("secret_scanner")
+            .GetProperty("ruleset");
+
+        Assert.True(ruleset.TryGetProperty("rules", out var rulesProperty));
+        Assert.True(rulesProperty.GetArrayLength() > 0);
     }
 
     private static string LocateRepoFile(params string[] segments)
@@ -118,5 +115,32 @@ public class DriftbusterBackendOfflineCollectorTests
         }
 
         throw new FileNotFoundException($"Unable to locate '{relative}'.");
+    }
+
+    private sealed class FileRestorer : IDisposable
+    {
+        private readonly string _originalPath;
+        private readonly string _backupPath;
+
+        public FileRestorer(string originalPath, string backupPath)
+        {
+            _originalPath = originalPath;
+            _backupPath = backupPath;
+        }
+
+        public void Dispose()
+        {
+            if (!File.Exists(_backupPath))
+            {
+                return;
+            }
+
+            if (File.Exists(_originalPath))
+            {
+                File.Delete(_originalPath);
+            }
+
+            File.Move(_backupPath, _originalPath);
+        }
     }
 }

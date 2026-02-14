@@ -21,6 +21,7 @@ public sealed class HeadlessFixture : IAsyncLifetime
 {
     private IDisposable? _scope;
 
+    #pragma warning disable MA0051
     public Task InitializeAsync()
     {
         _scope = Program.EnsureHeadless(builder => builder.UseHeadless(new AvaloniaHeadlessPlatformOptions
@@ -120,6 +121,7 @@ public sealed class HeadlessFixture : IAsyncLifetime
 
         return Task.CompletedTask;
     }
+    #pragma warning restore MA0051
 
     public Task DisposeAsync()
     {

@@ -13,33 +13,11 @@ namespace DriftBuster.Gui.Tests.ViewModels;
 public class HuntViewModelTests
 {
     [Fact]
-    public async Task RunHuntCommand_populates_hits_and_status()
+    public async Task RunHuntCommand_populates_hits_on_success()
     {
         var service = new FakeDriftbusterService
         {
-            HuntResponse = new HuntResult
-            {
-                Directory = "configs",
-                Pattern = "server",
-                Count = 1,
-                Hits = new[]
-                {
-                    new HuntHit
-                    {
-                        Rule = new HuntRuleSummary
-                        {
-                            Name = "server-name",
-                            Description = "Detect server names",
-                            TokenName = "server_name",
-                        },
-                        RelativePath = "configs/app.txt",
-                        Path = "/configs/app.txt",
-                        LineNumber = 4,
-                        Excerpt = "server: host",
-                    },
-                },
-                RawJson = "{\"count\":1}",
-            },
+            HuntResponse = BuildTestHuntResult(),
         };
 
         var directory = Directory.CreateTempSubdirectory();
@@ -67,6 +45,31 @@ public class HuntViewModelTests
             Assert.Equal("server-name", hit.RuleName);
             Assert.Equal("server_name", hit.TokenName);
             Assert.Equal("configs/app.txt", hit.RelativePath);
+        }
+        finally
+        {
+            directory.Delete(true);
+        }
+    }
+
+    [Fact]
+    public async Task RunHuntCommand_handles_errors()
+    {
+        var service = new FakeDriftbusterService
+        {
+            HuntResponse = BuildTestHuntResult(),
+        };
+
+        var directory = Directory.CreateTempSubdirectory();
+        try
+        {
+            var viewModel = new HuntViewModel(service)
+            {
+                DirectoryPath = directory.FullName,
+                Pattern = "server",
+            };
+
+            await viewModel.RunHuntCommand.ExecuteAsync(null);
 
             service.HuntAsyncHandler = (_, _, _) => Task.FromException<HuntResult>(new IOException("fail"));
 
@@ -140,5 +143,32 @@ public class HuntViewModelTests
         {
             directory.Delete(true);
         }
+    }
+
+    private static HuntResult BuildTestHuntResult()
+    {
+        return new HuntResult
+        {
+            Directory = "configs",
+            Pattern = "server",
+            Count = 1,
+            Hits = new[]
+            {
+                new HuntHit
+                {
+                    Rule = new HuntRuleSummary
+                    {
+                        Name = "server-name",
+                        Description = "Detect server names",
+                        TokenName = "server_name",
+                    },
+                    RelativePath = "configs/app.txt",
+                    Path = "/configs/app.txt",
+                    LineNumber = 4,
+                    Excerpt = "server: host",
+                },
+            },
+            RawJson = "{\"count\":1}",
+        };
     }
 }

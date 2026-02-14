@@ -19,6 +19,7 @@ namespace DriftBuster.Gui.Tests.Ui;
 [Collection(HeadlessCollection.Name)]
 public sealed class HeadlessBootstrapperSmokeTests
 {
+    #pragma warning disable MA0051
     [Fact]
     public void EnsureHeadless_registers_inter_font_manager()
     {
@@ -98,6 +99,7 @@ public sealed class HeadlessBootstrapperSmokeTests
             throw;
         }
     }
+    #pragma warning restore MA0051
 
     [Fact]
     public void EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts()

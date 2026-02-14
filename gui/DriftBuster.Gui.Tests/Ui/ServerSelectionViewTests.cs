@@ -51,6 +51,7 @@ public sealed class ServerSelectionViewTests
         server.Roots.Last().StatusMessage.Should().Contain("absolute");
     }
 
+    #pragma warning disable MA0051
     [AvaloniaFact]
     public async Task ShouldRunScanAndUpdateStatuses()
     {
@@ -145,6 +146,7 @@ public sealed class ServerSelectionViewTests
         viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
         viewModel.IsViewingCatalog.Should().BeTrue();
     }
+    #pragma warning restore MA0051
 
     [AvaloniaFact]
     public async Task ShouldPersistSessionWhenUserRequestsSave()
@@ -448,6 +450,7 @@ public sealed class ServerSelectionViewTests
             .Should().OnlyContain(entry => entry.DisplayName.Contains("appsettings", StringComparison.OrdinalIgnoreCase));
     }
 
+    #pragma warning disable MA0051
     [AvaloniaFact]
     public async Task ShouldReScanMissingHostsFromCatalog()
     {
@@ -554,7 +557,9 @@ public sealed class ServerSelectionViewTests
         rescopedPlans.Should().HaveCount(1);
         rescopedPlans[0].Label.Should().Be(partial.MissingHosts.First());
     }
+    #pragma warning restore MA0051
 
+    #pragma warning disable MA0051
     [AvaloniaFact]
     public async Task DrilldownShouldSupportExportAndRescan()
     {
@@ -666,6 +671,7 @@ public sealed class ServerSelectionViewTests
         var rescanned = await rescans.Task;
         rescanned.Should().ContainSingle(plan => plan.HostId == viewModel.DrilldownViewModel.Servers.First().HostId);
     }
+    #pragma warning restore MA0051
 
     [AvaloniaFact]
     public async Task RunAllProducesTimelineAndToast()
@@ -821,6 +827,7 @@ public sealed class ServerSelectionViewTests
         nonVirtualActivityFallback!.IsVisible.Should().BeTrue();
     }
 
+    #pragma warning disable MA0051
     private static ServerSelectionViewModel CreateViewModel(
         FakeDriftbusterService? service = null,
         InMemorySessionCacheService? cache = null,
@@ -920,4 +927,5 @@ public sealed class ServerSelectionViewTests
 
         return viewModel;
     }
+    #pragma warning restore MA0051
 }

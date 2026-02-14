@@ -23,6 +23,7 @@ public sealed class AvaloniaSetupInspection
         _output = output;
     }
 
+    #pragma warning disable MA0051
     [AvaloniaFact]
     public void LogSetupState()
     {
@@ -103,6 +104,7 @@ public sealed class AvaloniaSetupInspection
             }
         }
     }
+    #pragma warning restore MA0051
 
     private static (bool? registered, Type? type) GetRuntimeServicesState()
     {

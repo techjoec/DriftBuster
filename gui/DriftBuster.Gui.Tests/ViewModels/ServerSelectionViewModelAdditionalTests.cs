@@ -84,22 +84,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
         var service = new FakeDriftbusterService
         {
-            RunServerScansHandler = (plans, progress, token) =>
-            {
-                var list = plans.ToList();
-                foreach (var plan in list)
-                {
-                    progress?.Report(new ScanProgress
-                    {
-                        HostId = plan.HostId,
-                        Status = ServerScanStatus.Running,
-                        Message = "Scanning",
-                        Timestamp = DateTimeOffset.UtcNow,
-                    });
-                }
-
-                return Task.FromResult(BuildResponse(list[0].HostId, list));
-            },
+            RunServerScansHandler = CreateScanResponseWithProgress,
         };
 
         var toast = new ToastService(action => action());
@@ -129,48 +114,13 @@ public sealed class ServerSelectionViewModelAdditionalTests
         viewModel.FilteredActivityEntries.Should().NotBeEmpty();
         viewModel.IsBusy.Should().BeFalse();
         server.IsEnabled.Should().BeTrue();
-        var response = (ServerScanResponse?)typeof(ServerSelectionViewModel)
-            .GetField("_lastResponse", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .GetValue(viewModel);
-        response.Should().NotBeNull();
-        response!.Drilldown.Should().NotBeNull();
-        response.Drilldown.Should().NotBeEmpty();
-        var drilldownHosts = response.Drilldown!
-            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
-            .Select(detail => detail.HostId)
-            .ToList();
-        drilldownHosts.Should().Contain(server.HostId);
-        var drilldownDetail = response.Drilldown!
-            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
-            .FirstOrDefault(detail => string.Equals(detail.HostId, server.HostId, StringComparison.OrdinalIgnoreCase));
-        drilldownDetail.Should().NotBeNull();
-        drilldownDetail!.Present.Should().BeTrue();
-        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeTrue();
+        AssertDrilldownContainsHost(viewModel, server.HostId);
 
         viewModel.PersistSessionState = true;
-
-        // Populate null Detail properties to prevent SaveSessionAsync from failing
-        // (works around bug in ServerSelectionViewModel.SaveSessionAsync line 881)
-        foreach (var entry in viewModel.ActivityEntries)
-        {
-            if (entry != null)
-            {
-                var detailProp = entry.GetType().GetProperty("Detail");
-                if (detailProp?.GetValue(entry) is null && detailProp.CanWrite)
-                {
-                    detailProp.SetValue(entry, string.Empty);
-                }
-            }
-        }
+        PopulateActivityDetailViaReflection(viewModel);
 
         await viewModel.SaveSessionCommand.ExecuteAsync(null);
-
-        // Poll for snapshot with generous timeout (coverage instrumentation adds significant overhead)
-        var deadline = DateTime.UtcNow.AddMilliseconds(10000);
-        while (cache.Snapshot is null && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(100);
-        }
+        await PollForSnapshotAsync(cache);
 
         cache.Snapshot.Should().NotBeNull("SaveSessionCommand should have saved snapshot");
 
@@ -276,50 +226,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
         var service = new FakeDriftbusterService
         {
-            RunServerScansHandler = (plans, progress, _) =>
-            {
-                var list = plans.ToList();
-                foreach (var plan in list)
-                {
-                    progress?.Report(new ScanProgress
-                    {
-                        HostId = plan.HostId,
-                        Status = ServerScanStatus.Running,
-                        Message = "Scanning",
-                        Timestamp = DateTimeOffset.UtcNow,
-                    });
-                }
-
-                var results = list.Select((plan, index) => new ServerScanResult
-                {
-                    HostId = plan.HostId,
-                    Label = plan.Label,
-                    Status = index switch
-                    {
-                        0 => ServerScanStatus.Succeeded,
-                        1 => ServerScanStatus.Failed,
-                        _ => ServerScanStatus.Failed,
-                    },
-                    Message = index switch
-                    {
-                        0 => "Completed",
-                        1 => "Host offline",
-                        _ => "Permission denied",
-                    },
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Availability = index switch
-                    {
-                        0 => ServerAvailabilityStatus.Found,
-                        1 => ServerAvailabilityStatus.Offline,
-                        _ => ServerAvailabilityStatus.PermissionDenied,
-                    },
-                }).ToArray();
-
-                return Task.FromResult(new ServerScanResponse
-                {
-                    Results = results,
-                });
-            },
+            RunServerScansHandler = BuildMixedAvailabilityResponse,
         };
 
         var toast = new ToastService(action => action());
@@ -344,36 +251,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
         using var evidenceDirectory = new TempDirectory("server-selection-attention-toast");
         try
         {
-            var payload = new
-            {
-                generatedAt = DateTimeOffset.UtcNow,
-                warningToast = new
-                {
-                    warning.Title,
-                    warning.Message,
-                },
-                activities = viewModel.ActivityEntries
-                    .Where(entry => string.Equals(entry.Summary, "Hosts require attention", StringComparison.Ordinal))
-                    .Select(entry => new
-                    {
-                        entry.Summary,
-                        entry.Detail,
-                        Severity = entry.Severity.ToString(),
-                    })
-                    .ToArray(),
-            };
-
-            var logPath = Path.Combine(evidenceDirectory.Path, "server-selection-attention-toast.json");
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-            });
-
-            // Persist evidence in a disposable temp directory so repository logs remain untouched.
-            await File.WriteAllTextAsync(logPath, json + Environment.NewLine);
-
-            var savedEvidence = await File.ReadAllTextAsync(logPath);
-            savedEvidence.Should().Contain("Hosts require attention");
+            await WriteAndVerifyEvidenceAsync(evidenceDirectory.Path, warning, viewModel);
         }
         finally
         {
@@ -467,6 +345,157 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
         logActivity.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "two", null, ActivityCategory.General });
         viewModel.UseVirtualizedActivityFeed.Should().BeTrue();
+    }
+
+    private static async Task WriteAndVerifyEvidenceAsync(
+        string evidencePath, ToastNotification warning, ServerSelectionViewModel viewModel)
+    {
+        var payload = new
+        {
+            generatedAt = DateTimeOffset.UtcNow,
+            warningToast = new
+            {
+                warning.Title,
+                warning.Message,
+            },
+            activities = viewModel.ActivityEntries
+                .Where(entry => string.Equals(entry.Summary, "Hosts require attention", StringComparison.Ordinal))
+                .Select(entry => new
+                {
+                    entry.Summary,
+                    entry.Detail,
+                    Severity = entry.Severity.ToString(),
+                })
+                .ToArray(),
+        };
+
+        var logPath = Path.Combine(evidencePath, "server-selection-attention-toast.json");
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+        {
+            WriteIndented = true,
+        });
+
+        // Persist evidence in a disposable temp directory so repository logs remain untouched.
+        await File.WriteAllTextAsync(logPath, json + Environment.NewLine).ConfigureAwait(false);
+
+        var savedEvidence = await File.ReadAllTextAsync(logPath).ConfigureAwait(false);
+        savedEvidence.Should().Contain("Hosts require attention");
+    }
+
+    private static Task<ServerScanResponse> CreateScanResponseWithProgress(
+        IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress, CancellationToken token)
+    {
+        var list = plans.ToList();
+        foreach (var plan in list)
+        {
+            progress?.Report(new ScanProgress
+            {
+                HostId = plan.HostId,
+                Status = ServerScanStatus.Running,
+                Message = "Scanning",
+                Timestamp = DateTimeOffset.UtcNow,
+            });
+        }
+
+        return Task.FromResult(BuildResponse(list[0].HostId, list));
+    }
+
+    private static void AssertDrilldownContainsHost(ServerSelectionViewModel viewModel, string hostId)
+    {
+        var response = (ServerScanResponse?)typeof(ServerSelectionViewModel)
+            .GetField("_lastResponse", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(viewModel);
+        response.Should().NotBeNull();
+        response!.Drilldown.Should().NotBeNull();
+        response.Drilldown.Should().NotBeEmpty();
+        var drilldownHosts = response.Drilldown!
+            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
+            .Select(detail => detail.HostId)
+            .ToList();
+        drilldownHosts.Should().Contain(hostId);
+        var drilldownDetail = response.Drilldown!
+            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
+            .FirstOrDefault(detail => string.Equals(detail.HostId, hostId, StringComparison.OrdinalIgnoreCase));
+        drilldownDetail.Should().NotBeNull();
+        drilldownDetail!.Present.Should().BeTrue();
+        viewModel.ShowDrilldownForHostCommand.CanExecute(hostId).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Populate null Detail properties via reflection to prevent SaveSessionAsync from failing.
+    /// Works around bug in ServerSelectionViewModel.SaveSessionAsync line 881.
+    /// </summary>
+    private static void PopulateActivityDetailViaReflection(ServerSelectionViewModel viewModel)
+    {
+        foreach (var entry in viewModel.ActivityEntries)
+        {
+            if (entry != null)
+            {
+                var detailProp = entry.GetType().GetProperty("Detail");
+                if (detailProp?.GetValue(entry) is null && detailProp.CanWrite)
+                {
+                    detailProp.SetValue(entry, string.Empty);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Poll for snapshot with generous timeout (coverage instrumentation adds significant overhead).
+    /// </summary>
+    private static async Task PollForSnapshotAsync(InMemorySessionCacheService cache, int timeoutMs = 10000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (cache.Snapshot is null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100).ConfigureAwait(false);
+        }
+    }
+
+    private static Task<ServerScanResponse> BuildMixedAvailabilityResponse(
+        IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress, CancellationToken token)
+    {
+        var list = plans.ToList();
+        foreach (var plan in list)
+        {
+            progress?.Report(new ScanProgress
+            {
+                HostId = plan.HostId,
+                Status = ServerScanStatus.Running,
+                Message = "Scanning",
+                Timestamp = DateTimeOffset.UtcNow,
+            });
+        }
+
+        var results = list.Select((plan, index) => new ServerScanResult
+        {
+            HostId = plan.HostId,
+            Label = plan.Label,
+            Status = index switch
+            {
+                0 => ServerScanStatus.Succeeded,
+                1 => ServerScanStatus.Failed,
+                _ => ServerScanStatus.Failed,
+            },
+            Message = index switch
+            {
+                0 => "Completed",
+                1 => "Host offline",
+                _ => "Permission denied",
+            },
+            Timestamp = DateTimeOffset.UtcNow,
+            Availability = index switch
+            {
+                0 => ServerAvailabilityStatus.Found,
+                1 => ServerAvailabilityStatus.Offline,
+                _ => ServerAvailabilityStatus.PermissionDenied,
+            },
+        }).ToArray();
+
+        return Task.FromResult(new ServerScanResponse
+        {
+            Results = results,
+        });
     }
 
     private static IReadOnlyDictionary<string, LogFileSnapshot> SnapshotLogDirectory(string directory)

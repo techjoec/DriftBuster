@@ -21,31 +21,7 @@ public class DiffViewModelTests
     public async Task RunDiffCommand_populates_results_and_raw_json()
     {
         using var temp = new TempDirectory();
-        var comparison = new DiffComparison
-        {
-            From = "left.txt",
-            To = "right.txt",
-            Plan = new DiffPlan
-            {
-                Before = "before text",
-                After = "after text",
-                ContentType = "text",
-                FromLabel = "left",
-                ToLabel = "right",
-                Label = "config",
-                MaskTokens = new[] { "secret" },
-                Placeholder = "[MASKED]",
-                ContextLines = 2,
-            },
-            Metadata = new DiffMetadata
-            {
-                LeftPath = "left.txt",
-                RightPath = "right.txt",
-                ContentType = "text",
-                ContextLines = 2,
-            },
-            UnifiedDiff = "--- left.txt\n+++ right.txt\n@@ -1,1 +1,1 @@\n-before text\n+after text",
-        };
+        var comparison = BuildTestDiffComparison();
 
         var service = new FakeDriftbusterService
         {
@@ -81,6 +57,28 @@ public class DiffViewModelTests
         comparisonView.PlanEntries.Single(p => string.Equals(p.Name, "Mask tokens", StringComparison.Ordinal)).Value.Should().Be("secret");
         comparisonView.HasDiff.Should().BeTrue();
         comparisonView.UnifiedDiff.Should().Contain("@@");
+    }
+
+    [Fact]
+    public async Task RunDiffCommand_surfaces_error_on_failure()
+    {
+        using var temp = new TempDirectory();
+        var service = new FakeDriftbusterService
+        {
+            DiffResponse = new DiffResult
+            {
+                Versions = new[] { "left", "right" },
+                Comparisons = new[] { BuildTestDiffComparison() },
+                RawJson = "{\"comparisons\":[{}]}",
+            },
+        };
+
+        var store = new DiffPlannerMruStore(temp.Path);
+        var viewModel = CreateViewModel(service, store);
+        viewModel.Inputs[0].Path = CreateFile(temp.Path, "left.json", "{}");
+        viewModel.Inputs[1].Path = CreateFile(temp.Path, "right.json", "{}");
+
+        await viewModel.RunDiffCommand.ExecuteAsync(null);
 
         service.DiffAsyncHandler = (_, _) => Task.FromException<DiffResult>(new IOException("bad"));
 
@@ -467,6 +465,35 @@ public class DiffViewModelTests
         var viewModel = new DiffViewModel(service, store, clock, logger);
         viewModel.Initialization.GetAwaiter().GetResult();
         return viewModel;
+    }
+
+    private static DiffComparison BuildTestDiffComparison()
+    {
+        return new DiffComparison
+        {
+            From = "left.txt",
+            To = "right.txt",
+            Plan = new DiffPlan
+            {
+                Before = "before text",
+                After = "after text",
+                ContentType = "text",
+                FromLabel = "left",
+                ToLabel = "right",
+                Label = "config",
+                MaskTokens = new[] { "secret" },
+                Placeholder = "[MASKED]",
+                ContextLines = 2,
+            },
+            Metadata = new DiffMetadata
+            {
+                LeftPath = "left.txt",
+                RightPath = "right.txt",
+                ContentType = "text",
+                ContextLines = 2,
+            },
+            UnifiedDiff = "--- left.txt\n+++ right.txt\n@@ -1,1 +1,1 @@\n-before text\n+after text",
+        };
     }
 
     private static string CreateFile(string directory, string name, string content)
