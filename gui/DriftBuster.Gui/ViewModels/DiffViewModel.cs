@@ -31,6 +31,7 @@ namespace DriftBuster.Gui.ViewModels
         private readonly ILogger<DiffViewModel> _logger;
         private static readonly EventId SanitizedFallbackEventId = new(2101, "DiffPlannerSanitizedFallback");
         private static readonly EventId RawPayloadRejectedEventId = new(2102, "DiffPlannerRawPayloadRejected");
+        private readonly NotifyCollectionChangedEventHandler _mruCollectionChangedHandler;
         private bool _suppressMruSelection;
         private bool _updatingBaseline;
         private bool _disposed;
@@ -95,7 +96,8 @@ namespace DriftBuster.Gui.ViewModels
             _logger = logger ?? new FileJsonLogger<DiffViewModel>(Path.Combine("artifacts", "logs", "diff-planner-telemetry.json"));
 
             MruEntries = new ReadOnlyObservableCollection<DiffPlannerMruEntryView>(_mruEntries);
-            _mruEntries.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasMruEntries));
+            _mruCollectionChangedHandler = (_, _) => OnPropertyChanged(nameof(HasMruEntries));
+            _mruEntries.CollectionChanged += _mruCollectionChangedHandler;
 
             RunDiffCommand = new AsyncRelayCommand(RunDiffAsync, CanRunDiff);
             AddVersionCommand = new RelayCommand(AddVersion, () => Inputs.Count < MaxVersions);
@@ -822,7 +824,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            _mruEntries.CollectionChanged -= (_, _) => OnPropertyChanged(nameof(HasMruEntries));
+            _mruEntries.CollectionChanged -= _mruCollectionChangedHandler;
             Inputs.CollectionChanged -= OnInputsChanged;
             _disposed = true;
         }
