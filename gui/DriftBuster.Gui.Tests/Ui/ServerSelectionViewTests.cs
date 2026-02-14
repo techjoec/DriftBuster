@@ -685,7 +685,7 @@ public sealed class ServerSelectionViewTests
         var toast = new ToastService(action => action());
         var viewModel = CreateViewModel(toast: toast);
         string? copied = null;
-        viewModel.CopyActivityRequested += (_, text) => copied = text;
+        viewModel.CopyActivityRequested += (_, e) => copied = e.Value;
 
         await viewModel.RunAllCommand.ExecuteAsync(null);
 

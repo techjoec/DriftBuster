@@ -85,12 +85,12 @@ public sealed class ResultsCatalogViewModelTests
         var target = viewModel.FilteredEntries.First();
 
         ConfigCatalogItemViewModel? drilldownItem = null;
-        viewModel.DrilldownRequested += (_, entry) => drilldownItem = entry;
+        viewModel.DrilldownRequested += (_, e) => drilldownItem = e.Value;
         viewModel.DrilldownCommand.Execute(target);
         drilldownItem.Should().BeSameAs(target);
 
         string[]? hosts = null;
-        viewModel.ReScanRequested += (_, missing) => hosts = missing.ToArray();
+        viewModel.ReScanRequested += (_, e) => hosts = e.Value.ToArray();
         var partial = viewModel.FilteredEntries.Single(entry => entry.DisplayName.Contains("plugins"));
         viewModel.ReScanMissingCommand.Execute(partial);
         hosts.Should().NotBeNull();

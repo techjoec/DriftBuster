@@ -166,11 +166,11 @@ namespace DriftBuster.Gui.ViewModels
 
         public event EventHandler? BackRequested;
 
-        public event EventHandler<ConfigDrilldownExportRequest>? ExportRequested;
+        public event EventHandler<ValueEventArgs<ConfigDrilldownExportRequest>>? ExportRequested;
 
-        public event EventHandler<string>? CopyJsonRequested;
+        public event EventHandler<ValueEventArgs<string>>? CopyJsonRequested;
 
-        public event EventHandler<IReadOnlyList<string>>? ReScanRequested;
+        public event EventHandler<ValueEventArgs<IReadOnlyList<string>>>? ReScanRequested;
 
         private void SetSelection(bool value)
         {
@@ -233,13 +233,13 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            ReScanRequested?.Invoke(this, selected);
+            ReScanRequested?.Invoke(this, new ValueEventArgs<IReadOnlyList<string>>(selected));
         }
 
         private Task CopyJsonAsync()
         {
             var payload = BuildJsonPayload();
-            CopyJsonRequested?.Invoke(this, payload);
+            CopyJsonRequested?.Invoke(this, new ValueEventArgs<string>(payload));
             return Task.CompletedTask;
         }
 
@@ -252,7 +252,7 @@ namespace DriftBuster.Gui.ViewModels
                 _ => string.Empty,
             };
 
-            ExportRequested?.Invoke(this, new ConfigDrilldownExportRequest(DisplayName, ConfigId, format, payload));
+            ExportRequested?.Invoke(this, new ValueEventArgs<ConfigDrilldownExportRequest>(new ConfigDrilldownExportRequest(DisplayName, ConfigId, format, payload)));
             return Task.CompletedTask;
         }
 

@@ -344,8 +344,8 @@ namespace DriftBuster.Gui.ViewModels
             Servers.CollectionChanged += (_, _) => RefreshServerVirtualization();
             ReindexServers();
             CatalogViewModel = new ResultsCatalogViewModel(_performanceProfile);
-            CatalogViewModel.ReScanRequested += (_, hosts) => _ = RunScopedAsync(hosts);
-            CatalogViewModel.DrilldownRequested += (_, entry) => LoadDrilldown(entry.ConfigId);
+            CatalogViewModel.ReScanRequested += (_, e) => _ = RunScopedAsync(e.Value);
+            CatalogViewModel.DrilldownRequested += (_, e) => LoadDrilldown(e.Value.ConfigId);
             CatalogViewModel.PropertyChanged += OnCatalogPropertyChanged;
 
             _activityEntriesReadonly = new ReadOnlyObservableCollection<ActivityEntryViewModel>(_activityEntries);
@@ -446,7 +446,7 @@ namespace DriftBuster.Gui.ViewModels
         [ObservableProperty]
         private ActivityFilterOption _activityFilter = ActivityFilterOption.All;
 
-        public event EventHandler<string>? CopyActivityRequested;
+        public event EventHandler<ValueEventArgs<string>>? CopyActivityRequested;
 
         public IRelayCommand<ActivityEntryViewModel> CopyActivityCommand { get; }
 
@@ -1266,8 +1266,9 @@ namespace DriftBuster.Gui.ViewModels
             IsViewingCatalog = CatalogViewModel.HasEntries;
         }
 
-        private void OnDrilldownReScanRequested(object? sender, IReadOnlyList<string> hosts)
+        private void OnDrilldownReScanRequested(object? sender, ValueEventArgs<IReadOnlyList<string>> e)
         {
+            var hosts = e.Value;
             if (hosts is null || hosts.Count == 0)
             {
                 return;
@@ -1277,8 +1278,9 @@ namespace DriftBuster.Gui.ViewModels
             _ = RunScopedAsync(hosts);
         }
 
-        private void OnDrilldownCopyJsonRequested(object? sender, string payload)
+        private void OnDrilldownCopyJsonRequested(object? sender, ValueEventArgs<string> e)
         {
+            var payload = e.Value;
             if (string.IsNullOrWhiteSpace(payload))
             {
                 return;
@@ -1294,9 +1296,9 @@ namespace DriftBuster.Gui.ViewModels
             LogActivity(ActivitySeverity.Info, "Copied drilldown JSON", DrilldownViewModel?.DisplayName ?? string.Empty, ActivityCategory.Export);
         }
 
-        private void OnDrilldownExportRequested(object? sender, ConfigDrilldownExportRequest request)
+        private void OnDrilldownExportRequested(object? sender, ValueEventArgs<ConfigDrilldownExportRequest> e)
         {
-            _ = HandleExportAsync(request);
+            _ = HandleExportAsync(e.Value);
         }
 
         private async Task HandleExportAsync(ConfigDrilldownExportRequest request)
@@ -1339,7 +1341,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            CopyActivityRequested?.Invoke(this, entry.ClipboardText);
+            CopyActivityRequested?.Invoke(this, new ValueEventArgs<string>(entry.ClipboardText));
         }
 
         private void LogActivity(ActivitySeverity severity, string summary, string? detail = null, ActivityCategory category = ActivityCategory.General)

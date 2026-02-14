@@ -212,7 +212,7 @@ namespace DriftBuster.Gui.ViewModels
 
         public CatalogSortDescriptor SortDescriptor => _sortDescriptor;
 
-        public event EventHandler<CatalogSortDescriptor>? SortDescriptorChanged;
+        public event EventHandler<ValueEventArgs<CatalogSortDescriptor>>? SortDescriptorChanged;
 
         [ObservableProperty]
         private CoverageFilterOption _selectedCoverageFilter;
@@ -264,9 +264,9 @@ namespace DriftBuster.Gui.ViewModels
 
         public IRelayCommand ReScanAllPartialCommand { get; }
 
-        public event EventHandler<ConfigCatalogItemViewModel>? DrilldownRequested;
+        public event EventHandler<ValueEventArgs<ConfigCatalogItemViewModel>>? DrilldownRequested;
 
-        public event EventHandler<IReadOnlyList<string>>? ReScanRequested;
+        public event EventHandler<ValueEventArgs<IReadOnlyList<string>>>? ReScanRequested;
 
         public void SetSortDescriptor(string? columnKey, bool descending)
         {
@@ -277,7 +277,7 @@ namespace DriftBuster.Gui.ViewModels
         {
             if (UpdateSortDescriptor(CatalogSortDescriptor.Normalize(descriptor.ColumnKey, descriptor.Descending), raiseEvent: false))
             {
-                SortDescriptorChanged?.Invoke(this, _sortDescriptor);
+                SortDescriptorChanged?.Invoke(this, new ValueEventArgs<CatalogSortDescriptor>(_sortDescriptor));
             }
         }
 
@@ -293,7 +293,7 @@ namespace DriftBuster.Gui.ViewModels
             ApplySortToCollectionView();
             if (raiseEvent)
             {
-                SortDescriptorChanged?.Invoke(this, _sortDescriptor);
+                SortDescriptorChanged?.Invoke(this, new ValueEventArgs<CatalogSortDescriptor>(_sortDescriptor));
             }
 
             return true;
@@ -409,7 +409,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            DrilldownRequested?.Invoke(this, entry);
+            DrilldownRequested?.Invoke(this, new ValueEventArgs<ConfigCatalogItemViewModel>(entry));
         }
 
         private void OnReScanMissingRequested(ConfigCatalogItemViewModel? entry)
@@ -424,7 +424,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            ReScanRequested?.Invoke(this, entry.MissingHosts.ToArray());
+            ReScanRequested?.Invoke(this, new ValueEventArgs<IReadOnlyList<string>>(entry.MissingHosts.ToArray()));
         }
 
         private void OnReScanAllPartial()
@@ -439,7 +439,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            ReScanRequested?.Invoke(this, hosts);
+            ReScanRequested?.Invoke(this, new ValueEventArgs<IReadOnlyList<string>>(hosts));
         }
 
         private IEnumerable<ConfigCatalogItemViewModel> ApplySort(IEnumerable<ConfigCatalogItemViewModel> source)

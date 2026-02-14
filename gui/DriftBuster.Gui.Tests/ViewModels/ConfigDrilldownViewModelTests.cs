@@ -80,10 +80,10 @@ public sealed class ConfigDrilldownViewModelTests
 
         string? exportedFormat = null;
         string? exportPayload = null;
-        drilldown.ExportRequested += (_, request) =>
+        drilldown.ExportRequested += (_, e) =>
         {
-            exportedFormat = request.Format.ToString();
-            exportPayload = request.Payload;
+            exportedFormat = e.Value.Format.ToString();
+            exportPayload = e.Value.Payload;
         };
 
         await drilldown.ExportHtmlCommand.ExecuteAsync(null);
@@ -92,12 +92,12 @@ public sealed class ConfigDrilldownViewModelTests
         exportPayload!.Should().Contain("Logging");
 
         string? copiedJson = null;
-        drilldown.CopyJsonRequested += (_, payload) => copiedJson = payload;
+        drilldown.CopyJsonRequested += (_, e) => copiedJson = e.Value;
         await drilldown.CopyJsonCommand.ExecuteAsync(null);
         copiedJson.Should().NotBeNullOrEmpty();
 
         string[]? rescannedHosts = null;
-        drilldown.ReScanRequested += (_, hosts) => rescannedHosts = hosts.ToArray();
+        drilldown.ReScanRequested += (_, e) => rescannedHosts = e.Value.ToArray();
         drilldown.ReScanSelectedCommand.Execute(null);
         rescannedHosts.Should().Contain("Drifting");
 
@@ -112,7 +112,7 @@ public sealed class ConfigDrilldownViewModelTests
     {
         var drilldown = new ConfigDrilldownViewModel(BuildSample());
         string? payload = null;
-        drilldown.ExportRequested += (_, request) => payload = request.Payload;
+        drilldown.ExportRequested += (_, e) => payload = e.Value.Payload;
         await drilldown.ExportJsonCommand.ExecuteAsync(null);
 
         payload.Should().NotBeNull();

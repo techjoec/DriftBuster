@@ -46,8 +46,9 @@ namespace DriftBuster.Gui.Views
             }
         }
 
-        private async void OnCopyActivityRequested(object? sender, string text)
+        private async void OnCopyActivityRequested(object? sender, ValueEventArgs<string> e)
         {
+            var text = e.Value;
             if (string.IsNullOrWhiteSpace(text))
             {
                 return;
