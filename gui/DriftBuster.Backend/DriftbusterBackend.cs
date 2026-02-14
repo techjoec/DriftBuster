@@ -277,7 +277,7 @@ namespace DriftBuster.Backend
             return result;
         }
 
-        private static DiffComparison BuildComparison(string? candidateVersion, string baselinePath, string baselineName, string baselineContent)
+        private static DiffComparison BuildComparison(string candidateVersion, string baselinePath, string baselineName, string baselineContent)
         {
             var candidatePath = EnsureFile(candidateVersion, false);
             var candidateName = Path.GetFileName(candidatePath);
