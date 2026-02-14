@@ -12,7 +12,10 @@ public sealed record ResponsiveBreakpoint(double MinWidth, IReadOnlyDictionary<s
 
 public static class ResponsiveLayoutService
 {
+    // Closure-based design with shared captured state makes extraction harmful to readability.
+#pragma warning disable MA0051
     public static IDisposable Attach(Control control, IReadOnlyList<ResponsiveBreakpoint> breakpoints)
+#pragma warning restore MA0051
     {
         if (control is null)
         {

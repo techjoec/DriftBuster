@@ -321,41 +321,41 @@ internal static class HeadlessFontBootstrapper
 
         failures.Add($"system_fonts_type:{dictionary.GetType().FullName}");
 
-        static bool TryAdd(IDictionary<string, FontFamily> target, string alias, FontFamily family)
-        {
-            try
-            {
-                switch (target)
-                {
-                    case ConcurrentDictionary<string, FontFamily> concurrent:
-                        return concurrent.TryAdd(alias, family);
-                    default:
-                        if (!target.ContainsKey(alias))
-                        {
-                            target[alias] = family;
-                            return true;
-                        }
-
-                        return false;
-                }
-            }
-            catch (NotSupportedException)
-            {
-                return false;
-            }
-        }
-
         foreach (var alias in RequiredFallbackFamilies)
         {
-            if (TryAdd(dictionary, alias, new FontFamily(DefaultFamilyName)))
+            if (TryAddFontEntry(dictionary, alias, new FontFamily(DefaultFamilyName)))
             {
                 failures.Add($"system_fonts_seeded:{alias}");
             }
         }
 
-        if (TryAdd(dictionary, DefaultFamilyName, new FontFamily(DefaultFamilyName)))
+        if (TryAddFontEntry(dictionary, DefaultFamilyName, new FontFamily(DefaultFamilyName)))
         {
             failures.Add($"system_fonts_seeded:{DefaultFamilyName}");
+        }
+    }
+
+    private static bool TryAddFontEntry(IDictionary<string, FontFamily> target, string alias, FontFamily family)
+    {
+        try
+        {
+            switch (target)
+            {
+                case ConcurrentDictionary<string, FontFamily> concurrent:
+                    return concurrent.TryAdd(alias, family);
+                default:
+                    if (!target.ContainsKey(alias))
+                    {
+                        target[alias] = family;
+                        return true;
+                    }
+
+                    return false;
+            }
+        }
+        catch (NotSupportedException)
+        {
+            return false;
         }
     }
 

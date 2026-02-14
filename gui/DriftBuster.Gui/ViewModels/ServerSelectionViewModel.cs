@@ -541,99 +541,10 @@ namespace DriftBuster.Gui.ViewModels
 
                 PersistSessionState = snapshot.PersistSession;
 
-                if (snapshot.CatalogFilters is not null)
-                {
-                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Coverage) && Enum.TryParse(snapshot.CatalogFilters.Coverage, true, out CoverageFilterOption coverageFilter))
-                    {
-                        CatalogViewModel.SelectedCoverageFilter = coverageFilter;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Severity) && Enum.TryParse(snapshot.CatalogFilters.Severity, true, out SeverityFilterOption severityFilter))
-                    {
-                        CatalogViewModel.SelectedSeverityFilter = severityFilter;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Format))
-                    {
-                        CatalogViewModel.SelectedFormat = snapshot.CatalogFilters.Format;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Baseline) && CatalogViewModel.BaselineOptions.Contains(snapshot.CatalogFilters.Baseline, StringComparer.OrdinalIgnoreCase))
-                    {
-                        CatalogViewModel.SelectedBaseline = snapshot.CatalogFilters.Baseline;
-                    }
-
-                    CatalogViewModel.SearchText = snapshot.CatalogFilters.Search ?? string.Empty;
-                }
-
-                if (snapshot.CatalogSort is not null)
-                {
-                    CatalogViewModel.RestoreSortDescriptor(new CatalogSortDescriptor(snapshot.CatalogSort.Column, snapshot.CatalogSort.Descending));
-                }
-
-                var timelineFilter = snapshot.Timeline?.Filter ?? snapshot.ActivityFilter;
-                if (!string.IsNullOrWhiteSpace(timelineFilter) && Enum.TryParse<ActivityFilterOption>(timelineFilter, true, out var savedFilter))
-                {
-                    ActivityFilter = savedFilter;
-                }
-
-                _activityEntries.Clear();
-                RefreshActivityVirtualization();
-                if (snapshot.Activities is { Count: > 0 })
-                {
-                    foreach (var activity in snapshot.Activities.OrderBy(entry => entry.Timestamp))
-                    {
-                        if (!Enum.TryParse(activity.Severity, true, out ActivitySeverity severity))
-                        {
-                            severity = ActivitySeverity.Info;
-                        }
-
-                        var category = Enum.TryParse<ActivityCategory>(activity.Category ?? nameof(ActivityCategory.General), true, out var parsedCategory)
-                            ? parsedCategory
-                            : ActivityCategory.General;
-                        var entryVm = new ActivityEntryViewModel(severity, activity.Summary, activity.Detail ?? string.Empty, activity.Timestamp, category);
-                        _activityEntries.Insert(0, entryVm);
-                    }
-                    RefreshActivityVirtualization();
-                    RefreshActivityFilter();
-                    OnPropertyChanged(nameof(HasActivityEntries));
-                }
-
-                foreach (var entry in snapshot.Servers)
-                {
-                    var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, entry.HostId, StringComparison.OrdinalIgnoreCase));
-                    if (server is null)
-                    {
-                        continue;
-                    }
-
-                    server.IsEnabled = entry.Enabled;
-                    server.Label = entry.Label;
-                    server.Scope = entry.Scope;
-
-                    var roots = entry.Roots.Where(root => !string.IsNullOrWhiteSpace(root))
-                        .Select(root => new RootEntryViewModel(root.Trim()));
-                    server.ReplaceRoots(roots);
-                    server.ResetStatus();
-                }
-
-                ReindexServers();
-                var activeView = (snapshot.ActiveView ?? string.Empty).Trim().ToLowerInvariant();
-                if (string.Equals(activeView, "catalog", StringComparison.Ordinal) && CatalogViewModel.HasEntries)
-                {
-                    IsViewingCatalog = true;
-                    IsViewingDrilldown = false;
-                }
-                else if (string.Equals(activeView, "drilldown", StringComparison.Ordinal) && DrilldownViewModel is not null)
-                {
-                    IsViewingCatalog = false;
-                    IsViewingDrilldown = true;
-                }
-                else
-                {
-                    IsViewingCatalog = false;
-                    IsViewingDrilldown = false;
-                }
+                RestoreCatalogFilters(snapshot);
+                RestoreActivityLog(snapshot);
+                RestoreServerStates(snapshot);
+                RestoreActiveView(snapshot);
 
                 StatusBanner = "Loaded saved session.";
                 ShowCatalogCommand.NotifyCanExecuteChanged();
@@ -650,6 +561,113 @@ namespace DriftBuster.Gui.ViewModels
                     TimeSpan.FromSeconds(6),
                     new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
                 LogActivity(ActivitySeverity.Error, "Failed to load session", ex.ToString());
+            }
+        }
+
+        private void RestoreCatalogFilters(ServerSelectionCache snapshot)
+        {
+            if (snapshot.CatalogFilters is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Coverage) && Enum.TryParse(snapshot.CatalogFilters.Coverage, true, out CoverageFilterOption coverageFilter))
+                {
+                    CatalogViewModel.SelectedCoverageFilter = coverageFilter;
+                }
+
+                if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Severity) && Enum.TryParse(snapshot.CatalogFilters.Severity, true, out SeverityFilterOption severityFilter))
+                {
+                    CatalogViewModel.SelectedSeverityFilter = severityFilter;
+                }
+
+                if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Format))
+                {
+                    CatalogViewModel.SelectedFormat = snapshot.CatalogFilters.Format;
+                }
+
+                if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Baseline) && CatalogViewModel.BaselineOptions.Contains(snapshot.CatalogFilters.Baseline, StringComparer.OrdinalIgnoreCase))
+                {
+                    CatalogViewModel.SelectedBaseline = snapshot.CatalogFilters.Baseline;
+                }
+
+                CatalogViewModel.SearchText = snapshot.CatalogFilters.Search ?? string.Empty;
+            }
+
+            if (snapshot.CatalogSort is not null)
+            {
+                CatalogViewModel.RestoreSortDescriptor(new CatalogSortDescriptor(snapshot.CatalogSort.Column, snapshot.CatalogSort.Descending));
+            }
+        }
+
+        private void RestoreActivityLog(ServerSelectionCache snapshot)
+        {
+            var timelineFilter = snapshot.Timeline?.Filter ?? snapshot.ActivityFilter;
+            if (!string.IsNullOrWhiteSpace(timelineFilter) && Enum.TryParse<ActivityFilterOption>(timelineFilter, true, out var savedFilter))
+            {
+                ActivityFilter = savedFilter;
+            }
+
+            _activityEntries.Clear();
+            RefreshActivityVirtualization();
+            if (snapshot.Activities is { Count: > 0 })
+            {
+                foreach (var activity in snapshot.Activities.OrderBy(entry => entry.Timestamp))
+                {
+                    if (!Enum.TryParse(activity.Severity, true, out ActivitySeverity severity))
+                    {
+                        severity = ActivitySeverity.Info;
+                    }
+
+                    var category = Enum.TryParse<ActivityCategory>(activity.Category ?? nameof(ActivityCategory.General), true, out var parsedCategory)
+                        ? parsedCategory
+                        : ActivityCategory.General;
+                    var entryVm = new ActivityEntryViewModel(severity, activity.Summary, activity.Detail ?? string.Empty, activity.Timestamp, category);
+                    _activityEntries.Insert(0, entryVm);
+                }
+                RefreshActivityVirtualization();
+                RefreshActivityFilter();
+                OnPropertyChanged(nameof(HasActivityEntries));
+            }
+        }
+
+        private void RestoreServerStates(ServerSelectionCache snapshot)
+        {
+            foreach (var entry in snapshot.Servers)
+            {
+                var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, entry.HostId, StringComparison.OrdinalIgnoreCase));
+                if (server is null)
+                {
+                    continue;
+                }
+
+                server.IsEnabled = entry.Enabled;
+                server.Label = entry.Label;
+                server.Scope = entry.Scope;
+
+                var roots = entry.Roots.Where(root => !string.IsNullOrWhiteSpace(root))
+                    .Select(root => new RootEntryViewModel(root.Trim()));
+                server.ReplaceRoots(roots);
+                server.ResetStatus();
+            }
+
+            ReindexServers();
+        }
+
+        private void RestoreActiveView(ServerSelectionCache snapshot)
+        {
+            var activeView = (snapshot.ActiveView ?? string.Empty).Trim().ToLowerInvariant();
+            if (string.Equals(activeView, "catalog", StringComparison.Ordinal) && CatalogViewModel.HasEntries)
+            {
+                IsViewingCatalog = true;
+                IsViewingDrilldown = false;
+            }
+            else if (string.Equals(activeView, "drilldown", StringComparison.Ordinal) && DrilldownViewModel is not null)
+            {
+                IsViewingCatalog = false;
+                IsViewingDrilldown = true;
+            }
+            else
+            {
+                IsViewingCatalog = false;
+                IsViewingDrilldown = false;
             }
         }
 
@@ -776,47 +794,52 @@ namespace DriftBuster.Gui.ViewModels
                 LogActivity(ActivitySeverity.Info, retryOnly ? "Re-running missing hosts" : "Running multi-server scan", $"Hosts queued: {plans.Count}, cached reused: {cachedCount}.");
                 _showDrilldownForHostCommand.NotifyCanExecuteChanged();
 
-                try
-                {
-                    var progress = new Progress<ScanProgress>(UpdateProgress);
-                    var response = await _service.RunServerScansAsync(plans, progress, _runCancellation.Token).ConfigureAwait(false);
-                    ApplyResults(response);
-                    StatusBanner = "Scan complete.";
-                    _toastService.Show(
-                        "Multi-server scan complete",
-                        $"Processed {plans.Count} host(s).",
-                        ToastLevel.Success,
-                        TimeSpan.FromSeconds(4));
-                    LogActivity(ActivitySeverity.Success, "Scan complete", $"Processed {plans.Count} host(s). Cached reused: {cachedCount}.");
-                }
-                catch (OperationCanceledException)
-                {
-                    StatusBanner = "Scan cancelled.";
-                    _toastService.Show("Scan cancelled", "Active scan was cancelled.", ToastLevel.Info, TimeSpan.FromSeconds(3));
-                    LogActivity(ActivitySeverity.Info, "Scan cancelled.");
-                }
-                catch (Exception ex)
-                {
-                    StatusBanner = $"Scan failed: {ex.Message}";
-                    _toastService.Show(
-                        "Multi-server scan failed",
-                        ex.Message,
-                        ToastLevel.Error,
-                        TimeSpan.FromSeconds(10),
-                        new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
-                    LogActivity(ActivitySeverity.Error, "Scan failed", ex.ToString());
-                }
-                finally
-                {
-                    IsBusy = false;
-                    _runCancellation?.Dispose();
-                    _runCancellation = null;
-                    _showDrilldownForHostCommand.NotifyCanExecuteChanged();
-                }
+                await RunScansWithNotificationsAsync(plans, cachedCount).ConfigureAwait(false);
             }
             finally
             {
                 _runGate.Release();
+            }
+        }
+
+        private async Task RunScansWithNotificationsAsync(List<ServerScanPlan> plans, int cachedCount)
+        {
+            try
+            {
+                var progress = new Progress<ScanProgress>(UpdateProgress);
+                var response = await _service.RunServerScansAsync(plans, progress, _runCancellation!.Token).ConfigureAwait(false);
+                ApplyResults(response);
+                StatusBanner = "Scan complete.";
+                _toastService.Show(
+                    "Multi-server scan complete",
+                    $"Processed {plans.Count} host(s).",
+                    ToastLevel.Success,
+                    TimeSpan.FromSeconds(4));
+                LogActivity(ActivitySeverity.Success, "Scan complete", $"Processed {plans.Count} host(s). Cached reused: {cachedCount}.");
+            }
+            catch (OperationCanceledException)
+            {
+                StatusBanner = "Scan cancelled.";
+                _toastService.Show("Scan cancelled", "Active scan was cancelled.", ToastLevel.Info, TimeSpan.FromSeconds(3));
+                LogActivity(ActivitySeverity.Info, "Scan cancelled.");
+            }
+            catch (Exception ex)
+            {
+                StatusBanner = $"Scan failed: {ex.Message}";
+                _toastService.Show(
+                    "Multi-server scan failed",
+                    ex.Message,
+                    ToastLevel.Error,
+                    TimeSpan.FromSeconds(10),
+                    new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
+                LogActivity(ActivitySeverity.Error, "Scan failed", ex.ToString());
+            }
+            finally
+            {
+                IsBusy = false;
+                _runCancellation?.Dispose();
+                _runCancellation = null;
+                _showDrilldownForHostCommand.NotifyCanExecuteChanged();
             }
         }
 
@@ -865,49 +888,7 @@ namespace DriftBuster.Gui.ViewModels
 
             try
             {
-                var snapshot = new ServerSelectionCache
-                {
-                    SchemaVersion = SessionCacheService.CurrentSchemaVersion,
-                    PersistSession = true,
-                    Servers = Servers.Select(server => new ServerSelectionCacheEntry
-                    {
-                        HostId = server.HostId,
-                        Label = server.Label,
-                        Enabled = server.IsEnabled,
-                        Scope = server.Scope,
-                        Roots = server.Roots.Select(root => root.Path).ToArray(),
-                    }).ToList(),
-                    Activities = _activityEntries
-                        .Select(entry => new ActivityCacheEntry
-                        {
-                            Timestamp = entry.Timestamp,
-                            Severity = entry.Severity.ToString(),
-                            Summary = entry.Summary,
-                            Detail = entry.Detail,
-                            Category = entry.Category.ToString(),
-                        })
-                        .ToList(),
-                    CatalogSort = new CatalogSortCache
-                    {
-                        Column = CatalogViewModel.SortDescriptor.ColumnKey,
-                        Descending = CatalogViewModel.SortDescriptor.Descending,
-                    },
-                    ActivityFilter = ActivityFilter.ToString(),
-                    CatalogFilters = new CatalogFilterCache
-                    {
-                        Coverage = CatalogViewModel.SelectedCoverageFilter.ToString(),
-                        Severity = CatalogViewModel.SelectedSeverityFilter.ToString(),
-                        Format = CatalogViewModel.SelectedFormat,
-                        Baseline = CatalogViewModel.SelectedBaseline,
-                        Search = CatalogViewModel.SearchText,
-                    },
-                    Timeline = new ActivityTimelineCache
-                    {
-                        Filter = ActivityFilter.ToString(),
-                        LastOpenedHostId = DrilldownViewModel?.BaselineHostId,
-                    },
-                    ActiveView = IsViewingDrilldown ? "drilldown" : (IsViewingCatalog ? "catalog" : "setup"),
-                };
+                var snapshot = BuildSessionSnapshot();
 
                 await _cacheService.SaveAsync(snapshot).ConfigureAwait(false);
                 StatusBanner = "Session saved.";
@@ -924,6 +905,53 @@ namespace DriftBuster.Gui.ViewModels
                     new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
                 LogActivity(ActivitySeverity.Error, "Failed to save session", ex.ToString());
             }
+        }
+
+        private ServerSelectionCache BuildSessionSnapshot()
+        {
+            return new ServerSelectionCache
+            {
+                SchemaVersion = SessionCacheService.CurrentSchemaVersion,
+                PersistSession = true,
+                Servers = Servers.Select(server => new ServerSelectionCacheEntry
+                {
+                    HostId = server.HostId,
+                    Label = server.Label,
+                    Enabled = server.IsEnabled,
+                    Scope = server.Scope,
+                    Roots = server.Roots.Select(root => root.Path).ToArray(),
+                }).ToList(),
+                Activities = _activityEntries
+                    .Select(entry => new ActivityCacheEntry
+                    {
+                        Timestamp = entry.Timestamp,
+                        Severity = entry.Severity.ToString(),
+                        Summary = entry.Summary,
+                        Detail = entry.Detail,
+                        Category = entry.Category.ToString(),
+                    })
+                    .ToList(),
+                CatalogSort = new CatalogSortCache
+                {
+                    Column = CatalogViewModel.SortDescriptor.ColumnKey,
+                    Descending = CatalogViewModel.SortDescriptor.Descending,
+                },
+                ActivityFilter = ActivityFilter.ToString(),
+                CatalogFilters = new CatalogFilterCache
+                {
+                    Coverage = CatalogViewModel.SelectedCoverageFilter.ToString(),
+                    Severity = CatalogViewModel.SelectedSeverityFilter.ToString(),
+                    Format = CatalogViewModel.SelectedFormat,
+                    Baseline = CatalogViewModel.SelectedBaseline,
+                    Search = CatalogViewModel.SearchText,
+                },
+                Timeline = new ActivityTimelineCache
+                {
+                    Filter = ActivityFilter.ToString(),
+                    LastOpenedHostId = DrilldownViewModel?.BaselineHostId,
+                },
+                ActiveView = IsViewingDrilldown ? "drilldown" : (IsViewingCatalog ? "catalog" : "setup"),
+            };
         }
 
         private List<ServerScanPlan> PreparePlans(bool retryOnly, IReadOnlyCollection<string>? scopedHostIds, out int cachedCount)
@@ -1177,59 +1205,9 @@ namespace DriftBuster.Gui.ViewModels
 
         private void OnShowDrilldownForHost(string? hostId)
         {
-            if (string.IsNullOrWhiteSpace(hostId))
-            {
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "missing-argument");
-                return;
-            }
-
-            if (IsBusy)
-            {
-                StatusBanner = "Finish current scans before opening drilldowns.";
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "busy");
-                return;
-            }
-
-            var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, hostId, StringComparison.OrdinalIgnoreCase));
-            if (server is null)
-            {
-                StatusBanner = "Selected host is no longer available.";
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "host-missing");
-                return;
-            }
-
-            if (!server.IsEnabled)
-            {
-                StatusBanner = "Enable the host to open its drilldown.";
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "host-disabled");
-                return;
-            }
-
-            if (!TryGetDrilldownDetail(hostId, out var target, out var detail))
-            {
-                StatusBanner = "No drilldown available for the selected host.";
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "no-drilldown");
-                return;
-            }
-
-            if (detail is null)
-            {
-                StatusBanner = "No drilldown available for the selected host.";
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "detail-not-found");
-                return;
-            }
-
-            if (!detail.Present && !detail.IsBaseline)
-            {
-                StatusBanner = "No drilldown available for the selected host.";
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "detail-not-ready");
-                return;
-            }
-
+            var target = TryValidateDrilldownHost(hostId);
             if (target is null)
             {
-                StatusBanner = "No drilldown available for the selected host.";
-                RecordDrilldownTelemetry("drilldown-blocked", hostId, "entry-not-found");
                 return;
             }
 
@@ -1237,6 +1215,67 @@ namespace DriftBuster.Gui.ViewModels
             IsViewingDrilldown = true;
             LogActivity(ActivitySeverity.Info, "Opened drilldown", $"Host: {hostId} via execution summary.");
             RecordDrilldownTelemetry("drilldown-opened", hostId, null);
+        }
+
+        private ConfigDrilldown? TryValidateDrilldownHost(string? hostId)
+        {
+            if (string.IsNullOrWhiteSpace(hostId))
+            {
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "missing-argument");
+                return null;
+            }
+
+            if (IsBusy)
+            {
+                StatusBanner = "Finish current scans before opening drilldowns.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "busy");
+                return null;
+            }
+
+            var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, hostId, StringComparison.OrdinalIgnoreCase));
+            if (server is null)
+            {
+                StatusBanner = "Selected host is no longer available.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "host-missing");
+                return null;
+            }
+
+            if (!server.IsEnabled)
+            {
+                StatusBanner = "Enable the host to open its drilldown.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "host-disabled");
+                return null;
+            }
+
+            if (!TryGetDrilldownDetail(hostId, out var target, out var detail))
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "no-drilldown");
+                return null;
+            }
+
+            if (detail is null)
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "detail-not-found");
+                return null;
+            }
+
+            if (!detail.Present && !detail.IsBaseline)
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "detail-not-ready");
+                return null;
+            }
+
+            if (target is null)
+            {
+                StatusBanner = "No drilldown available for the selected host.";
+                RecordDrilldownTelemetry("drilldown-blocked", hostId, "entry-not-found");
+                return null;
+            }
+
+            return target;
         }
 
         private void LoadDrilldown(string configId)

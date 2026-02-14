@@ -221,6 +221,28 @@ namespace DriftBuster.Backend
                 };
             }
 
+            InitializePlans(planList, progress, cancellationToken);
+
+            var repositoryRoot = ResolveRepositoryRoot();
+            var request = BuildMultiServerRequest(planList, repositoryRoot);
+            var response = await ExecuteMultiServerAsync(request, progress, cancellationToken, repositoryRoot).ConfigureAwait(false);
+
+            if (response is null)
+            {
+                throw new InvalidOperationException("Multi-server runner returned no payload.");
+            }
+
+            if (string.IsNullOrWhiteSpace(response.Version))
+            {
+                response.Version = MultiServerSchemaVersion;
+            }
+
+            ValidateMultiServerResponse(response);
+            return response;
+        }
+
+        private static void InitializePlans(List<ServerScanPlan> planList, IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
+        {
             foreach (var plan in planList)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -246,23 +268,6 @@ namespace DriftBuster.Backend
                     Timestamp = DateTimeOffset.UtcNow,
                 });
             }
-
-            var repositoryRoot = ResolveRepositoryRoot();
-            var request = BuildMultiServerRequest(planList, repositoryRoot);
-            var response = await ExecuteMultiServerAsync(request, progress, cancellationToken, repositoryRoot).ConfigureAwait(false);
-
-            if (response is null)
-            {
-                throw new InvalidOperationException("Multi-server runner returned no payload.");
-            }
-
-            if (string.IsNullOrWhiteSpace(response.Version))
-            {
-                response.Version = MultiServerSchemaVersion;
-            }
-
-            ValidateMultiServerResponse(response);
-            return response;
         }
 
         private static DiffResult BuildDiffResult(IEnumerable<string?> versions, CancellationToken cancellationToken)
@@ -286,42 +291,7 @@ namespace DriftBuster.Backend
             for (var index = 1; index < resolved.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var candidatePath = EnsureFile(resolved[index], false);
-                var candidateName = Path.GetFileName(candidatePath);
-                var candidateContent = ReadText(candidatePath);
-
-                var contentType = DetectContentType(baselinePath, candidatePath);
-                var canonicalBefore = CanonicaliseContent(baselineContent, contentType);
-                var canonicalAfter = CanonicaliseContent(candidateContent, contentType);
-                var beforeLines = SplitLines(canonicalBefore);
-                var afterLines = SplitLines(canonicalAfter);
-                var unifiedDiff = BuildUnifiedDiff(beforeLines, afterLines, baselineName, candidateName, 3);
-
-                var plan = new DiffPlan
-                {
-                    Before = canonicalBefore,
-                    After = canonicalAfter,
-                    ContentType = contentType,
-                    FromLabel = baselineName,
-                    ToLabel = candidateName,
-                    Placeholder = RedactedPlaceholder,
-                    ContextLines = 3,
-                };
-
-                comparisons.Add(new DiffComparison
-                {
-                    From = baselineName,
-                    To = candidateName,
-                    Plan = plan,
-                    Metadata = new DiffMetadata
-                    {
-                        LeftPath = baselinePath,
-                        RightPath = candidatePath,
-                        ContentType = contentType,
-                        ContextLines = 3,
-                    },
-                    UnifiedDiff = unifiedDiff,
-                });
+                comparisons.Add(BuildComparison(resolved[index], baselinePath, baselineName, baselineContent));
             }
 
             var result = new DiffResult
@@ -335,6 +305,46 @@ namespace DriftBuster.Backend
             result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
             result.SanitizedJson = JsonSerializer.Serialize(summary, SerializerOptions);
             return result;
+        }
+
+        private static DiffComparison BuildComparison(string? candidateVersion, string baselinePath, string baselineName, string baselineContent)
+        {
+            var candidatePath = EnsureFile(candidateVersion, false);
+            var candidateName = Path.GetFileName(candidatePath);
+            var candidateContent = ReadText(candidatePath);
+
+            var contentType = DetectContentType(baselinePath, candidatePath);
+            var canonicalBefore = CanonicaliseContent(baselineContent, contentType);
+            var canonicalAfter = CanonicaliseContent(candidateContent, contentType);
+            var beforeLines = SplitLines(canonicalBefore);
+            var afterLines = SplitLines(canonicalAfter);
+            var unifiedDiff = BuildUnifiedDiff(beforeLines, afterLines, baselineName, candidateName, 3);
+
+            var plan = new DiffPlan
+            {
+                Before = canonicalBefore,
+                After = canonicalAfter,
+                ContentType = contentType,
+                FromLabel = baselineName,
+                ToLabel = candidateName,
+                Placeholder = RedactedPlaceholder,
+                ContextLines = 3,
+            };
+
+            return new DiffComparison
+            {
+                From = baselineName,
+                To = candidateName,
+                Plan = plan,
+                Metadata = new DiffMetadata
+                {
+                    LeftPath = baselinePath,
+                    RightPath = candidatePath,
+                    ContentType = contentType,
+                    ContextLines = 3,
+                },
+                UnifiedDiff = unifiedDiff,
+            };
         }
 
         private static string DetectContentType(string baselinePath, string candidatePath)
@@ -683,51 +693,60 @@ namespace DriftBuster.Backend
 
                 foreach (var opcode in group)
                 {
-                    switch (opcode.Tag)
-                    {
-                        case SequenceOperation.Equal:
-                            for (var i = opcode.I1; i < opcode.I2; i++)
-                            {
-                                builder.Append(' ');
-                                builder.AppendLine(beforeLines[i]);
-                            }
-
-                            break;
-                        case SequenceOperation.Delete:
-                            for (var i = opcode.I1; i < opcode.I2; i++)
-                            {
-                                builder.Append('-');
-                                builder.AppendLine(beforeLines[i]);
-                            }
-
-                            break;
-                        case SequenceOperation.Insert:
-                            for (var j = opcode.J1; j < opcode.J2; j++)
-                            {
-                                builder.Append('+');
-                                builder.AppendLine(afterLines[j]);
-                            }
-
-                            break;
-                        case SequenceOperation.Replace:
-                            for (var i = opcode.I1; i < opcode.I2; i++)
-                            {
-                                builder.Append('-');
-                                builder.AppendLine(beforeLines[i]);
-                            }
-
-                            for (var j = opcode.J1; j < opcode.J2; j++)
-                            {
-                                builder.Append('+');
-                                builder.AppendLine(afterLines[j]);
-                            }
-
-                            break;
-                    }
+                    AppendOpcodeLines(builder, opcode, beforeLines, afterLines);
                 }
             }
 
             return builder.ToString().TrimEnd('\r', '\n');
+        }
+
+        private static void AppendOpcodeLines(
+            StringBuilder builder,
+            SequenceOpcode opcode,
+            IReadOnlyList<string> beforeLines,
+            IReadOnlyList<string> afterLines)
+        {
+            switch (opcode.Tag)
+            {
+                case SequenceOperation.Equal:
+                    for (var i = opcode.I1; i < opcode.I2; i++)
+                    {
+                        builder.Append(' ');
+                        builder.AppendLine(beforeLines[i]);
+                    }
+
+                    break;
+                case SequenceOperation.Delete:
+                    for (var i = opcode.I1; i < opcode.I2; i++)
+                    {
+                        builder.Append('-');
+                        builder.AppendLine(beforeLines[i]);
+                    }
+
+                    break;
+                case SequenceOperation.Insert:
+                    for (var j = opcode.J1; j < opcode.J2; j++)
+                    {
+                        builder.Append('+');
+                        builder.AppendLine(afterLines[j]);
+                    }
+
+                    break;
+                case SequenceOperation.Replace:
+                    for (var i = opcode.I1; i < opcode.I2; i++)
+                    {
+                        builder.Append('-');
+                        builder.AppendLine(beforeLines[i]);
+                    }
+
+                    for (var j = opcode.J1; j < opcode.J2; j++)
+                    {
+                        builder.Append('+');
+                        builder.AppendLine(afterLines[j]);
+                    }
+
+                    break;
+            }
         }
 
         private static List<List<SequenceOpcode>> GroupOpcodes(
@@ -1094,30 +1113,7 @@ namespace DriftBuster.Backend
                 throw new ArgumentNullException(nameof(request));
             }
 
-            var pythonExecutable = ResolvePythonExecutable();
-            var startInfo = CreatePythonStartInfo(pythonExecutable, repositoryRoot);
-            var pythonPath = ResolvePythonPath(repositoryRoot);
-
-            if (!string.IsNullOrWhiteSpace(pythonPath))
-            {
-                if (startInfo.Environment.TryGetValue("PYTHONPATH", out var configured) && !string.IsNullOrWhiteSpace(configured))
-                {
-                    if (!configured.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries).Contains(pythonPath, StringComparer.Ordinal))
-                    {
-                        startInfo.Environment["PYTHONPATH"] = string.Join(Path.PathSeparator, pythonPath, configured);
-                    }
-                }
-                else
-                {
-                    var inherited = Environment.GetEnvironmentVariable("PYTHONPATH");
-                    startInfo.Environment["PYTHONPATH"] = string.IsNullOrWhiteSpace(inherited)
-                        ? pythonPath
-                        : string.Join(Path.PathSeparator, pythonPath, inherited);
-                }
-            }
-
-            startInfo.Environment["PYTHONUNBUFFERED"] = "1";
-
+            var startInfo = BuildMultiServerProcessStartInfo(repositoryRoot);
             var requestJson = JsonSerializer.Serialize(request, SerializerOptions);
 
             using var process = new Process { StartInfo = startInfo };
@@ -1142,77 +1138,9 @@ namespace DriftBuster.Backend
                     throw new InvalidOperationException("Failed to launch Python process for multi-server runner.");
                 }
 
-                await process.StandardInput.WriteAsync(requestJson).ConfigureAwait(false);
-                await process.StandardInput.WriteAsync(Environment.NewLine).ConfigureAwait(false);
-                await process.StandardInput.FlushAsync().ConfigureAwait(false);
-                process.StandardInput.Close();
+                await SendRequestToProcessAsync(process, requestJson).ConfigureAwait(false);
 
-                var stderrTask = Task.Run(() => process.StandardError.ReadToEnd());
-
-                ServerScanResponse? response = null;
-                string? line;
-
-                while ((line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) is not null)
-                {
-                    if (string.IsNullOrWhiteSpace(line))
-                    {
-                        continue;
-                    }
-
-                    JsonDocument document;
-                    try
-                    {
-                        document = JsonDocument.Parse(line);
-                    }
-                    catch (JsonException ex)
-                    {
-                        throw new InvalidOperationException($"Invalid JSON from multi-server runner: {line}", ex);
-                    }
-
-                    using (document)
-                    {
-                        var root = document.RootElement;
-                        if (!root.TryGetProperty("type", out var typeElement))
-                        {
-                            continue;
-                        }
-
-                        var type = typeElement.GetString();
-                        if (string.Equals(type, "progress", StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (progress is not null && root.TryGetProperty("payload", out var payloadElement))
-                            {
-                                var update = payloadElement.Deserialize<ScanProgress>(SerializerOptions);
-                                if (update is not null)
-                                {
-                                    progress.Report(update);
-                                }
-                            }
-                        }
-                        else if (string.Equals(type, "result", StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (root.TryGetProperty("payload", out var payloadElement))
-                            {
-                                response = payloadElement.Deserialize<ServerScanResponse>(SerializerOptions);
-                            }
-                        }
-                        else if (string.Equals(type, "error", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var message = root.TryGetProperty("message", out var messageElement)
-                                ? messageElement.GetString()
-                                : "Multi-server runner reported an error.";
-                            throw new InvalidOperationException(message ?? "Multi-server runner reported an error.");
-                        }
-                    }
-                }
-
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-
-                if (process.ExitCode != 0)
-                {
-                    var stderr = await stderrTask.ConfigureAwait(false);
-                    throw new InvalidOperationException($"Python runner failed with exit code {process.ExitCode}: {stderr}");
-                }
+                var response = await ParseMultiServerOutputAsync(process, progress, cancellationToken).ConfigureAwait(false);
 
                 return response ?? new ServerScanResponse
                 {
@@ -1236,6 +1164,127 @@ namespace DriftBuster.Backend
                     }
                 }
             }
+        }
+
+        private static ProcessStartInfo BuildMultiServerProcessStartInfo(string repositoryRoot)
+        {
+            var pythonExecutable = ResolvePythonExecutable();
+            var startInfo = CreatePythonStartInfo(pythonExecutable, repositoryRoot);
+            var pythonPath = ResolvePythonPath(repositoryRoot);
+
+            if (!string.IsNullOrWhiteSpace(pythonPath))
+            {
+                if (startInfo.Environment.TryGetValue("PYTHONPATH", out var configured) && !string.IsNullOrWhiteSpace(configured))
+                {
+                    if (!configured.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries).Contains(pythonPath, StringComparer.Ordinal))
+                    {
+                        startInfo.Environment["PYTHONPATH"] = string.Join(Path.PathSeparator, pythonPath, configured);
+                    }
+                }
+                else
+                {
+                    var inherited = Environment.GetEnvironmentVariable("PYTHONPATH");
+                    startInfo.Environment["PYTHONPATH"] = string.IsNullOrWhiteSpace(inherited)
+                        ? pythonPath
+                        : string.Join(Path.PathSeparator, pythonPath, inherited);
+                }
+            }
+
+            startInfo.Environment["PYTHONUNBUFFERED"] = "1";
+            return startInfo;
+        }
+
+        private static async Task SendRequestToProcessAsync(Process process, string requestJson)
+        {
+            await process.StandardInput.WriteAsync(requestJson).ConfigureAwait(false);
+            await process.StandardInput.WriteAsync(Environment.NewLine).ConfigureAwait(false);
+            await process.StandardInput.FlushAsync().ConfigureAwait(false);
+            process.StandardInput.Close();
+        }
+
+        private static async Task<ServerScanResponse?> ParseMultiServerOutputAsync(
+            Process process,
+            IProgress<ScanProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            var stderrTask = Task.Run(() => process.StandardError.ReadToEnd());
+
+            ServerScanResponse? response = null;
+            string? line;
+
+            while ((line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) is not null)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                response = DispatchMultiServerMessage(line, progress, response);
+            }
+
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+            if (process.ExitCode != 0)
+            {
+                var stderr = await stderrTask.ConfigureAwait(false);
+                throw new InvalidOperationException($"Python runner failed with exit code {process.ExitCode}: {stderr}");
+            }
+
+            return response;
+        }
+
+        private static ServerScanResponse? DispatchMultiServerMessage(
+            string line,
+            IProgress<ScanProgress>? progress,
+            ServerScanResponse? response)
+        {
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(line);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidOperationException($"Invalid JSON from multi-server runner: {line}", ex);
+            }
+
+            using (document)
+            {
+                var root = document.RootElement;
+                if (!root.TryGetProperty("type", out var typeElement))
+                {
+                    return response;
+                }
+
+                var type = typeElement.GetString();
+                if (string.Equals(type, "progress", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (progress is not null && root.TryGetProperty("payload", out var payloadElement))
+                    {
+                        var update = payloadElement.Deserialize<ScanProgress>(SerializerOptions);
+                        if (update is not null)
+                        {
+                            progress.Report(update);
+                        }
+                    }
+                }
+                else if (string.Equals(type, "result", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (root.TryGetProperty("payload", out var payloadElement))
+                    {
+                        response = payloadElement.Deserialize<ServerScanResponse>(SerializerOptions);
+                    }
+                }
+                else if (string.Equals(type, "error", StringComparison.OrdinalIgnoreCase))
+                {
+                    var message = root.TryGetProperty("message", out var messageElement)
+                        ? messageElement.GetString()
+                        : "Multi-server runner reported an error.";
+                    throw new InvalidOperationException(message ?? "Multi-server runner reported an error.");
+                }
+            }
+
+            return response;
         }
 
         private static string ResolvePythonExecutable()
@@ -1800,6 +1849,21 @@ namespace DriftBuster.Backend
                     }
                 }
 
+                var files = CollectSourceFiles(sources, runDirectory, cancellationToken);
+
+                WriteMetadata(runDirectory, clean, runTimestamp, files, sources);
+
+                return new RunProfileRunResult
+                {
+                    Profile = clean,
+                    Timestamp = runTimestamp,
+                    OutputDir = runDirectory,
+                    Files = files.ToArray(),
+                };
+            }
+
+            private static List<RunProfileFileResult> CollectSourceFiles(List<string> sources, string runDirectory, CancellationToken cancellationToken)
+            {
                 var files = new List<RunProfileFileResult>();
 
                 for (var index = 0; index < sources.Count; index++)
@@ -1840,15 +1904,7 @@ namespace DriftBuster.Backend
                     }
                 }
 
-                WriteMetadata(runDirectory, clean, runTimestamp, files, sources);
-
-                return new RunProfileRunResult
-                {
-                    Profile = clean,
-                    Timestamp = runTimestamp,
-                    OutputDir = runDirectory,
-                    Files = files.ToArray(),
-                };
+                return files;
             }
 
             public static OfflineCollectorResult PrepareOfflineCollector(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir, CancellationToken cancellationToken)
@@ -1885,59 +1941,10 @@ namespace DriftBuster.Backend
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var configFileName = string.IsNullOrWhiteSpace(request.ConfigFileName)
-                        ? $"{SafeName(clean.Name)}.offline.config.json"
-                        : request.ConfigFileName.Trim();
-
-                    if (!string.IsNullOrWhiteSpace(request.ConfigFileName))
-                    {
-                        var fileNameOnly = Path.GetFileName(configFileName);
-                        if (!string.Equals(configFileName, fileNameOnly, StringComparison.Ordinal))
-                        {
-                            throw new InvalidOperationException("Config file name must not include path separators.");
-                        }
-
-                        if (fileNameOnly.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-                        {
-                            throw new InvalidOperationException("Config file name contains invalid characters.");
-                        }
-
-                        if (string.IsNullOrWhiteSpace(fileNameOnly))
-                        {
-                            throw new InvalidOperationException("Config file name is required.");
-                        }
-
-                        configFileName = fileNameOnly;
-                    }
-
-                    if (!configFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        configFileName += ".json";
-                    }
-
-                    var configPath = Path.Combine(tempRoot, configFileName);
-                    var ruleset = LoadSecretRules(baseDir);
-                    var payload = BuildOfflineConfigPayload(clean, request.Metadata, ruleset);
-                    var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions(SerializerOptions)
-                    {
-                        WriteIndented = true,
-                    });
-                    File.WriteAllText(configPath, json + Environment.NewLine);
-
-                    cancellationToken.ThrowIfCancellationRequested();
-
+                    var configFileName = ResolveConfigFileName(request.ConfigFileName, clean.Name);
                     var scriptFileName = "driftbuster-offline-runner.ps1";
-                    var scriptSource = ResolveRequiredFile(baseDir, "scripts", scriptFileName);
-                    File.Copy(scriptSource, Path.Combine(tempRoot, scriptFileName), overwrite: true);
 
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (File.Exists(packagePath))
-                    {
-                        File.Delete(packagePath);
-                    }
-
-                    ZipFile.CreateFromDirectory(tempRoot, packagePath, CompressionLevel.Optimal, includeBaseDirectory: false);
+                    WriteCollectorFiles(tempRoot, configFileName, scriptFileName, clean, request.Metadata, baseDir, packagePath, cancellationToken);
 
                     return new OfflineCollectorResult
                     {
@@ -1950,6 +1957,75 @@ namespace DriftBuster.Backend
                 {
                     TryDeleteDirectory(tempRoot);
                 }
+            }
+
+            private static string ResolveConfigFileName(string? requestedName, string profileName)
+            {
+                var configFileName = string.IsNullOrWhiteSpace(requestedName)
+                    ? $"{SafeName(profileName)}.offline.config.json"
+                    : requestedName.Trim();
+
+                if (!string.IsNullOrWhiteSpace(requestedName))
+                {
+                    var fileNameOnly = Path.GetFileName(configFileName);
+                    if (!string.Equals(configFileName, fileNameOnly, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException("Config file name must not include path separators.");
+                    }
+
+                    if (fileNameOnly.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    {
+                        throw new InvalidOperationException("Config file name contains invalid characters.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(fileNameOnly))
+                    {
+                        throw new InvalidOperationException("Config file name is required.");
+                    }
+
+                    configFileName = fileNameOnly;
+                }
+
+                if (!configFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                {
+                    configFileName += ".json";
+                }
+
+                return configFileName;
+            }
+
+            private static void WriteCollectorFiles(
+                string tempRoot,
+                string configFileName,
+                string scriptFileName,
+                RunProfileDefinition profile,
+                IDictionary<string, string>? metadata,
+                string? baseDir,
+                string packagePath,
+                CancellationToken cancellationToken)
+            {
+                var configPath = Path.Combine(tempRoot, configFileName);
+                var ruleset = LoadSecretRules(baseDir);
+                var payload = BuildOfflineConfigPayload(profile, metadata, ruleset);
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions(SerializerOptions)
+                {
+                    WriteIndented = true,
+                });
+                File.WriteAllText(configPath, json + Environment.NewLine);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var scriptSource = ResolveRequiredFile(baseDir, "scripts", scriptFileName);
+                File.Copy(scriptSource, Path.Combine(tempRoot, scriptFileName), overwrite: true);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (File.Exists(packagePath))
+                {
+                    File.Delete(packagePath);
+                }
+
+                ZipFile.CreateFromDirectory(tempRoot, packagePath, CompressionLevel.Optimal, includeBaseDirectory: false);
             }
 
             public static ScheduleListResult ListSchedules(string? baseDir, CancellationToken cancellationToken)
@@ -2014,6 +2090,29 @@ namespace DriftBuster.Backend
                     Directory.CreateDirectory(manifestDirectory);
                 }
 
+                var payload = ValidateAndSerialiseSchedules(schedules, cancellationToken);
+
+                var json = JsonSerializer.Serialize(
+                    new Dictionary<string, object?>
+(StringComparer.Ordinal)
+                    {
+                        ["schedules"] = payload,
+                    },
+                    new JsonSerializerOptions(SerializerOptions)
+                    {
+                        WriteIndented = true,
+                    });
+
+                if (!json.EndsWith(Environment.NewLine, StringComparison.Ordinal))
+                {
+                    json += Environment.NewLine;
+                }
+
+                File.WriteAllText(manifestPath, json);
+            }
+
+            private static List<Dictionary<string, object?>> ValidateAndSerialiseSchedules(IEnumerable<ScheduleDefinition> schedules, CancellationToken cancellationToken)
+            {
                 var payload = new List<Dictionary<string, object?>>();
                 foreach (var schedule in schedules)
                 {
@@ -2054,23 +2153,7 @@ namespace DriftBuster.Backend
                     }));
                 }
 
-                var json = JsonSerializer.Serialize(
-                    new Dictionary<string, object?>
-(StringComparer.Ordinal)
-                    {
-                        ["schedules"] = payload,
-                    },
-                    new JsonSerializerOptions(SerializerOptions)
-                    {
-                        WriteIndented = true,
-                    });
-
-                if (!json.EndsWith(Environment.NewLine, StringComparison.Ordinal))
-                {
-                    json += Environment.NewLine;
-                }
-
-                File.WriteAllText(manifestPath, json);
+                return payload;
             }
 
             private static bool TryParseSchedule(JsonElement element, out ScheduleDefinition schedule)
@@ -2107,27 +2190,42 @@ namespace DriftBuster.Backend
                     ? startAtProperty.ToString()?.Trim()
                     : null;
 
-                if (element.TryGetProperty("window", out var windowProperty) && windowProperty.ValueKind == JsonValueKind.Object)
-                {
-                    var window = new ScheduleWindowDefinition
-                    {
-                        Start = windowProperty.TryGetProperty("start", out var startProperty)
-                            ? startProperty.ToString()?.Trim()
-                            : null,
-                        End = windowProperty.TryGetProperty("end", out var endProperty)
-                            ? endProperty.ToString()?.Trim()
-                            : null,
-                        Timezone = windowProperty.TryGetProperty("timezone", out var timezoneProperty)
-                            ? timezoneProperty.ToString()?.Trim()
-                            : null,
-                    };
+                schedule.Window = ParseScheduleWindow(element);
+                ParseScheduleMetadata(element, schedule);
 
-                    if (!string.IsNullOrWhiteSpace(window.Start) || !string.IsNullOrWhiteSpace(window.End) || !string.IsNullOrWhiteSpace(window.Timezone))
-                    {
-                        schedule.Window = window;
-                    }
+                return true;
+            }
+
+            private static ScheduleWindowDefinition? ParseScheduleWindow(JsonElement element)
+            {
+                if (!element.TryGetProperty("window", out var windowProperty) || windowProperty.ValueKind != JsonValueKind.Object)
+                {
+                    return null;
                 }
 
+                var window = new ScheduleWindowDefinition
+                {
+                    Start = windowProperty.TryGetProperty("start", out var startProperty)
+                        ? startProperty.ToString()?.Trim()
+                        : null,
+                    End = windowProperty.TryGetProperty("end", out var endProperty)
+                        ? endProperty.ToString()?.Trim()
+                        : null,
+                    Timezone = windowProperty.TryGetProperty("timezone", out var timezoneProperty)
+                        ? timezoneProperty.ToString()?.Trim()
+                        : null,
+                };
+
+                if (!string.IsNullOrWhiteSpace(window.Start) || !string.IsNullOrWhiteSpace(window.End) || !string.IsNullOrWhiteSpace(window.Timezone))
+                {
+                    return window;
+                }
+
+                return null;
+            }
+
+            private static void ParseScheduleMetadata(JsonElement element, ScheduleDefinition schedule)
+            {
                 if (element.TryGetProperty("tags", out var tagsProperty))
                 {
                     schedule.Tags = ExtractTags(tagsProperty);
@@ -2145,8 +2243,6 @@ namespace DriftBuster.Backend
 
                     schedule.Metadata = metadata;
                 }
-
-                return true;
             }
 
             private static ScheduleWindowDefinition? NormaliseWindow(ScheduleWindowDefinition? window)
@@ -2187,37 +2283,9 @@ namespace DriftBuster.Backend
                     entry["start_at"] = schedule.StartAt;
                 }
 
-                if (schedule.Window is not null)
-                {
-                    var windowPayload = new Dictionary<string, string>(System.StringComparer.Ordinal);
-                    if (!string.IsNullOrWhiteSpace(schedule.Window.Start))
-                    {
-                        windowPayload["start"] = schedule.Window.Start!;
-                    }
+                SerialiseScheduleWindow(schedule.Window, entry);
 
-                    if (!string.IsNullOrWhiteSpace(schedule.Window.End))
-                    {
-                        windowPayload["end"] = schedule.Window.End!;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(schedule.Window.Timezone))
-                    {
-                        windowPayload["timezone"] = schedule.Window.Timezone!;
-                    }
-
-                    if (windowPayload.Count > 0)
-                    {
-                        entry["window"] = windowPayload;
-                    }
-                }
-
-                var tags = schedule.Tags ?? System.Array.Empty<string>();
-                var cleanedTags = tags
-                    .Select(tag => tag?.Trim())
-                    .Where(tag => !string.IsNullOrWhiteSpace(tag))
-                    .Select(tag => tag!)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
+                var cleanedTags = CleanTags(schedule.Tags);
                 if (cleanedTags.Length > 0)
                 {
                     entry["tags"] = cleanedTags;
@@ -2243,6 +2311,46 @@ namespace DriftBuster.Backend
                 }
 
                 return entry;
+            }
+
+            private static void SerialiseScheduleWindow(ScheduleWindowDefinition? window, Dictionary<string, object?> entry)
+            {
+                if (window is null)
+                {
+                    return;
+                }
+
+                var windowPayload = new Dictionary<string, string>(System.StringComparer.Ordinal);
+                if (!string.IsNullOrWhiteSpace(window.Start))
+                {
+                    windowPayload["start"] = window.Start!;
+                }
+
+                if (!string.IsNullOrWhiteSpace(window.End))
+                {
+                    windowPayload["end"] = window.End!;
+                }
+
+                if (!string.IsNullOrWhiteSpace(window.Timezone))
+                {
+                    windowPayload["timezone"] = window.Timezone!;
+                }
+
+                if (windowPayload.Count > 0)
+                {
+                    entry["window"] = windowPayload;
+                }
+            }
+
+            private static string[] CleanTags(string[]? tags)
+            {
+                var source = tags ?? System.Array.Empty<string>();
+                return source
+                    .Select(tag => tag?.Trim())
+                    .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                    .Select(tag => tag!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
             private static string[] ExtractTags(JsonElement element)
@@ -2344,31 +2452,7 @@ namespace DriftBuster.Backend
                     baseline = sources[0].path;
                 }
 
-                var meta = new Dictionary<string, object>(StringComparer.Ordinal)
-                {
-                    ["profile_name"] = profile.Name,
-                    ["prepared_at"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
-                };
-
-                var user = Environment.UserName;
-                if (!string.IsNullOrWhiteSpace(user))
-                {
-                    meta["prepared_by"] = user;
-                }
-
-                if (metadata is not null)
-                {
-                    foreach (var entry in metadata)
-                    {
-                        if (string.IsNullOrWhiteSpace(entry.Key))
-                        {
-                            continue;
-                        }
-
-                        meta[entry.Key.Trim()] = entry.Value ?? string.Empty;
-                    }
-                }
-
+                var meta = BuildOfflineMetadata(profile.Name, metadata);
                 var secretScanner = profile.SecretScanner ?? new SecretScannerOptions();
 
                 return new
@@ -2405,6 +2489,36 @@ namespace DriftBuster.Backend
                     },
                     metadata = meta,
                 };
+            }
+
+            private static Dictionary<string, object> BuildOfflineMetadata(string profileName, IDictionary<string, string>? metadata)
+            {
+                var meta = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["profile_name"] = profileName,
+                    ["prepared_at"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                };
+
+                var user = Environment.UserName;
+                if (!string.IsNullOrWhiteSpace(user))
+                {
+                    meta["prepared_by"] = user;
+                }
+
+                if (metadata is not null)
+                {
+                    foreach (var entry in metadata)
+                    {
+                        if (string.IsNullOrWhiteSpace(entry.Key))
+                        {
+                            continue;
+                        }
+
+                        meta[entry.Key.Trim()] = entry.Value ?? string.Empty;
+                    }
+                }
+
+                return meta;
             }
 
             private static string ResolveRequiredFile(string? baseDir, params string[] segments)

@@ -389,43 +389,51 @@ namespace DriftBuster.Gui.Services
                         return;
                     }
 
-                    var entries = legacy.ResolveEntries()
-                        .Select(entry => entry.ToEntry())
-                        .Where(entry => entry is not null)
-                        .Select(NormaliseEntry)
-                        .Where(entry => entry is not null)
-                        .Cast<DiffPlannerMruEntry>()
-                        .ToList();
-
-                    if (entries.Count == 0)
-                    {
-                        return;
-                    }
-
-                    var limit = legacy.ResolveEntryLimit();
-                    var snapshot = CreateEmptySnapshot(limit);
-                    foreach (var migrated in entries.Take(snapshot.MaxEntries))
-                    {
-                        snapshot.Entries.Add(migrated);
-                    }
-
-                    var target = new FileStream(
-                        destinationPath,
-                        FileMode.CreateNew,
-                        FileAccess.Write,
-                        FileShare.None,
-                        bufferSize: 4096,
-                        useAsync: true);
-                    await using (target.ConfigureAwait(false))
-                    {
-                        await JsonSerializer.SerializeAsync(target, snapshot, SerializerOptions, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
+                    await PersistMigratedSettingsAsync(legacy, destinationPath, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch
             {
                 // Best-effort migration. Failures should not block the new storage path.
+            }
+        }
+
+        private static async Task PersistMigratedSettingsAsync(
+            LegacyDiffPlannerSettings legacy,
+            string destinationPath,
+            CancellationToken cancellationToken)
+        {
+            var entries = legacy.ResolveEntries()
+                .Select(entry => entry.ToEntry())
+                .Where(entry => entry is not null)
+                .Select(NormaliseEntry)
+                .Where(entry => entry is not null)
+                .Cast<DiffPlannerMruEntry>()
+                .ToList();
+
+            if (entries.Count == 0)
+            {
+                return;
+            }
+
+            var limit = legacy.ResolveEntryLimit();
+            var snapshot = CreateEmptySnapshot(limit);
+            foreach (var migrated in entries.Take(snapshot.MaxEntries))
+            {
+                snapshot.Entries.Add(migrated);
+            }
+
+            var target = new FileStream(
+                destinationPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 4096,
+                useAsync: true);
+            await using (target.ConfigureAwait(false))
+            {
+                await JsonSerializer.SerializeAsync(target, snapshot, SerializerOptions, cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
 
