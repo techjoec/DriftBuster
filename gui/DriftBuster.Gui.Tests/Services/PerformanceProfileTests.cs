@@ -1,5 +1,3 @@
-using System;
-
 using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.Tests.Services;
