@@ -1,18 +1,15 @@
 using System.Globalization;
 using System.Threading.Tasks;
-
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
-
+using AwesomeAssertions;
 using DriftBuster.Gui.Converters;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Ui;
-
-using AwesomeAssertions;
 
 namespace DriftBuster.Gui.Tests.Converters;
 

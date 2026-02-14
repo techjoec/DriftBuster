@@ -2,10 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless.XUnit;
-
-using DriftBuster.Gui;
-
 using AwesomeAssertions;
+using DriftBuster.Gui;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;

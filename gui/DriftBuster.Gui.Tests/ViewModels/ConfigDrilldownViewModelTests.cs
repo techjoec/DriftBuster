@@ -2,9 +2,9 @@ using System;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.ViewModels;
-using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;

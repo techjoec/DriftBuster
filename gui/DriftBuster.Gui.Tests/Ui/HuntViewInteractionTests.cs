@@ -1,9 +1,7 @@
 using System.Threading.Tasks;
-using Avalonia.Headless.XUnit;
-
 using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
-
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;

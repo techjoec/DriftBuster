@@ -1,17 +1,13 @@
 using System;
 using System.Linq;
-
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
-
+using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
-
-using AwesomeAssertions;
-
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;

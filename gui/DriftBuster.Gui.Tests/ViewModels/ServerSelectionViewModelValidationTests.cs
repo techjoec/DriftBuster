@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
+using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
-using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;

@@ -1,12 +1,9 @@
 using Avalonia;
 using Avalonia.Headless.XUnit;
-
+using AwesomeAssertions;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
-
-using AwesomeAssertions;
-
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;

@@ -4,13 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-
+using CommunityToolkit.Mvvm.ComponentModel;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
-
-using CommunityToolkit.Mvvm.ComponentModel;
-
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;

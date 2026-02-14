@@ -3,10 +3,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Styling;
+using AwesomeAssertions;
 using DriftBuster.Gui.Tests.Ui;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
-using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Views;

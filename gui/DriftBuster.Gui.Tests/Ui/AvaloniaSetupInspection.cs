@@ -1,13 +1,11 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using Avalonia.Headless.XUnit;
-
 using Avalonia;
 using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
-
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,7 +21,7 @@ public sealed class AvaloniaSetupInspection
         _output = output;
     }
 
-    #pragma warning disable MA0051
+#pragma warning disable MA0051
     [AvaloniaFact]
     public void LogSetupState()
     {
@@ -104,7 +102,7 @@ public sealed class AvaloniaSetupInspection
             }
         }
     }
-    #pragma warning restore MA0051
+#pragma warning restore MA0051
 
     private static (bool? registered, Type? type) GetRuntimeServicesState()
     {

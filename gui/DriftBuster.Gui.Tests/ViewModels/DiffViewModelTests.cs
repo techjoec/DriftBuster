@@ -4,13 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-
+using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
-
-using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 
 namespace DriftBuster.Gui.Tests.ViewModels;

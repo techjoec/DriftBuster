@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-
-using DriftBuster.Gui.Services;
-
 using AwesomeAssertions;
-
+using DriftBuster.Gui.Services;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Services;

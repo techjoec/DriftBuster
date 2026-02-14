@@ -2,14 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
-
 using Avalonia.Media;
 using Avalonia.Platform;
-
-using DriftBuster.Gui.Headless;
-
 using AwesomeAssertions;
-
+using DriftBuster.Gui.Headless;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Headless;

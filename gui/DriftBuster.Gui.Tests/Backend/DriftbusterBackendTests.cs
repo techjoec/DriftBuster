@@ -6,11 +6,9 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-
+using AwesomeAssertions;
 using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
-
-using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Backend;

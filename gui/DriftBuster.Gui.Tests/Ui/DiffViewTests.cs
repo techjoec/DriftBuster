@@ -3,18 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
-
+using AwesomeAssertions;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
-
-using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;

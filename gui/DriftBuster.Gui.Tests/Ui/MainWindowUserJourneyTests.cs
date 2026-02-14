@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
+using AwesomeAssertions;
 using CommunityToolkit.Mvvm.Input;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
-using AwesomeAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -24,7 +24,7 @@ public sealed class MainWindowUserJourneyTests
         _output = output;
     }
 
-    #pragma warning disable MA0051
+#pragma warning disable MA0051
     [AvaloniaFact]
     public async Task User_flow_covers_main_sections_and_multi_server_results()
     {
@@ -167,7 +167,7 @@ public sealed class MainWindowUserJourneyTests
 
         toastService.ActiveToasts.Should().NotBeEmpty();
     }
-    #pragma warning restore MA0051
+#pragma warning restore MA0051
 
     private static async Task WaitUntilAsync(Func<bool> predicate, int timeoutMs = 3000)
     {
@@ -212,7 +212,7 @@ public sealed class MainWindowUserJourneyTests
         };
     }
 
-    #pragma warning disable MA0051
+#pragma warning disable MA0051
     private static ServerScanResponse BuildScanResponse(IReadOnlyList<ServerScanPlan> plans)
     {
         var labels = plans.Select(plan => string.IsNullOrWhiteSpace(plan.Label) ? plan.HostId : plan.Label).ToArray();
@@ -284,5 +284,5 @@ public sealed class MainWindowUserJourneyTests
             Drilldown = drilldown,
         };
     }
-    #pragma warning restore MA0051
+#pragma warning restore MA0051
 }

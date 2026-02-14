@@ -5,11 +5,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-
-using DriftBuster.Gui.Services;
-
 using AwesomeAssertions;
-
+using DriftBuster.Gui.Services;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Services;

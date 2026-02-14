@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Threading;
+using AwesomeAssertions;
 using DriftBuster.Gui.Converters;
 using DriftBuster.Gui.Tests.Ui;
-using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Converters;
