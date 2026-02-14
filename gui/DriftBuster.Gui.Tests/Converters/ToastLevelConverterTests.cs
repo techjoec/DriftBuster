@@ -11,7 +11,7 @@ using Avalonia.Threading;
 using DriftBuster.Gui.Converters;
 using DriftBuster.Gui.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace DriftBuster.Gui.Tests.Converters;
 

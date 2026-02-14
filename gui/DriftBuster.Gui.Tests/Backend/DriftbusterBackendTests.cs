@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
 
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Backend;
@@ -265,7 +265,7 @@ public sealed class DriftbusterBackendTests
     public async Task RunServerScansAsync_executes_multi_server_runner()
     {
         var backend = new DriftbusterBackend();
-        var sampleRoot = Path.Combine("samples", "multi-server");
+        var sampleRoot = Path.Combine("fixtures", "multi-server");
 
         var plans = new[]
         {

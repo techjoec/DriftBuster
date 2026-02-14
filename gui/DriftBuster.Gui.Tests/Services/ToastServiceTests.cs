@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 using DriftBuster.Gui.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

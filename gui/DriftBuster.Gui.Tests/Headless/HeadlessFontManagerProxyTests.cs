@@ -8,7 +8,7 @@ using Avalonia.Platform;
 
 using DriftBuster.Gui.Headless;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

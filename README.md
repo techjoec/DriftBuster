@@ -240,7 +240,7 @@ python -m pytest
 ```
 
 Optional local checks:
-- Secret scanning: `gitleaks detect --source . -v`
+- Secret scanning: `gitleaks dir . -v`
 - License audit: `pip-licenses`
 
 ### Coverage Policy

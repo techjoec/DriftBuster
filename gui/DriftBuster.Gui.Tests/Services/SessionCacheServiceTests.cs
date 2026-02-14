@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Services;

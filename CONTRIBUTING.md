@@ -144,7 +144,7 @@ When adding a new format:
 
 Run locally before submitting:
 - `dotnet test` — executes functional suite.
-- `gitleaks detect --source . -v` — scans for credentials or API keys.
+- `gitleaks dir . -v` — scans for credentials or API keys.
 
 Submissions failing these local checks will be sent back for fixes.
 

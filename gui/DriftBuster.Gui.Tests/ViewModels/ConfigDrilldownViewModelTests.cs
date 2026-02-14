@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.ViewModels;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;

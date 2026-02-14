@@ -22,7 +22,7 @@ jobs:
           pip3 install pip-licenses || true
 
       - name: Secret scan
-        run: gitleaks detect --source . -v || true
+        run: gitleaks dir . -v || true
 
       - name: Restore & build
         run: |

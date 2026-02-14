@@ -117,7 +117,7 @@ python scripts/release_build.py --no-installer
 ### Security & Compliance
 ```bash
 # Secrets scanning (before commits)
-gitleaks detect --source . -v
+gitleaks dir . -v
 
 # License audit
 pip-licenses
@@ -468,5 +468,5 @@ dotnet test gui/DriftBuster.Gui.Tests/Services/ToastServiceTests.cs --filter Ove
 
 1. **No CI/CD**: All checks are local-only. Never add `.github/workflows/` or automation hooks.
 2. **No telemetry**: No analytics without explicit user opt-in.
-3. **Secrets scanning**: Run `gitleaks detect --source . -v` before commits.
+3. **Secrets scanning**: Run `gitleaks dir . -v` before commits.
 4. **Version sync**: Update `versions.json` and run `python scripts/sync_versions.py` when bumping component versions.

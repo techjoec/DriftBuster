@@ -1,6 +1,6 @@
 using System;
 using DriftBuster.Gui.ViewModels;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.ViewModels;

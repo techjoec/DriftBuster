@@ -10,7 +10,7 @@ using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

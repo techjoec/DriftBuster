@@ -5,7 +5,7 @@ using Avalonia.Headless.XUnit;
 
 using DriftBuster.Gui;
 
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;

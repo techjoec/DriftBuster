@@ -10,7 +10,7 @@ using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
