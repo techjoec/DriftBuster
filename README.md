@@ -19,7 +19,7 @@ developer tooling used by the GUI and PowerShell module.
 - **First-class diff reporting** – the `driftbuster.reporting` helpers produce
   JSON/text/HTML ready for hand-off or automation, with optional redaction.
 - **Cross-platform UI** – the Avalonia desktop front-end ships alongside the
-  Python engine for quick triage and demo flows.
+  Python engine for quick triage.
  - **Windows Registry live scans** – enumerate apps, suggest likely registry
    roots, and search values by keyword/regex (see `docs/registry.md`).
 
@@ -121,19 +121,19 @@ python -m driftbuster.multi_server <<'JSON'
     {
       "host_id": "server01",
       "label": "Baseline",
-      "roots": ["samples/multi-server/server01"]
+      "roots": ["fixtures/multi-server/server01"]
     },
     {
       "host_id": "server02",
       "label": "Drift sample",
-      "roots": ["samples/multi-server/server02"]
+      "roots": ["fixtures/multi-server/server02"]
     }
   ]
 }
 JSON
 ```
 
-`driftbuster.multi_server` ships with the Python package; ensure you have installed the repo in editable mode (`python -m pip install -e .`). The CLI and GUI share an OS-specific data root (e.g. `%LOCALAPPDATA%/DriftBuster`, `$XDG_DATA_HOME/DriftBuster`); set `DRIFTBUSTER_DATA_ROOT` to override where cached diffs live. See `docs/multi-server-demo.md` for annotated callouts, filter usage, and rerun tips.
+`driftbuster.multi_server` ships with the Python package; ensure you have installed the repo in editable mode (`python -m pip install -e .`). The CLI and GUI share an OS-specific data root (e.g. `%LOCALAPPDATA%/DriftBuster`, `$XDG_DATA_HOME/DriftBuster`); set `DRIFTBUSTER_DATA_ROOT` to override where cached diffs live.
 
 ### Python CLI stub (on hold)
 
@@ -229,8 +229,6 @@ Check `docs/` for deeper dives:
 - `docs/customization.md` – configuration flags, sampling tweaks, and plugin
   lifecycles.
 - `docs/testing-strategy.md` – how we validate detectors and reporting.
-- `docs/multi-server-demo.md` – multi-server orchestration walkthrough covering GUI callouts, CLI parity, and troubleshooting.
-- `docs/DEMO.md` – GUI walkthrough using the bundled demo data.
 - `docs/versioning.md` – component version workflow and sync tooling.
 - `docs/registry.md` – Windows Registry live scan overview and API usage.
 

@@ -20,8 +20,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 2. Restore + build: `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` then `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 4. The “DrB DriftBuster” window opens with Diff view selected by default. The compact header presents the DrB badge, navigation summary, a live backend health dot with **Check core**, and a **Theme** selector (Dark+/Light+). A pillbox banner beneath the header shows the current view context and shortcuts.
-5. Demo data is bundled with the app under a `Samples/` directory in the output folder.
-   See `docs/DEMO.md` for a guided walkthrough using these files.
+5. Multi-server fixture data is bundled with the app under a `Samples/MultiServer/` directory in the output folder.
 6. Registry scan results collected by the offline runner (JSON under `data/<alias>/registry_scan.json`)
    are displayed alongside file-based findings when present.
 

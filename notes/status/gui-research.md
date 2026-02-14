@@ -129,7 +129,7 @@
 - `SessionCacheService` now writes snapshots to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or the platform data root) while migrating any legacy cache in the background, so the awaitable save/load flow no longer races during shutdown or restores. The cache schema captures catalog filters, timeline filter, active view, and host metadata for deterministic reloads.
 - `ServerSelectionViewModel` reapplies saved host enablement, roots, and view state on launch, then logs a **Loaded saved session** activity entry (`Restored {n} servers.`) to the timeline so operators can audit when a persisted configuration is replayed.
 - `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary with Inter before the view tree spins up, ensuring the restored multi-server tab renders catalog headers and guidance text consistently in Release and Debug headless runs.
-- Persistence walkthrough published in `docs/multi-server-demo.md` and `docs/windows-gui-guide.md` now directs operators through saving a session, validating restored hosts, and confirming the Inter preload guardrail stays intact after relaunches.
+- Persistence walkthrough published in `docs/windows-gui-guide.md` now directs operators through saving a session, validating restored hosts, and confirming the Inter preload guardrail stays intact after relaunches.
 
 ### Diff planner MRU persistence (A2.1)
 
@@ -177,7 +177,7 @@
 
 #### 2025-10-24 manual multi-server walkthrough capture (A6.2.2–A6.2.3)
 
-- Ran `python scripts/manual_multi_server_walkthrough.py --tag release-evidence` to reproduce the manual session using the bundled fixtures.
+- Ran the manual multi-server walkthrough to reproduce the manual session using the bundled fixtures.
 - Cold/hot passes reused the cached diff planner entries under `/root/.driftbuster-walkthrough-tmp/multi-server/cache/diffs` and confirmed `used_cache=true` for all ten hosts.
 - Captured the walkthrough evidence in `artifacts/manual-runs/2025-10-24-173801Z-release-evidence.md` with the JSON console transcript stored alongside it for audit replay.
 - Diff planner digest highlights secret-aware masking (`has_secrets=True`) while preserving comparison metadata and diff digests, covering the audit trail for A6.2.2.
@@ -188,7 +188,7 @@
 | --- | --- | --- | --- |
 | Coverage ≥ 90 % (Python/.NET) | ✅ Complete | `artifacts/logs/gui-validation/gui-tests-coverage-2025-10-30.txt`, `artifacts/coverage/final/` | Coverage transcript stored alongside consolidated HTML/XML artefacts after the A6.1 sweep. |
 | Packaged smoke storage run | ✅ Complete | Section “2025-10-24 multi-server smoke storage sweep (A6.2.1)” | Cold/hot cache behaviour captured in-session with staging paths logged for follow-up evidence bundles. |
-| Manual multi-server walkthrough capture | ✅ Complete | `artifacts/manual-runs/2025-10-24-173801Z-release-evidence.md` | CLI walkthrough via `scripts/manual_multi_server_walkthrough.py` captures cold/hot runs and the diff planner digest with secret-aware masking evidence. |
+| Manual multi-server walkthrough capture | ✅ Complete | `artifacts/manual-runs/2025-10-24-173801Z-release-evidence.md` | CLI walkthrough captures cold/hot runs and the diff planner digest with secret-aware masking evidence. |
 | Docs & asset refresh | ⏳ Pending | — | Await final screenshot capture before updating `docs/ux-refresh.md`, GUI guide, release notes, and README references. |
 | Release bundle assembly | ⏳ Pending | — | Collate CHANGELOG update, validation notes, and artefact manifest into `notes/releases/next.md` once the remaining gates land. |
 

@@ -326,7 +326,6 @@ dotnet test gui/DriftBuster.Gui.Tests/Services/ToastServiceTests.cs --filter Ove
 - `docs/format-addition-guide.md` - New plugin development standard
 - `docs/plugin-test-checklist.md` - Plugin test requirements
 - `docs/configuration-profiles.md`, `docs/profile-usage.md` - Profile system
-- `docs/multi-server-demo.md` - Multi-server orchestration walkthrough
 - `docs/customization.md` - Config flags, sampling tweaks
 - `docs/registry.md` - Windows Registry live scan API
 - `docs/legal-safeguards.md` - IP/provenance controls

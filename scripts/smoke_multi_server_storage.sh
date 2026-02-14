@@ -22,14 +22,14 @@ run_plan() {
       "host_id": "server01",
       "label": "Baseline",
       "scope": "custom_roots",
-      "roots": ["${ROOT_DIR}/samples/multi-server/server01"],
+      "roots": ["${ROOT_DIR}/fixtures/multi-server/server01"],
       "baseline": {"is_preferred": true, "priority": 10}
     },
     {
       "host_id": "server02",
       "label": "Drift sample",
       "scope": "custom_roots",
-      "roots": ["${ROOT_DIR}/samples/multi-server/server02"],
+      "roots": ["${ROOT_DIR}/fixtures/multi-server/server02"],
       "baseline": {"is_preferred": false, "priority": 5}
     }
   ]

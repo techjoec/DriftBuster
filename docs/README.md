@@ -5,7 +5,6 @@ Docs are grouped so you can jump straight to the guide you need.
 ## Start Here
 
 - [`../README.md`](../README.md) — project overview and quick start.
-- [`DEMO.md`](DEMO.md) — GUI walkthrough using the bundled demo data.
 - [`config-files.md`](config-files.md) — how DriftBuster interprets common
   configuration files.
 - [`profile-usage.md`](profile-usage.md) — quick primer on configuration
@@ -24,7 +23,6 @@ Docs are grouped so you can jump straight to the guide you need.
 - [`registry.md`](registry.md) — Windows Registry live scans (API, offline
   runner, and GUI notes).
 - [`hunt-mode.md`](hunt-mode.md) — dynamic value detection workflow.
-- [`multi-server-demo.md`](multi-server-demo.md) — sample workflow scanning 10 servers with drift and generating a report.
 - [`release-notes.md`](release-notes.md) — how to write per-release notes and component changelogs; see `CHANGELOG.md` and `notes/releases/`.
  - Top-level changelog: see `/CHANGELOG.md` for a concise version-by-version summary.
 - [`format-playbook.md`](format-playbook.md) — steps for shipping new format

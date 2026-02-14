@@ -1,7 +1,7 @@
 # DriftBuster Samples
 
-This directory hosts ready-to-use configuration snippets for manual testing and
-demo runs. Pair them with the diff planner to explore baseline vs. variant
+This directory hosts ready-to-use configuration snippets for manual testing.
+Pair them with the diff planner to explore baseline vs. variant
 comparisons or feed them through hunt mode to exercise search rules.
 
 ## Layout

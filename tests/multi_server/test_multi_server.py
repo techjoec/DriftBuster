@@ -21,7 +21,7 @@ from driftbuster.multi_server import (
 )
 
 
-SAMPLES_ROOT = Path("samples/multi-server")
+SAMPLES_ROOT = Path("fixtures/multi-server")
 
 
 def _sample_plan(host: str, *, priority: int, is_preferred: bool = False) -> Plan:
