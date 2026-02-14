@@ -47,8 +47,8 @@ public sealed class DriftbusterBackendTests
             var result = await _backend.DiffAsync(new[] { baseline, comparisonPath });
 
             Assert.Single(result.Comparisons);
-            Assert.Contains("alpha", result.Comparisons[0].Plan.Before);
-            Assert.Contains("beta", result.Comparisons[0].Plan.After);
+            Assert.Contains("alpha", result.Comparisons[0].Plan.Before, StringComparison.Ordinal);
+            Assert.Contains("beta", result.Comparisons[0].Plan.After, StringComparison.Ordinal);
             result.Comparisons[0].UnifiedDiff.Should().Contain("---");
             Assert.False(string.IsNullOrWhiteSpace(result.RawJson));
             Assert.False(string.IsNullOrWhiteSpace(result.SanitizedJson));
@@ -75,7 +75,7 @@ public sealed class DriftbusterBackendTests
         try
         {
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.DiffAsync(new[] { baseline }));
-            Assert.Contains("Provide at least two file paths", ex.Message);
+            Assert.Contains("Provide at least two file paths", ex.Message, StringComparison.Ordinal);
         }
         finally
         {
@@ -110,7 +110,7 @@ public sealed class DriftbusterBackendTests
     public async Task HuntAsync_throws_for_missing_path()
     {
         var ex = await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.HuntAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")), null));
-        Assert.Contains("Path does not exist", ex.Message);
+        Assert.Contains("Path does not exist", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

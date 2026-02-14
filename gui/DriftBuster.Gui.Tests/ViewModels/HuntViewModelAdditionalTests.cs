@@ -52,7 +52,7 @@ public class HuntViewModelAdditionalTests
             var hit = Assert.Single(vm.Hits);
             Assert.False(hit.HasToken);
             Assert.Equal("—", hit.TokenName);
-            Assert.EndsWith("…", hit.Excerpt);
+            Assert.EndsWith("…", hit.Excerpt, StringComparison.Ordinal);
         }
         finally
         {
