@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -8,19 +7,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using DriftBuster.Backend;
-using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Gui.Services
 {
-    public interface ISessionCacheService
-    {
-        Task<ServerSelectionCache?> LoadAsync(CancellationToken cancellationToken = default);
-
-        Task SaveAsync(ServerSelectionCache snapshot, CancellationToken cancellationToken = default);
-
-        void Clear();
-    }
-
     public sealed class SessionCacheService : ISessionCacheService
     {
         internal const int CurrentSchemaVersion = 2;
@@ -211,133 +200,5 @@ namespace DriftBuster.Gui.Services
         {
             return PathLocks.GetOrAdd(path, static _ => new SemaphoreSlim(1, 1));
         }
-    }
-
-    internal static class SessionCacheMigrationCounters
-    {
-        private static int _migrationSuccessCount;
-        private static int _migrationFailureCount;
-
-        public static int Successes => Volatile.Read(ref _migrationSuccessCount);
-
-        public static int Failures => Volatile.Read(ref _migrationFailureCount);
-
-        public static void RecordSuccess()
-        {
-            Interlocked.Increment(ref _migrationSuccessCount);
-        }
-
-        public static void RecordFailure()
-        {
-            Interlocked.Increment(ref _migrationFailureCount);
-        }
-
-        public static void Reset()
-        {
-            Volatile.Write(ref _migrationSuccessCount, 0);
-            Volatile.Write(ref _migrationFailureCount, 0);
-        }
-    }
-
-    public sealed class ServerSelectionCache
-    {
-        [JsonPropertyName("schema_version")]
-        public int SchemaVersion { get; set; } = SessionCacheService.CurrentSchemaVersion;
-
-        [JsonPropertyName("persist_session")]
-        public bool PersistSession { get; set; }
-
-        [JsonPropertyName("servers")]
-        public IList<ServerSelectionCacheEntry> Servers { get; set; } = new List<ServerSelectionCacheEntry>();
-
-        [JsonPropertyName("activities")]
-        public IList<ActivityCacheEntry> Activities { get; set; } = new List<ActivityCacheEntry>();
-
-        [JsonPropertyName("catalog_sort")]
-        public CatalogSortCache? CatalogSort { get; set; }
-
-        [JsonPropertyName("activity_filter")]
-        public string? ActivityFilter { get; set; }
-
-        [JsonPropertyName("catalog_filters")]
-        public CatalogFilterCache? CatalogFilters { get; set; }
-
-        [JsonPropertyName("timeline")]
-        public ActivityTimelineCache? Timeline { get; set; }
-
-        [JsonPropertyName("active_view")]
-        public string? ActiveView { get; set; }
-    }
-
-    public sealed class ServerSelectionCacheEntry
-    {
-        [JsonPropertyName("host_id")]
-        public string HostId { get; set; } = string.Empty;
-
-        [JsonPropertyName("label")]
-        public string Label { get; set; } = string.Empty;
-
-        [JsonPropertyName("enabled")]
-        public bool Enabled { get; set; }
-
-        [JsonPropertyName("scope")]
-        public ServerScanScope Scope { get; set; } = ServerScanScope.AllDrives;
-
-        [JsonPropertyName("roots")]
-        public string[] Roots { get; set; } = Array.Empty<string>();
-    }
-
-    public sealed class ActivityCacheEntry
-    {
-        [JsonPropertyName("timestamp")]
-        public DateTimeOffset Timestamp { get; set; }
-
-        [JsonPropertyName("severity")]
-        public string Severity { get; set; } = string.Empty;
-
-        [JsonPropertyName("summary")]
-        public string Summary { get; set; } = string.Empty;
-
-        [JsonPropertyName("detail")]
-        public string? Detail { get; set; }
-
-        [JsonPropertyName("category")]
-        public string? Category { get; set; }
-    }
-
-    public sealed class CatalogSortCache
-    {
-        [JsonPropertyName("column")]
-        public string Column { get; set; } = string.Empty;
-
-        [JsonPropertyName("descending")]
-        public bool Descending { get; set; }
-    }
-
-    public sealed class CatalogFilterCache
-    {
-        [JsonPropertyName("coverage")]
-        public string? Coverage { get; set; }
-
-        [JsonPropertyName("severity")]
-        public string? Severity { get; set; }
-
-        [JsonPropertyName("format")]
-        public string? Format { get; set; }
-
-        [JsonPropertyName("baseline")]
-        public string? Baseline { get; set; }
-
-        [JsonPropertyName("search")]
-        public string? Search { get; set; }
-    }
-
-    public sealed class ActivityTimelineCache
-    {
-        [JsonPropertyName("filter")]
-        public string? Filter { get; set; }
-
-        [JsonPropertyName("last_opened_host")]
-        public string? LastOpenedHostId { get; set; }
     }
 }

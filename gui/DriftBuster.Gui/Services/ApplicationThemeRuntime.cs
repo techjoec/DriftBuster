@@ -8,17 +8,6 @@ using Avalonia.Styling;
 
 namespace DriftBuster.Gui.Services;
 
-public interface IThemeRuntime
-{
-    IReadOnlyList<ThemeOption> GetAvailableThemes();
-
-    ThemeOption GetDefaultTheme(IReadOnlyList<ThemeOption> options);
-
-    void ApplyTheme(ThemeOption option);
-}
-
-public sealed record ThemeOption(string Id, string DisplayName, ThemeVariant Variant, string PaletteResourceKey);
-
 public sealed class ApplicationThemeRuntime : IThemeRuntime
 {
     public static ApplicationThemeRuntime Instance { get; } = new();

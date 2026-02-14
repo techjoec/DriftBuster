@@ -8,8 +8,6 @@ using Avalonia.VisualTree;
 
 namespace DriftBuster.Gui.Services;
 
-public sealed record ResponsiveBreakpoint(double MinWidth, IReadOnlyDictionary<string, object> Resources);
-
 public static class ResponsiveLayoutService
 {
     // Closure-based design with shared captured state makes extraction harmful to readability.

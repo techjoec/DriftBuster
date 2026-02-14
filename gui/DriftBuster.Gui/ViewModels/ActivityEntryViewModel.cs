@@ -5,20 +5,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace DriftBuster.Gui.ViewModels
 {
-    public enum ActivitySeverity
-    {
-        Info,
-        Success,
-        Warning,
-        Error,
-    }
-
-    public enum ActivityCategory
-    {
-        General,
-        Export,
-    }
-
     public sealed partial class ActivityEntryViewModel : ObservableObject
     {
         public ActivityEntryViewModel(ActivitySeverity severity, string summary, string detail, DateTimeOffset timestamp, ActivityCategory category)

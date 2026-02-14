@@ -6,8 +6,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 
-using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Services;
+using DriftBuster.Gui.ViewModels;
 
 namespace DriftBuster.Gui.Views
 {
@@ -132,21 +132,4 @@ namespace DriftBuster.Gui.Views
             e.Handled = true;
         }
     }
-
-#pragma warning disable 618
-    internal interface IDragDropService
-    {
-        Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects);
-    }
-
-    internal sealed class AvaloniaDragDropService : IDragDropService
-    {
-        public static AvaloniaDragDropService Instance { get; } = new();
-
-        public Task<DragDropEffects> DoDragDrop(PointerEventArgs args, IDataObject data, DragDropEffects effects)
-        {
-            return DragDrop.DoDragDrop(args, data, effects);
-        }
-    }
-#pragma warning restore 618
 }
