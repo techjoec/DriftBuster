@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using DriftBuster.Gui.Headless;
-using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
 
@@ -26,14 +26,46 @@ namespace DriftBuster.Gui
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = new MainWindowViewModel(),
-                };
-
+                desktop.MainWindow = CreateMainWindowWithFontFallback();
             }
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        // Derived from publicly documented behavior, not vendor source.
+        // On some .NET 10.0.x versions the embedded Inter font collection is not
+        // resolved before the Compositor creates its DiagnosticTextRenderer,
+        // causing "Could not create glyphTypeface. Font family: $Default (key: )".
+        // Root cause: FontFamily("Inter") has no URI key, so FontManager only
+        // searches SystemFonts (which lacks embedded Inter). Retarget the default
+        // to "fonts:Inter#Inter" which explicitly hits the InterFontCollection.
+        private static MainWindow CreateMainWindowWithFontFallback()
+        {
+            try
+            {
+                return new MainWindow { DataContext = new MainWindowViewModel() };
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("glyphTypeface", StringComparison.Ordinal))
+            {
+                RepairDefaultFontFamily();
+
+                return new MainWindow { DataContext = new MainWindowViewModel() };
+            }
+        }
+
+        private static void RepairDefaultFontFamily()
+        {
+            var fontManager = FontManager.Current;
+            var backingField = typeof(FontManager).GetField(
+                "<DefaultFontFamily>k__BackingField",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (backingField is not null)
+            {
+                backingField.SetValue(fontManager, new FontFamily("fonts:Inter#Inter"));
+            }
+
+            HeadlessFontBootstrapper.RepairDesktopFontResolution();
         }
 
         internal static void EnsureFontResources(Application app)

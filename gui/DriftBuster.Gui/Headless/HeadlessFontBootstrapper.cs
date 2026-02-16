@@ -254,6 +254,45 @@ internal static class HeadlessFontBootstrapper
         dictionary[systemFontsKey] = collection;
     }
 
+    // Derived from publicly documented behavior, not vendor source.
+    // On .NET 10.0.x framework-dependent builds, the embedded Inter font collection
+    // may not be resolved before the Compositor's DiagnosticTextRenderer needs it.
+    // Ensure() registers via AvaloniaLocator which the desktop runtime may not use
+    // for FontManager.Current. This method works directly on the live FontManager.
+    internal static void RepairDesktopFontResolution()
+    {
+        var fontManager = FontManager.Current;
+
+        ForceInitializeFontCollections(fontManager);
+        EnsureSystemFonts(fontManager);
+        EnsureSystemFontsDictionary(fontManager);
+    }
+
+    private static void ForceInitializeFontCollections(FontManager fontManager)
+    {
+        if (PlatformImplProperty?.GetValue(fontManager) is not IFontManagerImpl platformImpl)
+        {
+            return;
+        }
+
+        if (FontCollectionsField?.GetValue(fontManager) is not IDictionary<Uri, Avalonia.Media.Fonts.IFontCollection> collections)
+        {
+            return;
+        }
+
+        foreach (var collection in collections.Values)
+        {
+            try
+            {
+                collection.Initialize(platformImpl);
+            }
+            catch
+            {
+                // Already initialized or incompatible — expected
+            }
+        }
+    }
+
     internal static void EnsureSystemFonts(FontManager fontManager)
         => EnsureSystemFonts(fontManager, null);
 

@@ -11,6 +11,21 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 - **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists using the built-in rule set.
 - **Assets**: `Directory.Build.props` centralises net10.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
 
+## Known Issue: `$Default` Font Crash on .NET 10.0.1
+
+Framework-dependent builds crash on .NET 10.0.1 with:
+```
+System.InvalidOperationException: Could not create glyphTypeface. Font family: $Default (key: )
+```
+
+**Root cause**: `FontFamily("Inter")` has no URI key, so `FontManager` only searches `SystemFonts` (which lacks the embedded Inter font). The embedded Inter font is registered under `fonts:Inter` via `.WithInterFont()` but the default font resolution doesn't search that collection.
+
+**Fix** (`App.axaml.cs`): try/catch around `new MainWindow()` retargets `FontManager.DefaultFontFamily` to `FontFamily("fonts:Inter#Inter")` which explicitly targets the `InterFontCollection`. This only activates when the crash occurs; the happy path (self-contained builds, .NET 10.0.3+) is untouched.
+
+Self-contained builds bundle .NET 10.0.3+ and don't trigger this issue.
+
+See `docs/tools/vm-testing.md` for the VM-based testing workflow used to diagnose and verify this fix.
+
 ## Host Dependencies
 
 - **.NET SDK 10.0.x** installed locally for restore, build, run, and publish steps.
