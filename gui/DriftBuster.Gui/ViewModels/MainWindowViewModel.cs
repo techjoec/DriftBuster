@@ -96,6 +96,8 @@ namespace DriftBuster.Gui.ViewModels
             {
                 SelectedTheme = _themeRuntime.GetDefaultTheme(ThemeOptions);
             }
+
+            DebugLog.Trace("MainWindow", "Initialized", new { DebugLog.IsEnabled });
         }
 
         public bool IsDiffSelected => ActiveView == MainViewSection.Diff;
@@ -108,24 +110,28 @@ namespace DriftBuster.Gui.ViewModels
 
         public void ShowDiff()
         {
+            DebugLog.Trace("MainWindow", "ShowDiff");
             ActiveView = MainViewSection.Diff;
             CurrentView = _diffViewFactory(_service);
         }
 
         public void ShowHunt(string? initial = null)
         {
+            DebugLog.Trace("MainWindow", "ShowHunt");
             ActiveView = MainViewSection.Hunt;
             CurrentView = _huntViewFactory(_service, initial);
         }
 
         public void ShowProfiles()
         {
+            DebugLog.Trace("MainWindow", "ShowProfiles");
             ActiveView = MainViewSection.Profiles;
             CurrentView = _profilesViewFactory(_service);
         }
 
         public void ShowMultiServer()
         {
+            DebugLog.Trace("MainWindow", "ShowMultiServer");
             ActiveView = MainViewSection.MultiServer;
             CurrentView = _serverSelectionFactory(_service, _toastService, _performanceProfile);
         }

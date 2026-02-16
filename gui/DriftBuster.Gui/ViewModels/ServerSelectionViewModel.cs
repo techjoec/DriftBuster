@@ -230,6 +230,7 @@ namespace DriftBuster.Gui.ViewModels
 
         internal void NotifyServerToggled(ServerSlotViewModel slot)
         {
+            DebugLog.Trace("ServerSelection", "NotifyServerToggled", new { slot.IsEnabled, slot.Label, slot.Index });
             OnPropertyChanged(nameof(HasActiveServers));
             RunAllCommand.NotifyCanExecuteChanged();
             RunMissingCommand.NotifyCanExecuteChanged();
@@ -238,6 +239,8 @@ namespace DriftBuster.Gui.ViewModels
 
         internal void NotifyScopeChanged(ServerSlotViewModel slot)
         {
+            DebugLog.Trace("ServerSelection", "NotifyScopeChanged", new { Scope = slot.Scope.ToString(), slot.Label, RootCount = slot.Roots.Count });
+
             if (slot.Scope == ServerScanScope.CustomRoots && slot.Roots.Count == 0)
             {
                 slot.EnsureDefaultRoot();
@@ -253,6 +256,7 @@ namespace DriftBuster.Gui.ViewModels
                 var result = ValidateRoot(slot, root);
                 root.ValidationState = result.State;
                 root.StatusMessage = result.Message;
+                DebugLog.Trace("ServerSelection", "RevalidateRoots", new { root.Path, State = result.State.ToString(), result.Message, slot.Label });
             }
 
             slot.RefreshValidationSummary();
@@ -272,13 +276,18 @@ namespace DriftBuster.Gui.ViewModels
 
         private async Task LoadSessionAsync()
         {
+            DebugLog.Trace("ServerSelection", "LoadSessionAsync start");
+
             try
             {
                 var snapshot = await _cacheService.LoadAsync().ConfigureAwait(false);
                 if (snapshot is null)
                 {
+                    DebugLog.Trace("ServerSelection", "LoadSessionAsync: no snapshot found");
                     return;
                 }
+
+                DebugLog.Trace("ServerSelection", "LoadSessionAsync: restoring", new { SlotCount = snapshot.Servers.Count, snapshot.PersistSession });
 
                 PersistSessionState = snapshot.PersistSession;
 
@@ -420,6 +429,8 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             var candidate = (slot.NewRootPath ?? string.Empty).Trim();
+            DebugLog.Trace("ServerSelection", "OnAddRoot", new { Candidate = candidate, slot.Label, RootCount = slot.Roots.Count });
+
             if (string.IsNullOrEmpty(candidate))
             {
                 slot.RootInputError = "Enter a root path.";
@@ -442,6 +453,7 @@ namespace DriftBuster.Gui.ViewModels
             var result = ValidateRoot(slot, entry);
             entry.ValidationState = result.State;
             entry.StatusMessage = result.Message;
+            DebugLog.Trace("ServerSelection", "OnAddRoot validated", new { candidate, State = result.State.ToString(), result.Message, RootCountAfter = slot.Roots.Count });
             slot.RefreshValidationSummary();
         }
 
@@ -457,6 +469,8 @@ namespace DriftBuster.Gui.ViewModels
             {
                 return;
             }
+
+            DebugLog.Trace("ServerSelection", "OnRemoveRoot", new { entry.Path, slot.Label, RemainingRootCount = slot.Roots.Count });
 
             if (slot.Roots.Count <= 1)
             {
@@ -503,6 +517,11 @@ namespace DriftBuster.Gui.ViewModels
 
         private async Task ExecuteRunAsync(bool retryOnly, IReadOnlyCollection<string>? scopedHostIds = null)
         {
+            if (DebugLog.IsEnabled)
+            {
+                DebugLog.Trace("ServerSelection", "ExecuteRunAsync start", new { retryOnly, ActiveHostIds = ActiveServers.Select(s => s.HostId).ToArray(), ScopedHostIds = scopedHostIds });
+            }
+
             if (!HasActiveServers)
             {
                 StatusBanner = "Enable at least one server to run.";
@@ -566,6 +585,7 @@ namespace DriftBuster.Gui.ViewModels
             }
             catch (Exception ex)
             {
+                DebugLog.Trace("ServerSelection", "RunScans exception", new { ExceptionType = ex.GetType().Name, ex.Message, ex.StackTrace });
                 StatusBanner = $"Scan failed: {ex.Message}";
                 _toastService.Show(
                     "Multi-server scan failed",
@@ -586,11 +606,14 @@ namespace DriftBuster.Gui.ViewModels
 
         private void OnCancelRuns()
         {
+            DebugLog.Trace("ServerSelection", "OnCancelRuns", new { Timestamp = DateTimeOffset.UtcNow });
             _runCancellation?.Cancel();
         }
 
         private void OnClearHistory()
         {
+            DebugLog.Trace("ServerSelection", "OnClearHistory", new { EntryCount = _activityEntries.Count });
+
             foreach (var server in Servers)
             {
                 server.LastRunAt = null;
@@ -621,6 +644,8 @@ namespace DriftBuster.Gui.ViewModels
 
         private async Task SaveSessionAsync()
         {
+            DebugLog.Trace("ServerSelection", "SaveSessionAsync", new { PersistSessionState });
+
             if (!PersistSessionState)
             {
                 StatusBanner = "Enable session persistence to save.";
@@ -702,6 +727,8 @@ namespace DriftBuster.Gui.ViewModels
 
             foreach (var server in ActiveServers)
             {
+                TracePlanEvaluation(server);
+
                 if (scopedHostIds is not null && scopedHostIds.Count > 0)
                 {
                     var matchesHostId = scopedHostIds.Any(id => string.Equals(id, server.HostId, StringComparison.OrdinalIgnoreCase));
@@ -758,6 +785,8 @@ namespace DriftBuster.Gui.ViewModels
 
         private void UpdateProgress(ScanProgress progress)
         {
+            DebugLog.Trace("ServerSelection", "UpdateProgress", new { progress.HostId, Status = progress.Status.ToString(), progress.Message });
+
             var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, progress.HostId, StringComparison.OrdinalIgnoreCase));
             if (server is null)
             {
@@ -946,6 +975,8 @@ namespace DriftBuster.Gui.ViewModels
 
         private void OnShowDrilldownForHost(string? hostId)
         {
+            DebugLog.Trace("ServerSelection", "ShowDrilldownForHost", new { HostId = hostId, HasDrilldown = _lastResponse?.Drilldown is not null });
+
             var target = TryValidateDrilldownHost(hostId);
             if (target is null)
             {
@@ -1203,6 +1234,8 @@ namespace DriftBuster.Gui.ViewModels
         private RootValidationResult ValidateRoot(ServerSlotViewModel slot, RootEntryViewModel entry)
         {
             var trimmed = (entry.Path ?? string.Empty).Trim();
+            DebugLog.Trace("ServerSelection", "ValidateRoot", new { Input = trimmed, slot.Label, Scope = slot.Scope.ToString() });
+
             if (string.IsNullOrEmpty(trimmed))
             {
                 return RootValidationResult.Invalid("Provide a root path.");
@@ -1220,6 +1253,7 @@ namespace DriftBuster.Gui.ViewModels
 
             if (_validationCache.TryGetValue(trimmed, out var cached))
             {
+                DebugLog.Trace("ServerSelection", "ValidateRoot cache hit", new { Input = trimmed, State = cached.State.ToString() });
                 return cached;
             }
 
@@ -1239,6 +1273,8 @@ namespace DriftBuster.Gui.ViewModels
             var result = exists
                 ? RootValidationResult.Valid("Ready")
                 : RootValidationResult.Invalid("Path not found.");
+
+            DebugLog.Trace("ServerSelection", "ValidateRoot result", new { Input = trimmed, State = result.State.ToString(), result.Message, Exists = exists });
 
             if (result.State == RootValidationState.Valid)
             {
@@ -1350,6 +1386,7 @@ namespace DriftBuster.Gui.ViewModels
 
         partial void OnIsBusyChanged(bool value)
         {
+            DebugLog.Trace("ServerSelection", "IsBusyChanged", new { IsBusy = value });
             RunAllCommand.NotifyCanExecuteChanged();
             RunMissingCommand.NotifyCanExecuteChanged();
             CancelRunsCommand.NotifyCanExecuteChanged();
@@ -1371,6 +1408,14 @@ namespace DriftBuster.Gui.ViewModels
                 {
                     IsViewingCatalog = false;
                 }
+            }
+        }
+
+        private static void TracePlanEvaluation(ServerSlotViewModel server)
+        {
+            if (DebugLog.IsEnabled)
+            {
+                DebugLog.Trace("ServerSelection", "PreparePlans evaluating", new { server.HostId, Scope = server.Scope.ToString(), Roots = server.Roots.Select(r => r.Path).ToArray(), IsBaseline = server.Index == 0 });
             }
         }
 
