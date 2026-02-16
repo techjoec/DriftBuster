@@ -82,6 +82,8 @@ namespace DriftBuster.Gui.ViewModels
 
         partial void OnIsEnabledChanged(bool value)
         {
+            DebugLog.Trace("ServerSlot", "OnIsEnabledChanged", new { IsEnabled = value, Label, Index });
+
             if (value)
             {
                 EnsureDefaultRoot();
@@ -98,11 +100,13 @@ namespace DriftBuster.Gui.ViewModels
 
         partial void OnScopeChanged(ServerScanScope value)
         {
+            DebugLog.Trace("ServerSlot", "OnScopeChanged", new { NewScope = value.ToString(), Label });
             _owner.NotifyScopeChanged(this);
         }
 
         public void MarkState(ServerScanStatus state, string statusText, DateTimeOffset? timestamp = null)
         {
+            DebugLog.Trace("ServerSlot", "MarkState", new { State = state.ToString(), StatusText = statusText, Label, Timestamp = timestamp });
             RunState = state;
             StatusText = statusText;
             if (state is ServerScanStatus.Succeeded or ServerScanStatus.Cached)
@@ -124,6 +128,7 @@ namespace DriftBuster.Gui.ViewModels
         internal void RefreshValidationSummary()
         {
             ValidationSummary = BuildValidationSummary();
+            DebugLog.Trace("ServerSlot", "RefreshValidationSummary", new { Summary = ValidationSummary, RootCount = Roots.Count, Label });
         }
 
         private string BuildValidationSummary()
@@ -167,6 +172,8 @@ namespace DriftBuster.Gui.ViewModels
 
         internal void EnsureDefaultRoot()
         {
+            DebugLog.Trace("ServerSlot", "EnsureDefaultRoot", new { CurrentRootCount = Roots.Count, Label });
+
             if (Roots.Count > 0)
             {
                 return;
@@ -187,11 +194,13 @@ namespace DriftBuster.Gui.ViewModels
 
         internal void AddRoot(RootEntryViewModel entry)
         {
+            DebugLog.Trace("ServerSlot", "AddRoot", new { entry.Path, Label, CountAfter = Roots.Count + 1 });
             Roots.Add(entry);
         }
 
         internal void RemoveRoot(RootEntryViewModel entry)
         {
+            DebugLog.Trace("ServerSlot", "RemoveRoot", new { entry.Path, Label, CountAfter = Roots.Count - 1 });
             Roots.Remove(entry);
         }
 
@@ -211,6 +220,10 @@ namespace DriftBuster.Gui.ViewModels
                 _suppressRootEvents = false;
             }
 
+            if (DebugLog.IsEnabled)
+            {
+                DebugLog.Trace("ServerSlot", "ReplaceRoots", new { Count = Roots.Count, Paths = Roots.Select(r => r.Path).ToArray(), Label });
+            }
             _owner.RevalidateRoots(this);
         }
 
