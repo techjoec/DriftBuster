@@ -1,5 +1,6 @@
 #if DEBUG
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO.Pipes;
 
 using Avalonia.Threading;
@@ -14,16 +15,21 @@ namespace DriftBuster.Gui.Services;
 [ExcludeFromCodeCoverage]
 internal sealed class AutomationServer : IDisposable
 {
+    internal const string UiDispatchTimeoutMsVariable = "DRIFTBUSTER_AUTOMATION_UI_DISPATCH_TIMEOUT_MS";
+    internal static readonly TimeSpan DefaultUiDispatchTimeout = TimeSpan.FromSeconds(30);
+
     private readonly AutomationDispatcher _dispatcher;
     private readonly string _pipeName;
+    private readonly TimeSpan _uiDispatchTimeout;
     private readonly CancellationTokenSource _cts = new();
     private Task? _listenTask;
     private bool _disposed;
 
-    public AutomationServer(AutomationDispatcher dispatcher)
+    public AutomationServer(AutomationDispatcher dispatcher, TimeSpan? uiDispatchTimeout = null)
     {
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _pipeName = $"DriftBuster-Automation-{Environment.ProcessId}";
+        _uiDispatchTimeout = uiDispatchTimeout ?? ParseUiDispatchTimeout(Environment.GetEnvironmentVariable(UiDispatchTimeoutMsVariable));
     }
 
     public string PipeName => _pipeName;
@@ -122,31 +128,99 @@ internal sealed class AutomationServer : IDisposable
 
             DebugLog.Trace("AutomationServer", "Command received", new { Command = trimmed });
 
-            string response;
-            try
-            {
-                response = await Dispatcher.UIThread.InvokeAsync(() => _dispatcher.Dispatch(trimmed));
-            }
-            catch (Exception ex)
-            {
-                response = AutomationState.Serialize(AutomationState.ErrorResponse($"Dispatch error: {ex.Message}"));
-            }
-
-            DebugLog.Trace("AutomationServer", "Response sent", new { Response = response });
-
-            try
-            {
-                await writer.WriteLineAsync(response.AsMemory(), ct).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch
+            if (!await ProcessCommandAsync(trimmed, writer, ct).ConfigureAwait(false))
             {
                 break;
             }
         }
+    }
+
+    private async Task<bool> ProcessCommandAsync(string command, StreamWriter writer, CancellationToken ct)
+    {
+        var response = await BuildResponseAsync(command, ct).ConfigureAwait(false);
+        if (response is null)
+        {
+            return false;
+        }
+
+        DebugLog.Trace("AutomationServer", "Response sent", new { Response = response });
+
+        try
+        {
+            await writer.WriteLineAsync(response.AsMemory(), ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task<string?> BuildResponseAsync(string command, CancellationToken ct)
+    {
+        try
+        {
+            return await DispatchWithTimeoutAsync(
+                async () => await Dispatcher.UIThread.InvokeAsync(() => _dispatcher.Dispatch(command)),
+                _uiDispatchTimeout,
+                ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return AutomationState.Serialize(AutomationState.ErrorResponse($"Dispatch error: {ex.Message}"));
+        }
+    }
+
+    internal static async Task<string> DispatchWithTimeoutAsync(
+        Func<Task<string>> dispatchAsync,
+        TimeSpan timeout,
+        CancellationToken ct)
+    {
+        if (dispatchAsync is null)
+        {
+            throw new ArgumentNullException(nameof(dispatchAsync));
+        }
+
+        if (timeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be greater than zero.");
+        }
+
+        var dispatchTask = dispatchAsync();
+        var timeoutTask = Task.Delay(timeout, ct);
+        var completedTask = await Task.WhenAny(dispatchTask, timeoutTask).ConfigureAwait(false);
+
+        if (ct.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(ct);
+        }
+
+        if (completedTask == dispatchTask)
+        {
+            return await dispatchTask.ConfigureAwait(false);
+        }
+
+        return AutomationState.Serialize(AutomationState.ErrorResponse(
+            $"UI thread dispatch timed out after {timeout.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)}s."));
+    }
+
+    internal static TimeSpan ParseUiDispatchTimeout(string? candidate)
+    {
+        if (int.TryParse(candidate, NumberStyles.Integer, CultureInfo.InvariantCulture, out var milliseconds) &&
+            milliseconds > 0)
+        {
+            return TimeSpan.FromMilliseconds(milliseconds);
+        }
+
+        return DefaultUiDispatchTimeout;
     }
 
     public void Dispose()
