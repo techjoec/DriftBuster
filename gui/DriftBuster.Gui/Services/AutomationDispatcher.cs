@@ -132,8 +132,10 @@ internal sealed class AutomationDispatcher
             return AutomationState.ErrorResponse("Missing 'tab' property.");
         }
 
-        var tab = (tabEl.GetString() ?? string.Empty).Trim().ToLowerInvariant();
-        switch (tab)
+        var tab = tabEl.GetString() ?? string.Empty;
+        var (section, subView) = ParseNavigationTarget(tab);
+
+        switch (section)
         {
             case "diff":
                 _mainVm.ShowDiff();
@@ -151,12 +153,66 @@ internal sealed class AutomationDispatcher
             case "multiserver":
                 _mainVm.ShowMultiServer();
                 _serverVm = null;
-                break;
+                return NavigateMultiServerSubView(subView);
             default:
-                return AutomationState.ErrorResponse($"Unknown tab: {tab}. Valid: diff, hunt, profiles, multi-server.");
+                return AutomationState.ErrorResponse(
+                    $"Unknown tab: {tab}. Valid: diff, hunt, profiles, multi-server, multi-server/setup, multi-server/catalog, multi-server/drilldown.");
         }
 
         return AutomationState.OkResponse();
+    }
+
+    private static (string Section, string? SubView) ParseNavigationTarget(string tab)
+    {
+        var normalized = tab.Trim().ToLowerInvariant();
+        if (normalized.StartsWith("multi-server/", StringComparison.Ordinal))
+        {
+            return ("multi-server", normalized["multi-server/".Length..]);
+        }
+
+        if (normalized.StartsWith("multiserver/", StringComparison.Ordinal))
+        {
+            return ("multi-server", normalized["multiserver/".Length..]);
+        }
+
+        return (normalized, null);
+    }
+
+    private Dictionary<string, object?> NavigateMultiServerSubView(string? subView)
+    {
+        if (string.IsNullOrWhiteSpace(subView))
+        {
+            return AutomationState.OkResponse();
+        }
+
+        var vm = RequireServerVm();
+        var target = subView.Trim();
+
+        switch (target)
+        {
+            case "setup":
+                vm.ShowSetupCommand.Execute(null);
+                return AutomationState.OkResponse();
+            case "catalog":
+                if (!vm.ShowCatalogCommand.CanExecute(null))
+                {
+                    return AutomationState.ErrorResponse("Catalog view is unavailable (no catalog entries).");
+                }
+
+                vm.ShowCatalogCommand.Execute(null);
+                return AutomationState.OkResponse();
+            case "drilldown":
+                if (!vm.ShowDrilldownCommand.CanExecute(null))
+                {
+                    return AutomationState.ErrorResponse("Drilldown view is unavailable (no drilldown loaded).");
+                }
+
+                vm.ShowDrilldownCommand.Execute(null);
+                return AutomationState.OkResponse();
+            default:
+                return AutomationState.ErrorResponse(
+                    $"Unknown multi-server sub-view: {subView}. Valid: setup, catalog, drilldown.");
+        }
     }
 
     private Dictionary<string, object?> HandleSetEnabled(JsonElement root)
