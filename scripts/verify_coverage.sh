@@ -62,8 +62,10 @@ dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj \
   --collect:"XPlat Code Coverage" \
   --results-directory artifacts/coverage-dotnet -v minimal
 
-echo "-- Repo-wide coverage summary"
-python -m scripts.coverage_report || true
+echo "-- Repo-wide coverage summary (enforce .NET scoped threshold)"
+python -m scripts.coverage_report \
+  --dotnet-threshold 90 \
+  --enforce-dotnet-threshold
 
 echo "-- Coverage history snapshot"
 python -m scripts.coverage_history --python-json coverage.json \
@@ -84,4 +86,3 @@ if [[ "${RUN_PERF_SMOKE}" == "true" ]]; then
 fi
 
 echo "== Coverage verification complete =="
-

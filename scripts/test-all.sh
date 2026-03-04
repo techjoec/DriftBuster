@@ -68,6 +68,19 @@ else
 fi
 
 echo ""
+echo "=== .NET scoped coverage guard (90%) ==="
+coverage_report_log="$(mktemp)"
+if python -m scripts.coverage_report --dotnet-threshold 90 --enforce-dotnet-threshold >"${coverage_report_log}" 2>&1; then
+    cat "${coverage_report_log}"
+    echo "PASS: .NET scoped coverage"
+else
+    cat "${coverage_report_log}"
+    echo "FAIL: .NET scoped coverage below 90%"
+    FAILURES=$((FAILURES + 1))
+fi
+rm -f "${coverage_report_log}"
+
+echo ""
 echo "=== .NET format check ==="
 for proj in gui/DriftBuster.Backend/DriftBuster.Backend.csproj \
             gui/DriftBuster.Gui/DriftBuster.Gui.csproj \
