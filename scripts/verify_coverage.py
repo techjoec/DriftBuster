@@ -104,6 +104,9 @@ def build_summary_commands(opts: VerifyOptions) -> List[List[str]]:
             opts.python_json,
             "--dotnet-root",
             opts.dotnet_results_dir,
+            "--dotnet-threshold",
+            str(opts.dotnet_threshold),
+            "--enforce-dotnet-threshold",
         ]
     ]
 
