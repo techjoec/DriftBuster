@@ -160,6 +160,94 @@ public sealed class DiffPlannerMruStoreTests
         entry.LastUsedUtc.Should().Be(new DateTimeOffset(2025, 3, 4, 5, 6, 7, TimeSpan.Zero));
     }
 
+    [Fact]
+    public async Task SaveAsync_and_RecordAsync_validate_null_arguments()
+    {
+        using var temp = new TempDirectory();
+        var store = new DiffPlannerMruStore(temp.Path);
+
+        Func<Task> saveAct = () => store.SaveAsync(null!);
+        Func<Task> recordAct = () => store.RecordAsync(null!);
+
+        await saveAct.Should().ThrowAsync<ArgumentNullException>();
+        await recordAct.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task LoadAsync_returns_empty_snapshot_for_invalid_json()
+    {
+        using var temp = new TempDirectory();
+        var directory = Path.Combine(temp.Path, "diff-planner");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(Path.Combine(directory, "mru.json"), "{ invalid json");
+
+        var store = new DiffPlannerMruStore(temp.Path);
+        var snapshot = await store.LoadAsync();
+
+        snapshot.Entries.Should().BeEmpty();
+        snapshot.MaxEntries.Should().Be(DiffPlannerMruStore.DefaultEntryLimit);
+    }
+
+    [Fact]
+    public async Task ClearAsync_removes_store_file()
+    {
+        using var temp = new TempDirectory();
+        var store = new DiffPlannerMruStore(temp.Path);
+        await store.SaveAsync(new DiffPlannerMruSnapshot
+        {
+            Entries =
+            {
+                new DiffPlannerMruEntry
+                {
+                    BaselinePath = "/baseline.json",
+                    ComparisonPaths = { "/compare.json" },
+                },
+            },
+        });
+
+        var storeFile = Path.Combine(temp.Path, "diff-planner", "mru.json");
+        File.Exists(storeFile).Should().BeTrue();
+
+        await store.ClearAsync();
+
+        File.Exists(storeFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Migration_ignores_legacy_when_destination_exists()
+    {
+        using var temp = new TempDirectory();
+        var destinationDirectory = Path.Combine(temp.Path, "diff-planner");
+        Directory.CreateDirectory(destinationDirectory);
+        var destinationFile = Path.Combine(destinationDirectory, "mru.json");
+        await File.WriteAllTextAsync(destinationFile, JsonSerializer.Serialize(new DiffPlannerMruSnapshot
+        {
+            Entries =
+            {
+                new DiffPlannerMruEntry
+                {
+                    BaselinePath = "/current-baseline.json",
+                    ComparisonPaths = { "/current-compare.json" },
+                },
+            },
+        }, SerializerOptions));
+
+        var legacyPath = Path.Combine(temp.Path, "legacy.json");
+        var legacyPayload = new LegacyDiffPlannerSettings
+        {
+            BaselinePath = "/legacy-baseline.json",
+            ComparisonPaths = new[] { "/legacy-compare.json" },
+            MaxEntries = 1,
+        };
+        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacyPayload, SerializerOptions));
+
+        var store = new DiffPlannerMruStore(temp.Path, legacyPath, null);
+        var snapshot = await store.LoadAsync();
+
+        snapshot.Entries.Should().ContainSingle();
+        snapshot.Entries[0].BaselinePath.Should().Be("/current-baseline.json");
+    }
+
     private sealed class TempDirectory : IDisposable
     {
         public TempDirectory()

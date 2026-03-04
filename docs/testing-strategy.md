@@ -5,7 +5,8 @@ PowerShell/GUI backend library, and Avalonia viewmodels. Manual validation
 continues to play a role for vendor fixtures and pre-HOLD reporting flows.
 
 Policy: Maintain ≥ 90% line coverage across Python source (under `src/`) and
-≥ 90% total line coverage for the .NET surface. Treat this as a hard baseline
+≥ 90% changed-line coverage for production .NET `.cs` executable lines (versus
+the target base branch, default `origin/main`). Treat this as a hard baseline
 for new and modified components.
 
 ## Automated test suite
@@ -59,7 +60,8 @@ minimise output or skip rebuilds during local iteration.
     per-viewmodel coverage and ensure the heavy UI surfaces (catalog,
     drilldown, multi-server orchestration) stay at or above the 90% line-baseline.
 - Repo‑wide summary: `python -m scripts.coverage_report`
-  - Prints Python %, .NET %, and the most under‑covered GUI classes.
+  - Prints Python %, raw .NET Cobertura %, scoped production `.cs` .NET %, changed-line production `.cs` .NET % (when `--dotnet-diff-base` is provided), and the most under‑covered files/classes.
+  - Enforce .NET changed-line threshold: `python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold`
 
 ### Review flags and profile ignores
 - Plugins may mark oddities with `metadata.needs_review` and `review_reasons`.
@@ -70,7 +72,8 @@ minimise output or skip rebuilds during local iteration.
 Local guardrails:
 
 - Python threshold: `coverage report --fail-under=90`
-- .NET threshold (coverlet): `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
+- .NET coverage collection: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect="XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
+- .NET threshold enforcement: `python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold`
 
 Shortcut: run `scripts/verify_coverage.sh` (POSIX shells) or `python -m scripts.verify_coverage` for the cross-platform equivalent to execute both suites with thresholds and print the combined summary.
 

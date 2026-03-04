@@ -68,6 +68,25 @@ else
 fi
 
 echo ""
+DOTNET_DIFF_BASE="${DOTNET_DIFF_BASE:-origin/main}"
+
+echo "=== .NET changed-line coverage guard (90%) vs ${DOTNET_DIFF_BASE} ==="
+coverage_report_log="$(mktemp)"
+if python -m scripts.coverage_report \
+    --dotnet-threshold 90 \
+    --dotnet-diff-base "${DOTNET_DIFF_BASE}" \
+    --dotnet-enforce-scope changed \
+    --enforce-dotnet-threshold >"${coverage_report_log}" 2>&1; then
+    cat "${coverage_report_log}"
+    echo "PASS: .NET changed-line coverage"
+else
+    cat "${coverage_report_log}"
+    echo "FAIL: .NET changed-line coverage below 90%"
+    FAILURES=$((FAILURES + 1))
+fi
+rm -f "${coverage_report_log}"
+
+echo ""
 echo "=== .NET format check ==="
 for proj in gui/DriftBuster.Backend/DriftBuster.Backend.csproj \
             gui/DriftBuster.Gui/DriftBuster.Gui.csproj \

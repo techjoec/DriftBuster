@@ -8,7 +8,10 @@ documentation.
 
 - Required thresholds:
   - Python (engine/detectors/reporting): ≥ 90% line coverage on `src/`.
-  - .NET (GUI + backend): ≥ 90% total line coverage (coverlet). 
+  - .NET (GUI + backend): ≥ 90% line coverage on changed production `.cs`
+    executable lines versus the target base branch (default `origin/main`).
+    Repo-wide scoped production `.cs` coverage is still reported for backlog
+    visibility.
   - New/changed modules must land with ≥ 90% per-file coverage unless
     platform-only code is explicitly excluded (e.g., Windows registry P/Invoke).
 
@@ -39,8 +42,14 @@ documentation.
   python -m scripts.coverage_report
   ```
 
-  The script prints Python percentage, .NET percentage, and the top
-  under‑covered GUI classes to focus further tests.
+  The script prints Python percentage, raw Cobertura .NET percentage, scoped
+  production `.cs` .NET percentage, changed-line `.cs` .NET percentage (when a
+  diff base is supplied), and the top under‑covered files/classes.
+  To enforce the changed-line .NET threshold:
+
+  ```sh
+  python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold
+  ```
 
 ## INI Coverage Baseline
 - **Variants:** Must classify `sectioned-ini`, `sectionless-ini`, `desktop-ini`,
@@ -83,7 +92,8 @@ documentation.
 Required command checks (enforced locally):
 
 - Python: `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`
-- .NET: `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
+- .NET: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
+- .NET threshold enforcement: `python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold`
 
 ## Test Coverage Map
 
