@@ -76,41 +76,50 @@ def append_history(
         "python_watch_min",
         "notes",
     ]
-
     existing_header: list[str] | None = None
+    existing_rows: list[list[str]] = []
     if output_path.exists():
         with output_path.open("r", encoding="utf-8", newline="") as fh:
             reader = csv.reader(fh)
             existing_header = next(reader, None)
+            existing_rows = list(reader)
+
+    if existing_header == legacy_header:
+        migrated_rows: list[list[str]] = []
+        for row in existing_rows:
+            padded = row + [""] * max(0, 5 - len(row))
+            migrated_rows.append(
+                [
+                    padded[0],
+                    padded[1],
+                    padded[2],
+                    "",
+                    padded[3],
+                    padded[4],
+                ]
+            )
+        with output_path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(current_header)
+            writer.writerows(migrated_rows)
+        existing_header = current_header
 
     needs_header = existing_header is None
-    use_legacy_columns = existing_header == legacy_header
     with output_path.open("a", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh)
         if needs_header:
             writer.writerow(current_header)
 
-        if use_legacy_columns:
-            writer.writerow(
-                [
-                    timestamp,
-                    f"{python_percent:.2f}",
-                    "" if dotnet_percent is None else f"{dotnet_percent:.2f}",
-                    f"{watch_lowest:.2f}",
-                    notes or "",
-                ]
-            )
-        else:
-            writer.writerow(
-                [
-                    timestamp,
-                    f"{python_percent:.2f}",
-                    "" if dotnet_percent is None else f"{dotnet_percent:.2f}",
-                    "" if dotnet_changed_percent is None else f"{dotnet_changed_percent:.2f}",
-                    f"{watch_lowest:.2f}",
-                    notes or "",
-                ]
-            )
+        writer.writerow(
+            [
+                timestamp,
+                f"{python_percent:.2f}",
+                "" if dotnet_percent is None else f"{dotnet_percent:.2f}",
+                "" if dotnet_changed_percent is None else f"{dotnet_changed_percent:.2f}",
+                f"{watch_lowest:.2f}",
+                notes or "",
+            ]
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

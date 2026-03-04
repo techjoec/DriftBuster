@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using System.Threading;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
@@ -125,6 +126,37 @@ public sealed class ServerSelectionViewModelAdditionalTests
         cache.Cleared.Should().BeTrue();
         persistenceViewModel.HasActiveServers.Should().BeTrue();
         persistenceViewModel.ShowDrilldownForHostCommand.CanExecute(persistenceViewModel.Servers[0].HostId).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SaveSession_after_run_persists_snapshot_on_same_viewmodel()
+    {
+        var cache = new InMemorySessionCacheService
+        {
+            Snapshot = new ServerSelectionCache
+            {
+                PersistSession = true,
+            },
+        };
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = CreateScanResponseWithProgress,
+        };
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, cache);
+
+        SpinWait.SpinUntil(() => viewModel.PersistSessionState, TimeSpan.FromSeconds(5)).Should().BeTrue();
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+        viewModel.PersistSessionState.Should().BeTrue();
+        var saveMethod = typeof(ServerSelectionViewModel).GetMethod("SaveSessionAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+        saveMethod.Should().NotBeNull();
+        var saveTask = (Task?)saveMethod!.Invoke(viewModel, null);
+        saveTask.Should().NotBeNull();
+        await saveTask!;
+        viewModel.StatusBanner.Should().Be("Session saved.");
+
+        cache.Snapshot.Should().NotBeNull();
+        cache.Snapshot!.Servers.Should().Contain(entry => string.Equals(entry.HostId, viewModel.Servers[0].HostId, StringComparison.Ordinal));
     }
 
     [Fact]

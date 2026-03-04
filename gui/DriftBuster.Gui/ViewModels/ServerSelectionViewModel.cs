@@ -675,19 +675,27 @@ namespace DriftBuster.Gui.ViewModels
 
         private ServerSelectionCache BuildSessionSnapshot()
         {
+            var sortDescriptor = CatalogViewModel.SortDescriptor;
             return new ServerSelectionCache
             {
                 SchemaVersion = SessionCacheService.CurrentSchemaVersion,
                 PersistSession = true,
-                Servers = Servers.Select(server => new ServerSelectionCacheEntry
-                {
-                    HostId = server.HostId,
-                    Label = server.Label,
-                    Enabled = server.IsEnabled,
-                    Scope = server.Scope,
-                    Roots = server.Roots.Select(root => root.Path).ToArray(),
-                }).ToList(),
+                Servers = Servers
+                    .Where(server => server is not null)
+                    .Select(server => new ServerSelectionCacheEntry
+                    {
+                        HostId = server.HostId,
+                        Label = server.Label,
+                        Enabled = server.IsEnabled,
+                        Scope = server.Scope,
+                        Roots = server.Roots
+                            .Where(root => root is not null && !string.IsNullOrWhiteSpace(root.Path))
+                            .Select(root => root.Path)
+                            .ToArray(),
+                    })
+                    .ToList(),
                 Activities = _activityEntries
+                    .Where(entry => entry is not null)
                     .Select(entry => new ActivityCacheEntry
                     {
                         Timestamp = entry.Timestamp,
@@ -699,8 +707,8 @@ namespace DriftBuster.Gui.ViewModels
                     .ToList(),
                 CatalogSort = new CatalogSortCache
                 {
-                    Column = CatalogViewModel.SortDescriptor.ColumnKey,
-                    Descending = CatalogViewModel.SortDescriptor.Descending,
+                    Column = sortDescriptor?.ColumnKey ?? CatalogSortColumns.Drift,
+                    Descending = sortDescriptor?.Descending ?? true,
                 },
                 ActivityFilter = ActivityFilter.ToString(),
                 CatalogFilters = new CatalogFilterCache

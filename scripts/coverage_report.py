@@ -140,8 +140,10 @@ def load_changed_production_lines(base_ref: str) -> dict[str, set[int]]:
             text=True,
             stderr=subprocess.DEVNULL,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return {}
+    except FileNotFoundError as exc:
+        raise RuntimeError("git executable is not available") from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"unable to compute git diff for base ref '{base_ref}'") from exc
 
     changed: dict[str, set[int]] = {}
     current_file: str | None = None
@@ -284,30 +286,45 @@ def main(argv: list[str] | None = None) -> int:
             print(f"- {name}: {percent(rate)}")
 
     changed_rate: float | None = None
+    changed_error: str | None = None
     if args.dotnet_diff_base:
-        changed_lines = load_changed_production_lines(args.dotnet_diff_base)
-        changed_rate, changed_files, changed_skipped = summarise_changed_dotnet_lines(changed_lines, line_hits)
-        covered = sum(item[1] for item in changed_files)
-        total = sum(item[2] for item in changed_files)
-        if changed_rate is None:
+        try:
+            changed_lines = load_changed_production_lines(args.dotnet_diff_base)
+        except RuntimeError as exc:
+            changed_error = str(exc)
             print(
                 f".NET coverage (changed production .cs executable lines vs {args.dotnet_diff_base}): "
-                "n/a (no executable changed lines)"
+                f"n/a ({changed_error})"
             )
         else:
-            print(
-                f".NET coverage (changed production .cs executable lines vs {args.dotnet_diff_base}): "
-                f"{percent(changed_rate)} ({covered}/{total})"
-            )
-        if changed_files:
-            print("Top undercovered changed .NET files:")
-            for name, hit, total_lines, rate in changed_files[: args.top]:
-                print(f"- {name}: {percent(rate)} ({hit}/{total_lines})")
-        if changed_skipped:
-            print(
-                f"Note: {len(changed_skipped)} changed file(s) had no executable coverage-mapped "
-                "lines (for example signature-only edits)."
-            )
+            changed_rate, changed_files, changed_skipped = summarise_changed_dotnet_lines(changed_lines, line_hits)
+            covered = sum(item[1] for item in changed_files)
+            total = sum(item[2] for item in changed_files)
+            if changed_rate is None:
+                print(
+                    f".NET coverage (changed production .cs executable lines vs {args.dotnet_diff_base}): "
+                    "n/a (no executable changed lines)"
+                )
+            else:
+                print(
+                    f".NET coverage (changed production .cs executable lines vs {args.dotnet_diff_base}): "
+                    f"{percent(changed_rate)} ({covered}/{total})"
+                )
+            if changed_files:
+                print("Top undercovered changed .NET files:")
+                for name, hit, total_lines, rate in changed_files[: args.top]:
+                    print(f"- {name}: {percent(rate)} ({hit}/{total_lines})")
+            if changed_skipped:
+                print(
+                    f"Note: {len(changed_skipped)} changed file(s) had no executable coverage-mapped "
+                    "lines (for example signature-only edits)."
+                )
+    elif args.dotnet_enforce_scope == "changed" and args.enforce_dotnet_threshold:
+        changed_error = "--dotnet-diff-base is required when enforcing changed scope"
+
+    if changed_error and args.enforce_dotnet_threshold and args.dotnet_enforce_scope == "changed":
+        print(f".NET changed-line coverage check failed: {changed_error}.")
+        return 1
 
     threshold_ratio = args.dotnet_threshold / 100.0
     if args.enforce_dotnet_threshold:
