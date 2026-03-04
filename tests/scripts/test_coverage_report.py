@@ -48,7 +48,7 @@ diff --git a/gui/DriftBuster.Gui.Tests/ViewModels/MainWindowViewModelTests.cs b/
     }
 
 
-def test_load_changed_production_lines_returns_empty_when_git_unavailable(
+def test_load_changed_production_lines_raises_when_git_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_check_output(*_args, **_kwargs) -> str:
@@ -56,7 +56,8 @@ def test_load_changed_production_lines_returns_empty_when_git_unavailable(
 
     monkeypatch.setattr(subprocess, "check_output", fake_check_output)
 
-    assert load_changed_production_lines("origin/main") == {}
+    with pytest.raises(RuntimeError, match="unable to compute git diff"):
+        load_changed_production_lines("origin/main")
 
 
 def test_summarise_changed_dotnet_lines_counts_only_executable_lines() -> None:

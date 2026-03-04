@@ -42,7 +42,7 @@ def test_append_history_writes_changed_dotnet_column(tmp_path: Path) -> None:
     ]
 
 
-def test_append_history_keeps_legacy_layout_when_existing_file_is_legacy(tmp_path: Path) -> None:
+def test_append_history_migrates_legacy_layout_when_existing_file_is_legacy(tmp_path: Path) -> None:
     output = tmp_path / "legacy-history.csv"
     output.write_text(
         "timestamp_utc,python_percent,dotnet_percent,python_watch_min,notes\n"
@@ -67,13 +67,23 @@ def test_append_history_keeps_legacy_layout_when_existing_file_is_legacy(tmp_pat
         "timestamp_utc",
         "python_percent",
         "dotnet_percent",
+        "dotnet_changed_percent",
         "python_watch_min",
         "notes",
+    ]
+    assert rows[1] == [
+        "2026-03-03T00:00:00+00:00",
+        "93.00",
+        "81.00",
+        "",
+        "90.00",
+        "old",
     ]
     assert rows[-1] == [
         "2026-03-04T08:00:00+00:00",
         "93.41",
         "81.54",
+        "90.68",
         "90.91",
         "verify",
     ]
