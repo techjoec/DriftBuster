@@ -86,6 +86,20 @@ public sealed class ServerSelectionViewModelAdditionalTests
         var viewModel = new ServerSelectionViewModel(service, toast, cache);
 
         var server = viewModel.Servers[0];
+        ConfigureCustomRootFlow(viewModel, server);
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+        viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
+        viewModel.FilteredActivityEntries.Should().NotBeEmpty();
+        viewModel.IsBusy.Should().BeFalse();
+        server.IsEnabled.Should().BeTrue();
+        AssertDrilldownContainsHost(viewModel, server.HostId);
+
+        await VerifyStandalonePersistenceFlowAsync(cache, toast);
+    }
+
+    private static void ConfigureCustomRootFlow(ServerSelectionViewModel viewModel, ServerSlotViewModel server)
+    {
         server.Scope = ServerScanScope.CustomRoots;
         var absoluteRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(absoluteRoot);
@@ -103,19 +117,15 @@ public sealed class ServerSelectionViewModelAdditionalTests
         lastRoot.StatusMessage.Should().Contain("absolute");
         viewModel.RemoveRootCommand.Execute(lastRoot);
         server.Roots.Should().ContainSingle();
+    }
 
-        await viewModel.RunAllCommand.ExecuteAsync(null);
-        viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
-        viewModel.FilteredActivityEntries.Should().NotBeEmpty();
-        viewModel.IsBusy.Should().BeFalse();
-        server.IsEnabled.Should().BeTrue();
-        AssertDrilldownContainsHost(viewModel, server.HostId);
-
+    private static async Task VerifyStandalonePersistenceFlowAsync(InMemorySessionCacheService cache, ToastService toast)
+    {
         var persistenceViewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), toast, cache);
         persistenceViewModel.PersistSessionState = true;
         persistenceViewModel.Servers[0].Label = "Persist me";
         persistenceViewModel.SaveSessionCommand.CanExecute(null).Should().BeTrue();
-        await persistenceViewModel.SaveSessionCommand.ExecuteAsync(null);
+        await persistenceViewModel.SaveSessionCommand.ExecuteAsync(null).ConfigureAwait(false);
         cache.Snapshot.Should().NotBeNull("SaveSessionCommand should have saved snapshot");
         cache.Snapshot!.Servers.Should().Contain(entry => entry.Label == "Persist me");
 
