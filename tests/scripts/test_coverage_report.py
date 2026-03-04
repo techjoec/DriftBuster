@@ -5,10 +5,12 @@ from pathlib import Path
 
 import pytest
 
+from scripts import coverage_report as coverage_report_module
 from scripts.coverage_report import (
     coverage_path_candidates,
     load_changed_production_lines,
     load_cobertura_summary,
+    main as coverage_report_main,
     summarise_changed_dotnet_lines,
 )
 
@@ -122,3 +124,19 @@ def test_load_cobertura_summary_builds_line_hit_aliases(tmp_path: Path) -> None:
 
     assert line_hits["DriftBuster.Gui/ViewModels/MainWindowViewModel.cs"][10] == 1
     assert line_hits["gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs"][11] == 0
+
+
+def test_main_fails_when_enforcement_enabled_and_cobertura_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(coverage_report_module, "find_cobertura_xml", lambda _root: None)
+
+    result = coverage_report_main(
+        [
+            "--python-json",
+            "missing-coverage.json",
+            "--enforce-dotnet-threshold",
+        ]
+    )
+
+    assert result == 1

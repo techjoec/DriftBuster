@@ -265,6 +265,9 @@ def main(argv: list[str] | None = None) -> int:
     cob = find_cobertura_xml(args.dotnet_root)
     if cob is None:
         print(".NET coverage: Cobertura XML not found")
+        if args.enforce_dotnet_threshold:
+            print(".NET coverage check failed: Cobertura XML is required when enforcement is enabled.")
+            return 1
         return 0
 
     line_rate, classes, files, line_hits = load_cobertura_summary(cob)

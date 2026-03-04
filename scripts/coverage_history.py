@@ -44,7 +44,10 @@ def compute_dotnet_changed_percent(dotnet_root: Path, diff_base: str) -> float |
         return None
 
     _line_rate, _classes, _files, line_hits = load_cobertura_summary(xml_path)
-    changed_lines = load_changed_production_lines(diff_base)
+    try:
+        changed_lines = load_changed_production_lines(diff_base)
+    except RuntimeError:
+        return None
     changed_ratio, _details, _skipped = summarise_changed_dotnet_lines(changed_lines, line_hits)
     if changed_ratio is None:
         return None

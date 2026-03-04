@@ -120,3 +120,23 @@ def test_compute_dotnet_changed_percent_returns_none_without_coverage_report(
     percent = coverage_history.compute_dotnet_changed_percent(Path("artifacts/coverage-dotnet"), "origin/main")
 
     assert percent is None
+
+
+def test_compute_dotnet_changed_percent_returns_none_when_diff_resolution_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(coverage_history, "find_cobertura_xml", lambda _root: "fake.xml")
+    monkeypatch.setattr(
+        coverage_history,
+        "load_cobertura_summary",
+        lambda _path: (0.81, [], [], {"gui/DriftBuster.Gui/ViewModels/MainWindowViewModel.cs": {10: 1}}),
+    )
+
+    def raise_runtime(_base: str) -> dict[str, set[int]]:
+        raise RuntimeError("bad ref")
+
+    monkeypatch.setattr(coverage_history, "load_changed_production_lines", raise_runtime)
+
+    percent = coverage_history.compute_dotnet_changed_percent(Path("artifacts/coverage-dotnet"), "origin/main")
+
+    assert percent is None
