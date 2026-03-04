@@ -74,6 +74,7 @@ python -m scripts.coverage_report \
 echo "-- Coverage history snapshot"
 python -m scripts.coverage_history --python-json coverage.json \
   --dotnet-root artifacts/coverage-dotnet \
+  --dotnet-diff-base "${DOTNET_DIFF_BASE}" \
   --output artifacts/coverage/history.csv \
   --notes "verify_coverage"
 

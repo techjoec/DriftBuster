@@ -166,8 +166,8 @@ public sealed class DiffPlannerMruStoreTests
         using var temp = new TempDirectory();
         var store = new DiffPlannerMruStore(temp.Path);
 
-        Func<Task> saveAct = async () => await store.SaveAsync(null!);
-        Func<Task> recordAct = async () => await store.RecordAsync(null!);
+        Func<Task> saveAct = () => store.SaveAsync(null!);
+        Func<Task> recordAct = () => store.RecordAsync(null!);
 
         await saveAct.Should().ThrowAsync<ArgumentNullException>();
         await recordAct.Should().ThrowAsync<ArgumentNullException>();

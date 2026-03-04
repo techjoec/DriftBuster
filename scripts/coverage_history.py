@@ -8,8 +8,10 @@ from typing import Mapping
 
 from scripts.coverage_report import (
     find_cobertura_xml,
+    load_changed_production_lines,
     load_cobertura_summary,
     load_python_coverage,
+    summarise_changed_dotnet_lines,
 )
 from scripts.coverage_watch import (
     evaluate_watch_targets,
@@ -36,36 +38,79 @@ def compute_dotnet_percent(dotnet_root: Path) -> float | None:
     return line_rate * 100.0
 
 
+def compute_dotnet_changed_percent(dotnet_root: Path, diff_base: str) -> float | None:
+    xml_path = find_cobertura_xml(str(dotnet_root))
+    if xml_path is None:
+        return None
+
+    _line_rate, _classes, _files, line_hits = load_cobertura_summary(xml_path)
+    changed_lines = load_changed_production_lines(diff_base)
+    changed_ratio, _details, _skipped = summarise_changed_dotnet_lines(changed_lines, line_hits)
+    if changed_ratio is None:
+        return None
+    return changed_ratio * 100.0
+
+
 def append_history(
     output_path: Path,
     timestamp: str,
     python_percent: float,
     dotnet_percent: float | None,
+    dotnet_changed_percent: float | None,
     watch_lowest: float,
     notes: str | None,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    header = [
+    current_header = [
+        "timestamp_utc",
+        "python_percent",
+        "dotnet_percent",
+        "dotnet_changed_percent",
+        "python_watch_min",
+        "notes",
+    ]
+    legacy_header = [
         "timestamp_utc",
         "python_percent",
         "dotnet_percent",
         "python_watch_min",
         "notes",
     ]
-    needs_header = not output_path.exists()
+
+    existing_header: list[str] | None = None
+    if output_path.exists():
+        with output_path.open("r", encoding="utf-8", newline="") as fh:
+            reader = csv.reader(fh)
+            existing_header = next(reader, None)
+
+    needs_header = existing_header is None
+    use_legacy_columns = existing_header == legacy_header
     with output_path.open("a", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh)
         if needs_header:
-            writer.writerow(header)
-        writer.writerow(
-            [
-                timestamp,
-                f"{python_percent:.2f}",
-                "" if dotnet_percent is None else f"{dotnet_percent:.2f}",
-                f"{watch_lowest:.2f}",
-                notes or "",
-            ]
-        )
+            writer.writerow(current_header)
+
+        if use_legacy_columns:
+            writer.writerow(
+                [
+                    timestamp,
+                    f"{python_percent:.2f}",
+                    "" if dotnet_percent is None else f"{dotnet_percent:.2f}",
+                    f"{watch_lowest:.2f}",
+                    notes or "",
+                ]
+            )
+        else:
+            writer.writerow(
+                [
+                    timestamp,
+                    f"{python_percent:.2f}",
+                    "" if dotnet_percent is None else f"{dotnet_percent:.2f}",
+                    "" if dotnet_changed_percent is None else f"{dotnet_changed_percent:.2f}",
+                    f"{watch_lowest:.2f}",
+                    notes or "",
+                ]
+            )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -83,6 +128,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=Path("artifacts/coverage-dotnet"),
         help="Directory containing Cobertura XML output from .NET runs.",
+    )
+    parser.add_argument(
+        "--dotnet-diff-base",
+        default="origin/main",
+        help="Git base ref used for changed-line .NET coverage snapshots.",
     )
     parser.add_argument(
         "--output",
@@ -105,6 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     dotnet_percent = compute_dotnet_percent(args.dotnet_root)
+    dotnet_changed_percent = compute_dotnet_changed_percent(args.dotnet_root, args.dotnet_diff_base)
     timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
     append_history(
@@ -112,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         timestamp,
         python_percent,
         dotnet_percent,
+        dotnet_changed_percent,
         watch_lowest,
         args.notes,
     )
@@ -121,6 +173,12 @@ def main(argv: list[str] | None = None) -> int:
             "dotnet=N/A"
             if dotnet_percent is None
             else f"dotnet={dotnet_percent:.2f}%"
+        )
+        + " "
+        + (
+            "dotnet_changed=N/A"
+            if dotnet_changed_percent is None
+            else f"dotnet_changed={dotnet_changed_percent:.2f}%"
         )
         + f" watch_min={watch_lowest:.2f}%"
     )

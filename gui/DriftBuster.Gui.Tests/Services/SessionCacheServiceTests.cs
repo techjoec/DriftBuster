@@ -256,7 +256,7 @@ public sealed class SessionCacheServiceTests
         using var temp = new TempDirectory();
         var service = new SessionCacheService(temp.Path);
 
-        Func<Task> act = async () => await service.SaveAsync(null!);
+        Func<Task> act = () => service.SaveAsync(null!);
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
