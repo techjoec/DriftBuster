@@ -32,7 +32,7 @@ def compute_dotnet_percent(dotnet_root: Path) -> float | None:
     xml_path = find_cobertura_xml(str(dotnet_root))
     if xml_path is None:
         return None
-    line_rate, _ = load_cobertura_summary(xml_path)
+    line_rate, *_ = load_cobertura_summary(xml_path)
     return line_rate * 100.0
 
 

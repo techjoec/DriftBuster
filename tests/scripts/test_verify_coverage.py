@@ -53,15 +53,7 @@ def test_default_verify_runs_all_sections(tmp_path: Path) -> None:
     assert ["coverage", "report", f"--fail-under={opts.python_threshold}"] in recorder.commands
     assert ["coverage", "json", "-o", opts.python_json] in recorder.commands
     assert any(cmd[:2] == ["dotnet", "test"] for cmd in recorder.commands)
-    summary_cmd = [
-        sys.executable,
-        "-m",
-        "scripts.coverage_report",
-        "--python-json",
-        opts.python_json,
-        "--dotnet-root",
-        opts.dotnet_results_dir,
-    ]
+    summary_cmd = build_summary_commands(opts)[0]
     assert summary_cmd in recorder.commands
 
 
@@ -104,7 +96,14 @@ def test_build_dotnet_commands_creates_directory(tmp_path: Path) -> None:
 def test_build_summary_commands_uses_configured_paths() -> None:
     opts = VerifyOptions(python_json="out.json", dotnet_results_dir="dotnet-out")
     commands = build_summary_commands(opts)
-    assert commands[0][-2:] == ["--dotnet-root", "dotnet-out"]
+    command = commands[0]
+    assert command[0:3] == [sys.executable, "-m", "scripts.coverage_report"]
+    assert "--dotnet-root" in command
+    assert command[command.index("--dotnet-root") + 1] == "dotnet-out"
+    assert "--dotnet-diff-base" in command
+    assert command[command.index("--dotnet-diff-base") + 1] == opts.dotnet_diff_base
+    assert "--dotnet-enforce-scope" in command
+    assert command[command.index("--dotnet-enforce-scope") + 1] == opts.dotnet_enforce_scope
 
 
 def test_enforce_python_module_thresholds_pass(tmp_path: Path) -> None:

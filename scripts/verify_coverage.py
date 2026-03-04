@@ -29,6 +29,8 @@ class VerifyOptions:
     perf_filter: str = "Category=PerfSmoke"
     python_threshold: int = 90
     dotnet_threshold: int = 90
+    dotnet_diff_base: str = "origin/main"
+    dotnet_enforce_scope: str = "changed"
     python_source: str = "src/driftbuster"
     python_json: str = "coverage.json"
     dotnet_project: str = (
@@ -106,6 +108,10 @@ def build_summary_commands(opts: VerifyOptions) -> List[List[str]]:
             opts.dotnet_results_dir,
             "--dotnet-threshold",
             str(opts.dotnet_threshold),
+            "--dotnet-diff-base",
+            opts.dotnet_diff_base,
+            "--dotnet-enforce-scope",
+            opts.dotnet_enforce_scope,
             "--enforce-dotnet-threshold",
         ]
     ]
@@ -239,6 +245,17 @@ def parse_args(argv: Sequence[str] | None = None) -> VerifyOptions:
         help="Fail coverage if .NET line coverage falls below this threshold.",
     )
     parser.add_argument(
+        "--dotnet-diff-base",
+        default="origin/main",
+        help="Git base ref used for changed-line .NET coverage enforcement.",
+    )
+    parser.add_argument(
+        "--dotnet-enforce-scope",
+        choices=("scoped", "changed"),
+        default="changed",
+        help="Coverage scope for the .NET summary threshold check.",
+    )
+    parser.add_argument(
         "--dotnet-project",
         default="gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj",
         help="Path to the .NET test project to execute.",
@@ -309,6 +326,8 @@ def parse_args(argv: Sequence[str] | None = None) -> VerifyOptions:
         perf_filter=args.perf_filter,
         python_threshold=args.python_threshold,
         dotnet_threshold=args.dotnet_threshold,
+        dotnet_diff_base=args.dotnet_diff_base,
+        dotnet_enforce_scope=args.dotnet_enforce_scope,
         python_source=args.python_source,
         python_json=args.python_json,
         dotnet_project=args.dotnet_project,

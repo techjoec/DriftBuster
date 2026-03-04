@@ -258,6 +258,30 @@ public sealed class ServerSelectionViewModelAdditionalTests
     }
 
     [Fact]
+    public async Task RunAll_surfaces_error_state_when_scan_throws()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (_, _, _) => Task.FromException<ServerScanResponse>(new InvalidOperationException("network down")),
+        };
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.IsBusy.Should().BeFalse();
+        viewModel.StatusBanner.Should().Be("Scan failed: network down");
+        viewModel.ActivityEntries.Should().Contain(entry =>
+            entry.Severity == ActivitySeverity.Error &&
+            entry.Summary == "Scan failed" &&
+            entry.Detail.Contains("network down", StringComparison.Ordinal));
+        toast.ActiveToasts.Should().Contain(notification =>
+            notification.Level == ToastLevel.Error &&
+            notification.Title == "Multi-server scan failed" &&
+            notification.Message.Contains("network down", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Provides_deterministic_drilldown_gating_and_telemetry()
     {
         var logPath = Path.Combine("artifacts", "logs", "drilldown-ready.json");
@@ -440,7 +464,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
     /// <summary>
     /// Poll until a command's CanExecute returns true (coverage instrumentation can delay IsBusy transitions).
     /// </summary>
-    private static async Task PollUntilCanExecuteAsync(IAsyncRelayCommand command, int timeoutMs = 10000)
+    private static async Task PollUntilCanExecuteAsync(IAsyncRelayCommand command, int timeoutMs = 30000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (!command.CanExecute(null) && DateTime.UtcNow < deadline)
@@ -452,7 +476,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
     /// <summary>
     /// Poll for snapshot with generous timeout (coverage instrumentation adds significant overhead).
     /// </summary>
-    private static async Task PollForSnapshotAsync(InMemorySessionCacheService cache, int timeoutMs = 10000)
+    private static async Task PollForSnapshotAsync(InMemorySessionCacheService cache, int timeoutMs = 30000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (cache.Snapshot is null && DateTime.UtcNow < deadline)

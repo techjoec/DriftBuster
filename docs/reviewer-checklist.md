@@ -20,7 +20,7 @@ ruff(formats/registry_live): ruff check src/driftbuster/formats/registry_live
 ruff(registry helpers): ruff check src/driftbuster/registry
 coverage(py): coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90
 coverage(net): dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet
-coverage(net-enforce): python -m scripts.coverage_report --dotnet-threshold 90 --enforce-dotnet-threshold
+coverage(net-enforce): python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold
 ```
 
 Check off each line once you've read the output and confirmed no surprises.

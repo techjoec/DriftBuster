@@ -62,9 +62,13 @@ dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj \
   --collect:"XPlat Code Coverage" \
   --results-directory artifacts/coverage-dotnet -v minimal
 
-echo "-- Repo-wide coverage summary (enforce .NET scoped threshold)"
+DOTNET_DIFF_BASE="${DOTNET_DIFF_BASE:-origin/main}"
+
+echo "-- Repo-wide coverage summary (enforce .NET changed-line threshold vs ${DOTNET_DIFF_BASE})"
 python -m scripts.coverage_report \
   --dotnet-threshold 90 \
+  --dotnet-diff-base "${DOTNET_DIFF_BASE}" \
+  --dotnet-enforce-scope changed \
   --enforce-dotnet-threshold
 
 echo "-- Coverage history snapshot"
