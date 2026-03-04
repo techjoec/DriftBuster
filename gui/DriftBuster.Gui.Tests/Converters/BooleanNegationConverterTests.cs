@@ -52,4 +52,15 @@ public sealed class BooleanNegationConverterTests
 
         converter.ConvertBack("unexpected", typeof(bool), null, CultureInfo.InvariantCulture).Should().Be(true);
     }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(null, true)]
+    public void ConvertBack_negates_nullable_boolean_values(bool? input, bool expected)
+    {
+        var converter = BooleanNegationConverter.Instance;
+
+        converter.ConvertBack(input, typeof(bool), null, CultureInfo.InvariantCulture).Should().Be(expected);
+    }
 }

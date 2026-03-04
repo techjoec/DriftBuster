@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -238,3 +240,68 @@ def test_cli_diff_writes_patch_files(tmp_path: Path, capsys: pytest.CaptureFixtu
     patch_contents = patch_file.read_text(encoding="utf-8")
     assert patch_contents.startswith("--- config.xml")
     assert "+<root><value>2</value></root>" in patch_contents
+
+
+def test_cli_diff_supports_multiple_comparisons(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    baseline = tmp_path / "baseline.txt"
+    baseline.write_text("alpha\n", encoding="utf-8")
+    candidate_a = tmp_path / "candidate-a.txt"
+    candidate_a.write_text("alpha\nbeta\n", encoding="utf-8")
+    candidate_b = tmp_path / "candidate-b.txt"
+    candidate_b.write_text("alpha\ngamma\n", encoding="utf-8")
+    output_dir = tmp_path / "patches"
+
+    exit_code = cli.main(
+        [
+            "diff",
+            str(baseline),
+            str(candidate_a),
+            str(candidate_b),
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.out.count("Wrote diff") == 2
+    assert (output_dir / "baseline--candidate-a.patch").exists()
+    assert (output_dir / "baseline--candidate-b.patch").exists()
+
+
+def test_cli_diff_module_entrypoint_supports_multiple_comparisons(tmp_path: Path) -> None:
+    baseline = tmp_path / "baseline.txt"
+    baseline.write_text("alpha\n", encoding="utf-8")
+    candidate_a = tmp_path / "candidate-a.txt"
+    candidate_a.write_text("alpha\nbeta\n", encoding="utf-8")
+    candidate_b = tmp_path / "candidate-b.txt"
+    candidate_b.write_text("alpha\ngamma\n", encoding="utf-8")
+
+    env = dict(os.environ)
+    existing_pythonpath = env.get("PYTHONPATH")
+    src_path = str((Path(__file__).resolve().parents[2] / "src").resolve())
+    env["PYTHONPATH"] = (
+        src_path if not existing_pythonpath else os.pathsep.join((src_path, existing_pythonpath))
+    )
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "driftbuster.cli",
+            "diff",
+            str(baseline),
+            str(candidate_a),
+            str(candidate_b),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    )
+
+    output = completed.stdout
+    assert "=== baseline.txt" in output
+    assert "candidate-a.txt" in output
+    assert "candidate-b.txt" in output
+    assert output.count("Summary:") == 2

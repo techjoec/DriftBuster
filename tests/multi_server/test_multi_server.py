@@ -5,6 +5,7 @@ from pathlib import Path
 import io
 import json
 import os
+import subprocess
 import sys
 from unittest import mock
 
@@ -228,6 +229,88 @@ def test_drilldown_includes_sanitized_diff_summary(tmp_path) -> None:
     assert summary["comparison_count"] >= 1
     comparison = summary["comparisons"][0]
     assert comparison["summary"]["before_digest"].startswith("sha256:")
+
+
+def test_multi_server_module_entrypoint_round_trip(tmp_path) -> None:
+    cache_dir = tmp_path / "cache"
+    request_payload = {
+        "schema_version": SCHEMA_VERSION,
+        "cache_dir": str(cache_dir),
+        "plans": [
+            {
+                "host_id": "server01",
+                "label": "server01",
+                "scope": "custom_roots",
+                "roots": [str((SAMPLES_ROOT / "server01").resolve())],
+                "baseline": {"is_preferred": True, "priority": 10},
+            },
+            {
+                "host_id": "server02",
+                "label": "server02",
+                "scope": "custom_roots",
+                "roots": [str((SAMPLES_ROOT / "server02").resolve())],
+                "baseline": {"is_preferred": False, "priority": 5},
+            },
+        ],
+    }
+    env = dict(os.environ)
+    existing_pythonpath = env.get("PYTHONPATH")
+    src_path = str((Path(__file__).resolve().parents[2] / "src").resolve())
+    env["PYTHONPATH"] = (
+        src_path if not existing_pythonpath else os.pathsep.join((src_path, existing_pythonpath))
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-m", "driftbuster.multi_server"],
+        input=json.dumps(request_payload),
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    )
+
+    lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    assert lines, "expected JSON lines from module entrypoint"
+    events = [json.loads(line) for line in lines]
+    event_types = {event.get("type") for event in events}
+    assert "progress" in event_types
+    result_event = events[-1]
+    assert result_event["type"] == "result"
+    payload = result_event["payload"]
+    assert payload["version"] == SCHEMA_VERSION
+    assert len(payload["results"]) == 2
+    assert payload["catalog"]
+
+
+def test_multi_server_module_entrypoint_reports_schema_errors(tmp_path) -> None:
+    request_payload = {
+        "schema_version": "multi-server.v0",
+        "cache_dir": str(tmp_path / "cache"),
+        "plans": [],
+    }
+    env = dict(os.environ)
+    existing_pythonpath = env.get("PYTHONPATH")
+    src_path = str((Path(__file__).resolve().parents[2] / "src").resolve())
+    env["PYTHONPATH"] = (
+        src_path if not existing_pythonpath else os.pathsep.join((src_path, existing_pythonpath))
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-m", "driftbuster.multi_server"],
+        input=json.dumps(request_payload),
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+    assert completed.returncode == 1
+    lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    assert lines, "expected error JSON output from module entrypoint"
+    payload = json.loads(lines[-1])
+    assert payload["type"] == "error"
+    assert "Unsupported schema version" in payload["message"]
+
 
 def test_emit_progress_throttles_duplicate_messages(monkeypatch) -> None:
     buffer = io.StringIO()

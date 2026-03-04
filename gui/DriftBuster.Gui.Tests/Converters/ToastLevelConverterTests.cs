@@ -97,4 +97,144 @@ public sealed class ToastLevelConverterTests
             }
         });
     }
+
+    [Fact]
+    public void Brush_converter_returns_gray_for_non_toast_value()
+    {
+        var value = ToastLevelToBrushConverter.Instance.Convert("not-level", typeof(IBrush), null, CultureInfo.InvariantCulture);
+        value.Should().BeSameAs(Brushes.Gray);
+    }
+
+    [AvaloniaFact]
+    public async Task Brush_converter_returns_gray_when_theme_resource_missing()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var app = Application.Current!;
+            const string resourceKey = "Brush.Toast.Warning";
+            var hadResource = app.Resources.TryGetValue(resourceKey, out var previousValue);
+
+            try
+            {
+                if (hadResource)
+                {
+                    app.Resources.Remove(resourceKey);
+                }
+
+                var brush = ToastLevelToBrushConverter.Instance.Convert(
+                    ToastLevel.Warning,
+                    typeof(IBrush),
+                    null,
+                    CultureInfo.InvariantCulture);
+
+                brush.Should().BeSameAs(Brushes.Gray);
+            }
+            finally
+            {
+                if (hadResource)
+                {
+                    app.Resources[resourceKey] = previousValue!;
+                }
+            }
+        });
+    }
+
+    [Fact]
+    public void Brush_converter_convert_back_throws()
+    {
+        var action = () => ToastLevelToBrushConverter.Instance.ConvertBack(
+            Brushes.Gray,
+            typeof(ToastLevel),
+            null,
+            CultureInfo.InvariantCulture);
+
+        action.Should().Throw<NotSupportedException>();
+    }
+
+    [Fact]
+    public void Icon_converter_returns_empty_for_non_toast_value()
+    {
+        var value = ToastLevelToIconConverter.Instance.Convert("unexpected", typeof(string), null, CultureInfo.InvariantCulture);
+        value.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public void Icon_converter_convert_back_throws()
+    {
+        var action = () => ToastLevelToIconConverter.Instance.ConvertBack(
+            "x",
+            typeof(ToastLevel),
+            null,
+            CultureInfo.InvariantCulture);
+
+        action.Should().Throw<NotSupportedException>();
+    }
+
+    [AvaloniaFact]
+    public async Task Icon_converter_reads_success_and_info_resources()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var app = Application.Current!;
+            const string successKey = "Toast.Icon.Success";
+            const string infoKey = "Toast.Icon.Info";
+            const string successGlyph = "+";
+            const string infoGlyph = "i";
+
+            try
+            {
+                app.Resources[successKey] = successGlyph;
+                app.Resources[infoKey] = infoGlyph;
+
+                var success = ToastLevelToIconConverter.Instance
+                    .Convert(ToastLevel.Success, typeof(string), null, CultureInfo.InvariantCulture)
+                    .Should().BeOfType<string>().Subject;
+                var info = ToastLevelToIconConverter.Instance
+                    .Convert(ToastLevel.Info, typeof(string), null, CultureInfo.InvariantCulture)
+                    .Should().BeOfType<string>().Subject;
+
+                success.Should().Be(successGlyph);
+                info.Should().Be(infoGlyph);
+            }
+            finally
+            {
+                app.Resources.Remove(successKey);
+                app.Resources.Remove(infoKey);
+            }
+        });
+    }
+
+    [AvaloniaFact]
+    public async Task Brush_converter_reads_error_and_info_resources()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var app = Application.Current!;
+            const string errorKey = "Brush.Toast.Error";
+            const string infoKey = "Brush.Toast.Info";
+            var errorBrush = new SolidColorBrush(Colors.OrangeRed);
+            var infoBrush = new SolidColorBrush(Colors.CornflowerBlue);
+
+            try
+            {
+                app.Resources[errorKey] = errorBrush;
+                app.Resources[infoKey] = infoBrush;
+
+                var error = ToastLevelToBrushConverter.Instance
+                    .Convert(ToastLevel.Error, typeof(IBrush), null, CultureInfo.InvariantCulture)
+                    .Should().BeAssignableTo<IBrush>().Subject;
+                var info = ToastLevelToBrushConverter.Instance
+                    .Convert(ToastLevel.Info, typeof(IBrush), null, CultureInfo.InvariantCulture)
+                    .Should().BeAssignableTo<IBrush>().Subject;
+
+                error.Should().BeSameAs(errorBrush);
+                info.Should().BeSameAs(infoBrush);
+            }
+            finally
+            {
+                app.Resources.Remove(errorKey);
+                app.Resources.Remove(infoKey);
+            }
+        });
+    }
 }
