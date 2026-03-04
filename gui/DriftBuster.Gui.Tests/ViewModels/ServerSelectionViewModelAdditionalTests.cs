@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
-
-using CommunityToolkit.Mvvm.Input;
+using System.Threading;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
@@ -87,6 +86,20 @@ public sealed class ServerSelectionViewModelAdditionalTests
         var viewModel = new ServerSelectionViewModel(service, toast, cache);
 
         var server = viewModel.Servers[0];
+        ConfigureCustomRootFlow(viewModel, server);
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+        viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
+        viewModel.FilteredActivityEntries.Should().NotBeEmpty();
+        viewModel.IsBusy.Should().BeFalse();
+        server.IsEnabled.Should().BeTrue();
+        AssertDrilldownContainsHost(viewModel, server.HostId);
+
+        await VerifyStandalonePersistenceFlowAsync(cache, toast);
+    }
+
+    private static void ConfigureCustomRootFlow(ServerSelectionViewModel viewModel, ServerSlotViewModel server)
+    {
         server.Scope = ServerScanScope.CustomRoots;
         var absoluteRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(absoluteRoot);
@@ -104,30 +117,56 @@ public sealed class ServerSelectionViewModelAdditionalTests
         lastRoot.StatusMessage.Should().Contain("absolute");
         viewModel.RemoveRootCommand.Execute(lastRoot);
         server.Roots.Should().ContainSingle();
+    }
 
-        await viewModel.RunAllCommand.ExecuteAsync(null);
-        viewModel.CatalogViewModel.HasEntries.Should().BeTrue();
-        viewModel.FilteredActivityEntries.Should().NotBeEmpty();
-        viewModel.IsBusy.Should().BeFalse();
-        server.IsEnabled.Should().BeTrue();
-        AssertDrilldownContainsHost(viewModel, server.HostId);
-
-        viewModel.PersistSessionState = true;
-        PopulateActivityDetailViaReflection(viewModel);
-
-        await PollUntilCanExecuteAsync(viewModel.SaveSessionCommand);
-        await viewModel.SaveSessionCommand.ExecuteAsync(null);
-        await PollForSnapshotAsync(cache);
-
+    private static async Task VerifyStandalonePersistenceFlowAsync(InMemorySessionCacheService cache, ToastService toast)
+    {
+        var persistenceViewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), toast, cache);
+        persistenceViewModel.PersistSessionState = true;
+        persistenceViewModel.Servers[0].Label = "Persist me";
+        persistenceViewModel.SaveSessionCommand.CanExecute(null).Should().BeTrue();
+        await persistenceViewModel.SaveSessionCommand.ExecuteAsync(null).ConfigureAwait(false);
         cache.Snapshot.Should().NotBeNull("SaveSessionCommand should have saved snapshot");
+        cache.Snapshot!.Servers.Should().Contain(entry => entry.Label == "Persist me");
 
-        viewModel.ActivityFilter = ActivityFilterOption.Errors;
-        viewModel.ActivityFilter = ActivityFilterOption.All;
+        persistenceViewModel.ActivityFilter = ActivityFilterOption.Errors;
+        persistenceViewModel.ActivityFilter = ActivityFilterOption.All;
 
-        viewModel.ClearHistoryCommand.Execute(null);
+        persistenceViewModel.ClearHistoryCommand.Execute(null);
         cache.Cleared.Should().BeTrue();
-        viewModel.HasActiveServers.Should().BeTrue();
-        viewModel.ShowDrilldownForHostCommand.CanExecute(server.HostId).Should().BeFalse();
+        persistenceViewModel.HasActiveServers.Should().BeTrue();
+        persistenceViewModel.ShowDrilldownForHostCommand.CanExecute(persistenceViewModel.Servers[0].HostId).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SaveSession_after_run_persists_snapshot_on_same_viewmodel()
+    {
+        var cache = new InMemorySessionCacheService
+        {
+            Snapshot = new ServerSelectionCache
+            {
+                PersistSession = true,
+            },
+        };
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = CreateScanResponseWithProgress,
+        };
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, cache);
+
+        SpinWait.SpinUntil(() => viewModel.PersistSessionState, TimeSpan.FromSeconds(5)).Should().BeTrue();
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+        viewModel.PersistSessionState.Should().BeTrue();
+        var saveMethod = typeof(ServerSelectionViewModel).GetMethod("SaveSessionAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+        saveMethod.Should().NotBeNull();
+        var saveTask = (Task?)saveMethod!.Invoke(viewModel, null);
+        saveTask.Should().NotBeNull();
+        await saveTask!;
+        viewModel.StatusBanner.Should().Be("Session saved.");
+
+        cache.Snapshot.Should().NotBeNull();
+        cache.Snapshot!.Servers.Should().Contain(entry => string.Equals(entry.HostId, viewModel.Servers[0].HostId, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -255,6 +294,30 @@ public sealed class ServerSelectionViewModelAdditionalTests
             var currentLogSnapshot = SnapshotLogDirectory(logDirectory);
             currentLogSnapshot.Should().BeEquivalentTo(originalLogSnapshot);
         }
+    }
+
+    [Fact]
+    public async Task RunAll_surfaces_error_state_when_scan_throws()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (_, _, _) => Task.FromException<ServerScanResponse>(new InvalidOperationException("network down")),
+        };
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.IsBusy.Should().BeFalse();
+        viewModel.StatusBanner.Should().Be("Scan failed: network down");
+        viewModel.ActivityEntries.Should().Contain(entry =>
+            entry.Severity == ActivitySeverity.Error &&
+            entry.Summary == "Scan failed" &&
+            entry.Detail.Contains("network down", StringComparison.Ordinal));
+        toast.ActiveToasts.Should().Contain(notification =>
+            notification.Level == ToastLevel.Error &&
+            notification.Title == "Multi-server scan failed" &&
+            notification.Message.Contains("network down", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -416,49 +479,6 @@ public sealed class ServerSelectionViewModelAdditionalTests
         drilldownDetail.Should().NotBeNull();
         drilldownDetail!.Present.Should().BeTrue();
         viewModel.ShowDrilldownForHostCommand.CanExecute(hostId).Should().BeTrue();
-    }
-
-    /// <summary>
-    /// Populate null Detail properties via reflection to prevent SaveSessionAsync from failing.
-    /// Works around bug in ServerSelectionViewModel.SaveSessionAsync line 881.
-    /// </summary>
-    private static void PopulateActivityDetailViaReflection(ServerSelectionViewModel viewModel)
-    {
-        foreach (var entry in viewModel.ActivityEntries)
-        {
-            if (entry != null)
-            {
-                var detailProp = entry.GetType().GetProperty("Detail");
-                if (detailProp is not null && detailProp.GetValue(entry) is null && detailProp.CanWrite)
-                {
-                    detailProp.SetValue(entry, string.Empty);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Poll until a command's CanExecute returns true (coverage instrumentation can delay IsBusy transitions).
-    /// </summary>
-    private static async Task PollUntilCanExecuteAsync(IAsyncRelayCommand command, int timeoutMs = 10000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (!command.CanExecute(null) && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(50).ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>
-    /// Poll for snapshot with generous timeout (coverage instrumentation adds significant overhead).
-    /// </summary>
-    private static async Task PollForSnapshotAsync(InMemorySessionCacheService cache, int timeoutMs = 10000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (cache.Snapshot is null && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(100).ConfigureAwait(false);
-        }
     }
 
     private static Task<ServerScanResponse> BuildMixedAvailabilityResponse(

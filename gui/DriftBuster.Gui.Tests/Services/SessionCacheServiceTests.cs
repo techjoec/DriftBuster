@@ -250,6 +250,98 @@ public sealed class SessionCacheServiceTests
         finalSnapshot!.ActivityFilter.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task SaveAsync_throws_for_null_snapshot()
+    {
+        using var temp = new TempDirectory();
+        var service = new SessionCacheService(temp.Path);
+
+        Func<Task> act = () => service.SaveAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task Default_migration_copies_legacy_cache_when_destination_missing()
+    {
+        SessionCacheMigrationCounters.Reset();
+
+        using var temp = new TempDirectory();
+        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
+
+        var legacySnapshot = new ServerSelectionCache
+        {
+            PersistSession = true,
+            ActivityFilter = "legacy",
+        };
+
+        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions));
+
+        var service = new SessionCacheService(temp.Path, legacyPath, migrationHandler: null);
+        var loaded = await service.LoadAsync();
+
+        loaded.Should().NotBeNull();
+        loaded!.ActivityFilter.Should().Be("legacy");
+        File.Exists(Path.Combine(temp.Path, "multi-server.json")).Should().BeTrue();
+        SessionCacheMigrationCounters.Successes.Should().Be(1);
+        SessionCacheMigrationCounters.Failures.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Default_migration_is_skipped_when_destination_exists()
+    {
+        SessionCacheMigrationCounters.Reset();
+
+        using var temp = new TempDirectory();
+        var destinationPath = Path.Combine(temp.Path, "multi-server.json");
+        var destinationSnapshot = new ServerSelectionCache
+        {
+            PersistSession = false,
+            ActivityFilter = "current",
+        };
+        await File.WriteAllTextAsync(destinationPath, JsonSerializer.Serialize(destinationSnapshot, SerializerOptions));
+
+        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
+        await File.WriteAllTextAsync(legacyPath, "{\"activity_filter\":\"legacy\"}");
+
+        var service = new SessionCacheService(temp.Path, legacyPath, migrationHandler: null);
+        var loaded = await service.LoadAsync();
+
+        loaded.Should().NotBeNull();
+        loaded!.ActivityFilter.Should().Be("current");
+        SessionCacheMigrationCounters.Successes.Should().Be(0);
+        SessionCacheMigrationCounters.Failures.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Clear_waits_for_in_progress_migration()
+    {
+        using var temp = new TempDirectory();
+        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
+        await File.WriteAllTextAsync(legacyPath, "{}");
+
+        var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task BlockingMigration(string _, string __, CancellationToken ___)
+        {
+            migrationStarted.TrySetResult(true);
+            return migrationRelease.Task;
+        }
+
+        var service = new SessionCacheService(temp.Path, legacyPath, BlockingMigration);
+        var clearTask = Task.Run(service.Clear);
+
+        await migrationStarted.Task;
+        clearTask.IsCompleted.Should().BeFalse();
+
+        migrationRelease.TrySetResult(true);
+        await clearTask;
+    }
+
     private sealed class TempDirectory : IDisposable
     {
         public TempDirectory()
