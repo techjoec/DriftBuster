@@ -146,20 +146,27 @@ pip-licenses
 - `types.py` - Core type definitions
 
 **Format Plugins** (`formats/`):
-- Pluggable format detectors (JSON, XML, YAML, TOML, INI, HCL, Dockerfile, text, binary, Registry)
+- Pluggable format detectors (JSON, XML, YAML, TOML, INI, HCL, Conf, Dockerfile, text, binary, Registry)
 - Each plugin: `formats/<slug>/plugin.py` implementing `FormatPlugin` protocol
+- `format_registry.py` - Central plugin registration and lookup
 - Register via `driftbuster.formats.register()` at import time
 - Each returns `DetectionMatch` or `None` with confidence scoring (0.5 start, 0.95 cap)
 
 **Additional Modules**:
 - `reporting/` - JSON/text/HTML output adapters
 - `hunt.py` - Secret/identifier scanning with regex rules
+- `secret_scanning.py` - Secret detection engine (loads `secret_rules.json`)
 - `offline_runner.py` - Process pre-captured snapshots
+- `offline_compliance.py` - Offline compliance audit tooling
 - `multi_server.py` - Multi-host orchestration with dataclass-based plan definitions
 - `profile_cli.py`, `run_profiles_cli.py` - Profile generation, diff, scheduling
 - `registry_cli.py`, `registry/` - Windows Registry live scan support
 - `sql/` - SQLite export with column masking/hashing
 - `notifications/` - Slack, Teams, SMTP alerting
+- `scheduler.py` - Profile scheduling engine
+- `accessibility.py` - Accessibility audit support
+- `font_health.py`, `font_regression.py` - Font system diagnostics
+- `token_approvals.py` - Token-based approval workflow
 
 **Data Root** (OS-specific):
 - Windows: `%LOCALAPPDATA%/DriftBuster`
@@ -178,12 +185,14 @@ pip-licenses
 
 **Avalonia GUI** (`DriftBuster.Gui/`):
 - Target: .NET 10, nullable + implicit usings enabled
-- **ViewModels** (all implement `IDisposable` for proper cleanup):
-  - `ServerSelectionViewModel` - Main orchestration, drag/drop server management
+- **ViewModels** (all implement `IDisposable` for proper cleanup; `ls gui/DriftBuster.Gui/ViewModels/` for full list):
+  - `MainWindowViewModel` - Top-level shell, tab navigation
+  - `ServerSelectionViewModel` - Multi-server orchestration, drag/drop server management
   - `ConfigDrilldownViewModel` - Configuration detail exploration
   - `DiffViewModel` - Side-by-side comparison view
-  - `HuntViewModel` - Secret scanning results
+  - `HuntViewModel` / `SecretScannerSettingsViewModel` - Secret scanning
   - `RunProfilesViewModel` - Profile management and scheduling
+  - `ResultsCatalogViewModel` - Catalog browsing with sort/filter
 - **Tabs**: Catalog, Drilldown, Hunt, Profiles, Multi-server
 - **Multi-server orchestration**:
   - Drag-to-reorder host cards
@@ -256,11 +265,7 @@ pip-licenses
 - New format plugins: ≥90% per-file coverage with focused tests
 
 **Test Organization**:
-- Python: `tests/` mirrors `src/driftbuster/` structure
-- `tests/formats/` contains plugin-specific suites
-- `tests/multi_server/` validates orchestration logic
-- `tests/registry/` Windows Registry tests
-- `tests/powershell/` PowerShell module integration
+- Python: `tests/` mirrors `src/driftbuster/` structure (`ls tests/` for current subdirectories)
 - .NET: `gui/DriftBuster.Gui.Tests/` with headless Avalonia tests
 
 **Running Tests**:
