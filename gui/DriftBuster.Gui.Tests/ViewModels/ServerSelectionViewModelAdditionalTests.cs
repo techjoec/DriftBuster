@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 
@@ -158,11 +157,8 @@ public sealed class ServerSelectionViewModelAdditionalTests
         SpinWait.SpinUntil(() => viewModel.PersistSessionState, TimeSpan.FromSeconds(5)).Should().BeTrue();
         await viewModel.RunAllCommand.ExecuteAsync(null);
         viewModel.PersistSessionState.Should().BeTrue();
-        var saveMethod = typeof(ServerSelectionViewModel).GetMethod("SaveSessionAsync", BindingFlags.Instance | BindingFlags.NonPublic);
-        saveMethod.Should().NotBeNull();
-        var saveTask = (Task?)saveMethod!.Invoke(viewModel, null);
-        saveTask.Should().NotBeNull();
-        await saveTask!;
+        viewModel.SaveSessionCommand.CanExecute(null).Should().BeTrue();
+        await viewModel.SaveSessionCommand.ExecuteAsync(null);
         viewModel.StatusBanner.Should().Be("Session saved.");
 
         cache.Snapshot.Should().NotBeNull();
@@ -381,6 +377,145 @@ public sealed class ServerSelectionViewModelAdditionalTests
     }
 
     [Fact]
+    public async Task RunAll_requires_active_servers_and_available_run_gate()
+    {
+        var blockingStart = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseBlockingRun = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = async (plans, progress, token) =>
+            {
+                blockingStart.TrySetResult(true);
+                await releaseBlockingRun.Task.ConfigureAwait(false);
+                return BuildResponse(plans.First().HostId, plans.ToList());
+            },
+        };
+        var viewModel = new ServerSelectionViewModel(service, new ToastService(action => action()), new InMemorySessionCacheService());
+        foreach (var server in viewModel.Servers)
+        {
+            server.IsEnabled = false;
+        }
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+        viewModel.StatusBanner.Should().Be("Enable at least one server to run.");
+
+        viewModel.Servers[0].IsEnabled = true;
+        var firstRun = viewModel.RunAllCommand.ExecuteAsync(null);
+        await blockingStart.Task;
+        try
+        {
+            await viewModel.RunAllCommand.ExecuteAsync(null);
+            viewModel.StatusBanner.Should().Be("Another multi-server run is already in progress.");
+        }
+        finally
+        {
+            releaseBlockingRun.TrySetResult(true);
+            await firstRun;
+        }
+    }
+
+    [Fact]
+    public void Root_add_and_remove_guards_update_state()
+    {
+        var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), new InMemorySessionCacheService());
+        var slot = viewModel.Servers[0];
+        slot.Scope = ServerScanScope.CustomRoots;
+
+        slot.NewRootPath = " ";
+        viewModel.AddRootCommand.Execute(slot);
+        slot.RootInputError.Should().Be("Enter a root path.");
+
+        var uniqueRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "driftbuster-tests", Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(uniqueRoot);
+        try
+        {
+            slot.NewRootPath = uniqueRoot;
+            viewModel.AddRootCommand.Execute(slot);
+
+            slot.NewRootPath = uniqueRoot;
+            viewModel.AddRootCommand.Execute(slot);
+            slot.RootInputError.Should().Be("Root already added.");
+        }
+        finally
+        {
+            if (Directory.Exists(uniqueRoot))
+            {
+                Directory.Delete(uniqueRoot, recursive: true);
+            }
+        }
+
+        var loneRoot = slot.Roots.First();
+        slot.ReplaceRoots(new[] { loneRoot });
+        viewModel.RemoveRootCommand.Execute(loneRoot);
+
+        loneRoot.ValidationState.Should().Be(RootValidationState.Invalid);
+        loneRoot.StatusMessage.Should().Be("At least one root is required.");
+    }
+
+    [Fact]
+    public async Task Save_and_load_session_failures_surface_status_and_activity()
+    {
+        var loadFailure = new ExplodingSessionCacheService(throwOnLoad: new InvalidOperationException("load-failed"));
+        var loadViewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), loadFailure);
+        SpinWait.SpinUntil(() => loadViewModel.StatusBanner.Contains("Failed to load session", StringComparison.Ordinal), TimeSpan.FromSeconds(2))
+            .Should().BeTrue();
+        loadViewModel.ActivityEntries.Should().Contain(entry => entry.Summary == "Failed to load session");
+
+        var saveFailure = new ExplodingSessionCacheService(throwOnSave: new InvalidOperationException("save-failed"));
+        var saveToast = new ToastService(action => action());
+        var saveViewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), saveToast, saveFailure)
+        {
+            PersistSessionState = true,
+        };
+
+        await saveViewModel.SaveSessionCommand.ExecuteAsync(null);
+
+        saveViewModel.StatusBanner.Should().Contain("Failed to save session");
+        saveViewModel.ActivityEntries.Should().Contain(entry => entry.Summary == "Failed to save session");
+        saveToast.ActiveToasts.Should().Contain(notification => notification.Title == "Session save failed");
+    }
+
+    [Fact]
+    public async Task ShowDrilldownForHost_reports_blocking_reasons()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, _, _) => Task.FromResult(BuildResponse(plans.First().HostId, plans.ToList())),
+        };
+        var viewModel = new ServerSelectionViewModel(service, new ToastService(action => action()), new InMemorySessionCacheService());
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.ShowDrilldownForHostCommand.Execute(null);
+
+        var host = viewModel.Servers[0];
+        viewModel.IsBusy = true;
+        viewModel.ShowDrilldownForHostCommand.Execute(host.HostId);
+        viewModel.StatusBanner.Should().Contain("Finish current scans");
+
+        viewModel.IsBusy = false;
+        viewModel.ShowDrilldownForHostCommand.Execute("missing-host");
+        viewModel.StatusBanner.Should().Contain("no longer available");
+
+        host.IsEnabled = false;
+        viewModel.ShowDrilldownForHostCommand.Execute(host.HostId);
+        viewModel.StatusBanner.Should().Contain("Enable the host");
+    }
+
+    [Fact]
+    public void LogActivity_enforces_max_activity_item_limit()
+    {
+        var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), new InMemorySessionCacheService());
+        var server = viewModel.Servers[0];
+        for (var i = 0; i < 260; i++)
+        {
+            server.NewRootPath = " ";
+            viewModel.AddRootCommand.Execute(server);
+        }
+
+        viewModel.ActivityEntries.Count.Should().Be(200);
+    }
+
+    [Fact]
     public void Virtualization_flags_follow_performance_profile()
     {
         var service = new FakeDriftbusterService();
@@ -392,18 +527,17 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
         var profile = new PerformanceProfile(virtualizationThreshold: 2);
         var viewModel = new ServerSelectionViewModel(service, toast, performanceProfile: profile);
+        var server = viewModel.Servers[0];
 
         viewModel.UseVirtualizedActivityFeed.Should().BeFalse();
         viewModel.UseVirtualizedServerList.Should().BeTrue();
 
-        var logActivity = typeof(ServerSelectionViewModel)
-            .GetMethod("LogActivity", BindingFlags.Instance | BindingFlags.NonPublic);
-        logActivity.Should().NotBeNull();
-
-        logActivity!.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "one", null, ActivityCategory.General });
+        server.NewRootPath = " ";
+        viewModel.AddRootCommand.Execute(server);
         viewModel.UseVirtualizedActivityFeed.Should().BeFalse();
 
-        logActivity.Invoke(viewModel, new object?[] { ActivitySeverity.Info, "two", null, ActivityCategory.General });
+        server.NewRootPath = " ";
+        viewModel.AddRootCommand.Execute(server);
         viewModel.UseVirtualizedActivityFeed.Should().BeTrue();
     }
 
@@ -462,23 +596,11 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
     private static void AssertDrilldownContainsHost(ServerSelectionViewModel viewModel, string hostId)
     {
-        var response = (ServerScanResponse?)typeof(ServerSelectionViewModel)
-            .GetField("_lastResponse", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .GetValue(viewModel);
-        response.Should().NotBeNull();
-        response!.Drilldown.Should().NotBeNull();
-        response.Drilldown.Should().NotBeEmpty();
-        var drilldownHosts = response.Drilldown!
-            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
-            .Select(detail => detail.HostId)
-            .ToList();
-        drilldownHosts.Should().Contain(hostId);
-        var drilldownDetail = response.Drilldown!
-            .SelectMany(entry => entry.Servers ?? Array.Empty<ConfigServerDetail>())
-            .FirstOrDefault(detail => string.Equals(detail.HostId, hostId, StringComparison.OrdinalIgnoreCase));
-        drilldownDetail.Should().NotBeNull();
-        drilldownDetail!.Present.Should().BeTrue();
         viewModel.ShowDrilldownForHostCommand.CanExecute(hostId).Should().BeTrue();
+        viewModel.ShowDrilldownForHostCommand.Execute(hostId);
+        viewModel.DrilldownViewModel.Should().NotBeNull();
+        viewModel.DrilldownViewModel!.Servers.Should().Contain(server =>
+            string.Equals(server.HostId, hostId, StringComparison.OrdinalIgnoreCase) && server.Present);
     }
 
     private static Task<ServerScanResponse> BuildMixedAvailabilityResponse(
@@ -543,6 +665,30 @@ public sealed class ServerSelectionViewModelAdditionalTests
     }
 
     private readonly record struct LogFileSnapshot(DateTime LastWriteUtc, string Content);
+
+    private sealed class ExplodingSessionCacheService : ISessionCacheService
+    {
+        private readonly Exception? _throwOnLoad;
+        private readonly Exception? _throwOnSave;
+
+        public ExplodingSessionCacheService(Exception? throwOnLoad = null, Exception? throwOnSave = null)
+        {
+            _throwOnLoad = throwOnLoad;
+            _throwOnSave = throwOnSave;
+        }
+
+        public Task<ServerSelectionCache?> LoadAsync(CancellationToken cancellationToken = default)
+            => _throwOnLoad is null
+                ? Task.FromResult<ServerSelectionCache?>(new ServerSelectionCache())
+                : Task.FromException<ServerSelectionCache?>(_throwOnLoad);
+
+        public Task SaveAsync(ServerSelectionCache snapshot, CancellationToken cancellationToken = default)
+            => _throwOnSave is null ? Task.CompletedTask : Task.FromException(_throwOnSave);
+
+        public void Clear()
+        {
+        }
+    }
 
     private sealed class TempDirectory : IDisposable
     {

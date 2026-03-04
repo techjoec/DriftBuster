@@ -47,4 +47,18 @@ public sealed class MainWindowUiTests
         window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(32, 24, 32, 24));
         window.Resources["Toast.Width"].Should().Be(440d);
     }
+
+    [AvaloniaFact]
+    public void Closing_window_disposes_responsive_subscription_path()
+    {
+        HeadlessFixture.EnsureFonts();
+
+        var window = new MainWindow
+        {
+            DataContext = new MainWindowViewModel(),
+        };
+
+        var action = () => window.Close();
+        action.Should().NotThrow();
+    }
 }

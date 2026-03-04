@@ -361,6 +361,148 @@ public sealed class ServerSelectionViewTests
         view.Resources["ServerSelection.StackSpacing"].Should().Be(24d);
     }
 
+    [AvaloniaFact]
+    public void DataContextChanged_rebinds_view_model_subscription()
+    {
+        var first = CreateViewModel();
+        var second = CreateViewModel();
+        var view = new ServerSelectionView();
+
+        view.DataContext = first;
+        ReadAttachedViewModel(view).Should().BeSameAs(first);
+
+        view.DataContext = second;
+        ReadAttachedViewModel(view).Should().BeSameAs(second);
+    }
+
+    [AvaloniaFact]
+    public void CopyActivityRequested_ignores_blank_payload()
+    {
+        var view = new ServerSelectionView
+        {
+            DataContext = CreateViewModel(),
+        };
+
+        var method = typeof(ServerSelectionView).GetMethod("OnCopyActivityRequested", BindingFlags.Instance | BindingFlags.NonPublic);
+        method.Should().NotBeNull();
+        method!.Invoke(view, new object?[] { null, new ValueEventArgs<string>(" ") });
+    }
+
+    [AvaloniaFact]
+    public void DragOver_sets_move_effect_for_valid_reorder_and_none_for_invalid()
+    {
+        var viewModel = CreateViewModel();
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        var sourceSlot = viewModel.Servers[0];
+        var targetSlot = viewModel.Servers[1];
+        var targetCard = new Border
+        {
+            DataContext = targetSlot,
+        };
+        var layoutSize = new Size(320, 160);
+        targetCard.Measure(layoutSize);
+        targetCard.Arrange(new Rect(layoutSize));
+
+        var dragOver = typeof(ServerSelectionView)
+            .GetMethod("OnServerCardDragOver", BindingFlags.Instance | BindingFlags.NonPublic);
+        dragOver.Should().NotBeNull();
+
+        var serverSlotFormat = DataFormat.CreateStringApplicationFormat("driftbuster.server-slot");
+
+        var validTransfer = new DataTransfer();
+        validTransfer.Add(DataTransferItem.Create(serverSlotFormat, sourceSlot.HostId));
+        var validArgs = new DragEventArgs(DragDrop.DragOverEvent, validTransfer, targetCard, new Point(10, 10), KeyModifiers.None);
+
+        dragOver!.Invoke(view, new object?[] { targetCard, validArgs });
+        validArgs.Handled.Should().BeTrue();
+        validArgs.DragEffects.Should().Be(DragDropEffects.Move);
+
+        var invalidTransfer = new DataTransfer();
+        invalidTransfer.Add(DataTransferItem.Create(serverSlotFormat, targetSlot.HostId));
+        var invalidArgs = new DragEventArgs(DragDrop.DragOverEvent, invalidTransfer, targetCard, new Point(10, 10), KeyModifiers.None);
+
+        dragOver.Invoke(view, new object?[] { targetCard, invalidArgs });
+        invalidArgs.Handled.Should().BeTrue();
+        invalidArgs.DragEffects.Should().Be(DragDropEffects.None);
+    }
+
+    [AvaloniaFact]
+    public void PointerPressed_wrapper_ignores_non_left_or_busy_or_invalid_sender()
+    {
+        var viewModel = CreateViewModel();
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+        var harness = new RecordingDragDropService();
+        view.DragDropService = harness;
+
+        var method = typeof(ServerSelectionView)
+            .GetMethod("OnServerCardPointerPressed", BindingFlags.Instance | BindingFlags.NonPublic);
+        method.Should().NotBeNull();
+
+        var pointer = new Avalonia.Input.Pointer(3, PointerType.Mouse, true);
+        var rightClick = new PointerPointProperties(RawInputModifiers.RightMouseButton, PointerUpdateKind.RightButtonPressed);
+        var nonLeftArgs = new PointerPressedEventArgs(view, pointer, view, new Point(8, 8), 0, rightClick, KeyModifiers.None, 1);
+        method!.Invoke(view, new object?[] { view, nonLeftArgs });
+        harness.LastArgs.Should().BeNull();
+
+        viewModel.IsBusy = true;
+        var leftClick = new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed);
+        var busyArgs = new PointerPressedEventArgs(view, pointer, view, new Point(10, 10), 0, leftClick, KeyModifiers.None, 1);
+        method.Invoke(view, new object?[] { view, busyArgs });
+        harness.LastArgs.Should().BeNull();
+
+        viewModel.IsBusy = false;
+        method.Invoke(view, new object?[] { new Border(), busyArgs });
+        harness.LastArgs.Should().BeNull();
+    }
+
+    [AvaloniaFact]
+    public void Drag_handlers_ignore_invalid_payloads()
+    {
+        var viewModel = CreateViewModel();
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        var target = new Border
+        {
+            DataContext = viewModel.Servers[0],
+        };
+        target.Measure(new Size(320, 160));
+        target.Arrange(new Rect(new Size(320, 160)));
+
+        var dragOver = typeof(ServerSelectionView)
+            .GetMethod("OnServerCardDragOver", BindingFlags.Instance | BindingFlags.NonPublic);
+        var drop = typeof(ServerSelectionView)
+            .GetMethod("OnServerCardDrop", BindingFlags.Instance | BindingFlags.NonPublic);
+        dragOver.Should().NotBeNull();
+        drop.Should().NotBeNull();
+
+        var emptyData = new DataTransfer();
+        var overArgs = new DragEventArgs(DragDrop.DragOverEvent, emptyData, target, new Point(4, 4), KeyModifiers.None);
+        dragOver!.Invoke(view, new object?[] { target, overArgs });
+        overArgs.DragEffects.Should().Be(DragDropEffects.None);
+
+        var dropArgs = new DragEventArgs(DragDrop.DropEvent, emptyData, target, new Point(10, 10), KeyModifiers.None);
+        drop!.Invoke(view, new object?[] { target, dropArgs });
+        dropArgs.Handled.Should().BeTrue();
+        dropArgs.DragEffects.Should().Be(DragDropEffects.None);
+    }
+
+    private static ServerSelectionViewModel? ReadAttachedViewModel(ServerSelectionView view)
+    {
+        var field = typeof(ServerSelectionView).GetField("_viewModel", BindingFlags.Instance | BindingFlags.NonPublic);
+        field.Should().NotBeNull();
+        return field!.GetValue(view) as ServerSelectionViewModel;
+    }
+
     private sealed class RecordingDragDropService : IDragDropService
     {
         private readonly TaskCompletionSource<DragDropEffects> _completion = new();

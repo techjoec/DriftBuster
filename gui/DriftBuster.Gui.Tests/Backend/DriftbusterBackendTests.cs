@@ -67,6 +67,41 @@ public sealed class DriftbusterBackendTests
     }
 
     [Fact]
+    public async Task DiffAsync_supports_multiple_comparison_paths()
+    {
+        var baseline = Path.GetTempFileName();
+        var comparisonA = Path.GetTempFileName();
+        var comparisonB = Path.GetTempFileName();
+
+        try
+        {
+            File.WriteAllText(baseline, "alpha\n");
+            File.WriteAllText(comparisonA, "alpha\nbeta\n");
+            File.WriteAllText(comparisonB, "alpha\ngamma\n");
+
+            var result = await _backend.DiffAsync(new[] { baseline, comparisonA, comparisonB });
+
+            result.Comparisons.Should().HaveCount(2);
+            result.Comparisons[0].Metadata.LeftPath.Should().Be(baseline);
+            result.Comparisons[1].Metadata.LeftPath.Should().Be(baseline);
+            result.Comparisons.Select(comparison => comparison.To).Should().Contain(new[]
+            {
+                Path.GetFileName(comparisonA),
+                Path.GetFileName(comparisonB),
+            });
+
+            using var document = JsonDocument.Parse(result.SanitizedJson);
+            document.RootElement.GetProperty("comparison_count").GetInt32().Should().Be(2);
+        }
+        finally
+        {
+            File.Delete(baseline);
+            File.Delete(comparisonA);
+            File.Delete(comparisonB);
+        }
+    }
+
+    [Fact]
     public async Task DiffAsync_throws_for_missing_comparisons()
     {
         var baseline = Path.GetTempFileName();
