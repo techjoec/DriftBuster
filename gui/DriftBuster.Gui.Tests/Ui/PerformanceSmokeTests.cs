@@ -3,11 +3,13 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using DriftBuster.Gui.Services;
+using DriftBuster.Gui.Tests;
 
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
+[Collection(EnvironmentVariablesCollection.Name)]
 public sealed class PerformanceSmokeTests
 {
     [Fact]

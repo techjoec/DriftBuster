@@ -134,6 +134,68 @@ public class MainWindowViewModelTests
         runtime.Applied[^1].Id.Should().Be("light-plus");
     }
 
+    [Fact]
+    public void ShowMultiServer_uses_server_factory_and_exposes_performance_profile()
+    {
+        var service = new FakeDriftbusterService { PingResponse = "pong" };
+        var toastService = new ToastService(action => action());
+        var runtime = CreateDefaultThemeRuntime();
+        var expectedProfile = new PerformanceProfile(virtualizationThreshold: 123, forceVirtualizationOverride: true);
+        var serverView = new object();
+
+        object ServerFactory(IDriftbusterService _, IToastService __, PerformanceProfile profile)
+        {
+            profile.VirtualizationThreshold.Should().Be(expectedProfile.VirtualizationThreshold);
+            profile.ForceVirtualizationOverride.Should().Be(expectedProfile.ForceVirtualizationOverride);
+            return serverView;
+        }
+
+        var viewModel = new MainWindowViewModel(
+            service,
+            toastService,
+            _ => new object(),
+            (_, _) => new object(),
+            _ => new object(),
+            ServerFactory,
+            performanceProfile: expectedProfile,
+            themeRuntime: runtime);
+
+        viewModel.ShowMultiServerCommand.Execute(null);
+
+        viewModel.IsMultiServerSelected.Should().BeTrue();
+        viewModel.CurrentView.Should().BeSameAs(serverView);
+        viewModel.PerformanceProfile.Should().BeSameAs(expectedProfile);
+    }
+
+    [Fact]
+    public void Theme_selector_ignores_null_selection_changes()
+    {
+        var options = new List<ThemeOption>
+        {
+            new("dark-plus", "Dark+", ThemeVariant.Dark, "Palette.DarkPlus"),
+            new("light-plus", "Light+", ThemeVariant.Light, "Palette.LightPlus"),
+        };
+
+        var runtime = new FakeThemeRuntime(options);
+        var service = new FakeDriftbusterService { PingResponse = "pong" };
+        var toastService = new ToastService(action => action());
+        var viewModel = new MainWindowViewModel(
+            service,
+            toastService,
+            _ => new object(),
+            (_, _) => new object(),
+            _ => new object(),
+            themeRuntime: runtime);
+
+        runtime.Applied.Should().HaveCount(1);
+
+        viewModel.SelectedTheme = null;
+
+        runtime.Applied.Should().HaveCount(1);
+        viewModel.SelectedTheme = options[1];
+        runtime.Applied.Should().HaveCount(2);
+    }
+
     private static FakeThemeRuntime CreateDefaultThemeRuntime()
     {
         return new FakeThemeRuntime(new List<ThemeOption>

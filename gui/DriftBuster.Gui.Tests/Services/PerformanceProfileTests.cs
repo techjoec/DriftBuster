@@ -1,7 +1,9 @@
 using DriftBuster.Gui.Services;
+using DriftBuster.Gui.Tests;
 
 namespace DriftBuster.Gui.Tests.Services;
 
+[Collection(EnvironmentVariablesCollection.Name)]
 public sealed class PerformanceProfileTests : IDisposable
 {
     private readonly string? _origThreshold;

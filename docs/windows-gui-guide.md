@@ -255,7 +255,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 - Full coverage expectations:
   - Debug collect: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
   - Release collect: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
-  - Enforce scoped .NET threshold: `python -m scripts.coverage_report --dotnet-threshold 90 --enforce-dotnet-threshold`
+  - Enforce changed-line .NET threshold: `python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold`
   - XAML compilation gate: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:EnableAvaloniaXamlCompilation=true`
 - Diagnostic harness: set `AVALONIA_INSPECT=1` and run `--filter FullyQualifiedName=DriftBuster.Gui.Tests.Ui.AvaloniaSetupInspection.LogSetupState` to capture resource/style registration in `artifacts/codexcli-inspect.log`.
 
