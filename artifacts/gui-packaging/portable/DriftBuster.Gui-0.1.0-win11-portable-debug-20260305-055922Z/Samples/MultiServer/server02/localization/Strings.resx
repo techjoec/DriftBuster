@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns="http://schemas.microsoft.com/resx/2005">
+  <data name="AppTitle" xml:space="preserve">
+    <value>DriftBuster</value>
+  </data>
+  <data name="WelcomeMessage" xml:space="preserve">
+    <value>Welcome to DriftBuster (Dev)</value>
+  </data>
+</root>
+
