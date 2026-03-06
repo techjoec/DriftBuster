@@ -53,6 +53,18 @@ _progress_events: dict[str, tuple[float, str, str]] = {}
 _progress_lock = threading.Lock()
 
 
+def _emit_json_line(payload: Mapping[str, object]) -> None:
+    """Write newline-delimited JSON using ASCII-safe escaping.
+
+    Windows console code pages can fail on unpaired characters (for example
+    U+FEFF from file content). ensure_ascii=True keeps transport robust.
+    """
+
+    sys.stdout.write(json.dumps(payload, ensure_ascii=True))
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
 def _reset_progress_throttle_state() -> None:
     with _progress_lock:
         _progress_events.clear()
@@ -763,8 +775,7 @@ def emit_progress(host_id: str, status: str, message: str, *, _now: float | None
             "timestamp": _utc_timestamp(),
         },
     }
-    print(json.dumps(payload, ensure_ascii=False))
-    sys.stdout.flush()
+    _emit_json_line(payload)
 
 
 def _load_request() -> Mapping[str, object]:
@@ -789,6 +800,9 @@ def _build_plans(request: Mapping[str, object]) -> list[Plan]:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     try:
         request = _load_request()
         schema_version = str(request.get("schema_version") or SCHEMA_VERSION)
@@ -798,18 +812,15 @@ def main() -> int:
         plans = _build_plans(request)
         runner = MultiServerRunner(cache_dir)
         response = runner.run(plans)
-        print(json.dumps({"type": "result", "payload": response}, ensure_ascii=False))
-        sys.stdout.flush()
+        _emit_json_line({"type": "result", "payload": response})
         return 0
     except SystemExit as exc:
         message = str(exc) or "Request aborted"
-        print(json.dumps({"type": "error", "message": message}, ensure_ascii=False))
-        sys.stdout.flush()
+        _emit_json_line({"type": "error", "message": message})
         return 1
     except Exception as exc:  # pragma: no cover - defensive fallback
         message = f"Unhandled error: {exc}"
-        print(json.dumps({"type": "error", "message": message}, ensure_ascii=False))
-        sys.stdout.flush()
+        _emit_json_line({"type": "error", "message": message})
         return 1
 
 

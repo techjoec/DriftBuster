@@ -14,14 +14,25 @@ namespace DriftBuster.Gui.ViewModels
     public sealed partial class ServerSlotViewModel : ObservableObject
     {
         private readonly ServerSelectionViewModel _owner;
+        private readonly string _defaultLabel;
         private bool _suppressRootEvents;
+        private string? _autoAssignedLabel;
 
-        public ServerSlotViewModel(ServerSelectionViewModel owner, int index, string label, bool isEnabled)
+        public ServerSlotViewModel(
+            ServerSelectionViewModel owner,
+            int index,
+            string label,
+            bool isEnabled,
+            string? hostId = null,
+            string? defaultLabel = null)
         {
             _owner = owner;
             Index = index;
-            HostId = $"host-{index + 1:00}";
+            HostId = string.IsNullOrWhiteSpace(hostId)
+                ? $"host-{index + 1:00}"
+                : hostId.Trim();
             _label = label;
+            _defaultLabel = string.IsNullOrWhiteSpace(defaultLabel) ? label : defaultLabel.Trim();
             _isEnabled = isEnabled;
             Roots.CollectionChanged += OnRootsChanged;
             if (isEnabled)
@@ -148,6 +159,11 @@ namespace DriftBuster.Gui.ViewModels
                 return "No roots configured.";
             }
 
+            if (Scope != ServerScanScope.CustomRoots)
+            {
+                return "Roots ignored for this scope.";
+            }
+
             var invalidMessages = Roots
                 .Where(root => root.ValidationState == RootValidationState.Invalid)
                 .Select(root => string.IsNullOrWhiteSpace(root.StatusMessage) ? "Root requires attention." : root.StatusMessage!)
@@ -190,6 +206,27 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             _owner.RevalidateRoots(this);
+        }
+
+        internal void TryAutoAssignLabelFromRoot(string suggestedLabel)
+        {
+            if (string.IsNullOrWhiteSpace(suggestedLabel))
+            {
+                return;
+            }
+
+            var trimmed = suggestedLabel.Trim();
+            var canAutoAssign =
+                string.Equals(Label, _defaultLabel, StringComparison.Ordinal) ||
+                (!string.IsNullOrWhiteSpace(_autoAssignedLabel) && string.Equals(Label, _autoAssignedLabel, StringComparison.Ordinal));
+
+            if (!canAutoAssign || string.Equals(Label, trimmed, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Label = trimmed;
+            _autoAssignedLabel = trimmed;
         }
 
         internal void AddRoot(RootEntryViewModel entry)

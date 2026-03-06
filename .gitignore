@@ -84,6 +84,8 @@ artifacts/*
 !artifacts/encryption/**
 !artifacts/gui-packaging/
 !artifacts/gui-packaging/**
+artifacts/gui-packaging/portable/
+artifacts/gui-packaging/portable/**
 !artifacts/gui-accessibility/
 !artifacts/gui-accessibility/**
 !artifacts/builds/

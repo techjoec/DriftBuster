@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
@@ -81,6 +82,11 @@ namespace DriftBuster.Gui.Views
                 return;
             }
 
+            if (IsInteractivePointerSource(e.Source, control))
+            {
+                return;
+            }
+
             var data = new DataTransfer();
             data.Add(DataTransferItem.Create(ServerDragDataFormat, slot.HostId));
             data.Add(DataTransferItem.Create(DataFormat.Text, slot.Label));
@@ -134,6 +140,24 @@ namespace DriftBuster.Gui.Views
             }
 
             return null;
+        }
+
+        private static bool IsInteractivePointerSource(object? source, Control card)
+        {
+            if (source is not Visual visual)
+            {
+                return false;
+            }
+
+            for (var current = visual; current is not null && current != card; current = current.GetVisualParent())
+            {
+                if (current is TextBox or ComboBox or Button or ToggleSwitch)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

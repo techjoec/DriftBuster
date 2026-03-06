@@ -97,6 +97,11 @@ def test_main_executes_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setattr(
         release_build,
+        "stage_local_portable_dev",
+        lambda rid="win-x64": calls.append(("stage", rid)),
+    )
+    monkeypatch.setattr(
+        release_build,
         "parse_args",
         lambda: SimpleNamespace(skip_tests=False, runtime=None, self_contained=False),
     )
@@ -104,7 +109,28 @@ def test_main_executes_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
     result = release_build.main()
 
     assert result == 0
-    assert calls == ["clean", ("tests", False), "python", ("gui", None, False)]
+    assert calls == ["clean", ("tests", False), "python", ("gui", None, False), ("stage", "win-x64")]
+
+
+def test_main_skips_local_portable_stage_for_non_windows_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[Any] = []
+
+    monkeypatch.setattr(release_build.Path, "cwd", lambda: release_build.REPO_ROOT)
+    monkeypatch.setattr(release_build, "clean_artifacts", lambda: calls.append("clean"))
+    monkeypatch.setattr(release_build, "run_tests", lambda skip_tests: calls.append(("tests", skip_tests)))
+    monkeypatch.setattr(release_build, "build_python_package", lambda: calls.append("python"))
+    monkeypatch.setattr(release_build, "build_gui", lambda runtime, self_contained: calls.append(("gui", runtime, self_contained)))
+    monkeypatch.setattr(release_build, "stage_local_portable_dev", lambda rid="win-x64": calls.append(("stage", rid)))
+    monkeypatch.setattr(
+        release_build,
+        "parse_args",
+        lambda: SimpleNamespace(skip_tests=True, runtime="linux-x64", self_contained=False, no_installer=True),
+    )
+
+    result = release_build.main()
+
+    assert result == 0
+    assert calls == ["clean", ("tests", True), "python", ("gui", "linux-x64", False)]
 
 
 def test_main_requires_repository_root(monkeypatch: pytest.MonkeyPatch) -> None:

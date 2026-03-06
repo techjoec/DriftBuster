@@ -97,6 +97,106 @@ public sealed class ServerSelectionViewModelAdditionalTests
         await VerifyStandalonePersistenceFlowAsync(cache, toast);
     }
 
+    [Fact]
+    public void AddServerCommand_appends_enabled_hosts_with_stable_ids()
+    {
+        var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), new InMemorySessionCacheService());
+        viewModel.Servers.Should().HaveCount(6);
+
+        viewModel.AddServerCommand.Execute(null);
+        viewModel.Servers.Should().HaveCount(7);
+        viewModel.Servers[6].HostId.Should().Be("host-07");
+        viewModel.Servers[6].Label.Should().Be("Host 07");
+        viewModel.Servers[6].IsEnabled.Should().BeTrue();
+
+        viewModel.AddServerCommand.Execute(null);
+        viewModel.Servers.Should().HaveCount(8);
+        viewModel.Servers[7].HostId.Should().Be("host-08");
+        viewModel.Servers[7].Label.Should().Be("Host 08");
+    }
+
+    [Fact]
+    public void LoadSession_restores_hosts_not_in_default_seed()
+    {
+        var cache = new InMemorySessionCacheService
+        {
+            Snapshot = new ServerSelectionCache
+            {
+                PersistSession = true,
+                Servers = new List<ServerSelectionCacheEntry>
+                {
+                    new()
+                    {
+                        HostId = "host-01",
+                        Label = "App Inc",
+                        Enabled = true,
+                        Scope = ServerScanScope.AllDrives,
+                        Roots = Array.Empty<string>(),
+                    },
+                    new()
+                    {
+                        HostId = "host-07",
+                        Label = "Remote API",
+                        Enabled = true,
+                        Scope = ServerScanScope.CustomRoots,
+                        Roots = new[] { "C:\\Program Files" },
+                    },
+                },
+            },
+        };
+
+        var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), cache);
+
+        SpinWait.SpinUntil(() => viewModel.Servers.Any(server => string.Equals(server.HostId, "host-07", StringComparison.OrdinalIgnoreCase)), TimeSpan.FromSeconds(2))
+            .Should().BeTrue();
+        var restored = viewModel.Servers.Single(server => string.Equals(server.HostId, "host-07", StringComparison.OrdinalIgnoreCase));
+        restored.Label.Should().Be("Remote API");
+        restored.IsEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddRoot_uses_path_leaf_for_default_label()
+    {
+        var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), new InMemorySessionCacheService());
+        var slot = viewModel.Servers[0];
+        slot.Label.Should().Be("App Inc");
+        slot.Scope = ServerScanScope.CustomRoots;
+
+        var autoNameRoot = Path.Combine(Path.GetTempPath(), $"Server1.company.hell-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(autoNameRoot);
+
+        slot.NewRootPath = autoNameRoot;
+        viewModel.AddRootCommand.Execute(slot);
+
+        slot.Label.Should().Be(Path.GetFileName(autoNameRoot));
+    }
+
+    [Fact]
+    public void AddRoot_does_not_override_manual_label()
+    {
+        var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), new InMemorySessionCacheService());
+        var slot = viewModel.Servers[0];
+        slot.Scope = ServerScanScope.CustomRoots;
+        slot.Label = "Manual Server Name";
+
+        var customRoot = Path.Combine(Path.GetTempPath(), $"Server2.company.hell-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(customRoot);
+
+        slot.NewRootPath = customRoot;
+        viewModel.AddRootCommand.Execute(slot);
+
+        slot.Label.Should().Be("Manual Server Name");
+    }
+
+    [Theory]
+    [InlineData(@"C:\configs\Server1.company.hell", "Server1.company.hell")]
+    [InlineData(@"/mnt/configs/server-a", "server-a")]
+    [InlineData(@"\\share\configs\server-z\", "server-z")]
+    public void TryDeriveHostLabelFromRootPath_extracts_leaf(string path, string expected)
+    {
+        ServerSelectionViewModel.TryDeriveHostLabelFromRootPath(path).Should().Be(expected);
+    }
+
     private static void ConfigureCustomRootFlow(ServerSelectionViewModel viewModel, ServerSlotViewModel server)
     {
         server.Scope = ServerScanScope.CustomRoots;
@@ -317,6 +417,91 @@ public sealed class ServerSelectionViewModelAdditionalTests
     }
 
     [Fact]
+    public async Task RunAll_with_single_host_explains_no_comparison()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, _, _) =>
+            {
+                var planList = plans.ToList();
+                return Task.FromResult(new ServerScanResponse
+                {
+                    Results = planList.Select(plan => new ServerScanResult
+                    {
+                        HostId = plan.HostId,
+                        Label = plan.Label,
+                        Status = ServerScanStatus.Succeeded,
+                        Message = "Completed",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Availability = ServerAvailabilityStatus.Found,
+                    }).ToArray(),
+                    Summary = new ServerScanSummary
+                    {
+                        BaselineHostId = planList[0].HostId,
+                        TotalHosts = 1,
+                        ConfigsEvaluated = 20,
+                        DriftingConfigs = 0,
+                        GeneratedAt = DateTimeOffset.UtcNow,
+                    },
+                });
+            },
+        };
+
+        var toast = new ToastService(action => action());
+        var viewModel = new ServerSelectionViewModel(service, toast, new InMemorySessionCacheService());
+        for (var index = 1; index < viewModel.Servers.Count; index++)
+        {
+            viewModel.Servers[index].IsEnabled = false;
+        }
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.StatusBanner.Should().Contain("Add at least one more host");
+        toast.ActiveToasts.Should().Contain(notification =>
+            notification.Level == ToastLevel.Success &&
+            notification.Title == "Multi-server scan complete" &&
+            notification.Message.Contains("Add at least one more host", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunAll_with_no_drift_in_multi_host_scan_reports_clean_summary()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, _, _) =>
+            {
+                var planList = plans.ToList();
+                return Task.FromResult(new ServerScanResponse
+                {
+                    Results = planList.Select(plan => new ServerScanResult
+                    {
+                        HostId = plan.HostId,
+                        Label = plan.Label,
+                        Status = ServerScanStatus.Succeeded,
+                        Message = "Completed",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Availability = ServerAvailabilityStatus.Found,
+                    }).ToArray(),
+                    Summary = new ServerScanSummary
+                    {
+                        BaselineHostId = planList[0].HostId,
+                        TotalHosts = planList.Count,
+                        ConfigsEvaluated = 20,
+                        DriftingConfigs = 0,
+                        GeneratedAt = DateTimeOffset.UtcNow,
+                    },
+                });
+            },
+        };
+
+        var viewModel = new ServerSelectionViewModel(service, new ToastService(action => action()), new InMemorySessionCacheService());
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.StatusBanner.Should().Contain("No drift detected across");
+    }
+
+    [Fact]
     public async Task Provides_deterministic_drilldown_gating_and_telemetry()
     {
         var logPath = Path.Combine("artifacts", "logs", "drilldown-ready.json");
@@ -434,7 +619,8 @@ public sealed class ServerSelectionViewModelAdditionalTests
 
             slot.NewRootPath = uniqueRoot;
             viewModel.AddRootCommand.Execute(slot);
-            slot.RootInputError.Should().Be("Root already added.");
+            slot.RootInputError.Should().BeNull();
+            viewModel.StatusBanner.Should().Contain("already present");
         }
         finally
         {

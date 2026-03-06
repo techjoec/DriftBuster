@@ -253,6 +253,24 @@ DETECTION_CATALOG = DetectionCatalog(
                     severity="medium",
                     aliases=("sample",),
                 ),
+                FormatSubtype(
+                    name="NLogConfigXml",
+                    priority=29,
+                    variant="nlog-config",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="Log4NetConfigXml",
+                    priority=30,
+                    variant="log4net-config",
+                    severity="high",
+                ),
+                FormatSubtype(
+                    name="SerilogConfigXml",
+                    priority=31,
+                    variant="serilog-config",
+                    severity="high",
+                ),
             ),
             severity_hint=(
                 "Application configuration files expose secrets, connection strings, and runtime policy toggles "

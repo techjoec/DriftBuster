@@ -347,3 +347,14 @@ def test_emit_progress_emits_after_interval(monkeypatch) -> None:
 
     payloads = [json.loads(line) for line in buffer.getvalue().splitlines() if line.strip()]
     assert len(payloads) == 2
+
+
+def test_emit_progress_escapes_non_ascii_for_console_safety(monkeypatch) -> None:
+    buffer = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", buffer, raising=False)
+    _reset_progress_throttle_state()
+
+    emit_progress("host-a", "running", "prefix\ufeffsuffix", _now=9.0)
+
+    raw_line = next(line for line in buffer.getvalue().splitlines() if line.strip())
+    assert "\\ufeff" in raw_line
