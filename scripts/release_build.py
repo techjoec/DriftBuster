@@ -10,6 +10,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PY_ARTIFACT_DIR = REPO_ROOT / "build" / "artifacts" / "python"
 GUI_ARTIFACT_DIR = REPO_ROOT / "build" / "artifacts" / "gui"
+LOCAL_PORTABLE_STAGE_DIR = Path("/lap_temp/DriftBuster-Portabletest")
 
 
 def run(command: list[str], *, cwd: Path | None = None) -> None:
@@ -108,6 +109,21 @@ def build_installer(*, rid: str, release_notes: Path, channel: str | None = None
     run(cmd)
 
 
+def stage_local_portable_dev(*, rid: str = "win-x64") -> None:
+    """Hard-enforced local staging for portable Win dev testing."""
+    run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.stage_portable_dev",
+            "--rid",
+            rid,
+            "--stage-dir",
+            str(LOCAL_PORTABLE_STAGE_DIR),
+        ]
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare DriftBuster release artifacts.")
     parser.add_argument(
@@ -173,10 +189,16 @@ def main() -> int:
             pack_id=getattr(args, "pack_id", None),
         )
 
+    runtime = getattr(args, "runtime", None)
+    if runtime is None or str(runtime).startswith("win-"):
+        stage_local_portable_dev(rid=runtime or "win-x64")
+
     print("\nRelease artifacts ready:")
     print(f" - Python dist: {PY_ARTIFACT_DIR}")
     gui_dir = GUI_ARTIFACT_DIR / (args.runtime if args.runtime else "framework")
     print(f" - GUI publish: {gui_dir}")
+    if runtime is None or str(runtime).startswith("win-"):
+        print(f" - Local staged portable run dir: {LOCAL_PORTABLE_STAGE_DIR}")
     if not getattr(args, "no_installer", True):
         print(f" - Installer: artifacts/velopack/releases/{getattr(args, 'installer_rid', 'win-x64')}")
     return 0

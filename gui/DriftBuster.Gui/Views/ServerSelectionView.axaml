@@ -18,11 +18,11 @@
   </UserControl.Resources>
   <ScrollViewer>
     <StackPanel Margin="{DynamicResource ServerSelection.OuterMargin}" Spacing="{DynamicResource ServerSelection.StackSpacing}">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="{DynamicResource ServerSelection.HeaderColumnSpacing}" VerticalAlignment="Center">
-        <Button Content="Setup"
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="{DynamicResource ServerSelection.HeaderColumnSpacing}" VerticalAlignment="Center">
+        <Button x:Name="SetupButton"
+                Content="Setup"
                 Classes="outline"
-                Command="{Binding ShowSetupCommand}"
-                IsEnabled="{Binding IsViewingCatalog}" />
+                Command="{Binding ShowSetupCommand}" />
         <Button Grid.Column="1"
                 Content="Results"
                 Classes="outline"
@@ -32,7 +32,13 @@
                 Content="Drilldown"
                 Classes="outline"
                 Command="{Binding ShowDrilldownCommand}" />
-        <TextBlock Grid.Column="3"
+        <Button x:Name="HeaderRunAllButton"
+                Grid.Column="3"
+                Content="Run all"
+                Classes="primary"
+                Command="{Binding RunAllCommand}"
+                IsEnabled="{Binding HasActiveServers}" />
+        <TextBlock Grid.Column="4"
                    HorizontalAlignment="Right"
                    TextWrapping="Wrap"
                    Classes="subtitle"
@@ -49,6 +55,9 @@
                       Classes="outline"
                       Command="{Binding SaveSessionCommand}"
                       IsEnabled="{Binding PersistSessionState}" />
+              <Button Content="Add host"
+                      Classes="outline"
+                      Command="{Binding AddServerCommand}" />
               <Button Content="Clear"
                       Classes="outline"
                       Command="{Binding ClearHistoryCommand}" />

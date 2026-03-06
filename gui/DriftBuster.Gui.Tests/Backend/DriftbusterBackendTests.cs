@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -182,6 +183,82 @@ public sealed class DriftbusterBackendTests
                 Directory.Delete(repositoryRoot, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public void ResolveRepositoryRoot_prefers_app_base_with_packaged_python_sources()
+    {
+        var workspace = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriftbusterRepo", Guid.NewGuid().ToString("N")));
+        var cwd = Directory.CreateDirectory(Path.Combine(workspace.FullName, "cwd"));
+        var appBase = Directory.CreateDirectory(Path.Combine(workspace.FullName, "portable"));
+        Directory.CreateDirectory(Path.Combine(appBase.FullName, "src", "driftbuster"));
+        File.WriteAllText(Path.Combine(appBase.FullName, "src", "driftbuster", "multi_server.py"), "# test");
+
+        try
+        {
+            var method = typeof(DriftbusterBackend)
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                .Single(candidate => string.Equals(candidate.Name, "ResolveRepositoryRoot", StringComparison.Ordinal) &&
+                    candidate.GetParameters().Length == 3);
+
+            var resolved = method!.Invoke(null, new object?[] { cwd.FullName, appBase.FullName, null }) as string;
+            resolved.Should().Be(appBase.FullName);
+        }
+        finally
+        {
+            if (Directory.Exists(workspace.FullName))
+            {
+                Directory.Delete(workspace.FullName, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void ResolveRepositoryRoot_uses_process_directory_when_other_candidates_missing()
+    {
+        var workspace = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriftbusterRepo", Guid.NewGuid().ToString("N")));
+        var cwd = Directory.CreateDirectory(Path.Combine(workspace.FullName, "cwd"));
+        var appBase = Directory.CreateDirectory(Path.Combine(workspace.FullName, "bundle-extract"));
+        var processDir = Directory.CreateDirectory(Path.Combine(workspace.FullName, "portable"));
+        Directory.CreateDirectory(Path.Combine(processDir.FullName, "src", "driftbuster"));
+        File.WriteAllText(Path.Combine(processDir.FullName, "src", "driftbuster", "multi_server.py"), "# test");
+
+        try
+        {
+            var method = typeof(DriftbusterBackend)
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                .Single(candidate => string.Equals(candidate.Name, "ResolveRepositoryRoot", StringComparison.Ordinal) &&
+                    candidate.GetParameters().Length == 3);
+
+            var resolved = method!.Invoke(null, new object?[] { cwd.FullName, appBase.FullName, processDir.FullName }) as string;
+            resolved.Should().Be(processDir.FullName);
+        }
+        finally
+        {
+            if (Directory.Exists(workspace.FullName))
+            {
+                Directory.Delete(workspace.FullName, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void BuildMultiServerProcessStartInfo_enforces_utf8_python_io()
+    {
+        var repositoryRoot = Path.GetTempPath();
+        var method = typeof(DriftbusterBackend)
+            .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+            .Single(candidate => string.Equals(candidate.Name, "BuildMultiServerProcessStartInfo", StringComparison.Ordinal));
+
+        var startInfo = method.Invoke(null, new object[] { repositoryRoot }) as ProcessStartInfo;
+        startInfo.Should().NotBeNull();
+        startInfo!.Environment.Should().ContainKey("PYTHONUNBUFFERED");
+        startInfo.Environment["PYTHONUNBUFFERED"].Should().Be("1");
+        startInfo.Environment.Should().ContainKey("PYTHONIOENCODING");
+        startInfo.Environment["PYTHONIOENCODING"].Should().Be("utf-8");
+        startInfo.StandardInputEncoding!.CodePage.Should().Be(System.Text.Encoding.UTF8.CodePage);
+        startInfo.StandardOutputEncoding!.CodePage.Should().Be(System.Text.Encoding.UTF8.CodePage);
+        startInfo.StandardErrorEncoding!.CodePage.Should().Be(System.Text.Encoding.UTF8.CodePage);
     }
 
     [Fact]

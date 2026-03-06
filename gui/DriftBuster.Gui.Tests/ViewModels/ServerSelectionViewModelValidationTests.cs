@@ -34,19 +34,40 @@ public sealed class ServerSelectionViewModelValidationTests
 
         slot.RootInputError = null;
         slot.IsEnabled = true;
+        slot.Scope = ServerScanScope.CustomRoots;
 
         var pending = Enumerable.Range(0, count)
-            .Select(index =>
-            {
-                var entry = new RootEntryViewModel($"C:/pending-{index}");
-                entry.ValidationState = RootValidationState.Pending;
-                entry.StatusMessage = string.Empty;
-                return entry;
-            })
+            .Select(index => new RootEntryViewModel($"C:/pending-{index}"))
             .ToList();
 
         slot.ReplaceRoots(pending);
+        foreach (var entry in slot.Roots)
+        {
+            entry.ValidationState = RootValidationState.Pending;
+            entry.StatusMessage = string.Empty;
+        }
+
+        slot.RefreshValidationSummary();
         slot.ValidationSummary.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Non_custom_scope_reports_roots_as_ignored()
+    {
+        var viewModel = CreateViewModel();
+        var slot = viewModel.Servers.First();
+
+        slot.IsEnabled = true;
+        slot.Scope = ServerScanScope.AllDrives;
+        slot.ReplaceRoots(new[]
+        {
+            new RootEntryViewModel("C:\\any")
+            {
+                ValidationState = RootValidationState.Pending,
+            },
+        });
+
+        slot.ValidationSummary.Should().Be("Roots ignored for this scope.");
     }
 
     [Fact]

@@ -107,6 +107,28 @@ def test_validate_detection_metadata_rejects_unknown_variant_for_known_format() 
         validate_detection_metadata(match, DETECTION_CATALOG)
 
 
+@pytest.mark.parametrize(
+    ("variant",),
+    [
+        ("nlog-config",),
+        ("log4net-config",),
+        ("serilog-config",),
+    ],
+)
+def test_validate_detection_metadata_accepts_structured_xml_vendor_variants(variant: str) -> None:
+    match = DetectionMatch(
+        plugin_name="xml",
+        format_name="structured-config-xml",
+        variant=variant,
+        confidence=0.8,
+        reasons=["vendor logging config"],
+    )
+
+    metadata = validate_detection_metadata(match, DETECTION_CATALOG)
+    assert metadata["catalog_format"] == "structured-config-xml"
+    assert metadata["catalog_variant"] == variant
+
+
 def test_validate_detection_metadata_rejects_bad_metadata_type() -> None:
     match = DetectionMatch(
         plugin_name="json",

@@ -1030,10 +1030,68 @@ namespace DriftBuster.Backend
 
         private static string ResolveRepositoryRoot()
         {
-            var current = new DirectoryInfo(Environment.CurrentDirectory);
+            return ResolveRepositoryRoot(
+                Environment.CurrentDirectory,
+                AppContext.BaseDirectory,
+                Path.GetDirectoryName(Environment.ProcessPath));
+        }
+
+        private static string ResolveRepositoryRoot(string currentDirectory, string appBaseDirectory, string? processDirectory)
+        {
+            foreach (var candidate in EnumerateRepositoryRootCandidates(currentDirectory, appBaseDirectory, processDirectory))
+            {
+                var resolved = FindRepositoryRoot(candidate);
+                if (!string.IsNullOrWhiteSpace(resolved))
+                {
+                    return resolved;
+                }
+            }
+
+            return currentDirectory;
+        }
+
+        private static IEnumerable<string> EnumerateRepositoryRootCandidates(string currentDirectory, string appBaseDirectory, string? processDirectory)
+        {
+            if (!string.IsNullOrWhiteSpace(currentDirectory))
+            {
+                yield return currentDirectory;
+            }
+
+            if (!string.IsNullOrWhiteSpace(appBaseDirectory) &&
+                !string.Equals(currentDirectory, appBaseDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return appBaseDirectory;
+            }
+
+            if (!string.IsNullOrWhiteSpace(processDirectory) &&
+                !string.Equals(currentDirectory, processDirectory, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(appBaseDirectory, processDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return processDirectory;
+            }
+        }
+
+        private static string? FindRepositoryRoot(string startDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(startDirectory))
+            {
+                return null;
+            }
+
+            DirectoryInfo? current;
+            try
+            {
+                current = new DirectoryInfo(startDirectory);
+            }
+            catch
+            {
+                return null;
+            }
+
             while (current is not null)
             {
-                if (File.Exists(Path.Combine(current.FullName, "pyproject.toml")))
+                if (File.Exists(Path.Combine(current.FullName, "pyproject.toml")) ||
+                    File.Exists(Path.Combine(current.FullName, "src", "driftbuster", "multi_server.py")))
                 {
                     return current.FullName;
                 }
@@ -1041,18 +1099,7 @@ namespace DriftBuster.Backend
                 current = current.Parent;
             }
 
-            current = new DirectoryInfo(AppContext.BaseDirectory);
-            while (current is not null)
-            {
-                if (File.Exists(Path.Combine(current.FullName, "pyproject.toml")))
-                {
-                    return current.FullName;
-                }
-
-                current = current.Parent;
-            }
-
-            return Environment.CurrentDirectory;
+            return null;
         }
 
         private static MultiServerRequest BuildMultiServerRequest(List<ServerScanPlan> plans, string repositoryRoot)
@@ -1161,6 +1208,7 @@ namespace DriftBuster.Backend
             }
 
             startInfo.Environment["PYTHONUNBUFFERED"] = "1";
+            startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
             return startInfo;
         }
 
@@ -1317,8 +1365,18 @@ namespace DriftBuster.Backend
 
         private static string ResolvePythonPath(string repositoryRoot)
         {
-            var candidate = Path.Combine(repositoryRoot, "src");
-            return Directory.Exists(candidate) ? candidate : string.Empty;
+            var srcCandidate = Path.Combine(repositoryRoot, "src");
+            if (Directory.Exists(Path.Combine(srcCandidate, "driftbuster")))
+            {
+                return srcCandidate;
+            }
+
+            if (Directory.Exists(Path.Combine(repositoryRoot, "driftbuster")))
+            {
+                return repositoryRoot;
+            }
+
+            return string.Empty;
         }
 
         private static ProcessStartInfo CreatePythonStartInfo(string pythonExecutable, string workingDirectory)
@@ -1334,6 +1392,7 @@ namespace DriftBuster.Backend
                 WorkingDirectory = workingDirectory,
                 StandardOutputEncoding = Utf8,
                 StandardErrorEncoding = Utf8,
+                StandardInputEncoding = Utf8,
             };
 
             startInfo.ArgumentList.Add("-m");

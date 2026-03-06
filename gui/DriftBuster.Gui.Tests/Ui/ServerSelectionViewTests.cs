@@ -34,6 +34,34 @@ public sealed class ServerSelectionViewTests
     }
 
     [AvaloniaFact]
+    public async Task Navigation_and_run_all_controls_stay_available()
+    {
+        var viewModel = CreateViewModel();
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        view.Measure(new Size(1200, 900));
+        view.Arrange(new Rect(view.DesiredSize));
+        view.UpdateLayout();
+
+        var setupButton = view.FindControl<Button>("SetupButton");
+        var headerRunAllButton = view.FindControl<Button>("HeaderRunAllButton");
+
+        setupButton.Should().NotBeNull();
+        headerRunAllButton.Should().NotBeNull();
+        setupButton!.IsEnabled.Should().BeTrue();
+        headerRunAllButton!.IsEnabled.Should().BeTrue();
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.IsViewingCatalog.Should().BeTrue();
+        setupButton.IsEnabled.Should().BeTrue();
+        headerRunAllButton.IsEnabled.Should().BeTrue();
+    }
+
+    [AvaloniaFact]
     public void ShouldValidateCustomRoots()
     {
         var viewModel = CreateViewModel();
@@ -288,6 +316,43 @@ public sealed class ServerSelectionViewTests
 
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("drag failed");
+    }
+
+    [AvaloniaFact]
+    public async Task PointerPressFromInteractiveChildDoesNotStartDrag()
+    {
+        var viewModel = CreateViewModel();
+
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+
+        var harness = new RecordingDragDropService();
+        view.DragDropService = harness;
+
+        var slotViewModel = viewModel.Servers.First(server => server.IsEnabled);
+        var card = new Border
+        {
+            DataContext = slotViewModel,
+        };
+        var childTextBox = new TextBox();
+        card.Child = childTextBox;
+
+        var cardSize = new Size(320, 180);
+        card.Measure(cardSize);
+        card.Arrange(new Rect(cardSize));
+        childTextBox.Measure(new Size(200, 32));
+        childTextBox.Arrange(new Rect(0, 0, 200, 32));
+
+        var pointer = new Avalonia.Input.Pointer(1, PointerType.Mouse, true);
+        var properties = new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed);
+        var args = new PointerPressedEventArgs(childTextBox, pointer, view, new Point(10, 10), 0, properties, KeyModifiers.None, 1);
+
+        await view.HandleServerCardPointerPressedAsync(card, args);
+
+        harness.LastArgs.Should().BeNull();
+        harness.LastData.Should().BeNull();
     }
 
     [AvaloniaFact]
@@ -821,6 +886,81 @@ public sealed class ServerSelectionViewTests
 
         viewModel.FilteredActivityEntries.Should().NotBeEmpty();
         toast.ActiveToasts.Should().NotBeEmpty();
+    }
+
+    [AvaloniaFact]
+    public async Task RunAll_with_failed_results_does_not_report_invalid_thread()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, progress, _) =>
+            {
+                var plan = plans.First();
+                progress?.Report(new ScanProgress
+                {
+                    HostId = plan.HostId,
+                    Status = ServerScanStatus.Queued,
+                    Message = "Queued",
+                    Timestamp = DateTimeOffset.UtcNow,
+                });
+                progress?.Report(new ScanProgress
+                {
+                    HostId = plan.HostId,
+                    Status = ServerScanStatus.Running,
+                    Message = $"Scanning {plan.Label}",
+                    Timestamp = DateTimeOffset.UtcNow,
+                });
+                progress?.Report(new ScanProgress
+                {
+                    HostId = plan.HostId,
+                    Status = ServerScanStatus.Failed,
+                    Message = "Scan failed: Unknown catalog variant 'log4net-config' for format 'structured-config-xml'.",
+                    Timestamp = DateTimeOffset.UtcNow,
+                });
+
+                return Task.FromResult(new ServerScanResponse
+                {
+                    Version = "multi-server.v1",
+                    Results = new[]
+                    {
+                        new ServerScanResult
+                        {
+                            HostId = plan.HostId,
+                            Label = plan.Label,
+                            Status = ServerScanStatus.Failed,
+                            Message = "Scan failed: Unknown catalog variant 'log4net-config' for format 'structured-config-xml'.",
+                            Timestamp = DateTimeOffset.UtcNow,
+                            Availability = ServerAvailabilityStatus.Found,
+                        },
+                    },
+                    Catalog = Array.Empty<ConfigCatalogEntry>(),
+                    Drilldown = Array.Empty<ConfigDrilldown>(),
+                });
+            },
+        };
+
+        var viewModel = new ServerSelectionViewModel(service, new ToastService(action => action()), new InMemorySessionCacheService());
+        for (var index = 1; index < viewModel.Servers.Count; index++)
+        {
+            viewModel.Servers[index].IsEnabled = false;
+        }
+
+        var host = viewModel.Servers[0];
+        host.Scope = ServerScanScope.CustomRoots;
+        host.ReplaceRoots(new[] { new RootEntryViewModel(AppContext.BaseDirectory) });
+
+        var view = new ServerSelectionView
+        {
+            DataContext = viewModel,
+        };
+        view.Measure(new Size(1200, 900));
+        view.Arrange(new Rect(view.DesiredSize));
+        view.UpdateLayout();
+
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+
+        viewModel.Servers[0].RunState.Should().Be(ServerScanStatus.Failed);
+        viewModel.StatusBanner.ToLowerInvariant().Should().NotContain("invalid thread");
     }
 
     [AvaloniaFact]
