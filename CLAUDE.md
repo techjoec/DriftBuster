@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 DriftBuster detects and explains configuration drift across file trees with format-aware diffing, profiles, and hunt tooling. The project consists of:
