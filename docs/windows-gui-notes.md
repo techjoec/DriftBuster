@@ -24,7 +24,7 @@ System.InvalidOperationException: Could not create glyphTypeface. Font family: $
 
 Self-contained builds bundle .NET 10.0.3+ and don't trigger this issue.
 
-See `docs/tools/vm-testing.md` for the VM-based testing workflow used to diagnose and verify this fix.
+The fix was diagnosed and verified on a Windows VM running the framework-dependent build on .NET 10.0.1; that workflow is kept outside the repository.
 
 ## Host Dependencies
 
