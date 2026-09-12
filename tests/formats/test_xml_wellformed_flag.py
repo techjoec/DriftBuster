@@ -21,5 +21,6 @@ def test_xml_well_formed_true_and_false():
     assert m_bad is not None
     assert m_bad.metadata and m_bad.metadata.get("xml_well_formed") is False
     assert m_bad.metadata.get("needs_review") is True
+    assert m_bad.metadata.get("review_reasons")
     assert any("not well-formed" in r.lower() for r in m_bad.reasons)
 

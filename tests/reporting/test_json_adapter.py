@@ -53,6 +53,19 @@ def test_iter_json_records_enriches_metadata_and_applies_redaction() -> None:
     assert hunt["payload"]["run_metadata"]["run_id"] == "abc"
 
 
+def test_iter_json_records_accepts_mapping_hunt_hits() -> None:
+    records = list(
+        iter_json_records(
+            [_match("json")],
+            hunt_hits=[{"rule": {"name": "mapping"}, "path": "file", "line_number": 2, "excerpt": "value"}],
+        )
+    )
+    hunt = [record for record in records if record["type"] == "hunt_hit"]
+    assert len(hunt) == 1
+    assert hunt[0]["payload"]["rule"]["name"] == "mapping"
+    assert hunt[0]["payload"]["line_number"] == 2
+
+
 def test_legacy_module_reexports_new_helpers() -> None:
     assert legacy_json.iter_json_records is iter_json_records
     assert legacy_json.render_json_lines is render_json_lines

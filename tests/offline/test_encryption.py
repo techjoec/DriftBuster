@@ -1,8 +1,8 @@
 import base64
+import hmac
 import io
 import json
 import zipfile
-import hmac
 from hashlib import sha256
 
 import pytest
@@ -94,7 +94,7 @@ def test_execute_config_encrypts_package_with_dpapi_aes_keyset(tmp_path):
     cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv), backend=default_backend())
     decryptor = cipher.decryptor()
     padded = decryptor.update(ciphertext) + decryptor.finalize()
-    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    unpadder = padding.PKCS7(algorithms.AES(aes_key).block_size).unpadder()
     plaintext = unpadder.update(padded) + unpadder.finalize()
 
     with zipfile.ZipFile(io.BytesIO(plaintext)) as archive:
@@ -212,7 +212,7 @@ def test_execute_config_path_supports_relative_paths(tmp_path):
     cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv), backend=default_backend())
     decryptor = cipher.decryptor()
     padded = decryptor.update(ciphertext) + decryptor.finalize()
-    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    unpadder = padding.PKCS7(algorithms.AES(aes_key).block_size).unpadder()
     plaintext = unpadder.update(padded) + unpadder.finalize()
 
     with zipfile.ZipFile(io.BytesIO(plaintext)) as archive:

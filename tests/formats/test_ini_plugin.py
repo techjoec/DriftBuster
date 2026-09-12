@@ -6,10 +6,10 @@ from textwrap import dedent
 
 import pytest
 
+import driftbuster.formats.ini.plugin as ini_plugin_module
 from driftbuster.core.types import DetectionMatch
 from driftbuster.formats.format_registry import decode_text
 from driftbuster.formats.ini import IniPlugin
-import driftbuster.formats.ini.plugin as ini_plugin_module
 
 
 def _detect(
@@ -469,7 +469,7 @@ def test_ini_plugin_handles_duplicates_and_sensitive_keys(ini_plugin: IniPlugin)
         client-secret = another
         [general]
         empty=
-        ;   
+        ;
         key=
         inline = value ; comment
         export FLAG=true
@@ -589,7 +589,7 @@ def test_ini_plugin_handles_blank_comments_and_inline_markers(ini_plugin: IniPlu
     content = dedent(
         """
         # comment
-           
+
         key = value ; inline # extra
         """
     ).strip()

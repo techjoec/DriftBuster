@@ -2,25 +2,30 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "${repo_root}"
 
-python_bin="${repo_root}/.venv/bin/python"
+# dotnet lives behind the login profile; __JOE_PROFILE_ENV blocks .profile in child shells.
+run_dotnet() {
+  unset __JOE_PROFILE_ENV 2>/dev/null || true
+  bash --login -c "dotnet $*"
+}
 
 echo "[lint] python compileall"
-"${python_bin}" -m compileall "${repo_root}/src"
+python -m compileall -q src
 
 echo "[lint] ruff"
-"${python_bin}" -m ruff check "${repo_root}/src"
+ruff check src tests scripts
 
 echo "[lint] powershell"
-pwsh "${repo_root}/scripts/lint_powershell.ps1"
+pwsh scripts/lint_powershell.ps1
 
 echo "[lint] dotnet format backend"
-dotnet format "${repo_root}/gui/DriftBuster.Backend/DriftBuster.Backend.csproj" --verify-no-changes --verbosity minimal
+run_dotnet format gui/DriftBuster.Backend/DriftBuster.Backend.csproj --verify-no-changes --verbosity minimal
 
 echo "[lint] dotnet format gui"
-dotnet format "${repo_root}/gui/DriftBuster.Gui/DriftBuster.Gui.csproj" --verify-no-changes --verbosity minimal
+run_dotnet format gui/DriftBuster.Gui/DriftBuster.Gui.csproj --verify-no-changes --verbosity minimal
 
 echo "[lint] dotnet format gui tests"
-dotnet format "${repo_root}/gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj" --verify-no-changes --verbosity minimal
+run_dotnet format gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --verify-no-changes --verbosity minimal
 
 echo "[lint] complete"

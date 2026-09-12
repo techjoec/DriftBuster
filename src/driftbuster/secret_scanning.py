@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import contextlib
+import importlib.resources as resources
 import json
 import re
 import shutil
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
-
-import importlib.resources as resources
+from typing import Any
 
 SECRET_RULES_RESOURCE = "secret_rules.json"
 
@@ -42,6 +43,15 @@ class SecretDetectionContext:
 _RULE_CACHE: tuple[SecretDetectionRule, ...] | None = None
 _RULE_VERSION: str | None = None
 _RULE_LOADED: bool | None = None
+
+
+def reset_secret_rule_cache() -> None:
+    """Drop the process-wide secret rule cache so the next load re-reads the resource."""
+
+    global _RULE_CACHE, _RULE_VERSION, _RULE_LOADED
+    _RULE_CACHE = None
+    _RULE_VERSION = None
+    _RULE_LOADED = None
 
 
 def _compile_ruleset_from_mapping(
@@ -120,7 +130,7 @@ def load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
             module_dir = Path(__file__).parent
             resource_path = module_dir / SECRET_RULES_RESOURCE
             if resource_path.is_file():
-                with open(resource_path, "r", encoding="utf-8") as handle:
+                with open(resource_path, encoding="utf-8") as handle:
                     payload = json.load(handle)
         except (FileNotFoundError, OSError):
             pass
@@ -342,10 +352,8 @@ def copy_with_secret_filter(
         return size, hash_file(destination)
 
     destination.write_text("".join(sanitized_lines), encoding="utf-8")
-    try:
+    with contextlib.suppress(OSError):
         shutil.copystat(source, destination, follow_symlinks=False)
-    except OSError:
-        pass
 
     log(f"scrubbed {sanitized_matches} potential secret line(s) from {display_path}")
 
@@ -358,12 +366,13 @@ __all__ = [
     "SecretDetectionContext",
     "SecretDetectionRule",
     "SecretFinding",
-    "compile_ruleset_from_mapping",
     "build_context",
+    "compile_ruleset_from_mapping",
     "copy_with_secret_filter",
     "hash_file",
     "load_secret_rules",
     "looks_binary",
     "manifest_secret_scanner",
+    "reset_secret_rule_cache",
     "secret_option_values",
 ]

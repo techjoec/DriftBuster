@@ -27,7 +27,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Dict, List, Optional, Set, Tuple
+from typing import ClassVar
 
 try:  # pragma: no cover - optional hardened parser
     from defusedxml import ElementTree as DEFUSED_ET  # type: ignore
@@ -38,8 +38,8 @@ except ImportError:  # pragma: no cover - optional hardened parser
     class DefusedXmlException(Exception):
         """Fallback exception type when defusedxml is unavailable."""
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
+from ..format_registry import register
 
 _XML_DECLARATION = re.compile(r"^\s*<\?xml\b(?P<attrs>[^?>]*)\?>", re.IGNORECASE)
 _XML_DECLARATION_ATTR = re.compile(
@@ -82,7 +82,7 @@ _DOCTYPE_DECL = re.compile(r"<!DOCTYPE\s+(?P<name>[\w:.-]+)", re.IGNORECASE)
 _ENTITY_DECL = re.compile(r"<!ENTITY", re.IGNORECASE)
 
 
-_VENDOR_CONFIG_ROOTS: Dict[str, Tuple[str, str, str, float]] = {
+_VENDOR_CONFIG_ROOTS: dict[str, tuple[str, str, str, float]] = {
     "nlog": (
         "structured-config-xml",
         "nlog-config",
@@ -104,7 +104,7 @@ _VENDOR_CONFIG_ROOTS: Dict[str, Tuple[str, str, str, float]] = {
 }
 
 
-def _split_qualified_name(name: str) -> tuple[Optional[str], str]:
+def _split_qualified_name(name: str) -> tuple[str | None, str]:
     if ":" in name:
         prefix, local = name.split(":", 1)
         if prefix and local:
@@ -119,12 +119,12 @@ class XmlPlugin:
     version: str = "0.0.6"
     _MAX_SAFE_PARSE_BYTES: ClassVar[int] = 512 * 1024
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         extension = path.suffix.lower()
-        reasons: List[str] = []
+        reasons: list[str] = []
 
         # Prefer .config specific detection first.
         metadata = self._collect_metadata(text, extension=extension)
@@ -237,13 +237,13 @@ class XmlPlugin:
         self,
         extension: str,
         text: str,
-        reasons: List[str],
-        metadata: Dict[str, object],
+        reasons: list[str],
+        metadata: dict[str, object],
     ) -> tuple[str, str, float]:
         namespaces = metadata.get("namespaces")
         if isinstance(namespaces, dict):
             root_namespace = metadata.get("root_namespace")
-            if root_namespace:
+            if isinstance(root_namespace, str) and root_namespace:
                 if _MANIFEST_NAMESPACE.search(root_namespace):
                     reasons.append("Matched assembly manifest namespace")
                     return "xml", "app-manifest-xml", 0.82
@@ -253,8 +253,8 @@ class XmlPlugin:
                 if _XAML_NAMESPACE.search(root_namespace):
                     reasons.append("Found XAML namespace declaration")
                     return "xml", "interface-xml", 0.82
-            if namespaces.get("default"):
-                default_ns = namespaces["default"]
+            default_ns = namespaces.get("default")
+            if isinstance(default_ns, str) and default_ns:
                 if _MANIFEST_NAMESPACE.search(default_ns):
                     reasons.append("Matched assembly manifest namespace")
                     return "xml", "app-manifest-xml", 0.8
@@ -265,7 +265,7 @@ class XmlPlugin:
                     reasons.append("Found XAML namespace declaration")
                     return "xml", "interface-xml", 0.8
         if self._looks_like_msbuild(extension, metadata):
-            kind = metadata.get("msbuild_kind") or self._classify_msbuild_kind(extension)
+            kind = str(metadata.get("msbuild_kind") or self._classify_msbuild_kind(extension))
             metadata.setdefault("msbuild_detected", True)
             metadata.setdefault("msbuild_kind", kind)
             reason_map = {
@@ -352,16 +352,16 @@ class XmlPlugin:
         return "xml", "generic", 0.65
 
     @staticmethod
-    def _add_reason(reasons: List[str], message: str) -> None:
+    def _add_reason(reasons: list[str], message: str) -> None:
         if message not in reasons:
             reasons.append(message)
 
     def _classify_config_variant(
         self,
-        path: Optional[Path],
+        path: Path | None,
         text: str,
-        reasons: List[str],
-        metadata: Dict[str, object],
+        reasons: list[str],
+        metadata: dict[str, object],
     ) -> tuple[str, float]:
         """Derive a variant for framework configuration style XML files."""
 
@@ -433,10 +433,10 @@ class XmlPlugin:
 
     def _detect_config_role(
         self,
-        path: Optional[Path],
+        path: Path | None,
         text: str,
-        reasons: List[str],
-    ) -> Tuple[str, float, bool, Optional[str], List[str]]:
+        reasons: list[str],
+    ) -> tuple[str, float, bool, str | None, list[str]]:
         """Combine filename and section hints to classify `.config` roles.
 
         The helper returns a tuple ``(role, confidence, inferred_transform,
@@ -448,11 +448,11 @@ class XmlPlugin:
         nor section hints match.
         """
 
-        role: Optional[str] = None
+        role: str | None = None
         confidence = 0.85
         inferred_transform = False
-        transform_scope: Optional[str] = None
-        transform_stages: List[str] = []
+        transform_scope: str | None = None
+        transform_stages: list[str] = []
 
         filename = path.name if path is not None else ""
         lowered = filename.lower()
@@ -525,7 +525,7 @@ class XmlPlugin:
 
         return role, confidence, inferred_transform, transform_scope, transform_stages
 
-    def _append_declaration_reasons(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+    def _append_declaration_reasons(self, metadata: dict[str, object], reasons: list[str]) -> None:
         if "xml_declaration" not in metadata:
             return
         declaration = metadata.get("xml_declaration")
@@ -541,13 +541,13 @@ class XmlPlugin:
             if standalone:
                 self._add_reason(reasons, f"XML standalone flag is {standalone}")
 
-    def _append_namespace_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+    def _append_namespace_reason(self, metadata: dict[str, object], reasons: list[str]) -> None:
         namespaces = metadata.get("namespaces")
         if not namespaces or not isinstance(namespaces, dict):
             return
 
         provenance = metadata.get("namespace_provenance")
-        preview_entries: List[str] = []
+        preview_entries: list[str] = []
         if isinstance(provenance, list):
             for entry in provenance:
                 if not isinstance(entry, dict):
@@ -582,7 +582,7 @@ class XmlPlugin:
         else:
             self._add_reason(reasons, "Detected XML namespace declarations")
 
-    def _append_schema_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+    def _append_schema_reason(self, metadata: dict[str, object], reasons: list[str]) -> None:
         schema_locations = metadata.get("schema_locations")
         if not schema_locations or not isinstance(schema_locations, list):
             return
@@ -602,7 +602,7 @@ class XmlPlugin:
                     f"Schema {location} declared for default namespace",
                 )
 
-    def _append_resx_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+    def _append_resx_reason(self, metadata: dict[str, object], reasons: list[str]) -> None:
         resource_keys = metadata.get("resource_keys")
         if not resource_keys or not isinstance(resource_keys, list):
             return
@@ -615,7 +615,7 @@ class XmlPlugin:
         else:
             self._add_reason(reasons, "Captured resource keys from .resx payload")
 
-    def _append_msbuild_reasons(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+    def _append_msbuild_reasons(self, metadata: dict[str, object], reasons: list[str]) -> None:
         if not metadata.get("msbuild_detected"):
             return
         default_targets = metadata.get("msbuild_default_targets")
@@ -646,7 +646,7 @@ class XmlPlugin:
             self._add_reason(reasons, "Captured MSBuild import references")
 
     def _append_attribute_hint_reasons(
-        self, metadata: Dict[str, object], reasons: List[str]
+        self, metadata: dict[str, object], reasons: list[str]
     ) -> None:
         hints = metadata.get("attribute_hints")
         if not hints or not isinstance(hints, dict):
@@ -661,12 +661,12 @@ class XmlPlugin:
             if entries and isinstance(entries, list):
                 self._add_reason(reasons, message)
 
-    def _append_doctype_reason(self, metadata: Dict[str, object], reasons: List[str]) -> None:
+    def _append_doctype_reason(self, metadata: dict[str, object], reasons: list[str]) -> None:
         doctype = metadata.get("doctype")
         if doctype:
             self._add_reason(reasons, f"Document declares DOCTYPE {doctype}")
 
-    def _confidence_bonus(self, metadata: Dict[str, object], *, found_elements: bool) -> float:
+    def _confidence_bonus(self, metadata: dict[str, object], *, found_elements: bool) -> float:
         bonus = 0.0
         if "xml_declaration" in metadata:
             bonus += 0.05
@@ -700,11 +700,11 @@ class XmlPlugin:
                 bonus += 0.01
         return bonus
 
-    def _collect_metadata(self, text: str, *, extension: str) -> Dict[str, object]:
+    def _collect_metadata(self, text: str, *, extension: str) -> dict[str, object]:
         snippet = text[:4096]
-        metadata: Dict[str, object] = {}
+        metadata: dict[str, object] = {}
 
-        root_element: Optional[ET.Element] = None
+        root_element: ET.Element | None = None
         stripped = text.lstrip()
         allow_parse = bool(stripped)
         if allow_parse and len(stripped) > self._MAX_SAFE_PARSE_BYTES:
@@ -726,7 +726,7 @@ class XmlPlugin:
         declaration_match = _XML_DECLARATION.search(snippet)
         if declaration_match:
             attrs_segment = declaration_match.group("attrs") or ""
-            decl_attrs: Dict[str, str] = {}
+            decl_attrs: dict[str, str] = {}
             for attr in _XML_DECLARATION_ATTR.finditer(attrs_segment):
                 name = attr.group("name").lower()
                 value = attr.group("value")
@@ -755,7 +755,7 @@ class XmlPlugin:
             break
 
         namespace_pairs = []
-        namespace_provenance: List[Dict[str, object]] = []
+        namespace_provenance: list[dict[str, object]] = []
         for m in _XMLNS_ATTRIBUTE.finditer(snippet):
             raw_prefix = m.group("prefix")
             prefix = raw_prefix or "default"
@@ -767,10 +767,10 @@ class XmlPlugin:
             last_newline = snippet.rfind("\n", 0, attr_start)
             column_number = attr_start + 1 if last_newline == -1 else attr_start - last_newline
             attribute_name = "xmlns" if raw_prefix is None else f"xmlns:{raw_prefix}"
-            digest_source = f"{attribute_name}|{uri}".encode("utf-8")
+            digest_source = f"{attribute_name}|{uri}".encode()
             digest = hashlib.sha1(digest_source).hexdigest()[:12]
 
-            provenance_entry: Dict[str, object] = {
+            provenance_entry: dict[str, object] = {
                 "attribute": attribute_name,
                 "prefix": raw_prefix,
                 "uri": uri,
@@ -807,12 +807,12 @@ class XmlPlugin:
 
         return metadata
 
-    def _extract_root_attributes(self, snippet: str, start_index: int) -> Dict[str, str]:
-        items: List[Tuple[str, str]] = []
+    def _extract_root_attributes(self, snippet: str, start_index: int) -> dict[str, str]:
+        items: list[tuple[str, str]] = []
         if ">" not in snippet[start_index:]:
             return {}
         segment = []
-        in_quote: Optional[str] = None
+        in_quote: str | None = None
         for char in snippet[start_index:]:
             if in_quote:
                 segment.append(char)
@@ -840,11 +840,11 @@ class XmlPlugin:
         items.sort(key=lambda entry: (entry[0].lower(), entry[0]))
         return {name: value for name, value in items}
 
-    def _extract_schema_locations(self, metadata: Dict[str, object]) -> None:
+    def _extract_schema_locations(self, metadata: dict[str, object]) -> None:
         attributes = metadata.get("root_attributes")
         if not attributes or not isinstance(attributes, dict):
             return
-        schema_entries: List[Dict[str, Optional[str]]] = []
+        schema_entries: list[dict[str, str | None]] = []
         for attr_name, raw_value in attributes.items():
             if not isinstance(raw_value, str):
                 continue
@@ -865,7 +865,7 @@ class XmlPlugin:
         if schema_entries:
             metadata["schema_locations"] = schema_entries
 
-    def _extract_resx_keys(self, root: ET.Element, metadata: Dict[str, object]) -> None:
+    def _extract_resx_keys(self, root: ET.Element, metadata: dict[str, object]) -> None:
         root_tag = root.tag.split("}")[-1] if "}" in root.tag else root.tag
         if root_tag.lower() != "root":
             return
@@ -878,7 +878,7 @@ class XmlPlugin:
             namespace_hint = namespaces.get("default")
         if not namespace_hint or not _RESX_SCHEMA.search(namespace_hint):
             return
-        resource_keys: List[str] = []
+        resource_keys: list[str] = []
         for element in root.iter():
             tag_local = element.tag.split("}")[-1] if "}" in element.tag else element.tag
             if tag_local.lower() != "data":
@@ -895,13 +895,13 @@ class XmlPlugin:
             preview = ", ".join(resource_keys[:3])
             metadata.setdefault("resource_keys_preview", preview)
 
-    def _extract_attribute_hints(self, root: ET.Element, metadata: Dict[str, object]) -> None:
-        hints: Dict[str, List[Dict[str, object]]] = {
+    def _extract_attribute_hints(self, root: ET.Element, metadata: dict[str, object]) -> None:
+        hints: dict[str, list[dict[str, object]]] = {
             "connection_strings": [],
             "service_endpoints": [],
             "feature_flags": [],
         }
-        seen: Dict[str, Set[tuple[str, str, str, str]]] = {
+        seen: dict[str, set[tuple[str, str, str, str]]] = {
             "connection_strings": set(),
             "service_endpoints": set(),
             "feature_flags": set(),
@@ -914,8 +914,8 @@ class XmlPlugin:
             element_name = element.tag.split("}")[-1] if "}" in element.tag else element.tag
             lower_to_actual = {name.lower(): name for name in attributes}
 
-            key_attr_name: Optional[str] = None
-            key_value: Optional[str] = None
+            key_attr_name: str | None = None
+            key_value: str | None = None
             for candidate in ("name", "key", "id"):
                 actual = lower_to_actual.get(candidate)
                 if actual:
@@ -970,8 +970,8 @@ class XmlPlugin:
                         key_attribute=key_attr_name,
                     )
 
-            feature_value: Optional[str] = None
-            feature_attr_name: Optional[str] = None
+            feature_value: str | None = None
+            feature_attr_name: str | None = None
             if key_value and self._contains_feature_keyword(key_value):
                 for candidate in ("value", "enabled", "isenabled", "defaultvalue"):
                     attr_name = lower_to_actual.get(candidate)
@@ -1013,7 +1013,7 @@ class XmlPlugin:
         if filtered:
             metadata["attribute_hints"] = filtered
 
-    def _looks_like_msbuild(self, extension: str, metadata: Dict[str, object]) -> bool:
+    def _looks_like_msbuild(self, extension: str, metadata: dict[str, object]) -> bool:
         lowered_extension = extension.lower()
         msbuild_extensions = {
             ".targets",
@@ -1072,7 +1072,7 @@ class XmlPlugin:
     def _extract_msbuild_metadata(
         self,
         root: ET.Element,
-        metadata: Dict[str, object],
+        metadata: dict[str, object],
         extension: str,
     ) -> None:
         if not self._looks_like_msbuild(extension, metadata):
@@ -1102,10 +1102,10 @@ class XmlPlugin:
         if sdk:
             metadata["msbuild_sdk"] = sdk
 
-        target_names: List[str] = []
-        seen_target_names: Set[str] = set()
-        import_hints: List[Dict[str, object]] = []
-        seen_imports: Set[tuple[str, str]] = set()
+        target_names: list[str] = []
+        seen_target_names: set[str] = set()
+        import_hints: list[dict[str, object]] = []
+        seen_imports: set[tuple[str, str]] = set()
 
         for element in root.iter():
             local_name = element.tag.split("}")[-1] if "}" in element.tag else element.tag
@@ -1133,7 +1133,7 @@ class XmlPlugin:
                 if dedupe_key in seen_imports:
                     continue
                 seen_imports.add(dedupe_key)
-                entry: Dict[str, object] = {
+                entry: dict[str, object] = {
                     "attribute": attribute,
                     "hash": digest,
                     "length": len(cleaned_value),
@@ -1158,14 +1158,14 @@ class XmlPlugin:
     def _add_attribute_hint(
         self,
         *,
-        hints: Dict[str, List[Dict[str, object]]],
-        seen: Dict[str, Set[tuple[str, str, str, str]]],
+        hints: dict[str, list[dict[str, object]]],
+        seen: dict[str, set[tuple[str, str, str, str]]],
         category: str,
         element_name: str,
         attribute_name: str,
         value: str,
-        key_value: Optional[str],
-        key_attribute: Optional[str],
+        key_value: str | None,
+        key_attribute: str | None,
     ) -> None:
         cleaned = value.strip()
         if not cleaned:
@@ -1180,7 +1180,7 @@ class XmlPlugin:
         bucket = seen[category]
         if dedupe_key in bucket:
             return
-        entry: Dict[str, object] = {
+        entry: dict[str, object] = {
             "element": element_name,
             "attribute": attribute_name,
             "hash": digest,

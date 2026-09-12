@@ -22,12 +22,11 @@ import argparse
 import random
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
 
 from driftbuster.core.detector import Detector
-
 
 TARGET_FOLDERS = ("conf", "yaml", "text", "toml", "hcl", "dockerfile")
 DEFAULT_MAX_TOTAL_SAMPLE_BYTES = 16 * 1024 * 1024  # 16 MiB guardrail.
@@ -58,13 +57,12 @@ def iter_files(root: Path) -> Iterable[Path]:
             yield p
 
 
-def build_detector(max_total_sample_bytes: Optional[int] = None) -> Detector:
+def build_detector(max_total_sample_bytes: int | None = None) -> Detector:
     """Create a :class:`Detector` honouring the sampling budget guardrail."""
 
-    kwargs = {"sort_plugins": True}
     if max_total_sample_bytes is not None:
-        kwargs["max_total_sample_bytes"] = max_total_sample_bytes
-    return Detector(**kwargs)
+        return Detector(sort_plugins=True, max_total_sample_bytes=max_total_sample_bytes)
+    return Detector(sort_plugins=True)
 
 
 def scan_files(
@@ -132,7 +130,7 @@ def _duplicate_region(data: bytes, rng: random.Random, max_bytes: int) -> bytes:
 
 
 def _insert_comment(data: bytes, rng: random.Random, max_bytes: int) -> bytes:
-    comment = f"# fuzz-{rng.randrange(10_000):04d}\n".encode("utf-8")
+    comment = f"# fuzz-{rng.randrange(10_000):04d}\n".encode()
     insert_at = rng.randrange(0, len(data) + 1)
     mutated = data[:insert_at] + comment + data[insert_at:]
     return mutated[:max_bytes]
@@ -165,7 +163,7 @@ def generate_fuzz_inputs(
     root: Path,
     output_dir: Path,
     per_file: int,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     max_bytes: int = DEFAULT_FUZZ_MAX_BYTES,
 ) -> list[Path]:
     """Generate fuzzed variants for the supplied ``sources``."""
@@ -194,7 +192,7 @@ def generate_fuzz_inputs(
     return created
 
 
-def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "root",
@@ -232,7 +230,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     project_root = (
         Path(args.root).resolve()
@@ -266,6 +264,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if outcome.budget_exhausted:
         remaining = detector.sample_budget_remaining
+        assert remaining is not None  # the budget can only be exhausted when a budget was configured
         print(
             "\nSampling budget exhausted; remaining bytes: "
             f"{max(remaining, 0)}"

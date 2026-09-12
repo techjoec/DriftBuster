@@ -1,4 +1,6 @@
+from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 from driftbuster.core.detector import Detector
 
@@ -10,7 +12,7 @@ class RaisingCfg:
 
 
 class StoreStub:
-    def matching_configs(self, tags, *, relative_path):  # type: ignore[no-untyped-def]
+    def matching_configs(self, tags: Iterable[str] | None, *, relative_path: str | None) -> tuple[Any, ...]:
         # Return an object that will blow up inside the ignore-review check
         return (RaisingCfg(),)
 

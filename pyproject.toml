@@ -26,6 +26,15 @@ dependencies = [
 driftbuster = "driftbuster.cli:console_main"
 driftbuster-export-sql = "driftbuster.cli:export_sql_console_main"
 
+[dependency-groups]
+dev = [
+    "pytest>=9",
+    "coverage>=7.10",
+    "ruff>=0.16",
+    "pyright>=1.1.400",
+    "pip-licenses>=5",
+]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
@@ -36,11 +45,27 @@ where = ["src"]
 [tool.setuptools.package-data]
 "driftbuster" = ["secret_rules.json"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", ".", "tests"]
+
 [tool.ruff]
 line-length = 140
+target-version = "py312"
+src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
-select = ["E", "W", "F"]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["driftbuster", "scripts"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/driftbuster/offline_runner.py" = ["E402"]
+
+[tool.pyright]
+include = ["src", "tests", "scripts"]
+extraPaths = ["tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+reportMissingImports = "error"

@@ -13,11 +13,9 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
-
+from ..format_registry import register
 
 _EXT = ".toml"
 _TABLE_HEADER = re.compile(r"^\s*\[[A-Za-z0-9_.\-]+\]\s*$", re.MULTILINE)
@@ -28,10 +26,10 @@ _ARRAY_VALUE = re.compile(r"=\s*\[.*?\]", re.DOTALL)
 _INLINE_TABLE = re.compile(r"=\s*\{.*?\}")
 
 
-def _analyse_spacing(lines: List[str]) -> Optional[Dict[str, object]]:
+def _analyse_spacing(lines: list[str]) -> dict[str, object] | None:
     before_counter: Counter[int] = Counter()
     after_counter: Counter[int] = Counter()
-    tab_lines: List[int] = []
+    tab_lines: list[int] = []
 
     for idx, raw in enumerate(lines, 1):
         if "=" not in raw:
@@ -50,7 +48,7 @@ def _analyse_spacing(lines: List[str]) -> Optional[Dict[str, object]]:
     if not before_counter and not after_counter and not tab_lines:
         return None
 
-    metadata: Dict[str, object] = {}
+    metadata: dict[str, object] = {}
     if before_counter:
         before_base, _ = before_counter.most_common(1)[0]
         metadata["before"] = before_base
@@ -72,14 +70,14 @@ class TomlPlugin:
     priority: int = 165
     version: str = "0.0.3"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         ext = path.suffix.lower()
-        reasons: List[str] = []
-        metadata: Dict[str, object] = {}
-        review_reasons: List[str] = []
+        reasons: list[str] = []
+        metadata: dict[str, object] = {}
+        review_reasons: list[str] = []
 
         if ext == _EXT:
             reasons.append("File extension .toml suggests TOML content")

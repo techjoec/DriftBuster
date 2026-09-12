@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from .core.run_profiles import (
     ProfileFile,
@@ -15,10 +15,10 @@ from .core.run_profiles import (
 )
 from .scheduler import (
     ProfileScheduler,
+    ScheduledRun,
     ScheduleError,
     ScheduleSpec,
     ScheduleWindow,
-    ScheduledRun,
     parse_interval,
 )
 
@@ -30,22 +30,22 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 __all__ = [
-    "RunProfile",
     "ProfileFile",
     "ProfileRunResult",
-    "profiles_root",
-    "profile_directory",
-    "load_profile",
-    "save_profile",
-    "list_profiles",
-    "execute_profile",
     "ProfileScheduler",
+    "RunProfile",
+    "ScheduleError",
     "ScheduleSpec",
     "ScheduleWindow",
     "ScheduledRun",
-    "ScheduleError",
-    "parse_interval",
+    "execute_profile",
+    "list_profiles",
+    "load_profile",
     "main",
+    "parse_interval",
+    "profile_directory",
+    "profiles_root",
+    "save_profile",
 ]
 
 

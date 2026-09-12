@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Callable, Mapping
+from collections.abc import Callable, Mapping
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 

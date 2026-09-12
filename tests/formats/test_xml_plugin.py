@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from driftbuster.core.types import DetectionMatch
 import driftbuster.formats.xml.plugin as xml_plugin_module
+from driftbuster.core.types import DetectionMatch
 from driftbuster.formats.xml.plugin import XmlPlugin
 
 
@@ -356,7 +356,8 @@ def test_xml_plugin_extracts_schema_locations() -> None:
             "location": "http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd",
         }
     ]
-    assert any("Schema http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd declared" in reason for reason in match.reasons)
+    schema_reason = "Schema http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd declared"
+    assert any(schema_reason in reason for reason in match.reasons)
 
 
 def test_xml_plugin_collects_attribute_hints() -> None:
@@ -389,7 +390,7 @@ def test_xml_plugin_collects_attribute_hints() -> None:
     assert len(connection_hints) == 1
     connection_entry = connection_hints[0]
     expected_connection_hash = hashlib.sha256(
-        "Server=.;Database=App;User Id=app;Password=Pass123!;".encode("utf-8")
+        b"Server=.;Database=App;User Id=app;Password=Pass123!;"
     ).hexdigest()
     assert connection_entry["hash"] == expected_connection_hash
     assert connection_entry["key"] == "DefaultConnection"
@@ -397,8 +398,8 @@ def test_xml_plugin_collects_attribute_hints() -> None:
     endpoint_hints = hints.get("service_endpoints")
     assert isinstance(endpoint_hints, list)
     endpoint_hashes = {entry["hash"] for entry in endpoint_hints}
-    assert hashlib.sha256("https://api.example.com/v1/".encode("utf-8")).hexdigest() in endpoint_hashes
-    assert hashlib.sha256("net.tcp://services.example.com:8443/Feed".encode("utf-8")).hexdigest() in endpoint_hashes
+    assert hashlib.sha256(b"https://api.example.com/v1/").hexdigest() in endpoint_hashes
+    assert hashlib.sha256(b"net.tcp://services.example.com:8443/Feed").hexdigest() in endpoint_hashes
 
     feature_hints = hints.get("feature_flags")
     assert isinstance(feature_hints, list)
@@ -637,6 +638,7 @@ def test_xml_plugin_msbuild_metadata_dedupes_imports() -> None:
     match = _detect("duplicate.targets", content)
 
     assert match is not None
+    assert match.metadata is not None
     hints = match.metadata.get("msbuild_import_hints")
     assert isinstance(hints, list)
     assert len(hints) == 1
@@ -663,6 +665,7 @@ def test_xml_plugin_attribute_hint_dedupes_entries() -> None:
     match = _detect("hints.config", content)
 
     assert match is not None
+    assert match.metadata is not None
     hints = match.metadata.get("attribute_hints")
     assert isinstance(hints, dict)
     assert len(hints.get("connection_strings", [])) == 1

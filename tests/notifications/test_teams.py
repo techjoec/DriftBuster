@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
+from typing import Any
+from urllib.error import URLError
 
 import pytest
-from urllib.error import URLError
 
 from driftbuster.notifications import TeamsWebhookAdapter
 from driftbuster.notifications.base import NotificationError, NotificationMessage
 
 
 def test_teams_adapter_formats_payload() -> None:
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    def fake_post(url: str, payload: dict[str, object], timeout: float | None) -> tuple[int, str]:
+    def fake_post(url: str, payload: Mapping[str, object], timeout: float | None) -> tuple[int, str]:
         captured["url"] = url
         captured["payload"] = payload
         captured["timeout"] = timeout
@@ -57,9 +59,9 @@ def test_teams_adapter_requires_url() -> None:
 
 
 def test_teams_adapter_without_metadata() -> None:
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    def fake_post(url: str, payload: dict[str, object], timeout: float | None) -> tuple[int, str]:
+    def fake_post(url: str, payload: Mapping[str, object], timeout: float | None) -> tuple[int, str]:
         captured["payload"] = payload
         return 200, ""
 
@@ -73,7 +75,7 @@ def test_teams_adapter_without_metadata() -> None:
 
 
 def test_teams_adapter_wraps_url_errors() -> None:
-    def failing_post(url: str, payload: dict[str, object], timeout: float | None) -> tuple[int, str]:
+    def failing_post(url: str, payload: Mapping[str, object], timeout: float | None) -> tuple[int, str]:
         raise URLError("boom")
 
     adapter = TeamsWebhookAdapter("https://outlook.office.com/webhook/abcd", post=failing_post)
@@ -83,9 +85,9 @@ def test_teams_adapter_wraps_url_errors() -> None:
 
 
 def test_teams_adapter_uses_body_for_summary() -> None:
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    def fake_post(url: str, payload: dict[str, object], timeout: float | None) -> tuple[int, str]:
+    def fake_post(url: str, payload: Mapping[str, object], timeout: float | None) -> tuple[int, str]:
         captured["payload"] = payload
         return 200, ""
 
@@ -98,10 +100,10 @@ def test_teams_adapter_uses_body_for_summary() -> None:
 
 
 def test_teams_adapter_default_post(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     class DummyResponse:
-        def __enter__(self) -> "DummyResponse":
+        def __enter__(self) -> DummyResponse:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> bool:  # type: ignore[override]

@@ -6,6 +6,7 @@ from driftbuster.core.types import DetectionMatch
 from driftbuster.reporting._metadata import iter_detection_payloads
 from driftbuster.reporting.html import render_html_report
 from driftbuster.reporting.json_lines import iter_json_records
+from typed_payloads import as_dict
 
 
 def _match() -> DetectionMatch:
@@ -23,7 +24,7 @@ def test_iter_detection_payloads_merges_extra_metadata() -> None:
     match = _match()
     payloads = list(iter_detection_payloads([match], extra_metadata={"run_id": "abc"}))
     assert len(payloads) == 1
-    metadata = payloads[0]["metadata"]
+    metadata = as_dict(payloads[0]["metadata"])
     assert metadata["token"] == "value"
     assert metadata["run_id"] == "abc"
     assert match.metadata == {"token": "value"}

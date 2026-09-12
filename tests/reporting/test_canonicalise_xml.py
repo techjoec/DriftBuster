@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from driftbuster.reporting.diff import canonicalise_text, canonicalise_xml
 
 
@@ -42,16 +44,16 @@ def test_canonicalise_xml_cleans_whitespace_only_nodes_and_sorts_attributes() ->
 
 
 
-def test_canonicalise_xml_falls_back_to_text_on_parse_error() -> None:
-    payload = (
-        "<root>   \r\n"
-        "  <child>value</child>   \r\n"
-        "</root"
-    )
-
-    expected = canonicalise_text(payload)
-
-    assert canonicalise_xml(payload) == expected
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "<root>   \r\n  <child>value</child>   \r\n</root",
+        "<root><unclosed></root>",
+        "<!DOCTYPE broken [",
+    ],
+)
+def test_canonicalise_xml_falls_back_to_text_on_parse_error(payload: str) -> None:
+    assert canonicalise_xml(payload) == canonicalise_text(payload)
 
 
 def test_canonicalise_xml_strips_bom_prefix() -> None:

@@ -11,11 +11,12 @@ split.
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable, Iterator, Mapping, Sequence, TextIO
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from typing import Any, TextIO
 
 from ..core.types import DetectionMatch
-from ._metadata import iter_detection_payloads
 from ..hunt import HuntHit
+from ._metadata import iter_detection_payloads
 from .redaction import RedactionFilter, redact_data, resolve_redactor
 
 __all__ = ["iter_json_records", "render_json_lines", "write_json_lines"]

@@ -1,26 +1,24 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import io
 import json
 import os
 import subprocess
 import sys
-from unittest import mock
+from pathlib import Path
 
 from driftbuster.core.detector import DetectorIOError
 from driftbuster.multi_server import (
+    SCHEMA_VERSION,
     BaselinePreference,
     ExportOptions,
     MultiServerRunner,
     Plan,
-    SCHEMA_VERSION,
     _reset_progress_throttle_state,
     _resolve_cache_dir,
     emit_progress,
 )
-
+from typed_payloads import as_dict
 
 SAMPLES_ROOT = Path("fixtures/multi-server")
 
@@ -46,7 +44,7 @@ def test_multi_server_generates_catalog_and_drilldown(tmp_path) -> None:
         _sample_plan("server02", priority=5),
     ]
 
-    response = runner.run(plans)
+    response = as_dict(runner.run(plans))
 
     assert response["version"] == SCHEMA_VERSION
     assert len(response["results"]) == 2
@@ -72,10 +70,10 @@ def test_multi_server_uses_cache_on_subsequent_runs(tmp_path) -> None:
         _sample_plan("server02", priority=0),
     ]
 
-    first = runner.run(plans)
+    first = as_dict(runner.run(plans))
     assert any(not result["used_cache"] for result in first["results"]), "expected cold run without cache"
 
-    second = runner.run(plans)
+    second = as_dict(runner.run(plans))
     cached_flags = [result["used_cache"] for result in second["results"] if result["availability"] == "found"]
     assert cached_flags and all(cached_flags), "expected hot run to reuse cache entries"
 
@@ -89,8 +87,8 @@ def test_config_ids_are_deterministic(tmp_path) -> None:
         _sample_plan("server03", priority=0),
     ]
 
-    first = runner.run(plans)
-    second = runner.run(plans)
+    first = as_dict(runner.run(plans))
+    second = as_dict(runner.run(plans))
 
     first_ids = sorted(entry["config_id"] for entry in first["catalog"])
     second_ids = sorted(entry["config_id"] for entry in second["catalog"])
@@ -107,7 +105,7 @@ def test_missing_roots_marked_not_found(tmp_path) -> None:
         roots=(Path("/does/not/exist"),),
     )
 
-    response = runner.run([missing_plan])
+    response = as_dict(runner.run([missing_plan]))
 
     result = response["results"][0]
     assert result["availability"] == "not_found"
@@ -126,7 +124,7 @@ def test_detector_permission_errors_are_reported(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr(runner, "_detector", FakeDetector())
 
-    response = runner.run([plan])
+    response = as_dict(runner.run([plan]))
     result = response["results"][0]
     assert result["status"] == "failed"
     assert result["availability"] == "permission_denied"
@@ -177,7 +175,7 @@ def test_build_catalog_handles_offline_and_partial_hosts(monkeypatch, tmp_path) 
     monkeypatch.setattr(MultiServerRunner, "_scan_plan", fake_scan_plan)
 
     try:
-        response = runner.run(plans)
+        response = as_dict(runner.run(plans))
     finally:
         monkeypatch.setattr(MultiServerRunner, "_scan_plan", original_scan_plan)
 
@@ -206,7 +204,7 @@ def test_multi_server_reports_sampling_guardrail(tmp_path) -> None:
     runner = MultiServerRunner(cache_dir, sample_budget=256, sample_size=128)
     plan = _sample_plan("server01", priority=1, is_preferred=True)
 
-    response = runner.run([plan])
+    response = as_dict(runner.run([plan]))
 
     result = response["results"][0]
     assert result["sampling_guardrail_triggered"] is True
@@ -221,7 +219,7 @@ def test_drilldown_includes_sanitized_diff_summary(tmp_path) -> None:
         _sample_plan("server02", priority=5),
     ]
 
-    response = runner.run(plans)
+    response = as_dict(runner.run(plans))
 
     summaries = [entry.get("diff_summary") for entry in response["drilldown"] if entry.get("diff_summary")]
     assert summaries, "expected sanitized diff summary payload"

@@ -8,7 +8,7 @@ from scripts import purge_reporting_retention as purge_mod
 
 
 def _set_mtime(path: Path, *, days_ago: int, reference: dt.datetime | None = None) -> None:
-    ref = reference or dt.datetime.now(tz=dt.timezone.utc)
+    ref = reference or dt.datetime.now(tz=dt.UTC)
     mtime = ref.timestamp() - days_ago * 86400
     os.utime(path, times=(mtime, mtime))
 

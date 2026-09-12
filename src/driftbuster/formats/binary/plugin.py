@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import plistlib
 import re
 import sqlite3
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import List, Optional
 
-from ..format_registry import decode_text, looks_text, register
 from ...core.types import DetectionMatch
+from ..format_registry import decode_text, looks_text, register
 
 _SQLITE_MAGIC = b"SQLite format 3\x00"
 _BPLIST_MAGIC = b"bplist00"
@@ -29,8 +28,8 @@ class BinaryHybridPlugin:
         self,
         path: Path,
         sample: bytes,
-        text: Optional[str],
-    ) -> Optional[DetectionMatch]:
+        text: str | None,
+    ) -> DetectionMatch | None:
         match = self._detect_sqlite(path, sample)
         if match:
             return match
@@ -41,11 +40,11 @@ class BinaryHybridPlugin:
 
         return self._detect_markdown_front_matter(path, sample, text)
 
-    def _detect_sqlite(self, path: Path, sample: bytes) -> Optional[DetectionMatch]:
+    def _detect_sqlite(self, path: Path, sample: bytes) -> DetectionMatch | None:
         if not sample.startswith(_SQLITE_MAGIC):
             return None
 
-        reasons: List[str] = [
+        reasons: list[str] = [
             "Detected SQLite database header (SQLite format 3)",
         ]
         table_count = self._count_sqlite_tables(path)
@@ -65,7 +64,7 @@ class BinaryHybridPlugin:
             metadata=metadata,
         )
 
-    def _count_sqlite_tables(self, path: Path) -> Optional[int]:
+    def _count_sqlite_tables(self, path: Path) -> int | None:
         if not path.exists():
             return None
         try:
@@ -85,7 +84,7 @@ class BinaryHybridPlugin:
             return int(row[0])
         return None
 
-    def _detect_binary_plist(self, path: Path, sample: bytes) -> Optional[DetectionMatch]:
+    def _detect_binary_plist(self, path: Path, sample: bytes) -> DetectionMatch | None:
         if not sample.startswith(_BPLIST_MAGIC):
             return None
 
@@ -95,7 +94,7 @@ class BinaryHybridPlugin:
         reasons = ["Detected binary property list header (bplist00)"]
         try:
             payload = plistlib.load(BytesIO(sample))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             metadata["decode_error"] = {
                 "type": type(exc).__name__,
                 "message": str(exc),
@@ -118,8 +117,8 @@ class BinaryHybridPlugin:
         self,
         path: Path,
         sample: bytes,
-        text: Optional[str],
-    ) -> Optional[DetectionMatch]:
+        text: str | None,
+    ) -> DetectionMatch | None:
         working_text = text
         if working_text is None and looks_text(sample):
             working_text, _encoding = decode_text(sample)

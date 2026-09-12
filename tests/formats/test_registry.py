@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import codecs
 from pathlib import Path
 
-import codecs
 import pytest
 
 from driftbuster.core.types import DetectionMatch
@@ -12,6 +12,7 @@ from driftbuster.formats import registry
 class _NullPlugin:
     name = "test-null-plugin"
     priority = 9999
+    version = "0.0.0"
 
     def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         return None
@@ -34,6 +35,7 @@ def test_register_rejects_duplicate_names() -> None:
     class _DuplicateNamePlugin:
         name = "json"
         priority = 0
+        version = "0.0.0"
 
         def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
             return None
@@ -102,13 +104,13 @@ def test_decode_text_fallback_to_latin1() -> None:
 
 
 def test_decode_text_prefers_utf8_sig_and_fallback_replace() -> None:
-    utf8_sample = codecs.BOM_UTF8 + "value".encode("utf-8")
+    utf8_sample = codecs.BOM_UTF8 + b"value"
     text, encoding = registry.decode_text(utf8_sample)
     assert text == "value"
     assert encoding == "utf-8-sig"
 
     class FussyBytes(bytes):
-        def decode(self, encoding: str, errors: str | None = None) -> str:
+        def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
             if errors == "replace":
                 return "fallback"
             raise UnicodeDecodeError(encoding, b"", 0, 1, "fail")

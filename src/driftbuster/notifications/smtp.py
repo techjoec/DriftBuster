@@ -1,16 +1,35 @@
 from __future__ import annotations
 
-from email.message import EmailMessage
 import smtplib
-from typing import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from email.message import EmailMessage
+from typing import Protocol
 
 from .base import NotificationError, NotificationMessage
 
-_SMTPFactory = Callable[[str, int, float | None], smtplib.SMTP]
+
+class _SMTPClient(Protocol):
+    """Subset of :class:`smtplib.SMTP` exercised by the adapter."""
+
+    def __enter__(self) -> object: ...
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> object: ...
+
+    def ehlo(self) -> object: ...
+
+    def starttls(self) -> object: ...
+
+    def login(self, user: str, password: str, /) -> object: ...
+
+    def send_message(self, msg: EmailMessage, /) -> object: ...
+
+
+_SMTPFactory = Callable[[str, int, float | None], _SMTPClient]
 
 
 def _default_factory(host: str, port: int, timeout: float | None) -> smtplib.SMTP:
-    return smtplib.SMTP(host=host, port=port, timeout=timeout)
+    # typeshed declares ``timeout: float`` but smtplib accepts ``None`` (no timeout) at runtime.
+    return smtplib.SMTP(host=host, port=port, timeout=timeout)  # pyright: ignore[reportArgumentType]
 
 
 class SMTPNotificationAdapter:

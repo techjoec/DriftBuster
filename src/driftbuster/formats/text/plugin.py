@@ -11,11 +11,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
-
+from ..format_registry import register
 
 _COMMENT = re.compile(r"^\s*[#;]")
 _DIRECTIVE = re.compile(r"^\s*[A-Za-z_][\w.-]*(?:\s+.+)?$")
@@ -41,19 +39,19 @@ class TextPlugin:
     priority: int = 1000
     version: str = "0.0.2"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         lines = [ln for ln in text.splitlines()[:500]]
         kinds = [_line_kind(ln) for ln in lines]
-        directive_lines = [ln for ln, k in zip(lines, kinds) if k == "directive"]
-        assignment_lines = [ln for ln, k in zip(lines, kinds) if k == "assignment"]
-        comment_lines = [ln for ln, k in zip(lines, kinds) if k == "comment"]
+        directive_lines = [ln for ln, k in zip(lines, kinds, strict=True) if k == "directive"]
+        assignment_lines = [ln for ln, k in zip(lines, kinds, strict=True) if k == "assignment"]
+        comment_lines = [ln for ln, k in zip(lines, kinds, strict=True) if k == "comment"]
 
-        reasons: List[str] = []
-        metadata: Dict[str, object] = {}
-        review_reasons: List[str] = []
+        reasons: list[str] = []
+        metadata: dict[str, object] = {}
+        review_reasons: list[str] = []
 
         lower = path.name.lower()
         content = "\n".join(lines)

@@ -202,4 +202,4 @@ if __name__ == "__main__":  # pragma: no cover - manual utility
     try:
         main()
     except SyncError as exc:
-        raise SystemExit(str(exc))
+        raise SystemExit(str(exc)) from exc

@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
-
-import types
+import xml.etree.ElementTree as ET
 
 from driftbuster.formats.xml import plugin as xml_plugin
 
 
 class _FakeDefused:
-    def fromstring(self, text: str) -> _FakeElement:  # type: ignore[override]
-        # Delegate to the stdlib XML parser to produce a real Element
-        import xml.etree.ElementTree as ET  # local import for test isolation
+    def fromstring(self, text: str) -> ET.Element:
         return ET.fromstring(text)
 
 

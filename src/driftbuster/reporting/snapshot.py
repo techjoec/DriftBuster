@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from collections.abc import Iterable, Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
 
 from ..core.types import DetectionMatch
 from .json import iter_json_records
@@ -55,7 +55,7 @@ def build_snapshot_manifest(
         legal_block["redacted_tokens"] = active_redactor.stats()
 
     manifest: dict[str, object] = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "output": output_name,
         "operator": operator,
         "legal": legal_block,

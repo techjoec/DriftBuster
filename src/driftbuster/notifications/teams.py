@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Callable, Mapping
+from collections.abc import Callable, Mapping
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -52,8 +52,9 @@ class TeamsWebhookAdapter:
             "text": text,
         }
         if message.metadata:
-            payload.setdefault("sections", [])
-            payload["sections"].append({"facts": _render_metadata(message.metadata)})
+            sections: list[object] = []
+            payload["sections"] = sections
+            sections.append({"facts": _render_metadata(message.metadata)})
         return payload
 
     def send(self, message: NotificationMessage) -> None:

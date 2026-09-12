@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
-from difflib import SequenceMatcher, unified_diff
-from datetime import datetime, timezone
-from hashlib import sha256
 import re
 import xml.etree.ElementTree as ET
-from typing import Callable, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from difflib import SequenceMatcher, unified_diff
+from hashlib import sha256
 
 from .redaction import RedactionFilter, resolve_redactor
 
@@ -197,8 +197,11 @@ def _truncate_canonical_payload(
     )
     clamped = _append_notice(safe_payload, notice)
 
-    canonical_limits = limits.get("canonical")
-    if canonical_limits is None:
+    existing_limits = limits.get("canonical")
+    canonical_limits: dict[str, Mapping[str, object]]
+    if isinstance(existing_limits, dict):
+        canonical_limits = existing_limits
+    else:
         canonical_limits = {}
         limits["canonical"] = canonical_limits
     canonical_limits[label] = {
@@ -583,7 +586,7 @@ def summarise_diff_result(
 
     versions_tuple = tuple(versions or ())
     return DiffResultSummary(
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         versions=versions_tuple,
         comparisons=(comparison_summary,),
     )
@@ -620,7 +623,7 @@ def summarise_diff_results(
         comparisons.append(_build_comparison_summary(result, baseline_name, comparison_name))
 
     return DiffResultSummary(
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         versions=tuple(versions or ()),
         comparisons=tuple(comparisons),
     )

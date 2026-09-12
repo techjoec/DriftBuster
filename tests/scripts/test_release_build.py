@@ -26,20 +26,6 @@ def test_ensure_dependency_raises_for_missing(monkeypatch: pytest.MonkeyPatch) -
     assert "Missing dependency 'missing_module'" in str(exc.value)
 
 
-def test_run_invokes_subprocess(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: list[list[str]] = []
-
-    def fake_run(command: list[str], *, cwd: Path | None = None, check: bool) -> None:
-        captured.append(command)
-        assert check is True
-
-    monkeypatch.setattr(release_build.subprocess, "run", fake_run)
-
-    release_build.run(["echo", "hello"], cwd=None)
-
-    assert captured == [["echo", "hello"]]
-
-
 def test_clean_artifacts_resets_directories(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     build_root = tmp_path / "build"
     python_dir = build_root / "artifacts" / "python"

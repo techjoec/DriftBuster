@@ -3,9 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from .core import run_profiles
 from .scheduler import ProfileScheduler, ScheduleError, ScheduleSpec
@@ -56,7 +57,7 @@ def _apply_secret_overrides(
     if not overrides:
         return profile
 
-    payload = profile.to_dict()
+    payload = dict(profile.to_dict())
     existing = dict(payload.get("secret_scanner") or {})
     for key, values in overrides.items():
         merged = _clean_secret_values(existing.get(key))
@@ -75,7 +76,7 @@ def _serialise_timezone(tz: object) -> str:
     tzname = getattr(tz, "tzname", None)
     if callable(tzname):  # pragma: no cover - exercised indirectly
         name = tzname(None)
-        if name:
+        if isinstance(name, str) and name:
             return name
     return str(tz)
 
@@ -99,10 +100,7 @@ def _load_schedule_payload(path: Path) -> Sequence[Mapping[str, Any]]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise SystemExit(f"Failed to parse schedules from {path}: {exc}") from exc
-    if isinstance(payload, Mapping):
-        entries = payload.get("schedules", [])
-    else:
-        entries = payload
+    entries = payload.get("schedules", []) if isinstance(payload, Mapping) else payload
     if not entries:
         return []
     if not isinstance(entries, Sequence):
@@ -185,8 +183,8 @@ def _parse_reference_timestamp(value: str) -> datetime:
     except ValueError as exc:
         raise SystemExit(f"Unable to parse timestamp: {value!r}") from exc
     if candidate.tzinfo is None:
-        return candidate.replace(tzinfo=timezone.utc)
-    return candidate.astimezone(timezone.utc)
+        return candidate.replace(tzinfo=UTC)
+    return candidate.astimezone(UTC)
 
 
 def _schedule_list(args: argparse.Namespace) -> int:

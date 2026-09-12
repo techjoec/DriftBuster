@@ -73,7 +73,7 @@ def test_write_sqlite_snapshot_with_limits_and_sequences(tmp_path: Path) -> None
         connection.close()
 
     destination = tmp_path / "out.json"
-    snapshot = write_sqlite_snapshot(
+    write_sqlite_snapshot(
         db_path,
         destination,
         tables=("accounts",),

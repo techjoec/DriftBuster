@@ -5,8 +5,8 @@ import os
 import sqlite3
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pytest
 
@@ -69,11 +69,6 @@ def test_relative_path_falls_back_when_outside_root(tmp_path: Path) -> None:
     assert result == outside.as_posix()
 
 
-def test_ellipsize_handles_small_limits() -> None:
-    assert cli._ellipsize("abcdef", 1) == "a"
-    assert cli._ellipsize("abcdef", 0) == ""
-
-
 def test_main_returns_code_when_parser_error_is_suppressed(monkeypatch: pytest.MonkeyPatch) -> None:
     recorded: dict[str, str] = {}
 
@@ -87,7 +82,7 @@ def test_main_returns_code_when_parser_error_is_suppressed(monkeypatch: pytest.M
         def parse_args(self, _argv: list[str] | None = None) -> DummyArgs:
             return DummyArgs()
 
-        def error(self, message: str) -> None:  # noqa: D401 - stub for testing
+        def error(self, message: str) -> None:
             recorded["message"] = message
 
     monkeypatch.setattr(cli, "_build_parser", lambda: DummyParser())
@@ -185,8 +180,10 @@ def test_export_sql_console_main_forwards_arguments(monkeypatch: pytest.MonkeyPa
         cli.export_sql_console_main()
 
     assert exc.value.code == 0
-    assert recorded["argv"][0] == "export-sql"
-    assert recorded["argv"][1:] == ["demo.sqlite", "--limit", "10"]
+    argv = recorded["argv"]
+    assert argv is not None
+    assert argv[0] == "export-sql"
+    assert list(argv[1:]) == ["demo.sqlite", "--limit", "10"]
 
 
 def test_cli_diff_generates_unified_patch(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

@@ -8,25 +8,19 @@ deterministically.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 from typing import (
     Any,
-    Callable,
-    FrozenSet,
-    Iterable,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
 )
 
 from .types import DetectionMatch
 
 
-def normalize_tags(tags: Optional[Iterable[str]]) -> FrozenSet[str]:
+def normalize_tags(tags: Iterable[str] | None) -> frozenset[str]:
     """Return a normalised, deduplicated set of tag strings."""
 
     if tags is None:
@@ -35,7 +29,7 @@ def normalize_tags(tags: Optional[Iterable[str]]) -> FrozenSet[str]:
     return frozenset(cleaned)
 
 
-def _freeze_mapping(data: Optional[Mapping[str, Any]]) -> Mapping[str, Any]:
+def _freeze_mapping(data: Mapping[str, Any] | None) -> Mapping[str, Any]:
     return MappingProxyType(dict(data or {}))
 
 
@@ -48,14 +42,14 @@ class ProfileConfig:
     """Represents a single configuration expectation inside a profile."""
 
     identifier: str
-    path: Optional[str] = None
-    path_glob: Optional[str] = None
-    application: Optional[str] = None
-    version: Optional[str] = None
-    branch: Optional[str] = None
-    tags: FrozenSet[str] = field(default_factory=frozenset)
-    expected_format: Optional[str] = None
-    expected_variant: Optional[str] = None
+    path: str | None = None
+    path_glob: str | None = None
+    application: str | None = None
+    version: str | None = None
+    branch: str | None = None
+    tags: frozenset[str] = field(default_factory=frozenset)
+    expected_format: str | None = None
+    expected_variant: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:  # pragma: no cover - small coercions
@@ -73,8 +67,8 @@ class ProfileConfig:
     def matches(
         self,
         *,
-        relative_path: Optional[str],
-        provided_tags: FrozenSet[str],
+        relative_path: str | None,
+        provided_tags: frozenset[str],
     ) -> bool:
         """Return ``True`` when the config applies to the given path + tags."""
 
@@ -101,9 +95,7 @@ class ProfileConfig:
 
         if self.path and normalised == self.path:
             return True
-        if self.path_glob and fnmatch(normalised, self.path_glob):
-            return True
-        return False
+        return bool(self.path_glob and fnmatch(normalised, self.path_glob))
 
 
 @dataclass(frozen=True)
@@ -111,9 +103,9 @@ class ConfigurationProfile:
     """Container for a set of configuration expectations."""
 
     name: str
-    description: Optional[str] = None
-    tags: FrozenSet[str] = field(default_factory=frozenset)
-    configs: Tuple[ProfileConfig, ...] = field(default_factory=tuple)
+    description: str | None = None
+    tags: frozenset[str] = field(default_factory=frozenset)
+    configs: tuple[ProfileConfig, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:  # pragma: no cover - small coercions
@@ -121,7 +113,7 @@ class ConfigurationProfile:
         object.__setattr__(self, "configs", tuple(self.configs))
         object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
 
-    def applies_to(self, provided_tags: FrozenSet[str]) -> bool:
+    def applies_to(self, provided_tags: frozenset[str]) -> bool:
         """Return True when the profile should activate for the tag set."""
 
         if not self.tags:
@@ -131,9 +123,9 @@ class ConfigurationProfile:
     def matching_configs(
         self,
         *,
-        provided_tags: FrozenSet[str],
-        relative_path: Optional[str],
-    ) -> Tuple[ProfileConfig, ...]:
+        provided_tags: frozenset[str],
+        relative_path: str | None,
+    ) -> tuple[ProfileConfig, ...]:
         matches = [
             config
             for config in self.configs
@@ -158,8 +150,8 @@ class ProfiledDetection:
     """Detection result annotated with matching configuration profiles."""
 
     path: Path
-    detection: Optional[DetectionMatch]
-    profiles: Tuple[AppliedProfileConfig, ...]
+    detection: DetectionMatch | None
+    profiles: tuple[AppliedProfileConfig, ...]
 
 
 class ProfileStore:
@@ -175,7 +167,7 @@ class ProfileStore:
 
     def __init__(
         self,
-        profiles: Optional[Sequence[ConfigurationProfile]] = None,
+        profiles: Sequence[ConfigurationProfile] | None = None,
     ) -> None:
         self._profiles: dict[str, ConfigurationProfile] = {}
         self._config_index: dict[str, AppliedProfileConfig] = {}
@@ -301,7 +293,7 @@ class ProfileStore:
     def get_profile(self, name: str) -> ConfigurationProfile:
         return self._profiles[name]
 
-    def profiles(self) -> Tuple[ConfigurationProfile, ...]:
+    def profiles(self) -> tuple[ConfigurationProfile, ...]:
         return tuple(self._profiles.values())
 
     def summary(self) -> Mapping[str, Any]:
@@ -335,8 +327,8 @@ class ProfileStore:
 
     def applicable_profiles(
         self,
-        tags: Optional[Iterable[str]],
-    ) -> Tuple[ConfigurationProfile, ...]:
+        tags: Iterable[str] | None,
+    ) -> tuple[ConfigurationProfile, ...]:
         """Return profiles that apply to ``tags`` without touching state."""
 
         tag_set = normalize_tags(tags)
@@ -346,7 +338,7 @@ class ProfileStore:
             if profile.applies_to(tag_set)
         )
 
-    def find_config(self, identifier: str) -> Tuple[AppliedProfileConfig, ...]:
+    def find_config(self, identifier: str) -> tuple[AppliedProfileConfig, ...]:
         """Return the config matching ``identifier`` when present."""
 
         match = self._config_index.get(identifier)
@@ -356,10 +348,10 @@ class ProfileStore:
 
     def matching_configs(
         self,
-        tags: Optional[Iterable[str]],
+        tags: Iterable[str] | None,
         *,
-        relative_path: Optional[str],
-    ) -> Tuple[AppliedProfileConfig, ...]:
+        relative_path: str | None,
+    ) -> tuple[AppliedProfileConfig, ...]:
         """Return matches for ``relative_path`` under ``tags``."""
 
         tag_set = normalize_tags(tags)
@@ -375,7 +367,7 @@ class ProfileStore:
         return tuple(matches)
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "ProfileStore":
+    def from_dict(cls, payload: Mapping[str, Any]) -> ProfileStore:
         profiles: list[ConfigurationProfile] = []
         for entry in payload.get("profiles", []):
             configs = []

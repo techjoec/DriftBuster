@@ -16,8 +16,8 @@ from .core import (
     DetectionMatch,
     Detector,
     ProfileConfig,
-    ProfileStore,
     ProfiledDetection,
+    ProfileStore,
     diff_summary_snapshots,
     normalize_tags,
     scan_file,
@@ -25,43 +25,31 @@ from .core import (
 )
 from .formats import FormatPlugin, get_plugins, register, registry_summary
 from .hunt import HuntHit, HuntRule, default_rules, hunt_path
-from .token_approvals import (
-    TokenApproval,
-    TokenApprovalStore,
-    TokenCandidate,
-    TokenCandidateSet,
-    collect_token_candidates,
-)
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type hints
-    from . import offline_runner as offline_runner_module  # noqa: F401
+    from . import offline_runner as offline_runner_module  # noqa: F401  # re-exported lazily via __getattr__
 
 __all__ = [
     "AppliedProfileConfig",
     "ConfigurationProfile",
+    "DetectionMatch",
     "Detector",
+    "FormatPlugin",
+    "HuntHit",
+    "HuntRule",
     "ProfileConfig",
     "ProfileStore",
     "ProfiledDetection",
-    "DetectionMatch",
-    "HuntHit",
-    "HuntRule",
+    "default_rules",
     "diff_summary_snapshots",
-    "FormatPlugin",
     "get_plugins",
+    "hunt_path",
+    "normalize_tags",
+    "offline_runner",  # pyright: ignore[reportUnsupportedDunderAll]  # resolved lazily by __getattr__
     "register",
     "registry_summary",
-    "normalize_tags",
-    "default_rules",
-    "hunt_path",
     "scan_file",
     "scan_path",
-    "offline_runner",
-    "TokenApproval",
-    "TokenApprovalStore",
-    "TokenCandidate",
-    "TokenCandidateSet",
-    "collect_token_candidates",
 ]
 
 

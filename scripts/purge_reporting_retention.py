@@ -9,11 +9,11 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import os
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, List, Sequence
 
-UTC = _dt.timezone.utc
+UTC = _dt.UTC
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ def discover_candidates(
     *,
     retention_days: int,
     now: _dt.datetime | None = None,
-) -> List[PurgeCandidate]:
+) -> list[PurgeCandidate]:
     """Return purge candidates older than ``retention_days``."""
 
     if retention_days < 0:
@@ -44,7 +44,7 @@ def discover_candidates(
 
     clock = now or _dt.datetime.now(tz=UTC)
     threshold = clock - _dt.timedelta(days=retention_days)
-    candidates: List[PurgeCandidate] = []
+    candidates: list[PurgeCandidate] = []
 
     for root in roots:
         root = root.expanduser().resolve()
@@ -66,10 +66,10 @@ def purge(
     candidates: Iterable[PurgeCandidate],
     *,
     confirm: bool,
-) -> List[Path]:
+) -> list[Path]:
     """Remove ``candidates`` if ``confirm`` is True; return deleted paths."""
 
-    deleted: List[Path] = []
+    deleted: list[Path] = []
     for candidate in candidates:
         path = candidate.path
         if not confirm:

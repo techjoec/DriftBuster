@@ -14,7 +14,7 @@ def test_save_and_load_profile(tmp_path: Path) -> None:
         name="vdi",
         description="VDI configuration set",
         sources=("*.json",),
-        options={"sample_size": 65536},
+        options={"sample_size": 65536},  # pyright: ignore[reportArgumentType]  # exercises option value coercion
         secret_scanner={"ignore_rules": ["db"], "ignore_patterns": ["ALLOW"]},
     )
 
@@ -196,3 +196,23 @@ def test_validate_profile_baseline_missing_path(tmp_path: Path) -> None:
     profile = core_run_profiles.RunProfile(name="base", sources=(missing,), baseline=missing)
     with pytest.raises(FileNotFoundError):
         core_run_profiles._validate_profile(profile)
+
+
+def test_execute_profile_orders_baseline_first(tmp_path: Path) -> None:
+    baseline = tmp_path / "baseline.txt"
+    baseline.write_text("base", encoding="utf-8")
+    other = tmp_path / "other.txt"
+    other.write_text("other", encoding="utf-8")
+
+    profile = core_run_profiles.RunProfile(
+        name="ordering",
+        sources=[str(other), str(baseline)],
+        baseline=str(baseline),
+    )
+
+    result = core_run_profiles.execute_profile(profile, base_dir=tmp_path, timestamp="20240101T000000Z")
+    run_dir = tmp_path / "Profiles" / "ordering" / "raw" / "20240101T000000Z"
+    assert result.output_dir == run_dir
+    # Baseline should be processed first resulting in source_00 being baseline file.
+    baseline_dest = run_dir / "source_00"
+    assert any(entry.destination.is_relative_to(baseline_dest) for entry in result.files)

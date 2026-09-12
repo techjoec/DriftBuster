@@ -46,12 +46,13 @@ Examples
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Sequence
+from typing import Protocol
 
 from ..catalog import DETECTION_CATALOG
 from ..formats import format_registry as registry
-from .profiles import ProfileStore, ProfiledDetection, normalize_tags
+from .profiles import AppliedProfileConfig, ProfiledDetection, normalize_tags
 from .types import DetectionMatch, validate_detection_metadata
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,17 @@ _DEFAULT_SAMPLE_SIZE = 128 * 1024  # 128 KiB default clamp.
 _MAX_SAMPLE_SIZE = 512 * 1024  # Guardrail against excessive reads.
 
 _DEFAULT_TOTAL_SAMPLE_BUDGET = 16 * 1024 * 1024  # 16 MiB aggregate guardrail.
+
+
+class ProfileMatcher(Protocol):
+    """Subset of :class:`~driftbuster.core.profiles.ProfileStore` used by profile-aware scans."""
+
+    def matching_configs(
+        self,
+        tags: Iterable[str] | None,
+        *,
+        relative_path: str | None,
+    ) -> tuple[AppliedProfileConfig, ...]: ...
 
 
 class DetectorIOError(Exception):
@@ -96,7 +108,7 @@ def _validate_sample_size(sample_size: int) -> int:
     return sample_size
 
 
-def _validate_total_sample_budget(value: Optional[int]) -> Optional[int]:
+def _validate_total_sample_budget(value: int | None) -> int | None:
     if value is None:
         return None
     if value <= 0:
@@ -107,7 +119,8 @@ def _validate_total_sample_budget(value: Optional[int]) -> Optional[int]:
 def _titleise_component(component: str) -> str:
     if not component:
         return component
-    for index, char in enumerate(component):
+    index = 0
+    for index, char in enumerate(component):  # noqa: B007  # index is used after the loop
         if char.isalpha():
             break
     else:
@@ -128,9 +141,9 @@ def _normalise_reason_token(token: str) -> str:
     return "-".join(normalised_parts)
 
 
-def _normalise_reasons(reasons: Iterable[str]) -> List[str]:
+def _normalise_reasons(reasons: Iterable[str]) -> list[str]:
     seen: set[str] = set()
-    normalised: List[str] = []
+    normalised: list[str] = []
     for raw in reasons:
         text = str(raw).strip()
         if not text:
@@ -166,12 +179,12 @@ class Detector:
 
     def __init__(
         self,
-        plugins: Optional[Sequence[registry.FormatPlugin]] = None,
+        plugins: Sequence[registry.FormatPlugin] | None = None,
         *,
-        sample_size: Optional[int] = None,
-        max_total_sample_bytes: Optional[int] = None,
+        sample_size: int | None = None,
+        max_total_sample_bytes: int | None = None,
         sort_plugins: bool = True,
-        on_error: Optional[Callable[[Path, Exception], None]] = None,
+        on_error: Callable[[Path, Exception], None] | None = None,
     ) -> None:
         """Create a detector.
 
@@ -218,7 +231,7 @@ class Detector:
         path: Path,
         error: DetectorIOError,
         *,
-        cause: Optional[BaseException] = None,
+        cause: BaseException | None = None,
     ) -> None:
         if self._on_error is not None:
             try:
@@ -240,13 +253,13 @@ class Detector:
         return self._budget_exhausted
 
     @property
-    def sample_budget_remaining(self) -> Optional[int]:
+    def sample_budget_remaining(self) -> int | None:
         if self._max_total_sample_bytes is None:
             return None
         remaining = self._max_total_sample_bytes - self._consumed_sample_bytes
         return max(0, remaining)
 
-    def scan_file(self, path: Path) -> Optional[DetectionMatch]:
+    def scan_file(self, path: Path) -> DetectionMatch | None:
         path = Path(path)
         if not path.is_file():
             raise FileNotFoundError(f"Expected file path, got: {path}")
@@ -282,8 +295,8 @@ class Detector:
         else:
             sample = raw[: self._sample_size]
         truncated = len(raw) > self._sample_size
-        text: Optional[str] = None
-        encoding: Optional[str] = None
+        text: str | None = None
+        encoding: str | None = None
         if registry.looks_text(sample):
             text, encoding = registry.decode_text(sample)
 
@@ -295,10 +308,7 @@ class Detector:
         for plugin in self._plugins:
             match = plugin.detect(path, sample, text)
             if match is not None:
-                if match.metadata is not None:
-                    metadata = dict(match.metadata)
-                else:
-                    metadata = {}
+                metadata = dict(match.metadata) if match.metadata is not None else {}
                 if "bytes_sampled" not in metadata:
                     metadata["bytes_sampled"] = len(sample)
                 if encoding is not None and "encoding" not in metadata:
@@ -336,7 +346,7 @@ class Detector:
         glob: str = "**/*",
         *,
         reset_budget: bool = True,
-    ) -> List[tuple[Path, Optional[DetectionMatch]]]:
+    ) -> list[tuple[Path, DetectionMatch | None]]:
         """Scan ``root`` while enforcing the aggregate sampling budget.
 
         Args:
@@ -359,7 +369,7 @@ class Detector:
 
         if reset_budget:
             self.reset_sample_budget()
-        results: List[tuple[Path, Optional[DetectionMatch]]] = []
+        results: list[tuple[Path, DetectionMatch | None]] = []
         try:
             iterable = sorted(root.glob(glob))
         except OSError as exc:
@@ -388,10 +398,10 @@ class Detector:
         self,
         root: Path,
         *,
-        profile_store: ProfileStore,
-        tags: Optional[Sequence[str]] = None,
+        profile_store: ProfileMatcher,
+        tags: Sequence[str] | None = None,
         glob: str = "**/*",
-    ) -> List[ProfiledDetection]:
+    ) -> list[ProfiledDetection]:
         """Scan ``root`` and annotate matches with configuration profiles.
 
         Args:
@@ -407,12 +417,12 @@ class Detector:
         normalized_tags = normalize_tags(tags)
         root_path = Path(root)
         scan_results = self.scan_path(root_path, glob=glob)
-        profiled: List[ProfiledDetection] = []
+        profiled: list[ProfiledDetection] = []
 
         root_is_dir = root_path.is_dir()
 
         for path, detection in scan_results:
-            relative: Optional[str]
+            relative: str | None
             if root_is_dir:
                 try:
                     relative = path.relative_to(root_path).as_posix()
@@ -451,11 +461,11 @@ class Detector:
 def scan_file(
     path: Path,
     *,
-    sample_size: Optional[int] = None,
-    plugins: Optional[Sequence[registry.FormatPlugin]] = None,
+    sample_size: int | None = None,
+    plugins: Sequence[registry.FormatPlugin] | None = None,
     sort_plugins: bool = True,
-    on_error: Optional[Callable[[Path, Exception], None]] = None,
-) -> Optional[DetectionMatch]:
+    on_error: Callable[[Path, Exception], None] | None = None,
+) -> DetectionMatch | None:
     """Convenience wrapper that uses the default detector instance."""
 
     detector = Detector(
@@ -471,11 +481,11 @@ def scan_path(
     root: Path,
     glob: str = "**/*",
     *,
-    sample_size: Optional[int] = None,
-    plugins: Optional[Sequence[registry.FormatPlugin]] = None,
+    sample_size: int | None = None,
+    plugins: Sequence[registry.FormatPlugin] | None = None,
     sort_plugins: bool = True,
-    on_error: Optional[Callable[[Path, Exception], None]] = None,
-) -> List[tuple[Path, Optional[DetectionMatch]]]:
+    on_error: Callable[[Path, Exception], None] | None = None,
+) -> list[tuple[Path, DetectionMatch | None]]:
     """Convenience wrapper mirroring :meth:`Detector.scan_path`."""
 
     detector = Detector(

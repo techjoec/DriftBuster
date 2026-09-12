@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
 import pytest
 
@@ -123,7 +122,6 @@ def test_main_entrypoint_dispatches(tmp_path, monkeypatch, capsys) -> None:
 
 
 def test_main_returns_error_when_no_command(tmp_path, monkeypatch) -> None:
-    parser = build_parser()
     empty_args = argparse.Namespace(func=None)
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda self, _: empty_args)
     exit_code = main([])

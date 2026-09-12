@@ -6,9 +6,6 @@ core detector data structures while making it trivial to plug in token
 redaction before serialising outputs.
 """
 
-from .redaction import RedactionFilter, redact_data, resolve_redactor
-from .json import iter_json_records, render_json_lines, write_json_lines
-from .html import render_html_report, write_html_report
 from .diff import (
     DiffResult,
     DiffResultSummary,
@@ -21,29 +18,32 @@ from .diff import (
     summarise_diff_result,
     summarise_diff_results,
 )
+from .html import render_html_report, write_html_report
+from .json import iter_json_records, render_json_lines, write_json_lines
+from .redaction import RedactionFilter, redact_data, resolve_redactor
 from .snapshot import build_snapshot_manifest, write_snapshot
 from .summary import summarise_detections
 
 __all__ = [
-    "RedactionFilter",
-    "redact_data",
-    "resolve_redactor",
-    "iter_json_records",
-    "render_json_lines",
-    "write_json_lines",
-    "render_html_report",
-    "write_html_report",
-    "canonicalise_text",
-    "canonicalise_json",
-    "canonicalise_xml",
     "DiffResult",
     "DiffResultSummary",
+    "RedactionFilter",
+    "build_snapshot_manifest",
     "build_unified_diff",
+    "canonicalise_json",
+    "canonicalise_text",
+    "canonicalise_xml",
+    "diff_summary_to_payload",
+    "iter_json_records",
+    "redact_data",
+    "render_html_report",
+    "render_json_lines",
+    "render_unified_diff",
+    "resolve_redactor",
+    "summarise_detections",
     "summarise_diff_result",
     "summarise_diff_results",
-    "diff_summary_to_payload",
-    "render_unified_diff",
-    "build_snapshot_manifest",
+    "write_html_report",
+    "write_json_lines",
     "write_snapshot",
-    "summarise_detections",
 ]

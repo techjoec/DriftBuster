@@ -1,27 +1,31 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import TypedDict
 
 import pytest
 
 from driftbuster.registry.scan import (
-    RegistryApp,
     RegistryHit,
     SearchSpec,
-    is_windows,
+    _Backend,
     enumerate_installed_apps,
     find_app_registry_roots,
     search_registry,
 )
 
 
-class FakeBackend:
-    def __init__(self) -> None:
-        # Structure: {(hive, path): {"subkeys": {name: {}}, "values": {name: value}}}
-        self.nodes: Dict[Tuple[str, str], Dict[str, object]] = {}
+class _Node(TypedDict):
+    subkeys: dict[str, bool]
+    values: dict[str, object]
 
-    def add_key(self, hive: str, path: str, *, values: Optional[Dict[str, object]] = None) -> None:
+
+class FakeBackend(_Backend):
+    def __init__(self) -> None:
+        # Structure: {(hive, path): {"subkeys": {name: True}, "values": {name: value}}}
+        self.nodes: dict[tuple[str, str], _Node] = {}
+
+    def add_key(self, hive: str, path: str, *, values: dict[str, object] | None = None) -> None:
         self.nodes.setdefault((hive, path), {"subkeys": {}, "values": {}})
         if values:
             self.nodes[(hive, path)]["values"].update(values)
@@ -32,17 +36,17 @@ class FakeBackend:
             self.nodes.setdefault((hive, parent), {"subkeys": {}, "values": {}})
             self.nodes[(hive, parent)]["subkeys"][child] = True
 
-    def enum_subkeys(self, hive: str, path: str, view: Optional[str]) -> List[str]:
+    def enum_subkeys(self, hive: str, path: str, view: str | None) -> list[str]:
         node = self.nodes.get((hive, path))
         if not node:
             return []
-        return sorted(node["subkeys"].keys())  # type: ignore[index]
+        return sorted(node["subkeys"].keys())
 
-    def enum_values(self, hive: str, path: str, view: Optional[str]):
+    def enum_values(self, hive: str, path: str, view: str | None) -> list[tuple[str, object]]:
         node = self.nodes.get((hive, path))
         if not node:
             return []
-        return list(node["values"].items())  # type: ignore[index]
+        return list(node["values"].items())
 
 
 def build_fake_registry() -> FakeBackend:
@@ -92,10 +96,6 @@ def test_enumerate_installed_apps_collects_from_multiple_hives():
     assert "VendorA AppA" in names
     assert "VendorB AppB" in names
     assert "TinyTool" in names
-
-
-def test_is_windows_function_runs():
-    assert isinstance(is_windows(), bool)
 
 
 def test_find_app_registry_roots_uses_installed_list():

@@ -4,13 +4,13 @@ from pathlib import Path
 
 from driftbuster.core.detector import Detector
 from driftbuster.core.types import DetectionMatch
-
 from scripts import score_configsamples as score
 
 
 class _RecordingPlugin:
     name = "recording"
     priority = 1
+    version = "0.0.0"
 
     def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if not sample:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from driftbuster.hunt import (
     HuntRule,
     _extract_hits,
@@ -117,7 +119,8 @@ def test_should_exclude_relative_only() -> None:
 
     relative = Path("notes/entry.log")
 
-    assert _should_exclude(StubPath(), relative=relative, patterns=["notes/entry.log"])
+    # StubPath deliberately is not a Path: the relative-only branch must never touch the candidate.
+    assert _should_exclude(StubPath(), relative=relative, patterns=["notes/entry.log"])  # pyright: ignore[reportArgumentType]
 
 
 def test_hunt_path_handles_relative_to_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -153,8 +156,11 @@ def test_hunt_json_relative_fallback(monkeypatch: pytest.MonkeyPatch, tmp_path: 
             return getattr(self._wrapped, name)
 
         def __lt__(self, other: object) -> bool:
-            other_path = other._wrapped if isinstance(other, Wrapper) else other
-            return self._wrapped < other_path
+            if isinstance(other, Wrapper):
+                return self._wrapped < other._wrapped
+            if isinstance(other, Path):
+                return self._wrapped < other
+            return NotImplemented
 
         def relative_to(self, _root: Path) -> Path:
             raise ValueError("outside")

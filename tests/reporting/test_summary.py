@@ -3,6 +3,7 @@ from __future__ import annotations
 from driftbuster.catalog import DETECTION_CATALOG
 from driftbuster.core.types import DetectionMatch, validate_detection_metadata
 from driftbuster.reporting.summary import summarise_detections
+from typed_payloads import as_dict
 
 
 def _build_match(
@@ -32,7 +33,7 @@ def test_summary_captures_variant_metadata_and_remediations() -> None:
         plugin_name="conf",
     )
 
-    summary = summarise_detections([dotenv, unix_conf])
+    summary = as_dict(summarise_detections([dotenv, unix_conf]))
 
     assert summary["total_matches"] == 2
     assert summary["unique_formats"] == 2
@@ -66,7 +67,7 @@ def test_summary_handles_matches_without_metadata() -> None:
         reasons=[],
     )
 
-    summary = summarise_detections([plain_match])
+    summary = as_dict(summarise_detections([plain_match]))
 
     assert summary["total_matches"] == 1
     text_summary = summary["formats"][0]

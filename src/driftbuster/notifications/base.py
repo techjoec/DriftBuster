@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
-from typing import Mapping, MutableMapping, Protocol
+from typing import Protocol
 
 
 class NotificationError(RuntimeError):
@@ -16,7 +17,7 @@ class NotificationMessage:
     body: str
     metadata: Mapping[str, object] | None = None
 
-    def with_metadata(self, metadata: Mapping[str, object] | None) -> "NotificationMessage":
+    def with_metadata(self, metadata: Mapping[str, object] | None) -> NotificationMessage:
         if not metadata:
             return self
         merged: MutableMapping[str, object] = {}

@@ -1,5 +1,4 @@
 from pathlib import Path
-from textwrap import dedent
 
 from driftbuster.core.detector import Detector
 from driftbuster.core.profiles import ConfigurationProfile, ProfileConfig, ProfileStore

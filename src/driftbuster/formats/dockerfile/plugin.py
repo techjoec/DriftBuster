@@ -11,11 +11,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
-
+from ..format_registry import register
 
 _FIRST_FROM = re.compile(r"^\s*FROM\s+\S+", re.IGNORECASE)
 _DIRECTIVES = re.compile(r"^\s*(RUN|COPY|ADD|ARG|ENV|WORKDIR|ENTRYPOINT|CMD|EXPOSE|USER|VOLUME)\b", re.IGNORECASE | re.MULTILINE)
@@ -27,13 +25,13 @@ class DockerfilePlugin:
     priority: int = 120
     version: str = "0.0.1"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         lower = path.name.lower()
-        reasons: List[str] = []
-        metadata: Dict[str, object] = {}
+        reasons: list[str] = []
+        metadata: dict[str, object] = {}
 
         name_hint = "dockerfile" in lower or lower.endswith(".dockerfile")
         if name_hint:

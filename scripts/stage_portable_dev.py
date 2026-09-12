@@ -4,9 +4,8 @@ import argparse
 import hashlib
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STAGE_DIR = Path("/lap_temp/DriftBuster-Portabletest")
@@ -206,7 +205,7 @@ def main() -> int:
         raise SystemExit(f"Run this script from repository root: {ROOT}")
 
     args = parse_args()
-    timestamp = args.timestamp or datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
+    timestamp = args.timestamp or datetime.now(UTC).strftime("%Y%m%d-%H%M%SZ")
     version = read_gui_version(ROOT)
     publish_dir = build_publish(ROOT, configuration=args.configuration, rid=args.rid)
 

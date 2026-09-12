@@ -6,7 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PY_ARTIFACT_DIR = REPO_ROOT / "build" / "artifacts" / "python"
 GUI_ARTIFACT_DIR = REPO_ROOT / "build" / "artifacts" / "gui"

@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from driftbuster.registry import parse_registry_root_descriptor
 import driftbuster.registry_cli as registry_cli
 from driftbuster import offline_runner
+from driftbuster.registry import parse_registry_root_descriptor
 from scripts import capture as capture_script
 
 
@@ -95,9 +95,10 @@ def test_offline_runner_uses_explicit_roots(monkeypatch: pytest.MonkeyPatch, tmp
     assert "roots" in recorded
     assert recorded["roots"] == (("HKLM", r"Software\\VendorA", "64"),)
 
+    assert result.manifest_path is not None
     manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
     summary = manifest["sources"][0]
-    assert "registry_scan" == summary["type"]
+    assert summary["type"] == "registry_scan"
     normalised_roots = [entry.replace("\\\\", "\\") for entry in summary["roots"]]
     assert normalised_roots == ["HKLM \\ Software\\VendorA"]
     normalised_requested = [entry.replace("\\\\", "\\") for entry in summary["requested_roots"]]

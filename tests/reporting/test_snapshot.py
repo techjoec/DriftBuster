@@ -5,6 +5,7 @@ from pathlib import Path
 from driftbuster.core.types import DetectionMatch
 from driftbuster.reporting.redaction import RedactionFilter
 from driftbuster.reporting.snapshot import build_snapshot_manifest, write_snapshot
+from typed_payloads import as_dict
 
 
 def _match() -> DetectionMatch:
@@ -20,14 +21,14 @@ def _match() -> DetectionMatch:
 
 def test_build_snapshot_manifest_includes_redaction_stats() -> None:
     redactor = RedactionFilter(tokens=("SECRET",))
-    manifest = build_snapshot_manifest(
+    manifest = as_dict(build_snapshot_manifest(
         [_match()],
         output_name="report.json",
         operator="analyst",
         redactor=redactor,
         legal_metadata={"retention_days": 10},
         extra_metadata={"scan_id": "abc-123"},
-    )
+    ))
 
     assert manifest["output"] == "report.json"
     assert manifest["operator"] == "analyst"
@@ -43,12 +44,12 @@ def test_build_snapshot_manifest_includes_redaction_stats() -> None:
 
 
 def test_build_snapshot_manifest_merges_extra_metadata_into_matches() -> None:
-    manifest = build_snapshot_manifest(
+    manifest = as_dict(build_snapshot_manifest(
         [_match()],
         operator="investigator",
         output_name="payload.json",
         extra_metadata={"scan_id": "scan-42", "source": "ci"},
-    )
+    ))
 
     record = manifest["matches"][0]
     metadata = record["payload"]["metadata"]

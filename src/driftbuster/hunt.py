@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Literal, cast, overload
 
 from .formats import format_registry as registry
 
@@ -16,9 +17,9 @@ class HuntRule:
 
     name: str
     description: str
-    token_name: Optional[str] = None
-    keywords: Tuple[str, ...] = ()
-    patterns: Tuple[re.Pattern[str] | str, ...] = field(default_factory=tuple)
+    token_name: str | None = None
+    keywords: tuple[str, ...] = ()
+    patterns: tuple[re.Pattern[str] | str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:  # pragma: no cover - small coercions
         compiled = []
@@ -33,6 +34,11 @@ class HuntRule:
             normalised = self.token_name.strip()
             object.__setattr__(self, "token_name", normalised or None)
 
+    @property
+    def compiled_patterns(self) -> tuple[re.Pattern[str], ...]:
+        # ``__post_init__`` compiles every string pattern, so the tuple only holds ``re.Pattern`` at runtime.
+        return cast(tuple[re.Pattern[str], ...], self.patterns)
+
 
 @dataclass(frozen=True)
 class HuntHit:
@@ -40,7 +46,7 @@ class HuntHit:
     path: Path
     line_number: int
     excerpt: str
-    matches: Tuple[str, ...] = ()
+    matches: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -56,7 +62,7 @@ class PlanTransform:
     excerpt: str
 
 
-def _iter_text(path: Path, sample_size: int) -> Optional[str]:
+def _iter_text(path: Path, sample_size: int) -> str | None:
     with path.open("rb") as handle:
         sample = handle.read(sample_size)
         if not registry.looks_text(sample):
@@ -69,9 +75,9 @@ def _matches_keywords(text: str, keywords: Sequence[str]) -> bool:
     return all(keyword in text.lower() for keyword in keywords)
 
 
-def _deduplicate_preserving_order(values: Iterable[str]) -> Tuple[str, ...]:
+def _deduplicate_preserving_order(values: Iterable[str]) -> tuple[str, ...]:
     seen: set[str] = set()
-    ordered: List[str] = []
+    ordered: list[str] = []
     for value in values:
         candidate = value.strip()
         if not candidate:
@@ -83,20 +89,20 @@ def _deduplicate_preserving_order(values: Iterable[str]) -> Tuple[str, ...]:
     return tuple(ordered)
 
 
-def _extract_hits(text: str, rule: HuntRule, path: Path) -> List[HuntHit]:
-    hits: List[HuntHit] = []
+def _extract_hits(text: str, rule: HuntRule, path: Path) -> list[HuntHit]:
+    hits: list[HuntHit] = []
     lines = text.splitlines()
     for idx, line in enumerate(lines, start=1):
         line_lower = line.lower()
         if rule.keywords and not any(keyword in line_lower for keyword in rule.keywords):
             continue
         matched = False
-        matched_values: List[str] = []
+        matched_values: list[str] = []
         if rule.patterns:
-            for pattern in rule.patterns:
+            for pattern in rule.compiled_patterns:
                 for match in pattern.finditer(line):
                     matched = True
-                    group_values: List[str] = []
+                    group_values: list[str] = []
                     if match.lastindex:
                         for group_index in range(1, match.lastindex + 1):
                             value = match.group(group_index)
@@ -129,7 +135,7 @@ def _extract_hits(text: str, rule: HuntRule, path: Path) -> List[HuntHit]:
 def _should_exclude(
     candidate: Path,
     *,
-    relative: Optional[Path],
+    relative: Path | None,
     patterns: Sequence[str],
 ) -> bool:
     for pattern in patterns:
@@ -140,16 +146,42 @@ def _should_exclude(
     return False
 
 
+@overload
+def hunt_path(
+    root: Path,
+    *,
+    rules: Sequence[HuntRule],
+    glob: str = ...,
+    sample_size: int = ...,
+    exclude_patterns: Sequence[str] | None = ...,
+    return_json: Literal[False] = ...,
+    placeholder_template: str = ...,
+) -> list[HuntHit]: ...
+
+
+@overload
+def hunt_path(
+    root: Path,
+    *,
+    rules: Sequence[HuntRule],
+    glob: str = ...,
+    sample_size: int = ...,
+    exclude_patterns: Sequence[str] | None = ...,
+    return_json: Literal[True],
+    placeholder_template: str = ...,
+) -> list[dict[str, Any]]: ...
+
+
 def hunt_path(
     root: Path,
     *,
     rules: Sequence[HuntRule],
     glob: str = "**/*",
     sample_size: int = 128 * 1024,
-    exclude_patterns: Optional[Sequence[str]] = None,
+    exclude_patterns: Sequence[str] | None = None,
     return_json: bool = False,
     placeholder_template: str = "{{{{ {token_name} }}}}",
-) -> List[HuntHit] | List[dict[str, Any]]:
+) -> list[HuntHit] | list[dict[str, Any]]:
     """Search ``root`` for dynamic configuration signals.
 
     Args:
@@ -164,18 +196,15 @@ def hunt_path(
     """
 
     path = Path(root)
-    targets: List[Path]
-    if path.is_file():
-        targets = [path]
-    else:
-        targets = [candidate for candidate in path.glob(glob) if candidate.is_file()]
+    targets: list[Path]
+    targets = [path] if path.is_file() else [candidate for candidate in path.glob(glob) if candidate.is_file()]
 
     root_dir = path if path.is_dir() else path.parent
-    exclusions: Tuple[str, ...] = tuple(exclude_patterns or ())
-    findings: List[HuntHit] = []
+    exclusions: tuple[str, ...] = tuple(exclude_patterns or ())
+    findings: list[HuntHit] = []
     for candidate in sorted(targets):
         if exclusions:
-            relative: Optional[Path]
+            relative: Path | None
             try:
                 relative = candidate.relative_to(root_dir)
             except ValueError:
@@ -192,7 +221,7 @@ def hunt_path(
     if not return_json:
         return findings
 
-    json_ready: List[dict[str, Any]] = []
+    json_ready: list[dict[str, Any]] = []
     for hit in findings:
         try:
             relative_path = hit.path.relative_to(root_dir)
@@ -205,7 +234,7 @@ def hunt_path(
                 "description": hit.rule.description,
                 "token_name": hit.rule.token_name,
                 "keywords": hit.rule.keywords,
-                "patterns": tuple(pattern.pattern for pattern in hit.rule.patterns),
+                "patterns": tuple(pattern.pattern for pattern in hit.rule.compiled_patterns),
             },
             "path": str(hit.path),
             "relative_path": relative_text,
@@ -234,7 +263,7 @@ def _plan_transform_for_hit(
     token_name = hit.rule.token_name
     if not token_name:
         return None
-    match_value: Optional[str] = None
+    match_value: str | None = None
     if hit.matches:
         for candidate in hit.matches:
             if any(marker in candidate for marker in (".", ":", "/", "\\")):
@@ -265,7 +294,7 @@ def build_plan_transforms(
     hits: Sequence[HuntHit],
     *,
     placeholder_template: str = "{{{{ {token_name} }}}}",
-) -> Tuple[PlanTransform, ...]:
+) -> tuple[PlanTransform, ...]:
     """Return plan transforms derived from ``hits``.
 
     Each transform pairs a detected ``token_name`` with the matched value and a
@@ -274,7 +303,7 @@ def build_plan_transforms(
     approval workflows.
     """
 
-    transforms: List[PlanTransform] = []
+    transforms: list[PlanTransform] = []
     seen: set[tuple[str, str, Path, int]] = set()
     for hit in hits:
         transform = _plan_transform_for_hit(hit, placeholder_template=placeholder_template)
@@ -288,7 +317,7 @@ def build_plan_transforms(
     return tuple(transforms)
 
 
-def default_rules() -> Tuple[HuntRule, ...]:
+def default_rules() -> tuple[HuntRule, ...]:
     """Return a baseline set of hunt rules for common dynamic settings."""
 
     return (
@@ -349,8 +378,8 @@ def default_rules() -> Tuple[HuntRule, ...]:
 
 
 __all__ = [
-    "HuntRule",
     "HuntHit",
+    "HuntRule",
     "PlanTransform",
     "build_plan_transforms",
     "default_rules",

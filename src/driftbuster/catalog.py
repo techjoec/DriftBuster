@@ -17,7 +17,6 @@ the line.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Tuple
 
 
 @dataclass(frozen=True)
@@ -43,12 +42,12 @@ class FormatSubtype:
     priority: int
     variant: str | None = None
     severity: str | None = None
-    filename_patterns: Tuple[str, ...] = field(default_factory=tuple)
-    content_signatures: Tuple[ContentSignature, ...] = field(default_factory=tuple)
-    mime_hints: Tuple[str, ...] = field(default_factory=tuple)
-    aliases: Tuple[str, ...] = field(default_factory=tuple)
+    filename_patterns: tuple[str, ...] = field(default_factory=tuple)
+    content_signatures: tuple[ContentSignature, ...] = field(default_factory=tuple)
+    mime_hints: tuple[str, ...] = field(default_factory=tuple)
+    aliases: tuple[str, ...] = field(default_factory=tuple)
     severity_hint: str | None = None
-    remediation_hints: Tuple[RemediationHint, ...] = field(default_factory=tuple)
+    remediation_hints: tuple[RemediationHint, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -69,17 +68,17 @@ class FormatClass:
     slug: str
     priority: int
     default_severity: str
-    extensions: Tuple[str, ...]
+    extensions: tuple[str, ...]
     default_variant: str | None = None
-    aliases: Tuple[str, ...] = field(default_factory=tuple)
-    filename_patterns: Tuple[str, ...] = field(default_factory=tuple)
-    content_signatures: Tuple[ContentSignature, ...] = field(default_factory=tuple)
-    mime_hints: Tuple[str, ...] = field(default_factory=tuple)
-    examples: Tuple[str, ...] = field(default_factory=tuple)
-    subtypes: Tuple[FormatSubtype, ...] = field(default_factory=tuple)
+    aliases: tuple[str, ...] = field(default_factory=tuple)
+    filename_patterns: tuple[str, ...] = field(default_factory=tuple)
+    content_signatures: tuple[ContentSignature, ...] = field(default_factory=tuple)
+    mime_hints: tuple[str, ...] = field(default_factory=tuple)
+    examples: tuple[str, ...] = field(default_factory=tuple)
+    subtypes: tuple[FormatSubtype, ...] = field(default_factory=tuple)
     severity_hint: str | None = None
-    remediation_hints: Tuple[RemediationHint, ...] = field(default_factory=tuple)
-    references: Tuple[str, ...] = field(default_factory=tuple)
+    remediation_hints: tuple[RemediationHint, ...] = field(default_factory=tuple)
+    references: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -88,16 +87,16 @@ class FallbackClass:
     slug: str
     priority: int
     default_severity: str
-    mime_hints: Tuple[str, ...]
-    aliases: Tuple[str, ...] = field(default_factory=tuple)
+    mime_hints: tuple[str, ...]
+    aliases: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
 class DetectionCatalog:
     version: str
     updated: str
-    notes: Tuple[str, ...]
-    classes: Tuple[FormatClass, ...]
+    notes: tuple[str, ...]
+    classes: tuple[FormatClass, ...]
     fallback: FallbackClass
 
 
@@ -1019,9 +1018,9 @@ DETECTION_CATALOG = DetectionCatalog(
 @dataclass(frozen=True)
 class UsageVariant:
     variant: str
-    extensions: Tuple[str, ...] = field(default_factory=tuple)
+    extensions: tuple[str, ...] = field(default_factory=tuple)
     filename_hint: str | None = None
-    mime_hints: Tuple[str, ...] = field(default_factory=tuple)
+    mime_hints: tuple[str, ...] = field(default_factory=tuple)
     context: str | None = None
 
 
@@ -1029,12 +1028,12 @@ class UsageVariant:
 class FormatUsage:
     format: str
     variant: str | None
-    extensions: Tuple[str, ...]
-    mime_hints: Tuple[str, ...] = field(default_factory=tuple)
+    extensions: tuple[str, ...]
+    mime_hints: tuple[str, ...] = field(default_factory=tuple)
     context: str | None = None
     approx_usage_percent: float | None = None
     confidence_model: str | None = None
-    variants: Tuple[UsageVariant, ...] = field(default_factory=tuple)
+    variants: tuple[UsageVariant, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -1043,14 +1042,14 @@ class SurveyMeta:
     secondary_key: str
     total_formats: int
     usage_sum_percent: float
-    notes: Tuple[str, ...]
+    notes: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class FormatSurvey:
     version: str
     updated: str
-    formats: Tuple[FormatUsage, ...]
+    formats: tuple[FormatUsage, ...]
     meta: SurveyMeta
 
 

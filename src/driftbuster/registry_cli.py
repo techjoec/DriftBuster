@@ -3,15 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from .registry import (
+    SearchSpec,
     enumerate_installed_apps,
     find_app_registry_roots,
+    is_windows,
     parse_registry_root_descriptor,
     search_registry,
-    SearchSpec,
-    is_windows,
 )
 
 
@@ -145,10 +146,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         except ValueError as exc:
             raise SystemExit(f"invalid --root value: {exc}") from exc
 
-        if explicit_roots:
-            roots = explicit_roots
-        else:
-            roots = find_app_registry_roots(args.token, installed=apps)
+        roots = explicit_roots or find_app_registry_roots(args.token, installed=apps)
         patterns = tuple(re.compile(p) for p in (args.pattern or ()))
         spec = SearchSpec(
             keywords=tuple(args.keyword or ()),

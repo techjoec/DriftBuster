@@ -6,11 +6,10 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PORTABLE_ROOT = Path("/lap_temp/DriftBuster-Portabletest")
@@ -128,8 +127,14 @@ def evaluate_response(name: str, returncode: int, events: list[dict[str, Any]], 
         "hosts": len(results) if isinstance(results, list) else 0,
         "catalog": len(catalog) if isinstance(catalog, list) else 0,
         "drilldown": len(drilldown) if isinstance(drilldown, list) else 0,
-        "failed_hosts": sum(1 for entry in results if isinstance(entry, dict) and entry.get("status") == "failed") if isinstance(results, list) else 0,
-        "drift_entries": sum(1 for entry in catalog if isinstance(entry, dict) and int(entry.get("drift_count", 0)) > 0) if isinstance(catalog, list) else 0,
+        "failed_hosts": (
+            sum(1 for entry in results if isinstance(entry, dict) and entry.get("status") == "failed") if isinstance(results, list) else 0
+        ),
+        "drift_entries": (
+            sum(1 for entry in catalog if isinstance(entry, dict) and int(entry.get("drift_count", 0)) > 0)
+            if isinstance(catalog, list)
+            else 0
+        ),
         "payload": payload,
     }
 
@@ -168,7 +173,14 @@ def run_scenarios(samples_root: Path, pythonpath: Path, report_dir: Path) -> lis
                 make_plan("host-01", "server01", samples_root / "server01", preferred=True, priority=10),
             ],
         },
-        lambda d: d["returncode"] == 0 and d["has_result"] and d["hosts"] == 1 and d["catalog"] > 0 and d["drilldown"] > 0 and d["failed_hosts"] == 0,
+        lambda d: (
+            d["returncode"] == 0
+            and d["has_result"]
+            and d["hosts"] == 1
+            and d["catalog"] > 0
+            and d["drilldown"] > 0
+            and d["failed_hosts"] == 0
+        ),
     )
 
     execute(
@@ -281,7 +293,7 @@ def main() -> int:
     total = len(scenarios)
 
     report = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "pythonpath": str(pythonpath),
         "samples_root": str(samples_root),
         "passed": passed,

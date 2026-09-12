@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta, timezone
 from types import MappingProxyType
-from typing import Callable, Iterable, Mapping, MutableMapping, Sequence
-
-try:  # pragma: no cover - optional dependency on Windows
-    from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover - Python <3.9 fallback
-    ZoneInfo = None  # type: ignore
+from zoneinfo import ZoneInfo
 
 from .core.run_profiles import RunProfile
 
@@ -24,8 +20,8 @@ class ScheduleError(ValueError):
 
 def _ensure_aware(moment: datetime) -> datetime:
     if moment.tzinfo is None:
-        return moment.replace(tzinfo=timezone.utc)
-    return moment.astimezone(timezone.utc)
+        return moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC)
 
 
 def _parse_timestamp(value: object) -> datetime:
@@ -120,9 +116,7 @@ def _parse_time(text: str) -> time:
 
 def _build_timezone(name: str | None) -> timezone | ZoneInfo:
     if not name:
-        return timezone.utc
-    if ZoneInfo is None:
-        raise ScheduleError("Time zone support requires Python 3.9+ with zoneinfo")
+        return UTC
     try:
         return ZoneInfo(name)
     except Exception as exc:  # pragma: no cover - defensive
@@ -135,14 +129,14 @@ class ScheduleWindow:
 
     start: time
     end: time
-    timezone: timezone | ZoneInfo = field(default_factory=lambda: timezone.utc)
+    timezone: timezone | ZoneInfo = field(default_factory=lambda: UTC)
 
     def __post_init__(self) -> None:
         if not isinstance(self.start, time) or not isinstance(self.end, time):
             raise ScheduleError("Window bounds must be datetime.time instances")
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, object]) -> "ScheduleWindow":
+    def from_dict(cls, payload: Mapping[str, object]) -> ScheduleWindow:
         try:
             start_text = str(payload["start"])  # type: ignore[index]
             end_text = str(payload["end"])  # type: ignore[index]
@@ -187,7 +181,7 @@ class ScheduleWindow:
                     minute=start_time.minute,
                     second=start_time.second,
                 )
-        return base.astimezone(timezone.utc)
+        return base.astimezone(UTC)
 
 
 @dataclass(frozen=True)
@@ -217,7 +211,7 @@ class ScheduleSpec:
         payload: Mapping[str, object],
         *,
         profile_loader: ProfileLoader | None = None,
-    ) -> "ScheduleSpec":
+    ) -> ScheduleSpec:
         try:
             name = str(payload["name"])
             profile = str(payload["profile"])
@@ -262,7 +256,7 @@ class ScheduleSpec:
         return candidate
 
     def initial_run(self, reference: datetime | None = None) -> datetime:
-        base = self.start_at or reference or datetime.now(timezone.utc)
+        base = self.start_at or reference or datetime.now(UTC)
         return self.align_to(base)
 
     def next_after(self, moment: datetime) -> datetime:
@@ -307,7 +301,7 @@ class ProfileScheduler:
 
     @staticmethod
     def _now() -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def register(self, spec: ScheduleSpec) -> None:
         if spec.name in self._specs:

@@ -34,11 +34,9 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
-
+from ..format_registry import register
 
 _JSON_KEY_RE = re.compile(r"\{[^\n\r]*\"registry_scan\"\s*:\s*\{", re.DOTALL)
 _YAML_KEY_RE = re.compile(r"^\s*registry_scan\s*:\s*$", re.IGNORECASE | re.MULTILINE)
@@ -50,14 +48,14 @@ class RegistryLivePlugin:
     priority: int = 30
     version: str = "0.0.1"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         lower = path.name.lower()
         extension = path.suffix.lower()
-        reasons: List[str] = []
-        metadata: Dict[str, object] = {}
+        reasons: list[str] = []
+        metadata: dict[str, object] = {}
 
         # Quick filename/extension hints
         if lower.endswith(".regscan.json") or lower.endswith(".registry.json"):
@@ -66,7 +64,7 @@ class RegistryLivePlugin:
             reasons.append("Filename contains registry/scan hints")
 
         # Prefer JSON detection
-        parsed_json: Optional[dict] = None
+        parsed_json: dict | None = None
         if extension in {".json", ""} or _JSON_KEY_RE.search(text):
             if _JSON_KEY_RE.search(text):
                 reasons.append("Found 'registry_scan' top-level key in JSON payload")

@@ -20,7 +20,7 @@ class DummySMTP:
         self.sent_message: EmailMessage | None = None
         self.closed = False
 
-    def __enter__(self) -> "DummySMTP":
+    def __enter__(self) -> DummySMTP:
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
@@ -40,7 +40,7 @@ class DummySMTP:
 
 
 class FailingSMTP(DummySMTP):
-    def send_message(self, message: EmailMessage) -> None:  # noqa: D401 - behaviour described above
+    def send_message(self, message: EmailMessage) -> None:
         raise smtplib.SMTPException("failed")
 
 
@@ -78,10 +78,11 @@ def test_smtp_adapter_sends_message_with_metadata() -> None:
     assert client.login_args == ("user", "secret")
     assert client.sent_message is not None
     assert client.sent_message["Subject"] == "Profile Drift"
-    assert client.sent_message.get_body(preferencelist=("plain",)).get_content().startswith(
-        "A nightly scan detected drift."
-    )
-    assert "Metadata:" in client.sent_message.get_body(preferencelist=("plain",)).get_content()
+    body = client.sent_message.get_body(preferencelist=("plain",))
+    assert body is not None
+    content = body.get_content()
+    assert content.startswith("A nightly scan detected drift.")
+    assert "Metadata:" in content
 
 
 def test_smtp_adapter_without_starttls() -> None:

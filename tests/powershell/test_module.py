@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -53,7 +55,14 @@ def _strip_ansi(text: str) -> str:
 
 
 @pytest.fixture(scope="session")
-def published_backend() -> Path:
+def backend_data_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Session-scoped DRIFTBUSTER_DATA_ROOT so the module caches DLLs under tmp, not the real home."""
+
+    return tmp_path_factory.mktemp("driftbuster-data-root")
+
+
+@pytest.fixture(scope="session")
+def published_backend(backend_data_root: Path) -> Path:
     subprocess.run(
         [
             "dotnet",
@@ -77,7 +86,8 @@ def published_backend() -> Path:
     if match:
         backend_version = match.group(1)
 
-    cache_dir = Path.home() / ".local" / "share" / "DriftBuster" / "cache" / "powershell" / "backend" / backend_version
+    # Mirrors DriftbusterPaths.GetCacheDirectory("powershell", "backend", <version>) under the tmp data root.
+    cache_dir = backend_data_root / "cache" / "powershell" / "backend" / backend_version
     cache_dir.mkdir(parents=True, exist_ok=True)
     for dependency in publish_dir.iterdir():
         if dependency.is_file():
@@ -87,36 +97,40 @@ def published_backend() -> Path:
 
 
 def _run_powershell(
-    module_path: Path, body: str, *, check: bool = True
+    module_path: Path, body: str, *, check: bool = True, data_root: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
     module_literal = _ps_literal(str(module_path))
     script = (
         f"$module = {module_literal}; Add-Type -AssemblyName System.Text.Json; "
         f"Import-Module $module -Force; {body}"
     )
+    env = dict(os.environ)
+    if data_root is not None:
+        env["DRIFTBUSTER_DATA_ROOT"] = str(data_root)
     return subprocess.run(
         ["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
         check=check,
         capture_output=True,
         text=True,
+        env=env,
     )
 
 
-def _capture_json(module_path: Path, body: str, *, depth: int = 6) -> object:
+def _capture_json(module_path: Path, body: str, *, depth: int = 6, data_root: Path | None = None) -> Any:
     command = f"{body} | ConvertTo-Json -Depth {depth}"
-    completed = _run_powershell(module_path, command)
+    completed = _run_powershell(module_path, command, data_root=data_root)
     output = completed.stdout.strip()
     if not output:
         raise AssertionError("PowerShell command produced no output")
     return json.loads(output)
 
 
-def test_ping_returns_pong(published_backend: Path) -> None:
-    payload = _capture_json(published_backend, "$result = Test-DriftBusterPing; $result")
+def test_ping_returns_pong(published_backend: Path, backend_data_root: Path) -> None:
+    payload = _capture_json(published_backend, "$result = Test-DriftBusterPing; $result", data_root=backend_data_root)
     assert payload["status"] == "pong"
 
 
-def test_diff_pair_round_trip(published_backend: Path, tmp_path: Path) -> None:
+def test_diff_pair_round_trip(published_backend: Path, backend_data_root: Path) -> None:
     body = """
     $left = New-TemporaryFile
     $right = New-TemporaryFile
@@ -125,7 +139,7 @@ def test_diff_pair_round_trip(published_backend: Path, tmp_path: Path) -> None:
     $result = Invoke-DriftBusterDiff -Left $left -Right $right
     $result
     """
-    payload = _capture_json(published_backend, body, depth=8)
+    payload = _capture_json(published_backend, body, depth=8, data_root=backend_data_root)
 
     assert payload["comparisons"]
     comparison = payload["comparisons"][0]
@@ -133,7 +147,7 @@ def test_diff_pair_round_trip(published_backend: Path, tmp_path: Path) -> None:
     assert comparison["plan"]["after"].startswith("beta")
 
 
-def test_run_profile_creates_artifacts(published_backend: Path) -> None:
+def test_run_profile_creates_artifacts(published_backend: Path, backend_data_root: Path) -> None:
     body = """
     $base = New-TemporaryFile
     Remove-Item -LiteralPath $base -Force
@@ -153,7 +167,7 @@ def test_run_profile_creates_artifacts(published_backend: Path) -> None:
     """
 
     try:
-        payload = _capture_json(published_backend, body, depth=6)
+        payload = _capture_json(published_backend, body, depth=6, data_root=backend_data_root)
     except subprocess.CalledProcessError as exc:  # pragma: no cover - platform guard
         stderr_clean = _strip_ansi(exc.stderr or "")
         if "Unable to find type" in stderr_clean:
@@ -164,7 +178,7 @@ def test_run_profile_creates_artifacts(published_backend: Path) -> None:
     assert any(entry["destination"].endswith("baseline.txt") for entry in payload["files"])
 
 
-def test_import_surfaces_backend_missing(tmp_path: Path) -> None:
+def test_import_surfaces_backend_missing(tmp_path: Path, backend_data_root: Path) -> None:
     module_root = tmp_path / "module"
     shutil.copytree(MODULE_PATH.parent, module_root)
 
@@ -172,7 +186,7 @@ def test_import_surfaces_backend_missing(tmp_path: Path) -> None:
     if packaged_backend.exists():
         packaged_backend.unlink()
 
-    result = _run_powershell(module_root / MODULE_PATH.name, "", check=False)
+    result = _run_powershell(module_root / MODULE_PATH.name, "", check=False, data_root=backend_data_root)
 
     assert result.returncode != 0
     stderr = result.stderr or ""

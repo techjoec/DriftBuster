@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import base64
 import hashlib
 import json
 import sqlite3
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any
 
 
 def _normalise_column_map(values: Mapping[str, Sequence[str]] | None) -> Mapping[str, tuple[str, ...]]:
@@ -62,7 +63,7 @@ def _normalise_value(value: Any) -> Any:
             "value": base64.b64encode(value).decode("ascii"),
         }
     if isinstance(value, datetime):
-        return value.astimezone(timezone.utc).isoformat()
+        return value.astimezone(UTC).isoformat()
     if isinstance(value, (list, tuple)):
         return [_normalise_value(item) for item in value]
     if isinstance(value, dict):
@@ -202,7 +203,7 @@ def build_sqlite_snapshot(
     finally:
         conn.close()
 
-    captured_at = datetime.now(timezone.utc).isoformat()
+    captured_at = datetime.now(UTC).isoformat()
     return SqlSnapshot(
         database=resolved.name,
         dialect="sqlite",

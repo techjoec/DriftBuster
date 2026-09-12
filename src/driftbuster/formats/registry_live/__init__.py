@@ -1,3 +1,5 @@
 """Registry live-scan definition format plugin."""
 
-from .plugin import RegistryLivePlugin  # noqa: F401
+from .plugin import RegistryLivePlugin
+
+__all__ = ["RegistryLivePlugin"]

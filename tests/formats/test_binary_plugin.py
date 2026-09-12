@@ -2,7 +2,6 @@ from pathlib import Path
 
 from driftbuster.formats.binary.plugin import BinaryHybridPlugin
 
-
 FIXTURES = Path("fixtures/binary")
 
 
@@ -13,6 +12,7 @@ def test_detects_sqlite_database(tmp_path: Path) -> None:
     match = plugin.detect(path, sample, None)
     assert match is not None
     assert match.format_name == "embedded-sql-db"
+    assert match.metadata is not None
     assert match.metadata["signature"] == "sqlite-format-3"
     assert "SQLite database" in match.reasons[0]
 
@@ -25,6 +25,7 @@ def test_detects_binary_plist() -> None:
     assert match is not None
     assert match.format_name == "plist"
     assert match.variant == "xml-or-binary"
+    assert match.metadata is not None
     assert match.metadata["signature"] == "bplist00"
 
 
@@ -36,6 +37,7 @@ def test_detects_markdown_front_matter() -> None:
     match = plugin.detect(path, sample, text)
     assert match is not None
     assert match.format_name == "markdown-config"
+    assert match.metadata is not None
     assert "front_matter_keys" in match.metadata
     assert "environment" in match.metadata["front_matter_keys"]
 

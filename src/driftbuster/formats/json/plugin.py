@@ -29,12 +29,13 @@ Variants surfaced today:
 from __future__ import annotations
 
 import json as json_lib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
+from ..format_registry import register
 
 _STRUCTURED_FILENAMES: Sequence[str] = (
     "appsettings.json",
@@ -54,16 +55,16 @@ class JsonPlugin:
     priority: int = 200
     version: str = "0.0.3"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         filename = path.name
         lower_name = filename.lower()
         extension = path.suffix.lower()
-        reasons: List[str] = []
-        metadata: Dict[str, Any] = {}
-        review_reasons: List[str] = []
+        reasons: list[str] = []
+        metadata: dict[str, Any] = {}
+        review_reasons: list[str] = []
 
         is_json_extension = extension in {".json", ".jsonc"} or lower_name.endswith(".json")
         if is_json_extension:
@@ -143,19 +144,18 @@ class JsonPlugin:
             if flag
         )
 
-        if content_signals < 2:
-            # Allow minimal detection for known JSON extensions even if content
-            # signals are weak, to align with real-world appsettings-style files
-            # that may be tiny or truncated in samples.
-            if not (is_json_extension and stripped):
-                return None
+        # Allow minimal detection for known JSON extensions even if content
+        # signals are weak, to align with real-world appsettings-style files
+        # that may be tiny or truncated in samples.
+        if content_signals < 2 and not (is_json_extension and stripped):
+            return None
 
         # For non-JSON extensions, require at least a key/value marker or a
         # successful parse to avoid over-eager matches on brace-like text.
         if not is_json_extension and not (parse_result.success or key_signal):
             return None
 
-        variant: Optional[str]
+        variant: str | None
         if structured_hint:
             variant = "structured-settings-json"
         elif has_comments or extension == ".jsonc":
@@ -226,7 +226,7 @@ class JsonPlugin:
             break
         return working[index:], consumed
 
-    def _prepare_analysis_window(self, text: str) -> Tuple[str, bool]:
+    def _prepare_analysis_window(self, text: str) -> tuple[str, bool]:
         if len(text) <= _ANALYSIS_WINDOW_CLAMP:
             return text, False
         return text[:_ANALYSIS_WINDOW_CLAMP], True
@@ -292,14 +292,14 @@ class JsonPlugin:
         close_brackets = text.count("]")
         return abs(open_braces - close_braces) <= 1 and abs(open_brackets - close_brackets) <= 1
 
-    def _is_structured_settings(self, filename: str, text: str) -> Optional[str]:
+    def _is_structured_settings(self, filename: str, text: str) -> str | None:
         if filename in _STRUCTURED_FILENAMES or filename.startswith("appsettings."):
             return "filename"
         if "\"ConnectionStrings\"" in text or "\"Logging\"" in text:
             return "content"
         return None
 
-    def _extract_appsettings_environment(self, filename: str) -> Optional[str]:
+    def _extract_appsettings_environment(self, filename: str) -> str | None:
         if not filename.startswith("appsettings."):
             return None
         parts = filename.split(".")
@@ -310,7 +310,7 @@ class JsonPlugin:
             return None
         return environment
 
-    def _attempt_parse(self, text: str, *, allow_comments: bool) -> "ParseResult":
+    def _attempt_parse(self, text: str, *, allow_comments: bool) -> ParseResult:
         if allow_comments:
             return ParseResult(success=False, metadata={})
         snippet = self._truncate_to_structural_boundary(text)
@@ -320,7 +320,7 @@ class JsonPlugin:
             parsed = json_lib.loads(snippet)
         except json_lib.JSONDecodeError:
             return ParseResult(success=False, metadata={})
-        metadata: Dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
         if isinstance(parsed, dict):
             metadata["top_level_type"] = "object"
             metadata["top_level_keys"] = list(parsed.keys())[:5]
@@ -357,18 +357,17 @@ class JsonPlugin:
                     depth_curly -= 1
             elif char == "[":
                 depth_square += 1
-            elif char == "]":
-                if depth_square > 0:
-                    depth_square -= 1
+            elif char == "]" and depth_square > 0:
+                depth_square -= 1
             if depth_curly == 0 and depth_square == 0:
                 last_valid = index + 1
         return text[:last_valid].strip()
 
-    def _strip_json_comments(self, text: str) -> Tuple[str, bool]:
+    def _strip_json_comments(self, text: str) -> tuple[str, bool]:
         if "//" not in text and "/*" not in text:
             return text, False
 
-        result: List[str] = []
+        result: list[str] = []
         in_string = False
         escape = False
         i = 0
@@ -419,7 +418,7 @@ class JsonPlugin:
 @dataclass(frozen=True)
 class ParseResult:
     success: bool
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 register(JsonPlugin())

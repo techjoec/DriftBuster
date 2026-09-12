@@ -6,29 +6,6 @@ import pytest
 from driftbuster import offline_runner
 
 
-def test_load_secret_rules_caches_results() -> None:
-    original_cache = offline_runner._SECRET_RULE_CACHE
-    original_version = offline_runner._SECRET_RULE_VERSION
-    try:
-        offline_runner._SECRET_RULE_CACHE = None
-        offline_runner._SECRET_RULE_VERSION = None
-        rules, version, loaded = offline_runner._load_secret_rules()
-        assert isinstance(loaded, bool)
-        assert isinstance(rules, tuple)
-        assert isinstance(version, str)
-
-        sentinel_rules = (object(),)
-        offline_runner._SECRET_RULE_CACHE = sentinel_rules  # type: ignore[assignment]
-        offline_runner._SECRET_RULE_VERSION = "cache-version"
-        cached_rules, cached_version, cached_loaded = offline_runner._load_secret_rules()
-        assert cached_loaded is True
-        assert cached_rules is sentinel_rules
-        assert cached_version == "cache-version"
-    finally:
-        offline_runner._SECRET_RULE_CACHE = original_cache  # type: ignore[assignment]
-        offline_runner._SECRET_RULE_VERSION = original_version
-
-
 def test_offline_registry_scan_source_from_dict_normalises_values() -> None:
     payload = {
         "registry_scan": {

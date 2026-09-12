@@ -11,11 +11,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
-
+from ..format_registry import register
 
 _EXT = ".hcl"
 _BLOCK = re.compile(r"^\s*(job|server|seal|listener|datacenter|client)\b[^\n{]*\{", re.MULTILINE)
@@ -28,13 +26,13 @@ class HclPlugin:
     priority: int = 158
     version: str = "0.0.1"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         ext = path.suffix.lower()
-        reasons: List[str] = []
-        metadata: Dict[str, object] = {}
+        reasons: list[str] = []
+        metadata: dict[str, object] = {}
 
         if ext == _EXT:
             reasons.append("File extension .hcl suggests HashiCorp HCL")

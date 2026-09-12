@@ -154,7 +154,6 @@
 - New `HeadlessFontBootstrapperDiagnostics` snapshot captures the alias probes and resource counts on every headless bootstrap. The latest run shows `fonts:SystemFonts` entries present but glyph creation failing, exporting details through `HeadlessFontBootstrapperDiagnostics.GetSnapshot()` so telemetry and smoke tests can ingest the state without rehydrating Avalonia types.
 - 2025-10-26 Release rerun is still red. [`artifacts/logs/gui-validation/gui-tests-release-2025-10-26-regression.txt`](../../artifacts/logs/gui-validation/gui-tests-release-2025-10-26-regression.txt) captures the `fonts:SystemFonts` dictionary miss plus the lingering `BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files` assertion gap. The refreshed `artifacts/logs/headless-font-health.json` snapshot shows nine total attempts with seven failures for the Inter alias probe, confirming the bootstrapper guard rails still are not wiring the dictionary under Release.
 - 2025-10-26 Debug rerun mirrors the Release failures (see [`artifacts/logs/gui-validation/gui-tests-debug-2025-10-26-run.txt`](../../artifacts/logs/gui-validation/gui-tests-debug-2025-10-26-run.txt)), so the alias bootstrapper work needs to land before we can check the stability box for Debug as well.
-- Running `python -m scripts.coverage_report` after the GUI runs flags "Cobertura XML not found" because the failing .NET suites are not emitting coverage output yet; regenerate the Coverage XML once the headless glyph fixes allow green Release/Debug sweeps.
 - Latest release rerun (`dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release`) passes now that `Program.EnsureHeadless` rebinds the headless font proxy even when an `App` instance already exists. The smoke tests confirm `fonts:SystemFonts` and `fonts:SystemFonts#Inter` resolve during reinitialisation, unblocking the coverage sweep follow-ups.
 
 #### 2025-10-30 coverage enforcement sweep (A6.1.2)
@@ -163,8 +162,7 @@
 
 #### 2025-10-25 compliance coverage snapshot (A12.4)
 
-- Regenerated coverage via `bash scripts/verify_coverage.sh`; Python suite hit 94.34 % with the compliance watch floor pinned at **90.27 %** (guarded by `scripts/coverage_watch.py`).
-- Offline compliance regression tests now drive `src/driftbuster/offline_compliance.py` to **96 %** coverage, keeping packaging evidence checks within the ≥90 % gate.
+- Regenerated coverage via `bash scripts/verify_coverage.sh`; Python suite hit 94.34 %.
 - Appended a history row to `artifacts/coverage/history.csv` (2025-10-25T06:10:16Z) capturing Python 94.34 % and .NET 77.26 % Cobertura results for trend tracking.
 - Updated `artifacts/coverage/final/coverage_summary.txt` with the refreshed metrics and recorded the compliance watch floor alongside the totals.
 
@@ -200,17 +198,14 @@
 - `HeadlessFixture` (`gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs`) exercises the proxied `IFontManagerImpl` directly so Release/Debug parity keeps `fonts:SystemFonts#Inter` resolving before any window construction.
 - Next mitigation steps track under A0 once the Release-mode smoke test lands, keeping this section aligned with ongoing hardening.
 - Bootstrapper smoke telemetry now persists to [`artifacts/logs/headless-font-health.json`](../../artifacts/logs/headless-font-health.json), capturing per-scenario totals (`totalRuns`, `passes`, `failures`) and the latest metrics. The current snapshot shows all three headless smoke tests green after the alias/lookup retries, making it easy to spot regressions when the counts drift.
-- `scripts/font_health_summary.py` turns the telemetry into a quick drift report, failing the session when pass rates dip or the latest status regresses so the Release/Debug parity checks stay honest.
 
 ### Validation checkpoint (A4 · 4.4)
 
-- Ran `python -m scripts.accessibility_summary` against `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` to confirm every Narrator/Inspect section remained complete before logging new evidence.
 - Contrast audit: computed WCAG ratios for the palette pairs using the theme tokens (Dark+ text 17.74:1, Dark+ accent 5.25:1, Light+ text 17.85:1, Light+ accent 4.95:1). Captured the figures in the accessibility report log for traceability.
 - Regression sweep:
   - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` (150 tests, warnings limited to known drag/drop API migrations still pending).
   - `pytest` (405 passed, 1 skipped) to confirm core detectors and CLI flows stay green with the refreshed theme assets.
 - Manual multi-server rehearsal: executed `PYTHONPATH=src scripts/smoke_multi_server_storage.sh` to validate cold/hot cache behaviour and note the session root for theme evidence capture. Extracted `Palette.DarkPlus`/`Palette.LightPlus` accent and background tokens via a quick XAML probe to document the Dark+/Light+ toggle deltas alongside the run log.
-- Recorded tool/version outcomes plus the contrast ratios in `notes/checklists/accessibility-report.md` so future audits can diff against this checkpoint.
 
 ### Avalonia 11.2 Release rebuild (A5 · 5.3)
 
@@ -261,5 +256,3 @@
 | **Inspect** | Verify contrast hints for high-contrast theme toggles. | Settings dialog theme toggle, diff viewer preview text. | Enable High Contrast in Windows Settings, restart app, re-run Inspect color contrast capture, confirm contrast ratio >= 4.5:1. Document steps for resetting theme. | `artifacts/gui-accessibility/narrator-inspect-run-2025-02-14.txt` (High contrast check). |
 
 - Follow-up: integrate Screen Reader regression checks into the Release GUI smoke pipeline once headless instrumentation lands.
-- Automation: run `python -m scripts.accessibility_summary` to validate transcripts include each matrix scenario and expected
-  keywords before archiving new evidence.

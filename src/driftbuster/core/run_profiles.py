@@ -3,19 +3,20 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from glob import glob
 from hashlib import sha256
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Callable, List, Mapping, Sequence
+from typing import Any
 
 from .. import secret_scanning
 
 
 def _timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def _expand_path(text: str) -> str:
@@ -38,7 +39,7 @@ def _safe_name(text: str) -> str:
 def _glob_base_directory(pattern: str) -> Path:
     expanded = Path(pattern)
     parts = expanded.parts
-    base_parts: List[str] = []
+    base_parts: list[str] = []
 
     for part in parts:
         if _has_magic(part):
@@ -93,7 +94,7 @@ def _serialise_secret_scanner(secret_scanner: Mapping[str, Any]) -> Mapping[str,
     return payload
 
 
-def _validate_profile(profile: "RunProfile") -> None:
+def _validate_profile(profile: RunProfile) -> None:
     if not profile.sources:
         raise ValueError("At least one source must be provided.")
 
@@ -151,7 +152,7 @@ class RunProfile:
         object.__setattr__(self, "secret_scanner", _normalise_secret_scanner(self.secret_scanner))
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "RunProfile":
+    def from_dict(cls, payload: Mapping[str, Any]) -> RunProfile:
         return cls(
             name=str(payload["name"]),
             description=payload.get("description"),
@@ -246,7 +247,7 @@ def save_profile(profile: RunProfile, *, base_dir: Path | None = None) -> Path:
 
 def list_profiles(*, base_dir: Path | None = None) -> Sequence[RunProfile]:
     root = profiles_root(base_dir)
-    profiles: List[RunProfile] = []
+    profiles: list[RunProfile] = []
     for entry in sorted(root.glob("*/profile.json")):
         payload = json.loads(entry.read_text(encoding="utf-8"))
         profiles.append(RunProfile.from_dict(payload))
@@ -270,7 +271,7 @@ def execute_profile(
     def _secret_log(message: str) -> None:
         secret_logs.append(message)
 
-    files: List[ProfileFile] = []
+    files: list[ProfileFile] = []
 
     source_strings = list(profile.sources)
     if profile.baseline and profile.baseline in source_strings:
@@ -385,10 +386,7 @@ def _copy_file(
     secret_context: secret_scanning.SecretDetectionContext | None = None,
     secret_log: Callable[[str], None] | None = None,
 ) -> ProfileFile:
-    if file.is_relative_to(base):
-        relative = file.relative_to(base)
-    else:
-        relative = Path(file.name)
+    relative = file.relative_to(base) if file.is_relative_to(base) else Path(file.name)
     destination = destination_root / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
     if secret_context is not None and secret_log is not None:

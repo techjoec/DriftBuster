@@ -9,7 +9,8 @@ catalog lookups. It focuses on normalised payloads returned by
 from __future__ import annotations
 
 from collections import Counter
-from typing import Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any
 
 from ..core.types import DetectionMatch, summarise_metadata
 
@@ -24,9 +25,9 @@ def summarise_detections(matches: Iterable[DetectionMatch]) -> Mapping[str, obje
     """Return a metadata summary for ``matches`` grouped by format and variant."""
 
     total_matches = 0
-    format_index: MutableMapping[str, MutableMapping[str, object]] = {}
+    format_index: dict[str, dict[str, Any]] = {}
     severity_counts: Counter[str] = Counter()
-    remediation_index: MutableMapping[str, MutableMapping[str, object]] = {}
+    remediation_index: dict[str, dict[str, Any]] = {}
 
     for match in matches:
         total_matches += 1
@@ -36,10 +37,7 @@ def summarise_detections(matches: Iterable[DetectionMatch]) -> Mapping[str, obje
         variant_name = str(raw_variant) if raw_variant else "—"
         metadata = payload.get("metadata")
         metadata_map: Mapping[str, object]
-        if isinstance(metadata, Mapping):
-            metadata_map = metadata
-        else:
-            metadata_map = {}
+        metadata_map = metadata if isinstance(metadata, Mapping) else {}
 
         format_bucket = format_index.setdefault(
             format_name,
@@ -79,7 +77,7 @@ def summarise_detections(matches: Iterable[DetectionMatch]) -> Mapping[str, obje
 
         metadata_keys = variant_bucket.setdefault("metadata_keys", set())
         if isinstance(metadata_keys, set):
-            for key in metadata_map.keys():
+            for key in metadata_map:
                 metadata_keys.add(str(key))
 
         severity = metadata_map.get("catalog_severity")
@@ -89,9 +87,8 @@ def summarise_detections(matches: Iterable[DetectionMatch]) -> Mapping[str, obje
                 variant_bucket["severity"] = severity
 
         severity_hint = metadata_map.get("catalog_severity_hint")
-        if isinstance(severity_hint, str) and severity_hint:
-            if not variant_bucket.get("severity_hint"):
-                variant_bucket["severity_hint"] = severity_hint
+        if isinstance(severity_hint, str) and severity_hint and not variant_bucket.get("severity_hint"):
+            variant_bucket["severity_hint"] = severity_hint
 
         remediations = metadata_map.get("catalog_remediations")
         if _is_sequence_of_mappings(remediations):

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
 import sys
 import time
-import re
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Any
 
 
 def is_windows() -> bool:
@@ -16,10 +17,10 @@ class RegistryApp:
     display_name: str
     key_path: str
     hive: str  # "HKLM" or "HKCU"
-    publisher: Optional[str] = None
-    version: Optional[str] = None
-    uninstall_string: Optional[str] = None
-    install_location: Optional[str] = None
+    publisher: str | None = None
+    version: str | None = None
+    uninstall_string: str | None = None
+    install_location: str | None = None
     view: str = "auto"  # "32" | "64" | "auto"
 
 
@@ -34,32 +35,33 @@ class RegistryHit:
 
 @dataclass(frozen=True)
 class SearchSpec:
-    keywords: Tuple[str, ...] = ()
-    patterns: Tuple[re.Pattern[str], ...] = ()
+    keywords: tuple[str, ...] = ()
+    patterns: tuple[re.Pattern[str], ...] = ()
     max_depth: int = 12
     max_hits: int = 200
     time_budget_s: float = 10.0
 
 
 class _Backend:
-    def enum_subkeys(self, hive: str, path: str, view: Optional[str]) -> List[str]:  # pragma: no cover - interface
+    def enum_subkeys(self, hive: str, path: str, view: str | None) -> list[str]:  # pragma: no cover - interface
         raise NotImplementedError
 
-    def enum_values(self, hive: str, path: str, view: Optional[str]) -> List[Tuple[str, object]]:  # pragma: no cover - interface
+    def enum_values(self, hive: str, path: str, view: str | None) -> list[tuple[str, object]]:  # pragma: no cover - interface
         raise NotImplementedError
 
 
 class _WinRegBackend(_Backend):
     def __init__(self) -> None:  # pragma: no cover - exercised in integration only
-        import winreg  # type: ignore
+        import winreg
 
-        self._reg = winreg
+        # ``winreg`` only exposes attributes on Windows, so it is opaque to static analysis elsewhere.
+        self._reg: Any = winreg
         self._hives = {
-            "HKLM": winreg.HKEY_LOCAL_MACHINE,
-            "HKCU": winreg.HKEY_CURRENT_USER,
+            "HKLM": self._reg.HKEY_LOCAL_MACHINE,
+            "HKCU": self._reg.HKEY_CURRENT_USER,
         }
 
-    def _open(self, hive: str, path: str, view: Optional[str]):  # pragma: no cover - integration on Windows only
+    def _open(self, hive: str, path: str, view: str | None):  # pragma: no cover - integration on Windows only
         reg = self._reg
         access = reg.KEY_READ
         if view == "64":
@@ -68,13 +70,13 @@ class _WinRegBackend(_Backend):
             access |= getattr(reg, "KEY_WOW64_32KEY", 0)
         return reg.OpenKeyEx(self._hives[hive], path, 0, access)
 
-    def enum_subkeys(self, hive: str, path: str, view: Optional[str]) -> List[str]:  # pragma: no cover - integration on Windows only
+    def enum_subkeys(self, hive: str, path: str, view: str | None) -> list[str]:  # pragma: no cover - integration on Windows only
         reg = self._reg
         try:
             handle = self._open(hive, path, view)
         except OSError:
             return []
-        results: List[str] = []
+        results: list[str] = []
         try:
             index = 0
             while True:
@@ -89,14 +91,14 @@ class _WinRegBackend(_Backend):
         return results
 
     def enum_values(
-        self, hive: str, path: str, view: Optional[str]
-    ) -> List[Tuple[str, object]]:  # pragma: no cover - integration on Windows only
+        self, hive: str, path: str, view: str | None
+    ) -> list[tuple[str, object]]:  # pragma: no cover - integration on Windows only
         reg = self._reg
         try:
             handle = self._open(hive, path, view)
         except OSError:
             return []
-        results: List[Tuple[str, object]] = []
+        results: list[tuple[str, object]] = []
         try:
             index = 0
             while True:
@@ -121,7 +123,7 @@ _UNINSTALL_PATH = r"Software\Microsoft\Windows\CurrentVersion\Uninstall"
 _UNINSTALL_PATH_WOW64 = r"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
 
 
-def enumerate_installed_apps(*, backend: Optional[_Backend] = None) -> Tuple[RegistryApp, ...]:
+def enumerate_installed_apps(*, backend: _Backend | None = None) -> tuple[RegistryApp, ...]:
     """Enumerate installed applications via Uninstall registry keys.
 
     Returns:
@@ -132,7 +134,7 @@ def enumerate_installed_apps(*, backend: Optional[_Backend] = None) -> Tuple[Reg
     if backend is None:
         backend = _default_backend()
 
-    apps: List[RegistryApp] = []
+    apps: list[RegistryApp] = []
     # Probe both hives and both views.
     probes = (
         ("HKLM", _UNINSTALL_PATH, "64"),
@@ -158,8 +160,8 @@ def enumerate_installed_apps(*, backend: Optional[_Backend] = None) -> Tuple[Reg
             )
             apps.append(app)
     # De-duplicate by (hive, key_path) keeping first seen entry
-    seen: set[Tuple[str, str]] = set()
-    unique: List[RegistryApp] = []
+    seen: set[tuple[str, str]] = set()
+    unique: list[RegistryApp] = []
     for app in apps:
         k = (app.hive, app.key_path)
         if k in seen:
@@ -171,9 +173,9 @@ def enumerate_installed_apps(*, backend: Optional[_Backend] = None) -> Tuple[Reg
     return tuple(unique)
 
 
-def _candidate_vendor_app_pairs(app_name: str) -> List[Tuple[str, str]]:
+def _candidate_vendor_app_pairs(app_name: str) -> list[tuple[str, str]]:
     parts = [p for p in re.split(r"[\s_-]+", app_name) if p]
-    pairs: List[Tuple[str, str]] = []
+    pairs: list[tuple[str, str]] = []
     if len(parts) >= 2:
         # vendor app
         pairs.append((parts[0], " ".join(parts[1:])))
@@ -185,8 +187,8 @@ def _candidate_vendor_app_pairs(app_name: str) -> List[Tuple[str, str]]:
 def find_app_registry_roots(
     app_token: str,
     *,
-    installed: Optional[Sequence[RegistryApp]] = None,
-) -> Tuple[Tuple[str, str, Optional[str]], ...]:
+    installed: Sequence[RegistryApp] | None = None,
+) -> tuple[tuple[str, str, str | None], ...]:
     """Guess likely registry roots for a given app token.
 
     Returns:
@@ -194,7 +196,7 @@ def find_app_registry_roots(
     """
 
     token = app_token.strip().lower()
-    candidates: List[Tuple[str, str, Optional[str]]] = []
+    candidates: list[tuple[str, str, str | None]] = []
     if installed:
         for app in installed:
             if token in app.display_name.lower() or (app.publisher and token in app.publisher.lower()):
@@ -228,8 +230,8 @@ def find_app_registry_roots(
         )
 
     # Deduplicate and keep order
-    seen_paths: set[Tuple[str, str, Optional[str]]] = set()
-    ordered: List[Tuple[str, str, Optional[str]]] = []
+    seen_paths: set[tuple[str, str, str | None]] = set()
+    ordered: list[tuple[str, str, str | None]] = []
     for item in candidates:
         if item in seen_paths:
             continue
@@ -239,11 +241,11 @@ def find_app_registry_roots(
 
 
 def search_registry(
-    roots: Sequence[Tuple[str, str, Optional[str]]],
+    roots: Sequence[tuple[str, str, str | None]],
     spec: SearchSpec,
     *,
-    backend: Optional[_Backend] = None,
-) -> Tuple[RegistryHit, ...]:
+    backend: _Backend | None = None,
+) -> tuple[RegistryHit, ...]:
     """Search registry trees under ``roots`` for values matching the spec.
 
     Traversal is breadth-first, respects ``max_depth``, stops at ``max_hits``,
@@ -260,9 +262,9 @@ def search_registry(
     max_hits = max(1, int(spec.max_hits))
     deadline = time.monotonic() + max(0.1, float(spec.time_budget_s))
 
-    hits: List[RegistryHit] = []
+    hits: list[RegistryHit] = []
 
-    def _match_value(name: str, val: object) -> Optional[str]:
+    def _match_value(name: str, val: object) -> str | None:
         text = None
         if isinstance(val, (str, bytes)):
             text = val.decode("utf-8", errors="replace") if isinstance(val, bytes) else val
@@ -284,8 +286,8 @@ def search_registry(
             return None
         return text[:120]
 
-    queue: List[Tuple[str, str, Optional[str], int]] = [(h, p, v, 0) for h, p, v in roots]
-    seen: set[Tuple[str, str, Optional[str]]] = set()
+    queue: list[tuple[str, str, str | None, int]] = [(h, p, v, 0) for h, p, v in roots]
+    seen: set[tuple[str, str, str | None]] = set()
 
     while queue and len(hits) < max_hits and time.monotonic() < deadline:
         hive, path, view, depth = queue.pop(0)

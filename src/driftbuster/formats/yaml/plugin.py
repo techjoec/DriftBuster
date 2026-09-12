@@ -23,11 +23,9 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
-
+from ..format_registry import register
 
 _EXTENSIONS = {".yml", ".yaml"}
 _DOC_START = re.compile(r"^\s*---\s*$", re.MULTILINE)
@@ -38,7 +36,7 @@ _COMMENTED_KEY = re.compile(r"^\s*#\s*[A-Za-z_][\w.-]*\s*:\s*", re.MULTILINE)
 _DOC_END = re.compile(r"^\s*\.\.\.\s*$", re.MULTILINE)
 
 
-def _analyse_indentation(lines: List[str]) -> Optional[Dict[str, object]]:
+def _analyse_indentation(lines: list[str]) -> dict[str, object] | None:
     """Inspect indentation to derive tolerances and drift signals.
 
     The YAML plugin only needs a coarse-grained profile so we avoid pulling in a
@@ -48,9 +46,9 @@ def _analyse_indentation(lines: List[str]) -> Optional[Dict[str, object]]:
     """
 
     indent_stats: Counter[int] = Counter()
-    space_lines: Dict[int, List[int]] = {}
-    tab_lines: List[int] = []
-    mixed_lines: List[int] = []
+    space_lines: dict[int, list[int]] = {}
+    tab_lines: list[int] = []
+    mixed_lines: list[int] = []
 
     for idx, raw in enumerate(lines, 1):
         if not raw.strip() or raw.lstrip().startswith("#"):
@@ -71,7 +69,7 @@ def _analyse_indentation(lines: List[str]) -> Optional[Dict[str, object]]:
     if not indent_stats and not tab_lines and not mixed_lines:
         return None
 
-    metadata: Dict[str, object] = {}
+    metadata: dict[str, object] = {}
     if tab_lines and not indent_stats:
         metadata["style"] = "tabs"
         metadata["tab_lines"] = tab_lines[:10]
@@ -86,7 +84,7 @@ def _analyse_indentation(lines: List[str]) -> Optional[Dict[str, object]]:
         for width in list(indent_stats):
             if width % baseline == 0 or abs(width - baseline) <= 2:
                 allowed.add(width)
-        outliers: List[int] = []
+        outliers: list[int] = []
         for width, occurrences in space_lines.items():
             if width not in allowed:
                 outliers.extend(occurrences[:10])
@@ -112,15 +110,15 @@ class YamlPlugin:
     priority: int = 160
     version: str = "0.0.3"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         extension = path.suffix.lower()
         lower_name = path.name.lower()
-        reasons: List[str] = []
-        metadata: Dict[str, object] = {}
-        review_reasons: List[str] = []
+        reasons: list[str] = []
+        metadata: dict[str, object] = {}
+        review_reasons: list[str] = []
 
         if extension in _EXTENSIONS:
             reasons.append(f"File extension {extension} suggests YAML content")
@@ -166,9 +164,9 @@ class YamlPlugin:
 
         # Avoid claiming common INI-like extensions unless YAML structure is strong
         ini_like_ext = extension in {".conf", ".cfg", ".ini", ".properties", ".preferences"}
-        if ini_like_ext and extension not in _EXTENSIONS:
-            if not (has_doc or has_indented or (has_key_colon and has_list and key_count >= 5)):
-                strong_structure = False
+        weak_yaml = not (has_doc or has_indented or (has_key_colon and has_list and key_count >= 5))
+        if ini_like_ext and extension not in _EXTENSIONS and weak_yaml:
+            strong_structure = False
 
         if has_doc:
             reasons.append("Detected YAML document start marker '---'")

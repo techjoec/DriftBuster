@@ -1,12 +1,7 @@
 from __future__ import annotations
 
-import re
+from collections.abc import Sequence
 from types import SimpleNamespace
-from typing import Sequence
-
-import builtins
-import importlib
-import sys
 
 import pytest
 

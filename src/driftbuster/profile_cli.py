@@ -5,14 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping, Optional, Sequence
+from typing import Any
 
 from .core.profiles import (
     ConfigurationProfile,
     ProfileConfig,
     ProfileStore,
     diff_summary_snapshots,
+    normalize_tags,
 )
 
 
@@ -55,7 +57,7 @@ def _store_from_payload(payload: Mapping[str, Any]) -> ProfileStore:
                     application=cfg.get("application"),
                     version=cfg.get("version"),
                     branch=cfg.get("branch"),
-                    tags=cfg.get("tags"),
+                    tags=normalize_tags(cfg.get("tags")),
                     expected_format=cfg.get("expected_format"),
                     expected_variant=cfg.get("expected_variant"),
                     metadata=cfg.get("metadata", {}),
@@ -65,7 +67,7 @@ def _store_from_payload(payload: Mapping[str, Any]) -> ProfileStore:
             ConfigurationProfile(
                 name=str(entry["name"]),
                 description=entry.get("description"),
-                tags=entry.get("tags"),
+                tags=normalize_tags(entry.get("tags")),
                 configs=tuple(configs),
                 metadata=entry.get("metadata", {}),
             )
@@ -119,8 +121,8 @@ def _add_output_options(parser: argparse.ArgumentParser) -> None:
 def _resolve_relative_path(
     entry: Mapping[str, Any],
     *,
-    root: Optional[Path],
-) -> Optional[str]:
+    root: Path | None,
+) -> str | None:
     relative = entry.get("relative_path")
     if isinstance(relative, str) and relative:
         return relative
@@ -143,8 +145,8 @@ def _build_bridge_payload(
     store: ProfileStore,
     hunts: Iterable[Mapping[str, Any]],
     *,
-    tags: Optional[Sequence[str]],
-    root: Optional[Path],
+    tags: Sequence[str] | None,
+    root: Path | None,
 ) -> Mapping[str, Any]:
     items = []
     for entry in hunts:

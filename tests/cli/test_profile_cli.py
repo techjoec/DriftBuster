@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import argparse
+import json
 from pathlib import Path
 
 import pytest
@@ -93,6 +93,27 @@ def test_profile_cli_hunt_bridge(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert exit_code == 0
     payload = json.loads(captured.out)
     assert payload["items"][0]["profiles"][0]["profile"] == "prod"
+
+
+def test_parse_args_requires_command() -> None:
+    parser = profile_cli.parse_args(["summary", "store.json"])
+    assert parser.command == "summary"
+
+    with pytest.raises(SystemExit):
+        profile_cli.parse_args([])
+
+
+def test_profile_cli_summary_writes_output_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    store_path = tmp_path / "store.json"
+    store_path.write_text(json.dumps({"profiles": [{"name": "prod", "configs": [{"id": "cfg1"}]}]}), encoding="utf-8")
+    output = tmp_path / "summary.json"
+
+    exit_code = profile_cli.main(["summary", str(store_path), "--output", str(output), "--indent", "0", "--sort-keys"])
+
+    assert exit_code == 0
+    assert capsys.readouterr().out == ""
+    data = json.loads(output.read_text(encoding="utf-8"))
+    assert data["total_profiles"] == 1
 
 
 def test_store_from_payload_ignores_invalid_entries(monkeypatch: pytest.MonkeyPatch) -> None:

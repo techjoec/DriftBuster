@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 
 from ..core.types import DetectionMatch, summarise_metadata
-
 
 __all__ = ["iter_detection_payloads"]
 
@@ -21,10 +20,7 @@ def iter_detection_payloads(
     for match in matches:
         summary = dict(summarise_metadata(match))
         metadata = summary.get("metadata")
-        if isinstance(metadata, Mapping):
-            metadata_map = dict(metadata)
-        else:
-            metadata_map = {}
+        metadata_map = dict(metadata) if isinstance(metadata, Mapping) else {}
         if run_metadata:
             metadata_map.update(run_metadata)
         summary["metadata"] = metadata_map

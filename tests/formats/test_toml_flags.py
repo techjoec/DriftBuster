@@ -28,11 +28,6 @@ def test_toml_bare_keys_flag():
     key3
     """.strip()
     m = _detect("plain.toml", content)
-    # content_signals < 2 -> None (no detection)
-    if m is None:
-        # add one valid pair to enable detection
-        content2 = content + "\nname = 'x'\n"
-        m = _detect("plain.toml", content2)
     assert m is not None
     assert m.metadata and m.metadata.get("needs_review") is True
     assert any("bare key" in r for r in m.metadata.get("review_reasons", []))

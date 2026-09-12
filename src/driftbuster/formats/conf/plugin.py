@@ -12,11 +12,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
-from ..format_registry import register
 from ...core.types import DetectionMatch
-
+from ..format_registry import register
 
 _LOGSTASH_BLOCK = re.compile(r"^\s*(input|filter|output)\s*\{", re.MULTILINE)
 _LOGSTASH_PLUGIN = re.compile(r"^\s*[a-zA-Z_][\w-]*\s*\{", re.MULTILINE)
@@ -28,11 +26,11 @@ class ConfPlugin:
     priority: int = 150
     version: str = "0.0.1"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
-        reasons: List[str] = []
+        reasons: list[str] = []
         blocks = _LOGSTASH_BLOCK.findall(text)
         if len(blocks) >= 1:
             reasons.append("Detected Logstash pipeline block(s): " + ", ".join(sorted({b for b in blocks})))

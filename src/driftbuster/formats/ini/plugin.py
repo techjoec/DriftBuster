@@ -5,13 +5,13 @@ from __future__ import annotations
 import codecs
 import re
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
-from ..format_registry import decode_text, register
 from ...core.types import DetectionMatch
-
+from ..format_registry import decode_text, register
 
 _SECTION_PATTERN = re.compile(r"^\s*\[([^\]\n]+)\]\s*$", re.MULTILINE)
 _KEY_VALUE_PATTERN = re.compile(
@@ -37,7 +37,7 @@ _MAX_SECTION_SNAPSHOT = 10
 
 _INLINE_COMMENT_PATTERN = re.compile(r"\s([;#!])")
 
-_SENSITIVE_KEY_PATTERNS: Sequence[Tuple[str, re.Pattern[str]]] = (
+_SENSITIVE_KEY_PATTERNS: Sequence[tuple[str, re.Pattern[str]]] = (
     ("password", re.compile(r"password", re.IGNORECASE)),
     ("passphrase", re.compile(r"passphrase", re.IGNORECASE)),
     ("secret", re.compile(r"secret", re.IGNORECASE)),
@@ -54,7 +54,7 @@ _SENSITIVE_KEY_PATTERNS: Sequence[Tuple[str, re.Pattern[str]]] = (
     ("key", re.compile(r"(^|[^a-z0-9])key([^a-z0-9]|$)", re.IGNORECASE)),
 )
 
-_SECRET_CATEGORY_MAP: Dict[str, str] = {
+_SECRET_CATEGORY_MAP: dict[str, str] = {
     "password": "credential",
     "passphrase": "credential",
     "secret": "credential",
@@ -73,16 +73,16 @@ _SECRET_CATEGORY_MAP: Dict[str, str] = {
 
 
 def _build_secret_metadata(
-    sensitive_hints: Sequence[Dict[str, str]],
-) -> Tuple[
-    Optional[Dict[str, Any]],
-    Optional[List[Dict[str, Any]]],
-    Optional[List[str]],
+    sensitive_hints: Sequence[dict[str, str]],
+) -> tuple[
+    dict[str, Any] | None,
+    list[dict[str, Any]] | None,
+    list[str] | None,
 ]:
     if not sensitive_hints:
         return None, None, None
 
-    classification_entries: List[Dict[str, Any]] = []
+    classification_entries: list[dict[str, Any]] = []
     category_counter: Counter[str] = Counter()
     for hint in sensitive_hints:
         keyword = hint.get("keyword", "")
@@ -102,7 +102,7 @@ def _build_secret_metadata(
         "category_counts": dict(sorted(category_counter.items())),
     }
 
-    remediations: List[Dict[str, Any]] = []
+    remediations: list[dict[str, Any]] = []
     for category, count in sorted(category_counter.items()):
         related_keys = sorted(
             {
@@ -137,18 +137,18 @@ class IniPlugin:
     priority: int = 170
     version: str = "0.0.2"
 
-    def detect(self, path: Path, sample: bytes, text: Optional[str]) -> Optional[DetectionMatch]:
+    def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
             return None
 
         lower_name = path.name.lower()
         extension = path.suffix.lower()
 
-        reasons: List[str] = []
-        metadata: Dict[str, object] = {}
-        review_reasons: List[str] = []
+        reasons: list[str] = []
+        metadata: dict[str, object] = {}
+        review_reasons: list[str] = []
 
-        detected_codec: Optional[str] = None
+        detected_codec: str | None = None
         bom_present = False
         for bom, codec_name in (
             (codecs.BOM_UTF8, "utf-8-sig"),
@@ -243,7 +243,7 @@ class IniPlugin:
         if supports_inline_comments:
             reasons.append("Found inline comment markers following assignments")
 
-        sensitive_hints: List[Dict[str, str]] = []
+        sensitive_hints: list[dict[str, str]] = []
         seen_sensitive: set[tuple[str, str]] = set()
         for match in key_matches:
             key_name = match.group("key")
@@ -294,7 +294,7 @@ class IniPlugin:
         if comment_signal:
             reasons.append("Detected comment markers (;, #, !) used by INI variants")
 
-        signals: Dict[str, Any] = {
+        signals: dict[str, Any] = {
             "section_count": len(sections),
             "key_value_pairs": key_pair_count,
             "directive_lines": len(directive_lines),
@@ -467,8 +467,8 @@ class IniPlugin:
         directive_density = len(directive_lines) / max(len(non_empty_lines), 1) if non_empty_lines else 0.0
 
         format_name = "ini"
-        variant: Optional[str] = None
-        classification_reasons: List[str] = []
+        variant: str | None = None
+        classification_reasons: list[str] = []
 
         env_style = (
             not sections
@@ -556,7 +556,7 @@ class IniPlugin:
         }
 
         if format_name == "env-file":
-            existing_remediations: List[Dict[str, Any]] = []
+            existing_remediations: list[dict[str, Any]] = []
             current = metadata.get("remediations")
             if isinstance(current, list):
                 for entry in current:

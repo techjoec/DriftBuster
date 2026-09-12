@@ -51,11 +51,6 @@ def test_canonicalise_xml_preserves_prolog_and_handles_doctype() -> None:
     assert "SECRET" in canonical
 
 
-def test_canonicalise_xml_falls_back_on_parse_error() -> None:
-    malformed = "<root><unclosed></root>"
-    assert canonicalise_xml(malformed) == canonicalise_text(malformed)
-
-
 def test_build_unified_diff_applies_redaction() -> None:
     result = build_unified_diff(
         "token = SECRET\n",

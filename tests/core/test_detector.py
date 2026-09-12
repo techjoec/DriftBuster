@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
@@ -8,17 +9,17 @@ from driftbuster.core.detector import (
     Detector,
     DetectorIOError,
     _normalise_reasons,
-    _titleise_component,
     scan_file,
     scan_path,
 )
-from driftbuster.core.profiles import ConfigurationProfile, ProfileConfig, ProfileStore
+from driftbuster.core.profiles import AppliedProfileConfig, ConfigurationProfile, ProfileConfig, ProfileStore
 from driftbuster.core.types import DetectionMatch
 
 
 class _XmlRecordingPlugin:
     name = "test-xml-recorder"
     priority = 5
+    version = "0.0.0"
 
     def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if text is None:
@@ -78,7 +79,7 @@ def test_scan_with_profiles_attaches_matches(tmp_path: Path) -> None:
 
     profile = ConfigurationProfile(
         name="prod",
-        tags={"prod"},
+        tags=frozenset({"prod"}),
         configs=(
             ProfileConfig(
                 identifier="cfg-prod",
@@ -202,6 +203,7 @@ def test_scan_path_rejects_unknown_root(tmp_path: Path) -> None:
 class _BudgetPlugin:
     name = "budget"
     priority = 1
+    version = "0.0.0"
 
     def detect(self, path: Path, sample: bytes, text: str | None) -> DetectionMatch | None:
         if not sample:
@@ -261,6 +263,7 @@ def test_scan_file_convenience(tmp_path: Path) -> None:
     class SimplePlugin:
         name = "simple"
         priority = 1
+        version = "0.0.0"
 
         def detect(self, path: Path, sample: bytes, text: str | None):
             if text is None:
@@ -291,11 +294,6 @@ def test_handle_error_without_cause(tmp_path: Path) -> None:
     assert exc.value is error
 
 
-def test_titleise_component_handles_edge_cases() -> None:
-    assert _titleise_component("") == ""
-    assert _titleise_component("12345") == "12345"
-
-
 def test_scan_path_swallows_glob_errors_when_handler_suppresses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     class TolerantDetector(Detector):
         def __init__(self) -> None:
@@ -307,8 +305,8 @@ def test_scan_path_swallows_glob_errors_when_handler_suppresses(tmp_path: Path, 
             path: Path,
             error: DetectorIOError,
             *,
-            cause: Exception | None = None,
-        ) -> None:  # type: ignore[override]
+            cause: BaseException | None = None,
+        ) -> None:
             self.errors.append((path, error))
 
     root = tmp_path / "root"
@@ -342,8 +340,8 @@ def test_scan_path_continues_when_individual_file_errors(tmp_path: Path, monkeyp
             path: Path,
             error: DetectorIOError,
             *,
-            cause: Exception | None = None,
-        ) -> None:  # type: ignore[override]
+            cause: BaseException | None = None,
+        ) -> None:
             self.errors.append((path, error))
 
     root = tmp_path / "root"
@@ -372,20 +370,28 @@ def test_scan_path_continues_when_individual_file_errors(tmp_path: Path, monkeyp
 
 def test_scan_with_profiles_falls_back_to_filename(tmp_path: Path) -> None:
     class DummyDetector(Detector):
-        def __init__(self, paths: list[tuple[Path, None]]) -> None:
+        def __init__(self, paths: list[tuple[Path, DetectionMatch | None]]) -> None:
             super().__init__(plugins=(), sort_plugins=False)
             self._paths = paths
 
-        def scan_path(self, root: Path, glob: str = "**/*") -> list[tuple[Path, None]]:
+        def scan_path(
+            self,
+            root: Path,
+            glob: str = "**/*",
+            *,
+            reset_budget: bool = True,
+        ) -> list[tuple[Path, DetectionMatch | None]]:
             return self._paths
 
     class RecordingStore:
         def __init__(self) -> None:
             self.paths: list[str | None] = []
 
-        def matching_configs(self, tags: tuple[str, ...], *, relative_path: str | None) -> list[object]:
+        def matching_configs(
+            self, tags: Iterable[str] | None, *, relative_path: str | None
+        ) -> tuple[AppliedProfileConfig, ...]:
             self.paths.append(relative_path)
-            return []
+            return ()
 
     store = RecordingStore()
 

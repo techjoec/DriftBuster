@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -28,7 +28,7 @@ def test_schedule_spec_aligns_to_window_and_rolls_forward() -> None:
         "end": "02:00",
         "timezone": "UTC",
     })
-    start_at = datetime(2025, 1, 1, 21, 0, tzinfo=timezone.utc)
+    start_at = datetime(2025, 1, 1, 21, 0, tzinfo=UTC)
     spec = ScheduleSpec(
         name="overnight",
         profile="profiles/nightly.json",
@@ -37,9 +37,9 @@ def test_schedule_spec_aligns_to_window_and_rolls_forward() -> None:
         window=window,
     )
     initial = spec.initial_run()
-    assert initial == datetime(2025, 1, 1, 22, 0, tzinfo=timezone.utc)
+    assert initial == datetime(2025, 1, 1, 22, 0, tzinfo=UTC)
     rolled = spec.next_after(initial)
-    assert rolled == datetime(2025, 1, 2, 22, 0, tzinfo=timezone.utc)
+    assert rolled == datetime(2025, 1, 2, 22, 0, tzinfo=UTC)
 
 
 def test_profile_scheduler_tracks_pending_runs_until_completion() -> None:
@@ -47,16 +47,16 @@ def test_profile_scheduler_tracks_pending_runs_until_completion() -> None:
         name="backup",
         profile="profiles/backup.json",
         interval=timedelta(hours=12),
-        start_at=datetime(2025, 3, 1, 8, 0, tzinfo=timezone.utc),
+        start_at=datetime(2025, 3, 1, 8, 0, tzinfo=UTC),
     )
     scheduler = ProfileScheduler([spec])
-    now = datetime(2025, 3, 1, 9, 0, tzinfo=timezone.utc)
+    now = datetime(2025, 3, 1, 9, 0, tzinfo=UTC)
 
     due = scheduler.due(reference=now)
     assert len(due) == 1
     run = due[0]
     assert run.name == "backup"
-    assert run.scheduled_for == datetime(2025, 3, 1, 8, 0, tzinfo=timezone.utc)
+    assert run.scheduled_for == datetime(2025, 3, 1, 8, 0, tzinfo=UTC)
 
     # Subsequent polls keep surfacing the pending run until it is marked complete.
     repeat = scheduler.due(reference=now)
@@ -64,10 +64,10 @@ def test_profile_scheduler_tracks_pending_runs_until_completion() -> None:
 
     scheduler.mark_complete("backup", completed_at=run.scheduled_for)
     peeked = scheduler.peek("backup")
-    assert peeked == datetime(2025, 3, 1, 20, 0, tzinfo=timezone.utc)
+    assert peeked == datetime(2025, 3, 1, 20, 0, tzinfo=UTC)
 
-    later = scheduler.due(reference=datetime(2025, 3, 1, 21, 0, tzinfo=timezone.utc))
-    assert later[0].scheduled_for == datetime(2025, 3, 1, 20, 0, tzinfo=timezone.utc)
+    later = scheduler.due(reference=datetime(2025, 3, 1, 21, 0, tzinfo=UTC))
+    assert later[0].scheduled_for == datetime(2025, 3, 1, 20, 0, tzinfo=UTC)
 
 
 def test_skip_until_resets_schedule_anchor() -> None:
@@ -75,12 +75,12 @@ def test_skip_until_resets_schedule_anchor() -> None:
         name="cleanup",
         profile="profiles/cleanup.json",
         interval=timedelta(days=1),
-        start_at=datetime(2025, 4, 1, 2, 0, tzinfo=timezone.utc),
+        start_at=datetime(2025, 4, 1, 2, 0, tzinfo=UTC),
     )
     scheduler = ProfileScheduler([spec])
-    scheduler.skip_until("cleanup", datetime(2025, 4, 3, 6, 30, tzinfo=timezone.utc))
+    scheduler.skip_until("cleanup", datetime(2025, 4, 3, 6, 30, tzinfo=UTC))
     # Windowless schedules align directly to the supplied resume timestamp.
-    assert scheduler.peek("cleanup") == datetime(2025, 4, 3, 6, 30, tzinfo=timezone.utc)
+    assert scheduler.peek("cleanup") == datetime(2025, 4, 3, 6, 30, tzinfo=UTC)
 
 
 def test_schedule_window_contains_handles_overnight_bounds() -> None:
@@ -89,16 +89,16 @@ def test_schedule_window_contains_handles_overnight_bounds() -> None:
         "end": "01:30",
         "timezone": "UTC",
     })
-    inside = datetime(2025, 5, 1, 23, 0, tzinfo=timezone.utc)
-    after_midnight = datetime(2025, 5, 2, 1, 0, tzinfo=timezone.utc)
-    outside = datetime(2025, 5, 1, 12, 0, tzinfo=timezone.utc)
+    inside = datetime(2025, 5, 1, 23, 0, tzinfo=UTC)
+    after_midnight = datetime(2025, 5, 2, 1, 0, tzinfo=UTC)
+    outside = datetime(2025, 5, 1, 12, 0, tzinfo=UTC)
     assert window.contains(inside)
     assert window.contains(after_midnight)
     assert not window.contains(outside)
 
 
 def test_snapshot_and_restore_state_preserves_pending_runs() -> None:
-    start = datetime(2025, 6, 1, 8, 0, tzinfo=timezone.utc)
+    start = datetime(2025, 6, 1, 8, 0, tzinfo=UTC)
     spec = ScheduleSpec(
         name="nightly",
         profile="profiles/nightly.json",

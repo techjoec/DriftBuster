@@ -2,30 +2,35 @@
 
 This package provides a backend-abstracted interface for enumerating installed
 applications and scanning registry trees to locate settings by keyword or
-pattern. It favours read-only access and graceful fallbacks on non‑Windows
+pattern. It favours read-only access and graceful fallbacks on non-Windows
 platforms.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from functools import wraps
-import time
-from typing import Callable, Dict, Mapping, Tuple, TypeVar, cast
 import re
+import time
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from functools import wraps
+from typing import cast
 
 from .scan import (
-    is_windows,
     RegistryApp,
     RegistryHit,
     SearchSpec,
+    is_windows,
+)
+from .scan import (
     enumerate_installed_apps as _enumerate_installed_apps,
+)
+from .scan import (
     find_app_registry_roots as _find_app_registry_roots,
+)
+from .scan import (
     search_registry as _search_registry,
 )
-
-_Operation = TypeVar("_Operation", bound=Callable[..., object])
 
 
 @dataclass
@@ -70,7 +75,7 @@ class _UsageCounters:
 def _format_timestamp(value: float | None) -> str | None:
     if value is None:
         return None
-    return datetime.fromtimestamp(value, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.fromtimestamp(value, tz=UTC).isoformat().replace("+00:00", "Z")
 
 
 _OPERATIONS = (
@@ -79,7 +84,7 @@ _OPERATIONS = (
     "search_registry",
 )
 
-_USAGE: Dict[str, _UsageCounters] = {name: _UsageCounters() for name in _OPERATIONS}
+_USAGE: dict[str, _UsageCounters] = {name: _UsageCounters() for name in _OPERATIONS}
 
 
 @dataclass(frozen=True)
@@ -141,7 +146,7 @@ def parse_registry_root_descriptor(text: str) -> RegistryRoot:
     return RegistryRoot(hive=hive, path=path, view=view)
 
 
-def _instrument(name: str, func: _Operation) -> _Operation:
+def _instrument[Operation: Callable[..., object]](name: str, func: Operation) -> Operation:
     counters = _USAGE[name]
 
     @wraps(func)
@@ -169,7 +174,7 @@ def _instrument(name: str, func: _Operation) -> _Operation:
             counters.last_error = None
             return result
 
-    return cast(_Operation, wrapper)
+    return cast(Operation, wrapper)
 
 
 enumerate_installed_apps = _instrument(
@@ -181,7 +186,7 @@ find_app_registry_roots = _instrument(
 search_registry = _instrument("search_registry", _search_registry)
 
 
-def registry_summary(*, reset: bool = False) -> Tuple[Mapping[str, object], ...]:
+def registry_summary(*, reset: bool = False) -> tuple[Mapping[str, object], ...]:
     """Return usage statistics for the live registry operations.
 
     Args:
@@ -196,14 +201,14 @@ def registry_summary(*, reset: bool = False) -> Tuple[Mapping[str, object], ...]
 
 
 __all__ = [
-    "is_windows",
     "RegistryApp",
     "RegistryHit",
     "RegistryRoot",
     "SearchSpec",
     "enumerate_installed_apps",
     "find_app_registry_roots",
-    "search_registry",
-    "registry_summary",
+    "is_windows",
     "parse_registry_root_descriptor",
+    "registry_summary",
+    "search_registry",
 ]

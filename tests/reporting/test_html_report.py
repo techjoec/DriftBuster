@@ -87,3 +87,79 @@ def test_write_html_report_accepts_stream_and_path(tmp_path: Path) -> None:
     written = target.read_text(encoding="utf-8")
     assert "Disk Output" in written
     assert "DriftBuster" not in target.name  # ensure file naming left to caller
+
+
+def test_render_html_report_tolerates_mapping_inputs_and_corrupt_entries() -> None:
+    diff = DiffResult(
+        canonical_before="old",
+        canonical_after="new",
+        diff="@@\n-old\n+new",
+        stats={"added_lines": 1, "removed_lines": 1, "changed_lines": 0},
+        content_type="text",
+        from_label="before",
+        to_label="after",
+        label="Config",
+    )
+    corrupted = DetectionMatch(
+        plugin_name="json",
+        format_name="json",
+        variant="generic",
+        confidence="invalid",  # type: ignore[arg-type]
+        reasons=[],
+        metadata={},
+    )
+
+    html = render_html_report(
+        matches=[_match(), corrupted],
+        diffs=[{"label": "Direct", "diff": ""}, diff],
+        hunt_hits=[
+            {
+                "rule": {"name": "token", "description": "desc", "token_name": "secret"},
+                "path": "sample",
+                "line_number": 1,
+                "excerpt": "value",
+            }
+        ],
+        profile_summary={
+            "total_profiles": 1,
+            "profiles": [
+                {"name": "demo", "config_count": 1, "config_ids": ("cfg",)},
+                "invalid",
+            ],
+        },
+    )
+
+    assert "Detection Summary" in html
+    assert "Configuration Diffs" in html
+    assert "Hunt Highlights" in html
+    assert "Profile Summary" in html
+
+
+def test_render_html_report_shows_diff_safety_notice() -> None:
+    html = render_html_report(
+        [_match()],
+        diffs=[
+            {
+                "label": "Large",
+                "diff": "-old\n+new",
+                "stats": {"added_lines": 1},
+                "safety_limits": {
+                    "diff": {
+                        "total_lines": 6,
+                        "total_bytes": 120,
+                        "truncated_lines": 2,
+                        "truncated_bytes": 16,
+                        "digest": "sha256:abc",
+                    },
+                    "thresholds": {
+                        "canonical_bytes": 10,
+                        "diff_bytes": 20,
+                        "diff_lines": 2,
+                    },
+                },
+            }
+        ],
+    )
+
+    assert "Diff output truncated for safety" in html
+    assert "diff truncated 2 lines" in html

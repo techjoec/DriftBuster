@@ -5,7 +5,7 @@ from __future__ import annotations
 The portable runner is designed for air-gapped or disconnected
 environments where the GUI cannot execute collections locally.  The
 PowerShell implementation mirrors the behaviour that is exercised in the
-unit tests below – this module exists so we can validate config parsing
+unit tests below - this module exists so we can validate config parsing
 and collection semantics without requiring PowerShell inside our CI.
 
 The public entry points exported here intentionally match what the
@@ -26,32 +26,31 @@ consistent.
 import base64
 import binascii
 import ctypes
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import fnmatch
 import getpass
-import importlib.resources as resources
+import hmac
 import json
 import os
 import platform
 import re
+import shutil
 import sys
-import hmac
+import zipfile
+from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from glob import glob
 from hashlib import sha256
 from pathlib import Path
-import shutil
-from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence, Tuple, Union
-import zipfile
-from glob import glob
+from typing import Any
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from .sql import build_sqlite_snapshot
 from . import secret_scanning
 from .registry import RegistryRoot, parse_registry_root_descriptor
-
+from .sql import build_sqlite_snapshot
 
 MANIFEST_SCHEMA = "https://driftbuster.dev/offline-runner/manifest/v1"
 CONFIG_SCHEMA = "https://driftbuster.dev/offline-runner/config/v1"
@@ -66,7 +65,7 @@ SecretDetectionContext = secret_scanning.SecretDetectionContext
 
 
 def _timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 _compile_ruleset_from_mapping = secret_scanning.compile_ruleset_from_mapping
@@ -74,58 +73,6 @@ _secret_option_values = secret_scanning.secret_option_values
 _build_secret_context = secret_scanning.build_context
 _manifest_secret_scanner = secret_scanning.manifest_secret_scanner
 _looks_binary = secret_scanning.looks_binary
-
-
-_SECRET_RULE_CACHE: tuple[SecretDetectionRule, ...] | None = None
-_SECRET_RULE_VERSION: str | None = None
-
-
-def _load_secret_rules() -> tuple[tuple[SecretDetectionRule, ...], str, bool]:
-    global _SECRET_RULE_CACHE, _SECRET_RULE_VERSION
-    if _SECRET_RULE_CACHE is not None and _SECRET_RULE_VERSION is not None:
-        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
-
-    # Try resources API first, but fall back to Path-based loading for editable installs
-    payload = None
-    try:
-        resource = resources.files(__package__).joinpath(SECRET_RULES_RESOURCE)
-        # Check if resource exists (may not have is_file in mocked contexts)
-        try:
-            if hasattr(resource, 'is_file') and not resource.is_file():
-                raise FileNotFoundError("Resource not available via importlib")
-        except AttributeError:
-            pass  # is_file not available, try to open anyway
-
-        # Try to open via resources API
-        with resource.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-    except (FileNotFoundError, AttributeError, OSError):
-        # Fallback: check alongside this module file for editable installs
-        try:
-            module_dir = Path(__file__).parent
-            resource_path = module_dir / SECRET_RULES_RESOURCE
-            if resource_path.is_file():
-                with open(resource_path, "r", encoding="utf-8") as handle:
-                    payload = json.load(handle)
-        except (FileNotFoundError, OSError):
-            pass
-
-    if payload is None:
-        _SECRET_RULE_CACHE = ()
-        _SECRET_RULE_VERSION = "none"
-        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, False
-
-    compiled = _compile_ruleset_from_mapping(payload)
-    version = str(payload.get("version", "unknown"))
-    if compiled is None:
-        _SECRET_RULE_CACHE = ()
-        _SECRET_RULE_VERSION = version
-        return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
-
-    rules, compiled_version = compiled
-    _SECRET_RULE_CACHE = rules
-    _SECRET_RULE_VERSION = compiled_version or version
-    return _SECRET_RULE_CACHE, _SECRET_RULE_VERSION, True
 
 
 def _copy_with_secret_filter(
@@ -184,15 +131,12 @@ def _path_within(path: Path, parent: Path) -> bool:
         return False
 
 
-def _normalise_registry_roots(value: Any) -> Tuple[RegistryRoot, ...]:
+def _normalise_registry_roots(value: Any) -> tuple[RegistryRoot, ...]:
     if not value:
         return ()
 
     entries: Iterable[Any]
-    if isinstance(value, (str, Mapping)) or not isinstance(value, Iterable):
-        entries = (value,)
-    else:
-        entries = value
+    entries = (value,) if isinstance(value, (str, Mapping)) or not isinstance(value, Iterable) else value
 
     normalised: list[RegistryRoot] = []
     for entry in entries:
@@ -232,7 +176,7 @@ class OfflineCollectionSource:
     exclude: Sequence[str] = field(default_factory=tuple)
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineCollectionSource":
+    def from_dict(cls, payload: Mapping[str, Any]) -> OfflineCollectionSource:
         path = payload.get("path")
         if not path or not str(path).strip():
             raise ValueError("Source entry requires a non-empty 'path'.")
@@ -243,10 +187,7 @@ class OfflineCollectionSource:
 
         optional = bool(payload.get("optional", False))
         exclude_payload = payload.get("exclude", ())
-        if isinstance(exclude_payload, str):
-            exclude = (exclude_payload,)
-        else:
-            exclude = tuple(str(entry) for entry in exclude_payload or ())
+        exclude = (exclude_payload,) if isinstance(exclude_payload, str) else tuple(str(entry) for entry in exclude_payload or ())
 
         return cls(path=str(path), alias=str(alias) if alias else None, optional=optional, exclude=exclude)
 
@@ -283,7 +224,7 @@ class RemoteRegistryTarget:
         raise ValueError(f"Unsupported boolean value '{value}' for remote target")
 
     @classmethod
-    def from_payload(cls, payload: Any) -> "RemoteRegistryTarget":
+    def from_payload(cls, payload: Any) -> RemoteRegistryTarget:
         if isinstance(payload, str):
             host = payload.strip()
             if not host:
@@ -333,10 +274,7 @@ class RemoteRegistryTarget:
             use_ssl_value = payload["use-ssl"]
         else:
             use_ssl_value = None
-        if use_ssl_value is not None:
-            use_ssl = cls._coerce_bool(use_ssl_value)
-        else:
-            use_ssl = None
+        use_ssl = cls._coerce_bool(use_ssl_value) if use_ssl_value is not None else None
 
         alias = str(alias_value).strip() if alias_value and str(alias_value).strip() else None
         username = str(username_value).strip() if username_value and str(username_value).strip() else None
@@ -362,18 +300,18 @@ class RemoteRegistryTarget:
 @dataclass(frozen=True)
 class OfflineRegistryScanSource:
     token: str
-    keywords: Tuple[str, ...] = ()
-    patterns: Tuple[str, ...] = ()
+    keywords: tuple[str, ...] = ()
+    patterns: tuple[str, ...] = ()
     max_depth: int = 12
     max_hits: int = 200
     time_budget_s: float = 10.0
     alias: str | None = None
     remote: RemoteRegistryTarget | None = None
-    remote_batch: Tuple[RemoteRegistryTarget, ...] = field(default_factory=tuple)
-    roots: Tuple[RegistryRoot, ...] = field(default_factory=tuple)
+    remote_batch: tuple[RemoteRegistryTarget, ...] = field(default_factory=tuple)
+    roots: tuple[RegistryRoot, ...] = field(default_factory=tuple)
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineRegistryScanSource":
+    def from_dict(cls, payload: Mapping[str, Any]) -> OfflineRegistryScanSource:
         spec = payload.get("registry_scan")
         if not isinstance(spec, Mapping):
             raise ValueError("registry_scan source requires an object payload")
@@ -381,7 +319,7 @@ class OfflineRegistryScanSource:
         if not token_raw or not str(token_raw).strip():
             raise ValueError("registry_scan requires non-empty 'token'.")
 
-        def _norm_seq(value: Any) -> Tuple[str, ...]:
+        def _norm_seq(value: Any) -> tuple[str, ...]:
             if not value:
                 return ()
             if isinstance(value, str):
@@ -472,8 +410,8 @@ class OfflineSqlSnapshotSource:
     path: str
     alias: str | None = None
     optional: bool = False
-    tables: Tuple[str, ...] = ()
-    exclude_tables: Tuple[str, ...] = ()
+    tables: tuple[str, ...] = ()
+    exclude_tables: tuple[str, ...] = ()
     mask_columns: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     hash_columns: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     limit: int | None = None
@@ -482,7 +420,7 @@ class OfflineSqlSnapshotSource:
     dialect: str = "sqlite"
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineSqlSnapshotSource":
+    def from_dict(cls, payload: Mapping[str, Any]) -> OfflineSqlSnapshotSource:
         spec = payload.get("sql_snapshot")
         if not isinstance(spec, Mapping):
             raise ValueError("sql_snapshot source requires an object payload")
@@ -497,7 +435,7 @@ class OfflineSqlSnapshotSource:
         optional_value = payload.get("optional", spec.get("optional", False))
         optional = bool(optional_value)
 
-        def _string_tuple(key: str) -> Tuple[str, ...]:
+        def _string_tuple(key: str) -> tuple[str, ...]:
             raw = spec.get(key)
             if not raw:
                 return ()
@@ -562,14 +500,14 @@ class OfflineSqlSnapshotSource:
 class OfflineRunnerProfile:
     name: str
     description: str | None
-    sources: Sequence[Union[OfflineCollectionSource, OfflineRegistryScanSource, OfflineSqlSnapshotSource]]
+    sources: Sequence[OfflineCollectionSource | OfflineRegistryScanSource | OfflineSqlSnapshotSource]
     baseline: str | None
     tags: Sequence[str]
     options: Mapping[str, Any]
     secret_scanner: Mapping[str, Any]
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineRunnerProfile":
+    def from_dict(cls, payload: Mapping[str, Any]) -> OfflineRunnerProfile:
         name = payload.get("name")
         if not name or not str(name).strip():
             raise ValueError("Profile requires a non-empty 'name'.")
@@ -578,7 +516,7 @@ class OfflineRunnerProfile:
         if not raw_sources:
             raise ValueError("Profile must define at least one source.")
 
-        sources: list[Union[OfflineCollectionSource, OfflineRegistryScanSource, OfflineSqlSnapshotSource]] = []
+        sources: list[OfflineCollectionSource | OfflineRegistryScanSource | OfflineSqlSnapshotSource] = []
         for entry in raw_sources:
             if isinstance(entry, Mapping):
                 if "registry_scan" in entry:
@@ -604,10 +542,7 @@ class OfflineRunnerProfile:
                 )
 
         tags_payload = payload.get("tags", ())
-        if isinstance(tags_payload, str):
-            tags = (tags_payload,)
-        else:
-            tags = tuple(str(tag) for tag in tags_payload or ())
+        tags = (tags_payload,) if isinstance(tags_payload, str) else tuple(str(tag) for tag in tags_payload or ())
 
         options_payload = payload.get("options", {})
         if not isinstance(options_payload, Mapping):
@@ -646,7 +581,7 @@ class OfflineEncryptionSettings:
     remove_plaintext: bool = True
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any] | None) -> "OfflineEncryptionSettings":
+    def from_dict(cls, payload: Mapping[str, Any] | None) -> OfflineEncryptionSettings:
         if not payload:
             return cls()
 
@@ -697,7 +632,7 @@ class OfflineRunnerSettings:
     encryption: OfflineEncryptionSettings | None = None
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any] | None) -> "OfflineRunnerSettings":
+    def from_dict(cls, payload: Mapping[str, Any] | None) -> OfflineRunnerSettings:
         if not payload:
             return cls()
 
@@ -751,7 +686,7 @@ class OfflineRunnerConfig:
     raw: Mapping[str, Any]
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "OfflineRunnerConfig":
+    def from_dict(cls, payload: Mapping[str, Any]) -> OfflineRunnerConfig:
         if not isinstance(payload, Mapping):
             raise TypeError("Config payload must be a mapping.")
 
@@ -929,11 +864,12 @@ def _encrypt_package_file(
     hmac_key: bytes,
 ) -> Mapping[str, Any]:
     plaintext = source.read_bytes()
-    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    algorithm = algorithms.AES(aes_key)
+    padder = padding.PKCS7(algorithm.block_size).padder()
     padded = padder.update(plaintext) + padder.finalize()
 
     iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv), backend=default_backend())
+    cipher = Cipher(algorithm, modes.CBC(iv), backend=default_backend())
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(padded) + encryptor.finalize()
 
@@ -996,10 +932,7 @@ def _should_exclude(relative: Path, patterns: Sequence[str]) -> bool:
     if not patterns:
         return False
     text = relative.as_posix()
-    for pattern in patterns:
-        if fnmatch.fnmatch(text, pattern) or fnmatch.fnmatch(relative.name, pattern):
-            return True
-    return False
+    return any(fnmatch.fnmatch(text, pattern) or fnmatch.fnmatch(relative.name, pattern) for pattern in patterns)
 
 
 def _iter_source_matches(path_text: str, *, base_dir: Path | None = None) -> Iterable[Path]:
@@ -1080,7 +1013,7 @@ def execute_config(
     log_entries: list[str] = []
 
     def log(message: str) -> None:
-        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         log_entries.append(f"[{stamp}] {message}")
 
     log("offline collection started")
@@ -1226,11 +1159,11 @@ def execute_config(
         else:  # pragma: no cover - Windows registry collection requires Windows APIs
             # Registry scan source
             from .registry import (
-                is_windows,
+                SearchSpec,
                 enumerate_installed_apps,
                 find_app_registry_roots,
+                is_windows,
                 search_registry,
-                SearchSpec,
             )
             if not is_windows():
                 log("registry scan skipped: non-Windows platform")
@@ -1452,7 +1385,7 @@ def execute_config(
     if settings.include_manifest:
         manifest_payload = {
             "schema": MANIFEST_SCHEMA,
-            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "timestamp": run_timestamp,
             "host": {
                 "computer_name": platform.node(),
@@ -1633,19 +1566,19 @@ def execute_config_path(
 
 
 __all__ = [
+    "CONFIG_SCHEMA",
     "ENCRYPTED_PACKAGE_SCHEMA",
     "ENCRYPTION_KEYSET_SCHEMA",
-    "CONFIG_SCHEMA",
     "MANIFEST_SCHEMA",
     "CollectedFile",
     "OfflineCollectionSource",
-    "RemoteRegistryTarget",
-    "OfflineRegistryScanSource",
     "OfflineEncryptionSettings",
+    "OfflineRegistryScanSource",
     "OfflineRunnerConfig",
     "OfflineRunnerProfile",
     "OfflineRunnerResult",
     "OfflineRunnerSettings",
+    "RemoteRegistryTarget",
     "execute_config",
     "execute_config_path",
     "load_config",

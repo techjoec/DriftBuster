@@ -9,7 +9,7 @@ __all__ = [
     "NotificationAdapter",
     "NotificationError",
     "NotificationMessage",
-    "SlackWebhookAdapter",
     "SMTPNotificationAdapter",
+    "SlackWebhookAdapter",
     "TeamsWebhookAdapter",
 ]

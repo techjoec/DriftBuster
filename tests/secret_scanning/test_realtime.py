@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from driftbuster import run_profiles
 
 
-def _read_metadata(result: run_profiles.ProfileRunResult) -> dict[str, object]:
+def _read_metadata(result: run_profiles.ProfileRunResult) -> dict[str, Any]:
     metadata_path = result.output_dir / "metadata.json"
     return json.loads(metadata_path.read_text(encoding="utf-8"))
 

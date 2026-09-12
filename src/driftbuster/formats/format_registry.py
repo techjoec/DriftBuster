@@ -8,9 +8,10 @@ backing store.
 from __future__ import annotations
 
 import codecs
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Protocol, Tuple
+from typing import Protocol
 
 from ..core.types import DetectionMatch
 
@@ -26,8 +27,8 @@ class FormatPlugin(Protocol):
         self,
         path: Path,
         sample: bytes,
-        text: Optional[str],
-    ) -> Optional[DetectionMatch]:
+        text: str | None,
+    ) -> DetectionMatch | None:
         ...
 
 
@@ -36,7 +37,7 @@ class PluginRecord:
     plugin: FormatPlugin
 
 
-_PLUGINS: List[PluginRecord] = []
+_PLUGINS: list[PluginRecord] = []
 
 
 def register(plugin: FormatPlugin) -> None:
@@ -54,7 +55,7 @@ def register(plugin: FormatPlugin) -> None:
     _PLUGINS.append(PluginRecord(plugin=plugin))
 
 
-def get_plugins(*, readonly: bool = True) -> Tuple[FormatPlugin, ...]:
+def get_plugins(*, readonly: bool = True) -> tuple[FormatPlugin, ...]:
     """Return a tuple snapshot of registered format plugins.
 
     Args:
@@ -64,7 +65,6 @@ def get_plugins(*, readonly: bool = True) -> Tuple[FormatPlugin, ...]:
     """
 
     # Ensure registration side effects have run.
-    from . import xml  # noqa: F401
 
     plugins = tuple(record.plugin for record in _PLUGINS)
     if readonly:
@@ -74,7 +74,7 @@ def get_plugins(*, readonly: bool = True) -> Tuple[FormatPlugin, ...]:
     return tuple(plugin for plugin in plugins)
 
 
-def registry_summary() -> Tuple[Mapping[str, object], ...]:
+def registry_summary() -> tuple[Mapping[str, object], ...]:
     """Return an ordered summary of registered plugins for manual auditing."""
 
     plugins = get_plugins()
@@ -93,7 +93,7 @@ def registry_summary() -> Tuple[Mapping[str, object], ...]:
     return tuple(summary)
 
 
-def plugin_versions() -> Dict[str, str]:
+def plugin_versions() -> dict[str, str]:
     """Return a mapping of plugin names to declared versions."""
 
     return {
@@ -163,7 +163,7 @@ def looks_text(sample: bytes, thresh: float = 0.90) -> bool:
     return False
 
 
-def decode_text(sample: bytes) -> Tuple[str, str]:
+def decode_text(sample: bytes) -> tuple[str, str]:
     """Decode ``sample`` and return the resulting text and codec name."""
 
     candidates = []

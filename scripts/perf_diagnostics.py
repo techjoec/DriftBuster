@@ -18,7 +18,7 @@ import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 ARTIFACTS_DIR = REPO_ROOT / "artifacts" / "perf"
@@ -28,7 +28,7 @@ SAMPLES_ROOT = REPO_ROOT / "samples" / "multi-server"
 VIRTUALIZATION_THRESHOLD_DEFAULT = 400
 
 
-def _parse_bool(value: Optional[str]) -> Optional[bool]:
+def _parse_bool(value: str | None) -> bool | None:
     if value is None:
         return None
 
@@ -42,7 +42,7 @@ def _parse_bool(value: Optional[str]) -> Optional[bool]:
     return None
 
 
-def _parse_threshold(value: Optional[str]) -> int:
+def _parse_threshold(value: str | None) -> int:
     if value is None:
         return VIRTUALIZATION_THRESHOLD_DEFAULT
 
@@ -56,7 +56,7 @@ def _parse_threshold(value: Optional[str]) -> int:
     return parsed
 
 
-def _parse_duration_seconds(duration: Optional[str]) -> Optional[float]:
+def _parse_duration_seconds(duration: str | None) -> float | None:
     if not duration:
         return None
 
@@ -72,7 +72,7 @@ def _parse_duration_seconds(duration: Optional[str]) -> Optional[float]:
     return hours * 3600 + minutes * 60 + seconds
 
 
-def _run_perf_smoke(results_dir: pathlib.Path) -> Dict[str, Any]:
+def _run_perf_smoke(results_dir: pathlib.Path) -> dict[str, Any]:
     results_dir.mkdir(parents=True, exist_ok=True)
     trx_path = results_dir / "perf-smoke.trx"
     command = [
@@ -100,7 +100,7 @@ def _run_perf_smoke(results_dir: pathlib.Path) -> Dict[str, Any]:
         namespace = root.tag.split("}")[0].strip("{")
     ns = {"ns": namespace} if namespace else {}
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for unit_result in root.findall(".//ns:UnitTestResult" if namespace else ".//UnitTestResult", ns):
         duration_seconds = _parse_duration_seconds(unit_result.get("duration"))
         results.append(
@@ -122,12 +122,12 @@ def _run_perf_smoke(results_dir: pathlib.Path) -> Dict[str, Any]:
     }
 
 
-def _collect_fixture_stats() -> Dict[str, Any]:
+def _collect_fixture_stats() -> dict[str, Any]:
     if not SAMPLES_ROOT.exists():
         return {"multi_server": {"available": False}}
 
-    host_counts: List[int] = []
-    hosts: List[str] = []
+    host_counts: list[int] = []
+    hosts: list[str] = []
     for entry in sorted(SAMPLES_ROOT.iterdir()):
         if not entry.is_dir():
             continue
@@ -150,21 +150,21 @@ def _collect_fixture_stats() -> Dict[str, Any]:
             "min_files_per_host": min_files,
             "hosts": [
                 {"name": name, "file_count": count}
-                for name, count in zip(hosts, host_counts)
+                for name, count in zip(hosts, host_counts, strict=True)
             ],
         }
     }
 
 
 def _build_virtualization_projection(
-    threshold: int, force_override: Optional[bool], fixture_stats: Dict[str, Any]
-) -> Dict[str, Any]:
+    threshold: int, force_override: bool | None, fixture_stats: dict[str, Any]
+) -> dict[str, Any]:
     scenario_counts = {50, 200, 400, 512, 750, 1024, 1600}
     multi = fixture_stats.get("multi_server", {})
     for host in multi.get("hosts", []):
         scenario_counts.add(host.get("file_count", 0))
 
-    decisions: List[Dict[str, Any]] = []
+    decisions: list[dict[str, Any]] = []
     for count in sorted(scenario_counts):
         decision = count >= threshold if force_override is None else force_override
         decisions.append(
@@ -197,7 +197,7 @@ def _build_virtualization_projection(
     return projections
 
 
-def _git_head() -> Optional[str]:
+def _git_head() -> str | None:
     try:
         completed = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -211,7 +211,7 @@ def _git_head() -> Optional[str]:
     return completed.stdout.strip()
 
 
-def collect_baseline(output_path: pathlib.Path) -> Dict[str, Any]:
+def collect_baseline(output_path: pathlib.Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = pathlib.Path(tmp)
         perf_smoke = _run_perf_smoke(tmp_dir)
@@ -253,13 +253,13 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: List[str]) -> int:
+def main(argv: list[str]) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
     try:
         baseline = collect_baseline(args.output)
-    except Exception as exc:  # noqa: BLE001 - explicit failure reporting
+    except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

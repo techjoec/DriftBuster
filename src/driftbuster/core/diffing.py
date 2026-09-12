@@ -13,9 +13,9 @@ Helpers
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Mapping, MutableMapping, Optional, Sequence
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 if TYPE_CHECKING:  # pragma: no cover
     from driftbuster.reporting.diff import DiffResult, DiffResultSummary
@@ -30,8 +30,8 @@ class DiffPlan:
     content_type: str = "text"
     from_label: str = "before"
     to_label: str = "after"
-    label: Optional[str] = None
-    mask_tokens: Optional[Sequence[str]] = None
+    label: str | None = None
+    mask_tokens: Sequence[str] | None = None
     placeholder: str = "[REDACTED]"
     context_lines: int = 3
 
@@ -43,8 +43,8 @@ def build_diff_plan(
     content_type: str = "text",
     from_label: str = "before",
     to_label: str = "after",
-    label: Optional[str] = None,
-    mask_tokens: Optional[Sequence[str]] = None,
+    label: str | None = None,
+    mask_tokens: Sequence[str] | None = None,
     placeholder: str = "[REDACTED]",
     context_lines: int = 3,
 ) -> DiffPlan:
@@ -94,8 +94,8 @@ class DiffPlanExecution:
     """Executed diff with accompanying summary metadata."""
 
     plan: DiffPlan
-    result: "DiffResult"
-    summary: "DiffResultSummary"
+    result: DiffResult
+    summary: DiffResultSummary
 
 
 @overload
@@ -103,10 +103,10 @@ def execute_diff_plan(
     plan: DiffPlan,
     *,
     summarise: Literal[False] = False,
-    versions: Optional[Sequence[str]] = ...,
-    baseline_name: Optional[str] = ...,
-    comparison_name: Optional[str] = ...,
-) -> "DiffResult":
+    versions: Sequence[str] | None = ...,
+    baseline_name: str | None = ...,
+    comparison_name: str | None = ...,
+) -> DiffResult:
     ...
 
 
@@ -115,9 +115,9 @@ def execute_diff_plan(
     plan: DiffPlan,
     *,
     summarise: Literal[True],
-    versions: Optional[Sequence[str]] = ...,
-    baseline_name: Optional[str] = ...,
-    comparison_name: Optional[str] = ...,
+    versions: Sequence[str] | None = ...,
+    baseline_name: str | None = ...,
+    comparison_name: str | None = ...,
 ) -> DiffPlanExecution:
     ...
 
@@ -126,9 +126,9 @@ def execute_diff_plan(
     plan: DiffPlan,
     *,
     summarise: bool = False,
-    versions: Optional[Sequence[str]] = None,
-    baseline_name: Optional[str] = None,
-    comparison_name: Optional[str] = None,
+    versions: Sequence[str] | None = None,
+    baseline_name: str | None = None,
+    comparison_name: str | None = None,
 ):
     """Execute ``plan`` via the reporting diff builder.
 
@@ -140,7 +140,17 @@ def execute_diff_plan(
 
     from driftbuster.reporting.diff import build_unified_diff, summarise_diff_result
 
-    result = build_unified_diff(**plan_to_kwargs(plan))
+    result = build_unified_diff(
+        plan.before,
+        plan.after,
+        content_type=plan.content_type,
+        from_label=plan.from_label,
+        to_label=plan.to_label,
+        label=plan.label,
+        mask_tokens=plan.mask_tokens,
+        placeholder=plan.placeholder,
+        context_lines=plan.context_lines,
+    )
     if not summarise:
         return result
     summary = summarise_diff_result(
@@ -154,8 +164,8 @@ def execute_diff_plan(
 
 __all__ = [
     "DiffPlan",
-    "build_diff_plan",
-    "plan_to_kwargs",
-    "execute_diff_plan",
     "DiffPlanExecution",
+    "build_diff_plan",
+    "execute_diff_plan",
+    "plan_to_kwargs",
 ]

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Iterable, Mapping, Sequence
+from datetime import UTC, datetime
 from html import escape
 from os import PathLike
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence, TextIO
+from typing import Any, TextIO
 
 from ..core.types import DetectionMatch
 from ..hunt import HuntHit
@@ -68,7 +69,7 @@ def _format_metadata(metadata: Mapping[str, object]) -> str:
     return "\n".join(rows)
 
 
-def _render_match(match: Mapping[str, object], index: int) -> str:
+def _render_match(match: Mapping[str, Any], index: int) -> str:
     metadata = match.get("metadata")
     metadata_table = ""
     if isinstance(metadata, Mapping):
@@ -86,10 +87,10 @@ def _render_match(match: Mapping[str, object], index: int) -> str:
     )
 
 
-def _render_detection_summary(matches: Sequence[Mapping[str, object]]) -> str:
+def _render_detection_summary(matches: Sequence[Mapping[str, Any]]) -> str:
     if not matches:
         return ""
-    aggregates: dict[tuple[str, str], dict[str, object]] = {}
+    aggregates: dict[tuple[str, str], dict[str, float]] = {}
     for record in matches:
         format_name = str(record.get("format") or "unknown")
         variant_name = str(record.get("variant") or "—")
@@ -136,7 +137,7 @@ def _serialise_diff(diff: DiffResult | Mapping[str, object]) -> Mapping[str, obj
     return dict(diff)
 
 
-def _format_safety_notice(safety: Mapping[str, object] | None) -> str:
+def _format_safety_notice(safety: object) -> str:
     if not isinstance(safety, Mapping):
         return ""
 
@@ -164,10 +165,7 @@ def _format_safety_notice(safety: Mapping[str, object] | None) -> str:
             diff_parts.append(f"{truncated_lines} lines")
         if truncated_bytes:
             diff_parts.append(f"{truncated_bytes} bytes")
-        if diff_parts:
-            diff_segment = "diff truncated " + " and ".join(diff_parts)
-        else:
-            diff_segment = "diff output truncated"
+        diff_segment = "diff truncated " + " and ".join(diff_parts) if diff_parts else "diff output truncated"
         digest = diff_info.get("digest")
         if digest:
             diff_segment += f" (digest {digest})"
@@ -256,7 +254,7 @@ def _render_hunt_section(hits: Sequence[Mapping[str, object]]) -> str:
     return "<section class=\"hunt-section\"><h2>Hunt Highlights</h2><ul>" + "".join(items) + "</ul></section>"
 
 
-def _render_profile_summary(summary: Mapping[str, object]) -> str:
+def _render_profile_summary(summary: Mapping[str, Any]) -> str:
     if not summary:
         return ""
     totals = []
@@ -320,7 +318,7 @@ def render_html_report(
     prepared_hunts: list[Mapping[str, object]] = []
     if hunt_hits:
         for hit in hunt_hits:
-            entry = dict(_serialise_hunt_hit(hit))
+            entry: dict[str, Any] = dict(_serialise_hunt_hit(hit))
             if extra_metadata:
                 entry.setdefault("run_metadata", {}).update(extra_metadata)
             if active_redactor:
@@ -329,14 +327,14 @@ def render_html_report(
 
     prepared_summary: Mapping[str, object] | None = None
     if profile_summary:
-        summary_payload = dict(profile_summary)
+        summary_payload: dict[str, Any] = dict(profile_summary)
         if extra_metadata:
             summary_payload.setdefault("run_metadata", {}).update(extra_metadata)
         if active_redactor:
             summary_payload = redact_data(summary_payload, active_redactor)
         prepared_summary = summary_payload
 
-    generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    generated_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     parts = [_HTML_HEADER.format(title=escape(title))]
     parts.append(f"<div class=\"meta\">Generated at {escape(generated_at)}</div>")
 
@@ -395,7 +393,7 @@ def render_html_report(
 def write_html_report(
     matches: Iterable[DetectionMatch],
     destination: TextIO | str | PathLike[str],
-    **kwargs: object,
+    **kwargs: Any,
 ) -> None:
     """Write the rendered HTML report to ``destination``.
 

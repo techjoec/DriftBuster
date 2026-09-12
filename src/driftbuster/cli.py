@@ -15,15 +15,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from collections.abc import Iterable, Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Mapping, Optional, Sequence, Tuple
 
 from .core.detector import Detector
 from .core.types import DetectionMatch
 from .reporting.diff import build_unified_diff
 from .sql import build_sqlite_snapshot
-
 
 _XML_SUFFIXES = {
     ".config",
@@ -186,16 +185,15 @@ def _relative_path(root: Path, path: Path) -> str:
 
 
 def _iter_scan_results(
-    root: Path, glob: str, sample_size: Optional[int]
-) -> Iterable[Tuple[Path, Optional[DetectionMatch]]]:
+    root: Path, glob: str, sample_size: int | None
+) -> Iterable[tuple[Path, DetectionMatch | None]]:
     detector = Detector(sample_size=sample_size)
     if root.is_file():
         yield root, detector.scan_file(root)
         return
     if not root.exists():
         raise FileNotFoundError(f"Path does not exist: {root}")
-    for path, match in detector.scan_path(root, glob=glob):
-        yield path, match
+    yield from detector.scan_path(root, glob=glob)
 
 
 def _ellipsize(value: str, limit: int) -> str:
@@ -240,7 +238,7 @@ def _build_patch_name(baseline: Path, candidate: Path) -> str:
 
 
 def _emit_table(
-    root: Path, results: Sequence[Tuple[Path, Optional[DetectionMatch]]]
+    root: Path, results: Sequence[tuple[Path, DetectionMatch | None]]
 ) -> None:
     columns = (
         "Path",
@@ -306,7 +304,7 @@ def _emit_table(
 
 
 def _emit_json(
-    root: Path, results: Sequence[Tuple[Path, Optional[DetectionMatch]]]
+    root: Path, results: Sequence[tuple[Path, DetectionMatch | None]]
 ) -> None:
     for path, match in results:
         payload = {
@@ -427,7 +425,7 @@ def _run_export_sql(argv: Sequence[str]) -> int:
         sys.stdout.write(f"Exported SQL snapshot to {destination}\n")
 
     manifest_payload: Mapping[str, object] = {
-        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "captured_at": datetime.now(UTC).isoformat(),
         "exports": exports,
         "options": {
             "tables": list(tables or ()),
@@ -466,7 +464,7 @@ def _run_diff(argv: Sequence[str]) -> int:
 
     output_dir: Path | None = None
     if args.output_dir is not None:
-        output_dir = args.output_dir.expanduser().resolve()
+        output_dir = Path(args.output_dir).expanduser().resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
     exit_code = 0
@@ -525,10 +523,7 @@ def _run_diff(argv: Sequence[str]) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    if argv is None:
-        argv = list(sys.argv[1:])
-    else:
-        argv = list(argv)
+    argv = list(sys.argv[1:]) if argv is None else list(argv)
     if argv and argv[0] == "run-profile":
         from .run_profiles_cli import main as run_profiles_main
 

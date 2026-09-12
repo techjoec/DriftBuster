@@ -27,15 +27,17 @@ import os
 import socket
 import sys
 import time
-from datetime import datetime, timezone
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any
 
-from driftbuster.core import Detector, ProfileStore, ProfiledDetection
+from driftbuster.core import Detector, ProfiledDetection, ProfileStore
 from driftbuster.core.profiles import AppliedProfileConfig, diff_summary_snapshots
 from driftbuster.core.types import DetectionMatch, summarise_metadata
 from driftbuster.hunt import HuntHit, default_rules, hunt_path
-from driftbuster.profile_cli import _load_json as load_json_payload, _store_from_payload
+from driftbuster.profile_cli import _load_json as load_json_payload
+from driftbuster.profile_cli import _store_from_payload
 from driftbuster.reporting.redaction import redact_data, resolve_redactor
 from driftbuster.sql import build_sqlite_snapshot
 
@@ -241,7 +243,7 @@ def _build_snapshot_payload(
     capture_block = {
         "id": capture_id,
         "root": str(root),
-        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "captured_at": datetime.now(UTC).isoformat(),
         "operator": operator,
         "environment": environment,
         "reason": reason,
@@ -358,7 +360,7 @@ def run_capture(args: argparse.Namespace) -> int:
 
     detector = _build_detector(args)
 
-    capture_id = args.capture_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    capture_id = args.capture_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     snapshot_path, manifest_path = _prepare_output_paths(Path(args.output_dir), capture_id)
 
     start_time = time.monotonic()
@@ -538,7 +540,7 @@ def run_sql_export(args: argparse.Namespace) -> int:
 
     manifest_path = output_dir / "sql-manifest.json"
     manifest_payload = {
-        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "captured_at": datetime.now(UTC).isoformat(),
         "exports": exports,
         "options": {
             "tables": list(tables or ()),
@@ -564,7 +566,7 @@ def _load_snapshot(path: Path) -> Mapping[str, Any]:
         raise ValueError(f"Failed to parse snapshot {path}: {exc}") from exc
 
 
-def _detection_key(entry: Mapping[str, Any]) -> tuple[str, str | None, str | None]:
+def _detection_key(entry: Mapping[str, Any]) -> tuple[str | None, str | None, str | None]:
     detection = entry.get("detection", {})
     return (
         entry.get("relative_path") or entry.get("path"),

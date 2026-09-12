@@ -4,10 +4,10 @@ from pathlib import Path
 
 from driftbuster.hunt import (
     HuntRule,
+    _extract_hits,
     build_plan_transforms,
     default_rules,
     hunt_path,
-    _extract_hits,
 )
 
 

@@ -9,21 +9,22 @@ from driftbuster.registry import (
     registry_summary,
     search_registry,
 )
-
+from driftbuster.registry.scan import _Backend
+from typed_payloads import as_dict
 
 _UNINSTALL_PATH = r"Software\Microsoft\Windows\CurrentVersion\Uninstall"
 
 
-class _RecordingBackend:
+class _RecordingBackend(_Backend):
     def __init__(self) -> None:
-        self._subkeys = {
+        self._subkeys: dict[tuple[str, str, str | None], list[str]] = {
             ("HKLM", _UNINSTALL_PATH, "64"): ["ExampleApp"],
         }
         uninstall_key = f"{_UNINSTALL_PATH}\\ExampleApp"
         self._subkeys[("HKLM", uninstall_key, "64")] = []
         self._subkeys[("HKCU", "Software\\ExampleApp", None)] = []
 
-        self._values = {
+        self._values: dict[tuple[str, str, str | None], list[tuple[str, object]]] = {
             ("HKLM", uninstall_key, "64"): [
                 ("DisplayName", "ExampleApp"),
                 ("Publisher", "ExampleCorp"),
@@ -42,7 +43,7 @@ class _RecordingBackend:
         return list(self._values.get((hive, path, view), []))
 
 
-class _FailingBackend:
+class _FailingBackend(_Backend):
     def enum_subkeys(self, hive: str, path: str, view: str | None):
         raise RuntimeError("backend not initialised")
 
@@ -64,7 +65,7 @@ def test_registry_summary_tracks_usage_statistics() -> None:
     hits = search_registry((roots[0],), spec, backend=backend)
     assert hits
 
-    summary = {entry["operation"]: entry for entry in registry_summary()}
+    summary = {str(entry["operation"]): as_dict(entry) for entry in registry_summary()}
 
     enumerate_stats = summary["enumerate_installed_apps"]
     assert enumerate_stats["calls"] == 1

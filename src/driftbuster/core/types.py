@@ -21,10 +21,12 @@ Example
 
 from __future__ import annotations
 
+import contextlib
+import re
+from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
-import re
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
+from typing import Any
 
 from ..catalog import (
     DetectionCatalog,
@@ -40,7 +42,7 @@ class MetadataValidationError(ValueError):
     """Raised when detection metadata fails validation checks."""
 
 
-def _ensure_mapping(metadata: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
+def _ensure_mapping(metadata: Mapping[str, Any] | None) -> dict[str, Any]:
     if metadata is None:
         return {}
     if isinstance(metadata, MutableMapping):
@@ -83,8 +85,8 @@ def _collect_variant_ids(fmt: FormatClass) -> set[str]:
 
 def _build_format_lookup(
     catalog: DetectionCatalog,
-) -> Dict[str, tuple[str, set[str]]]:
-    lookup: Dict[str, tuple[str, set[str]]] = {}
+) -> dict[str, tuple[str, set[str]]]:
+    lookup: dict[str, tuple[str, set[str]]] = {}
     for fmt in catalog.classes:
         canonical = fmt.slug.strip().lower()
         variant_ids = _collect_variant_ids(fmt)
@@ -92,10 +94,8 @@ def _build_format_lookup(
         name_key = fmt.name.strip().lower()
         if name_key:
             keys.add(name_key)
-            try:
+            with contextlib.suppress(MetadataValidationError):
                 keys.add(_normalise_identifier(fmt.name, field="format_name"))
-            except MetadataValidationError:
-                pass
         keys.update(alias.strip().lower() for alias in fmt.aliases if alias)
         for key in keys:
             if key:
@@ -138,7 +138,7 @@ def validate_detection_metadata(
     catalog: DetectionCatalog,
     *,
     strict: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Validate and enrich ``match.metadata`` against ``catalog``.
 
     Args:
@@ -167,7 +167,7 @@ def validate_detection_metadata(
     format_id = _normalise_identifier(format_name, field="format_name")
 
     lookup = _build_format_lookup(catalog)
-    canonical_format: Optional[str] = None
+    canonical_format: str | None = None
     allowed_variants: set[str] = set()
     if format_id in lookup:
         canonical_format, allowed_variants = lookup[format_id]
@@ -185,10 +185,7 @@ def validate_detection_metadata(
             raise MetadataValidationError(
                 "DetectionMatch.variant must be a string when provided."
             )
-        if strict:
-            variant_id = _normalise_identifier(variant, field="variant")
-        else:
-            variant_id = variant.strip().lower()
+        variant_id = _normalise_identifier(variant, field="variant") if strict else variant.strip().lower()
         if variant_id:
             if strict and allowed_variants and variant_id not in allowed_variants:
                 raise MetadataValidationError(
@@ -203,7 +200,7 @@ def validate_detection_metadata(
     if fmt_entry is not None:
         severity_value = getattr(fmt_entry, "default_severity", None)
         severity_hint_value = getattr(fmt_entry, "severity_hint", None)
-        remediation_sources: List[RemediationHint] = [
+        remediation_sources: list[RemediationHint] = [
             hint
             for hint in getattr(fmt_entry, "remediation_hints", ())
             if isinstance(hint, RemediationHint)
@@ -288,10 +285,10 @@ def summarise_metadata(match: DetectionMatch) -> Mapping[str, Any]:
 class DetectionMatch:
     plugin_name: str
     format_name: str
-    variant: Optional[str]
+    variant: str | None
     confidence: float
-    reasons: List[str]
-    metadata: Optional[Dict[str, Any]] = None
+    reasons: list[str]
+    metadata: dict[str, Any] | None = None
 
     def to_dict(self) -> dict:
         return {

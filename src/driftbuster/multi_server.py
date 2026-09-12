@@ -9,18 +9,20 @@ records that map to the .NET `ServerScanResponse` contract. It is invoked via
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import sys
-import time
-import json
 import threading
+import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Mapping, Sequence
+from typing import Any
 
 from driftbuster.core.detector import Detector, DetectorIOError
+from driftbuster.hunt import default_rules, hunt_path
 from driftbuster.reporting.diff import (
     build_unified_diff,
     canonicalise_text,
@@ -28,7 +30,6 @@ from driftbuster.reporting.diff import (
     diff_summary_to_payload,
     summarise_diff_result,
 )
-from driftbuster.hunt import default_rules, hunt_path
 
 SCHEMA_VERSION = "multi-server.v1"
 _SERVER_STATUS_QUEUED = "queued"
@@ -138,7 +139,7 @@ def _resolve_cache_dir(cache_dir: str | Path | None) -> Path:
 
 
 def _utc_timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _slugify(value: str) -> str:
@@ -173,7 +174,7 @@ class BaselinePreference:
     role: str = "auto"
 
     @classmethod
-    def from_mapping(cls, payload: Mapping[str, object] | None) -> "BaselinePreference":
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> BaselinePreference:
         if not payload:
             return cls()
         return cls(
@@ -191,7 +192,7 @@ class ExportOptions:
     include_summary: bool = True
 
     @classmethod
-    def from_mapping(cls, payload: Mapping[str, object] | None) -> "ExportOptions":
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> ExportOptions:
         if not payload:
             return cls()
         return cls(
@@ -214,7 +215,7 @@ class Plan:
     cached_at: str | None = None
 
     @classmethod
-    def from_mapping(cls, payload: Mapping[str, object]) -> "Plan":
+    def from_mapping(cls, payload: Mapping[str, Any]) -> Plan:
         host_id = str(payload.get("host_id") or "").strip() or hashlib.sha1(os.urandom(16)).hexdigest()
         label = str(payload.get("label") or host_id).strip() or host_id
         scope = str(payload.get("scope") or "custom_roots").strip().lower()
@@ -272,7 +273,7 @@ class DiffCache:
         self._root.mkdir(parents=True, exist_ok=True)
 
     def _entry_path(self, host_id: str, config_id: str) -> Path:
-        digest = hashlib.sha1(f"{host_id}:{config_id}".encode("utf-8")).hexdigest()
+        digest = hashlib.sha1(f"{host_id}:{config_id}".encode()).hexdigest()
         return self._root / f"{digest}.json"
 
     def load(self, host_id: str, config_id: str, signature: str) -> Mapping[str, object] | None:
@@ -315,14 +316,15 @@ class MultiServerRunner:
     def run(self, plans: Sequence[Plan]) -> Mapping[str, object]:
         plans = list(plans)
         if not plans:
-            return self._build_response([], {}, {}, {}, baseline_host_id="")
+            # Empty catalog/drilldown are emitted as mappings here but as lists elsewhere; kept as-is to preserve output.
+            return self._build_response([], {}, {}, {}, baseline_host_id="")  # pyright: ignore[reportArgumentType]
 
         baseline_plan = self._select_baseline(plans)
         baseline_host_id = baseline_plan.host_id
         host_results: list[Mapping[str, object]] = []
-        host_configs: Dict[str, Dict[str, ConfigRecord]] = {}
-        host_availability: Dict[str, str] = {}
-        secrets_by_host: Dict[str, set[str]] = {}
+        host_configs: dict[str, dict[str, ConfigRecord]] = {}
+        host_availability: dict[str, str] = {}
+        secrets_by_host: dict[str, set[str]] = {}
 
         for plan in plans:
             emit_progress(plan.host_id, _SERVER_STATUS_RUNNING, f"Scanning {plan.label}")
@@ -414,8 +416,8 @@ class MultiServerRunner:
         plan: Plan,
         roots: Sequence[Path],
         secret_paths: set[str],
-    ) -> tuple[Dict[str, ConfigRecord], bool, bool]:
-        configs: Dict[str, ConfigRecord] = {}
+    ) -> tuple[dict[str, ConfigRecord], bool, bool]:
+        configs: dict[str, ConfigRecord] = {}
         cached_entries = 0
         total_entries = 0
         root_fingerprint = hashlib.sha1("|".join(sorted(str(root.resolve()) for root in roots)).encode("utf-8")).hexdigest()
@@ -444,7 +446,7 @@ class MultiServerRunner:
                 display_name = self._display_name(metadata, relative)
                 raw_text = _read_text(path)
                 file_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
-                signature = hashlib.sha256(f"{plan.host_id}:{config_id}:{root_fingerprint}:{file_hash}".encode("utf-8")).hexdigest()
+                signature = hashlib.sha256(f"{plan.host_id}:{config_id}:{root_fingerprint}:{file_hash}".encode()).hexdigest()
 
                 cached = self._cache.load(plan.host_id, config_id, signature)
                 if cached:
@@ -567,7 +569,7 @@ class MultiServerRunner:
         host_availability: Mapping[str, str],
         baseline_host_id: str,
     ) -> tuple[list[Mapping[str, object]], list[Mapping[str, object]]]:
-        config_index: Dict[str, Dict[str, ConfigRecord]] = {}
+        config_index: dict[str, dict[str, ConfigRecord]] = {}
         for host_id, configs in host_configs.items():
             for config_id, record in configs.items():
                 config_index.setdefault(config_id, {})[host_id] = record
@@ -591,8 +593,8 @@ class MultiServerRunner:
             present_labels = [hosts_by_id[host_id].label for host_id in present_host_ids]
             missing_labels = [hosts_by_id[host_id].label for host_id in plans_order(plans) if host_id not in per_host]
 
-            drift_stats: Dict[str, int] = {}
-            unified_diffs: Dict[str, Mapping[str, object]] = {}
+            drift_stats: dict[str, int] = {}
+            unified_diffs: dict[str, Mapping[str, object]] = {}
             baseline_content = baseline_record.canonical if baseline_record else ""
             baseline_raw = baseline_record.raw if baseline_record else ""
 
@@ -778,16 +780,16 @@ def emit_progress(host_id: str, status: str, message: str, *, _now: float | None
     _emit_json_line(payload)
 
 
-def _load_request() -> Mapping[str, object]:
+def _load_request() -> Mapping[str, Any]:
     raw = sys.stdin.read()
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise SystemExit(f"Invalid JSON payload: {exc}")
+        raise SystemExit(f"Invalid JSON payload: {exc}") from exc
     return payload
 
 
-def _build_plans(request: Mapping[str, object]) -> list[Plan]:
+def _build_plans(request: Mapping[str, Any]) -> list[Plan]:
     plans_payload = request.get("plans") or []
     if not isinstance(plans_payload, Sequence):
         raise SystemExit("'plans' must be an array")
@@ -800,8 +802,9 @@ def _build_plans(request: Mapping[str, object]) -> list[Plan]:
 
 
 def main() -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        reconfigure(encoding="utf-8", errors="replace")
 
     try:
         request = _load_request()
