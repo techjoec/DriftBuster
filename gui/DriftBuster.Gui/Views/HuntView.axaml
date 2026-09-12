@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="using:Avalonia.Automation"
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
              x:Class="DriftBuster.Gui.Views.HuntView"
              x:DataType="vm:HuntViewModel">
@@ -19,8 +20,10 @@
               <StackPanel Orientation="Horizontal" Spacing="10">
                 <TextBox Width="420"
                          Watermark="Directory or file"
-                         Text="{Binding DirectoryPath, Mode=TwoWay}" />
-                <Button Content="Browse" Classes="outline" Click="OnBrowseDirectory" />
+                         Text="{Binding DirectoryPath, Mode=TwoWay}"
+                         automation:AutomationProperties.AutomationId="Hunt.Path"
+                         automation:AutomationProperties.Name="Target path" />
+                <Button Content="Browse" Classes="outline" Click="OnBrowseDirectory" automation:AutomationProperties.AutomationId="Hunt.Browse" />
               </StackPanel>
               <TextBlock Text="{Binding DirectoryError}"
                          Foreground="{DynamicResource Brush.Accent}"
@@ -32,7 +35,9 @@
               <TextBlock Text="Excerpt filter" FontSize="14" FontWeight="SemiBold" />
               <TextBox Width="420"
                        Watermark="Optional excerpt filter"
-                       Text="{Binding Pattern, Mode=TwoWay}" />
+                       Text="{Binding Pattern, Mode=TwoWay}"
+                       automation:AutomationProperties.AutomationId="Hunt.Pattern"
+                       automation:AutomationProperties.Name="Excerpt filter" />
             </StackPanel>
 
             <Button Grid.Column="1" Classes="primary"
@@ -40,12 +45,15 @@
                     Content="Scan"
                     Command="{Binding RunHuntCommand}"
                     VerticalAlignment="Stretch"
-                    HorizontalAlignment="Stretch" />
+                    HorizontalAlignment="Stretch"
+                    automation:AutomationProperties.AutomationId="Hunt.Scan" />
           </Grid>
 
           <ProgressBar Width="180"
                        IsVisible="{Binding IsBusy}"
-                       IsIndeterminate="True" />
+                       IsIndeterminate="True"
+                       automation:AutomationProperties.AutomationId="Hunt.Progress"
+                       automation:AutomationProperties.Name="Scanning" />
 
           <Border Background="#30162128"
                   CornerRadius="{DynamicResource Radius.Medium}"
@@ -131,7 +139,9 @@
 
           <Expander Header="Raw JSON"
                     IsExpanded="False"
-                    IsVisible="{Binding HasRawJson}">
+                    IsVisible="{Binding HasRawJson}"
+                    automation:AutomationProperties.AutomationId="Hunt.RawJson"
+                    automation:AutomationProperties.Name="Raw JSON">
             <Border Background="{DynamicResource Brush.SurfaceAlt}" Padding="16" CornerRadius="{DynamicResource Radius.Medium}">
               <ScrollViewer Height="160">
                 <TextBlock Text="{Binding RawJson}"

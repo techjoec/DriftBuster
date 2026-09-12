@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="using:Avalonia.Automation"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:DriftBuster.Gui.ViewModels"
@@ -53,14 +54,16 @@
               <TextBlock Text="{Binding BackendStatusText}" />
             </ToolTip.Tip>
           </Border>
-          <Button Classes="outline" Content="Check core" Command="{Binding CheckHealthCommand}" />
+          <Button Classes="outline" Content="Check core" Command="{Binding CheckHealthCommand}" automation:AutomationProperties.AutomationId="Shell.CheckCore" />
         </StackPanel>
         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="16,0,0,0">
           <TextBlock Text="Theme" Classes="subtitle" VerticalAlignment="Center" />
           <ComboBox x:Name="ThemeSelector"
                     Width="150"
                     ItemsSource="{Binding ThemeOptions}"
-                    SelectedItem="{Binding SelectedTheme, Mode=TwoWay}">
+                    SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                    automation:AutomationProperties.AutomationId="Shell.Theme"
+                    automation:AutomationProperties.Name="Theme">
             <ComboBox.ItemTemplate>
               <DataTemplate>
                 <TextBlock Text="{Binding DisplayName}" />
@@ -82,25 +85,30 @@
           <ToggleButton Content="Diff planner"
                         MinWidth="120"
                         Command="{Binding ShowDiffCommand}"
-                        IsChecked="{Binding IsDiffSelected, Mode=OneWay}" Margin="0,0,12,12" />
+                        IsChecked="{Binding IsDiffSelected, Mode=OneWay}" Margin="0,0,12,12"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.DiffPlanner" />
           <ToggleButton Content="Hunt explorer"
                         MinWidth="120"
                         Command="{Binding ShowHuntCommand}"
-                        IsChecked="{Binding IsHuntSelected, Mode=OneWay}" Margin="0,0,12,12" />
+                        IsChecked="{Binding IsHuntSelected, Mode=OneWay}" Margin="0,0,12,12"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.HuntExplorer" />
           <ToggleButton Content="Profiles"
                         MinWidth="120"
                         Command="{Binding ShowProfilesCommand}"
-                        IsChecked="{Binding IsProfilesSelected, Mode=OneWay}" Margin="0,0,12,12" />
+                        IsChecked="{Binding IsProfilesSelected, Mode=OneWay}" Margin="0,0,12,12"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.Profiles" />
           <ToggleButton Content="Multi-server"
                         MinWidth="120"
                         Command="{Binding ShowMultiServerCommand}"
-                        IsChecked="{Binding IsMultiServerSelected, Mode=OneWay}" Margin="0,0,12,12" />
+                        IsChecked="{Binding IsMultiServerSelected, Mode=OneWay}" Margin="0,0,12,12"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.MultiServer" />
           <Border Width="1" Height="26" Background="{DynamicResource Brush.Border}" Margin="12,0,12,12" />
           <TextBlock Text="Fast scanning, rich metadata, zero drift surprises." VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" Margin="0,0,12,12" />
           <Button Content="Ping core"
                   Classes="outline"
                   Command="{Binding PingCoreCommand}"
-                  ToolTip.Tip="Send ping and show reply in Hunt" Margin="0,0,12,12" />
+                  ToolTip.Tip="Send ping and show reply in Hunt" Margin="0,0,12,12"
+                  automation:AutomationProperties.AutomationId="Shell.PingCore" />
         </WrapPanel>
       </Border>
 

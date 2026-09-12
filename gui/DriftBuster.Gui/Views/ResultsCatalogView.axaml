@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="using:Avalonia.Automation"
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
              xmlns:conv="using:DriftBuster.Gui.Converters"
              x:Class="DriftBuster.Gui.Views.ResultsCatalogView"
@@ -10,27 +11,31 @@
         <Grid ColumnDefinitions="*,*,*,*,*" RowDefinitions="Auto,Auto">
           <StackPanel Grid.Column="0" Spacing="4">
             <TextBlock Text="Baseline" Classes="subtitle" />
-            <ComboBox ItemsSource="{Binding BaselineOptions}" SelectedItem="{Binding SelectedBaseline}" />
+            <ComboBox ItemsSource="{Binding BaselineOptions}" SelectedItem="{Binding SelectedBaseline}" automation:AutomationProperties.AutomationId="Catalog.Baseline" automation:AutomationProperties.Name="Baseline" />
           </StackPanel>
           <StackPanel Grid.Column="1" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Coverage" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding CoverageFilterOptions}"
                       SelectedValue="{Binding SelectedCoverageFilter}"
-                      SelectedValueBinding="{Binding Value}" />
+                      SelectedValueBinding="{Binding Value}"
+                      automation:AutomationProperties.AutomationId="Catalog.CoverageFilter"
+                      automation:AutomationProperties.Name="Coverage" />
           </StackPanel>
           <StackPanel Grid.Column="2" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Severity" Classes="subtitle" />
             <ComboBox ItemsSource="{Binding SeverityFilterOptions}"
                       SelectedValue="{Binding SelectedSeverityFilter}"
-                      SelectedValueBinding="{Binding Value}" />
+                      SelectedValueBinding="{Binding Value}"
+                      automation:AutomationProperties.AutomationId="Catalog.SeverityFilter"
+                      automation:AutomationProperties.Name="Severity" />
           </StackPanel>
           <StackPanel Grid.Column="3" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Format" Classes="subtitle" />
-            <ComboBox ItemsSource="{Binding FormatOptions}" SelectedItem="{Binding SelectedFormat}" />
+            <ComboBox ItemsSource="{Binding FormatOptions}" SelectedItem="{Binding SelectedFormat}" automation:AutomationProperties.AutomationId="Catalog.FormatFilter" automation:AutomationProperties.Name="Format" />
           </StackPanel>
           <StackPanel Grid.Column="4" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Search" Classes="subtitle" />
-            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Config name or ID" />
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Config name or ID" automation:AutomationProperties.AutomationId="Catalog.Search" automation:AutomationProperties.Name="Search" />
           </StackPanel>
           <TextBlock Grid.Row="1" Grid.ColumnSpan="5"
                      Margin="0,8,0,0"
@@ -49,7 +54,9 @@
                     HeadersVisibility="Column"
                     GridLinesVisibility="All"
                     MinHeight="280"
-                    Sorting="OnCatalogGridSorting">
+                    Sorting="OnCatalogGridSorting"
+                    automation:AutomationProperties.AutomationId="Catalog.Grid"
+                    automation:AutomationProperties.Name="Configuration catalog">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Config"
                                   Binding="{Binding DisplayName}"
@@ -102,7 +109,8 @@
                       <Button Content="Drilldown"
                               Classes="outline"
                               Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}"
+                              automation:AutomationProperties.AutomationId="Catalog.Grid.Drilldown" />
                     </StackPanel>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
@@ -121,7 +129,8 @@
                     Content="Re-scan all missing"
                     Classes="outline"
                     Command="{Binding ReScanAllPartialCommand}"
-                    Margin="12,0,0,0" />
+                    Margin="12,0,0,0"
+                    automation:AutomationProperties.AutomationId="Catalog.ReScanAllMissing" />
           </Grid>
           <ItemsControl x:Name="PartialCoverageVirtualRepeater"
                          ItemsSource="{Binding PartialCoverageEntries}"
@@ -142,11 +151,13 @@
                       <Button Content="Drilldown"
                               Classes="outline"
                               Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}"
+                              automation:AutomationProperties.AutomationId="Catalog.Partial.Drilldown" />
                       <Button Content="Re-scan missing"
                               Classes="outline"
                               Command="{Binding DataContext.ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}"
+                              automation:AutomationProperties.AutomationId="Catalog.Partial.ReScanMissing" />
                     </StackPanel>
                   </StackPanel>
                 </Border>
@@ -167,11 +178,13 @@
                       <Button Content="Drilldown"
                               Classes="outline"
                               Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}"
+                              automation:AutomationProperties.AutomationId="Catalog.Partial.Drilldown" />
                       <Button Content="Re-scan missing"
                               Classes="outline"
                               Command="{Binding DataContext.ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}"
+                              automation:AutomationProperties.AutomationId="Catalog.Partial.ReScanMissing" />
                     </StackPanel>
                   </StackPanel>
                 </Border>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="using:Avalonia.Automation"
              xmlns:conv="using:DriftBuster.Gui.Converters"
              xmlns:services="using:DriftBuster.Gui.Services"
              x:Class="DriftBuster.Gui.Views.ToastHost"
@@ -37,18 +38,21 @@
                       Command="{Binding SecondaryCommand}"
                       IsVisible="{Binding SecondaryCommand}"
                       Foreground="{DynamicResource Brush.Toast.Foreground}"
-                      Background="Transparent" />
+                      Background="Transparent"
+                      automation:AutomationProperties.AutomationId="Toast.Secondary" />
               <Button Content="{Binding PrimaryLabel}"
                       Classes="outline"
                       Command="{Binding PrimaryCommand}"
                       IsVisible="{Binding PrimaryCommand}"
                       Foreground="{DynamicResource Brush.Toast.Foreground}"
-                      Background="Transparent" />
+                      Background="Transparent"
+                      automation:AutomationProperties.AutomationId="Toast.Primary" />
               <Button Content="Dismiss"
                       Classes="outline"
                       Command="{Binding DismissCommand}"
                       Foreground="{DynamicResource Brush.Toast.Foreground}"
-                      Background="Transparent" />
+                      Background="Transparent"
+                      automation:AutomationProperties.AutomationId="Toast.Dismiss" />
             </StackPanel>
           </StackPanel>
         </Grid>
@@ -74,7 +78,9 @@
     <Expander Margin="0,8,0,0"
               Width="{DynamicResource Toast.Width}"
               HorizontalAlignment="Right"
-              IsVisible="{Binding OverflowToasts.Count, Converter={x:Static conv:CountToBooleanConverter.Instance}}">
+              IsVisible="{Binding OverflowToasts.Count, Converter={x:Static conv:CountToBooleanConverter.Instance}}"
+              automation:AutomationProperties.AutomationId="Toast.Overflow"
+              automation:AutomationProperties.Name="More alerts">
       <Expander.Header>
           <StackPanel Orientation="Horizontal" Spacing="6">
           <TextBlock Text="More alerts"

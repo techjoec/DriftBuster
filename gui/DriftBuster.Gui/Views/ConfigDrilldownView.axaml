@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="using:Avalonia.Automation"
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
              xmlns:conv="using:DriftBuster.Gui.Converters"
              x:Class="DriftBuster.Gui.Views.ConfigDrilldownView"
@@ -7,16 +8,16 @@
   <ScrollViewer>
     <StackPanel Margin="0,0,0,24" Spacing="18">
       <Grid ColumnDefinitions="Auto,Auto,*" VerticalAlignment="Center">
-        <Button Content="Back" Classes="outline" Command="{Binding BackCommand}" />
+        <Button Content="Back" Classes="outline" Command="{Binding BackCommand}" automation:AutomationProperties.AutomationId="Drilldown.Back" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="12,0,0,0">
-          <Button Content="Export HTML" Classes="outline" Command="{Binding ExportHtmlCommand}" />
-          <Button Content="Export JSON" Classes="outline" Command="{Binding ExportJsonCommand}" />
-          <Button Content="Copy JSON" Classes="outline" Command="{Binding CopyJsonCommand}" ToolTip.Tip="Copy sanitized payload" />
-          <Button Content="Re-scan selected" Classes="primary" Command="{Binding ReScanSelectedCommand}" />
+          <Button Content="Export HTML" Classes="outline" Command="{Binding ExportHtmlCommand}" automation:AutomationProperties.AutomationId="Drilldown.ExportHtml" />
+          <Button Content="Export JSON" Classes="outline" Command="{Binding ExportJsonCommand}" automation:AutomationProperties.AutomationId="Drilldown.ExportJson" />
+          <Button Content="Copy JSON" Classes="outline" Command="{Binding CopyJsonCommand}" ToolTip.Tip="Copy sanitized payload" automation:AutomationProperties.AutomationId="Drilldown.CopyJson" />
+          <Button Content="Re-scan selected" Classes="primary" Command="{Binding ReScanSelectedCommand}" automation:AutomationProperties.AutomationId="Drilldown.ReScanSelected" />
         </StackPanel>
         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="12,0,0,0">
           <TextBlock Text="Diff mode" Classes="subtitle" VerticalAlignment="Center" />
-          <ComboBox Width="140" ItemsSource="{Binding DiffModes}" SelectedItem="{Binding DiffMode}" />
+          <ComboBox Width="140" ItemsSource="{Binding DiffModes}" SelectedItem="{Binding DiffMode}" automation:AutomationProperties.AutomationId="Drilldown.DiffMode" automation:AutomationProperties.Name="Diff mode" />
         </StackPanel>
       </Grid>
 
@@ -79,7 +80,7 @@
                 <DataTemplate>
                   <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,8">
                     <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                      <CheckBox IsChecked="{Binding IsSelected}" />
+                      <CheckBox IsChecked="{Binding IsSelected}" automation:AutomationProperties.AutomationId="Drilldown.Server.Select" automation:AutomationProperties.Name="{Binding Label, StringFormat='Select {0}'}" />
                       <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
                         <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -109,8 +110,8 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-              <Button Content="Select all" Classes="outline" Command="{Binding SelectAllCommand}" />
-              <Button Content="Select none" Classes="outline" Command="{Binding SelectNoneCommand}" />
+              <Button Content="Select all" Classes="outline" Command="{Binding SelectAllCommand}" automation:AutomationProperties.AutomationId="Drilldown.SelectAll" />
+              <Button Content="Select none" Classes="outline" Command="{Binding SelectNoneCommand}" automation:AutomationProperties.AutomationId="Drilldown.SelectNone" />
             </StackPanel>
           </StackPanel>
         </Border>
