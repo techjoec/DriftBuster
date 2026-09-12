@@ -65,8 +65,7 @@ return here for data model details.
   profile-level metadata and treat it as the single source of truth for dynamic
   expectations.
 - Use `notes/snippets/token-catalog.py` to generate hashed summaries of hunt
-  hits (`catalog_variant`, `sample_hash`) before updating
-  `notes/checklists/token-approval.md`; this keeps JSON profile additions
+  hits (`catalog_variant`, `sample_hash`); this keeps JSON profile additions
   aligned with the new detector metadata.
 
     ```python

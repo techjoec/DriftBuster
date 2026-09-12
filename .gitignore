@@ -108,3 +108,6 @@ artifacts/**/*.log
 artifacts/**/*.sha256
 artifacts/gui-packaging/*.json
 artifacts/builds/**/*.log
+
+
+.env

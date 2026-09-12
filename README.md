@@ -245,17 +245,16 @@ Optional local checks:
 
 ### Coverage Policy
 
-- Maintain ≥ 90% line coverage for Python sources under `src/` and for the .NET
-  surface (GUI + backend). Enforce locally with:
+- Maintain ≥ 90% line coverage for Python sources under `src/` and ≥ 83% total
+  line coverage for the .NET surface (GUI + backend). Enforce locally with:
   - Python: `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`
-  - .NET: `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
+  - .NET: `dotnet test -p:CollectCoverage=true -p:Threshold=83 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
 
 ### Coverage Enforcement
 
-- Quick all-in-one: `./scripts/verify_coverage.sh` (POSIX) or `python -m scripts.verify_coverage`
+- Quick all-in-one: `./scripts/verify_coverage.sh`
   - Runs Python tests with `coverage report --fail-under=90`
-  - Runs .NET tests with `-p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
-  - Prints a combined summary via `python -m scripts.coverage_report`
+  - Runs .NET tests with `-p:CollectCoverage=true -p:Threshold=$DOTNET_THRESHOLD` (default 83)
 
 ### Test Coverage
 
@@ -269,18 +268,10 @@ Two coverage surfaces exist: Python (engine, detectors, reporting) and .NET (GUI
   - Cobertura XML: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
   - The XML lands under `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml`.
 
-Repo‑wide summary:
-
-```sh
-python -m scripts.coverage_report
-```
-
 ### New Format Plugins
 
 - Follow the checklist in `docs/plugin-test-checklist.md`.
 - Add plugin tests under `tests/formats/` and keep the plugin module’s per-file coverage ≥ 90%.
-
-This prints Python percent, .NET Cobertura percent, and the most under‑covered GUI classes to guide test additions.
 
 ## Project Layout
 

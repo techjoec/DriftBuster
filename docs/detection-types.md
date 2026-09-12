@@ -7,9 +7,6 @@ positive match wins. The tables below blend the shipped class definitions from
 `DETECTION_CATALOG` (v0.0.3) with the usage insights from the format survey data
 (v0.0.3).
 
-For the definitive detector expectations, refer to
-`docs/coverage-golden-standard.md`.
-
 ## Active Detection Classes
 
 | Priority | Class Name              | Catalog Format        | Default Severity | Primary Variant / Notes                 | Key Extensions                      | Usage % | Detection Cues                |

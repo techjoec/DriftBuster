@@ -6,9 +6,6 @@ plugin. Versions are surfaced directly from the underlying plugin classes via
 `driftbuster.formats.plugin_versions()` so the registry and documentation stay
 aligned.
 
-See `docs/coverage-golden-standard.md` for the canonical list of detector
-variants and metadata expectations each format must satisfy.
-
 | Format family            | Variants / focus                                                 | Plugin | Module version | Status       | Notes |
 |--------------------------|------------------------------------------------------------------|--------|----------------|--------------|-------|
 | Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.6          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, MSBuild metadata, and line-level namespace provenance hashes now populate automatically. |

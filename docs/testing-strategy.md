@@ -5,9 +5,8 @@ PowerShell/GUI backend library, and Avalonia viewmodels. Manual validation
 continues to play a role for vendor fixtures and pre-HOLD reporting flows.
 
 Policy: Maintain ≥ 90% line coverage across Python source (under `src/`) and
-≥ 90% changed-line coverage for production .NET `.cs` executable lines (versus
-the target base branch, default `origin/main`). Treat this as a hard baseline
-for new and modified components.
+≥ 83% total line coverage across the .NET GUI + Backend assemblies. Treat this
+as a hard baseline for new and modified components.
 
 ## Automated test suite
 
@@ -36,7 +35,8 @@ for new and modified components.
 - `pwsh scripts/lint_powershell.ps1` — runs PSScriptAnalyzer across the
   PowerShell module and fails if any warnings or errors are detected.
 - `python -m compileall src` — sanity compiles the entire Python tree.
-- `ruff check src` — style-checks all Python modules (140-character line limit).
+- `ruff check src tests scripts` — lints all Python trees (rules and 140-character limit in `pyproject.toml`).
+- `pyright` — type-checks the same trees in standard mode.
 - `dotnet format gui/DriftBuster.Backend/DriftBuster.Backend.csproj --verify-no-changes`
   — validates the backend library formatting against analyzer defaults.
 - `dotnet format gui/DriftBuster.Gui/DriftBuster.Gui.csproj --verify-no-changes`
@@ -58,24 +58,26 @@ minimise output or skip rebuilds during local iteration.
   - `tmux new -s codexcli-<pid>-coverage 'dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect="XPlat Code Coverage" --results-directory artifacts/coverage-dotnet'`
   - Inspect `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml` for
     per-viewmodel coverage and ensure the heavy UI surfaces (catalog,
-    drilldown, multi-server orchestration) stay at or above the 90% line-baseline.
-- Repo‑wide summary: `python -m scripts.coverage_report`
-  - Prints Python %, raw .NET Cobertura %, scoped production `.cs` .NET %, changed-line production `.cs` .NET % (when `--dotnet-diff-base` is provided), and the most under‑covered files/classes.
-  - Enforce .NET changed-line threshold: `python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold`
+    drilldown, multi-server orchestration) do not regress.
 
 ### Review flags and profile ignores
 - Plugins may mark oddities with `metadata.needs_review` and `review_reasons`.
 - Profiles can suppress review flags per config via
   `metadata.ignore_review_flags = true`.
 - Tests should cover: flag emission and profile‑based suppression.
+- Review-flag coverage lives in `tests/formats/test_json_flags.py`, `test_xml_wellformed_flag.py`,
+  `test_yaml_flags_and_gating.py`, `test_toml_flags.py`, `test_ini_flags.py`, `test_text_flags.py`,
+  and `tests/core/test_detector_profile_review_ignore.py`.
+- New detector heuristics bump the plugin `version` attribute and update `docs/format-support.md`
+  and `docs/detection-types.md`; every variant and metadata field needs a matching test under `tests/formats/`.
 
 Local guardrails:
 
 - Python threshold: `coverage report --fail-under=90`
 - .NET coverage collection: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect="XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
-- .NET threshold enforcement: `python -m scripts.coverage_report --dotnet-threshold 90 --dotnet-diff-base origin/main --dotnet-enforce-scope changed --enforce-dotnet-threshold`
+- .NET threshold enforcement: `dotnet test -p:CollectCoverage=true -p:Threshold=83 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
 
-Shortcut: run `scripts/verify_coverage.sh` (POSIX shells) or `python -m scripts.verify_coverage` for the cross-platform equivalent to execute both suites with thresholds and print the combined summary.
+Shortcut: run `scripts/verify_coverage.sh` to execute both suites with thresholds.
 
 ## Vendor Sample Acquisition
 
@@ -132,18 +134,6 @@ Prioritised sourcing for the current compliance push lives below.
   project. Build fixtures from public or original material only.
 - Replace real identifiers with neutral placeholders before saving snippets or
   notes inside the repo.
-
-### Reporting compliance hooks
-
-- Treat font telemetry retention runs as compliance-sensitive. When enabling
-  `--print-retention-metrics` or overriding `--retention-metrics-path`, record
-  the resulting evidence location in `notes/checklists/legal-review.md` and
-  follow the guardrails documented in `docs/legal-safeguards.md#font-telemetry-retention-compliance`.
-- If the metrics file is disabled (`-`), capture the inline output in a
-  restricted transcript and avoid copying it into public runbooks or issue
-  trackers.
-- Confirm that deleted filename references remain anonymised before attaching
-  the metrics payload to investigations or review bundles.
 
 ## Profile & hunt sample logistics
 

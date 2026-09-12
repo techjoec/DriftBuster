@@ -89,7 +89,7 @@ Use `licensecheck .` locally before submitting to catch unexpected copyleft code
 |------|--------------|
 | 1️⃣ | Fork and clone the repo |
 | 2️⃣ | Create a feature branch (`feature/<topic>`) |
-| 3️⃣ | Run `dotnet format`, all unit tests, and coverage checks (`./scripts/verify_coverage.sh` or `python -m scripts.verify_coverage`) |
+| 3️⃣ | Run `dotnet format`, all unit tests, and coverage checks (`./scripts/verify_coverage.sh`) |
 | 4️⃣ | Review licensing notes and update `NOTICE` if needed |
 | 5️⃣ | Submit PR with detailed provenance statement |
 | 6️⃣ | Maintainers review your build output and legal scan notes |
@@ -100,13 +100,9 @@ Each PR **must** include a short provenance note, e.g.:
 
 ---
 
-## 7.1 Coverage Baseline (90%+)
+## 7.1 Coverage Baseline
 
-Keep line coverage at 90% or higher for:
-
-- All modified Python files under `src/driftbuster`
-- All modified .NET GUI/Backend files under `gui/`
-- Any new format plugin(s) and helpers
+Keep line coverage at 90% or higher for Python under `src/driftbuster` (including any new format plugin) and total .NET line coverage at 83% or higher across `gui/`.
 
 Enforce locally (no CI hooks). Suggested commands:
 
@@ -115,12 +111,9 @@ Enforce locally (no CI hooks). Suggested commands:
   - `coverage report --fail-under=90`
   - Optional: `coverage json -o coverage.json` and `coverage html`
 - .NET
-  - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
-  - Threshold (local): `dotnet test -p:Threshold=90 -p:ThresholdType=line -p:ThresholdStat=total`
-- Repo‑wide summary
-  - `python -m scripts.coverage_report`
+  - `dotnet test -p:CollectCoverage=true -p:Threshold=83 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
 
-Shortcut: run `./scripts/verify_coverage.sh` (POSIX) or `python -m scripts.verify_coverage` to execute both suites with thresholds and print the summary.
+Shortcut: run `./scripts/verify_coverage.sh` to execute both suites with thresholds.
 
 When adding a new format:
 

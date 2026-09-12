@@ -80,74 +80,6 @@ transforms = build_plan_transforms(
 - Override `placeholder_template` to match your templating engine (e.g.,
   `<<token>>`, `%TOKEN%`).
 
-### Collecting token candidates for approval
-
-```python
-from pathlib import Path
-
-import json
-
-from driftbuster import collect_token_candidates, TokenApprovalStore
-
-hunts_payload = Path("hunt-results.json").read_text(encoding="utf-8")
-hunts = json.loads(hunts_payload)
-store = TokenApprovalStore.load(Path("token-approvals.json"))
-
-candidates = collect_token_candidates(hunts, approvals=store)
-
-for pending in candidates.pending:
-    print(pending.token_name, pending.placeholder, pending.relative_path)
-
-for approved in candidates.approved:
-    print("approved", approved.token_name, approved.approval.approved_by)
-```
-
-- `collect_token_candidates` understands the JSON dictionaries returned by
-  `hunt_path(..., return_json=True)` and aligns them with the approval store.
-- `TokenApprovalStore` persists JSON payloads mirroring the schema documented
-  in `notes/checklists/token-approval.md`. Use `TokenApprovalStore.dump` to
-  write updates back to disk once reviewers capture new approvals.
-- Prefer `TokenApprovalStore.dump_sqlite` / `load_sqlite` when a locked SQLite
-  file is required; it mirrors the JSON schema while providing transactional
-  storage for reviewers working from shared network locations.
-- Approved entries surface `TokenApproval` metadata directly on the candidate
-  so tooling can record reviewer IDs, timestamps, or secure storage locations
-  alongside the pending queue.
-
-### CLI surfacing plan for pending tokens
-
-To make unresolved tokens visible without burying reviewers in raw excerpts we
-will extend `driftbuster.profile_cli` with a `pending-tokens` subcommand that
-wraps `collect_token_candidates` and the approval store helpers.
-
-- **Inputs:**
-  - Hunt payload JSON (`hunt_path(..., return_json=True)`).
-  - Approval log path (JSON or SQLite) passed via `--approvals`.
-  - Optional `--limit` (default `10`) constraining how many individual tokens
-    are rendered in the default view.
-  - Optional `--rules` filter repeating per token name (e.g.,
-    `--rules database_server --rules hostname`).
-- **Default output:**
-  - Single-line summary showing total hunts inspected, number of approved
-    tokens matched, and pending token count.
-  - Top unresolved tokens table aggregated by `(token_name, relative_path)`
-    with placeholder, last-seen timestamp, and excerpt hash. Entries are sorted
-    by most recent detection so reviewers see fresh gaps first.
-- **Noise controls:**
-  - `--detail all` toggles the full pending list for auditors. Without this
-    flag the CLI keeps output to the summary + limited table.
-  - `--snooze-before <UTC>` hides tokens whose most recent detection predates a
-    cutoff so historical drift does not dominate every run.
-  - `--json` emits machine-readable payloads mirroring
-    `TokenApprovalStore.dump` structure for automated pipelines.
-- **Next steps:**
-  - Wire helpers into `src/driftbuster/profile_cli.py` alongside the existing
-    `summary`, `diff`, and `hunt-bridge` handlers.
-  - Add regression coverage under `tests/cli/test_profile_cli.py` to lock the
-    summary string, aggregation order, and noise filters.
-  - Document reviewer workflows in `notes/checklists/token-approval.md` once
-    the command ships.
-
 ## Realtime secret scanner telemetry
 
 Run profile captures now mirror the offline encryption pipeline by running the
@@ -300,10 +232,9 @@ connectionString=Server={{ database_server }};Database=main
 2. Compare each hit against the relevant configuration profile entry and record
    the decision in `notes/checklists/hunt-profile-review.md`.
 3. Use `notes/snippets/token-catalog.py --hunts hunt-results.json` to build a
-   hashed catalog skeleton, then replicate the rule → token mapping in
-   `notes/checklists/token-approval.md` before editing any config files. Record
-   the catalog variant (`structured-settings-json`, etc.) and the hashed JSON
-   sample reference when applicable.
+   hashed catalog skeleton before editing any config files. Record the catalog
+   variant (`structured-settings-json`, etc.) and the hashed JSON sample
+   reference when applicable.
 4. Replace the raw value with the placeholder in your working copy, then rerun
    the detector and hunt scans to confirm no new hits appear.
 5. Archive the structured hunt output alongside the approval log so future
