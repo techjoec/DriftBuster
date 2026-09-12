@@ -249,7 +249,7 @@ public class DiffViewModelTests
             },
         };
 
-        await store.SaveAsync(snapshot);
+        await store.SaveAsync(snapshot, TestContext.Current.CancellationToken);
 
         var viewModel = CreateViewModel(new FakeDriftbusterService(), store);
         viewModel.MruEntries.Should().HaveCount(1);
@@ -300,7 +300,7 @@ public class DiffViewModelTests
         viewModel.SelectedMruEntry!.Entry.BaselinePath.Should().Be(baseline);
         viewModel.SelectJsonViewModeCommand.CanExecute(DiffViewModel.DiffJsonViewMode.Sanitized).Should().BeTrue();
 
-        var snapshot = await store.LoadAsync();
+        var snapshot = await store.LoadAsync(TestContext.Current.CancellationToken);
         snapshot.Entries.Should().ContainSingle();
         var entry = snapshot.Entries[0];
         entry.BaselinePath.Should().Be(baseline);
@@ -337,7 +337,7 @@ public class DiffViewModelTests
         viewModel.ActiveJson.Should().Be("{\"raw\":true}");
         viewModel.SelectJsonViewModeCommand.CanExecute(DiffViewModel.DiffJsonViewMode.Sanitized).Should().BeFalse();
 
-        var snapshot = await store.LoadAsync();
+        var snapshot = await store.LoadAsync(TestContext.Current.CancellationToken);
         snapshot.Entries.Should().ContainSingle();
         snapshot.Entries[0].PayloadKind.Should().Be(DiffPlannerPayloadKind.Raw);
         snapshot.Entries[0].SanitizedDigest.Should().BeNull();

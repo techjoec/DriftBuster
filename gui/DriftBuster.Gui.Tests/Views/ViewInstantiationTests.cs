@@ -4,14 +4,12 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Styling;
 using AwesomeAssertions;
-using DriftBuster.Gui.Tests.Ui;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Views;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class ViewInstantiationTests
 {
     [AvaloniaFact]
@@ -27,8 +25,6 @@ public sealed class ViewInstantiationTests
     [AvaloniaFact]
     public void Theme_selector_updates_requested_variant()
     {
-        HeadlessFixture.EnsureFonts();
-
         var window = new MainWindow
         {
             DataContext = new MainWindowViewModel(),

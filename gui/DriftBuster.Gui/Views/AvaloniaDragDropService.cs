@@ -6,7 +6,7 @@ namespace DriftBuster.Gui.Views
     {
         public static AvaloniaDragDropService Instance { get; } = new();
 
-        public Task<DragDropEffects> DoDragDropAsync(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDropAsync(PointerPressedEventArgs args, IDataTransfer data, DragDropEffects effects)
         {
             return DragDrop.DoDragDropAsync(args, data, effects);
         }

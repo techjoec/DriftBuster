@@ -26,7 +26,7 @@ public class ToastServiceTests
         var service = new ToastService(action => action());
         service.Show("Auto", "Dismiss", ToastLevel.Info, TimeSpan.FromMilliseconds(10));
 
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         service.ActiveToasts.Should().BeEmpty();
     }
@@ -101,7 +101,7 @@ public class ToastServiceTests
         dispatcher.FlushAll();
         service.ActiveToasts.Should().HaveCount(1);
 
-        await Task.Delay(60);
+        await Task.Delay(60, TestContext.Current.CancellationToken);
 
         dispatcher.FlushAll();
 

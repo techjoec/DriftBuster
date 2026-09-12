@@ -23,10 +23,10 @@ namespace DriftBuster.Gui.Tests.Ui;
 /// <summary>
 /// Guards the UI Automation surface: every interactive control in every view must carry an
 /// AutomationId and resolve an accessible name so Windows-MCP and Appium-style drivers can address it.
-/// The headless host does not load the Fluent theme, so item templates are built directly against a
-/// sample item instead of relying on layout to realise them.
+/// Templates are built directly against a sample item rather than walking a shown window's visual tree:
+/// a realised tree omits unselected tab pages, collapsed expanders and virtualised items, so the logical
+/// walk is the only way to inspect every control the views declare.
 /// </summary>
-[Collection(HeadlessCollection.Name)]
 public sealed class AutomationPropertiesTests
 {
     public static TheoryData<string> Views => new()
@@ -46,8 +46,6 @@ public sealed class AutomationPropertiesTests
     [MemberData(nameof(Views))]
     public void Interactive_controls_expose_automation_id_and_name(string viewName)
     {
-        HeadlessFixture.EnsureFonts();
-
         var root = CreateView(viewName);
         var interactive = CollectControls(root)
             .Where(entry => IsInteractive(entry.Control))
@@ -162,20 +160,7 @@ public sealed class AutomationPropertiesTests
             return name;
         }
 
-        name = AutomationProperties.GetName(control);
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            return name;
-        }
-
-        // Without the Fluent theme no templates are applied, so fall back to the text content the
-        // peer would derive the name from once the control is rendered.
-        return control switch
-        {
-            HeaderedContentControl headered when headered.Header is string header => header,
-            ContentControl content when content.Content is string text => text,
-            _ => null,
-        };
+        return AutomationProperties.GetName(control);
     }
 
     private static string Describe(Control control, string? automationId)
@@ -186,7 +171,7 @@ public sealed class AutomationPropertiesTests
         {
             HeaderedContentControl headered when headered.Header is string header => header,
             ContentControl content when content.Content is string value => value,
-            TextBox textBox => textBox.Watermark ?? string.Empty,
+            TextBox textBox => textBox.PlaceholderText ?? string.Empty,
             _ => string.Empty,
         };
         return $"{control.GetType().Name} (x:Name={name}, AutomationId={id}, text=\"{text}\")";

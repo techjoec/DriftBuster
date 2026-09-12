@@ -71,7 +71,7 @@ public sealed class PerformanceSmokeTests
             service.Show($"Toast {i}", "Synthetic perf harness toast", ToastLevel.Info, TimeSpan.FromMinutes(10));
         }
 
-        Assert.True(reset.Wait(TimeSpan.FromSeconds(5)), "Timed out waiting for toast burst processing.");
+        Assert.True(reset.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken), "Timed out waiting for toast burst processing.");
         Assert.InRange(dispatchCount, 1, maxDispatchCycles);
         Assert.Equal(3, service.ActiveToasts.Count);
         Assert.Equal(expectedOverflow, service.OverflowToasts.Count);
@@ -89,9 +89,9 @@ public sealed class PerformanceSmokeTests
             }
 
             emptyReset.Set();
-        });
+        }, TestContext.Current.CancellationToken);
 
-        Assert.True(emptyReset.Wait(TimeSpan.FromSeconds(5)), "Timed out waiting for toast dismissal to drain.");
+        Assert.True(emptyReset.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken), "Timed out waiting for toast dismissal to drain.");
         Assert.True(dispatchCount <= dispatchCountBeforeDismiss + 2, $"Expected at most two additional dispatcher cycles but observed {dispatchCount - dispatchCountBeforeDismiss}.");
         Assert.Empty(service.ActiveToasts);
         Assert.Empty(service.OverflowToasts);

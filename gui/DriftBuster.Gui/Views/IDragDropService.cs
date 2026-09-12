@@ -4,6 +4,6 @@ namespace DriftBuster.Gui.Views
 {
     internal interface IDragDropService
     {
-        Task<DragDropEffects> DoDragDropAsync(PointerEventArgs args, IDataTransfer data, DragDropEffects effects);
+        Task<DragDropEffects> DoDragDropAsync(PointerPressedEventArgs args, IDataTransfer data, DragDropEffects effects);
     }
 }

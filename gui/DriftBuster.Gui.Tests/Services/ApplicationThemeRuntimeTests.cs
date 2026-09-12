@@ -7,11 +7,9 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Styling;
 using DriftBuster.Gui.Services;
-using DriftBuster.Gui.Tests.Ui;
 
 namespace DriftBuster.Gui.Tests.Services;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class ApplicationThemeRuntimeTests
 {
     [AvaloniaFact]

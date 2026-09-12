@@ -16,14 +16,11 @@ using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class RunProfilesViewInteractionTests
 {
     [AvaloniaFact]
     public void BrowseFile_without_storage_provider_keeps_existing_path()
     {
-        HeadlessFixture.EnsureFonts();
-
         var viewModel = CreateViewModel();
         var entry = viewModel.Sources[0];
         entry.Path = "original";
@@ -41,8 +38,6 @@ public sealed class RunProfilesViewInteractionTests
     [AvaloniaFact]
     public void BrowseFile_with_override_updates_path()
     {
-        HeadlessFixture.EnsureFonts();
-
         var viewModel = CreateViewModel();
         var entry = viewModel.Sources[0];
 
@@ -60,8 +55,6 @@ public sealed class RunProfilesViewInteractionTests
     [AvaloniaFact]
     public void BrowseFolder_without_storage_provider_keeps_existing_path()
     {
-        HeadlessFixture.EnsureFonts();
-
         var viewModel = CreateViewModel();
         var entry = viewModel.Sources[0];
         entry.Path = "directory";
@@ -79,8 +72,6 @@ public sealed class RunProfilesViewInteractionTests
     [AvaloniaFact]
     public void BrowseFolder_with_override_updates_path()
     {
-        HeadlessFixture.EnsureFonts();
-
         var viewModel = CreateViewModel();
         var entry = viewModel.Sources[0];
 
@@ -98,8 +89,6 @@ public sealed class RunProfilesViewInteractionTests
     [AvaloniaFact]
     public void PrepareOfflineCollector_without_storage_provider_skips_backend_call()
     {
-        HeadlessFixture.EnsureFonts();
-
         var service = new FakeDriftbusterService();
         var viewModel = new RunProfilesViewModel(service)
         {
@@ -126,8 +115,6 @@ public sealed class RunProfilesViewInteractionTests
     [AvaloniaFact]
     public void PrepareOfflineCollector_with_override_invokes_backend()
     {
-        HeadlessFixture.EnsureFonts();
-
         var service = new FakeDriftbusterService();
         var viewModel = new RunProfilesViewModel(service)
         {
@@ -161,8 +148,6 @@ public sealed class RunProfilesViewInteractionTests
     [AvaloniaFact]
     public void SecretScannerSettings_without_owner_exits_cleanly()
     {
-        HeadlessFixture.EnsureFonts();
-
         var viewModel = CreateViewModel();
         viewModel.SecretScanner = new SecretScannerOptions
         {
@@ -183,8 +168,6 @@ public sealed class RunProfilesViewInteractionTests
     [AvaloniaFact]
     public void SecretScannerSettings_with_override_applies_changes()
     {
-        HeadlessFixture.EnsureFonts();
-
         var viewModel = CreateViewModel();
         var view = new RunProfilesView
         {

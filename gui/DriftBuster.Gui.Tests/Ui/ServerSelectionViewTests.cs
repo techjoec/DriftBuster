@@ -20,7 +20,6 @@ using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class ServerSelectionViewTests
 {
     [AvaloniaFact]
@@ -598,13 +597,13 @@ public sealed class ServerSelectionViewTests
     {
         private readonly TaskCompletionSource<DragDropEffects> _completion = new();
 
-        public PointerEventArgs? LastArgs { get; private set; }
+        public PointerPressedEventArgs? LastArgs { get; private set; }
 
         public IDataTransfer? LastData { get; private set; }
 
         public DragDropEffects? LastEffects { get; private set; }
 
-        public Task<DragDropEffects> DoDragDropAsync(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDropAsync(PointerPressedEventArgs args, IDataTransfer data, DragDropEffects effects)
         {
             LastArgs = args;
             LastData = data;
@@ -624,7 +623,7 @@ public sealed class ServerSelectionViewTests
             _exception = exception;
         }
 
-        public Task<DragDropEffects> DoDragDropAsync(PointerEventArgs args, IDataTransfer data, DragDropEffects effects)
+        public Task<DragDropEffects> DoDragDropAsync(PointerPressedEventArgs args, IDataTransfer data, DragDropEffects effects)
         {
             return Task.FromException<DragDropEffects>(_exception);
         }

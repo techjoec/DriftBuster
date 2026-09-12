@@ -7,14 +7,11 @@ using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class MainWindowUiTests
 {
     [AvaloniaFact]
     public void ShouldAdjustSpacingTokensAcrossBreakpoints()
     {
-        HeadlessFixture.EnsureFonts();
-
         var window = new MainWindow();
 
         ResponsiveLayoutService.Apply(window, 1200, ResponsiveSpacingProfiles.MainWindow);

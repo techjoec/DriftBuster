@@ -7,14 +7,11 @@ using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class SecretScannerSettingsWindowTests
 {
     [AvaloniaFact]
     public void Window_loads_with_expected_title()
     {
-        HeadlessFixture.EnsureFonts();
-
         var options = new SecretScannerOptions
         {
             IgnoreRules = new[] { "rule-one" },

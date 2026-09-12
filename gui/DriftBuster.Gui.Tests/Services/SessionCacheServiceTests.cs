@@ -49,15 +49,15 @@ public sealed class SessionCacheServiceTests
             },
         };
 
-        await service.SaveAsync(snapshot);
-        var loaded = await service.LoadAsync();
+        await service.SaveAsync(snapshot, TestContext.Current.CancellationToken);
+        var loaded = await service.LoadAsync(TestContext.Current.CancellationToken);
 
         loaded.Should().NotBeNull();
         loaded!.PersistSession.Should().BeTrue();
         loaded.Servers.Should().HaveCount(1);
 
         service.Clear();
-        (await service.LoadAsync()).Should().BeNull();
+        (await service.LoadAsync(TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class SessionCacheServiceTests
             },
         };
 
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions));
+        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions), TestContext.Current.CancellationToken);
 
         var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -94,7 +94,7 @@ public sealed class SessionCacheServiceTests
 
         var service = new SessionCacheService(temp.Path, legacyPath, ControlledMigration);
 
-        var loadTask = service.LoadAsync();
+        var loadTask = service.LoadAsync(TestContext.Current.CancellationToken);
 
         await migrationStarted.Task;
         loadTask.IsCompleted.Should().BeFalse();
@@ -125,7 +125,7 @@ public sealed class SessionCacheServiceTests
             PersistSession = true,
         };
 
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions));
+        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions), TestContext.Current.CancellationToken);
 
         var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -139,13 +139,13 @@ public sealed class SessionCacheServiceTests
 
         var service = new SessionCacheService(temp.Path, legacyPath, ControlledMigration);
 
-        var loadTask = service.LoadAsync();
+        var loadTask = service.LoadAsync(TestContext.Current.CancellationToken);
         var saveSnapshot = new ServerSelectionCache
         {
             PersistSession = false,
             ActivityFilter = "after-upgrade",
         };
-        var saveTask = service.SaveAsync(saveSnapshot);
+        var saveTask = service.SaveAsync(saveSnapshot, TestContext.Current.CancellationToken);
 
         await migrationStarted.Task;
         loadTask.IsCompleted.Should().BeFalse();
@@ -159,7 +159,7 @@ public sealed class SessionCacheServiceTests
         SessionCacheMigrationCounters.Successes.Should().Be(1);
         SessionCacheMigrationCounters.Failures.Should().Be(0);
 
-        var reloaded = await service.LoadAsync();
+        var reloaded = await service.LoadAsync(TestContext.Current.CancellationToken);
         reloaded.Should().NotBeNull();
         reloaded!.ActivityFilter.Should().Be("after-upgrade");
     }
@@ -172,7 +172,7 @@ public sealed class SessionCacheServiceTests
         using var temp = new TempDirectory();
         var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
         Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        await File.WriteAllTextAsync(legacyPath, "{\"schema_version\":2}");
+        await File.WriteAllTextAsync(legacyPath, "{\"schema_version\":2}", TestContext.Current.CancellationToken);
 
         Task ControlledMigration(string _, string __, CancellationToken ___)
         {
@@ -182,7 +182,7 @@ public sealed class SessionCacheServiceTests
 
         var service = new SessionCacheService(temp.Path, legacyPath, ControlledMigration);
 
-        (await service.LoadAsync()).Should().BeNull();
+        (await service.LoadAsync(TestContext.Current.CancellationToken)).Should().BeNull();
         SessionCacheMigrationCounters.Successes.Should().Be(0);
         SessionCacheMigrationCounters.Failures.Should().Be(1);
     }
@@ -210,7 +210,7 @@ public sealed class SessionCacheServiceTests
 
         await Task.WhenAll(saveTasks);
 
-        var loaded = await serviceA.LoadAsync();
+        var loaded = await serviceA.LoadAsync(TestContext.Current.CancellationToken);
         loaded.Should().NotBeNull();
         loaded!.ActivityFilter.Should().NotBeNull();
     }
@@ -227,7 +227,7 @@ public sealed class SessionCacheServiceTests
         {
             PersistSession = true,
             ActivityFilter = "seed",
-        });
+        }, TestContext.Current.CancellationToken);
 
         var tasks = Enumerable.Range(0, 5).SelectMany(i => new Task[]
         {
@@ -245,7 +245,7 @@ public sealed class SessionCacheServiceTests
 
         await Task.WhenAll(tasks);
 
-        var finalSnapshot = await service.LoadAsync();
+        var finalSnapshot = await service.LoadAsync(TestContext.Current.CancellationToken);
         finalSnapshot.Should().NotBeNull();
         finalSnapshot!.ActivityFilter.Should().NotBeNull();
     }
@@ -276,10 +276,10 @@ public sealed class SessionCacheServiceTests
             ActivityFilter = "legacy",
         };
 
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions));
+        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions), TestContext.Current.CancellationToken);
 
         var service = new SessionCacheService(temp.Path, legacyPath, migrationHandler: null);
-        var loaded = await service.LoadAsync();
+        var loaded = await service.LoadAsync(TestContext.Current.CancellationToken);
 
         loaded.Should().NotBeNull();
         loaded!.ActivityFilter.Should().Be("legacy");
@@ -300,14 +300,14 @@ public sealed class SessionCacheServiceTests
             PersistSession = false,
             ActivityFilter = "current",
         };
-        await File.WriteAllTextAsync(destinationPath, JsonSerializer.Serialize(destinationSnapshot, SerializerOptions));
+        await File.WriteAllTextAsync(destinationPath, JsonSerializer.Serialize(destinationSnapshot, SerializerOptions), TestContext.Current.CancellationToken);
 
         var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
         Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        await File.WriteAllTextAsync(legacyPath, "{\"activity_filter\":\"legacy\"}");
+        await File.WriteAllTextAsync(legacyPath, "{\"activity_filter\":\"legacy\"}", TestContext.Current.CancellationToken);
 
         var service = new SessionCacheService(temp.Path, legacyPath, migrationHandler: null);
-        var loaded = await service.LoadAsync();
+        var loaded = await service.LoadAsync(TestContext.Current.CancellationToken);
 
         loaded.Should().NotBeNull();
         loaded!.ActivityFilter.Should().Be("current");
@@ -321,7 +321,7 @@ public sealed class SessionCacheServiceTests
         using var temp = new TempDirectory();
         var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
         Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        await File.WriteAllTextAsync(legacyPath, "{}");
+        await File.WriteAllTextAsync(legacyPath, "{}", TestContext.Current.CancellationToken);
 
         var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -333,7 +333,7 @@ public sealed class SessionCacheServiceTests
         }
 
         var service = new SessionCacheService(temp.Path, legacyPath, BlockingMigration);
-        var clearTask = Task.Run(service.Clear);
+        var clearTask = Task.Run(service.Clear, TestContext.Current.CancellationToken);
 
         await migrationStarted.Task;
         clearTask.IsCompleted.Should().BeFalse();

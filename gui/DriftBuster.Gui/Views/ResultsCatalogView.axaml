@@ -35,7 +35,7 @@
           </StackPanel>
           <StackPanel Grid.Column="4" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Search" Classes="subtitle" />
-            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Config name or ID" automation:AutomationProperties.AutomationId="Catalog.Search" automation:AutomationProperties.Name="Search" />
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Config name or ID" automation:AutomationProperties.AutomationId="Catalog.Search" automation:AutomationProperties.Name="Search" />
           </StackPanel>
           <TextBlock Grid.Row="1" Grid.ColumnSpan="5"
                      Margin="0,8,0,0"

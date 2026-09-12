@@ -4,8 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Media;
 
-using DriftBuster.Gui.Headless;
-
 using Velopack;
 
 namespace DriftBuster.Gui
@@ -35,85 +33,6 @@ namespace DriftBuster.Gui
                     }
                 })
                 .WithInterFont()
-                .AfterSetup(_ =>
-                {
-                    if (Application.Current is App app)
-                    {
-                        App.EnsureFontResources(app);
-                    }
-                })
                 .LogToTrace();
-
-        private static readonly Lock HeadlessSync = new();
-        private static bool _headlessInitialized;
-
-        internal static IDisposable EnsureHeadless(Func<AppBuilder, AppBuilder>? configure = null)
-        {
-            lock (HeadlessSync)
-            {
-                if (_headlessInitialized && Application.Current is App)
-                {
-                    return HeadlessScope.Instance;
-                }
-
-                if (Application.Current is App existingApp)
-                {
-                    InitialiseHeadlessApp(existingApp);
-                    return HeadlessScope.Instance;
-                }
-
-                var builder = BuildAvaloniaApp();
-                builder = configure?.Invoke(builder) ?? builder;
-
-                try
-                {
-                    builder.SetupWithoutStarting();
-                }
-                catch (InvalidOperationException)
-                {
-                    if (Application.Current is App fallbackApp)
-                    {
-                        InitialiseHeadlessApp(fallbackApp);
-                        return HeadlessScope.Instance;
-                    }
-
-                    throw;
-                }
-
-                if (Application.Current is App app)
-                {
-                    InitialiseHeadlessApp(app);
-                }
-                else
-                {
-                    HeadlessFontBootstrapper.Ensure();
-                    var fontManager = FontManager.Current;
-                    HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
-                    HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
-                    _headlessInitialized = true;
-                }
-
-                return HeadlessScope.Instance;
-            }
-        }
-
-        private static void InitialiseHeadlessApp(App app)
-        {
-            HeadlessFontBootstrapper.Ensure();
-            App.EnsureFontResources(app);
-            var fontManager = FontManager.Current;
-            HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
-            HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
-            _headlessInitialized = true;
-        }
-
-        private sealed class HeadlessScope : IDisposable
-        {
-            public static readonly HeadlessScope Instance = new();
-
-            public void Dispose()
-            {
-            }
-        }
     }
 }

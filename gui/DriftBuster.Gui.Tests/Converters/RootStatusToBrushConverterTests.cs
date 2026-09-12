@@ -5,12 +5,10 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 
 using DriftBuster.Gui.Converters;
-using DriftBuster.Gui.Tests.Ui;
 using DriftBuster.Gui.ViewModels;
 
 namespace DriftBuster.Gui.Tests.Converters;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class RootStatusToBrushConverterTests
 {
     [AvaloniaTheory]

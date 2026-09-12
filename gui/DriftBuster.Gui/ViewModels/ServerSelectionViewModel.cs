@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input.Platform;
 using Avalonia.Threading;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -601,7 +602,10 @@ namespace DriftBuster.Gui.ViewModels
         {
             try
             {
-                var progress = new Progress<ScanProgress>(UpdateProgress);
+                // Progress<T> would defer each report to the captured SynchronizationContext or the thread
+                // pool, so reports could land after the caller has moved on; report inline and let
+                // UpdateProgress marshal to the UI thread itself.
+                var progress = new InlineProgress<ScanProgress>(UpdateProgress);
                 var response = await _service.RunServerScansAsync(plans, progress, _runCancellation!.Token).ConfigureAwait(false);
                 await RunOnUiThreadAsync(() =>
                 {
@@ -883,7 +887,7 @@ namespace DriftBuster.Gui.ViewModels
 
         private void UpdateProgress(ScanProgress progress)
         {
-            if (!Dispatcher.UIThread.CheckAccess())
+            if (RequiresUiDispatch() && !Dispatcher.UIThread.CheckAccess())
             {
                 Dispatcher.UIThread.Post(() => UpdateProgress(progress));
                 return;
@@ -1331,10 +1335,12 @@ namespace DriftBuster.Gui.ViewModels
             }
         }
 
+        private static bool RequiresUiDispatch()
+            => Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime;
+
         private static async Task RunOnUiThreadAsync(Action action)
         {
-            var requiresDispatch = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime;
-            if (!requiresDispatch || Dispatcher.UIThread.CheckAccess())
+            if (!RequiresUiDispatch() || Dispatcher.UIThread.CheckAccess())
             {
                 action();
                 return;
@@ -1573,6 +1579,18 @@ namespace DriftBuster.Gui.ViewModels
             public static RootValidationResult Valid(string message) => new(RootValidationState.Valid, message);
 
             public static RootValidationResult Invalid(string message) => new(RootValidationState.Invalid, message);
+        }
+
+        private sealed class InlineProgress<T> : IProgress<T>
+        {
+            private readonly Action<T> _handler;
+
+            public InlineProgress(Action<T> handler)
+            {
+                _handler = handler;
+            }
+
+            public void Report(T value) => _handler(value);
         }
 
         private sealed record DrilldownTelemetrySnapshot(

@@ -28,7 +28,7 @@ public sealed class DriftbusterBackendTests
     [Fact]
     public async Task PingAsync_returns_pong()
     {
-        var response = await _backend.PingAsync();
+        var response = await _backend.PingAsync(TestContext.Current.CancellationToken);
         Assert.Equal("pong", response);
     }
 
@@ -43,7 +43,7 @@ public sealed class DriftbusterBackendTests
             File.WriteAllText(baseline, "alpha");
             File.WriteAllText(comparisonPath, "beta");
 
-            var result = await _backend.DiffAsync(new[] { baseline, comparisonPath });
+            var result = await _backend.DiffAsync(new[] { baseline, comparisonPath }, TestContext.Current.CancellationToken);
 
             Assert.Single(result.Comparisons);
             Assert.Contains("alpha", result.Comparisons[0].Plan.Before, StringComparison.Ordinal);
@@ -80,7 +80,7 @@ public sealed class DriftbusterBackendTests
             File.WriteAllText(comparisonA, "alpha\nbeta\n");
             File.WriteAllText(comparisonB, "alpha\ngamma\n");
 
-            var result = await _backend.DiffAsync(new[] { baseline, comparisonA, comparisonB });
+            var result = await _backend.DiffAsync(new[] { baseline, comparisonA, comparisonB }, TestContext.Current.CancellationToken);
 
             result.Comparisons.Should().HaveCount(2);
             result.Comparisons[0].Metadata.LeftPath.Should().Be(baseline);
@@ -108,7 +108,7 @@ public sealed class DriftbusterBackendTests
         var baseline = Path.GetTempFileName();
         try
         {
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.DiffAsync(new[] { baseline }));
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.DiffAsync(new[] { baseline }, TestContext.Current.CancellationToken));
             Assert.Contains("Provide at least two file paths", ex.Message, StringComparison.Ordinal);
         }
         finally
@@ -126,12 +126,12 @@ public sealed class DriftbusterBackendTests
 
         try
         {
-            var result = await _backend.HuntAsync(directory.FullName, pattern: null);
+            var result = await _backend.HuntAsync(directory.FullName, pattern: null, cancellationToken: TestContext.Current.CancellationToken);
             Assert.NotEmpty(result.Hits);
             Assert.Contains(result.Hits, hit => hit.RelativePath.EndsWith("config.txt", StringComparison.OrdinalIgnoreCase));
             Assert.False(string.IsNullOrWhiteSpace(result.RawJson));
 
-            var filtered = await _backend.HuntAsync(directory.FullName, pattern: "nomatch");
+            var filtered = await _backend.HuntAsync(directory.FullName, pattern: "nomatch", cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(0, filtered.Count);
         }
         finally
@@ -143,7 +143,7 @@ public sealed class DriftbusterBackendTests
     [Fact]
     public async Task HuntAsync_throws_for_missing_path()
     {
-        var ex = await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.HuntAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")), null));
+        var ex = await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.HuntAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")), null, TestContext.Current.CancellationToken));
         Assert.Contains("Path does not exist", ex.Message, StringComparison.Ordinal);
     }
 
@@ -281,13 +281,13 @@ public sealed class DriftbusterBackendTests
                 Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["key"] = "value" },
             };
 
-            var result = await _backend.RunProfileAsync(profile, saveProfile: true, baseDir: baseDir);
+            var result = await _backend.RunProfileAsync(profile, saveProfile: true, baseDir: baseDir, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(Directory.Exists(result.OutputDir));
             Assert.True(result.Files.Length >= 2);
             Assert.NotNull(result.Profile);
 
-            var listed = await _backend.ListProfilesAsync(baseDir);
+            var listed = await _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken);
             Assert.Contains(listed.Profiles, p => string.Equals(p.Name, "Profile One", StringComparison.Ordinal));
 
             var savedProfilePath = Path.Combine(baseDir, "Profiles", "Profile-One", "profile.json");
@@ -306,7 +306,7 @@ public sealed class DriftbusterBackendTests
     public async Task SaveProfileAsync_requires_name()
     {
         var profile = new RunProfileDefinition { Name = "" };
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.SaveProfileAsync(profile, baseDir: Path.GetTempPath()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.SaveProfileAsync(profile, baseDir: Path.GetTempPath(), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -357,7 +357,7 @@ public sealed class DriftbusterBackendTests
 
         try
         {
-            var result = await _backend.ListProfilesAsync(baseDir);
+            var result = await _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken);
 
             Assert.Single(result.Profiles);
             Assert.Equal("Valid Profile", result.Profiles[0].Name);

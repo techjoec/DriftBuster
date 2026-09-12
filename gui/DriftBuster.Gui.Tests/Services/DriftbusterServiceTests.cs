@@ -17,22 +17,22 @@ public sealed class DriftbusterServiceTests
         var backend = new RecordingBackend();
         var service = new DriftbusterService(backend);
 
-        await service.PingAsync();
-        await service.DiffAsync(new[] { "a", "b" });
-        await service.HuntAsync("dir", "pattern");
-        await service.ListProfilesAsync();
-        await service.SaveProfileAsync(new RunProfileDefinition { Name = "profile" });
-        await service.RunProfileAsync(new RunProfileDefinition { Name = "profile" }, saveProfile: true);
-        await service.PrepareOfflineCollectorAsync(new RunProfileDefinition { Name = "profile" }, new OfflineCollectorRequest());
+        await service.PingAsync(TestContext.Current.CancellationToken);
+        await service.DiffAsync(new[] { "a", "b" }, TestContext.Current.CancellationToken);
+        await service.HuntAsync("dir", "pattern", TestContext.Current.CancellationToken);
+        await service.ListProfilesAsync(TestContext.Current.CancellationToken);
+        await service.SaveProfileAsync(new RunProfileDefinition { Name = "profile" }, TestContext.Current.CancellationToken);
+        await service.RunProfileAsync(new RunProfileDefinition { Name = "profile" }, saveProfile: true, cancellationToken: TestContext.Current.CancellationToken);
+        await service.PrepareOfflineCollectorAsync(new RunProfileDefinition { Name = "profile" }, new OfflineCollectorRequest(), TestContext.Current.CancellationToken);
         await service.RunServerScansAsync(new[]
         {
             new ServerScanPlan { HostId = "host-01", Label = "Primary" },
-        });
-        await service.ListSchedulesAsync();
+        }, cancellationToken: TestContext.Current.CancellationToken);
+        await service.ListSchedulesAsync(TestContext.Current.CancellationToken);
         await service.SaveSchedulesAsync(new[]
         {
             new ScheduleDefinition { Name = "nightly", Profile = "nightly", Every = "24h" },
-        });
+        }, TestContext.Current.CancellationToken);
 
         backend.PingCalled.Should().BeTrue();
         backend.DiffVersions.Should().Equal("a", "b");

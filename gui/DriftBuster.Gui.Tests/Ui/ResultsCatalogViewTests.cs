@@ -13,7 +13,6 @@ using Xunit;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class ResultsCatalogViewTests
 {
     [AvaloniaFact]

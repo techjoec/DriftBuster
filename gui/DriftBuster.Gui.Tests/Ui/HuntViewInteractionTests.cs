@@ -8,7 +8,6 @@ using DriftBuster.Gui.Views;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class HuntViewInteractionTests
 {
     [AvaloniaFact]

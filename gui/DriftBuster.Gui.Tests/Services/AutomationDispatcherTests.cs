@@ -8,12 +8,10 @@ using Avalonia.Styling;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
-using DriftBuster.Gui.Tests.Ui;
 using DriftBuster.Gui.ViewModels;
 
 namespace DriftBuster.Gui.Tests.Services;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class AutomationDispatcherTests
 {
     [AvaloniaFact]

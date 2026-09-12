@@ -40,9 +40,9 @@ public sealed class DiffPlannerMruStoreTests
             },
         };
 
-        await store.SaveAsync(snapshot);
+        await store.SaveAsync(snapshot, TestContext.Current.CancellationToken);
 
-        var loaded = await store.LoadAsync();
+        var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
         loaded.SchemaVersion.Should().Be(DiffPlannerMruStore.CurrentSchemaVersion);
         loaded.MaxEntries.Should().Be(8);
         loaded.Entries.Should().HaveCount(1);
@@ -76,7 +76,7 @@ public sealed class DiffPlannerMruStoreTests
                 PayloadKind = index % 2 == 0 ? DiffPlannerPayloadKind.Sanitized : DiffPlannerPayloadKind.Raw,
             };
 
-            await store.RecordAsync(entry);
+            await store.RecordAsync(entry, TestContext.Current.CancellationToken);
         }
 
         // Reinsert one of the earlier combinations with different casing to ensure dedupe is case-insensitive.
@@ -87,9 +87,9 @@ public sealed class DiffPlannerMruStoreTests
             DisplayName = "Updated",
             PayloadKind = DiffPlannerPayloadKind.Raw,
             LastUsedUtc = DateTimeOffset.UtcNow,
-        });
+        }, TestContext.Current.CancellationToken);
 
-        var loaded = await store.LoadAsync();
+        var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
         loaded.Entries.Should().HaveCount(DiffPlannerMruStore.DefaultEntryLimit);
         loaded.Entries[0].BaselinePath.Should().Be("/CONFIGS/BASELINE-1.JSON");
         loaded.Entries[0].ComparisonPaths.Should().Equal("/configs/comparison-4.json");
@@ -107,7 +107,7 @@ public sealed class DiffPlannerMruStoreTests
         using var temp = new TempDirectory();
         var legacyPath = Path.Combine(temp.Path, "legacy", "diff-planner.json");
         Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        await File.WriteAllTextAsync(legacyPath, "{}");
+        await File.WriteAllTextAsync(legacyPath, "{}", TestContext.Current.CancellationToken);
 
         var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -117,7 +117,7 @@ public sealed class DiffPlannerMruStoreTests
 
         var store = new DiffPlannerMruStore(temp.Path, legacyPath, ControlledMigration);
 
-        var loadTask = store.LoadAsync();
+        var loadTask = store.LoadAsync(TestContext.Current.CancellationToken);
         await migrationStarted.Task;
         loadTask.IsCompleted.Should().BeFalse();
 
@@ -143,10 +143,10 @@ public sealed class DiffPlannerMruStoreTests
             MaxEntries = 4,
         };
 
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacyPayload, SerializerOptions));
+        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacyPayload, SerializerOptions), TestContext.Current.CancellationToken);
 
         var store = new DiffPlannerMruStore(temp.Path, legacyPath, null);
-        var snapshot = await store.LoadAsync();
+        var snapshot = await store.LoadAsync(TestContext.Current.CancellationToken);
 
         snapshot.MaxEntries.Should().Be(4);
         snapshot.Entries.Should().HaveCount(1);
@@ -179,10 +179,10 @@ public sealed class DiffPlannerMruStoreTests
         using var temp = new TempDirectory();
         var directory = Path.Combine(temp.Path, "diff-planner");
         Directory.CreateDirectory(directory);
-        await File.WriteAllTextAsync(Path.Combine(directory, "mru.json"), "{ invalid json");
+        await File.WriteAllTextAsync(Path.Combine(directory, "mru.json"), "{ invalid json", TestContext.Current.CancellationToken);
 
         var store = new DiffPlannerMruStore(temp.Path);
-        var snapshot = await store.LoadAsync();
+        var snapshot = await store.LoadAsync(TestContext.Current.CancellationToken);
 
         snapshot.Entries.Should().BeEmpty();
         snapshot.MaxEntries.Should().Be(DiffPlannerMruStore.DefaultEntryLimit);
@@ -203,12 +203,12 @@ public sealed class DiffPlannerMruStoreTests
                     ComparisonPaths = { "/compare.json" },
                 },
             },
-        });
+        }, TestContext.Current.CancellationToken);
 
         var storeFile = Path.Combine(temp.Path, "diff-planner", "mru.json");
         File.Exists(storeFile).Should().BeTrue();
 
-        await store.ClearAsync();
+        await store.ClearAsync(TestContext.Current.CancellationToken);
 
         File.Exists(storeFile).Should().BeFalse();
     }
@@ -230,7 +230,7 @@ public sealed class DiffPlannerMruStoreTests
                     ComparisonPaths = { "/current-compare.json" },
                 },
             },
-        }, SerializerOptions));
+        }, SerializerOptions), TestContext.Current.CancellationToken);
 
         var legacyPath = Path.Combine(temp.Path, "legacy.json");
         var legacyPayload = new LegacyDiffPlannerSettings
@@ -239,10 +239,10 @@ public sealed class DiffPlannerMruStoreTests
             ComparisonPaths = new[] { "/legacy-compare.json" },
             MaxEntries = 1,
         };
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacyPayload, SerializerOptions));
+        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacyPayload, SerializerOptions), TestContext.Current.CancellationToken);
 
         var store = new DiffPlannerMruStore(temp.Path, legacyPath, null);
-        var snapshot = await store.LoadAsync();
+        var snapshot = await store.LoadAsync(TestContext.Current.CancellationToken);
 
         snapshot.Entries.Should().ContainSingle();
         snapshot.Entries[0].BaselinePath.Should().Be("/current-baseline.json");

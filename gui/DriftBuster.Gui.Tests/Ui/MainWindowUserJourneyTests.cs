@@ -10,11 +10,9 @@ using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace DriftBuster.Gui.Tests.Ui;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class MainWindowUserJourneyTests
 {
     private readonly ITestOutputHelper _output;

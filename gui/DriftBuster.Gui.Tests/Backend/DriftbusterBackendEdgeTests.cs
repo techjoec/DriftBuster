@@ -27,7 +27,7 @@ public sealed class DriftbusterBackendEdgeTests
         var file = Path.GetTempFileName();
         try
         {
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.DiffAsync(new[] { dir.FullName, file }));
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.DiffAsync(new[] { dir.FullName, file }, TestContext.Current.CancellationToken));
             ex.Message.Should().Contain("Baseline path is not a file");
         }
         finally
@@ -44,7 +44,7 @@ public sealed class DriftbusterBackendEdgeTests
         var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "missing.txt");
         try
         {
-            var ex = await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.DiffAsync(new[] { baseline, missing }));
+            var ex = await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.DiffAsync(new[] { baseline, missing }, TestContext.Current.CancellationToken));
             ex.Message.Should().Contain("Path does not exist");
         }
         finally
@@ -72,7 +72,7 @@ public sealed class DriftbusterBackendEdgeTests
                 Sources = new[] { baseline, missingPath },
             };
 
-            await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.RunProfileAsync(profile, saveProfile: false, baseDir: baseDir));
+            await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.RunProfileAsync(profile, saveProfile: false, baseDir: baseDir, cancellationToken: TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -100,7 +100,7 @@ public sealed class DriftbusterBackendEdgeTests
                 Sources = new[] { a, b },
             };
 
-            var result = await _backend.RunProfileAsync(profile, saveProfile: false, baseDir: baseDir);
+            var result = await _backend.RunProfileAsync(profile, saveProfile: false, baseDir: baseDir, cancellationToken: TestContext.Current.CancellationToken);
             result.Files.Should().NotBeEmpty();
 
             // Find entry for the baseline and assert it landed under source_00
@@ -137,7 +137,7 @@ public sealed class DriftbusterBackendEdgeTests
                 ConfigFileName = "bad/name.json",
             };
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => backend.PrepareOfflineCollectorAsync(profile, request, baseDir));
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => backend.PrepareOfflineCollectorAsync(profile, request, baseDir, TestContext.Current.CancellationToken));
             ex.Message.Should().Contain("must not include path separators");
         }
         finally

@@ -1,13 +1,11 @@
 using Avalonia.Headless.XUnit;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
-using DriftBuster.Gui.Tests.Ui;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
 
 namespace DriftBuster.Gui.Tests.ViewModels;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class MainWindowViewModelFactoryTests
 {
     [AvaloniaFact]

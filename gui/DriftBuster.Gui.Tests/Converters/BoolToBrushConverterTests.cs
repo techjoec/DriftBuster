@@ -5,12 +5,10 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using AwesomeAssertions;
 using DriftBuster.Gui.Converters;
-using DriftBuster.Gui.Tests.Ui;
 using Xunit;
 
 namespace DriftBuster.Gui.Tests.Converters;
 
-[Collection(HeadlessCollection.Name)]
 public sealed class BoolToBrushConverterTests
 {
     [AvaloniaFact]

@@ -56,7 +56,7 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="10">
                       <TextBox Width="420"
-                               Watermark="Select snapshot"
+                               PlaceholderText="Select snapshot"
                                Text="{Binding Path, Mode=TwoWay}"
                                automation:AutomationProperties.AutomationId="DiffPlanner.Input.Path"
                                automation:AutomationProperties.Name="Snapshot path" />

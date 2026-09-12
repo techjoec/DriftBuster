@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
-using DriftBuster.Gui.Headless;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
@@ -27,8 +25,6 @@ namespace DriftBuster.Gui
 
         public override void OnFrameworkInitializationCompleted()
         {
-            EnsureFontResources(this);
-
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.MainWindow = CreateMainWindowWithFontFallback();
@@ -68,6 +64,10 @@ namespace DriftBuster.Gui
             }
         }
 
+        // Avalonia 12 still keeps DefaultFontFamily as an init-only auto-property on FontManager,
+        // so the compiler-generated backing field is the only hook once the manager exists.
+        // If a future release drops it, the repair degrades to a logged no-op and the retry
+        // surfaces the original exception.
         private static void RepairDefaultFontFamily()
         {
             var fontManager = FontManager.Current;
@@ -75,36 +75,14 @@ namespace DriftBuster.Gui
                 "<DefaultFontFamily>k__BackingField",
                 BindingFlags.Instance | BindingFlags.NonPublic);
 
-            if (backingField is not null)
+            if (backingField is null)
             {
-                backingField.SetValue(fontManager, new FontFamily("fonts:Inter#Inter"));
-            }
-
-            HeadlessFontBootstrapper.RepairDesktopFontResolution();
-        }
-
-        internal static void EnsureFontResources(Application app)
-        {
-            const string key = "fonts:SystemFonts";
-
-            if (app.Resources.TryGetValue(key, out var value) && value is ConcurrentDictionary<string, FontFamily> existing)
-            {
-                existing.TryAdd("Inter", new FontFamily("Inter"));
-                existing.TryAdd(key, new FontFamily("Inter"));
+                DebugLog.Trace("font", "FontManager.DefaultFontFamily backing field not found; cannot retarget default font family.");
                 return;
             }
 
-            var dictionary = new ConcurrentDictionary<string, FontFamily>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["Inter"] = new FontFamily("Inter"),
-                [key] = new FontFamily("Inter"),
-            };
-
-            app.Resources[key] = dictionary;
-
-            var fontManager = FontManager.Current;
-            HeadlessFontBootstrapper.EnsureSystemFonts(fontManager);
-            HeadlessFontBootstrapper.EnsureSystemFontsDictionary(fontManager);
+            backingField.SetValue(fontManager, new FontFamily("fonts:Inter#Inter"));
+            DebugLog.Trace("font", "Retargeted FontManager.DefaultFontFamily to fonts:Inter#Inter.");
         }
     }
 }
