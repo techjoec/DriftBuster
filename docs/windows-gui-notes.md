@@ -4,7 +4,7 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 
 ## Current Base Assets (2025-10 audit)
 
-- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net10.0` with Avalonia 11.3.11. The refined header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
+- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net10.0` with Avalonia 12. The refined header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
 - **Backend library**: `gui/DriftBuster.Backend` hosts shared diff, hunt, and run-profile helpers consumed by both the GUI and the PowerShell module.
 - **Execution contract**: Operations run on background tasks, returning the same JSON payloads previously emitted by the Python helper so the UI bindings stay untouched.
 - **UI snapshot**: Diff view validates inputs, renders plan/metadata cards, and offers a copy-raw-JSON action. Hunt view adds directory picker, status messaging, and card-style findings with token badges. The multi-server screen now uses tidy host cards, side-by-side execution/timeline panels, and a lean guidance banner to keep the orchestration workflow focused.
@@ -31,7 +31,7 @@ The fix was diagnosed and verified on a Windows VM running the framework-depende
 - **.NET SDK 10.0.x** installed locally for restore, build, run, and publish steps.
 - **Optional tooling**: Avalonia preview support in editor (Rider, VS Code extension) improves XAML edits but is not required.
 - **Runtime checks**: Confirm `dotnet --list-sdks` includes 10.x before running the GUI.
-- **NuGet footprint**: Restore succeeds with Avalonia 11.3.11 packages (`Avalonia`, `Avalonia.Desktop`, `Avalonia.Fonts.Inter`, `Avalonia.Themes.Fluent`, `Avalonia.Diagnostics`). No FluentAvalonia dependency is required.
+- **NuGet footprint**: `Avalonia`, `Avalonia.Desktop`, `Avalonia.Controls.DataGrid`, `Avalonia.Controls.ItemsRepeater`, `Avalonia.Fonts.Inter`, `Avalonia.Themes.Fluent` (versions in `gui/DriftBuster.Gui/DriftBuster.Gui.csproj`). No FluentAvalonia or Avalonia.Diagnostics dependency.
 - **Assets**: `Assets/app.ico` already contains the DrB badge; replace it with design-approved artwork before shipping installers.
 
 ## Integration Milestones
@@ -88,10 +88,9 @@ For each flavour, append the executed commands, hash outputs, and validation not
 
 - Follow `notes/checklists/gui-smoke.md` for the current walkthrough (ping core, run diff/hunt, validate error handling, and confirm backend shutdown).
 
-## Headless UI Testing (2025-10 refresh)
+## Headless UI Testing
 
-- **Guarded initialisation**: `Program.EnsureHeadless(Func<AppBuilder, AppBuilder>?)` now prevents duplicate Avalonia setup by reusing the first headless instance. The fixture in `.gui/DriftBuster.Gui.Tests/Ui/HeadlessFixture.cs` pipes in `UseHeadless` so repeated calls stay safe.
-- **Shared collection & dispatcher facts**: `[Collection(HeadlessCollection.Name)]` still coordinates Avalonia access, while `[AvaloniaFact]` ensures dispatcher-bound tests (navigation, drilldown, converters, session cache, compact view instantiation) run on the UI thread.
+- **Bootstrap**: `gui/DriftBuster.Gui.Tests/TestAppBuilder.cs` declares `[assembly: AvaloniaTestApplication]` and builds the real `App` with `.UseHeadless(...)`; `[AvaloniaFact]`/`[AvaloniaTheory]` run each test on the Avalonia dispatcher. Test parallelization is disabled assembly-wide.
 - **tmux command shape**: Run GUI tests inside tmux to keep sessions responsive, e.g. `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj'`. Capture logs with `|& tee artifacts/<session>.log` when reproducing issues.
 - **Focused filters**: Use `--filter 'FullyQualifiedName~MainWindowUiTests'` (or the other class names) for quick iteration, then finish with full Debug/Release passes and `-p:EnableAvaloniaXamlCompilation=true` to mirror release builds.
 - **Diagnostics**: `AvaloniaSetupInspection.LogSetupState` (run with `AVALONIA_INSPECT=1`) logs style dictionaries into `artifacts/codexcli-inspect.log` for tracing resource registration order when investigating future regressions.

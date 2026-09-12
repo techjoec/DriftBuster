@@ -327,7 +327,7 @@ unset __JOE_PROFILE_ENV && bash --login -c 'python -m pytest tests/powershell/ -
 - All ViewModels unsubscribe from events in `Dispose()`
 
 **Avalonia Drag/Drop API**
-- Uses Avalonia 11.x `DataTransfer`/`DataTransferItem`/`DataFormat` API (not deprecated `DataObject`)
+- Uses the Avalonia 12 `DataTransfer`/`DataTransferItem`/`DataFormat` API (`DataObject` no longer exists)
 - Custom formats: `DataFormat.CreateStringApplicationFormat("dot.separated.name")` — ASCII letters, digits, dots, hyphens only
 - Read from `DragEventArgs`: iterate `e.DataTransfer.Items`, cast to `DataTransferItem`, call `TryGetRaw(format)`
 

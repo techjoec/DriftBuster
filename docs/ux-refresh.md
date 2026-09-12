@@ -49,11 +49,6 @@ iterations have a concrete baseline.
   already references the Dark+/Light+ captures, so keep the manifest aligned when new screenshots
   replace them.
 
-## Avalonia 11.3.11 Migration Follow-up (P5)
-- Results catalog view and toast converters now target Avalonia 11.3.11 APIs. See `docs/windows-gui-guide.md#avalonia-1311-migration-notes` for the build/test checklist captured during the release-blocker sweep.
-- When preparing release communications, link to the dedicated entry under `docs/release-notes.md#avalonia-1311-results-catalog-alignment` so downstream teams inherit the migration summary without restating it here.
-- Store Release build artefacts and SHA-256 hashes in `artifacts/builds/avalonia-11-3/` for any future diffing runs; reference them when verifying toast stacks or catalog sort persistence regressions.
-
 ## Validation & Testing Checkpoints
 - Headless tests cover responsive host layout, catalog sort persistence, and the new clipboard
   command. Ensure `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` stays green

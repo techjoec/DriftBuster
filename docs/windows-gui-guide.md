@@ -52,14 +52,6 @@ This guide explains the capabilities, layout, and operational details of the Ava
 
 The captures above follow the asset naming convention documented in `docs/ux-refresh.md#theme-capture-manifest`. Reuse them in release material whenever the palettes change, and regenerate fresh captures after significant visual adjustments to keep the manifest traceable. The Dark+ capture also records the diff planner MRU dropdown and export timeline pairing validated in `artifacts/manual-runs/2025-10-24-multi-server-notes.md`.
 
-## Avalonia 11.3.11 Migration Notes
-
-- **Release build recipe:** Run `dotnet build -c Release gui/DriftBuster.Gui/DriftBuster.Gui.csproj` to capture the Avalonia 11.3.11 output. Store the publish folder and the generated `DriftBuster.Gui.*.dll` hashes under `artifacts/builds/avalonia-11-3/` so regression reviewers can diff binaries against earlier builds.
-- **Headless validation:** Execute `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter DisplayClass=ResultsCatalog` (or the full suite) immediately after rebuilding. The tests assert the updated sort pipeline and toast resource lookups so the 11.3.11 swap does not regress catalog ordering or notifications.
-- **Manual smoke:** Launch the Release build once (`dotnet run -c Release --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`) and confirm: (1) catalog sort toggles update headers and persisted descriptors, (2) toast stacks resolve dark/light palette resources without missing icons, and (3) activity timeline export entries continue to log in the overflow tray.
-- **Troubleshooting:** If the Release build fails to locate Avalonia resources, verify `gui/DriftBuster.Gui/Assets/Styles/Notifications.axaml` still references the migrated token names and re-run `dotnet clean` before rebuilding. Missing toast colours typically indicate stale ResourceDictionary caches from earlier versions.
-- **Documentation trail:** Cross-reference the migration summary in `docs/ux-refresh.md#avalonia-1311-migration-follow-up` and note the GUI release entry guidance in `docs/release-notes.md#avalonia-1311-results-catalog-alignment` when publishing notes.
-
 ## 5. Diff Planner Details
 ### Inputs & Validation
 - Use the **Browse** buttons beside each textbox to pick the left/right file.
@@ -172,7 +164,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 
 ### Notifications & Timeline
 - Toast alerts now surface in a compact stack with at most three visible at once; additional messages collapse into an overflow tray so long-running scans don't flood the viewport.
-- Toast styling now reads Avalonia 11.3.11 theme dictionaries directly: override `Brush.Toast.*` or `Toast.Icon.*` resources under `ThemeVariant.Dark` / `ThemeVariant.Light` to tailor per-theme palettes without touching the converters.
+- Toast styling reads the Avalonia theme dictionaries directly: override `Brush.Toast.*` or `Toast.Icon.*` resources under `ThemeVariant.Dark` / `ThemeVariant.Light` to tailor per-theme palettes without touching the converters.
 - Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter plus the last opened drilldown host persist with the rest of the multi-server session.
 - Clipboard/export actions write to the timeline with the new **Exports** filter so analysts can isolate delivery events quickly.
 - Diff planner exports from the manual run evidence file appear in the **Exports** view alongside the MRU replay, demonstrating how sanitized payloads and timeline entries stay in sync for audits.
@@ -234,23 +226,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 
 ## 11. Automated & Headless Tests
 - UI automation lives in `gui/DriftBuster.Gui.Tests/Ui` and complementary view-model suites under `gui/DriftBuster.Gui.Tests/ViewModels`. Headless UI tests are attributed with `[AvaloniaFact]`, ensuring each case runs on the Avalonia dispatcher (navigation, drilldown exports, hunt flows, converters, session cache, and theme toggles).
-- `HeadlessFixture` calls `Program.EnsureHeadless(...)`, which guards against duplicate `AppBuilder.Setup` calls in repeated test execution.
-
-### Headless bootstrap
-  - `Program.BuildAvaloniaApp()` preloads the `fonts:SystemFonts` resource so the Avalonia headless pipeline always has a populated `ConcurrentDictionary<string, FontFamily>` including the alias entry consumed by `FontManager.SystemFonts`.
-  - `Program.EnsureHeadless(...)` binds `HeadlessFontManagerProxy` through `HeadlessFontBootstrapper` so Avalonia's `IFontManagerImpl` always resolves Inter with synchronous glyph loading. The proxy normalises aliases such as `fonts:SystemFonts`, extends the installed family list, and keeps glyph requests deterministic for smoke tests. Call sites worth preserving:
-    - `App.EnsureFontResources` seeds the alias dictionary consumed by Avalonia controls via `FontManager.SystemFonts`.
-    - `HeadlessFixture` verifies `FontManager.Current` exposes Inter as the default family and resolves glyphs for both Inter and the alias, protecting glyph paths used by text controls and dialogs.
-    - `HeadlessBootstrapperSmokeTests` assert the locator binding and glyph creation path so regressions in the proxy surface before full suites run.
-  - Keep this preload intact when editing the bootstrapper so fixtures never hit the `KeyNotFoundException` observed before the guardrails landed.
-
-### FontManager regression playbook
-- **Purpose:** Confirm `fonts:SystemFonts` and `fonts:SystemFonts#Inter` stay resolvable in both Release and Debug builds so headless smoke tests mirror production.
-- **Targeted tests:**
-  1. `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release --filter FullyQualifiedName~HeadlessBootstrapperSmokeTests.EnsureHeadless_release_mode_exposes_inter_alias_through_system_fonts`
-  2. `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter FullyQualifiedName~HeadlessFixture`
-- **Expected signals:** The smoke test asserts the `fonts:SystemFonts` resource exposes the Inter alias keys consumed by `FontManager.SystemFonts`, and `FontManager.Current.TryGetGlyphTypeface("fonts:SystemFonts#Inter")` succeeds; the fixture cross-checks `FontManagerOptions.DefaultFamilyName` and fallback ordering against `FontManager.Current`.
-- **Failure triage:** If either command fails, inspect `artifacts/logs/fontmanager-regression.txt` for the captured stack trace and rerun `Program.EnsureHeadless` instrumentation to verify the proxy registered its aliases.
+- The test assembly bootstraps Avalonia once through `gui/DriftBuster.Gui.Tests/TestAppBuilder.cs` (`[assembly: AvaloniaTestApplication]`), which reuses `Program.BuildAvaloniaApp()` (real `App`, Fluent theme, embedded Inter font) with `.UseHeadless(...)`. `HeadlessBootstrapTests` proves the styles load and a window with a `ToggleSwitch` shows headless; `AutomationPropertiesTests` proves every interactive control carries an automation ID and a resolvable name.
 - Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
 - Full coverage expectations:
   - Debug collect: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
