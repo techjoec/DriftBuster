@@ -231,7 +231,7 @@ pip-licenses
 ### .NET
 - Target: net10.0, nullable enabled, implicit usings
 - Formatting: `dotnet format --verify-no-changes` for Backend, GUI, Tests
-- Coverage: **≥83% total line coverage** (enforced via `-p:CollectCoverage=true -p:Threshold=83`; measured 83.1% on 2026-09-12 with the headless font shim under `gui/DriftBuster.Gui/Headless/` counted, 86.6% without it)
+- Coverage: **≥83% total line coverage** (enforced via `-p:CollectCoverage=true -p:Threshold=83`; the headless font shim under `gui/DriftBuster.Gui/Headless/` counts toward the total)
 - Analyzer warnings must be resolved before commit
 
 ### Provenance & Licensing
