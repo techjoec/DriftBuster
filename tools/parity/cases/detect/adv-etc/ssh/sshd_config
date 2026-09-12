@@ -1,0 +1,7 @@
+# managed
+Port 2222
+	AddressFamily any
+Match User backup
+	PasswordAuthentication no
+	ForceCommand internal-sftp
+Subsystem	sftp	/usr/lib/openssh/sftp-server

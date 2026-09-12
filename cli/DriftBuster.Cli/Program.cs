@@ -12,6 +12,7 @@ public static class Program
     public static RootCommand BuildRootCommand()
     {
         var root = new RootCommand("DriftBuster configuration drift tooling.");
+        root.Subcommands.Add(ParityDump.Build());
         return root;
     }
 }

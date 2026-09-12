@@ -1,0 +1,651 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+
+using DriftBuster.Backend.Detection.Catalog;
+using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Profiles.Detection;
+
+using Microsoft.Extensions.FileSystemGlobbing;
+
+namespace DriftBuster.Backend.Detection;
+
+/// <summary>Coordinates format plugins to detect configuration types under bounded sampling and an aggregate budget.</summary>
+public class Detector
+{
+    /// <summary>Bytes read from each file when no sample size is requested.</summary>
+    public const int DefaultSampleSize = 128 * 1024;
+
+    /// <summary>Guardrail against excessive reads; larger requests are clamped with a warning.</summary>
+    public const int MaxSampleSize = 512 * 1024;
+
+    /// <summary>Aggregate sampling guardrail applied when no budget is requested.</summary>
+    public const long DefaultTotalSampleBudget = 16L * 1024 * 1024;
+
+    private readonly List<IFormatPlugin> _plugins;
+    private readonly int _sampleSize;
+    private readonly long _maxTotalSampleBytes;
+    private readonly Action<string, Exception>? _onError;
+    private readonly Action<string> _warn;
+    private long _consumedSampleBytes;
+    private bool _budgetExhausted;
+
+    /// <param name="plugins">Explicit plugin sequence; null uses <see cref="DefaultPlugins"/>.</param>
+    /// <param name="sampleSize">Bytes read from each file; null uses <see cref="DefaultSampleSize"/>.</param>
+    /// <param name="maxTotalSampleBytes">Aggregate sampling budget; null uses <see cref="DefaultTotalSampleBudget"/>.</param>
+    /// <param name="sortPlugins">Re-sort plugins by priority (stable); disable to keep the given order.</param>
+    /// <param name="onError">Invoked with (path, <see cref="DetectorIOException"/>) before the error is raised.</param>
+    /// <param name="onWarning">Receives guardrail warnings; defaults to <see cref="Trace.TraceWarning(string)"/>.</param>
+    public Detector(
+        IEnumerable<IFormatPlugin>? plugins = null,
+        int? sampleSize = null,
+        long? maxTotalSampleBytes = null,
+        bool sortPlugins = true,
+        Action<string, Exception>? onError = null,
+        Action<string>? onWarning = null)
+    {
+        _warn = onWarning ?? (message => Trace.TraceWarning(message));
+        var selected = plugins is null ? DefaultPlugins.GetPlugins().ToList() : plugins.ToList();
+        if (sortPlugins)
+        {
+            selected = selected.OrderBy(plugin => plugin.Priority).ToList();
+        }
+
+        _plugins = selected;
+        _sampleSize = ValidateSampleSize(sampleSize ?? DefaultSampleSize);
+        _maxTotalSampleBytes = ValidateTotalSampleBudget(maxTotalSampleBytes) ?? DefaultTotalSampleBudget;
+        _consumedSampleBytes = 0;
+        _budgetExhausted = false;
+        _onError = onError;
+    }
+
+    /// <summary>The plugins in the order they are consulted.</summary>
+    public IReadOnlyList<IFormatPlugin> Plugins => _plugins;
+
+    /// <summary>The effective (clamped) per-file sample size.</summary>
+    public int SampleSize => _sampleSize;
+
+    public bool SampleBudgetExhausted => _budgetExhausted;
+
+    public long SampleBudgetRemaining => Math.Max(0, _maxTotalSampleBytes - _consumedSampleBytes);
+
+    /// <summary>Resets the aggregate sampling counters for a fresh scan.</summary>
+    public void ResetSampleBudget()
+    {
+        _consumedSampleBytes = 0;
+        _budgetExhausted = false;
+    }
+
+    private int ValidateSampleSize(int sampleSize)
+    {
+        if (sampleSize <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sampleSize), sampleSize, "sample_size must be a positive integer");
+        }
+
+        if (sampleSize > MaxSampleSize)
+        {
+            _warn(string.Format(
+                CultureInfo.InvariantCulture,
+                "Sample size {0} exceeds {1} bytes; clamping to guardrail.",
+                sampleSize,
+                MaxSampleSize));
+            return MaxSampleSize;
+        }
+
+        return sampleSize;
+    }
+
+    private static long? ValidateTotalSampleBudget(long? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, "max_total_sample_bytes must be a positive integer");
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// Reports <paramref name="error"/> to the error callback and raises it. Subclasses may override to swallow
+    /// errors, in which case the scan continues past the failing path.
+    /// </summary>
+    protected internal virtual void HandleError(string path, DetectorIOException error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        if (_onError is not null)
+        {
+            try
+            {
+                _onError(path, error);
+            }
+            catch (Exception exc) when (exc is not OutOfMemoryException)
+            {
+                _warn($"on_error handler raised during scan: {exc}");
+            }
+        }
+
+        throw error;
+    }
+
+    /// <summary>Opens the file whose first bytes are sampled; overridable for fault injection.</summary>
+    protected internal virtual Stream OpenFile(string path) => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+
+    /// <summary>
+    /// True when <paramref name="path"/> is an existing regular file, following symlinks the way <c>Path.is_file()</c>
+    /// (a plain <c>stat</c>) does: a dangling link (which <see cref="File.Exists(string)"/> reports as present) is not
+    /// a file, and a relative link target is resolved against the physical directory holding the link, not the lexical
+    /// one, so a link like <c>../shared/x.conf</c> reached through a directory link still resolves.
+    /// </summary>
+    protected internal virtual bool IsFile(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                return true;
+            }
+
+            var physical = ResolvePhysicalPath(info.FullName);
+            return physical is not null && File.Exists(physical) && !new FileInfo(physical).Attributes.HasFlag(FileAttributes.ReparsePoint);
+        }
+        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    // Symlink hops the OS allows on one lookup before failing with ELOOP; Python's is_file() then returns False.
+    private const int MaxLinkHops = 40;
+
+    /// <summary>
+    /// <c>realpath</c>: resolves every link component of <paramref name="fullPath"/> against the physical directory
+    /// resolved so far (the OS semantics <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/> does not follow, since it
+    /// joins a relative target with the link's lexical directory). Null for a link loop or a target that cannot be read.
+    /// </summary>
+    internal static string? ResolvePhysicalPath(string fullPath)
+    {
+        var hops = MaxLinkHops;
+        return ResolvePhysicalPath(fullPath, ref hops);
+    }
+
+    private static string? ResolvePhysicalPath(string fullPath, ref int hops)
+    {
+        var root = Path.GetPathRoot(fullPath) ?? string.Empty;
+        var resolved = root.Length == 0 ? Path.DirectorySeparatorChar.ToString() : root;
+        var components = fullPath[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+        foreach (var component in components)
+        {
+            if (string.Equals(component, ".", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(component, "..", StringComparison.Ordinal))
+            {
+                resolved = Path.GetDirectoryName(resolved) ?? resolved;
+                continue;
+            }
+
+            var candidate = Path.Join(resolved, component);
+            var info = new FileInfo(candidate);
+            string? target;
+            try
+            {
+                target = info.Attributes.HasFlag(FileAttributes.ReparsePoint) ? info.LinkTarget : null;
+            }
+            catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+            {
+                return null;
+            }
+
+            if (target is null)
+            {
+                resolved = candidate;
+                continue;
+            }
+
+            if (hops-- <= 0)
+            {
+                return null;
+            }
+
+            var next = ResolvePhysicalPath(Path.IsPathRooted(target) ? target : Path.Join(resolved, target), ref hops);
+            if (next is null)
+            {
+                return null;
+            }
+
+            resolved = next;
+        }
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// Every entry under <paramref name="root"/> (depth-first, reparse points and symlinked directories not followed,
+    /// unreadable subdirectories skipped) whose posix-style relative path matches <paramref name="glob"/>, in the
+    /// order <c>sorted(root.glob(glob))</c> yields on posix: component by component, code point by code point
+    /// (<see cref="PathText.ComparePosixPaths"/>). The same case-sensitive order is used on every platform.
+    /// </summary>
+    protected internal virtual IReadOnlyList<string> EnumerateFiles(string root, string glob)
+    {
+        var matcher = new Matcher(StringComparison.Ordinal);
+        matcher.AddInclude(glob);
+        var entries = new List<(string Relative, string Full)>();
+        Walk(new DirectoryInfo(root), root, isRoot: true, matcher, entries);
+        entries.Sort((left, right) => PathText.ComparePosixPaths(left.Relative, right.Relative));
+        return entries.Select(entry => entry.Full).ToList();
+    }
+
+    private static void Walk(DirectoryInfo directory, string root, bool isRoot, Matcher matcher, List<(string Relative, string Full)> entries)
+    {
+        FileSystemInfo[] children;
+        try
+        {
+            children = directory.GetFileSystemInfos();
+        }
+        catch (Exception exc) when (!isRoot && exc is UnauthorizedAccessException or IOException)
+        {
+            return;
+        }
+
+        foreach (var child in children)
+        {
+            if (child is DirectoryInfo subdirectory)
+            {
+                if (subdirectory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                {
+                    continue;
+                }
+
+                Walk(subdirectory, root, isRoot: false, matcher, entries);
+                continue;
+            }
+
+            var relative = PathText.RelativePosix(root, child.FullName);
+            if (matcher.Match(relative).HasMatches)
+            {
+                entries.Add((relative, child.FullName));
+            }
+        }
+    }
+
+    private byte[] ReadSample(string path, int readSize)
+    {
+        using var stream = OpenFile(path);
+        var buffer = new byte[readSize];
+        var total = 0;
+        while (total < readSize)
+        {
+            var read = stream.Read(buffer, total, readSize - total);
+            if (read == 0)
+            {
+                break;
+            }
+
+            total += read;
+        }
+
+        return total == readSize ? buffer : buffer[..total];
+    }
+
+    /// <summary>
+    /// Samples <paramref name="path"/> and returns the first plugin match, enriched with sampling metadata, validated
+    /// against the catalog and with normalised reasons; null when no plugin matched or the budget was already spent.
+    /// </summary>
+    public DetectionMatch? ScanFile(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        if (!IsFile(path))
+        {
+            throw new FileNotFoundException($"Expected file path, got: {path}", path);
+        }
+
+        if (_consumedSampleBytes >= _maxTotalSampleBytes)
+        {
+            _budgetExhausted = true;
+            _warn($"Sample budget exhausted before scanning: {path}");
+            return null;
+        }
+
+        var remaining = _maxTotalSampleBytes - _consumedSampleBytes;
+        var readSize = (int)Math.Min(_sampleSize + 1L, remaining + 1);
+        byte[] raw;
+        try
+        {
+            raw = ReadSample(path, readSize);
+        }
+        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+        {
+            HandleError(path, new DetectorIOException(path, exc.Message, exc));
+            return null;
+        }
+
+        var sampleLength = (int)Math.Min(Math.Min(_sampleSize, remaining), raw.Length);
+        var sample = sampleLength == raw.Length ? raw : raw[..sampleLength];
+        var truncated = raw.Length > _sampleSize;
+        string? text = null;
+        string? encoding = null;
+        if (FormatRegistry.LooksText(sample))
+        {
+            (text, encoding) = FormatRegistry.DecodeText(sample);
+        }
+
+        _consumedSampleBytes += sample.Length;
+        if (_consumedSampleBytes >= _maxTotalSampleBytes)
+        {
+            _budgetExhausted = true;
+        }
+
+        foreach (var plugin in _plugins)
+        {
+            var match = plugin.Detect(path, sample, text);
+            if (match is not null)
+            {
+                return Enrich(match, sample, encoding, truncated);
+            }
+        }
+
+        return null;
+    }
+
+    private DetectionMatch Enrich(DetectionMatch match, byte[] sample, string? encoding, bool truncated)
+    {
+        var metadata = DetectionMetadata.EnsureMapping(match.Metadata);
+        if (!metadata.ContainsKey("bytes_sampled"))
+        {
+            metadata["bytes_sampled"] = sample.Length;
+        }
+
+        if (encoding is not null && !metadata.ContainsKey("encoding"))
+        {
+            metadata["encoding"] = encoding;
+            AppendReason(match, $"Decoded content using {encoding} encoding");
+        }
+
+        if (truncated)
+        {
+            metadata["sample_truncated"] = true;
+            AppendReason(match, string.Format(CultureInfo.InvariantCulture, "Truncated sample to {0}B", _sampleSize));
+        }
+
+        if (_budgetExhausted)
+        {
+            metadata["sample_budget_exhausted"] = true;
+            AppendReason(match, string.Format(CultureInfo.InvariantCulture, "Sampling budget exhausted after {0}B", sample.Length));
+        }
+
+        match.Metadata = metadata.Count > 0 ? metadata : null;
+        match.Metadata = DetectionMetadata.ValidateDetectionMetadata(match, DetectionCatalog.Default);
+        match.Reasons = NormaliseReasons(match.Reasons);
+        return match;
+    }
+
+    private static void AppendReason(DetectionMatch match, string reason)
+    {
+        if (!match.Reasons.Contains(reason))
+        {
+            match.Reasons.Add(reason);
+        }
+    }
+
+    /// <summary>
+    /// Scans a file or directory while enforcing the aggregate sampling budget. A file root yields a single entry;
+    /// a missing root raises <see cref="DetectorIOException"/> through <see cref="HandleError"/>; a directory walk
+    /// stops after the first file that exhausts the budget.
+    /// </summary>
+    /// <param name="resetBudget">Reset the aggregate counter before scanning; false continues an existing budget across roots.</param>
+    public virtual IReadOnlyList<(string Path, DetectionMatch? Match)> ScanPath(string root, string glob = "**/*", bool resetBudget = true)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        var results = new List<(string Path, DetectionMatch? Match)>();
+        try
+        {
+            if (IsFile(root))
+            {
+                if (resetBudget)
+                {
+                    ResetSampleBudget();
+                }
+
+                results.Add((root, ScanFile(root)));
+                return results;
+            }
+
+            if (!Directory.Exists(root))
+            {
+                throw new FileNotFoundException($"Path does not exist: {root}", root);
+            }
+        }
+        catch (Exception exc) when (exc is IOException and not DetectorIOException || exc is UnauthorizedAccessException)
+        {
+            // A DetectorIOException raised by ScanFile has already been reported through HandleError; it propagates as is.
+            HandleError(root, new DetectorIOException(root, exc.Message, exc));
+            return results;
+        }
+
+        if (resetBudget)
+        {
+            ResetSampleBudget();
+        }
+
+        IReadOnlyList<string> candidates;
+        try
+        {
+            candidates = EnumerateFiles(root, glob);
+        }
+        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+        {
+            HandleError(root, new DetectorIOException(root, exc.Message, exc));
+            return results;
+        }
+
+        ScanCandidates(root, candidates, results);
+        return results;
+    }
+
+    private void ScanCandidates(string root, IReadOnlyList<string> candidates, List<(string Path, DetectionMatch? Match)> results)
+    {
+        foreach (var path in candidates)
+        {
+            try
+            {
+                if (!IsFile(path))
+                {
+                    continue;
+                }
+
+                results.Add((path, ScanFile(path)));
+                if (_budgetExhausted)
+                {
+                    _warn($"Sample budget exhausted while scanning {path}; skipping remaining paths under {root}");
+                    break;
+                }
+            }
+            catch (Exception exc) when (exc is IOException and not DetectorIOException || exc is UnauthorizedAccessException)
+            {
+                HandleError(path, new DetectorIOException(path, exc.Message, exc));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Scans <paramref name="root"/> and annotates every result with the profile configs that apply to its path
+    /// (relative to a directory root, the bare file name otherwise). When any applicable config sets
+    /// <c>ignore_review_flags</c>, a flagged detection gets <c>review_ignored</c> and <c>needs_review</c> cleared.
+    /// </summary>
+    public IReadOnlyList<ProfiledDetection> ScanWithProfiles(
+        string root,
+        IProfileMatcher profileStore,
+        IEnumerable<string?>? tags = null,
+        string glob = "**/*")
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(profileStore, nameof(profileStore));
+
+        var normalizedTags = ProfileTags.Normalize(tags);
+        var scanResults = ScanPath(root, glob);
+        var profiled = new List<ProfiledDetection>();
+        var rootIsDir = Directory.Exists(root);
+
+        foreach (var (path, detection) in scanResults)
+        {
+            var relative = rootIsDir ? RelativeToRoot(root, path) : PathText.Name(path);
+            var applied = profileStore.MatchingConfigs(normalizedTags, relative);
+            if (detection?.Metadata is { } metadata)
+            {
+                bool ignore;
+                try
+                {
+                    ignore = applied.Any(cfg => IsTruthy(cfg.Config.Metadata is { } configMetadata
+                        && configMetadata.TryGetValue("ignore_review_flags", out var flag) ? flag : null));
+                }
+                catch (Exception exc) when (exc is not OutOfMemoryException)
+                {
+                    ignore = false;
+                }
+
+                if (ignore && metadata.TryGetValue("needs_review", out var needsReview) && IsTruthy(needsReview))
+                {
+                    metadata["review_ignored"] = true;
+                    metadata["needs_review"] = false;
+                }
+            }
+
+            profiled.Add(new ProfiledDetection(path, detection, applied));
+        }
+
+        return profiled;
+    }
+
+    // Path.relative_to(root).as_posix(), falling back to the file name when the path is not under the root.
+    private static string RelativeToRoot(string root, string path)
+    {
+        var relative = Path.GetRelativePath(root, path);
+        if (Path.IsPathRooted(relative)
+            || string.Equals(relative, "..", StringComparison.Ordinal)
+            || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            || relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            return PathText.Name(path);
+        }
+
+        return PathText.ToPosix(relative);
+    }
+
+    // Python bool() of the values a metadata mapping can carry.
+    private static bool IsTruthy(object? value) => value switch
+    {
+        null => false,
+        bool flag => flag,
+        string text => text.Length > 0,
+        int number => number != 0,
+        long number => number != 0,
+        double number => number != 0,
+        System.Collections.ICollection collection => collection.Count > 0,
+        _ => true,
+    };
+
+    /// <summary>Convenience wrapper mirroring the module-level <c>scan_file</c>: a fresh detector per call.</summary>
+    public static DetectionMatch? ScanFileWithDefaults(
+        string path,
+        int? sampleSize = null,
+        IEnumerable<IFormatPlugin>? plugins = null,
+        bool sortPlugins = true,
+        Action<string, Exception>? onError = null)
+    {
+        var detector = new Detector(plugins, sampleSize, sortPlugins: sortPlugins, onError: onError);
+        return detector.ScanFile(path);
+    }
+
+    /// <summary>Convenience wrapper mirroring the module-level <c>scan_path</c>: a fresh detector per call.</summary>
+    public static IReadOnlyList<(string Path, DetectionMatch? Match)> ScanPathWithDefaults(
+        string root,
+        string glob = "**/*",
+        int? sampleSize = null,
+        IEnumerable<IFormatPlugin>? plugins = null,
+        bool sortPlugins = true,
+        Action<string, Exception>? onError = null)
+    {
+        var detector = new Detector(plugins, sampleSize, sortPlugins: sortPlugins, onError: onError);
+        return detector.ScanPath(root, glob);
+    }
+
+    // Upper-cases the first letter (any L* code point, astral included) with Python's full str.upper() mapping.
+    private static string TitleiseComponent(string component)
+    {
+        if (component.Length == 0)
+        {
+            return component;
+        }
+
+        var offset = 0;
+        foreach (var rune in component.EnumerateRunes())
+        {
+            if (Rune.IsLetter(rune))
+            {
+                return string.Concat(component.AsSpan(0, offset), PythonText.Upper(rune), component.AsSpan(offset + rune.Utf16SequenceLength));
+            }
+
+            offset += rune.Utf16SequenceLength;
+        }
+
+        return component;
+    }
+
+    private static string NormaliseReasonToken(string token)
+    {
+        var parts = token.Split('-');
+        for (var index = 0; index < parts.Length; index++)
+        {
+            var subparts = parts[index].Split(':');
+            for (var sub = 0; sub < subparts.Length; sub++)
+            {
+                subparts[sub] = TitleiseComponent(subparts[sub]);
+            }
+
+            parts[index] = string.Join(':', subparts);
+        }
+
+        return string.Join('-', parts);
+    }
+
+    /// <summary>
+    /// Trims, collapses whitespace, title-cases the first letter of every '-' and ':' sub-part of each token and
+    /// drops empty or duplicate reasons while preserving order.
+    /// </summary>
+    internal static IList<string> NormaliseReasons(IEnumerable<string> reasons)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var normalised = new List<string>();
+        foreach (var raw in reasons)
+        {
+            var text = PythonText.Strip(raw ?? string.Empty);
+            if (text.Length == 0)
+            {
+                continue;
+            }
+
+            var words = PythonText.Split(text);
+            var formatted = string.Join(' ', words.Select(NormaliseReasonToken));
+            if (seen.Add(formatted))
+            {
+                normalised.Add(formatted);
+            }
+        }
+
+        return normalised;
+    }
+}

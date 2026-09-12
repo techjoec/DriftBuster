@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="DriftBuster.Cli.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\gui\DriftBuster.Backend\DriftBuster.Backend.csproj" />
     <PackageReference Include="System.CommandLine" Version="2.0.12" />
   </ItemGroup>

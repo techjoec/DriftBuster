@@ -1,0 +1,5 @@
+# OpenSSH server config
+Port 22
+PermitRootLogin no
+PasswordAuthentication yes
+Subsystem sftp /usr/lib/openssh/sftp-server
