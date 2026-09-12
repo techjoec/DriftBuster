@@ -17,7 +17,7 @@ public static class PathText
     }
 
     /// <summary><see cref="Name"/> lowered with the invariant culture, matching <c>path.name.lower()</c>.</summary>
-    public static string NameLower(string path) => Name(path).ToLowerInvariant();
+    public static string NameLower(string path) => PythonText.Lower(Name(path));
 
     /// <summary>
     /// The final suffix as <c>PurePath.suffix</c> returns it: the last dot must be neither the first nor the last
@@ -31,7 +31,7 @@ public static class PathText
     }
 
     /// <summary><see cref="Suffix"/> lowered with the invariant culture, matching <c>path.suffix.lower()</c>.</summary>
-    public static string SuffixLower(string path) => Suffix(path).ToLowerInvariant();
+    public static string SuffixLower(string path) => PythonText.Lower(Suffix(path));
 
     /// <summary>Replaces the platform directory separator with "/", matching <c>PurePath.as_posix()</c>.</summary>
     public static string ToPosix(string path)

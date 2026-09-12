@@ -1,0 +1,212 @@
+using System.Text.RegularExpressions;
+
+using DriftBuster.Backend.Infrastructure;
+
+namespace DriftBuster.Backend.Detection.Plugins;
+
+/// <summary>
+/// Detects classic INI-style configuration and its relatives: sectioned and sectionless INI, Java properties, dotenv
+/// env files, directive-style Unix conf (Apache, nginx) and INI/JSON hybrids.
+/// </summary>
+/// <remarks>
+/// Regexes here are the Python patterns with <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>: .NET's <c>\s</c> is
+/// <c>[\f\n\r\t\v\x85\p{Z}]</c>, which is Python's <c>str.isspace</c> set minus U+001C-U+001F. Every other construct
+/// used (<c>^</c>/<c>$</c> under Multiline, <c>.</c>, negated classes, lazy quantifiers) has the same meaning in both
+/// engines for every input; astral characters occupy two UTF-16 units but match the same negated classes as one code
+/// point would. Case-insensitive keyword tests and <c>\b</c> are matched by hand because Python's simple case folding
+/// and <c>\w</c> differ from .NET's. The two <c>^</c>-anchored MULTILINE patterns (section headers and assignments)
+/// are not searched by the engine: <c>^\s*</c> crosses newlines, so a search over a run of blank lines re-scans the
+/// run from every line start and backtracks through it (quadratic, and past the match timeout well inside one
+/// sample); <see cref="LineStartMatcher"/> drives the <c>\G</c>-anchored spelling from each line start and skips the
+/// line starts a failed run has already proven, which yields exactly Python's <c>finditer</c> match set.
+/// </remarks>
+public sealed partial class IniPlugin : IFormatPlugin
+{
+    private const int MaxSectionSnapshot = 10;
+    private const int ReviewLineWindow = 1000;
+    private const int DirectiveCountCap = 10;
+    private const int BlockLookahead = 20;
+    private const string PythonSpace = @"[\s\x1c-\x1f]";
+
+    private static readonly string[] DefaultIniExtensions = [".ini", ".cfg", ".cnf", ".conf", ".properties", ".env"];
+
+    private static readonly HashSet<string> DotenvFilenames = new(StringComparer.Ordinal)
+    {
+        ".env",
+        ".env.local",
+        ".env.development",
+        ".env.production",
+        ".env.test",
+        ".env.example",
+        ".env.sample",
+    };
+
+    private static readonly string[] DirectiveKeywords = ["include", "loadmodule", "setenv", "option", "alias"];
+    private static readonly string[] ApacheKeywords = ["loadmodule", "setenv", "<virtualhost", "<directory", "servername"];
+
+    // Both line-anchored patterns are spelled with \G instead of ^ and driven from every line start by
+    // LineStartMatcher, which is what keeps them linear.
+    internal static readonly Regex SectionPattern = new(
+        @"\G" + PythonSpace + @"*\[(?<name>[^\]\n]+)\]" + PythonSpace + "*$",
+        RegexOptions.Multiline | RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(2));
+
+    internal static readonly Regex KeyValuePattern = new(
+        @"\G" + PythonSpace + "*(?<export>export" + PythonSpace + @"+)?(?<key>[A-Za-z0-9_.\-]+)" + PythonSpace
+        + "*(?<separator>=|:)" + PythonSpace + @"*(?<value>.*?)(?<continued>\\" + PythonSpace + "*)?$",
+        RegexOptions.Multiline | RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(2));
+
+    private static readonly Regex InlineCommentPattern = new(
+        PythonSpace + "(?<marker>[;#!])",
+        RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(2));
+
+    private static readonly Regex JsonLikeBracePattern = new(
+        @"\{" + PythonSpace + @"*""[^""]+""" + PythonSpace + "*:",
+        RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(2));
+
+    private static readonly Regex InlineJsonAssignmentPattern = new(
+        "=" + PythonSpace + @"*\{[^{}]*""[^""]+""" + PythonSpace + "*:",
+        RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(2));
+
+    private static readonly Regex AssignOpenBracePattern = new(
+        "=" + PythonSpace + @"*\{",
+        RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(2));
+
+    private static readonly Regex QuotedKeyColonPattern = new(
+        @"""[^""\n]+""" + PythonSpace + "*:",
+        RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(2));
+
+    public string Name => "ini";
+
+    public int Priority => 170;
+
+    public string Version => "0.0.2";
+
+    /// <summary>Extensions that count as an INI hint; a test seam mirroring the Python module-level set.</summary>
+    internal HashSet<string> IniExtensions { get; set; } = new(DefaultIniExtensions, StringComparer.Ordinal);
+
+    public DetectionMatch? Detect(string path, byte[] sample, string? text)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(sample);
+        if (text is null)
+        {
+            return null;
+        }
+
+        var scan = new Scan(PathText.NameLower(path), PathText.SuffixLower(path), text);
+        var reasons = new List<string>();
+        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var reviewReasons = new List<string>();
+
+        RecordEncoding(sample, reasons, metadata);
+        CollectSections(scan, reasons, metadata);
+        CollectKeyValues(scan, reasons, metadata);
+        CollectLines(scan);
+        CollectCommentStyle(scan, reasons, metadata);
+        CollectSensitiveHints(scan, reasons, metadata);
+        CollectNameAndDirectiveHints(scan, reasons, metadata);
+        var signals = BuildSignals(scan);
+        CollectReviewReasons(scan, reviewReasons);
+
+        var effectiveLines = Math.Max(scan.NonEmptyLines.Count - scan.CommentLines.Count, 1);
+        scan.KeyDensity = (double)scan.KeyPairCount / effectiveLines;
+        metadata["key_density"] = PythonRound(scan.KeyDensity, 3);
+
+        if (!PassesGates(scan))
+        {
+            return null;
+        }
+
+        scan.SignalScore = ComputeSignalScore(scan);
+
+        // Initialise confidence early so it can be used in early returns.
+        var confidence = 0.4;
+        if (scan.SignalScore < 2)
+        {
+            if (string.Equals(scan.Extension, ".preferences", StringComparison.Ordinal) && scan.KeyPairCount >= 2)
+            {
+                reasons.Add("Preferences file with colon assignments treated as INI");
+                confidence = Math.Max(confidence, 0.6);
+                return new DetectionMatch(Name, "ini", "sectionless-ini", confidence, reasons, metadata);
+            }
+
+            // Fallback: commented Java properties exemplars.
+            if (!string.Equals(scan.Extension, ".properties", StringComparison.Ordinal) || !HasCommentedPropertyExamples(scan))
+            {
+                return null;
+            }
+
+            reasons.Add("Found numerous commented key/value examples in .properties file");
+            confidence = Math.Max(confidence, 0.56);
+        }
+
+        confidence = AccumulateConfidence(scan, confidence);
+        return Classify(scan, signals, confidence, reasons, metadata, reviewReasons);
+    }
+
+    private static bool HasCommentedPropertyExamples(Scan scan)
+    {
+        var commentedPairs = 0;
+        foreach (var line in scan.Lines.Take(ReviewLineWindow))
+        {
+            var s = PythonText.StripStart(line);
+            if (s.StartsWith('#') || s.StartsWith(';'))
+            {
+                if (s.Contains('=', StringComparison.Ordinal) || s.Contains(':', StringComparison.Ordinal))
+                {
+                    commentedPairs++;
+                }
+            }
+        }
+
+        return commentedPairs >= 10;
+    }
+
+    private static double AccumulateConfidence(Scan scan, double confidence)
+    {
+        confidence += Math.Min(scan.KeyDensity, 0.6) * 0.25;
+        if (scan.Sections.Count > 0)
+        {
+            confidence += 0.2;
+        }
+
+        if (scan.ExtensionHint)
+        {
+            confidence += 0.1;
+        }
+
+        if (scan.DotenvHint)
+        {
+            confidence += 0.05;
+        }
+
+        if (scan.DirectiveSignal)
+        {
+            confidence += 0.1;
+        }
+
+        if (scan.ExportLines > 0)
+        {
+            confidence += 0.08;
+        }
+
+        if (scan.CommentSignal)
+        {
+            confidence += 0.05;
+        }
+
+        if (scan.KeyPairCount >= 6)
+        {
+            confidence += 0.05;
+        }
+
+        return Math.Min(confidence, 0.95);
+    }
+}

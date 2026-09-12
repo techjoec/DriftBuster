@@ -1,0 +1,4 @@
+datacenter {
+client {
+seal {
+name = "x"

@@ -1,0 +1,5 @@
+// header
+{"a": 1, // trailing
+  /* block
+ */ "b": [1, 2]
+}

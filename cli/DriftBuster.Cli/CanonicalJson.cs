@@ -7,7 +7,9 @@ namespace DriftBuster.Cli;
 /// <summary>
 /// Writes values as Python <c>json.dumps(value, sort_keys=True, ensure_ascii=False)</c> would: ", " and ": "
 /// separators, keys sorted ordinally, floats in shortest round-trip form with a ".0" on integral values, and only
-/// quotes, backslashes and C0 controls escaped.
+/// quotes, backslashes and C0 controls escaped. An unpaired surrogate is first rewritten to the six characters
+/// <c>\uXXXX</c> (lower-case hex), exactly as <c>py_dump.py</c> does, because a UTF-8 stdout would replace it with
+/// U+FFFD and jq rejects the JSON escape of a lone surrogate.
 /// </summary>
 internal static class CanonicalJson
 {
@@ -70,7 +72,8 @@ internal static class CanonicalJson
     {
         builder.Append('{');
         var first = true;
-        foreach (var pair in pairs.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        foreach (var pair in pairs.Select(pair => new KeyValuePair<string, object?>(EscapeLoneSurrogates(pair.Key), pair.Value))
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             if (!first)
             {
@@ -175,10 +178,37 @@ internal static class CanonicalJson
         return string.Concat(digits.AsSpan(0, integerLength), ".", digits.AsSpan(integerLength));
     }
 
+    /// <summary>Every unpaired surrogate replaced by the literal text <c>\uXXXX</c>; other text unchanged.</summary>
+    internal static string EscapeLoneSurrogates(string text)
+    {
+        StringBuilder? builder = null;
+        for (var index = 0; index < text.Length; index++)
+        {
+            var ch = text[index];
+            if (char.IsHighSurrogate(ch) && index + 1 < text.Length && char.IsLowSurrogate(text[index + 1]))
+            {
+                builder?.Append(ch).Append(text[index + 1]);
+                index++;
+                continue;
+            }
+
+            if (char.IsSurrogate(ch))
+            {
+                builder ??= new StringBuilder(text, 0, index, text.Length + 8);
+                builder.Append("\\u").Append(((int)ch).ToString("x4", CultureInfo.InvariantCulture));
+                continue;
+            }
+
+            builder?.Append(ch);
+        }
+
+        return builder?.ToString() ?? text;
+    }
+
     private static void WriteString(StringBuilder builder, string text)
     {
         builder.Append('"');
-        foreach (var ch in text)
+        foreach (var ch in EscapeLoneSurrogates(text))
         {
             switch (ch)
             {

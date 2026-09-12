@@ -1,0 +1,4 @@
+  
+  job "x" {
+  type = "service"
+}

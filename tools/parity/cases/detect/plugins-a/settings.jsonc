@@ -1,0 +1,8 @@
+// editor settings
+{
+  /* block comment */
+  "editor.tabSize": 2, // inline
+  "files.exclude": {
+    "**/.git": true
+  }
+}

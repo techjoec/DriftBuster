@@ -7,7 +7,8 @@
 #
 # Usage: tools/parity/run_parity.sh <surface> [dump args...]
 #   surfaces: detect, decode
-#   example:  tools/parity/run_parity.sh detect --plugins text
+#   example:  tools/parity/run_parity.sh detect            (every plugin ported so far, see py_dump.PORTED_PLUGINS)
+#             tools/parity/run_parity.sh detect --plugins text
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
@@ -51,39 +52,93 @@ status=0
 files_total=0
 expected_total=0
 
-# compare <label> <root> [dump args...]: dump both sides, drop fix-c paths, diff.
+# compare <label> <root> [dump args...]: dump both sides, normalise the expected divergences, diff.
+#   fix c: Python emits the MetadataValidationError next to the plugin's own match fields; the error is dropped from
+#          the Python record and the catalog_* keys the port's catalog added are dropped from the C# record, so the
+#          plugin output itself is still compared.
+#   interpreter limits: Python emits "InterpreterLimit: ..." where json.loads exceeded a CPython limit; the path is
+#          dropped from both sides (there is no Python match to compare) and the port record is asserted to be a
+#          successful json match.
 compare() {
   local label="$1" root="$2"
   shift 2
-  local tag py_out cs_out expected_count count
+  local tag py_out cs_out fixc_count limit_count count
   tag="$(echo "$label" | tr '/ ' '__')"
   py_out="$work/$tag.py.jsonl"
   cs_out="$work/$tag.cs.jsonl"
 
-  PYTHONPATH="$repo_root/src" python tools/parity/py_dump.py "$surface" "$root" "$@" > "$py_out"
-  "$cli_exe" parity-dump "$surface" "$root" "$@" > "$cs_out"
+  # A dump that exits non-zero or prints something jq cannot parse fails this compare and the run continues.
+  local rc
+  rc=0
+  PYTHONPATH="$repo_root/src" python tools/parity/py_dump.py "$surface" "$root" "$@" > "$py_out" 2> "$work/$tag.py.err" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    status=1
+    echo "FAIL $surface $label: python dump exited $rc"
+    sed 's/^/     /' "$work/$tag.py.err" | tail -n 5
+    return
+  fi
+  rc=0
+  "$cli_exe" parity-dump "$surface" "$root" "$@" > "$cs_out" 2> "$work/$tag.cs.err" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    status=1
+    echo "FAIL $surface $label: port dump exited $rc"
+    sed 's/^/     /' "$work/$tag.cs.err" | tail -n 5
+    return
+  fi
+  if ! jq -e -n '[inputs] | length >= 0' "$py_out" > /dev/null 2> "$work/$tag.py.err"; then
+    status=1
+    echo "FAIL $surface $label: python dump is not valid JSON lines"
+    sed 's/^/     /' "$work/$tag.py.err" | tail -n 5
+    return
+  fi
+  if ! jq -e -n '[inputs] | length >= 0' "$cs_out" > /dev/null 2> "$work/$tag.cs.err"; then
+    status=1
+    echo "FAIL $surface $label: port dump is not valid JSON lines"
+    sed 's/^/     /' "$work/$tag.cs.err" | tail -n 5
+    return
+  fi
+  if grep -q '"error": "DumpError' "$py_out"; then
+    status=1
+    echo "FAIL $surface $label: python dump could not serialise a record"
+    grep '"error": "DumpError' "$py_out" | sed 's/^/     /'
+  fi
 
-  # Expected divergence (fix c): Python's strict catalog validation rejects output the port accepts.
-  jq -n -c '[inputs | select(.error != null and (.error | startswith("MetadataValidationError"))) | .path]' "$py_out" > "$work/$tag.expected.json"
-  jq -r '.[]' "$work/$tag.expected.json" > "$work/$tag.expected"
-  expected_count="$(wc -l < "$work/$tag.expected")"
-  for side in py cs; do
-    jq -c --slurpfile skip "$work/$tag.expected.json" '.path as $p | select(($skip[0] | index($p)) == null)' "$work/$tag.$side.jsonl" > "$work/$tag.$side.filtered"
-  done
+  jq -n -c '[inputs | select(.error != null and (.error | startswith("MetadataValidationError"))) | .path]' "$py_out" > "$work/$tag.fixc.json"
+  jq -n -c '[inputs | select(.error != null and (.error | startswith("InterpreterLimit"))) | .path]' "$py_out" > "$work/$tag.limit.json"
+  jq -r '.[]' "$work/$tag.fixc.json" > "$work/$tag.fixc"
+  jq -r '.[]' "$work/$tag.limit.json" > "$work/$tag.limit"
+  fixc_count="$(wc -l < "$work/$tag.fixc")"
+  limit_count="$(wc -l < "$work/$tag.limit")"
+  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" '
+    .path as $p
+    | select(($limit[0] | index($p)) == null)
+    | if ($fixc[0] | index($p)) != null then del(.error) else . end' "$py_out" > "$work/$tag.py.filtered"
+  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" '
+    .path as $p
+    | select(($limit[0] | index($p)) == null)
+    | if ($fixc[0] | index($p)) != null and .metadata != null
+      then .metadata |= with_entries(select(.key | startswith("catalog_") | not)) else . end' "$cs_out" > "$work/$tag.cs.filtered"
+  # A CPython limit is only an expected divergence when the port parsed the file as JSON.
+  jq -r --slurpfile limit "$work/$tag.limit.json" '
+    .path as $p | select(($limit[0] | index($p)) != null and (.plugin != "json" or .error != null)) | .path' "$cs_out" > "$work/$tag.limit.bad"
 
   count="$(wc -l < "$py_out")"
   files_total=$((files_total + count))
-  expected_total=$((expected_total + expected_count))
+  expected_total=$((expected_total + fixc_count + limit_count))
 
-  if diff -u "$work/$tag.py.filtered" "$work/$tag.cs.filtered" > "$work/$tag.diff"; then
-    echo "ok   $surface $label: $count files, $expected_count expected divergences"
+  if diff -u "$work/$tag.py.filtered" "$work/$tag.cs.filtered" > "$work/$tag.diff" && [[ ! -s "$work/$tag.limit.bad" ]]; then
+    echo "ok   $surface $label: $count files, $((fixc_count + limit_count)) expected divergences"
   else
     status=1
-    echo "FAIL $surface $label: $count files, $expected_count expected divergences"
+    echo "FAIL $surface $label: $count files, $((fixc_count + limit_count)) expected divergences"
     cat "$work/$tag.diff"
+    sed 's/^/     port did not match json where python hit an interpreter limit: /' "$work/$tag.limit.bad"
   fi
-  if [[ "$expected_count" -gt 0 ]]; then
-    sed 's/^/     expected (fix c): /' "$work/$tag.expected"
+  if [[ "$fixc_count" -gt 0 ]]; then
+    sed 's/^/     expected (fix c, plugin output compared without catalog_* keys): /' "$work/$tag.fixc"
+  fi
+  if [[ "$limit_count" -gt 0 ]]; then
+    sed 's/^/     expected (interpreter limit, port output not compared): /' "$work/$tag.limit"
   fi
 }
 
@@ -127,8 +182,8 @@ fi
 # Expected divergence (unreadable directory root): Python's glob swallows the PermissionError and
 # scan_path returns [] silently; the port raises DetectorIOException for a root it cannot read.
 if [[ "$(id -u)" != "0" ]]; then
-  py_locked="$(PYTHONPATH="$repo_root/src" python tools/parity/py_dump.py "$surface" "$gen/locked" "$@")"
-  cs_locked="$("$cli_exe" parity-dump "$surface" "$gen/locked" "$@")"
+  py_locked="$(PYTHONPATH="$repo_root/src" python tools/parity/py_dump.py "$surface" "$gen/locked" "$@" || echo "python dump exited $?")"
+  cs_locked="$("$cli_exe" parity-dump "$surface" "$gen/locked" "$@" || echo "port dump exited $?")"
   if [[ -z "$py_locked" && "$cs_locked" == '{"error": "DetectorIOError", "path": "."}' ]]; then
     echo "ok   $surface generated/unreadable root: expected divergence (python silent, port raises)"
     expected_total=$((expected_total + 1))

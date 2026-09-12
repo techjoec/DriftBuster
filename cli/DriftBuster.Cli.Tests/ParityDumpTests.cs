@@ -157,6 +157,24 @@ public sealed class ParityDumpTests : IDisposable
         ParityDump.SelectPlugins(null).Should().BeNull();
         ParityDump.SelectPlugins("text, missing").Should().ContainSingle().Which.Name.Should().Be("text");
         ParityDump.SelectPlugins("nothing").Should().BeEmpty();
+        ParityDump.SelectPlugins("dockerfile,conf,hcl,yaml,toml,ini,json,text")!.Select(plugin => plugin.Name)
+            .Should().Equal("dockerfile", "conf", "hcl", "yaml", "toml", "ini", "json", "text");
+    }
+
+    // Without --plugins the whole registry runs in priority order (py_dump.PORTED_PLUGINS on the Python side).
+    [Fact]
+    public void Detect_without_plugins_runs_the_full_registry()
+    {
+        Write("appsettings.json", "{\"Logging\": {\"LogLevel\": {\"Default\": \"Warning\"}}}"u8.ToArray());
+        Write("Dockerfile", "FROM alpine:3.20\nRUN apk add curl\n"u8.ToArray());
+        Write("job.hcl", "job \"web\" {\n  type = \"service\"\n}\n"u8.ToArray());
+
+        var lines = Invoke("parity-dump", "detect", _tmp.FullName).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        lines.Should().HaveCount(3);
+        lines[0].Should().Contain("\"path\": \"Dockerfile\", \"plugin\": \"dockerfile\"");
+        lines[1].Should().Contain("\"path\": \"appsettings.json\", \"plugin\": \"json\"").And.Contain("\"variant\": \"structured-settings-json\"");
+        lines[2].Should().Contain("\"path\": \"job.hcl\", \"plugin\": \"hcl\"").And.Contain("\"variant\": \"hashicorp-nomad\"");
     }
 
     private static string Sha256Hex(string text)

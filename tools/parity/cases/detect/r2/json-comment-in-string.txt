@@ -1,0 +1,1 @@
+{"url": "http://x/y", "c": "/* not a comment */ // nor this"}

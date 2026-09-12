@@ -1,15 +1,16 @@
 using System.Collections;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection;
+using DriftBuster.Backend.Detection.Plugins;
 using DriftBuster.Backend.Profiles.Detection;
 
 namespace DriftBuster.Backend.Tests.Detection;
 
 /// <summary>
-/// Mirror of tests/core/test_detector.py plus the doctests in detector.py. ScanWithProfilesAttachesMatches uses a stub
-/// JSON plugin until phase 2 ports the real one; the profile store it needs is the phase 6 DetectionProfileStore, so
-/// the test drives <see cref="IProfileMatcher"/> directly.
+/// Mirror of tests/core/test_detector.py plus the doctests in detector.py. The profile store ScanWithProfilesAttachesMatches
+/// needs is the phase 6 DetectionProfileStore, so the test drives <see cref="IProfileMatcher"/> directly.
 /// </summary>
 public sealed class DetectorTests : IDisposable
 {
@@ -137,20 +138,6 @@ public sealed class DetectorTests : IDisposable
     private sealed class ExplodingOpenDetector(Action<string, Exception>? onError) : Detector(onError: onError)
     {
         protected internal override Stream OpenFile(string path) => throw new IOException("boom");
-    }
-
-    private sealed class JsonStubPlugin : IFormatPlugin
-    {
-        public string Name => "json";
-
-        public int Priority => 200;
-
-        public string Version => "0.0.0";
-
-        public DetectionMatch? Detect(string path, byte[] sample, string? text)
-            => text is not null && text.TrimStart().StartsWith('{')
-                ? new DetectionMatch(Name, "json", "structured-settings-json", 0.9, ["stub"])
-                : null;
     }
 
     private sealed class SingleConfigStore(string profileName, string identifier) : IProfileMatcher
@@ -299,7 +286,7 @@ public sealed class DetectorTests : IDisposable
         Directory.CreateDirectory(targetDir);
         WriteText("configs/appsettings.json", "{\"Logging\": {\"LogLevel\": \"Information\"}}");
 
-        var detector = new Detector(plugins: [new JsonStubPlugin(), .. DefaultPlugins.GetPlugins()]);
+        var detector = new Detector();
         var store = new SingleConfigStore("prod", "cfg-prod");
 
         var results = detector.ScanWithProfiles(targetDir, store, tags: ["prod"]);
@@ -308,10 +295,33 @@ public sealed class DetectorTests : IDisposable
         var profiled = results[0];
         profiled.Detection.Should().NotBeNull();
         profiled.Detection!.FormatName.Should().Be("json");
+        profiled.Detection.Variant.Should().Be("structured-settings-json");
         profiled.Profiles.Should().NotBeEmpty();
         var applied = profiled.Profiles[0];
         applied.Profile.Name.Should().Be("prod");
         applied.Config.Identifier.Should().Be("cfg-prod");
+    }
+
+    // With the whole registry, a run of blank lines before "[s]\nk=v\n" is claimed by toml (priority 165) before ini
+    // (170) on both sides: toml/generic/0.65 with a zero-space key_value_spacing profile. Only --plugins ini yields
+    // sectioned-ini 0.825, which is what IniPluginTests asserts on the plugin alone.
+    [Theory]
+    [InlineData(5000)]
+    [InlineData(30000)]
+    public void BlankRunBeforeSectionIsClaimedByTomlUnderTheFullRegistry(int blankLines)
+    {
+        var path = WriteText($"blank-{blankLines}-then-section.ini", new string('\n', blankLines) + "[s]\nk=v\n");
+        var errors = new List<Exception>();
+
+        var match = new Detector(onError: (_, exc) => errors.Add(exc)).ScanFile(path);
+
+        errors.Should().BeEmpty();
+        match!.PluginName.Should().Be("toml");
+        match.Variant.Should().Be("generic");
+        match.Confidence.Should().BeApproximately(0.65, 1e-9);
+        var spacing = match.Metadata!["key_value_spacing"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
+        spacing["before"].Should().Be(0);
+        spacing["after"].Should().Be(0);
     }
 
     [Fact]
@@ -322,6 +332,47 @@ public sealed class DetectorTests : IDisposable
 
         var budget = () => new Detector(maxTotalSampleBytes: 0);
         budget.Should().Throw<ArgumentOutOfRangeException>().WithMessage("max_total_sample_bytes must be a positive integer*");
+    }
+
+    private sealed class TimingOutPlugin : IFormatPlugin
+    {
+        public string Name => "slow";
+
+        public int Priority => 1;
+
+        public string Version => "0.0.0";
+
+        public DetectionMatch? Detect(string path, byte[] sample, string? text)
+            => throw new RegexMatchTimeoutException(text ?? string.Empty, "x", TimeSpan.FromSeconds(2));
+    }
+
+    // A plugin whose pattern hits its match timeout reports the file through HandleError like an unreadable one
+    // (Python has no timeouts); a tolerant handler keeps the walk going and later plugins are not consulted.
+    [Fact]
+    public void PluginRegexTimeoutIsReportedThroughHandleError()
+    {
+        var target = TmpPath("slow.ini");
+        File.WriteAllText(target, "[s]\nk=v\n");
+        var reported = new List<(string Path, Exception Error)>();
+        var strict = new Detector(plugins: [new TimingOutPlugin(), new IniPlugin()], onError: (path, exc) => reported.Add((path, exc)));
+
+        var act = () => strict.ScanFile(target);
+        act.Should().Throw<DetectorIOException>().Which.Reason.Should().Be("slow plugin timed out matching the sample");
+        reported.Should().ContainSingle().Which.Error.Should().BeOfType<DetectorIOException>()
+            .Which.InnerException.Should().BeOfType<RegexMatchTimeoutException>();
+
+        var tolerant = new SwallowingDetector([new TimingOutPlugin(), new IniPlugin()]);
+        File.WriteAllText(TmpPath("other.ini"), "[t]\nk=v\n");
+        var results = tolerant.ScanPath(_tmp.FullName);
+        results.Select(entry => (Path.GetFileName(entry.Path), entry.Match)).Should().Equal(("other.ini", null), ("slow.ini", null));
+        tolerant.Errors.Select(Path.GetFileName).Should().Equal("other.ini", "slow.ini");
+    }
+
+    private sealed class SwallowingDetector(IEnumerable<IFormatPlugin> plugins) : Detector(plugins: plugins)
+    {
+        public List<string> Errors { get; } = [];
+
+        protected internal override void HandleError(string path, DetectorIOException error) => Errors.Add(path);
     }
 
     [Fact]

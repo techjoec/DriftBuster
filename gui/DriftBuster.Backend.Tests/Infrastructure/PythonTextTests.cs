@@ -4,7 +4,7 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Tests.Infrastructure;
 
-/// <summary>Truth tables generated from CPython 3.13 str.isspace, str.strip, str.split, re \w and str.upper.</summary>
+/// <summary>Truth tables generated from CPython 3.13 str.isspace, str.strip, str.split, re \w, str.lower and str.upper.</summary>
 public sealed class PythonTextTests
 {
     // Every code point for which str.isspace() is true.
@@ -79,6 +79,70 @@ public sealed class PythonTextTests
         PythonText.IsWordRune(new Rune(0x1D400)).Should().BeTrue();   // MATHEMATICAL BOLD CAPITAL A, Lu
         PythonText.IsWordRune(new Rune(0x1F600)).Should().BeFalse();  // GRINNING FACE, So
         PythonText.IsWordRune(new Rune(0x1D7CE)).Should().BeTrue();   // MATHEMATICAL BOLD DIGIT ZERO, Nd
+    }
+
+    // Values are str.lower() on CPython 3.13: the U+0130 expansion and the Final_Sigma context (a cased code point
+    // before and none after, skipping case-ignorables such as combining marks, modifier letters and "." or "'").
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("SETTINGS.INI", "settings.ini")]
+    [InlineData("\u0130", "i\u0307")]
+    [InlineData("SETT\u0130NGS.\u0130N\u0130", "setti\u0307ngs.i\u0307ni\u0307")]
+    [InlineData("\u01C5", "\u01C6")]
+    [InlineData("\u03A3", "\u03C3")]
+    [InlineData("\u0391\u03A3", "\u03B1\u03C2")]
+    [InlineData("\u0391\u03A3\u0391", "\u03B1\u03C3\u03B1")]
+    [InlineData("\u0391.\u03A3", "\u03B1.\u03C2")]
+    [InlineData("\u0391\u03A3.\u0392", "\u03B1\u03C3.\u03B2")]
+    [InlineData("A\u0345 \u03A3", "a\u0345 \u03C3")]
+    [InlineData("\u03A3\u03A3", "\u03C3\u03C2")]
+    [InlineData("\u02B0\u03A3", "\u02B0\u03C3")]
+    [InlineData("\u216F\u03A3", "\u217F\u03C2")]
+    [InlineData("\u0391\u03A3\u0307", "\u03B1\u03C2\u0307")]
+    [InlineData("\u24B6\u0301\u03A3", "\u24D0\u0301\u03C2")]
+    [InlineData("\U0001D400\u03A3", "\U0001D400\u03C2")]
+    [InlineData("\U0001F130\u03A3\U0001F600", "\U0001F130\u03C2\U0001F600")]
+    public void LowerMatchesStrLower(string text, string expected)
+    {
+        PythonText.Lower(text).Should().Be(expected);
+    }
+
+    // str.lower() leaves a lone surrogate (category Cs) where it is; a paired one is a code point of its own.
+    [Theory]
+    [InlineData("\ud83d", "\ud83d")]
+    [InlineData("\ude00", "\ude00")]
+    [InlineData("A\ud83dB", "a\ud83db")]
+    [InlineData("\ud83d\ud83d", "\ud83d\ud83d")]
+    [InlineData("\ude00\ud83d", "\ude00\ud83d")]
+    [InlineData("\u0391\u03a3\ud83d", "\u03b1\u03c2\ud83d")]
+    [InlineData("\ud83d\ude00", "\ud83d\ude00")]
+    public void LowerKeepsUnpairedSurrogates(string text, string expected)
+    {
+        PythonText.Lower(text).Should().Be(expected);
+    }
+
+    [Fact]
+    public void LowerDiffersFromToLowerInvariantOnlyOnDottedIAndFinalSigma()
+    {
+        for (var code = 0; code <= 0x10FFFF; code++)
+        {
+            if (code is (>= 0xD800 and <= 0xDFFF) or 0x0130 or 0x03A3)
+            {
+                continue;
+            }
+
+            var text = char.ConvertFromUtf32(code);
+            PythonText.Lower(text).Should().Be(text.ToLowerInvariant(), $"U+{code:X4}");
+        }
+    }
+
+    [Theory]
+    [InlineData("\u0130", "\u0130")]
+    [InlineData("\u0391\u03A3", "\u03B1\u03C3")]
+    public void ToLowerInvariantIsNotStrLower(string text, string invariant)
+    {
+        text.ToLowerInvariant().Should().Be(invariant);
+        PythonText.Lower(text).Should().NotBe(invariant);
     }
 
     [Theory]

@@ -18,9 +18,19 @@ public static class DefaultPlugins
         return registry;
     }
 
-    /// <summary>Fresh instances of every built-in plugin, in registration order.</summary>
+    /// <summary>
+    /// Fresh instances of every built-in plugin, in Python registration (priority) order: registry-live 30, xml 100
+    /// and binary-hybrid 210 join the list when phase 3 ports them.
+    /// </summary>
     public static IReadOnlyList<IFormatPlugin> CreateBuiltIns() =>
     [
+        new DockerfilePlugin(),
+        new ConfPlugin(),
+        new HclPlugin(),
+        new YamlPlugin(),
+        new TomlPlugin(),
+        new IniPlugin(),
+        new JsonPlugin(),
         new TextPlugin(),
     ];
 

@@ -1,0 +1,5 @@
+# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
+# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
+from alpine
+uſer root
+workıdİr /app

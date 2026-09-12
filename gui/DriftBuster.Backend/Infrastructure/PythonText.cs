@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Globalization;
 using System.Text;
 
@@ -5,8 +6,9 @@ namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
 /// Python <c>str</c> semantics that .NET does not share: the whitespace set of <c>str.isspace</c> / <c>re \s</c>
-/// (adds U+001C-U+001F to <see cref="char.IsWhiteSpace(char)"/>), the word set of <c>re \w</c> on code points, and
-/// the full uppercase mapping of <c>str.upper</c> (one code point may become several).
+/// (adds U+001C-U+001F to <see cref="char.IsWhiteSpace(char)"/>), the word set of <c>re \w</c> on code points, the
+/// full lowercase mapping of <c>str.lower</c> (U+0130 expands, final sigma is contextual) and the full uppercase
+/// mapping of <c>str.upper</c> (one code point may become several).
 /// </summary>
 public static class PythonText
 {
@@ -98,6 +100,120 @@ public static class PythonText
             UnicodeCategory.DecimalDigitNumber or UnicodeCategory.LetterNumber or UnicodeCategory.OtherNumber => true,
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// <c>str.lower()</c>: the simple lowercase mapping of every code point, the one unconditional SpecialCasing
+    /// expansion (U+0130 to "i\u0307") and the Final_Sigma rule (U+03A3 becomes U+03C2 when a cased code point
+    /// precedes it and none follows, skipping case-ignorable code points on both sides). An unpaired surrogate is a
+    /// code point of its own to Python (category Cs, no case mapping) and passes through unchanged.
+    /// </summary>
+    public static string Lower(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var builder = new StringBuilder(text.Length);
+        var offset = 0;
+        while (offset < text.Length)
+        {
+            if (Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out var consumed) != OperationStatus.Done)
+            {
+                builder.Append(text[offset]);
+                offset++;
+                continue;
+            }
+
+            var next = offset + consumed;
+            if (rune.Value == 0x0130)
+            {
+                builder.Append("i\u0307");
+            }
+            else if (rune.Value == 0x03A3)
+            {
+                builder.Append(IsFinalSigma(text, offset, next) ? '\u03C2' : '\u03C3');
+            }
+            else
+            {
+                builder.Append(Rune.ToLowerInvariant(rune).ToString());
+            }
+
+            offset = next;
+        }
+
+        return builder.ToString();
+    }
+
+    // CPython handle_capital_sigma: cased before (skipping case-ignorables) and not cased after (likewise).
+    private static bool IsFinalSigma(string text, int start, int end)
+    {
+        var offset = start;
+        var casedBefore = false;
+        while (offset > 0)
+        {
+            Rune.DecodeLastFromUtf16(text.AsSpan(0, offset), out var rune, out var consumed);
+            offset -= consumed;
+            if (!IsCaseIgnorable(rune))
+            {
+                casedBefore = IsCased(rune);
+                break;
+            }
+        }
+
+        if (!casedBefore)
+        {
+            return false;
+        }
+
+        offset = end;
+        while (offset < text.Length)
+        {
+            Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out var consumed);
+            offset += consumed;
+            if (!IsCaseIgnorable(rune))
+            {
+                return !IsCased(rune);
+            }
+        }
+
+        return true;
+    }
+
+    // Case_Ignorable: Mn, Me, Cf, Lm, Sk plus Word_Break MidLetter, MidNumLet and Single_Quote. Verified against the
+    // interpreter over every code point (a code point that is both cased and case-ignorable is skipped, as CPython
+    // tests case-ignorable first).
+    private static bool IsCaseIgnorable(Rune rune)
+    {
+        switch (Rune.GetUnicodeCategory(rune))
+        {
+            case UnicodeCategory.NonSpacingMark:
+            case UnicodeCategory.EnclosingMark:
+            case UnicodeCategory.Format:
+            case UnicodeCategory.ModifierLetter:
+            case UnicodeCategory.ModifierSymbol:
+                return true;
+            default:
+                return rune.Value is 0x27 or 0x2E or 0x3A or 0xB7 or 0x387 or 0x55F or 0x5F4 or 0x2018 or 0x2019 or 0x2024
+                    or 0x2027 or 0xFE13 or 0xFE52 or 0xFE55 or 0xFF07 or 0xFF0E or 0xFF1A;
+        }
+    }
+
+    // Cased: Lu, Ll, Lt plus the Other_Lowercase and Other_Uppercase code points that are not case-ignorable
+    // (ordinal indicators, Roman numerals, circled and squared Latin letters).
+    private static bool IsCased(Rune rune)
+    {
+        switch (Rune.GetUnicodeCategory(rune))
+        {
+            case UnicodeCategory.UppercaseLetter:
+            case UnicodeCategory.LowercaseLetter:
+            case UnicodeCategory.TitlecaseLetter:
+                return true;
+            default:
+                return rune.Value is 0xAA or 0xBA
+                    or (>= 0x2160 and <= 0x217F)
+                    or (>= 0x24B6 and <= 0x24E9)
+                    or (>= 0x1F130 and <= 0x1F149)
+                    or (>= 0x1F150 and <= 0x1F169)
+                    or (>= 0x1F170 and <= 0x1F189);
+        }
     }
 
     /// <summary><c>str.upper()</c> of a single code point, including the SpecialCasing expansions (\u00DF to SS, \uFB01 to FI).</summary>

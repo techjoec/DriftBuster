@@ -7,38 +7,13 @@ using DriftBuster.Backend.Profiles.Detection;
 namespace DriftBuster.Backend.Tests.Detection;
 
 /// <summary>
-/// Mirror of tests/core/test_detector_ignore_exception.py. Python flags a tab-indented YAML file through the YAML
-/// plugin (phase 2); until then a stub plugin raises the same needs_review flag on the file.
+/// Mirror of tests/core/test_detector_ignore_exception.py: the real YAML plugin flags the tab-indented file.
 /// </summary>
 public sealed class DetectorIgnoreExceptionTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-ignore-");
 
     public void Dispose() => _tmp.Delete(recursive: true);
-
-    private sealed class FlaggingYamlStub : IFormatPlugin
-    {
-        public string Name => "yaml";
-
-        public int Priority => 160;
-
-        public string Version => "0.0.0";
-
-        public DetectionMatch? Detect(string path, byte[] sample, string? text)
-        {
-            if (text is null)
-            {
-                return null;
-            }
-
-            var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["needs_review"] = true,
-                ["review_reasons"] = new List<string> { "Tab indentation present" },
-            };
-            return new DetectionMatch(Name, "yaml", "generic", 0.7, ["stub"], metadata);
-        }
-    }
 
     // The applied configs blow up as soon as the ignore-review check enumerates them.
     private sealed class RaisingConfigs : IReadOnlyList<AppliedProfileConfig>
@@ -63,13 +38,16 @@ public sealed class DetectorIgnoreExceptionTests : IDisposable
         var target = Path.Combine(_tmp.FullName, "config.yaml");
         File.WriteAllText(target, "apiVersion: v1\n\tkind: ConfigMap\n", new UTF8Encoding(false));
 
-        var detector = new Detector(plugins: [new FlaggingYamlStub(), .. DefaultPlugins.GetPlugins()]);
+        var detector = new Detector();
         var results = detector.ScanWithProfiles(_tmp.FullName, new StoreStub());
 
         results.Should().NotBeEmpty();
         results[0].Detection.Should().NotBeNull();
+        results[0].Detection!.Variant.Should().Be("kubernetes-manifest");
         // needs_review stays set: the exception makes ignore false.
         results[0].Detection!.Metadata!["needs_review"].Should().Be(true);
+        results[0].Detection!.Metadata!["review_reasons"].Should().BeAssignableTo<System.Collections.IEnumerable>().Subject
+            .Cast<object?>().Should().Equal("Tab indentation present in YAML-like content");
         results[0].Detection!.Metadata.Should().NotContainKey("review_ignored");
         results[0].Profiles.Should().BeOfType<RaisingConfigs>();
     }
@@ -80,7 +58,7 @@ public sealed class DetectorIgnoreExceptionTests : IDisposable
         var target = Path.Combine(_tmp.FullName, "config.yaml");
         File.WriteAllText(target, "apiVersion: v1\n\tkind: ConfigMap\n", new UTF8Encoding(false));
 
-        var detector = new Detector(plugins: [new FlaggingYamlStub()]);
+        var detector = new Detector();
         var results = detector.ScanWithProfiles(_tmp.FullName, new IgnoringStore());
 
         var metadata = results.Single().Detection!.Metadata!;

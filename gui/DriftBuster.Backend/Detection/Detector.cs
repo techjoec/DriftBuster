@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection.Catalog;
 using DriftBuster.Backend.Infrastructure;
@@ -349,12 +350,31 @@ public class Detector
             _budgetExhausted = true;
         }
 
+        var first = FirstMatch(path, sample, text);
+        return first is null ? null : Enrich(first, sample, encoding, truncated);
+    }
+
+    // First plugin match in registry order. A pattern that gives up on this sample must not abort the scan of every
+    // other file, so a match timeout is reported the way an unreadable file is; Python has no match timeouts, and
+    // this never fires on a sample the port matches in bounded time.
+    private DetectionMatch? FirstMatch(string path, byte[] sample, string? text)
+    {
         foreach (var plugin in _plugins)
         {
-            var match = plugin.Detect(path, sample, text);
+            DetectionMatch? match;
+            try
+            {
+                match = plugin.Detect(path, sample, text);
+            }
+            catch (RegexMatchTimeoutException exc)
+            {
+                HandleError(path, new DetectorIOException(path, $"{plugin.Name} plugin timed out matching the sample", exc));
+                return null;
+            }
+
             if (match is not null)
             {
-                return Enrich(match, sample, encoding, truncated);
+                return match;
             }
         }
 

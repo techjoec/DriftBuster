@@ -65,4 +65,17 @@ public sealed class CanonicalJsonTests
         CanonicalJson.Serialize(new Uri("https://example.test/a")).Should().Be("\"https://example.test/a\"");
         CanonicalJson.Serialize(DayOfWeek.Monday).Should().Be("\"Monday\"");
     }
+
+    // py_dump.py rewrites every unpaired surrogate to the literal text \uXXXX before json.dumps escapes the backslash.
+    [Fact]
+    public void Lone_surrogates_are_written_as_literal_escapes_on_both_sides()
+    {
+        CanonicalJson.Serialize("\ud83d").Should().Be("\"\\\\ud83d\"");
+        CanonicalJson.Serialize("a\ude00b").Should().Be("\"a\\\\ude00b\"");
+        CanonicalJson.Serialize("\ud83d\ude00").Should().Be("\"\ud83d\ude00\"");
+        CanonicalJson.Serialize("\ud83dx\ud83d\ude00").Should().Be("\"\\\\ud83dx\ud83d\ude00\"");
+        CanonicalJson.Serialize(new Dictionary<string, object?>(StringComparer.Ordinal) { ["\ud83d"] = 1, ["a"] = 2 })
+            .Should().Be("{\"\\\\ud83d\": 1, \"a\": 2}");
+        CanonicalJson.EscapeLoneSurrogates("plain").Should().BeSameAs("plain");
+    }
 }

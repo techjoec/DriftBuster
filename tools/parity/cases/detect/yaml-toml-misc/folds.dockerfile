@@ -1,0 +1,5 @@
+# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
+# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
+# only folded directives, no FROM
+expoſe 80
+worKdir /x
