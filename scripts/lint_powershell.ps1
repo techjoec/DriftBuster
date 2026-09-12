@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 param(
-    [string]$Path = "cli/DriftBuster.PowerShell"
+    [string]$Path = "cli"
 )
 
 Set-StrictMode -Version Latest
