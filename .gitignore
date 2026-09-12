@@ -109,8 +109,9 @@ artifacts/**/*.sha256
 artifacts/gui-packaging/*.json
 artifacts/builds/**/*.log
 
-
-.env
-
 # Personal/lab material that must never reach the public tree
 private-dev-assets/
+.env
+.env.*
+CLAUDE.md
+AGENTS.md
