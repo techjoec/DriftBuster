@@ -14,7 +14,7 @@ namespace DriftBuster.Gui.Converters
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             var isTrue = value is true;
-            if (parameter is string param && param.Contains(";"))
+            if (parameter is string param && param.Contains(';', StringComparison.Ordinal))
             {
                 var parts = param.Split(';', 2);
                 var trueColor = Color.Parse(parts[0].Trim());

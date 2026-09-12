@@ -324,7 +324,7 @@ public sealed class DriftbusterBackendTests
 
             var results = ((IEnumerable<string>)method!.Invoke(null, new object[] { root.FullName, CancellationToken.None })!).ToArray();
 
-            Assert.Contains(file, results);
+            Assert.Contains(file, results, StringComparer.Ordinal);
         }
         finally
         {

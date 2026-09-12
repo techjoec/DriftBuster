@@ -91,7 +91,7 @@ public sealed class ResultsCatalogViewModelTests
 
         string[]? hosts = null;
         viewModel.ReScanRequested += (_, e) => hosts = e.Value.ToArray();
-        var partial = viewModel.FilteredEntries.Single(entry => entry.DisplayName.Contains("plugins"));
+        var partial = viewModel.FilteredEntries.Single(entry => entry.DisplayName.Contains("plugins", StringComparison.Ordinal));
         viewModel.ReScanMissingCommand.Execute(partial);
         hosts.Should().NotBeNull();
         hosts!.Should().Contain("server02");

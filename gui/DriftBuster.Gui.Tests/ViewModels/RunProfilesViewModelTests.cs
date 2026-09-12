@@ -103,7 +103,7 @@ public class RunProfilesViewModelTests
             Assert.Equal("Run complete. Files copied: 2.", viewModel.StatusMessage);
             var results = viewModel.RunResults.ToList();
             Assert.Equal(2, results.Count);
-            Assert.Equal(new[] { "A", "B" }, results.Select(r => r.Source));
+            Assert.Equal(new[] { "A", "B" }, results.Select(r => r.Source), StringComparer.Ordinal);
             Assert.Equal("2,048 bytes", results[0].Size);
             Assert.Equal("1 byte", results[1].Size);
             Assert.Equal("hash-a", results[0].Hash);
