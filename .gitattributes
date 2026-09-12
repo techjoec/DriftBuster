@@ -1,0 +1,3 @@
+# Parity case corpus must round-trip byte for byte; never normalise line endings.
+tools/parity/cases/** -text
+fixtures/** -text
