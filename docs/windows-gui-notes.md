@@ -11,20 +11,13 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 - **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists using the built-in rule set.
 - **Assets**: `Directory.Build.props` centralises net10.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
 
-## Known Issue: `$Default` Font Crash on .NET 10.0.1
+## Embedded Inter Font
 
-Framework-dependent builds crash on .NET 10.0.1 with:
+The GUI ships Inter through `Avalonia.Fonts.Inter`, which registers the font under the collection URI `fonts:Inter`. Every reference to the family (the `FontManagerOptions` default and fallback in `Program.cs`, the `Window` style in `Assets/Styles/Theme.axaml`) must use the keyed form `fonts:Inter#Inter`. A bare `Inter` only searches the system fonts, so on any machine without Inter installed the first text layout throws:
 ```
-System.InvalidOperationException: Could not create glyphTypeface. Font family: $Default (key: )
+System.InvalidOperationException: Could not create glyphTypeface. Font family: Inter (key: )
 ```
-
-**Root cause**: `FontFamily("Inter")` has no URI key, so `FontManager` only searches `SystemFonts` (which lacks the embedded Inter font). The embedded Inter font is registered under `fonts:Inter` via `.WithInterFont()` but the default font resolution doesn't search that collection.
-
-**Fix** (`App.axaml.cs`): try/catch around `new MainWindow()` retargets `FontManager.DefaultFontFamily` to `FontFamily("fonts:Inter#Inter")` which explicitly targets the `InterFontCollection`. This only activates when the crash occurs; the happy path (self-contained builds, .NET 10.0.3+) is untouched.
-
-Self-contained builds bundle .NET 10.0.3+ and don't trigger this issue.
-
-The fix was diagnosed and verified on a Windows VM running the framework-dependent build on .NET 10.0.1; that workflow is kept outside the repository.
+The headless test suite cannot catch this because the headless platform stubs font resolution; a real Windows guest without Inter installed is the check. Verification on such a guest is a lab workflow kept outside the repository.
 
 ## Host Dependencies
 

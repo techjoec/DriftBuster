@@ -141,7 +141,6 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 ### Root Validation & Persistence
 - Switching a server to **Custom roots** keeps the validation summary live while you type. Duplicate or relative paths flag the card immediately, and summaries stay cached even when the card loses focus.
 - Session saves now persist the active catalog sort descriptor, catalog filters, timeline filter, selected view (setup/results/drilldown), and root ordering so reloading a session restores the same working state.
-- Font preload guardrail: `App.EnsureFontResources` seeds the `fonts:SystemFonts` alias dictionary during `BuildAvaloniaApp()`, so Release/Debug headless runs hydrate Inter before the multi-server view instantiates catalog headers or guidance text.
 - Manual walkthrough recorded in `artifacts/manual-runs/2025-10-24-multi-server-notes.md` exercises save/restore, confirms cached diff planner MRU entries, and maps the persisted timeline filter shown in the Dark+ capture above.
 
 

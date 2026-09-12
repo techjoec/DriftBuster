@@ -89,7 +89,7 @@
   </Styles.Resources>
 
   <Style Selector="Window">
-    <Setter Property="FontFamily" Value="Inter" />
+    <Setter Property="FontFamily" Value="fonts:Inter#Inter" />
     <Setter Property="Background" Value="{DynamicResource Brush.WindowBackground}" />
     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
   </Style>

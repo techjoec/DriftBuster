@@ -11,6 +11,8 @@ namespace DriftBuster.Gui
     [ExcludeFromCodeCoverage]
     internal static class Program
     {
+        internal const string InterFontFamily = "fonts:Inter#Inter";
+
         [STAThread]
         public static void Main(string[] args)
         {
@@ -21,14 +23,17 @@ namespace DriftBuster.Gui
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
+                // The family must carry the collection URI: a bare "Inter" only searches the
+                // system fonts, so the embedded collection registered by WithInterFont is never
+                // consulted on a machine without Inter installed.
                 .With(new FontManagerOptions
                 {
-                    DefaultFamilyName = "Inter",
+                    DefaultFamilyName = InterFontFamily,
                     FontFallbacks = new[]
                     {
                         new FontFallback
                         {
-                            FontFamily = new FontFamily("Inter")
+                            FontFamily = new FontFamily(InterFontFamily)
                         }
                     }
                 })
