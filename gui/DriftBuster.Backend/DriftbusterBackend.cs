@@ -2459,7 +2459,7 @@ namespace DriftBuster.Backend
                     return embedded.RootElement.Clone();
                 }
 
-                var path = ResolveRequiredFile(baseDir, "src", "driftbuster", "secret_rules.json");
+                var path = ResolveRequiredFile(baseDir, "gui", "DriftBuster.Backend", "Resources", "secret_rules.json");
                 using var stream = File.OpenRead(path);
                 using var document = JsonDocument.Parse(stream);
                 return document.RootElement.Clone();

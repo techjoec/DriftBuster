@@ -5,8 +5,9 @@ show_help() {
   cat <<'USAGE'
 Usage: scripts/verify_coverage.sh [--perf-smoke] [--perf-filter <expression>]
 
-Runs the Python coverage gate (pytest, fail-under=90) and the .NET line
-coverage gate (DOTNET_THRESHOLD, default 83). With --perf-smoke it also runs
+Runs the Python coverage gate (pytest, fail-under=90) and the merged .NET line
+coverage gate over the GUI, Backend and CLI test projects (DOTNET_THRESHOLD,
+default 83). With --perf-smoke it also runs
 the targeted performance smoke suite using the provided test filter
 (default: Category=PerfSmoke).
 USAGE
@@ -58,10 +59,20 @@ coverage run --source=src/driftbuster -m pytest -q
 coverage report --fail-under=90
 coverage json -o coverage.json
 
-echo "-- .NET tests with line coverage threshold (${DOTNET_THRESHOLD}%)"
-run_dotnet test -p:CollectCoverage=true \
-  -p:Threshold="${DOTNET_THRESHOLD}" -p:ThresholdType=line -p:ThresholdStat=total \
-  gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -v minimal
+echo "-- .NET tests with merged line coverage threshold (${DOTNET_THRESHOLD}%)"
+coverage_dir="${repo_root}/build/coverage"
+rm -rf "${coverage_dir}"
+mkdir -p "${coverage_dir}"
+run_dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -v minimal \
+  -p:CollectCoverage=true -p:CoverletOutputFormat=json \
+  -p:CoverletOutput="${coverage_dir}/gui.json"
+run_dotnet test gui/DriftBuster.Backend.Tests/DriftBuster.Backend.Tests.csproj -v minimal \
+  -p:CollectCoverage=true -p:CoverletOutputFormat=json \
+  -p:MergeWith="${coverage_dir}/gui.json" -p:CoverletOutput="${coverage_dir}/backend.json"
+run_dotnet test cli/DriftBuster.Cli.Tests/DriftBuster.Cli.Tests.csproj -v minimal \
+  -p:CollectCoverage=true -p:CoverletOutputFormat=json \
+  -p:MergeWith="${coverage_dir}/backend.json" -p:CoverletOutput="${coverage_dir}/merged.json" \
+  -p:Threshold="${DOTNET_THRESHOLD}" -p:ThresholdType=line -p:ThresholdStat=total
 
 if [[ "${RUN_PERF_SMOKE}" == "true" ]]; then
   echo "-- Performance smoke suite (${PERF_FILTER})"

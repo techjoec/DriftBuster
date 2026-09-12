@@ -28,4 +28,13 @@ run_dotnet format gui/DriftBuster.Gui/DriftBuster.Gui.csproj --verify-no-changes
 echo "[lint] dotnet format gui tests"
 run_dotnet format gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --verify-no-changes --verbosity minimal
 
+echo "[lint] dotnet format backend tests"
+run_dotnet format gui/DriftBuster.Backend.Tests/DriftBuster.Backend.Tests.csproj --verify-no-changes --verbosity minimal
+
+echo "[lint] dotnet format cli"
+run_dotnet format cli/DriftBuster.Cli/DriftBuster.Cli.csproj --verify-no-changes --verbosity minimal
+
+echo "[lint] dotnet format cli tests"
+run_dotnet format cli/DriftBuster.Cli.Tests/DriftBuster.Cli.Tests.csproj --verify-no-changes --verbosity minimal
+
 echo "[lint] complete"

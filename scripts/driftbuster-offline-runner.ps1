@@ -212,7 +212,7 @@ function Get-DbSecretRules {
 
     $candidates = @(
         (Join-Path -Path $PSScriptRoot -ChildPath 'secret-detection-rules.json'),
-        (Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '..\src\driftbuster') -ChildPath 'secret_rules.json')
+        (Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '..\gui\DriftBuster.Backend\Resources') -ChildPath 'secret_rules.json')
     )
 
     foreach ($candidate in $candidates) {
