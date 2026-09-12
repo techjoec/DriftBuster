@@ -59,32 +59,38 @@
                     automation:AutomationProperties.Name="Configuration catalog">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Config"
+                                  x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding DisplayName}"
                                   Width="2*"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Config}" />
               <DataGridTextColumn Header="Drift"
+                                  x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding DriftSummary}"
                                   Width="*"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Drift}" />
               <DataGridTextColumn Header="Coverage"
+                                  x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding CoverageText}"
                                   Width="*"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Coverage}" />
               <DataGridTextColumn Header="Format"
+                                  x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding Format}"
                                   Width="*"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Format}" />
               <DataGridTextColumn Header="Severity"
+                                  x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding Severity}"
                                   Width="*"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Severity}" />
               <DataGridTextColumn Header="Updated"
+                                  x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding LastUpdatedText}"
                                   Width="1.5*"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Updated}" />
               <DataGridTemplateColumn Header="Tags" Width="2*">
                 <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
+                  <DataTemplate x:DataType="vm:ConfigCatalogItemViewModel">
                     <WrapPanel>
                       <Border Background="#4C1D95" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasDrift}" Margin="0,0,6,6">
                         <TextBlock Text="Drift" FontSize="12" />
@@ -104,11 +110,11 @@
               </DataGridTemplateColumn>
               <DataGridTemplateColumn Header="Actions" Width="1.5*">
                 <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
+                  <DataTemplate x:DataType="vm:ConfigCatalogItemViewModel">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <Button Content="Drilldown"
                               Classes="outline"
-                              Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                              Command="{Binding ((vm:ResultsCatalogViewModel)DataContext).DrilldownCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                               CommandParameter="{Binding}"
                               automation:AutomationProperties.AutomationId="Catalog.Grid.Drilldown" />
                     </StackPanel>
@@ -150,12 +156,12 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <Button Content="Drilldown"
                               Classes="outline"
-                              Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              Command="{Binding ((vm:ResultsCatalogViewModel)DataContext).DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                               CommandParameter="{Binding}"
                               automation:AutomationProperties.AutomationId="Catalog.Partial.Drilldown" />
                       <Button Content="Re-scan missing"
                               Classes="outline"
-                              Command="{Binding DataContext.ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              Command="{Binding ((vm:ResultsCatalogViewModel)DataContext).ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                               CommandParameter="{Binding}"
                               automation:AutomationProperties.AutomationId="Catalog.Partial.ReScanMissing" />
                     </StackPanel>
@@ -177,12 +183,12 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <Button Content="Drilldown"
                               Classes="outline"
-                              Command="{Binding DataContext.DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              Command="{Binding ((vm:ResultsCatalogViewModel)DataContext).DrilldownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                               CommandParameter="{Binding}"
                               automation:AutomationProperties.AutomationId="Catalog.Partial.Drilldown" />
                       <Button Content="Re-scan missing"
                               Classes="outline"
-                              Command="{Binding DataContext.ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              Command="{Binding ((vm:ResultsCatalogViewModel)DataContext).ReScanMissingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                               CommandParameter="{Binding}"
                               automation:AutomationProperties.AutomationId="Catalog.Partial.ReScanMissing" />
                     </StackPanel>

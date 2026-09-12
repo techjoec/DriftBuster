@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
-    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <Version>$(DriftBusterGuiVersion)</Version>
     <AssemblyVersion>$(DriftBusterGuiVersion)</AssemblyVersion>

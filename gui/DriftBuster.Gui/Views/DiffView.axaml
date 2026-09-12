@@ -66,7 +66,7 @@
                                 Click="OnBrowseFile"
                                 automation:AutomationProperties.AutomationId="DiffPlanner.Input.Browse" />
                         <Button Content="Remove" Classes="outline"
-                                Command="{Binding DataContext.RemoveVersionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                Command="{Binding ((vm:DiffViewModel)DataContext).RemoveVersionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}"
                                 automation:AutomationProperties.AutomationId="DiffPlanner.Input.Remove" />
                       </StackPanel>
@@ -137,14 +137,14 @@
                                 Padding="6,4"
                                 Tag="{Binding Mode}"
                                 Content="{Binding DisplayName}"
-                                Command="{Binding DataContext.SelectJsonViewModeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                Command="{Binding ((vm:DiffViewModel)DataContext).SelectJsonViewModeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding Mode}"
                                 automation:AutomationProperties.AutomationId="{Binding Mode}"
                                 automation:AutomationProperties.Name="{Binding DisplayName}">
                     <ToggleButton.IsChecked>
                       <MultiBinding Converter="{x:Static conv:DiffJsonViewModeMatchConverter.Instance}">
                         <Binding Path="Mode" />
-                        <Binding Path="DataContext.JsonViewMode" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                        <Binding Path="((vm:DiffViewModel)DataContext).JsonViewMode" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                       </MultiBinding>
                     </ToggleButton.IsChecked>
                   </ToggleButton>

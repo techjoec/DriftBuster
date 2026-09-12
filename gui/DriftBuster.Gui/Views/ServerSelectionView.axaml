@@ -132,7 +132,7 @@
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
                     <TextBlock Text="Scope" Classes="subtitle" />
                     <ComboBox Grid.Column="1"
-                              ItemsSource="{Binding DataContext.ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              ItemsSource="{Binding ((vm:ServerSelectionViewModel)DataContext).ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               SelectedValue="{Binding Scope, Mode=TwoWay}"
                               SelectedValueBinding="{Binding Value}"
                               automation:AutomationProperties.AutomationId="ServerSelection.HostCard.Scope"
@@ -155,7 +155,7 @@
                                     Width="36"
                                     Content="✕"
                                     Classes="outline"
-                                    Command="{Binding DataContext.RemoveRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Command="{Binding ((vm:ServerSelectionViewModel)DataContext).RemoveRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}"
                                     automation:AutomationProperties.AutomationId="ServerSelection.HostCard.RemoveRoot"
                                     automation:AutomationProperties.Name="Remove root" />
@@ -173,7 +173,7 @@
                       <Button Grid.Column="1"
                               Content="Add"
                               Classes="outline"
-                              Command="{Binding DataContext.AddRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              Command="{Binding ((vm:ServerSelectionViewModel)DataContext).AddRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
                               automation:AutomationProperties.AutomationId="ServerSelection.HostCard.AddRoot" />
                     </Grid>
@@ -186,7 +186,7 @@
                     <Button Content="Retry"
                             Classes="outline"
                             IsVisible="{Binding CanRetry}"
-                            Command="{Binding DataContext.RunMissingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Command="{Binding ((vm:ServerSelectionViewModel)DataContext).RunMissingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding HostId}"
                             automation:AutomationProperties.AutomationId="ServerSelection.HostCard.Retry" />
                   </StackPanel>
@@ -244,7 +244,7 @@
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
                     <TextBlock Text="Scope" Classes="subtitle" />
                     <ComboBox Grid.Column="1"
-                              ItemsSource="{Binding DataContext.ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              ItemsSource="{Binding ((vm:ServerSelectionViewModel)DataContext).ScopeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               SelectedValue="{Binding Scope, Mode=TwoWay}"
                               SelectedValueBinding="{Binding Value}"
                               automation:AutomationProperties.AutomationId="ServerSelection.HostCard.Scope"
@@ -267,7 +267,7 @@
                                     Width="36"
                                     Content="✕"
                                     Classes="outline"
-                                    Command="{Binding DataContext.RemoveRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Command="{Binding ((vm:ServerSelectionViewModel)DataContext).RemoveRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}"
                                     automation:AutomationProperties.AutomationId="ServerSelection.HostCard.RemoveRoot"
                                     automation:AutomationProperties.Name="Remove root" />
@@ -285,7 +285,7 @@
                       <Button Grid.Column="1"
                               Content="Add"
                               Classes="outline"
-                              Command="{Binding DataContext.AddRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              Command="{Binding ((vm:ServerSelectionViewModel)DataContext).AddRootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}"
                               automation:AutomationProperties.AutomationId="ServerSelection.HostCard.AddRoot" />
                     </Grid>
@@ -298,7 +298,7 @@
                     <Button Content="Retry"
                             Classes="outline"
                             IsVisible="{Binding CanRetry}"
-                            Command="{Binding DataContext.RunMissingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Command="{Binding ((vm:ServerSelectionViewModel)DataContext).RunMissingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding HostId}"
                             automation:AutomationProperties.AutomationId="ServerSelection.HostCard.Retry" />
                   </StackPanel>
@@ -329,7 +329,7 @@
                       <Button Grid.Column="3"
                               Content="View drilldown"
                               Classes="outline"
-                              Command="{Binding DataContext.ShowDrilldownForHostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              Command="{Binding ((vm:ServerSelectionViewModel)DataContext).ShowDrilldownForHostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding HostId}"
                               ToolTip.Tip="Open the most recent drilldown for this host."
                               automation:AutomationProperties.Name="{Binding Label, StringFormat='View drilldown for {0}'}"
@@ -378,7 +378,7 @@
                         <Button Content="Copy entry"
                                 HorizontalAlignment="Right"
                                 Classes="outline"
-                                Command="{Binding DataContext.CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                Command="{Binding ((vm:ServerSelectionViewModel)DataContext).CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}"
                                 automation:AutomationProperties.AutomationId="ServerSelection.Activity.Copy" />
                       </StackPanel>
@@ -403,7 +403,7 @@
                         <Button Content="Copy entry"
                                 HorizontalAlignment="Right"
                                 Classes="outline"
-                                Command="{Binding DataContext.CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                Command="{Binding ((vm:ServerSelectionViewModel)DataContext).CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}"
                                 automation:AutomationProperties.AutomationId="ServerSelection.Activity.Copy" />
                       </StackPanel>

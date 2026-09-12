@@ -34,7 +34,7 @@ The headless test suite cannot catch this because the headless platform stubs fo
 3. Document GUI launch instructions plus dependency checklist in the main README or companion doc. Include how registry scan outputs (`registry_scan.json`) appear alongside file-based results when present.
 4. Add UX polish: accent/outline button variants, larger hit targets, table/card refinements, backend status dot, and theme switching.
 5. Prepare Windows packaging guidance (`dotnet publish -r win-x64 -c Release /p:PublishSingleFile=true`) once features settle.
-6. Compiled bindings remain disabled (`AvaloniaUseCompiledBindingsByDefault=false`); add `x:DataType` hints later if we re-enable them.
+6. Compiled bindings are the default (`AvaloniaUseCompiledBindingsByDefault=true`). Every view declares `x:DataType`; bindings that reach a parent view model through `RelativeSource` cast the ancestor `DataContext` to its type. The one exception is documented inline in `RunProfilesView.axaml`.
 
 > Detailed host prep commands and logs live in `notes/dev-host-prep.md`.
 
