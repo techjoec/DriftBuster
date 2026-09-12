@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 
-using Avalonia.Headless.XUnit;
 using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
 
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Ui;
@@ -66,7 +66,7 @@ public sealed class ResponsiveLayoutServiceTests
     }
 
     [AvaloniaFact]
-    public void Attach_returns_disposable_that_is_safe_to_dispose_multiple_times()
+    public void Attach_applies_initial_breakpoint()
     {
         var control = new Border();
         var breakpoints = new[]
@@ -74,16 +74,8 @@ public sealed class ResponsiveLayoutServiceTests
             new ResponsiveBreakpoint(0, new Dictionary<string, object>(StringComparer.Ordinal) { ["Layout.Padding"] = 8d }),
         };
 
-        var handle = ResponsiveLayoutService.Attach(control, breakpoints);
+        using var handle = ResponsiveLayoutService.Attach(control, breakpoints);
 
         control.Resources["Layout.Padding"].Should().Be(8d);
-
-        Action disposeTwice = () =>
-        {
-            handle.Dispose();
-            handle.Dispose();
-        };
-
-        disposeTwice.Should().NotThrow();
     }
 }

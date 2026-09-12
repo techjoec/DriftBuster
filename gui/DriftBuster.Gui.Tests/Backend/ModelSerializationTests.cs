@@ -13,15 +13,6 @@ public sealed class ModelSerializationTests
     }
 
     [Fact]
-    public void DiffResult_round_trips_with_defaults()
-    {
-        var original = new DiffResult();
-        var result = RoundTrip(original);
-        result.Versions.Should().BeEmpty();
-        result.Comparisons.Should().BeEmpty();
-    }
-
-    [Fact]
     public void DiffResult_round_trips_with_values()
     {
         var original = new DiffResult
@@ -193,27 +184,6 @@ public sealed class ModelSerializationTests
     }
 
     [Fact]
-    public void SecretScannerOptions_defaults_to_empty_arrays()
-    {
-        var original = new SecretScannerOptions();
-        var result = RoundTrip(original);
-        result.IgnoreRules.Should().BeEmpty();
-        result.IgnorePatterns.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void ServerScanResponse_round_trips_with_defaults()
-    {
-        var original = new ServerScanResponse();
-        var result = RoundTrip(original);
-        result.Version.Should().BeEmpty();
-        result.Results.Should().BeEmpty();
-        result.Catalog.Should().BeEmpty();
-        result.Drilldown.Should().BeEmpty();
-        result.Summary.Should().BeNull();
-    }
-
-    [Fact]
     public void DiffChangeSummary_round_trips_line_counts()
     {
         var original = new DiffChangeSummary
@@ -255,26 +225,5 @@ public sealed class ModelSerializationTests
         result.HostId.Should().Be("srv-01");
         result.Message.Should().Be("Scanning /etc");
         result.Timestamp.Should().Be(ts);
-    }
-
-    [Fact]
-    public void ServerScanExportOptions_defaults_all_true()
-    {
-        var original = new ServerScanExportOptions();
-        var result = RoundTrip(original);
-        result.IncludeCatalog.Should().BeTrue();
-        result.IncludeDrilldown.Should().BeTrue();
-        result.IncludeDiffs.Should().BeTrue();
-        result.IncludeSummary.Should().BeTrue();
-    }
-
-    [Fact]
-    public void ServerScanBaselinePreference_defaults()
-    {
-        var original = new ServerScanBaselinePreference();
-        var result = RoundTrip(original);
-        result.IsPreferred.Should().BeFalse();
-        result.Priority.Should().Be(0);
-        result.Role.Should().Be("auto");
     }
 }

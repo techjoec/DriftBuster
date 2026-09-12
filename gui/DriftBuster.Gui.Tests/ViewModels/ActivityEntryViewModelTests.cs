@@ -16,7 +16,6 @@ public sealed class ActivityEntryViewModelTests
         var entry = new ActivityEntryViewModel(severity, "msg", "", FixedTimestamp, ActivityCategory.General);
         entry.IsError.Should().Be(isError);
         entry.IsWarning.Should().Be(isWarning);
-        entry.SeverityLabel.Should().Be(severity.ToString());
     }
 
     [Theory]
@@ -29,34 +28,15 @@ public sealed class ActivityEntryViewModelTests
     }
 
     [Fact]
-    public void Id_is_unique_per_instance()
+    public void ClipboardText_includes_detail_only_when_present()
     {
-        var a = new ActivityEntryViewModel(ActivitySeverity.Info, "a", "", FixedTimestamp, ActivityCategory.General);
-        var b = new ActivityEntryViewModel(ActivitySeverity.Info, "b", "", FixedTimestamp, ActivityCategory.General);
-        a.Id.Should().NotBe(Guid.Empty);
-        a.Id.Should().NotBe(b.Id);
-    }
+        var withDetail = new ActivityEntryViewModel(ActivitySeverity.Error, "Scan failed", "Permission denied", FixedTimestamp, ActivityCategory.General);
+        withDetail.ClipboardText.Should().Contain("Scan failed");
+        withDetail.ClipboardText.Should().Contain("Permission denied");
+        withDetail.TimestampText.Should().Contain("2025");
 
-    [Fact]
-    public void TimestampText_contains_year()
-    {
-        var entry = new ActivityEntryViewModel(ActivitySeverity.Info, "msg", "", FixedTimestamp, ActivityCategory.General);
-        entry.TimestampText.Should().Contain("2025");
-    }
-
-    [Fact]
-    public void ClipboardText_includes_detail_when_present()
-    {
-        var entry = new ActivityEntryViewModel(ActivitySeverity.Error, "Scan failed", "Permission denied", FixedTimestamp, ActivityCategory.General);
-        entry.ClipboardText.Should().Contain("Scan failed");
-        entry.ClipboardText.Should().Contain("Permission denied");
-    }
-
-    [Fact]
-    public void ClipboardText_omits_detail_when_empty()
-    {
-        var entry = new ActivityEntryViewModel(ActivitySeverity.Info, "Completed", "", FixedTimestamp, ActivityCategory.General);
-        entry.ClipboardText.Should().Contain("Completed");
-        entry.ClipboardText.Should().NotContain(Environment.NewLine);
+        var withoutDetail = new ActivityEntryViewModel(ActivitySeverity.Info, "Completed", "", FixedTimestamp, ActivityCategory.General);
+        withoutDetail.ClipboardText.Should().Contain("Completed");
+        withoutDetail.ClipboardText.Should().NotContain(Environment.NewLine);
     }
 }

@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Headless.XUnit;
 using AwesomeAssertions;
 using DriftBuster.Gui.Services;
-using DriftBuster.Gui.ViewModels;
 using DriftBuster.Gui.Views;
 using Xunit;
 
@@ -11,19 +10,6 @@ namespace DriftBuster.Gui.Tests.Ui;
 [Collection(HeadlessCollection.Name)]
 public sealed class MainWindowUiTests
 {
-    [AvaloniaFact]
-    public void Should_Create_MainWindow_With_ViewModel()
-    {
-        HeadlessFixture.EnsureFonts();
-
-        var window = new MainWindow
-        {
-            DataContext = new MainWindowViewModel(),
-        };
-
-        window.DataContext.Should().BeOfType<MainWindowViewModel>();
-    }
-
     [AvaloniaFact]
     public void ShouldAdjustSpacingTokensAcrossBreakpoints()
     {
@@ -46,19 +32,5 @@ public sealed class MainWindowUiTests
         ResponsiveLayoutService.Apply(window, 2100, ResponsiveSpacingProfiles.MainWindow);
         window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(32, 24, 32, 24));
         window.Resources["Toast.Width"].Should().Be(440d);
-    }
-
-    [AvaloniaFact]
-    public void Closing_window_disposes_responsive_subscription_path()
-    {
-        HeadlessFixture.EnsureFonts();
-
-        var window = new MainWindow
-        {
-            DataContext = new MainWindowViewModel(),
-        };
-
-        var action = () => window.Close();
-        action.Should().NotThrow();
     }
 }

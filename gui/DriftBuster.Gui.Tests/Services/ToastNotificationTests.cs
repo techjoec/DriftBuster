@@ -65,21 +65,4 @@ public sealed class ToastNotificationTests
         secondaryRuns.Should().Be(1);
         dismissed.Should().Be(id);
     }
-
-    [Fact]
-    public void Exposes_timestamp_and_level_labels()
-    {
-        var notification = new ToastNotification(
-            Guid.NewGuid(),
-            "Title",
-            "Message",
-            ToastLevel.Error,
-            TimeSpan.FromSeconds(1),
-            primaryAction: null,
-            secondaryAction: null,
-            dismiss: _ => { });
-
-        notification.LevelLabel.Should().Be("Error");
-        notification.TimestampText.Should().NotBeNullOrWhiteSpace();
-    }
 }

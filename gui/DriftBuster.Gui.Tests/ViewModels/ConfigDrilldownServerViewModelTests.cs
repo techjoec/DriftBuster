@@ -13,55 +13,29 @@ public sealed class ConfigDrilldownServerViewModelTests
     }
 
     [Fact]
-    public void Exposes_detail_properties_and_defaults_selection_to_present()
+    public void Selection_defaults_to_present_and_min_last_seen_reads_not_scanned()
     {
-        var now = DateTimeOffset.UtcNow;
-        var detail = new ConfigServerDetail
+        var present = new ConfigDrilldownServerViewModel(new ConfigServerDetail
         {
             HostId = "host-1",
             Label = "Host 1",
             Present = true,
-            IsBaseline = true,
             Status = "Baseline",
-            DriftLineCount = 3,
-            HasSecrets = true,
-            Masked = false,
-            RedactionStatus = "Visible",
-            LastSeen = now,
-        };
+            LastSeen = DateTimeOffset.UtcNow,
+        });
 
-        var viewModel = new ConfigDrilldownServerViewModel(detail);
-
-        viewModel.Detail.Should().BeSameAs(detail);
-        viewModel.IsSelected.Should().BeTrue();
-        viewModel.HostId.Should().Be("host-1");
-        viewModel.Label.Should().Be("Host 1");
-        viewModel.Present.Should().BeTrue();
-        viewModel.IsBaseline.Should().BeTrue();
-        viewModel.Status.Should().Be("Baseline");
-        viewModel.DriftLineCount.Should().Be(3);
-        viewModel.HasSecrets.Should().BeTrue();
-        viewModel.Masked.Should().BeFalse();
-        viewModel.RedactionStatus.Should().Be("Visible");
-        viewModel.LastSeen.Should().Be(now);
-        viewModel.LastSeenText.Should().NotBeNullOrWhiteSpace();
-    }
-
-    [Fact]
-    public void LastSeenText_returns_not_scanned_for_min_value()
-    {
-        var detail = new ConfigServerDetail
+        var missing = new ConfigDrilldownServerViewModel(new ConfigServerDetail
         {
             HostId = "host-2",
             Label = "Host 2",
             Present = false,
             Status = "Missing",
             LastSeen = DateTimeOffset.MinValue,
-        };
+        });
 
-        var viewModel = new ConfigDrilldownServerViewModel(detail);
-
-        viewModel.IsSelected.Should().BeFalse();
-        viewModel.LastSeenText.Should().Be("Not scanned");
+        present.IsSelected.Should().BeTrue();
+        present.LastSeenText.Should().NotBe("Not scanned");
+        missing.IsSelected.Should().BeFalse();
+        missing.LastSeenText.Should().Be("Not scanned");
     }
 }

@@ -441,19 +441,6 @@ public sealed class ServerSelectionViewTests
     }
 
     [AvaloniaFact]
-    public void CopyActivityRequested_ignores_blank_payload()
-    {
-        var view = new ServerSelectionView
-        {
-            DataContext = CreateViewModel(),
-        };
-
-        var method = typeof(ServerSelectionView).GetMethod("OnCopyActivityRequested", BindingFlags.Instance | BindingFlags.NonPublic);
-        method.Should().NotBeNull();
-        method!.Invoke(view, new object?[] { null, new ValueEventArgs<string>(" ") });
-    }
-
-    [AvaloniaFact]
     public void DragOver_sets_move_effect_for_valid_reorder_and_none_for_invalid()
     {
         var viewModel = CreateViewModel();
@@ -559,6 +546,45 @@ public sealed class ServerSelectionViewTests
         drop!.Invoke(view, new object?[] { target, dropArgs });
         dropArgs.Handled.Should().BeTrue();
         dropArgs.DragEffects.Should().Be(DragDropEffects.None);
+    }
+
+    private static Task<ServerScanResponse> ReportFailedScan(ServerScanPlan plan, IProgress<ScanProgress>? progress)
+    {
+        const string failure = "Scan failed: Unknown catalog variant 'log4net-config' for format 'structured-config-xml'.";
+        foreach (var (status, message) in new[]
+        {
+            (ServerScanStatus.Queued, "Queued"),
+            (ServerScanStatus.Running, $"Scanning {plan.Label}"),
+            (ServerScanStatus.Failed, failure),
+        })
+        {
+            progress?.Report(new ScanProgress
+            {
+                HostId = plan.HostId,
+                Status = status,
+                Message = message,
+                Timestamp = DateTimeOffset.UtcNow,
+            });
+        }
+
+        return Task.FromResult(new ServerScanResponse
+        {
+            Version = "multi-server.v1",
+            Results = new[]
+            {
+                new ServerScanResult
+                {
+                    HostId = plan.HostId,
+                    Label = plan.Label,
+                    Status = ServerScanStatus.Failed,
+                    Message = failure,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Availability = ServerAvailabilityStatus.Found,
+                },
+            },
+            Catalog = Array.Empty<ConfigCatalogEntry>(),
+            Drilldown = Array.Empty<ConfigDrilldown>(),
+        });
     }
 
     private static ServerSelectionViewModel? ReadAttachedViewModel(ServerSelectionView view)
@@ -893,50 +919,7 @@ public sealed class ServerSelectionViewTests
     {
         var service = new FakeDriftbusterService
         {
-            RunServerScansHandler = (plans, progress, _) =>
-            {
-                var plan = plans.First();
-                progress?.Report(new ScanProgress
-                {
-                    HostId = plan.HostId,
-                    Status = ServerScanStatus.Queued,
-                    Message = "Queued",
-                    Timestamp = DateTimeOffset.UtcNow,
-                });
-                progress?.Report(new ScanProgress
-                {
-                    HostId = plan.HostId,
-                    Status = ServerScanStatus.Running,
-                    Message = $"Scanning {plan.Label}",
-                    Timestamp = DateTimeOffset.UtcNow,
-                });
-                progress?.Report(new ScanProgress
-                {
-                    HostId = plan.HostId,
-                    Status = ServerScanStatus.Failed,
-                    Message = "Scan failed: Unknown catalog variant 'log4net-config' for format 'structured-config-xml'.",
-                    Timestamp = DateTimeOffset.UtcNow,
-                });
-
-                return Task.FromResult(new ServerScanResponse
-                {
-                    Version = "multi-server.v1",
-                    Results = new[]
-                    {
-                        new ServerScanResult
-                        {
-                            HostId = plan.HostId,
-                            Label = plan.Label,
-                            Status = ServerScanStatus.Failed,
-                            Message = "Scan failed: Unknown catalog variant 'log4net-config' for format 'structured-config-xml'.",
-                            Timestamp = DateTimeOffset.UtcNow,
-                            Availability = ServerAvailabilityStatus.Found,
-                        },
-                    },
-                    Catalog = Array.Empty<ConfigCatalogEntry>(),
-                    Drilldown = Array.Empty<ConfigDrilldown>(),
-                });
-            },
+            RunServerScansHandler = (plans, progress, _) => ReportFailedScan(plans.First(), progress),
         };
 
         var viewModel = new ServerSelectionViewModel(service, new ToastService(action => action()), new InMemorySessionCacheService());

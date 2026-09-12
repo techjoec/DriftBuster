@@ -2,9 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Tests.Fakes;
 using DriftBuster.Gui.ViewModels;
@@ -429,7 +427,7 @@ public class RunProfilesViewModelTests
     }
 
     [Fact]
-    public void Removing_metadata_entries_clears_errors_and_detaches_listeners()
+    public void Removing_metadata_entries_clears_errors_and_stops_listening()
     {
         var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
         viewModel.AddScheduleCommand.Execute(null);
@@ -443,10 +441,8 @@ public class RunProfilesViewModelTests
         schedule.RemoveMetadataCommand.Execute(entry);
         schedule.Error.Should().BeNull();
 
-        var propertyChangedField = typeof(ObservableObject)
-            .GetField("PropertyChanged", BindingFlags.Instance | BindingFlags.NonPublic);
-        var invocationList = (propertyChangedField?.GetValue(entry) as MulticastDelegate)?.GetInvocationList() ?? Array.Empty<Delegate>();
-        invocationList.Should().NotContain(handler => handler.Method.Name == "OnMetadataEntryPropertyChanged");
+        entry.Key = "Changed after removal";
+        schedule.Error.Should().BeNull();
 
         void metadata_Key_causes_error()
         {

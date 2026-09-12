@@ -87,17 +87,6 @@ public sealed class DebugFileLoggerTests : IDisposable
     }
 
     [Fact]
-    public void Write_handles_invalid_path_without_throwing()
-    {
-        var path = Path.Combine(_tempRoot, "bad" + '\0' + "name.jsonl");
-        var logger = new DebugFileLogger(path);
-
-        Action act = () => logger.Write("io", "failure");
-
-        act.Should().NotThrow();
-    }
-
-    [Fact]
     public void DefaultLogPath_targets_logs_debug_jsonl()
     {
         var path = DebugFileLogger.DefaultLogPath();

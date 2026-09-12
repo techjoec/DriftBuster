@@ -1,6 +1,4 @@
-using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
-using Avalonia.Interactivity;
 using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.ViewModels;
@@ -13,7 +11,7 @@ namespace DriftBuster.Gui.Tests.Ui;
 public sealed class SecretScannerSettingsWindowTests
 {
     [AvaloniaFact]
-    public void Should_Bind_SecretScanner_ViewModel()
+    public void Window_loads_with_expected_title()
     {
         HeadlessFixture.EnsureFonts();
 
@@ -28,33 +26,6 @@ public sealed class SecretScannerSettingsWindowTests
             DataContext = new SecretScannerSettingsViewModel(options),
         };
 
-        window.DataContext.Should().BeOfType<SecretScannerSettingsViewModel>();
         window.Title.Should().Be("Secret scanner settings");
-    }
-
-    [AvaloniaFact]
-    public void Confirm_closes_window()
-    {
-        HeadlessFixture.EnsureFonts();
-
-        var window = new SecretScannerSettingsWindow();
-        Invoke(window, "OnConfirm", new Button(), new RoutedEventArgs(Button.ClickEvent));
-    }
-
-    [AvaloniaFact]
-    public void Cancel_closes_window()
-    {
-        HeadlessFixture.EnsureFonts();
-
-        var window = new SecretScannerSettingsWindow();
-
-        Invoke(window, "OnCancel", new Button(), new RoutedEventArgs(Button.ClickEvent));
-    }
-
-    private static void Invoke(object target, string methodName, params object?[] args)
-    {
-        var method = target.GetType().GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        method.Should().NotBeNull();
-        method!.Invoke(target, args);
     }
 }

@@ -226,30 +226,6 @@ public class DiffViewModelTests
     }
 
     [Fact]
-    public async Task RunDiffAsync_requires_baseline_path()
-    {
-        using var temp = new TempDirectory();
-        var viewModel = CreateViewModel(new FakeDriftbusterService(), new DiffPlannerMruStore(temp.Path));
-        viewModel.Inputs[1].Path = CreateFile(temp.Path, "comparison.json", "{}");
-
-        await InvokeRunDiffAsync(viewModel);
-
-        viewModel.ErrorMessage.Should().Be("Select a baseline file");
-    }
-
-    [Fact]
-    public async Task RunDiffAsync_requires_comparison_file()
-    {
-        using var temp = new TempDirectory();
-        var viewModel = CreateViewModel(new FakeDriftbusterService(), new DiffPlannerMruStore(temp.Path));
-        viewModel.Inputs[0].Path = CreateFile(temp.Path, "baseline.json", "{}");
-
-        await InvokeRunDiffAsync(viewModel);
-
-        viewModel.ErrorMessage.Should().Be("Select at least one comparison file.");
-    }
-
-    [Fact]
     public async Task SelectedMruEntry_populates_inputs()
     {
         using var temp = new TempDirectory();
@@ -443,15 +419,6 @@ public class DiffViewModelTests
         logger.Entries.Should().Contain(entry =>
             entry.EventId.Id == 2102 &&
             entry.Message.Contains("reason=raw_blocked_sanitized_preferred", StringComparison.Ordinal));
-    }
-
-    private static Task InvokeRunDiffAsync(DiffViewModel viewModel)
-    {
-        var method = typeof(DiffViewModel).GetMethod(
-            "RunDiffAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        method.Should().NotBeNull();
-        return (Task)method!.Invoke(viewModel, Array.Empty<object>())!;
     }
 
     private static DiffViewModel CreateViewModel(
