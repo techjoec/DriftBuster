@@ -115,3 +115,7 @@ private-dev-assets/
 .env.*
 CLAUDE.md
 AGENTS.md
+
+.mcp.json
+.claude/*
+!.claude/settings.json
