@@ -1,0 +1,9 @@
+<Project>
+  <Import Project=" a " />
+  <Import Project="a" Sdk="s" Condition="  " />
+  <Import Sdk="s" />
+  <Import Project="" Sdk=" " />
+  <Target Name=" Build " />
+  <Target Name="BUILD" />
+  <Target Name="" />
+</Project>

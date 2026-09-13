@@ -1,0 +1,10 @@
+
+    <Project ToolsVersion="Current"
+             DefaultTargets="Build;Publish"
+             xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Import Project="$(VSToolsPath)\WebApplication.targets" Condition="Exists('$(VSToolsPath)')" />
+      <Target Name="Publish">
+        <Message Text="Publishing" />
+      </Target>
+    </Project>
+    

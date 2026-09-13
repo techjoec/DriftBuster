@@ -1,0 +1,3 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets=" A ; ;B " ToolsVersion=" " Sdk="">
+  <Target Name="T"/>
+</Project>

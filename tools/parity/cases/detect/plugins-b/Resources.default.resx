@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns="http://schemas.microsoft.com/resx-schema/2.0">
+  <data name="One"><value>1</value></data>
+  <data name="Two"><value>2</value></data>
+  <data name="Three"><value>3</value></data>
+  <data name="Four"><value>4</value></data>
+  <data name="Five"><value>5</value></data>
+  <data name="Six"><value>6</value></data>
+  <data name="Seven"><value>7</value></data>
+  <data name="Eight"><value>8</value></data>
+  <data name="Nine"><value>9</value></data>
+  <data name="Ten"><value>10</value></data>
+  <data name="Eleven"><value>11</value></data>
+  <data name=""><value>empty</value></data>
+</root>

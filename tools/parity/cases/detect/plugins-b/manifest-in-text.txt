@@ -1,0 +1,4 @@
+Notes on deployment manifest
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity name="Tool" version="2.0.0.0" />
+</assembly>

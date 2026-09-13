@@ -1,0 +1,7 @@
+
+    <?xml version="1.0"?>
+    <!DOCTYPE Project>
+    <Project DefaultTargets="Build" ToolsVersion="Current">
+      <Target Name="Pack" />
+    </Project>
+    

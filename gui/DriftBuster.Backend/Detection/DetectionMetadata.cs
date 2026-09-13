@@ -1,9 +1,12 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection.Catalog;
+using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Detection;
 
@@ -42,82 +45,158 @@ public static partial class DetectionMetadata
     }
 
     /// <summary>
-    /// Converts a value into JSON-serialisable primitives: strings, numbers, booleans and null pass through, byte
-    /// arrays decode as UTF-8 with replacement, dictionaries become ordered string-keyed dictionaries, other
-    /// enumerables become lists, and everything else becomes its string form.
+    /// Converts a value into JSON-serialisable primitives as Python's <c>_json_safe</c> does: strings, integers of any
+    /// size, floats, booleans and null pass through, byte arrays decode as UTF-8 with replacement, dictionaries become
+    /// ordered dictionaries keyed by <c>str(key)</c>, other enumerables become lists, and everything else becomes its
+    /// Python <c>str()</c> (a <see cref="DateTime"/> as <c>datetime.__str__</c> spells it). Containers are converted on an
+    /// explicit stack, so nesting depth never reaches the thread's stack.
     /// </summary>
     public static object? JsonSafe(object? value)
     {
-        switch (value)
+        if (!TryOpen(value, out var root))
         {
-            case null:
-            case string:
-            case bool:
-            case byte:
-            case sbyte:
-            case short:
-            case ushort:
-            case int:
-            case uint:
-            case long:
-            case ulong:
-            case float:
-            case double:
-            case decimal:
-                return value;
-            case byte[] bytes:
-                return Encoding.UTF8.GetString(bytes);
-            case IDictionary dictionary:
-                {
-                    var result = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-                    foreach (DictionaryEntry entry in dictionary)
-                    {
-                        result[KeyText(entry.Key)] = JsonSafe(entry.Value);
-                    }
-
-                    return result;
-                }
-            case IEnumerable enumerable when TryReadOnlyDictionary(enumerable, out var readOnly):
-                return readOnly;
-            case IEnumerable enumerable:
-                {
-                    var result = new List<object?>();
-                    foreach (var item in enumerable)
-                    {
-                        result.Add(JsonSafe(item));
-                    }
-
-                    return result;
-                }
-            default:
-                return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+            return Scalar(value);
         }
+
+        var open = new Stack<SafeContainer>();
+        open.Push(root);
+        while (open.Count > 0)
+        {
+            var container = open.Peek();
+            if (!container.TryNext(out var key, out var item))
+            {
+                open.Pop();
+                continue;
+            }
+
+            if (TryOpen(item, out var child))
+            {
+                container.Add(key, child.Result);
+                open.Push(child);
+            }
+            else
+            {
+                container.Add(key, Scalar(item));
+            }
+        }
+
+        return root.Result;
     }
 
-    private static bool TryReadOnlyDictionary(IEnumerable enumerable, out OrderedDictionary<string, object?>? result)
+    private static object? Scalar(object? value) => value switch
     {
-        result = null;
-        var type = enumerable.GetType();
-        var isReadOnlyDictionary = type.GetInterfaces()
-            .Any(candidate => candidate.IsGenericType && candidate.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>));
-        if (!isReadOnlyDictionary)
-        {
-            return false;
-        }
+        null or string or bool or byte or sbyte or short or ushort or int or uint or long or ulong or BigInteger or float or double or decimal => value,
+        byte[] bytes => Encoding.UTF8.GetString(bytes),
+        _ => PythonStr(value),
+    };
 
-        result = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var item in enumerable)
+    // Strings and byte arrays are scalars; any other dictionary or enumerable is a container.
+    private static bool TryOpen(object? value, [NotNullWhen(true)] out SafeContainer? container)
+    {
+        container = value switch
         {
-            var itemType = item!.GetType();
-            var key = itemType.GetProperty("Key")!.GetValue(item);
-            var entryValue = itemType.GetProperty("Value")!.GetValue(item);
-            result[KeyText(key)] = JsonSafe(entryValue);
-        }
-
-        return true;
+            null or string or byte[] => null,
+            IDictionary dictionary => SafeContainer.ForDictionary(dictionary),
+            IEnumerable enumerable when IsReadOnlyDictionary(enumerable) => SafeContainer.ForReadOnlyDictionary(enumerable),
+            IEnumerable enumerable => SafeContainer.ForList(enumerable),
+            _ => null,
+        };
+        return container is not null;
     }
 
-    private static string KeyText(object? key) => Convert.ToString(key, CultureInfo.InvariantCulture) ?? string.Empty;
+    private static bool IsReadOnlyDictionary(IEnumerable enumerable)
+        => enumerable.GetType().GetInterfaces()
+            .Any(candidate => candidate.IsGenericType && candidate.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>));
+
+    /// <summary>A container being converted: the source entries still to visit and the JSON-safe result being filled.</summary>
+    private sealed class SafeContainer
+    {
+        private readonly IEnumerator _source;
+        private readonly Func<object?, (string? Key, object? Item)> _split;
+        private readonly OrderedDictionary<string, object?>? _dict;
+        private readonly List<object?>? _list;
+
+        private SafeContainer(IEnumerator source, Func<object?, (string? Key, object? Item)> split, bool isDictionary)
+        {
+            _source = source;
+            _split = split;
+            if (isDictionary)
+            {
+                _dict = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+            }
+            else
+            {
+                _list = [];
+            }
+        }
+
+        public object Result => (object?)_dict ?? _list!;
+
+        public static SafeContainer ForDictionary(IDictionary dictionary)
+            => new(dictionary.GetEnumerator(), entry => (KeyText(((DictionaryEntry)entry!).Key), ((DictionaryEntry)entry!).Value), isDictionary: true);
+
+        public static SafeContainer ForReadOnlyDictionary(IEnumerable pairs)
+            => new(pairs.GetEnumerator(), SplitPair, isDictionary: true);
+
+        public static SafeContainer ForList(IEnumerable items)
+            => new(items.GetEnumerator(), item => (null, item), isDictionary: false);
+
+        public bool TryNext(out string? key, out object? item)
+        {
+            (key, item) = (null, null);
+            if (!_source.MoveNext())
+            {
+                return false;
+            }
+
+            (key, item) = _split(_source.Current);
+            return true;
+        }
+
+        // result[str(key)] = value keeps the first slot of a repeated key with the last value, as a dict comprehension does.
+        public void Add(string? key, object? converted)
+        {
+            if (_dict is not null)
+            {
+                _dict[key!] = converted;
+            }
+            else
+            {
+                _list!.Add(converted);
+            }
+        }
+
+        private static (string? Key, object? Item) SplitPair(object? pair)
+        {
+            var itemType = pair!.GetType();
+            return (KeyText(itemType.GetProperty("Key")!.GetValue(pair)), itemType.GetProperty("Value")!.GetValue(pair));
+        }
+    }
+
+    private static string KeyText(object? key) => key is string text ? text : PythonStr(key);
+
+    /// <summary>
+    /// Python <c>str()</c> for the values plugins store: <c>None</c>, <c>True</c>/<c>False</c>, integers, floats as
+    /// <c>repr</c>, a <see cref="DateTime"/> as <c>YYYY-MM-DD HH:MM:SS</c> with <c>.ffffff</c> only when there are
+    /// microseconds, and any other object through its own <see cref="object.ToString"/>.
+    /// </summary>
+    internal static string PythonStr(object? value) => value switch
+    {
+        null => "None",
+        string text => text,
+        bool flag => flag ? "True" : "False",
+        double number => PythonRepr.Float(number),
+        float number => PythonRepr.Float(number),
+        DateTime date => PythonDateTime(date),
+        _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
+    };
+
+    private static string PythonDateTime(DateTime date)
+    {
+        var seconds = date.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        var microseconds = date.Ticks % TimeSpan.TicksPerSecond / 10;
+        return microseconds == 0 ? seconds : seconds + "." + microseconds.ToString("D6", CultureInfo.InvariantCulture);
+    }
 
     private static string Slugify(string value) => value.Trim().ToLowerInvariant();
 

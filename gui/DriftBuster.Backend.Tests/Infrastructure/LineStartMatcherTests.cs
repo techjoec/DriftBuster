@@ -8,7 +8,7 @@ namespace DriftBuster.Backend.Tests.Infrastructure;
 
 /// <summary>
 /// The \G-anchored patterns driven from each line start yield exactly the ^-anchored MULTILINE match set, for
-/// every pattern each phase 2 plugin hands to the driver, and do so in linear time over whitespace runs.
+/// every pattern each plugin hands to the driver, and do so in linear time over whitespace runs.
 /// </summary>
 public sealed class LineStartMatcherTests
 {
@@ -35,6 +35,10 @@ public sealed class LineStartMatcherTests
         ("toml", TomlPlugin.ArrayOfTablesPattern),
         ("toml", TomlPlugin.KeyEqualsPattern),
         ("hcl", HclPlugin.KeyValuePattern),
+        ("registry-live", RegistryLivePlugin.YamlKeyPattern),
+        ("registry-live", RegistryLivePlugin.YamlTokenPattern),
+        ("registry-live", RegistryLivePlugin.YamlKeywordsPattern),
+        ("registry-live", RegistryLivePlugin.YamlPatternsPattern),
     ];
 
     private static readonly string[] AdversarialTexts =
@@ -67,6 +71,13 @@ public sealed class LineStartMatcherTests
         "\u2028k = v\n\u2029[t]\n",
         "\U0001F600 = 1\nk = \U0001F600\n",
         "[s\u0130]\nk\u0130=v\n",
+        "registry_scan:\n\n\ntoken:\n  'val'\n  keywords: [a\n  patterns: [",
+        "REGISTRY_SCAN :\n  token:   \n",
+        "reg\u0131stry_scan:\ntoken: a\nkeywords: [a]\npatterns: -",
+        "\x1cregistry_scan:\x1c\ntoken:\x1c'q'\x1c\n",
+        "token:\n\n\n\ntoken: b\n",
+        "keywords: []\nkeywords: [ ]\n\npatterns:\n[",
+        "regi\u0130stry_scan:\nregİstry_scan:\n",
     ];
 
     [Theory]

@@ -1,0 +1,4 @@
+<root>
+http://schemas.microsoft.com/
+resx
+</root>

@@ -1,18 +1,24 @@
 using System.Collections;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
+
+using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Cli;
 
 /// <summary>
 /// Writes values as Python <c>json.dumps(value, sort_keys=True, ensure_ascii=False)</c> would: ", " and ": "
-/// separators, keys sorted ordinally, floats in shortest round-trip form with a ".0" on integral values, and only
+/// separators, keys sorted by code point, floats in shortest round-trip form with a ".0" on integral values, and only
 /// quotes, backslashes and C0 controls escaped. An unpaired surrogate is first rewritten to the six characters
 /// <c>\uXXXX</c> (lower-case hex), exactly as <c>py_dump.py</c> does, because a UTF-8 stdout would replace it with
 /// U+FFFD and jq rejects the JSON escape of a lone surrogate.
 /// </summary>
 internal static class CanonicalJson
 {
+    // Python sorts str keys by code point; UTF-16 ordinal order puts astral characters before U+E000-U+FFFF.
+    private static readonly Comparer<string> CodePointComparer = Comparer<string>.Create(PathText.CompareCodePoints);
+
     public static string Serialize(object? value)
     {
         var builder = new StringBuilder();
@@ -35,6 +41,9 @@ internal static class CanonicalJson
                 break;
             case byte or sbyte or short or ushort or int or uint or long or ulong:
                 builder.Append(Convert.ToString(value, CultureInfo.InvariantCulture));
+                break;
+            case BigInteger integer:
+                builder.Append(integer.ToString(CultureInfo.InvariantCulture));
                 break;
             case float single:
                 WriteDouble(builder, single);
@@ -73,7 +82,7 @@ internal static class CanonicalJson
         builder.Append('{');
         var first = true;
         foreach (var pair in pairs.Select(pair => new KeyValuePair<string, object?>(EscapeLoneSurrogates(pair.Key), pair.Value))
-            .OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            .OrderBy(pair => pair.Key, CodePointComparer))
         {
             if (!first)
             {

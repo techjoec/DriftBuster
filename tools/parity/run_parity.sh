@@ -7,7 +7,7 @@
 #
 # Usage: tools/parity/run_parity.sh <surface> [dump args...]
 #   surfaces: detect, decode
-#   example:  tools/parity/run_parity.sh detect            (every plugin ported so far, see py_dump.PORTED_PLUGINS)
+#   example:  tools/parity/run_parity.sh detect            (the full default registry on both sides)
 #             tools/parity/run_parity.sh detect --plugins text
 set -euo pipefail
 
@@ -59,10 +59,21 @@ expected_total=0
 #   interpreter limits: Python emits "InterpreterLimit: ..." where json.loads exceeded a CPython limit; the path is
 #          dropped from both sides (there is no Python match to compare) and the port record is asserted to be a
 #          successful json match.
+#   SQLite file names (plan decision 7): Python opens "file:{path}?mode=ro" as a URI, which decodes %XX and cuts the
+#          path at ? or #, so such a file is never opened there; the port opens the real file. For those paths the
+#          table_count key and the "Enumerated ..." reason are dropped from both records and the rest is compared.
+#   Unicode 16.0 repr (runtime tables): registry-live stores str() of nested keyword and pattern items; Python 3.13
+#          (Unicode 15.1) escapes code points assigned in 16.0 as non-printable, .NET 10 prints them. For a
+#          registry-live record from a case whose file name contains "unicode16", keywords and patterns are dropped
+#          from both records and the rest is compared.
+UNICODE16_REPR='def unicode16_repr: .plugin == "registry-live" and (.path | test("unicode16"));
+  def drop_unicode16_repr: if unicode16_repr then (.metadata |= del(.keywords, .patterns)) else . end;'
+SQLITE_URI_NAMES='def sqlite_uri_name: .plugin == "binary-hybrid" and .format == "embedded-sql-db" and (.path | test("%[0-9A-Fa-f]{2}|[?#]"));
+  def drop_sqlite_uri_facts: if sqlite_uri_name then (.metadata |= del(.table_count)) | (.reasons |= map(select(startswith("Enumerated ") | not))) else . end;'
 compare() {
   local label="$1" root="$2"
   shift 2
-  local tag py_out cs_out fixc_count limit_count count
+  local tag py_out cs_out fixc_count limit_count sqlite_count unicode16_count count
   tag="$(echo "$label" | tr '/ ' '__')"
   py_out="$work/$tag.py.jsonl"
   cs_out="$work/$tag.cs.jsonl"
@@ -107,15 +118,23 @@ compare() {
   jq -n -c '[inputs | select(.error != null and (.error | startswith("InterpreterLimit"))) | .path]' "$py_out" > "$work/$tag.limit.json"
   jq -r '.[]' "$work/$tag.fixc.json" > "$work/$tag.fixc"
   jq -r '.[]' "$work/$tag.limit.json" > "$work/$tag.limit"
+  jq -r "$SQLITE_URI_NAMES"' select(sqlite_uri_name) | .path' "$py_out" > "$work/$tag.sqlite"
+  jq -r "$UNICODE16_REPR"' select(unicode16_repr) | .path' "$py_out" > "$work/$tag.unicode16"
   fixc_count="$(wc -l < "$work/$tag.fixc")"
   limit_count="$(wc -l < "$work/$tag.limit")"
-  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" '
+  sqlite_count="$(wc -l < "$work/$tag.sqlite")"
+  unicode16_count="$(wc -l < "$work/$tag.unicode16")"
+  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" "$SQLITE_URI_NAMES$UNICODE16_REPR"'
     .path as $p
     | select(($limit[0] | index($p)) == null)
+    | drop_sqlite_uri_facts
+    | drop_unicode16_repr
     | if ($fixc[0] | index($p)) != null then del(.error) else . end' "$py_out" > "$work/$tag.py.filtered"
-  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" '
+  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" "$SQLITE_URI_NAMES$UNICODE16_REPR"'
     .path as $p
     | select(($limit[0] | index($p)) == null)
+    | drop_sqlite_uri_facts
+    | drop_unicode16_repr
     | if ($fixc[0] | index($p)) != null and .metadata != null
       then .metadata |= with_entries(select(.key | startswith("catalog_") | not)) else . end' "$cs_out" > "$work/$tag.cs.filtered"
   # A CPython limit is only an expected divergence when the port parsed the file as JSON.
@@ -124,15 +143,22 @@ compare() {
 
   count="$(wc -l < "$py_out")"
   files_total=$((files_total + count))
-  expected_total=$((expected_total + fixc_count + limit_count))
+  local divergences=$((fixc_count + limit_count + sqlite_count + unicode16_count))
+  expected_total=$((expected_total + divergences))
 
   if diff -u "$work/$tag.py.filtered" "$work/$tag.cs.filtered" > "$work/$tag.diff" && [[ ! -s "$work/$tag.limit.bad" ]]; then
-    echo "ok   $surface $label: $count files, $((fixc_count + limit_count)) expected divergences"
+    echo "ok   $surface $label: $count files, $divergences expected divergences"
   else
     status=1
-    echo "FAIL $surface $label: $count files, $((fixc_count + limit_count)) expected divergences"
+    echo "FAIL $surface $label: $count files, $divergences expected divergences"
     cat "$work/$tag.diff"
     sed 's/^/     port did not match json where python hit an interpreter limit: /' "$work/$tag.limit.bad"
+  fi
+  if [[ "$sqlite_count" -gt 0 ]]; then
+    sed 's/^/     expected (plan decision 7, SQLite name read as a URI by Python, table_count not compared): /' "$work/$tag.sqlite"
+  fi
+  if [[ "$unicode16_count" -gt 0 ]]; then
+    sed 's/^/     expected (runtime Unicode tables, repr of Unicode 16.0 code points; keywords and patterns not compared): /' "$work/$tag.unicode16"
   fi
   if [[ "$fixc_count" -gt 0 ]]; then
     sed 's/^/     expected (fix c, plugin output compared without catalog_* keys): /' "$work/$tag.fixc"

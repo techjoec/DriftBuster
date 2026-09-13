@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 using DriftBuster.Backend.Infrastructure;
@@ -107,19 +108,24 @@ public sealed class PythonTextTests
         PythonText.Lower(text).Should().Be(expected);
     }
 
-    // str.lower() leaves a lone surrogate (category Cs) where it is; a paired one is a code point of its own.
+    // str.lower() leaves a lone surrogate (category Cs) where it is; a paired one is a code point of its own. Rows are
+    // UTF-16 code units in hex: xunit derives a row's ID from its serialised strings, where every lone surrogate
+    // becomes U+FFFD, so literal rows would collide and be skipped.
     [Theory]
-    [InlineData("\ud83d", "\ud83d")]
-    [InlineData("\ude00", "\ude00")]
-    [InlineData("A\ud83dB", "a\ud83db")]
-    [InlineData("\ud83d\ud83d", "\ud83d\ud83d")]
-    [InlineData("\ude00\ud83d", "\ude00\ud83d")]
-    [InlineData("\u0391\u03a3\ud83d", "\u03b1\u03c2\ud83d")]
-    [InlineData("\ud83d\ude00", "\ud83d\ude00")]
-    public void LowerKeepsUnpairedSurrogates(string text, string expected)
+    [InlineData("d83d", "d83d")]
+    [InlineData("de00", "de00")]
+    [InlineData("0041 d83d 0042", "0061 d83d 0062")]
+    [InlineData("d83d d83d", "d83d d83d")]
+    [InlineData("de00 d83d", "de00 d83d")]
+    [InlineData("0391 03a3 d83d", "03b1 03c2 d83d")]
+    [InlineData("d83d de00", "d83d de00")]
+    public void LowerKeepsUnpairedSurrogates(string textUnits, string expectedUnits)
     {
-        PythonText.Lower(text).Should().Be(expected);
+        PythonText.Lower(CodeUnits(textUnits)).Should().Be(CodeUnits(expectedUnits));
     }
+
+    private static string CodeUnits(string hex)
+        => new(hex.Split(' ').Select(unit => (char)int.Parse(unit, NumberStyles.HexNumber, CultureInfo.InvariantCulture)).ToArray());
 
     [Fact]
     public void LowerDiffersFromToLowerInvariantOnlyOnDottedIAndFinalSigma()

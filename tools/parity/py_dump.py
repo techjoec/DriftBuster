@@ -14,7 +14,7 @@ path ".". A match the strict Python catalog rejects (fix c) is emitted with both
 ``MetadataValidationError`` text and the plugin's own match fields, and a file that makes the
 interpreter itself give up (``RecursionError`` in ``json.loads``, the ``int()`` digit limit) is
 emitted as ``{"path", "error": "InterpreterLimit: ..."}``. ``detect`` then scans every enumerated file
-with one ``Detector`` (restricted to the named plugins when given, otherwise to ``PORTED_PLUGINS``) so the
+with one ``Detector`` (restricted to the named plugins when given, otherwise the full default registry) so the
 aggregate sampling budget applies across files exactly as ``scan_path`` applies it, and prints one JSON
 object per file. ``decode`` prints ``looks_text``,
 the codec chosen by ``decode_text`` and the SHA-256 of the decoded text (UTF-8).
@@ -40,10 +40,6 @@ from driftbuster.core.types import MetadataValidationError, _json_safe, validate
 from driftbuster.formats import format_registry as registry
 
 ROOT_ERROR_PATH = "."
-
-# Plugins the port has registered so far; ``detect`` without ``--plugins`` keeps the Python side to this set so
-# first-match-wins is comparable. Grows to the full registry as phase 3 lands xml, binary-hybrid and registry-live.
-PORTED_PLUGINS = "dockerfile,conf,hcl,yaml,toml,ini,json,text"
 
 
 class _CatalogRejection:
@@ -128,7 +124,7 @@ def _walk(root: Path) -> list[tuple[str, Path, bool]]:
 
 def _select_plugins(names: str | None):
     if names is None:
-        names = PORTED_PLUGINS
+        return None
     wanted = {name.strip() for name in names.split(",") if name.strip()}
     return [plugin for plugin in registry.get_plugins() if plugin.name in wanted]
 

@@ -1,0 +1,3 @@
+<root>
+http://schemas.microsoft.com/a http://schemas.microsoft.com/b RESX
+</root>

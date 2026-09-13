@@ -1,0 +1,1 @@
+{"registry_scan": {"patterns": [["a'b\"c", "\\", "\u007f", "\u00ad", "\ue000", "\ud83d\ude00", "\udfff", "\u2028", "\t\r\n\u000b", "'"], {"k'": "\"", "\u00a0": null}]}}

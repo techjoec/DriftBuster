@@ -1,0 +1,4 @@
+<x:root xmlns:x="http://schemas.microsoft.com/resx" xmlns="urn:other">
+  <x:data name="a"/>
+  <data name="b"/>
+</x:root>

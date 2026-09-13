@@ -1,0 +1,1 @@
+﻿<Project Sdk='  ' ToolsVersion='	' DefaultTargets=' ; ;a; b ;'><Target Name=' A '/><Target Name='a'/><Target Name=''/><Import Project=' p ' Sdk='s' Condition='  '/><Import Sdk='s'/><Import Project='p' Condition=' c '/><x:Target xmlns:x='u' Name='B'/></Project>

@@ -1,0 +1,5 @@
+
+    <asm:assembly xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:asm="urn:custom">
+      <assemblyIdentity name="Prefixed" version="1.0.0.0" />
+    </asm:assembly>
+    

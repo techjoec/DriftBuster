@@ -1,0 +1,5 @@
+registry_scan:
+token:
+  'x'
+keywords: [a]
+patterns: [b]

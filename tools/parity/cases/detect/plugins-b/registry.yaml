@@ -1,0 +1,6 @@
+registry_scan:
+  token: "Vendor App"
+  keywords: [server, endpoint]
+  patterns:
+    - https://
+    - api.internal.local

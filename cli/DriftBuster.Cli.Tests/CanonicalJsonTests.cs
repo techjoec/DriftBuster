@@ -44,7 +44,7 @@ public sealed class CanonicalJsonTests
     }
 
     [Fact]
-    public void Objects_sort_keys_ordinally_and_use_python_separators()
+    public void Objects_sort_keys_by_code_point_and_use_python_separators()
     {
         var value = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
         {
@@ -57,6 +57,21 @@ public sealed class CanonicalJsonTests
         CanonicalJson.Serialize(value).Should().Be("{\"Z\": [1, \"two\", null, {\"x\": [], \"y\": false}], \"_\": [\"s\"], \"a\": 0.8, \"b\": 1.0}");
         CanonicalJson.Serialize(new Dictionary<string, object?>(StringComparer.Ordinal)).Should().Be("{}");
         CanonicalJson.Serialize(Array.Empty<int>()).Should().Be("[]");
+    }
+
+    // json.dumps sorts str keys by code point: U+10400 follows U+E000 and U+FF41, where UTF-16 ordinal puts it first.
+    [Fact]
+    public void Objects_sort_astral_keys_after_every_bmp_key()
+    {
+        var value = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["\uff41"] = 1,
+            ["\U00010400"] = 2,
+            ["\ue000"] = 3,
+            ["b"] = 4,
+        };
+
+        CanonicalJson.Serialize(value).Should().Be("{\"b\": 4, \"\ue000\": 3, \"\uff41\": 1, \"\U00010400\": 2}");
     }
 
     [Fact]

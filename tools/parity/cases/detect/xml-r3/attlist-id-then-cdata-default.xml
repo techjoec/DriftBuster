@@ -1,0 +1,1 @@
+<!DOCTYPE r [<!ATTLIST r a ID #IMPLIED><!ATTLIST r a CDATA "  x  "><!ATTLIST r xmlns:p CDATA "urn:p">]><r p:b="1"/>
