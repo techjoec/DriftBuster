@@ -1,0 +1,1 @@
+{"options": {}, "secret_scanner": {"ruleset": {"version": "u", "rules": [{"name": "Unknown", "pattern": "\\N{KEYCAP NUMBER SIGN}"}]}}}

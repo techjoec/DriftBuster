@@ -1,0 +1,21 @@
+{
+ "version": "guard-inside",
+ "rules": [
+  {
+   "name": "Pw",
+   "pattern": "pw"
+  },
+  {
+   "name": "LookBehind",
+   "pattern": "(?<=x\\[)S"
+  },
+  {
+   "name": "LookAhead",
+   "pattern": "\\[SE(?=CRET\\]z)"
+  },
+  {
+   "name": "ZeroWidth",
+   "pattern": "(?<=\\[S)(?=E)"
+  }
+ ]
+}

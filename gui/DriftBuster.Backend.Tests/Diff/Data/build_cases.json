@@ -1,0 +1,1577 @@
+[
+ {
+  "case": {
+   "name": "text-identical",
+   "before": "same\n",
+   "after": "same\n"
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "same\n",
+   "canonical_after": "same\n",
+   "diff": "",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 0
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:a6328afc76e9db71da297ebff4b0d3e7a7eb3b01d917c05a6573fef121b6ecb6",
+      "after_digest": "sha256:a6328afc76e9db71da297ebff4b0d3e7a7eb3b01d917c05a6573fef121b6ecb6",
+      "diff_digest": "sha256:eca5161e1ab5f352a7fe985a1a89c4fe35e193c8a5fb57373eb5df37bb29ea70",
+      "before_lines": 1,
+      "after_lines": 1,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 0
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "text-change",
+   "before": "alpha\nbeta\ngamma\n",
+   "after": "alpha\nBETA\ngamma\ndelta\n",
+   "from_label": "a.txt",
+   "to_label": "b.txt"
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "alpha\nbeta\ngamma\n",
+   "canonical_after": "alpha\nBETA\ngamma\ndelta\n",
+   "diff": "--- a.txt\n+++ b.txt\n@@ -1,3 +1,4 @@\n alpha\n-beta\n+BETA\n gamma\n+delta",
+   "stats": {
+    "added_lines": 1,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "a.txt",
+     "to": "b.txt",
+     "plan": {
+      "content_type": "text",
+      "from_label": "a.txt",
+      "to_label": "b.txt",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "a.txt",
+      "comparison_name": "b.txt"
+     },
+     "summary": {
+      "before_digest": "sha256:4fdbc441ea7b546100e086ac1e4fc5ae6749b7314311c99db05be450eca12996",
+      "after_digest": "sha256:2d1a8745bdad293ad22e1bd43a730ea6a6e79dfb25ee4de382dee96633029ff6",
+      "diff_digest": "sha256:2659562863c0df0da20de8e282b32a33b48c2ee27cc8f5e34df0a613848f6030",
+      "before_lines": 3,
+      "after_lines": 4,
+      "added_lines": 1,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "json-reorder",
+   "before": "{\"b\": 1, \"a\": 2}",
+   "after": "{\"a\": 2, \"b\": 3}",
+   "content_type": "json",
+   "label": "cfg"
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "{\n  \"a\": 2,\n  \"b\": 1\n}",
+   "canonical_after": "{\n  \"a\": 2,\n  \"b\": 3\n}",
+   "diff": "--- before\n+++ after\n@@ -1,4 +1,4 @@\n {\n   \"a\": 2,\n-  \"b\": 1\n+  \"b\": 3\n }",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "json",
+      "from_label": "before",
+      "to_label": "after",
+      "label": "cfg",
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "json",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:159bcfaddc4604b2e59354d5ea4ac8f4e3b7476ff3964125631d8cf1a8a89cf4",
+      "after_digest": "sha256:466b8ac4c8f4330731a09d1ae7ad60f8c430ea868af3de3886d8e48a77cd658b",
+      "diff_digest": "sha256:32a762a4dd6d894a1d89984d40876a437ef028173c5dc19e1b4de18ea508d205",
+      "before_lines": 4,
+      "after_lines": 4,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "xml-change",
+   "before": "<a x='1'><b/></a>",
+   "after": "<a x='2'><b/><c/></a>",
+   "content_type": "xml",
+   "context_lines": 0
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "<a x=\"1\"><b /></a>",
+   "canonical_after": "<a x=\"2\"><b /><c /></a>",
+   "diff": "--- before\n+++ after\n@@ -1 +1 @@\n-<a x=\"1\"><b /></a>\n+<a x=\"2\"><b /><c /></a>",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "xml",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 0,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "xml",
+      "context_lines": 0,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:6420882ad5cec390a75b44e6c3520d4cf971edda8d7235a3ecdf508609e4dd4f",
+      "after_digest": "sha256:507953913e6c7cb85f58515c8081d85dffc1b15f6fe343958b3fae9568b4955a",
+      "diff_digest": "sha256:359b229b13d810f8d05954939e209e86272b8c6e50dcced0569d3faed1046206",
+      "before_lines": 1,
+      "after_lines": 1,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "mask-tokens",
+   "before": "token = SECRET\npw=hunter2\n",
+   "after": "token = SECRET\npw=hunter3\n",
+   "mask_tokens": [
+    "SECRET",
+    "hunter2",
+    "",
+    "SECRET"
+   ],
+   "placeholder": "***"
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "token = SECRET\npw=hunter2\n",
+   "canonical_after": "token = SECRET\npw=hunter3\n",
+   "diff": "--- before\n+++ after\n@@ -1,2 +1,2 @@\n token = ***\n-pw=***\n+pw=hunter3",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": [
+    "hunter2",
+    "SECRET"
+   ],
+   "placeholder": "***",
+   "redaction_counts": {
+    "SECRET": 2,
+    "hunter2": 1
+   },
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [
+       "hunter2",
+       "SECRET"
+      ],
+      "placeholder": "***",
+      "context_lines": 3,
+      "redaction_counts": {
+       "SECRET": 2,
+       "hunter2": 1
+      },
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:25c9718d2d06a5d9712a41d2a5fadc21f75443571a682c2d1b6b5d74e3d6dfa9",
+      "after_digest": "sha256:3359c7aa832f44033ba4daac2696831a89d10cf14e98f83b66275b35e6ba032c",
+      "diff_digest": "sha256:f38d4a7fbeb2ef628063fe1d6ca81a8934775e0cffa61aba29fea90eeb12ac04",
+      "before_lines": 2,
+      "after_lines": 2,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "mask-tokens-empty-list",
+   "before": "a",
+   "after": "b",
+   "mask_tokens": []
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "a",
+   "canonical_after": "b",
+   "diff": "--- before\n+++ after\n@@ -1 +1 @@\n-a\n+b",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": [],
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "after_digest": "sha256:3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+      "diff_digest": "sha256:567988c630975a246956c76e379fb18b2598df2e633490f2d4fc033f9f00e3b7",
+      "before_lines": 1,
+      "after_lines": 1,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "mask-tokens-only-empty",
+   "before": "a",
+   "after": "b",
+   "mask_tokens": [
+    ""
+   ]
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "a",
+   "canonical_after": "b",
+   "diff": "--- before\n+++ after\n@@ -1 +1 @@\n-a\n+b",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": {},
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "after_digest": "sha256:3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+      "diff_digest": "sha256:567988c630975a246956c76e379fb18b2598df2e633490f2d4fc033f9f00e3b7",
+      "before_lines": 1,
+      "after_lines": 1,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "redactor-longest-first",
+   "before": "tokenised token\n",
+   "after": "token\n",
+   "redactor": [
+    "token",
+    "tokenised",
+    "ok"
+   ]
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "tokenised token\n",
+   "canonical_after": "token\n",
+   "diff": "--- before\n+++ after\n@@ -1 +1 @@\n-[REDACTED] [REDACTED]\n+[REDACTED]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": [
+    "tokenised",
+    "token",
+    "ok"
+   ],
+   "placeholder": "[REDACTED]",
+   "redaction_counts": {
+    "tokenised": 1,
+    "token": 2
+   },
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [
+       "tokenised",
+       "token",
+       "ok"
+      ],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {
+       "token": 2,
+       "tokenised": 1
+      },
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:089a787954730c906e539d6b4f24f9908824ef38a817cc56742eee9cc1c5bdb2",
+      "after_digest": "sha256:e078cb80a315c1545d5396567810bf94dc360f30bfdaae14ca6aad6cf9fe768d",
+      "diff_digest": "sha256:285697978d581972fc3c486d492756180076197a75f03f2918f5b2759196fc79",
+      "before_lines": 1,
+      "after_lines": 1,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "context-10",
+   "before": "l0\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl21\nl22\nl23\nl24\nl25\nl26\nl27\nl28\nl29\nl30\nl31\nl32\nl33\nl34\nl35\nl36\nl37\nl38\nl39",
+   "after": "l0\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nx\nl21\nl22\nl23\nl24\nl25\nl26\nl27\nl28\nl29\nl30\nl31\nl32\nl33\nl34\nl35\nl36\nl37\nl38\nl39",
+   "context_lines": 10
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "l0\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl21\nl22\nl23\nl24\nl25\nl26\nl27\nl28\nl29\nl30\nl31\nl32\nl33\nl34\nl35\nl36\nl37\nl38\nl39",
+   "canonical_after": "l0\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nx\nl21\nl22\nl23\nl24\nl25\nl26\nl27\nl28\nl29\nl30\nl31\nl32\nl33\nl34\nl35\nl36\nl37\nl38\nl39",
+   "diff": "--- before\n+++ after\n@@ -11,21 +11,21 @@\n l10\n l11\n l12\n l13\n l14\n l15\n l16\n l17\n l18\n l19\n-l20\n+x\n l21\n l22\n l23\n l24\n l25\n l26\n l27\n l28\n l29\n l30",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": null
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 10,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": null
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 10,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:bfc894da2ea552500cb606f1e75147cd6ae2e753d60cc166d982368b52fda4d1",
+      "after_digest": "sha256:bcf2c43e34363761b9a584ec7629ec75c971515c5f5b60fd4025135801aef53c",
+      "diff_digest": "sha256:e790e29d3fde81e8d8a79803337074b711ca0a2e014f5cf0a738dfb75c43c5ea",
+      "before_lines": 40,
+      "after_lines": 40,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-canonical",
+   "before": "alpha\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "after": "beta\nyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+   "limits": [
+    32,
+    48,
+    2
+   ]
+  },
+  "limits": [
+   32,
+   48,
+   2
+  ],
+  "result": {
+   "canonical_before": "alpha\nxxxxxxxxxxxxxxxxxxxxxxxxxx\n\u2026 [canonical before truncated 38 bytes for safety; digest=sha256:a0cf01f108b7408213e51a54ef8d1016e5c3498bbcc04cb2775f3b0502a4c8e7]",
+   "canonical_after": "beta\nyyyyyyyyyyyyyyyyyyyyyyyyyyy\n\u2026 [canonical after truncated 37 bytes for safety; digest=sha256:5bb82c022c3d2974575fb95f78321d8447a7454d7385ac9922bf794cc62d9311]",
+   "diff": "--- before\n+++ after\n\u2026 [diff truncated 5 lines for safety; digest=sha256:ff3e067bf5f8d32df9c18b531ed389e36cf613000d360c674d3b08d89b85767d]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 2
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 32,
+     "diff_bytes": 48,
+     "diff_lines": 2
+    },
+    "canonical": {
+     "before": {
+      "size_bytes": 70,
+      "truncated_bytes": 38,
+      "digest": "sha256:a0cf01f108b7408213e51a54ef8d1016e5c3498bbcc04cb2775f3b0502a4c8e7"
+     },
+     "after": {
+      "size_bytes": 69,
+      "truncated_bytes": 37,
+      "digest": "sha256:5bb82c022c3d2974575fb95f78321d8447a7454d7385ac9922bf794cc62d9311"
+     }
+    },
+    "diff": {
+     "total_lines": 7,
+     "total_bytes": 181,
+     "truncated_lines": 5,
+     "truncated_bytes": 0,
+     "digest": "sha256:ff3e067bf5f8d32df9c18b531ed389e36cf613000d360c674d3b08d89b85767d"
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 32,
+        "diff_bytes": 48,
+        "diff_lines": 2
+       },
+       "canonical": {
+        "before": {
+         "size_bytes": 70,
+         "truncated_bytes": 38,
+         "digest": "sha256:a0cf01f108b7408213e51a54ef8d1016e5c3498bbcc04cb2775f3b0502a4c8e7"
+        },
+        "after": {
+         "size_bytes": 69,
+         "truncated_bytes": 37,
+         "digest": "sha256:5bb82c022c3d2974575fb95f78321d8447a7454d7385ac9922bf794cc62d9311"
+        }
+       },
+       "diff": {
+        "total_lines": 7,
+        "total_bytes": 181,
+        "truncated_lines": 5,
+        "truncated_bytes": 0,
+        "digest": "sha256:ff3e067bf5f8d32df9c18b531ed389e36cf613000d360c674d3b08d89b85767d"
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:b28cf2c02c577bb94ae942d42d59b32fd2be1974ba794d13e65c687dbbe6760d",
+      "after_digest": "sha256:03b37b70ecaee76184ef995e2be4aa485b4862f6a9b95675ecada2e3897cc682",
+      "diff_digest": "sha256:6ab3e6b3e09a871b01e2476873607543f9d50682cd7429e467fd25a1f038a0be",
+      "before_lines": 3,
+      "after_lines": 3,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 2
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-lines-only",
+   "before": "a0\na1\na2\na3\na4\na5\na6\na7\na8\na9\na10\na11\na12\na13\na14\na15\na16\na17\na18\na19\na20\na21\na22\na23\na24\na25\na26\na27\na28\na29",
+   "after": "b0\nb1\nb2\nb3\nb4\nb5\nb6\nb7\nb8\nb9\nb10\nb11\nb12\nb13\nb14\nb15\nb16\nb17\nb18\nb19\nb20\nb21\nb22\nb23\nb24\nb25\nb26\nb27\nb28\nb29",
+   "limits": [
+    1048576,
+    1048576,
+    10
+   ]
+  },
+  "limits": [
+   1048576,
+   1048576,
+   10
+  ],
+  "result": {
+   "canonical_before": "a0\na1\na2\na3\na4\na5\na6\na7\na8\na9\na10\na11\na12\na13\na14\na15\na16\na17\na18\na19\na20\na21\na22\na23\na24\na25\na26\na27\na28\na29",
+   "canonical_after": "b0\nb1\nb2\nb3\nb4\nb5\nb6\nb7\nb8\nb9\nb10\nb11\nb12\nb13\nb14\nb15\nb16\nb17\nb18\nb19\nb20\nb21\nb22\nb23\nb24\nb25\nb26\nb27\nb28\nb29",
+   "diff": "--- before\n+++ after\n@@ -1,30 +1,30 @@\n-a0\n-a1\n-a2\n-a3\n-a4\n-a5\n-a6\n\u2026 [diff truncated 53 lines for safety; digest=sha256:7870c81e74d4ebbae7f25909ca04eb76b3336cf458dd83e8fe23b4018880c099]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 30
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 1048576,
+     "diff_bytes": 1048576,
+     "diff_lines": 10
+    },
+    "diff": {
+     "total_lines": 63,
+     "total_bytes": 318,
+     "truncated_lines": 53,
+     "truncated_bytes": 0,
+     "digest": "sha256:7870c81e74d4ebbae7f25909ca04eb76b3336cf458dd83e8fe23b4018880c099"
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 1048576,
+        "diff_bytes": 1048576,
+        "diff_lines": 10
+       },
+       "diff": {
+        "total_lines": 63,
+        "total_bytes": 318,
+        "truncated_lines": 53,
+        "truncated_bytes": 0,
+        "digest": "sha256:7870c81e74d4ebbae7f25909ca04eb76b3336cf458dd83e8fe23b4018880c099"
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:6e3e1ec87f2ba6a8d6ed45d6fd416c0555aaa22172ad17ac6f7e4b6e55153aed",
+      "after_digest": "sha256:b4b774eb467fe3e97efeefd7a7b15fe9a9433f1ab496e054c5f1fe84f16834ee",
+      "diff_digest": "sha256:8eb729a010b809bd18d8804efdf28092c019e1ec324d3d2652d796acb0846384",
+      "before_lines": 30,
+      "after_lines": 30,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 30
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-bytes-multibyte-split",
+   "before": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "after": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "limits": [
+    1048576,
+    1001,
+    600
+   ]
+  },
+  "limits": [
+   1048576,
+   1001,
+   600
+  ],
+  "result": {
+   "canonical_before": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "canonical_after": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "diff": "--- before\n+++ after\n@@ -1,20 +1,20 @@\n-00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00014 \u00e9\n\u2026 [diff truncated 1797 bytes for safety; digest=sha256:f43069b6469e3c573d9f9887580474078c27b283d70f5f152dad2b19740b01fe]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 20
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 1048576,
+     "diff_bytes": 1001,
+     "diff_lines": 600
+    },
+    "diff": {
+     "total_lines": 43,
+     "total_bytes": 2798,
+     "truncated_lines": 0,
+     "truncated_bytes": 1797,
+     "digest": "sha256:f43069b6469e3c573d9f9887580474078c27b283d70f5f152dad2b19740b01fe"
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 1048576,
+        "diff_bytes": 1001,
+        "diff_lines": 600
+       },
+       "diff": {
+        "total_lines": 43,
+        "total_bytes": 2798,
+        "truncated_lines": 0,
+        "truncated_bytes": 1797,
+        "digest": "sha256:f43069b6469e3c573d9f9887580474078c27b283d70f5f152dad2b19740b01fe"
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:68701e9664dd1a97e996e8caada972c1d5d14da7a79c851e61b47e502530cd8b",
+      "after_digest": "sha256:27b218378bfc3c1277576ad6006b24567f18cc93b4f168d6257e438f9d84c9fc",
+      "diff_digest": "sha256:f52f21c7c3ab3581a178417c0e307825cb07098ba5ac4d3047f230bcdeff21c9",
+      "before_lines": 20,
+      "after_lines": 20,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 20
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-canonical-multibyte-split",
+   "before": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "after": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+   "limits": [
+    33,
+    1048576,
+    600
+   ]
+  },
+  "limits": [
+   33,
+   1048576,
+   600
+  ],
+  "result": {
+   "canonical_before": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n\u2026 [canonical before truncated 47 bytes for safety; digest=sha256:84fe2e03d50dd3a18b630669d7d5e361117ac6af9cbb487c284c8e6c91a9758a]",
+   "canonical_after": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\n\u2026 [canonical after truncated 47 bytes for safety; digest=sha256:01cf2c1ac52f095f95b6bd7b30de350da1493d9aae3212a442e4a887b5079624]",
+   "diff": "--- before\n+++ after\n@@ -1 +1 @@\n-\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n+\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 33,
+     "diff_bytes": 1048576,
+     "diff_lines": 600
+    },
+    "canonical": {
+     "before": {
+      "size_bytes": 80,
+      "truncated_bytes": 47,
+      "digest": "sha256:84fe2e03d50dd3a18b630669d7d5e361117ac6af9cbb487c284c8e6c91a9758a"
+     },
+     "after": {
+      "size_bytes": 80,
+      "truncated_bytes": 47,
+      "digest": "sha256:01cf2c1ac52f095f95b6bd7b30de350da1493d9aae3212a442e4a887b5079624"
+     }
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 33,
+        "diff_bytes": 1048576,
+        "diff_lines": 600
+       },
+       "canonical": {
+        "before": {
+         "size_bytes": 80,
+         "truncated_bytes": 47,
+         "digest": "sha256:84fe2e03d50dd3a18b630669d7d5e361117ac6af9cbb487c284c8e6c91a9758a"
+        },
+        "after": {
+         "size_bytes": 80,
+         "truncated_bytes": 47,
+         "digest": "sha256:01cf2c1ac52f095f95b6bd7b30de350da1493d9aae3212a442e4a887b5079624"
+        }
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:a6f16473d47d00c808ff3ec400ce4055ab3ecc23544e921a3f6ff877a49ecf89",
+      "after_digest": "sha256:556fccf652d12d0a52fd4dc30e827a000417353637908bf9da2e8e508ed6232b",
+      "diff_digest": "sha256:432ac823b7fd3b048af3ef444702997c56fdc0b2c6df02115df603e47f4b05d8",
+      "before_lines": 2,
+      "after_lines": 2,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-after-only",
+   "before": "short",
+   "after": "long long long long long long long long long long long long long long long long long long long long ",
+   "limits": [
+    40,
+    1048576,
+    600
+   ]
+  },
+  "limits": [
+   40,
+   1048576,
+   600
+  ],
+  "result": {
+   "canonical_before": "short",
+   "canonical_after": "long long long long long long long long \n\u2026 [canonical after truncated 59 bytes for safety; digest=sha256:eb002e0a0a796ce52e195ce22e907fd82ec884603f9ef4c81bef2642bdfa8ca4]",
+   "diff": "--- before\n+++ after\n@@ -1 +1 @@\n-short\n+long long long long long long long long long long long long long long long long long long long long",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 40,
+     "diff_bytes": 1048576,
+     "diff_lines": 600
+    },
+    "canonical": {
+     "after": {
+      "size_bytes": 99,
+      "truncated_bytes": 59,
+      "digest": "sha256:eb002e0a0a796ce52e195ce22e907fd82ec884603f9ef4c81bef2642bdfa8ca4"
+     }
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 40,
+        "diff_bytes": 1048576,
+        "diff_lines": 600
+       },
+       "canonical": {
+        "after": {
+         "size_bytes": 99,
+         "truncated_bytes": 59,
+         "digest": "sha256:eb002e0a0a796ce52e195ce22e907fd82ec884603f9ef4c81bef2642bdfa8ca4"
+        }
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:f9b0078b5df596d2ea19010c001bbd009e651de2c57e8fb7e355f31eb9d3f739",
+      "after_digest": "sha256:32780622c79adaeb35e3f302b4715400f7e4ab6481a3346e3faf4459d88f9137",
+      "diff_digest": "sha256:13f49869903e2812d0a8808ba92f668d52356aa098f6cc0a41059eb9c16982a5",
+      "before_lines": 1,
+      "after_lines": 2,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-lines-and-bytes",
+   "before": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00020 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00021 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00022 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00023 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00024 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00025 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00026 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00027 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00028 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00029 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00030 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00031 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00032 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00033 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00034 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00035 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00036 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00037 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00038 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00039 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00040 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00041 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00042 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00043 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00044 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00045 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00046 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00047 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00048 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00049 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "after": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00020 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00021 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00022 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00023 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00024 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00025 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00026 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00027 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00028 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00029 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00030 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00031 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00032 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00033 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00034 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00035 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00036 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00037 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00038 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00039 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00040 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00041 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00042 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00043 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00044 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00045 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00046 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00047 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00048 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00049 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "limits": [
+    1048576,
+    500,
+    30
+   ]
+  },
+  "limits": [
+   1048576,
+   500,
+   30
+  ],
+  "result": {
+   "canonical_before": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00020 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00021 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00022 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00023 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00024 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00025 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00026 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00027 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00028 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00029 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00030 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00031 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00032 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00033 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00034 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00035 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00036 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00037 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00038 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00039 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00040 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00041 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00042 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00043 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00044 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00045 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00046 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00047 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00048 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00049 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "canonical_after": "00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00016 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00017 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00018 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00019 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00020 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00021 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00022 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00023 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00024 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00025 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00026 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00027 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00028 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00029 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00030 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00031 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00032 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00033 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00034 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00035 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00036 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00037 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00038 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00039 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00040 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00041 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00042 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00043 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00044 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00045 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00046 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00047 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00048 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n00049 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+   "diff": "--- before\n+++ after\n@@ -1,50 +1,50 @@\n-00000 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00001 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00002 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00003 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00004 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00005 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00006 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00007 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00008 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00009 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00010 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00011 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00012 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00013 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00014 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00015 \u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\n-00016 \u00e9\u00e9\u00e9\n\u2026 [diff truncated 73 lines and 294 bytes for safety; digest=sha256:c672ae6406c4448e361c324c07c1c41b0b9714479fae7a84ca09ee96fa35a6ce]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 50
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 1048576,
+     "diff_bytes": 500,
+     "diff_lines": 30
+    },
+    "diff": {
+     "total_lines": 103,
+     "total_bytes": 2938,
+     "truncated_lines": 73,
+     "truncated_bytes": 294,
+     "digest": "sha256:c672ae6406c4448e361c324c07c1c41b0b9714479fae7a84ca09ee96fa35a6ce"
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 1048576,
+        "diff_bytes": 500,
+        "diff_lines": 30
+       },
+       "diff": {
+        "total_lines": 103,
+        "total_bytes": 2938,
+        "truncated_lines": 73,
+        "truncated_bytes": 294,
+        "digest": "sha256:c672ae6406c4448e361c324c07c1c41b0b9714479fae7a84ca09ee96fa35a6ce"
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:ac493a2bf119440878e55be56e27bedb0ebd8c13586223013ef6df236aba2f36",
+      "after_digest": "sha256:c7ef3fa4e3a72941d75d6ad2bf5bd1ced69bfa95315d734cb8d061e34350d32a",
+      "diff_digest": "sha256:19e768eaeeb57769f67b43e0a42d28b3d80dee2ff756042848b8e18f50e9a01e",
+      "before_lines": 50,
+      "after_lines": 50,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 50
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-diff-splitlines-boundaries",
+   "before": "a\u001cb\u001cc\u001cd",
+   "after": "a\u001cB\u001cc\u001cD",
+   "limits": [
+    1048576,
+    30,
+    600
+   ]
+  },
+  "limits": [
+   1048576,
+   30,
+   600
+  ],
+  "result": {
+   "canonical_before": "a\u001cb\u001cc\u001cd",
+   "canonical_after": "a\u001cB\u001cc\u001cD",
+   "diff": "--- before\n+++ after\n@@ -1,4 +\n\u2026 [diff truncated 24 bytes for safety; digest=sha256:e590b32902a956cc39193f541fcd49895cd4cdc149352d1eeb399dba094f88a7]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 2
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 1048576,
+     "diff_bytes": 30,
+     "diff_lines": 600
+    },
+    "diff": {
+     "total_lines": 9,
+     "total_bytes": 54,
+     "truncated_lines": 0,
+     "truncated_bytes": 24,
+     "digest": "sha256:e590b32902a956cc39193f541fcd49895cd4cdc149352d1eeb399dba094f88a7"
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 1048576,
+        "diff_bytes": 30,
+        "diff_lines": 600
+       },
+       "diff": {
+        "total_lines": 9,
+        "total_bytes": 54,
+        "truncated_lines": 0,
+        "truncated_bytes": 24,
+        "digest": "sha256:e590b32902a956cc39193f541fcd49895cd4cdc149352d1eeb399dba094f88a7"
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:1126f47c373b1e3ce6b30f43f46fd5744acf332bf4cb66cdb664e43a6d971ff1",
+      "after_digest": "sha256:47e49ac3b73c624b89c846514b68f0f9e31e3fc33321bc5a6d98b9af4a4ea698",
+      "diff_digest": "sha256:924d79d40ecc90f8d5b4fb94c6b203eb04a45d59a3cb3fcd41125cdeba0f042e",
+      "before_lines": 4,
+      "after_lines": 4,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 2
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-diff-only-original-too-big",
+   "before": "aXb\ncXd\nq",
+   "after": "aXb\ncYd\nq",
+   "mask_tokens": [
+    "X"
+   ],
+   "placeholder": "\r\n",
+   "limits": [
+    1048576,
+    55,
+    600
+   ]
+  },
+  "limits": [
+   1048576,
+   55,
+   600
+  ],
+  "result": {
+   "canonical_before": "aXb\ncXd\nq",
+   "canonical_after": "aXb\ncYd\nq",
+   "diff": "--- before\n+++ after\n@@ -1,3 +1,3 @@\n a\r\nb\n-c\r\nd\n+cYd\n \n\u2026 [diff truncated 1 bytes for safety; digest=sha256:36f4163d7305b9fa29cb200e12bdef88959396adc3e9506c1dce34019028f227]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 1
+   },
+   "mask_tokens": [
+    "X"
+   ],
+   "placeholder": "\r\n",
+   "redaction_counts": {
+    "X": 3
+   },
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 1048576,
+     "diff_bytes": 55,
+     "diff_lines": 600
+    },
+    "diff": {
+     "total_lines": 9,
+     "total_bytes": 56,
+     "truncated_lines": 0,
+     "truncated_bytes": 1,
+     "digest": "sha256:36f4163d7305b9fa29cb200e12bdef88959396adc3e9506c1dce34019028f227"
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [
+       "X"
+      ],
+      "placeholder": "\r\n",
+      "context_lines": 3,
+      "redaction_counts": {
+       "X": 3
+      },
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 1048576,
+        "diff_bytes": 55,
+        "diff_lines": 600
+       },
+       "diff": {
+        "total_lines": 9,
+        "total_bytes": 56,
+        "truncated_lines": 0,
+        "truncated_bytes": 1,
+        "digest": "sha256:36f4163d7305b9fa29cb200e12bdef88959396adc3e9506c1dce34019028f227"
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:88969927352540fc8e3ecdac1b6bb62c258eff5490b29b2a6689c07277b940f4",
+      "after_digest": "sha256:13a8fb0d925205b186793fd8f9bdcbd14f83f6223f55e97461e6299a5af757f5",
+      "diff_digest": "sha256:6d9579a9fdef1e9822b6bda8135818f0e0732b0263940e6d3303048b2416dae2",
+      "before_lines": 3,
+      "after_lines": 3,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 1
+     }
+    }
+   ]
+  }
+ },
+ {
+  "case": {
+   "name": "clamp-defaults-large",
+   "before": "00000 \u00e9\n00001 \u00e9\n00002 \u00e9\n00003 \u00e9\n00004 \u00e9\n00005 \u00e9\n00006 \u00e9\n00007 \u00e9\n00008 \u00e9\n00009 \u00e9\n00010 \u00e9\n00011 \u00e9\n00012 \u00e9\n00013 \u00e9\n00014 \u00e9\n00015 \u00e9\n00016 \u00e9\n00017 \u00e9\n00018 \u00e9\n00019 \u00e9\n00020 \u00e9\n00021 \u00e9\n00022 \u00e9\n00023 \u00e9\n00024 \u00e9\n00025 \u00e9\n00026 \u00e9\n00027 \u00e9\n00028 \u00e9\n00029 \u00e9\n00030 \u00e9\n00031 \u00e9\n00032 \u00e9\n00033 \u00e9\n00034 \u00e9\n00035 \u00e9\n00036 \u00e9\n00037 \u00e9\n00038 \u00e9\n00039 \u00e9\n00040 \u00e9\n00041 \u00e9\n00042 \u00e9\n00043 \u00e9\n00044 \u00e9\n00045 \u00e9\n00046 \u00e9\n00047 \u00e9\n00048 \u00e9\n00049 \u00e9\n00050 \u00e9\n00051 \u00e9\n00052 \u00e9\n00053 \u00e9\n00054 \u00e9\n00055 \u00e9\n00056 \u00e9\n00057 \u00e9\n00058 \u00e9\n00059 \u00e9\n00060 \u00e9\n00061 \u00e9\n00062 \u00e9\n00063 \u00e9\n00064 \u00e9\n00065 \u00e9\n00066 \u00e9\n00067 \u00e9\n00068 \u00e9\n00069 \u00e9\n00070 \u00e9\n00071 \u00e9\n00072 \u00e9\n00073 \u00e9\n00074 \u00e9\n00075 \u00e9\n00076 \u00e9\n00077 \u00e9\n00078 \u00e9\n00079 \u00e9\n00080 \u00e9\n00081 \u00e9\n00082 \u00e9\n00083 \u00e9\n00084 \u00e9\n00085 \u00e9\n00086 \u00e9\n00087 \u00e9\n00088 \u00e9\n00089 \u00e9\n00090 \u00e9\n00091 \u00e9\n00092 \u00e9\n00093 \u00e9\n00094 \u00e9\n00095 \u00e9\n00096 \u00e9\n00097 \u00e9\n00098 \u00e9\n00099 \u00e9\n00100 \u00e9\n00101 \u00e9\n00102 \u00e9\n00103 \u00e9\n00104 \u00e9\n00105 \u00e9\n00106 \u00e9\n00107 \u00e9\n00108 \u00e9\n00109 \u00e9\n00110 \u00e9\n00111 \u00e9\n00112 \u00e9\n00113 \u00e9\n00114 \u00e9\n00115 \u00e9\n00116 \u00e9\n00117 \u00e9\n00118 \u00e9\n00119 \u00e9\n00120 \u00e9\n00121 \u00e9\n00122 \u00e9\n00123 \u00e9\n00124 \u00e9\n00125 \u00e9\n00126 \u00e9\n00127 \u00e9\n00128 \u00e9\n00129 \u00e9\n00130 \u00e9\n00131 \u00e9\n00132 \u00e9\n00133 \u00e9\n00134 \u00e9\n00135 \u00e9\n00136 \u00e9\n00137 \u00e9\n00138 \u00e9\n00139 \u00e9\n00140 \u00e9\n00141 \u00e9\n00142 \u00e9\n00143 \u00e9\n00144 \u00e9\n00145 \u00e9\n00146 \u00e9\n00147 \u00e9\n00148 \u00e9\n00149 \u00e9\n00150 \u00e9\n00151 \u00e9\n00152 \u00e9\n00153 \u00e9\n00154 \u00e9\n00155 \u00e9\n00156 \u00e9\n00157 \u00e9\n00158 \u00e9\n00159 \u00e9\n00160 \u00e9\n00161 \u00e9\n00162 \u00e9\n00163 \u00e9\n00164 \u00e9\n00165 \u00e9\n00166 \u00e9\n00167 \u00e9\n00168 \u00e9\n00169 \u00e9\n00170 \u00e9\n00171 \u00e9\n00172 \u00e9\n00173 \u00e9\n00174 \u00e9\n00175 \u00e9\n00176 \u00e9\n00177 \u00e9\n00178 \u00e9\n00179 \u00e9\n00180 \u00e9\n00181 \u00e9\n00182 \u00e9\n00183 \u00e9\n00184 \u00e9\n00185 \u00e9\n00186 \u00e9\n00187 \u00e9\n00188 \u00e9\n00189 \u00e9\n00190 \u00e9\n00191 \u00e9\n00192 \u00e9\n00193 \u00e9\n00194 \u00e9\n00195 \u00e9\n00196 \u00e9\n00197 \u00e9\n00198 \u00e9\n00199 \u00e9\n00200 \u00e9\n00201 \u00e9\n00202 \u00e9\n00203 \u00e9\n00204 \u00e9\n00205 \u00e9\n00206 \u00e9\n00207 \u00e9\n00208 \u00e9\n00209 \u00e9\n00210 \u00e9\n00211 \u00e9\n00212 \u00e9\n00213 \u00e9\n00214 \u00e9\n00215 \u00e9\n00216 \u00e9\n00217 \u00e9\n00218 \u00e9\n00219 \u00e9\n00220 \u00e9\n00221 \u00e9\n00222 \u00e9\n00223 \u00e9\n00224 \u00e9\n00225 \u00e9\n00226 \u00e9\n00227 \u00e9\n00228 \u00e9\n00229 \u00e9\n00230 \u00e9\n00231 \u00e9\n00232 \u00e9\n00233 \u00e9\n00234 \u00e9\n00235 \u00e9\n00236 \u00e9\n00237 \u00e9\n00238 \u00e9\n00239 \u00e9\n00240 \u00e9\n00241 \u00e9\n00242 \u00e9\n00243 \u00e9\n00244 \u00e9\n00245 \u00e9\n00246 \u00e9\n00247 \u00e9\n00248 \u00e9\n00249 \u00e9\n00250 \u00e9\n00251 \u00e9\n00252 \u00e9\n00253 \u00e9\n00254 \u00e9\n00255 \u00e9\n00256 \u00e9\n00257 \u00e9\n00258 \u00e9\n00259 \u00e9\n00260 \u00e9\n00261 \u00e9\n00262 \u00e9\n00263 \u00e9\n00264 \u00e9\n00265 \u00e9\n00266 \u00e9\n00267 \u00e9\n00268 \u00e9\n00269 \u00e9\n00270 \u00e9\n00271 \u00e9\n00272 \u00e9\n00273 \u00e9\n00274 \u00e9\n00275 \u00e9\n00276 \u00e9\n00277 \u00e9\n00278 \u00e9\n00279 \u00e9\n00280 \u00e9\n00281 \u00e9\n00282 \u00e9\n00283 \u00e9\n00284 \u00e9\n00285 \u00e9\n00286 \u00e9\n00287 \u00e9\n00288 \u00e9\n00289 \u00e9\n00290 \u00e9\n00291 \u00e9\n00292 \u00e9\n00293 \u00e9\n00294 \u00e9\n00295 \u00e9\n00296 \u00e9\n00297 \u00e9\n00298 \u00e9\n00299 \u00e9\n00300 \u00e9\n00301 \u00e9\n00302 \u00e9\n00303 \u00e9\n00304 \u00e9\n00305 \u00e9\n00306 \u00e9\n00307 \u00e9\n00308 \u00e9\n00309 \u00e9\n00310 \u00e9\n00311 \u00e9\n00312 \u00e9\n00313 \u00e9\n00314 \u00e9\n00315 \u00e9\n00316 \u00e9\n00317 \u00e9\n00318 \u00e9\n00319 \u00e9\n00320 \u00e9\n00321 \u00e9\n00322 \u00e9\n00323 \u00e9\n00324 \u00e9\n00325 \u00e9\n00326 \u00e9\n00327 \u00e9\n00328 \u00e9\n00329 \u00e9\n00330 \u00e9\n00331 \u00e9\n00332 \u00e9\n00333 \u00e9\n00334 \u00e9\n00335 \u00e9\n00336 \u00e9\n00337 \u00e9\n00338 \u00e9\n00339 \u00e9\n00340 \u00e9\n00341 \u00e9\n00342 \u00e9\n00343 \u00e9\n00344 \u00e9\n00345 \u00e9\n00346 \u00e9\n00347 \u00e9\n00348 \u00e9\n00349 \u00e9\n00350 \u00e9\n00351 \u00e9\n00352 \u00e9\n00353 \u00e9\n00354 \u00e9\n00355 \u00e9\n00356 \u00e9\n00357 \u00e9\n00358 \u00e9\n00359 \u00e9\n00360 \u00e9\n00361 \u00e9\n00362 \u00e9\n00363 \u00e9\n00364 \u00e9\n00365 \u00e9\n00366 \u00e9\n00367 \u00e9\n00368 \u00e9\n00369 \u00e9\n00370 \u00e9\n00371 \u00e9\n00372 \u00e9\n00373 \u00e9\n00374 \u00e9\n00375 \u00e9\n00376 \u00e9\n00377 \u00e9\n00378 \u00e9\n00379 \u00e9\n00380 \u00e9\n00381 \u00e9\n00382 \u00e9\n00383 \u00e9\n00384 \u00e9\n00385 \u00e9\n00386 \u00e9\n00387 \u00e9\n00388 \u00e9\n00389 \u00e9\n00390 \u00e9\n00391 \u00e9\n00392 \u00e9\n00393 \u00e9\n00394 \u00e9\n00395 \u00e9\n00396 \u00e9\n00397 \u00e9\n00398 \u00e9\n00399 \u00e9\n00400 \u00e9\n00401 \u00e9\n00402 \u00e9\n00403 \u00e9\n00404 \u00e9\n00405 \u00e9\n00406 \u00e9\n00407 \u00e9\n00408 \u00e9\n00409 \u00e9\n00410 \u00e9\n00411 \u00e9\n00412 \u00e9\n00413 \u00e9\n00414 \u00e9\n00415 \u00e9\n00416 \u00e9\n00417 \u00e9\n00418 \u00e9\n00419 \u00e9\n00420 \u00e9\n00421 \u00e9\n00422 \u00e9\n00423 \u00e9\n00424 \u00e9\n00425 \u00e9\n00426 \u00e9\n00427 \u00e9\n00428 \u00e9\n00429 \u00e9\n00430 \u00e9\n00431 \u00e9\n00432 \u00e9\n00433 \u00e9\n00434 \u00e9\n00435 \u00e9\n00436 \u00e9\n00437 \u00e9\n00438 \u00e9\n00439 \u00e9\n00440 \u00e9\n00441 \u00e9\n00442 \u00e9\n00443 \u00e9\n00444 \u00e9\n00445 \u00e9\n00446 \u00e9\n00447 \u00e9\n00448 \u00e9\n00449 \u00e9\n00450 \u00e9\n00451 \u00e9\n00452 \u00e9\n00453 \u00e9\n00454 \u00e9\n00455 \u00e9\n00456 \u00e9\n00457 \u00e9\n00458 \u00e9\n00459 \u00e9\n00460 \u00e9\n00461 \u00e9\n00462 \u00e9\n00463 \u00e9\n00464 \u00e9\n00465 \u00e9\n00466 \u00e9\n00467 \u00e9\n00468 \u00e9\n00469 \u00e9\n00470 \u00e9\n00471 \u00e9\n00472 \u00e9\n00473 \u00e9\n00474 \u00e9\n00475 \u00e9\n00476 \u00e9\n00477 \u00e9\n00478 \u00e9\n00479 \u00e9\n00480 \u00e9\n00481 \u00e9\n00482 \u00e9\n00483 \u00e9\n00484 \u00e9\n00485 \u00e9\n00486 \u00e9\n00487 \u00e9\n00488 \u00e9\n00489 \u00e9\n00490 \u00e9\n00491 \u00e9\n00492 \u00e9\n00493 \u00e9\n00494 \u00e9\n00495 \u00e9\n00496 \u00e9\n00497 \u00e9\n00498 \u00e9\n00499 \u00e9\n00500 \u00e9\n00501 \u00e9\n00502 \u00e9\n00503 \u00e9\n00504 \u00e9\n00505 \u00e9\n00506 \u00e9\n00507 \u00e9\n00508 \u00e9\n00509 \u00e9\n00510 \u00e9\n00511 \u00e9\n00512 \u00e9\n00513 \u00e9\n00514 \u00e9\n00515 \u00e9\n00516 \u00e9\n00517 \u00e9\n00518 \u00e9\n00519 \u00e9\n00520 \u00e9\n00521 \u00e9\n00522 \u00e9\n00523 \u00e9\n00524 \u00e9\n00525 \u00e9\n00526 \u00e9\n00527 \u00e9\n00528 \u00e9\n00529 \u00e9\n00530 \u00e9\n00531 \u00e9\n00532 \u00e9\n00533 \u00e9\n00534 \u00e9\n00535 \u00e9\n00536 \u00e9\n00537 \u00e9\n00538 \u00e9\n00539 \u00e9\n00540 \u00e9\n00541 \u00e9\n00542 \u00e9\n00543 \u00e9\n00544 \u00e9\n00545 \u00e9\n00546 \u00e9\n00547 \u00e9\n00548 \u00e9\n00549 \u00e9\n00550 \u00e9\n00551 \u00e9\n00552 \u00e9\n00553 \u00e9\n00554 \u00e9\n00555 \u00e9\n00556 \u00e9\n00557 \u00e9\n00558 \u00e9\n00559 \u00e9\n00560 \u00e9\n00561 \u00e9\n00562 \u00e9\n00563 \u00e9\n00564 \u00e9\n00565 \u00e9\n00566 \u00e9\n00567 \u00e9\n00568 \u00e9\n00569 \u00e9\n00570 \u00e9\n00571 \u00e9\n00572 \u00e9\n00573 \u00e9\n00574 \u00e9\n00575 \u00e9\n00576 \u00e9\n00577 \u00e9\n00578 \u00e9\n00579 \u00e9\n00580 \u00e9\n00581 \u00e9\n00582 \u00e9\n00583 \u00e9\n00584 \u00e9\n00585 \u00e9\n00586 \u00e9\n00587 \u00e9\n00588 \u00e9\n00589 \u00e9\n00590 \u00e9\n00591 \u00e9\n00592 \u00e9\n00593 \u00e9\n00594 \u00e9\n00595 \u00e9\n00596 \u00e9\n00597 \u00e9\n00598 \u00e9\n00599 \u00e9\n00600 \u00e9\n00601 \u00e9\n00602 \u00e9\n00603 \u00e9\n00604 \u00e9\n00605 \u00e9\n00606 \u00e9\n00607 \u00e9\n00608 \u00e9\n00609 \u00e9\n00610 \u00e9\n00611 \u00e9\n00612 \u00e9\n00613 \u00e9\n00614 \u00e9\n00615 \u00e9\n00616 \u00e9\n00617 \u00e9\n00618 \u00e9\n00619 \u00e9\n00620 \u00e9\n00621 \u00e9\n00622 \u00e9\n00623 \u00e9\n00624 \u00e9\n00625 \u00e9\n00626 \u00e9\n00627 \u00e9\n00628 \u00e9\n00629 \u00e9\n00630 \u00e9\n00631 \u00e9\n00632 \u00e9\n00633 \u00e9\n00634 \u00e9\n00635 \u00e9\n00636 \u00e9\n00637 \u00e9\n00638 \u00e9\n00639 \u00e9\n00640 \u00e9\n00641 \u00e9\n00642 \u00e9\n00643 \u00e9\n00644 \u00e9\n00645 \u00e9\n00646 \u00e9\n00647 \u00e9\n00648 \u00e9\n00649 \u00e9\n00650 \u00e9\n00651 \u00e9\n00652 \u00e9\n00653 \u00e9\n00654 \u00e9\n00655 \u00e9\n00656 \u00e9\n00657 \u00e9\n00658 \u00e9\n00659 \u00e9\n00660 \u00e9\n00661 \u00e9\n00662 \u00e9\n00663 \u00e9\n00664 \u00e9\n00665 \u00e9\n00666 \u00e9\n00667 \u00e9\n00668 \u00e9\n00669 \u00e9\n00670 \u00e9\n00671 \u00e9\n00672 \u00e9\n00673 \u00e9\n00674 \u00e9\n00675 \u00e9\n00676 \u00e9\n00677 \u00e9\n00678 \u00e9\n00679 \u00e9\n00680 \u00e9\n00681 \u00e9\n00682 \u00e9\n00683 \u00e9\n00684 \u00e9\n00685 \u00e9\n00686 \u00e9\n00687 \u00e9\n00688 \u00e9\n00689 \u00e9\n00690 \u00e9\n00691 \u00e9\n00692 \u00e9\n00693 \u00e9\n00694 \u00e9\n00695 \u00e9\n00696 \u00e9\n00697 \u00e9\n00698 \u00e9\n00699 \u00e9",
+   "after": "00000 \u00e9\u00e9\n00001 \u00e9\u00e9\n00002 \u00e9\u00e9\n00003 \u00e9\u00e9\n00004 \u00e9\u00e9\n00005 \u00e9\u00e9\n00006 \u00e9\u00e9\n00007 \u00e9\u00e9\n00008 \u00e9\u00e9\n00009 \u00e9\u00e9\n00010 \u00e9\u00e9\n00011 \u00e9\u00e9\n00012 \u00e9\u00e9\n00013 \u00e9\u00e9\n00014 \u00e9\u00e9\n00015 \u00e9\u00e9\n00016 \u00e9\u00e9\n00017 \u00e9\u00e9\n00018 \u00e9\u00e9\n00019 \u00e9\u00e9\n00020 \u00e9\u00e9\n00021 \u00e9\u00e9\n00022 \u00e9\u00e9\n00023 \u00e9\u00e9\n00024 \u00e9\u00e9\n00025 \u00e9\u00e9\n00026 \u00e9\u00e9\n00027 \u00e9\u00e9\n00028 \u00e9\u00e9\n00029 \u00e9\u00e9\n00030 \u00e9\u00e9\n00031 \u00e9\u00e9\n00032 \u00e9\u00e9\n00033 \u00e9\u00e9\n00034 \u00e9\u00e9\n00035 \u00e9\u00e9\n00036 \u00e9\u00e9\n00037 \u00e9\u00e9\n00038 \u00e9\u00e9\n00039 \u00e9\u00e9\n00040 \u00e9\u00e9\n00041 \u00e9\u00e9\n00042 \u00e9\u00e9\n00043 \u00e9\u00e9\n00044 \u00e9\u00e9\n00045 \u00e9\u00e9\n00046 \u00e9\u00e9\n00047 \u00e9\u00e9\n00048 \u00e9\u00e9\n00049 \u00e9\u00e9\n00050 \u00e9\u00e9\n00051 \u00e9\u00e9\n00052 \u00e9\u00e9\n00053 \u00e9\u00e9\n00054 \u00e9\u00e9\n00055 \u00e9\u00e9\n00056 \u00e9\u00e9\n00057 \u00e9\u00e9\n00058 \u00e9\u00e9\n00059 \u00e9\u00e9\n00060 \u00e9\u00e9\n00061 \u00e9\u00e9\n00062 \u00e9\u00e9\n00063 \u00e9\u00e9\n00064 \u00e9\u00e9\n00065 \u00e9\u00e9\n00066 \u00e9\u00e9\n00067 \u00e9\u00e9\n00068 \u00e9\u00e9\n00069 \u00e9\u00e9\n00070 \u00e9\u00e9\n00071 \u00e9\u00e9\n00072 \u00e9\u00e9\n00073 \u00e9\u00e9\n00074 \u00e9\u00e9\n00075 \u00e9\u00e9\n00076 \u00e9\u00e9\n00077 \u00e9\u00e9\n00078 \u00e9\u00e9\n00079 \u00e9\u00e9\n00080 \u00e9\u00e9\n00081 \u00e9\u00e9\n00082 \u00e9\u00e9\n00083 \u00e9\u00e9\n00084 \u00e9\u00e9\n00085 \u00e9\u00e9\n00086 \u00e9\u00e9\n00087 \u00e9\u00e9\n00088 \u00e9\u00e9\n00089 \u00e9\u00e9\n00090 \u00e9\u00e9\n00091 \u00e9\u00e9\n00092 \u00e9\u00e9\n00093 \u00e9\u00e9\n00094 \u00e9\u00e9\n00095 \u00e9\u00e9\n00096 \u00e9\u00e9\n00097 \u00e9\u00e9\n00098 \u00e9\u00e9\n00099 \u00e9\u00e9\n00100 \u00e9\u00e9\n00101 \u00e9\u00e9\n00102 \u00e9\u00e9\n00103 \u00e9\u00e9\n00104 \u00e9\u00e9\n00105 \u00e9\u00e9\n00106 \u00e9\u00e9\n00107 \u00e9\u00e9\n00108 \u00e9\u00e9\n00109 \u00e9\u00e9\n00110 \u00e9\u00e9\n00111 \u00e9\u00e9\n00112 \u00e9\u00e9\n00113 \u00e9\u00e9\n00114 \u00e9\u00e9\n00115 \u00e9\u00e9\n00116 \u00e9\u00e9\n00117 \u00e9\u00e9\n00118 \u00e9\u00e9\n00119 \u00e9\u00e9\n00120 \u00e9\u00e9\n00121 \u00e9\u00e9\n00122 \u00e9\u00e9\n00123 \u00e9\u00e9\n00124 \u00e9\u00e9\n00125 \u00e9\u00e9\n00126 \u00e9\u00e9\n00127 \u00e9\u00e9\n00128 \u00e9\u00e9\n00129 \u00e9\u00e9\n00130 \u00e9\u00e9\n00131 \u00e9\u00e9\n00132 \u00e9\u00e9\n00133 \u00e9\u00e9\n00134 \u00e9\u00e9\n00135 \u00e9\u00e9\n00136 \u00e9\u00e9\n00137 \u00e9\u00e9\n00138 \u00e9\u00e9\n00139 \u00e9\u00e9\n00140 \u00e9\u00e9\n00141 \u00e9\u00e9\n00142 \u00e9\u00e9\n00143 \u00e9\u00e9\n00144 \u00e9\u00e9\n00145 \u00e9\u00e9\n00146 \u00e9\u00e9\n00147 \u00e9\u00e9\n00148 \u00e9\u00e9\n00149 \u00e9\u00e9\n00150 \u00e9\u00e9\n00151 \u00e9\u00e9\n00152 \u00e9\u00e9\n00153 \u00e9\u00e9\n00154 \u00e9\u00e9\n00155 \u00e9\u00e9\n00156 \u00e9\u00e9\n00157 \u00e9\u00e9\n00158 \u00e9\u00e9\n00159 \u00e9\u00e9\n00160 \u00e9\u00e9\n00161 \u00e9\u00e9\n00162 \u00e9\u00e9\n00163 \u00e9\u00e9\n00164 \u00e9\u00e9\n00165 \u00e9\u00e9\n00166 \u00e9\u00e9\n00167 \u00e9\u00e9\n00168 \u00e9\u00e9\n00169 \u00e9\u00e9\n00170 \u00e9\u00e9\n00171 \u00e9\u00e9\n00172 \u00e9\u00e9\n00173 \u00e9\u00e9\n00174 \u00e9\u00e9\n00175 \u00e9\u00e9\n00176 \u00e9\u00e9\n00177 \u00e9\u00e9\n00178 \u00e9\u00e9\n00179 \u00e9\u00e9\n00180 \u00e9\u00e9\n00181 \u00e9\u00e9\n00182 \u00e9\u00e9\n00183 \u00e9\u00e9\n00184 \u00e9\u00e9\n00185 \u00e9\u00e9\n00186 \u00e9\u00e9\n00187 \u00e9\u00e9\n00188 \u00e9\u00e9\n00189 \u00e9\u00e9\n00190 \u00e9\u00e9\n00191 \u00e9\u00e9\n00192 \u00e9\u00e9\n00193 \u00e9\u00e9\n00194 \u00e9\u00e9\n00195 \u00e9\u00e9\n00196 \u00e9\u00e9\n00197 \u00e9\u00e9\n00198 \u00e9\u00e9\n00199 \u00e9\u00e9\n00200 \u00e9\u00e9\n00201 \u00e9\u00e9\n00202 \u00e9\u00e9\n00203 \u00e9\u00e9\n00204 \u00e9\u00e9\n00205 \u00e9\u00e9\n00206 \u00e9\u00e9\n00207 \u00e9\u00e9\n00208 \u00e9\u00e9\n00209 \u00e9\u00e9\n00210 \u00e9\u00e9\n00211 \u00e9\u00e9\n00212 \u00e9\u00e9\n00213 \u00e9\u00e9\n00214 \u00e9\u00e9\n00215 \u00e9\u00e9\n00216 \u00e9\u00e9\n00217 \u00e9\u00e9\n00218 \u00e9\u00e9\n00219 \u00e9\u00e9\n00220 \u00e9\u00e9\n00221 \u00e9\u00e9\n00222 \u00e9\u00e9\n00223 \u00e9\u00e9\n00224 \u00e9\u00e9\n00225 \u00e9\u00e9\n00226 \u00e9\u00e9\n00227 \u00e9\u00e9\n00228 \u00e9\u00e9\n00229 \u00e9\u00e9\n00230 \u00e9\u00e9\n00231 \u00e9\u00e9\n00232 \u00e9\u00e9\n00233 \u00e9\u00e9\n00234 \u00e9\u00e9\n00235 \u00e9\u00e9\n00236 \u00e9\u00e9\n00237 \u00e9\u00e9\n00238 \u00e9\u00e9\n00239 \u00e9\u00e9\n00240 \u00e9\u00e9\n00241 \u00e9\u00e9\n00242 \u00e9\u00e9\n00243 \u00e9\u00e9\n00244 \u00e9\u00e9\n00245 \u00e9\u00e9\n00246 \u00e9\u00e9\n00247 \u00e9\u00e9\n00248 \u00e9\u00e9\n00249 \u00e9\u00e9\n00250 \u00e9\u00e9\n00251 \u00e9\u00e9\n00252 \u00e9\u00e9\n00253 \u00e9\u00e9\n00254 \u00e9\u00e9\n00255 \u00e9\u00e9\n00256 \u00e9\u00e9\n00257 \u00e9\u00e9\n00258 \u00e9\u00e9\n00259 \u00e9\u00e9\n00260 \u00e9\u00e9\n00261 \u00e9\u00e9\n00262 \u00e9\u00e9\n00263 \u00e9\u00e9\n00264 \u00e9\u00e9\n00265 \u00e9\u00e9\n00266 \u00e9\u00e9\n00267 \u00e9\u00e9\n00268 \u00e9\u00e9\n00269 \u00e9\u00e9\n00270 \u00e9\u00e9\n00271 \u00e9\u00e9\n00272 \u00e9\u00e9\n00273 \u00e9\u00e9\n00274 \u00e9\u00e9\n00275 \u00e9\u00e9\n00276 \u00e9\u00e9\n00277 \u00e9\u00e9\n00278 \u00e9\u00e9\n00279 \u00e9\u00e9\n00280 \u00e9\u00e9\n00281 \u00e9\u00e9\n00282 \u00e9\u00e9\n00283 \u00e9\u00e9\n00284 \u00e9\u00e9\n00285 \u00e9\u00e9\n00286 \u00e9\u00e9\n00287 \u00e9\u00e9\n00288 \u00e9\u00e9\n00289 \u00e9\u00e9\n00290 \u00e9\u00e9\n00291 \u00e9\u00e9\n00292 \u00e9\u00e9\n00293 \u00e9\u00e9\n00294 \u00e9\u00e9\n00295 \u00e9\u00e9\n00296 \u00e9\u00e9\n00297 \u00e9\u00e9\n00298 \u00e9\u00e9\n00299 \u00e9\u00e9\n00300 \u00e9\u00e9\n00301 \u00e9\u00e9\n00302 \u00e9\u00e9\n00303 \u00e9\u00e9\n00304 \u00e9\u00e9\n00305 \u00e9\u00e9\n00306 \u00e9\u00e9\n00307 \u00e9\u00e9\n00308 \u00e9\u00e9\n00309 \u00e9\u00e9\n00310 \u00e9\u00e9\n00311 \u00e9\u00e9\n00312 \u00e9\u00e9\n00313 \u00e9\u00e9\n00314 \u00e9\u00e9\n00315 \u00e9\u00e9\n00316 \u00e9\u00e9\n00317 \u00e9\u00e9\n00318 \u00e9\u00e9\n00319 \u00e9\u00e9\n00320 \u00e9\u00e9\n00321 \u00e9\u00e9\n00322 \u00e9\u00e9\n00323 \u00e9\u00e9\n00324 \u00e9\u00e9\n00325 \u00e9\u00e9\n00326 \u00e9\u00e9\n00327 \u00e9\u00e9\n00328 \u00e9\u00e9\n00329 \u00e9\u00e9\n00330 \u00e9\u00e9\n00331 \u00e9\u00e9\n00332 \u00e9\u00e9\n00333 \u00e9\u00e9\n00334 \u00e9\u00e9\n00335 \u00e9\u00e9\n00336 \u00e9\u00e9\n00337 \u00e9\u00e9\n00338 \u00e9\u00e9\n00339 \u00e9\u00e9\n00340 \u00e9\u00e9\n00341 \u00e9\u00e9\n00342 \u00e9\u00e9\n00343 \u00e9\u00e9\n00344 \u00e9\u00e9\n00345 \u00e9\u00e9\n00346 \u00e9\u00e9\n00347 \u00e9\u00e9\n00348 \u00e9\u00e9\n00349 \u00e9\u00e9\n00350 \u00e9\u00e9\n00351 \u00e9\u00e9\n00352 \u00e9\u00e9\n00353 \u00e9\u00e9\n00354 \u00e9\u00e9\n00355 \u00e9\u00e9\n00356 \u00e9\u00e9\n00357 \u00e9\u00e9\n00358 \u00e9\u00e9\n00359 \u00e9\u00e9\n00360 \u00e9\u00e9\n00361 \u00e9\u00e9\n00362 \u00e9\u00e9\n00363 \u00e9\u00e9\n00364 \u00e9\u00e9\n00365 \u00e9\u00e9\n00366 \u00e9\u00e9\n00367 \u00e9\u00e9\n00368 \u00e9\u00e9\n00369 \u00e9\u00e9\n00370 \u00e9\u00e9\n00371 \u00e9\u00e9\n00372 \u00e9\u00e9\n00373 \u00e9\u00e9\n00374 \u00e9\u00e9\n00375 \u00e9\u00e9\n00376 \u00e9\u00e9\n00377 \u00e9\u00e9\n00378 \u00e9\u00e9\n00379 \u00e9\u00e9\n00380 \u00e9\u00e9\n00381 \u00e9\u00e9\n00382 \u00e9\u00e9\n00383 \u00e9\u00e9\n00384 \u00e9\u00e9\n00385 \u00e9\u00e9\n00386 \u00e9\u00e9\n00387 \u00e9\u00e9\n00388 \u00e9\u00e9\n00389 \u00e9\u00e9\n00390 \u00e9\u00e9\n00391 \u00e9\u00e9\n00392 \u00e9\u00e9\n00393 \u00e9\u00e9\n00394 \u00e9\u00e9\n00395 \u00e9\u00e9\n00396 \u00e9\u00e9\n00397 \u00e9\u00e9\n00398 \u00e9\u00e9\n00399 \u00e9\u00e9\n00400 \u00e9\u00e9\n00401 \u00e9\u00e9\n00402 \u00e9\u00e9\n00403 \u00e9\u00e9\n00404 \u00e9\u00e9\n00405 \u00e9\u00e9\n00406 \u00e9\u00e9\n00407 \u00e9\u00e9\n00408 \u00e9\u00e9\n00409 \u00e9\u00e9\n00410 \u00e9\u00e9\n00411 \u00e9\u00e9\n00412 \u00e9\u00e9\n00413 \u00e9\u00e9\n00414 \u00e9\u00e9\n00415 \u00e9\u00e9\n00416 \u00e9\u00e9\n00417 \u00e9\u00e9\n00418 \u00e9\u00e9\n00419 \u00e9\u00e9\n00420 \u00e9\u00e9\n00421 \u00e9\u00e9\n00422 \u00e9\u00e9\n00423 \u00e9\u00e9\n00424 \u00e9\u00e9\n00425 \u00e9\u00e9\n00426 \u00e9\u00e9\n00427 \u00e9\u00e9\n00428 \u00e9\u00e9\n00429 \u00e9\u00e9\n00430 \u00e9\u00e9\n00431 \u00e9\u00e9\n00432 \u00e9\u00e9\n00433 \u00e9\u00e9\n00434 \u00e9\u00e9\n00435 \u00e9\u00e9\n00436 \u00e9\u00e9\n00437 \u00e9\u00e9\n00438 \u00e9\u00e9\n00439 \u00e9\u00e9\n00440 \u00e9\u00e9\n00441 \u00e9\u00e9\n00442 \u00e9\u00e9\n00443 \u00e9\u00e9\n00444 \u00e9\u00e9\n00445 \u00e9\u00e9\n00446 \u00e9\u00e9\n00447 \u00e9\u00e9\n00448 \u00e9\u00e9\n00449 \u00e9\u00e9\n00450 \u00e9\u00e9\n00451 \u00e9\u00e9\n00452 \u00e9\u00e9\n00453 \u00e9\u00e9\n00454 \u00e9\u00e9\n00455 \u00e9\u00e9\n00456 \u00e9\u00e9\n00457 \u00e9\u00e9\n00458 \u00e9\u00e9\n00459 \u00e9\u00e9\n00460 \u00e9\u00e9\n00461 \u00e9\u00e9\n00462 \u00e9\u00e9\n00463 \u00e9\u00e9\n00464 \u00e9\u00e9\n00465 \u00e9\u00e9\n00466 \u00e9\u00e9\n00467 \u00e9\u00e9\n00468 \u00e9\u00e9\n00469 \u00e9\u00e9\n00470 \u00e9\u00e9\n00471 \u00e9\u00e9\n00472 \u00e9\u00e9\n00473 \u00e9\u00e9\n00474 \u00e9\u00e9\n00475 \u00e9\u00e9\n00476 \u00e9\u00e9\n00477 \u00e9\u00e9\n00478 \u00e9\u00e9\n00479 \u00e9\u00e9\n00480 \u00e9\u00e9\n00481 \u00e9\u00e9\n00482 \u00e9\u00e9\n00483 \u00e9\u00e9\n00484 \u00e9\u00e9\n00485 \u00e9\u00e9\n00486 \u00e9\u00e9\n00487 \u00e9\u00e9\n00488 \u00e9\u00e9\n00489 \u00e9\u00e9\n00490 \u00e9\u00e9\n00491 \u00e9\u00e9\n00492 \u00e9\u00e9\n00493 \u00e9\u00e9\n00494 \u00e9\u00e9\n00495 \u00e9\u00e9\n00496 \u00e9\u00e9\n00497 \u00e9\u00e9\n00498 \u00e9\u00e9\n00499 \u00e9\u00e9\n00500 \u00e9\u00e9\n00501 \u00e9\u00e9\n00502 \u00e9\u00e9\n00503 \u00e9\u00e9\n00504 \u00e9\u00e9\n00505 \u00e9\u00e9\n00506 \u00e9\u00e9\n00507 \u00e9\u00e9\n00508 \u00e9\u00e9\n00509 \u00e9\u00e9\n00510 \u00e9\u00e9\n00511 \u00e9\u00e9\n00512 \u00e9\u00e9\n00513 \u00e9\u00e9\n00514 \u00e9\u00e9\n00515 \u00e9\u00e9\n00516 \u00e9\u00e9\n00517 \u00e9\u00e9\n00518 \u00e9\u00e9\n00519 \u00e9\u00e9\n00520 \u00e9\u00e9\n00521 \u00e9\u00e9\n00522 \u00e9\u00e9\n00523 \u00e9\u00e9\n00524 \u00e9\u00e9\n00525 \u00e9\u00e9\n00526 \u00e9\u00e9\n00527 \u00e9\u00e9\n00528 \u00e9\u00e9\n00529 \u00e9\u00e9\n00530 \u00e9\u00e9\n00531 \u00e9\u00e9\n00532 \u00e9\u00e9\n00533 \u00e9\u00e9\n00534 \u00e9\u00e9\n00535 \u00e9\u00e9\n00536 \u00e9\u00e9\n00537 \u00e9\u00e9\n00538 \u00e9\u00e9\n00539 \u00e9\u00e9\n00540 \u00e9\u00e9\n00541 \u00e9\u00e9\n00542 \u00e9\u00e9\n00543 \u00e9\u00e9\n00544 \u00e9\u00e9\n00545 \u00e9\u00e9\n00546 \u00e9\u00e9\n00547 \u00e9\u00e9\n00548 \u00e9\u00e9\n00549 \u00e9\u00e9\n00550 \u00e9\u00e9\n00551 \u00e9\u00e9\n00552 \u00e9\u00e9\n00553 \u00e9\u00e9\n00554 \u00e9\u00e9\n00555 \u00e9\u00e9\n00556 \u00e9\u00e9\n00557 \u00e9\u00e9\n00558 \u00e9\u00e9\n00559 \u00e9\u00e9\n00560 \u00e9\u00e9\n00561 \u00e9\u00e9\n00562 \u00e9\u00e9\n00563 \u00e9\u00e9\n00564 \u00e9\u00e9\n00565 \u00e9\u00e9\n00566 \u00e9\u00e9\n00567 \u00e9\u00e9\n00568 \u00e9\u00e9\n00569 \u00e9\u00e9\n00570 \u00e9\u00e9\n00571 \u00e9\u00e9\n00572 \u00e9\u00e9\n00573 \u00e9\u00e9\n00574 \u00e9\u00e9\n00575 \u00e9\u00e9\n00576 \u00e9\u00e9\n00577 \u00e9\u00e9\n00578 \u00e9\u00e9\n00579 \u00e9\u00e9\n00580 \u00e9\u00e9\n00581 \u00e9\u00e9\n00582 \u00e9\u00e9\n00583 \u00e9\u00e9\n00584 \u00e9\u00e9\n00585 \u00e9\u00e9\n00586 \u00e9\u00e9\n00587 \u00e9\u00e9\n00588 \u00e9\u00e9\n00589 \u00e9\u00e9\n00590 \u00e9\u00e9\n00591 \u00e9\u00e9\n00592 \u00e9\u00e9\n00593 \u00e9\u00e9\n00594 \u00e9\u00e9\n00595 \u00e9\u00e9\n00596 \u00e9\u00e9\n00597 \u00e9\u00e9\n00598 \u00e9\u00e9\n00599 \u00e9\u00e9\n00600 \u00e9\u00e9\n00601 \u00e9\u00e9\n00602 \u00e9\u00e9\n00603 \u00e9\u00e9\n00604 \u00e9\u00e9\n00605 \u00e9\u00e9\n00606 \u00e9\u00e9\n00607 \u00e9\u00e9\n00608 \u00e9\u00e9\n00609 \u00e9\u00e9\n00610 \u00e9\u00e9\n00611 \u00e9\u00e9\n00612 \u00e9\u00e9\n00613 \u00e9\u00e9\n00614 \u00e9\u00e9\n00615 \u00e9\u00e9\n00616 \u00e9\u00e9\n00617 \u00e9\u00e9\n00618 \u00e9\u00e9\n00619 \u00e9\u00e9\n00620 \u00e9\u00e9\n00621 \u00e9\u00e9\n00622 \u00e9\u00e9\n00623 \u00e9\u00e9\n00624 \u00e9\u00e9\n00625 \u00e9\u00e9\n00626 \u00e9\u00e9\n00627 \u00e9\u00e9\n00628 \u00e9\u00e9\n00629 \u00e9\u00e9\n00630 \u00e9\u00e9\n00631 \u00e9\u00e9\n00632 \u00e9\u00e9\n00633 \u00e9\u00e9\n00634 \u00e9\u00e9\n00635 \u00e9\u00e9\n00636 \u00e9\u00e9\n00637 \u00e9\u00e9\n00638 \u00e9\u00e9\n00639 \u00e9\u00e9\n00640 \u00e9\u00e9\n00641 \u00e9\u00e9\n00642 \u00e9\u00e9\n00643 \u00e9\u00e9\n00644 \u00e9\u00e9\n00645 \u00e9\u00e9\n00646 \u00e9\u00e9\n00647 \u00e9\u00e9\n00648 \u00e9\u00e9\n00649 \u00e9\u00e9\n00650 \u00e9\u00e9\n00651 \u00e9\u00e9\n00652 \u00e9\u00e9\n00653 \u00e9\u00e9\n00654 \u00e9\u00e9\n00655 \u00e9\u00e9\n00656 \u00e9\u00e9\n00657 \u00e9\u00e9\n00658 \u00e9\u00e9\n00659 \u00e9\u00e9\n00660 \u00e9\u00e9\n00661 \u00e9\u00e9\n00662 \u00e9\u00e9\n00663 \u00e9\u00e9\n00664 \u00e9\u00e9\n00665 \u00e9\u00e9\n00666 \u00e9\u00e9\n00667 \u00e9\u00e9\n00668 \u00e9\u00e9\n00669 \u00e9\u00e9\n00670 \u00e9\u00e9\n00671 \u00e9\u00e9\n00672 \u00e9\u00e9\n00673 \u00e9\u00e9\n00674 \u00e9\u00e9\n00675 \u00e9\u00e9\n00676 \u00e9\u00e9\n00677 \u00e9\u00e9\n00678 \u00e9\u00e9\n00679 \u00e9\u00e9\n00680 \u00e9\u00e9\n00681 \u00e9\u00e9\n00682 \u00e9\u00e9\n00683 \u00e9\u00e9\n00684 \u00e9\u00e9\n00685 \u00e9\u00e9\n00686 \u00e9\u00e9\n00687 \u00e9\u00e9\n00688 \u00e9\u00e9\n00689 \u00e9\u00e9\n00690 \u00e9\u00e9\n00691 \u00e9\u00e9\n00692 \u00e9\u00e9\n00693 \u00e9\u00e9\n00694 \u00e9\u00e9\n00695 \u00e9\u00e9\n00696 \u00e9\u00e9\n00697 \u00e9\u00e9\n00698 \u00e9\u00e9\n00699 \u00e9\u00e9"
+  },
+  "limits": [
+   262144,
+   131072,
+   600
+  ],
+  "result": {
+   "canonical_before": "00000 \u00e9\n00001 \u00e9\n00002 \u00e9\n00003 \u00e9\n00004 \u00e9\n00005 \u00e9\n00006 \u00e9\n00007 \u00e9\n00008 \u00e9\n00009 \u00e9\n00010 \u00e9\n00011 \u00e9\n00012 \u00e9\n00013 \u00e9\n00014 \u00e9\n00015 \u00e9\n00016 \u00e9\n00017 \u00e9\n00018 \u00e9\n00019 \u00e9\n00020 \u00e9\n00021 \u00e9\n00022 \u00e9\n00023 \u00e9\n00024 \u00e9\n00025 \u00e9\n00026 \u00e9\n00027 \u00e9\n00028 \u00e9\n00029 \u00e9\n00030 \u00e9\n00031 \u00e9\n00032 \u00e9\n00033 \u00e9\n00034 \u00e9\n00035 \u00e9\n00036 \u00e9\n00037 \u00e9\n00038 \u00e9\n00039 \u00e9\n00040 \u00e9\n00041 \u00e9\n00042 \u00e9\n00043 \u00e9\n00044 \u00e9\n00045 \u00e9\n00046 \u00e9\n00047 \u00e9\n00048 \u00e9\n00049 \u00e9\n00050 \u00e9\n00051 \u00e9\n00052 \u00e9\n00053 \u00e9\n00054 \u00e9\n00055 \u00e9\n00056 \u00e9\n00057 \u00e9\n00058 \u00e9\n00059 \u00e9\n00060 \u00e9\n00061 \u00e9\n00062 \u00e9\n00063 \u00e9\n00064 \u00e9\n00065 \u00e9\n00066 \u00e9\n00067 \u00e9\n00068 \u00e9\n00069 \u00e9\n00070 \u00e9\n00071 \u00e9\n00072 \u00e9\n00073 \u00e9\n00074 \u00e9\n00075 \u00e9\n00076 \u00e9\n00077 \u00e9\n00078 \u00e9\n00079 \u00e9\n00080 \u00e9\n00081 \u00e9\n00082 \u00e9\n00083 \u00e9\n00084 \u00e9\n00085 \u00e9\n00086 \u00e9\n00087 \u00e9\n00088 \u00e9\n00089 \u00e9\n00090 \u00e9\n00091 \u00e9\n00092 \u00e9\n00093 \u00e9\n00094 \u00e9\n00095 \u00e9\n00096 \u00e9\n00097 \u00e9\n00098 \u00e9\n00099 \u00e9\n00100 \u00e9\n00101 \u00e9\n00102 \u00e9\n00103 \u00e9\n00104 \u00e9\n00105 \u00e9\n00106 \u00e9\n00107 \u00e9\n00108 \u00e9\n00109 \u00e9\n00110 \u00e9\n00111 \u00e9\n00112 \u00e9\n00113 \u00e9\n00114 \u00e9\n00115 \u00e9\n00116 \u00e9\n00117 \u00e9\n00118 \u00e9\n00119 \u00e9\n00120 \u00e9\n00121 \u00e9\n00122 \u00e9\n00123 \u00e9\n00124 \u00e9\n00125 \u00e9\n00126 \u00e9\n00127 \u00e9\n00128 \u00e9\n00129 \u00e9\n00130 \u00e9\n00131 \u00e9\n00132 \u00e9\n00133 \u00e9\n00134 \u00e9\n00135 \u00e9\n00136 \u00e9\n00137 \u00e9\n00138 \u00e9\n00139 \u00e9\n00140 \u00e9\n00141 \u00e9\n00142 \u00e9\n00143 \u00e9\n00144 \u00e9\n00145 \u00e9\n00146 \u00e9\n00147 \u00e9\n00148 \u00e9\n00149 \u00e9\n00150 \u00e9\n00151 \u00e9\n00152 \u00e9\n00153 \u00e9\n00154 \u00e9\n00155 \u00e9\n00156 \u00e9\n00157 \u00e9\n00158 \u00e9\n00159 \u00e9\n00160 \u00e9\n00161 \u00e9\n00162 \u00e9\n00163 \u00e9\n00164 \u00e9\n00165 \u00e9\n00166 \u00e9\n00167 \u00e9\n00168 \u00e9\n00169 \u00e9\n00170 \u00e9\n00171 \u00e9\n00172 \u00e9\n00173 \u00e9\n00174 \u00e9\n00175 \u00e9\n00176 \u00e9\n00177 \u00e9\n00178 \u00e9\n00179 \u00e9\n00180 \u00e9\n00181 \u00e9\n00182 \u00e9\n00183 \u00e9\n00184 \u00e9\n00185 \u00e9\n00186 \u00e9\n00187 \u00e9\n00188 \u00e9\n00189 \u00e9\n00190 \u00e9\n00191 \u00e9\n00192 \u00e9\n00193 \u00e9\n00194 \u00e9\n00195 \u00e9\n00196 \u00e9\n00197 \u00e9\n00198 \u00e9\n00199 \u00e9\n00200 \u00e9\n00201 \u00e9\n00202 \u00e9\n00203 \u00e9\n00204 \u00e9\n00205 \u00e9\n00206 \u00e9\n00207 \u00e9\n00208 \u00e9\n00209 \u00e9\n00210 \u00e9\n00211 \u00e9\n00212 \u00e9\n00213 \u00e9\n00214 \u00e9\n00215 \u00e9\n00216 \u00e9\n00217 \u00e9\n00218 \u00e9\n00219 \u00e9\n00220 \u00e9\n00221 \u00e9\n00222 \u00e9\n00223 \u00e9\n00224 \u00e9\n00225 \u00e9\n00226 \u00e9\n00227 \u00e9\n00228 \u00e9\n00229 \u00e9\n00230 \u00e9\n00231 \u00e9\n00232 \u00e9\n00233 \u00e9\n00234 \u00e9\n00235 \u00e9\n00236 \u00e9\n00237 \u00e9\n00238 \u00e9\n00239 \u00e9\n00240 \u00e9\n00241 \u00e9\n00242 \u00e9\n00243 \u00e9\n00244 \u00e9\n00245 \u00e9\n00246 \u00e9\n00247 \u00e9\n00248 \u00e9\n00249 \u00e9\n00250 \u00e9\n00251 \u00e9\n00252 \u00e9\n00253 \u00e9\n00254 \u00e9\n00255 \u00e9\n00256 \u00e9\n00257 \u00e9\n00258 \u00e9\n00259 \u00e9\n00260 \u00e9\n00261 \u00e9\n00262 \u00e9\n00263 \u00e9\n00264 \u00e9\n00265 \u00e9\n00266 \u00e9\n00267 \u00e9\n00268 \u00e9\n00269 \u00e9\n00270 \u00e9\n00271 \u00e9\n00272 \u00e9\n00273 \u00e9\n00274 \u00e9\n00275 \u00e9\n00276 \u00e9\n00277 \u00e9\n00278 \u00e9\n00279 \u00e9\n00280 \u00e9\n00281 \u00e9\n00282 \u00e9\n00283 \u00e9\n00284 \u00e9\n00285 \u00e9\n00286 \u00e9\n00287 \u00e9\n00288 \u00e9\n00289 \u00e9\n00290 \u00e9\n00291 \u00e9\n00292 \u00e9\n00293 \u00e9\n00294 \u00e9\n00295 \u00e9\n00296 \u00e9\n00297 \u00e9\n00298 \u00e9\n00299 \u00e9\n00300 \u00e9\n00301 \u00e9\n00302 \u00e9\n00303 \u00e9\n00304 \u00e9\n00305 \u00e9\n00306 \u00e9\n00307 \u00e9\n00308 \u00e9\n00309 \u00e9\n00310 \u00e9\n00311 \u00e9\n00312 \u00e9\n00313 \u00e9\n00314 \u00e9\n00315 \u00e9\n00316 \u00e9\n00317 \u00e9\n00318 \u00e9\n00319 \u00e9\n00320 \u00e9\n00321 \u00e9\n00322 \u00e9\n00323 \u00e9\n00324 \u00e9\n00325 \u00e9\n00326 \u00e9\n00327 \u00e9\n00328 \u00e9\n00329 \u00e9\n00330 \u00e9\n00331 \u00e9\n00332 \u00e9\n00333 \u00e9\n00334 \u00e9\n00335 \u00e9\n00336 \u00e9\n00337 \u00e9\n00338 \u00e9\n00339 \u00e9\n00340 \u00e9\n00341 \u00e9\n00342 \u00e9\n00343 \u00e9\n00344 \u00e9\n00345 \u00e9\n00346 \u00e9\n00347 \u00e9\n00348 \u00e9\n00349 \u00e9\n00350 \u00e9\n00351 \u00e9\n00352 \u00e9\n00353 \u00e9\n00354 \u00e9\n00355 \u00e9\n00356 \u00e9\n00357 \u00e9\n00358 \u00e9\n00359 \u00e9\n00360 \u00e9\n00361 \u00e9\n00362 \u00e9\n00363 \u00e9\n00364 \u00e9\n00365 \u00e9\n00366 \u00e9\n00367 \u00e9\n00368 \u00e9\n00369 \u00e9\n00370 \u00e9\n00371 \u00e9\n00372 \u00e9\n00373 \u00e9\n00374 \u00e9\n00375 \u00e9\n00376 \u00e9\n00377 \u00e9\n00378 \u00e9\n00379 \u00e9\n00380 \u00e9\n00381 \u00e9\n00382 \u00e9\n00383 \u00e9\n00384 \u00e9\n00385 \u00e9\n00386 \u00e9\n00387 \u00e9\n00388 \u00e9\n00389 \u00e9\n00390 \u00e9\n00391 \u00e9\n00392 \u00e9\n00393 \u00e9\n00394 \u00e9\n00395 \u00e9\n00396 \u00e9\n00397 \u00e9\n00398 \u00e9\n00399 \u00e9\n00400 \u00e9\n00401 \u00e9\n00402 \u00e9\n00403 \u00e9\n00404 \u00e9\n00405 \u00e9\n00406 \u00e9\n00407 \u00e9\n00408 \u00e9\n00409 \u00e9\n00410 \u00e9\n00411 \u00e9\n00412 \u00e9\n00413 \u00e9\n00414 \u00e9\n00415 \u00e9\n00416 \u00e9\n00417 \u00e9\n00418 \u00e9\n00419 \u00e9\n00420 \u00e9\n00421 \u00e9\n00422 \u00e9\n00423 \u00e9\n00424 \u00e9\n00425 \u00e9\n00426 \u00e9\n00427 \u00e9\n00428 \u00e9\n00429 \u00e9\n00430 \u00e9\n00431 \u00e9\n00432 \u00e9\n00433 \u00e9\n00434 \u00e9\n00435 \u00e9\n00436 \u00e9\n00437 \u00e9\n00438 \u00e9\n00439 \u00e9\n00440 \u00e9\n00441 \u00e9\n00442 \u00e9\n00443 \u00e9\n00444 \u00e9\n00445 \u00e9\n00446 \u00e9\n00447 \u00e9\n00448 \u00e9\n00449 \u00e9\n00450 \u00e9\n00451 \u00e9\n00452 \u00e9\n00453 \u00e9\n00454 \u00e9\n00455 \u00e9\n00456 \u00e9\n00457 \u00e9\n00458 \u00e9\n00459 \u00e9\n00460 \u00e9\n00461 \u00e9\n00462 \u00e9\n00463 \u00e9\n00464 \u00e9\n00465 \u00e9\n00466 \u00e9\n00467 \u00e9\n00468 \u00e9\n00469 \u00e9\n00470 \u00e9\n00471 \u00e9\n00472 \u00e9\n00473 \u00e9\n00474 \u00e9\n00475 \u00e9\n00476 \u00e9\n00477 \u00e9\n00478 \u00e9\n00479 \u00e9\n00480 \u00e9\n00481 \u00e9\n00482 \u00e9\n00483 \u00e9\n00484 \u00e9\n00485 \u00e9\n00486 \u00e9\n00487 \u00e9\n00488 \u00e9\n00489 \u00e9\n00490 \u00e9\n00491 \u00e9\n00492 \u00e9\n00493 \u00e9\n00494 \u00e9\n00495 \u00e9\n00496 \u00e9\n00497 \u00e9\n00498 \u00e9\n00499 \u00e9\n00500 \u00e9\n00501 \u00e9\n00502 \u00e9\n00503 \u00e9\n00504 \u00e9\n00505 \u00e9\n00506 \u00e9\n00507 \u00e9\n00508 \u00e9\n00509 \u00e9\n00510 \u00e9\n00511 \u00e9\n00512 \u00e9\n00513 \u00e9\n00514 \u00e9\n00515 \u00e9\n00516 \u00e9\n00517 \u00e9\n00518 \u00e9\n00519 \u00e9\n00520 \u00e9\n00521 \u00e9\n00522 \u00e9\n00523 \u00e9\n00524 \u00e9\n00525 \u00e9\n00526 \u00e9\n00527 \u00e9\n00528 \u00e9\n00529 \u00e9\n00530 \u00e9\n00531 \u00e9\n00532 \u00e9\n00533 \u00e9\n00534 \u00e9\n00535 \u00e9\n00536 \u00e9\n00537 \u00e9\n00538 \u00e9\n00539 \u00e9\n00540 \u00e9\n00541 \u00e9\n00542 \u00e9\n00543 \u00e9\n00544 \u00e9\n00545 \u00e9\n00546 \u00e9\n00547 \u00e9\n00548 \u00e9\n00549 \u00e9\n00550 \u00e9\n00551 \u00e9\n00552 \u00e9\n00553 \u00e9\n00554 \u00e9\n00555 \u00e9\n00556 \u00e9\n00557 \u00e9\n00558 \u00e9\n00559 \u00e9\n00560 \u00e9\n00561 \u00e9\n00562 \u00e9\n00563 \u00e9\n00564 \u00e9\n00565 \u00e9\n00566 \u00e9\n00567 \u00e9\n00568 \u00e9\n00569 \u00e9\n00570 \u00e9\n00571 \u00e9\n00572 \u00e9\n00573 \u00e9\n00574 \u00e9\n00575 \u00e9\n00576 \u00e9\n00577 \u00e9\n00578 \u00e9\n00579 \u00e9\n00580 \u00e9\n00581 \u00e9\n00582 \u00e9\n00583 \u00e9\n00584 \u00e9\n00585 \u00e9\n00586 \u00e9\n00587 \u00e9\n00588 \u00e9\n00589 \u00e9\n00590 \u00e9\n00591 \u00e9\n00592 \u00e9\n00593 \u00e9\n00594 \u00e9\n00595 \u00e9\n00596 \u00e9\n00597 \u00e9\n00598 \u00e9\n00599 \u00e9\n00600 \u00e9\n00601 \u00e9\n00602 \u00e9\n00603 \u00e9\n00604 \u00e9\n00605 \u00e9\n00606 \u00e9\n00607 \u00e9\n00608 \u00e9\n00609 \u00e9\n00610 \u00e9\n00611 \u00e9\n00612 \u00e9\n00613 \u00e9\n00614 \u00e9\n00615 \u00e9\n00616 \u00e9\n00617 \u00e9\n00618 \u00e9\n00619 \u00e9\n00620 \u00e9\n00621 \u00e9\n00622 \u00e9\n00623 \u00e9\n00624 \u00e9\n00625 \u00e9\n00626 \u00e9\n00627 \u00e9\n00628 \u00e9\n00629 \u00e9\n00630 \u00e9\n00631 \u00e9\n00632 \u00e9\n00633 \u00e9\n00634 \u00e9\n00635 \u00e9\n00636 \u00e9\n00637 \u00e9\n00638 \u00e9\n00639 \u00e9\n00640 \u00e9\n00641 \u00e9\n00642 \u00e9\n00643 \u00e9\n00644 \u00e9\n00645 \u00e9\n00646 \u00e9\n00647 \u00e9\n00648 \u00e9\n00649 \u00e9\n00650 \u00e9\n00651 \u00e9\n00652 \u00e9\n00653 \u00e9\n00654 \u00e9\n00655 \u00e9\n00656 \u00e9\n00657 \u00e9\n00658 \u00e9\n00659 \u00e9\n00660 \u00e9\n00661 \u00e9\n00662 \u00e9\n00663 \u00e9\n00664 \u00e9\n00665 \u00e9\n00666 \u00e9\n00667 \u00e9\n00668 \u00e9\n00669 \u00e9\n00670 \u00e9\n00671 \u00e9\n00672 \u00e9\n00673 \u00e9\n00674 \u00e9\n00675 \u00e9\n00676 \u00e9\n00677 \u00e9\n00678 \u00e9\n00679 \u00e9\n00680 \u00e9\n00681 \u00e9\n00682 \u00e9\n00683 \u00e9\n00684 \u00e9\n00685 \u00e9\n00686 \u00e9\n00687 \u00e9\n00688 \u00e9\n00689 \u00e9\n00690 \u00e9\n00691 \u00e9\n00692 \u00e9\n00693 \u00e9\n00694 \u00e9\n00695 \u00e9\n00696 \u00e9\n00697 \u00e9\n00698 \u00e9\n00699 \u00e9",
+   "canonical_after": "00000 \u00e9\u00e9\n00001 \u00e9\u00e9\n00002 \u00e9\u00e9\n00003 \u00e9\u00e9\n00004 \u00e9\u00e9\n00005 \u00e9\u00e9\n00006 \u00e9\u00e9\n00007 \u00e9\u00e9\n00008 \u00e9\u00e9\n00009 \u00e9\u00e9\n00010 \u00e9\u00e9\n00011 \u00e9\u00e9\n00012 \u00e9\u00e9\n00013 \u00e9\u00e9\n00014 \u00e9\u00e9\n00015 \u00e9\u00e9\n00016 \u00e9\u00e9\n00017 \u00e9\u00e9\n00018 \u00e9\u00e9\n00019 \u00e9\u00e9\n00020 \u00e9\u00e9\n00021 \u00e9\u00e9\n00022 \u00e9\u00e9\n00023 \u00e9\u00e9\n00024 \u00e9\u00e9\n00025 \u00e9\u00e9\n00026 \u00e9\u00e9\n00027 \u00e9\u00e9\n00028 \u00e9\u00e9\n00029 \u00e9\u00e9\n00030 \u00e9\u00e9\n00031 \u00e9\u00e9\n00032 \u00e9\u00e9\n00033 \u00e9\u00e9\n00034 \u00e9\u00e9\n00035 \u00e9\u00e9\n00036 \u00e9\u00e9\n00037 \u00e9\u00e9\n00038 \u00e9\u00e9\n00039 \u00e9\u00e9\n00040 \u00e9\u00e9\n00041 \u00e9\u00e9\n00042 \u00e9\u00e9\n00043 \u00e9\u00e9\n00044 \u00e9\u00e9\n00045 \u00e9\u00e9\n00046 \u00e9\u00e9\n00047 \u00e9\u00e9\n00048 \u00e9\u00e9\n00049 \u00e9\u00e9\n00050 \u00e9\u00e9\n00051 \u00e9\u00e9\n00052 \u00e9\u00e9\n00053 \u00e9\u00e9\n00054 \u00e9\u00e9\n00055 \u00e9\u00e9\n00056 \u00e9\u00e9\n00057 \u00e9\u00e9\n00058 \u00e9\u00e9\n00059 \u00e9\u00e9\n00060 \u00e9\u00e9\n00061 \u00e9\u00e9\n00062 \u00e9\u00e9\n00063 \u00e9\u00e9\n00064 \u00e9\u00e9\n00065 \u00e9\u00e9\n00066 \u00e9\u00e9\n00067 \u00e9\u00e9\n00068 \u00e9\u00e9\n00069 \u00e9\u00e9\n00070 \u00e9\u00e9\n00071 \u00e9\u00e9\n00072 \u00e9\u00e9\n00073 \u00e9\u00e9\n00074 \u00e9\u00e9\n00075 \u00e9\u00e9\n00076 \u00e9\u00e9\n00077 \u00e9\u00e9\n00078 \u00e9\u00e9\n00079 \u00e9\u00e9\n00080 \u00e9\u00e9\n00081 \u00e9\u00e9\n00082 \u00e9\u00e9\n00083 \u00e9\u00e9\n00084 \u00e9\u00e9\n00085 \u00e9\u00e9\n00086 \u00e9\u00e9\n00087 \u00e9\u00e9\n00088 \u00e9\u00e9\n00089 \u00e9\u00e9\n00090 \u00e9\u00e9\n00091 \u00e9\u00e9\n00092 \u00e9\u00e9\n00093 \u00e9\u00e9\n00094 \u00e9\u00e9\n00095 \u00e9\u00e9\n00096 \u00e9\u00e9\n00097 \u00e9\u00e9\n00098 \u00e9\u00e9\n00099 \u00e9\u00e9\n00100 \u00e9\u00e9\n00101 \u00e9\u00e9\n00102 \u00e9\u00e9\n00103 \u00e9\u00e9\n00104 \u00e9\u00e9\n00105 \u00e9\u00e9\n00106 \u00e9\u00e9\n00107 \u00e9\u00e9\n00108 \u00e9\u00e9\n00109 \u00e9\u00e9\n00110 \u00e9\u00e9\n00111 \u00e9\u00e9\n00112 \u00e9\u00e9\n00113 \u00e9\u00e9\n00114 \u00e9\u00e9\n00115 \u00e9\u00e9\n00116 \u00e9\u00e9\n00117 \u00e9\u00e9\n00118 \u00e9\u00e9\n00119 \u00e9\u00e9\n00120 \u00e9\u00e9\n00121 \u00e9\u00e9\n00122 \u00e9\u00e9\n00123 \u00e9\u00e9\n00124 \u00e9\u00e9\n00125 \u00e9\u00e9\n00126 \u00e9\u00e9\n00127 \u00e9\u00e9\n00128 \u00e9\u00e9\n00129 \u00e9\u00e9\n00130 \u00e9\u00e9\n00131 \u00e9\u00e9\n00132 \u00e9\u00e9\n00133 \u00e9\u00e9\n00134 \u00e9\u00e9\n00135 \u00e9\u00e9\n00136 \u00e9\u00e9\n00137 \u00e9\u00e9\n00138 \u00e9\u00e9\n00139 \u00e9\u00e9\n00140 \u00e9\u00e9\n00141 \u00e9\u00e9\n00142 \u00e9\u00e9\n00143 \u00e9\u00e9\n00144 \u00e9\u00e9\n00145 \u00e9\u00e9\n00146 \u00e9\u00e9\n00147 \u00e9\u00e9\n00148 \u00e9\u00e9\n00149 \u00e9\u00e9\n00150 \u00e9\u00e9\n00151 \u00e9\u00e9\n00152 \u00e9\u00e9\n00153 \u00e9\u00e9\n00154 \u00e9\u00e9\n00155 \u00e9\u00e9\n00156 \u00e9\u00e9\n00157 \u00e9\u00e9\n00158 \u00e9\u00e9\n00159 \u00e9\u00e9\n00160 \u00e9\u00e9\n00161 \u00e9\u00e9\n00162 \u00e9\u00e9\n00163 \u00e9\u00e9\n00164 \u00e9\u00e9\n00165 \u00e9\u00e9\n00166 \u00e9\u00e9\n00167 \u00e9\u00e9\n00168 \u00e9\u00e9\n00169 \u00e9\u00e9\n00170 \u00e9\u00e9\n00171 \u00e9\u00e9\n00172 \u00e9\u00e9\n00173 \u00e9\u00e9\n00174 \u00e9\u00e9\n00175 \u00e9\u00e9\n00176 \u00e9\u00e9\n00177 \u00e9\u00e9\n00178 \u00e9\u00e9\n00179 \u00e9\u00e9\n00180 \u00e9\u00e9\n00181 \u00e9\u00e9\n00182 \u00e9\u00e9\n00183 \u00e9\u00e9\n00184 \u00e9\u00e9\n00185 \u00e9\u00e9\n00186 \u00e9\u00e9\n00187 \u00e9\u00e9\n00188 \u00e9\u00e9\n00189 \u00e9\u00e9\n00190 \u00e9\u00e9\n00191 \u00e9\u00e9\n00192 \u00e9\u00e9\n00193 \u00e9\u00e9\n00194 \u00e9\u00e9\n00195 \u00e9\u00e9\n00196 \u00e9\u00e9\n00197 \u00e9\u00e9\n00198 \u00e9\u00e9\n00199 \u00e9\u00e9\n00200 \u00e9\u00e9\n00201 \u00e9\u00e9\n00202 \u00e9\u00e9\n00203 \u00e9\u00e9\n00204 \u00e9\u00e9\n00205 \u00e9\u00e9\n00206 \u00e9\u00e9\n00207 \u00e9\u00e9\n00208 \u00e9\u00e9\n00209 \u00e9\u00e9\n00210 \u00e9\u00e9\n00211 \u00e9\u00e9\n00212 \u00e9\u00e9\n00213 \u00e9\u00e9\n00214 \u00e9\u00e9\n00215 \u00e9\u00e9\n00216 \u00e9\u00e9\n00217 \u00e9\u00e9\n00218 \u00e9\u00e9\n00219 \u00e9\u00e9\n00220 \u00e9\u00e9\n00221 \u00e9\u00e9\n00222 \u00e9\u00e9\n00223 \u00e9\u00e9\n00224 \u00e9\u00e9\n00225 \u00e9\u00e9\n00226 \u00e9\u00e9\n00227 \u00e9\u00e9\n00228 \u00e9\u00e9\n00229 \u00e9\u00e9\n00230 \u00e9\u00e9\n00231 \u00e9\u00e9\n00232 \u00e9\u00e9\n00233 \u00e9\u00e9\n00234 \u00e9\u00e9\n00235 \u00e9\u00e9\n00236 \u00e9\u00e9\n00237 \u00e9\u00e9\n00238 \u00e9\u00e9\n00239 \u00e9\u00e9\n00240 \u00e9\u00e9\n00241 \u00e9\u00e9\n00242 \u00e9\u00e9\n00243 \u00e9\u00e9\n00244 \u00e9\u00e9\n00245 \u00e9\u00e9\n00246 \u00e9\u00e9\n00247 \u00e9\u00e9\n00248 \u00e9\u00e9\n00249 \u00e9\u00e9\n00250 \u00e9\u00e9\n00251 \u00e9\u00e9\n00252 \u00e9\u00e9\n00253 \u00e9\u00e9\n00254 \u00e9\u00e9\n00255 \u00e9\u00e9\n00256 \u00e9\u00e9\n00257 \u00e9\u00e9\n00258 \u00e9\u00e9\n00259 \u00e9\u00e9\n00260 \u00e9\u00e9\n00261 \u00e9\u00e9\n00262 \u00e9\u00e9\n00263 \u00e9\u00e9\n00264 \u00e9\u00e9\n00265 \u00e9\u00e9\n00266 \u00e9\u00e9\n00267 \u00e9\u00e9\n00268 \u00e9\u00e9\n00269 \u00e9\u00e9\n00270 \u00e9\u00e9\n00271 \u00e9\u00e9\n00272 \u00e9\u00e9\n00273 \u00e9\u00e9\n00274 \u00e9\u00e9\n00275 \u00e9\u00e9\n00276 \u00e9\u00e9\n00277 \u00e9\u00e9\n00278 \u00e9\u00e9\n00279 \u00e9\u00e9\n00280 \u00e9\u00e9\n00281 \u00e9\u00e9\n00282 \u00e9\u00e9\n00283 \u00e9\u00e9\n00284 \u00e9\u00e9\n00285 \u00e9\u00e9\n00286 \u00e9\u00e9\n00287 \u00e9\u00e9\n00288 \u00e9\u00e9\n00289 \u00e9\u00e9\n00290 \u00e9\u00e9\n00291 \u00e9\u00e9\n00292 \u00e9\u00e9\n00293 \u00e9\u00e9\n00294 \u00e9\u00e9\n00295 \u00e9\u00e9\n00296 \u00e9\u00e9\n00297 \u00e9\u00e9\n00298 \u00e9\u00e9\n00299 \u00e9\u00e9\n00300 \u00e9\u00e9\n00301 \u00e9\u00e9\n00302 \u00e9\u00e9\n00303 \u00e9\u00e9\n00304 \u00e9\u00e9\n00305 \u00e9\u00e9\n00306 \u00e9\u00e9\n00307 \u00e9\u00e9\n00308 \u00e9\u00e9\n00309 \u00e9\u00e9\n00310 \u00e9\u00e9\n00311 \u00e9\u00e9\n00312 \u00e9\u00e9\n00313 \u00e9\u00e9\n00314 \u00e9\u00e9\n00315 \u00e9\u00e9\n00316 \u00e9\u00e9\n00317 \u00e9\u00e9\n00318 \u00e9\u00e9\n00319 \u00e9\u00e9\n00320 \u00e9\u00e9\n00321 \u00e9\u00e9\n00322 \u00e9\u00e9\n00323 \u00e9\u00e9\n00324 \u00e9\u00e9\n00325 \u00e9\u00e9\n00326 \u00e9\u00e9\n00327 \u00e9\u00e9\n00328 \u00e9\u00e9\n00329 \u00e9\u00e9\n00330 \u00e9\u00e9\n00331 \u00e9\u00e9\n00332 \u00e9\u00e9\n00333 \u00e9\u00e9\n00334 \u00e9\u00e9\n00335 \u00e9\u00e9\n00336 \u00e9\u00e9\n00337 \u00e9\u00e9\n00338 \u00e9\u00e9\n00339 \u00e9\u00e9\n00340 \u00e9\u00e9\n00341 \u00e9\u00e9\n00342 \u00e9\u00e9\n00343 \u00e9\u00e9\n00344 \u00e9\u00e9\n00345 \u00e9\u00e9\n00346 \u00e9\u00e9\n00347 \u00e9\u00e9\n00348 \u00e9\u00e9\n00349 \u00e9\u00e9\n00350 \u00e9\u00e9\n00351 \u00e9\u00e9\n00352 \u00e9\u00e9\n00353 \u00e9\u00e9\n00354 \u00e9\u00e9\n00355 \u00e9\u00e9\n00356 \u00e9\u00e9\n00357 \u00e9\u00e9\n00358 \u00e9\u00e9\n00359 \u00e9\u00e9\n00360 \u00e9\u00e9\n00361 \u00e9\u00e9\n00362 \u00e9\u00e9\n00363 \u00e9\u00e9\n00364 \u00e9\u00e9\n00365 \u00e9\u00e9\n00366 \u00e9\u00e9\n00367 \u00e9\u00e9\n00368 \u00e9\u00e9\n00369 \u00e9\u00e9\n00370 \u00e9\u00e9\n00371 \u00e9\u00e9\n00372 \u00e9\u00e9\n00373 \u00e9\u00e9\n00374 \u00e9\u00e9\n00375 \u00e9\u00e9\n00376 \u00e9\u00e9\n00377 \u00e9\u00e9\n00378 \u00e9\u00e9\n00379 \u00e9\u00e9\n00380 \u00e9\u00e9\n00381 \u00e9\u00e9\n00382 \u00e9\u00e9\n00383 \u00e9\u00e9\n00384 \u00e9\u00e9\n00385 \u00e9\u00e9\n00386 \u00e9\u00e9\n00387 \u00e9\u00e9\n00388 \u00e9\u00e9\n00389 \u00e9\u00e9\n00390 \u00e9\u00e9\n00391 \u00e9\u00e9\n00392 \u00e9\u00e9\n00393 \u00e9\u00e9\n00394 \u00e9\u00e9\n00395 \u00e9\u00e9\n00396 \u00e9\u00e9\n00397 \u00e9\u00e9\n00398 \u00e9\u00e9\n00399 \u00e9\u00e9\n00400 \u00e9\u00e9\n00401 \u00e9\u00e9\n00402 \u00e9\u00e9\n00403 \u00e9\u00e9\n00404 \u00e9\u00e9\n00405 \u00e9\u00e9\n00406 \u00e9\u00e9\n00407 \u00e9\u00e9\n00408 \u00e9\u00e9\n00409 \u00e9\u00e9\n00410 \u00e9\u00e9\n00411 \u00e9\u00e9\n00412 \u00e9\u00e9\n00413 \u00e9\u00e9\n00414 \u00e9\u00e9\n00415 \u00e9\u00e9\n00416 \u00e9\u00e9\n00417 \u00e9\u00e9\n00418 \u00e9\u00e9\n00419 \u00e9\u00e9\n00420 \u00e9\u00e9\n00421 \u00e9\u00e9\n00422 \u00e9\u00e9\n00423 \u00e9\u00e9\n00424 \u00e9\u00e9\n00425 \u00e9\u00e9\n00426 \u00e9\u00e9\n00427 \u00e9\u00e9\n00428 \u00e9\u00e9\n00429 \u00e9\u00e9\n00430 \u00e9\u00e9\n00431 \u00e9\u00e9\n00432 \u00e9\u00e9\n00433 \u00e9\u00e9\n00434 \u00e9\u00e9\n00435 \u00e9\u00e9\n00436 \u00e9\u00e9\n00437 \u00e9\u00e9\n00438 \u00e9\u00e9\n00439 \u00e9\u00e9\n00440 \u00e9\u00e9\n00441 \u00e9\u00e9\n00442 \u00e9\u00e9\n00443 \u00e9\u00e9\n00444 \u00e9\u00e9\n00445 \u00e9\u00e9\n00446 \u00e9\u00e9\n00447 \u00e9\u00e9\n00448 \u00e9\u00e9\n00449 \u00e9\u00e9\n00450 \u00e9\u00e9\n00451 \u00e9\u00e9\n00452 \u00e9\u00e9\n00453 \u00e9\u00e9\n00454 \u00e9\u00e9\n00455 \u00e9\u00e9\n00456 \u00e9\u00e9\n00457 \u00e9\u00e9\n00458 \u00e9\u00e9\n00459 \u00e9\u00e9\n00460 \u00e9\u00e9\n00461 \u00e9\u00e9\n00462 \u00e9\u00e9\n00463 \u00e9\u00e9\n00464 \u00e9\u00e9\n00465 \u00e9\u00e9\n00466 \u00e9\u00e9\n00467 \u00e9\u00e9\n00468 \u00e9\u00e9\n00469 \u00e9\u00e9\n00470 \u00e9\u00e9\n00471 \u00e9\u00e9\n00472 \u00e9\u00e9\n00473 \u00e9\u00e9\n00474 \u00e9\u00e9\n00475 \u00e9\u00e9\n00476 \u00e9\u00e9\n00477 \u00e9\u00e9\n00478 \u00e9\u00e9\n00479 \u00e9\u00e9\n00480 \u00e9\u00e9\n00481 \u00e9\u00e9\n00482 \u00e9\u00e9\n00483 \u00e9\u00e9\n00484 \u00e9\u00e9\n00485 \u00e9\u00e9\n00486 \u00e9\u00e9\n00487 \u00e9\u00e9\n00488 \u00e9\u00e9\n00489 \u00e9\u00e9\n00490 \u00e9\u00e9\n00491 \u00e9\u00e9\n00492 \u00e9\u00e9\n00493 \u00e9\u00e9\n00494 \u00e9\u00e9\n00495 \u00e9\u00e9\n00496 \u00e9\u00e9\n00497 \u00e9\u00e9\n00498 \u00e9\u00e9\n00499 \u00e9\u00e9\n00500 \u00e9\u00e9\n00501 \u00e9\u00e9\n00502 \u00e9\u00e9\n00503 \u00e9\u00e9\n00504 \u00e9\u00e9\n00505 \u00e9\u00e9\n00506 \u00e9\u00e9\n00507 \u00e9\u00e9\n00508 \u00e9\u00e9\n00509 \u00e9\u00e9\n00510 \u00e9\u00e9\n00511 \u00e9\u00e9\n00512 \u00e9\u00e9\n00513 \u00e9\u00e9\n00514 \u00e9\u00e9\n00515 \u00e9\u00e9\n00516 \u00e9\u00e9\n00517 \u00e9\u00e9\n00518 \u00e9\u00e9\n00519 \u00e9\u00e9\n00520 \u00e9\u00e9\n00521 \u00e9\u00e9\n00522 \u00e9\u00e9\n00523 \u00e9\u00e9\n00524 \u00e9\u00e9\n00525 \u00e9\u00e9\n00526 \u00e9\u00e9\n00527 \u00e9\u00e9\n00528 \u00e9\u00e9\n00529 \u00e9\u00e9\n00530 \u00e9\u00e9\n00531 \u00e9\u00e9\n00532 \u00e9\u00e9\n00533 \u00e9\u00e9\n00534 \u00e9\u00e9\n00535 \u00e9\u00e9\n00536 \u00e9\u00e9\n00537 \u00e9\u00e9\n00538 \u00e9\u00e9\n00539 \u00e9\u00e9\n00540 \u00e9\u00e9\n00541 \u00e9\u00e9\n00542 \u00e9\u00e9\n00543 \u00e9\u00e9\n00544 \u00e9\u00e9\n00545 \u00e9\u00e9\n00546 \u00e9\u00e9\n00547 \u00e9\u00e9\n00548 \u00e9\u00e9\n00549 \u00e9\u00e9\n00550 \u00e9\u00e9\n00551 \u00e9\u00e9\n00552 \u00e9\u00e9\n00553 \u00e9\u00e9\n00554 \u00e9\u00e9\n00555 \u00e9\u00e9\n00556 \u00e9\u00e9\n00557 \u00e9\u00e9\n00558 \u00e9\u00e9\n00559 \u00e9\u00e9\n00560 \u00e9\u00e9\n00561 \u00e9\u00e9\n00562 \u00e9\u00e9\n00563 \u00e9\u00e9\n00564 \u00e9\u00e9\n00565 \u00e9\u00e9\n00566 \u00e9\u00e9\n00567 \u00e9\u00e9\n00568 \u00e9\u00e9\n00569 \u00e9\u00e9\n00570 \u00e9\u00e9\n00571 \u00e9\u00e9\n00572 \u00e9\u00e9\n00573 \u00e9\u00e9\n00574 \u00e9\u00e9\n00575 \u00e9\u00e9\n00576 \u00e9\u00e9\n00577 \u00e9\u00e9\n00578 \u00e9\u00e9\n00579 \u00e9\u00e9\n00580 \u00e9\u00e9\n00581 \u00e9\u00e9\n00582 \u00e9\u00e9\n00583 \u00e9\u00e9\n00584 \u00e9\u00e9\n00585 \u00e9\u00e9\n00586 \u00e9\u00e9\n00587 \u00e9\u00e9\n00588 \u00e9\u00e9\n00589 \u00e9\u00e9\n00590 \u00e9\u00e9\n00591 \u00e9\u00e9\n00592 \u00e9\u00e9\n00593 \u00e9\u00e9\n00594 \u00e9\u00e9\n00595 \u00e9\u00e9\n00596 \u00e9\u00e9\n00597 \u00e9\u00e9\n00598 \u00e9\u00e9\n00599 \u00e9\u00e9\n00600 \u00e9\u00e9\n00601 \u00e9\u00e9\n00602 \u00e9\u00e9\n00603 \u00e9\u00e9\n00604 \u00e9\u00e9\n00605 \u00e9\u00e9\n00606 \u00e9\u00e9\n00607 \u00e9\u00e9\n00608 \u00e9\u00e9\n00609 \u00e9\u00e9\n00610 \u00e9\u00e9\n00611 \u00e9\u00e9\n00612 \u00e9\u00e9\n00613 \u00e9\u00e9\n00614 \u00e9\u00e9\n00615 \u00e9\u00e9\n00616 \u00e9\u00e9\n00617 \u00e9\u00e9\n00618 \u00e9\u00e9\n00619 \u00e9\u00e9\n00620 \u00e9\u00e9\n00621 \u00e9\u00e9\n00622 \u00e9\u00e9\n00623 \u00e9\u00e9\n00624 \u00e9\u00e9\n00625 \u00e9\u00e9\n00626 \u00e9\u00e9\n00627 \u00e9\u00e9\n00628 \u00e9\u00e9\n00629 \u00e9\u00e9\n00630 \u00e9\u00e9\n00631 \u00e9\u00e9\n00632 \u00e9\u00e9\n00633 \u00e9\u00e9\n00634 \u00e9\u00e9\n00635 \u00e9\u00e9\n00636 \u00e9\u00e9\n00637 \u00e9\u00e9\n00638 \u00e9\u00e9\n00639 \u00e9\u00e9\n00640 \u00e9\u00e9\n00641 \u00e9\u00e9\n00642 \u00e9\u00e9\n00643 \u00e9\u00e9\n00644 \u00e9\u00e9\n00645 \u00e9\u00e9\n00646 \u00e9\u00e9\n00647 \u00e9\u00e9\n00648 \u00e9\u00e9\n00649 \u00e9\u00e9\n00650 \u00e9\u00e9\n00651 \u00e9\u00e9\n00652 \u00e9\u00e9\n00653 \u00e9\u00e9\n00654 \u00e9\u00e9\n00655 \u00e9\u00e9\n00656 \u00e9\u00e9\n00657 \u00e9\u00e9\n00658 \u00e9\u00e9\n00659 \u00e9\u00e9\n00660 \u00e9\u00e9\n00661 \u00e9\u00e9\n00662 \u00e9\u00e9\n00663 \u00e9\u00e9\n00664 \u00e9\u00e9\n00665 \u00e9\u00e9\n00666 \u00e9\u00e9\n00667 \u00e9\u00e9\n00668 \u00e9\u00e9\n00669 \u00e9\u00e9\n00670 \u00e9\u00e9\n00671 \u00e9\u00e9\n00672 \u00e9\u00e9\n00673 \u00e9\u00e9\n00674 \u00e9\u00e9\n00675 \u00e9\u00e9\n00676 \u00e9\u00e9\n00677 \u00e9\u00e9\n00678 \u00e9\u00e9\n00679 \u00e9\u00e9\n00680 \u00e9\u00e9\n00681 \u00e9\u00e9\n00682 \u00e9\u00e9\n00683 \u00e9\u00e9\n00684 \u00e9\u00e9\n00685 \u00e9\u00e9\n00686 \u00e9\u00e9\n00687 \u00e9\u00e9\n00688 \u00e9\u00e9\n00689 \u00e9\u00e9\n00690 \u00e9\u00e9\n00691 \u00e9\u00e9\n00692 \u00e9\u00e9\n00693 \u00e9\u00e9\n00694 \u00e9\u00e9\n00695 \u00e9\u00e9\n00696 \u00e9\u00e9\n00697 \u00e9\u00e9\n00698 \u00e9\u00e9\n00699 \u00e9\u00e9",
+   "diff": "--- before\n+++ after\n@@ -1,700 +1,700 @@\n-00000 \u00e9\n-00001 \u00e9\n-00002 \u00e9\n-00003 \u00e9\n-00004 \u00e9\n-00005 \u00e9\n-00006 \u00e9\n-00007 \u00e9\n-00008 \u00e9\n-00009 \u00e9\n-00010 \u00e9\n-00011 \u00e9\n-00012 \u00e9\n-00013 \u00e9\n-00014 \u00e9\n-00015 \u00e9\n-00016 \u00e9\n-00017 \u00e9\n-00018 \u00e9\n-00019 \u00e9\n-00020 \u00e9\n-00021 \u00e9\n-00022 \u00e9\n-00023 \u00e9\n-00024 \u00e9\n-00025 \u00e9\n-00026 \u00e9\n-00027 \u00e9\n-00028 \u00e9\n-00029 \u00e9\n-00030 \u00e9\n-00031 \u00e9\n-00032 \u00e9\n-00033 \u00e9\n-00034 \u00e9\n-00035 \u00e9\n-00036 \u00e9\n-00037 \u00e9\n-00038 \u00e9\n-00039 \u00e9\n-00040 \u00e9\n-00041 \u00e9\n-00042 \u00e9\n-00043 \u00e9\n-00044 \u00e9\n-00045 \u00e9\n-00046 \u00e9\n-00047 \u00e9\n-00048 \u00e9\n-00049 \u00e9\n-00050 \u00e9\n-00051 \u00e9\n-00052 \u00e9\n-00053 \u00e9\n-00054 \u00e9\n-00055 \u00e9\n-00056 \u00e9\n-00057 \u00e9\n-00058 \u00e9\n-00059 \u00e9\n-00060 \u00e9\n-00061 \u00e9\n-00062 \u00e9\n-00063 \u00e9\n-00064 \u00e9\n-00065 \u00e9\n-00066 \u00e9\n-00067 \u00e9\n-00068 \u00e9\n-00069 \u00e9\n-00070 \u00e9\n-00071 \u00e9\n-00072 \u00e9\n-00073 \u00e9\n-00074 \u00e9\n-00075 \u00e9\n-00076 \u00e9\n-00077 \u00e9\n-00078 \u00e9\n-00079 \u00e9\n-00080 \u00e9\n-00081 \u00e9\n-00082 \u00e9\n-00083 \u00e9\n-00084 \u00e9\n-00085 \u00e9\n-00086 \u00e9\n-00087 \u00e9\n-00088 \u00e9\n-00089 \u00e9\n-00090 \u00e9\n-00091 \u00e9\n-00092 \u00e9\n-00093 \u00e9\n-00094 \u00e9\n-00095 \u00e9\n-00096 \u00e9\n-00097 \u00e9\n-00098 \u00e9\n-00099 \u00e9\n-00100 \u00e9\n-00101 \u00e9\n-00102 \u00e9\n-00103 \u00e9\n-00104 \u00e9\n-00105 \u00e9\n-00106 \u00e9\n-00107 \u00e9\n-00108 \u00e9\n-00109 \u00e9\n-00110 \u00e9\n-00111 \u00e9\n-00112 \u00e9\n-00113 \u00e9\n-00114 \u00e9\n-00115 \u00e9\n-00116 \u00e9\n-00117 \u00e9\n-00118 \u00e9\n-00119 \u00e9\n-00120 \u00e9\n-00121 \u00e9\n-00122 \u00e9\n-00123 \u00e9\n-00124 \u00e9\n-00125 \u00e9\n-00126 \u00e9\n-00127 \u00e9\n-00128 \u00e9\n-00129 \u00e9\n-00130 \u00e9\n-00131 \u00e9\n-00132 \u00e9\n-00133 \u00e9\n-00134 \u00e9\n-00135 \u00e9\n-00136 \u00e9\n-00137 \u00e9\n-00138 \u00e9\n-00139 \u00e9\n-00140 \u00e9\n-00141 \u00e9\n-00142 \u00e9\n-00143 \u00e9\n-00144 \u00e9\n-00145 \u00e9\n-00146 \u00e9\n-00147 \u00e9\n-00148 \u00e9\n-00149 \u00e9\n-00150 \u00e9\n-00151 \u00e9\n-00152 \u00e9\n-00153 \u00e9\n-00154 \u00e9\n-00155 \u00e9\n-00156 \u00e9\n-00157 \u00e9\n-00158 \u00e9\n-00159 \u00e9\n-00160 \u00e9\n-00161 \u00e9\n-00162 \u00e9\n-00163 \u00e9\n-00164 \u00e9\n-00165 \u00e9\n-00166 \u00e9\n-00167 \u00e9\n-00168 \u00e9\n-00169 \u00e9\n-00170 \u00e9\n-00171 \u00e9\n-00172 \u00e9\n-00173 \u00e9\n-00174 \u00e9\n-00175 \u00e9\n-00176 \u00e9\n-00177 \u00e9\n-00178 \u00e9\n-00179 \u00e9\n-00180 \u00e9\n-00181 \u00e9\n-00182 \u00e9\n-00183 \u00e9\n-00184 \u00e9\n-00185 \u00e9\n-00186 \u00e9\n-00187 \u00e9\n-00188 \u00e9\n-00189 \u00e9\n-00190 \u00e9\n-00191 \u00e9\n-00192 \u00e9\n-00193 \u00e9\n-00194 \u00e9\n-00195 \u00e9\n-00196 \u00e9\n-00197 \u00e9\n-00198 \u00e9\n-00199 \u00e9\n-00200 \u00e9\n-00201 \u00e9\n-00202 \u00e9\n-00203 \u00e9\n-00204 \u00e9\n-00205 \u00e9\n-00206 \u00e9\n-00207 \u00e9\n-00208 \u00e9\n-00209 \u00e9\n-00210 \u00e9\n-00211 \u00e9\n-00212 \u00e9\n-00213 \u00e9\n-00214 \u00e9\n-00215 \u00e9\n-00216 \u00e9\n-00217 \u00e9\n-00218 \u00e9\n-00219 \u00e9\n-00220 \u00e9\n-00221 \u00e9\n-00222 \u00e9\n-00223 \u00e9\n-00224 \u00e9\n-00225 \u00e9\n-00226 \u00e9\n-00227 \u00e9\n-00228 \u00e9\n-00229 \u00e9\n-00230 \u00e9\n-00231 \u00e9\n-00232 \u00e9\n-00233 \u00e9\n-00234 \u00e9\n-00235 \u00e9\n-00236 \u00e9\n-00237 \u00e9\n-00238 \u00e9\n-00239 \u00e9\n-00240 \u00e9\n-00241 \u00e9\n-00242 \u00e9\n-00243 \u00e9\n-00244 \u00e9\n-00245 \u00e9\n-00246 \u00e9\n-00247 \u00e9\n-00248 \u00e9\n-00249 \u00e9\n-00250 \u00e9\n-00251 \u00e9\n-00252 \u00e9\n-00253 \u00e9\n-00254 \u00e9\n-00255 \u00e9\n-00256 \u00e9\n-00257 \u00e9\n-00258 \u00e9\n-00259 \u00e9\n-00260 \u00e9\n-00261 \u00e9\n-00262 \u00e9\n-00263 \u00e9\n-00264 \u00e9\n-00265 \u00e9\n-00266 \u00e9\n-00267 \u00e9\n-00268 \u00e9\n-00269 \u00e9\n-00270 \u00e9\n-00271 \u00e9\n-00272 \u00e9\n-00273 \u00e9\n-00274 \u00e9\n-00275 \u00e9\n-00276 \u00e9\n-00277 \u00e9\n-00278 \u00e9\n-00279 \u00e9\n-00280 \u00e9\n-00281 \u00e9\n-00282 \u00e9\n-00283 \u00e9\n-00284 \u00e9\n-00285 \u00e9\n-00286 \u00e9\n-00287 \u00e9\n-00288 \u00e9\n-00289 \u00e9\n-00290 \u00e9\n-00291 \u00e9\n-00292 \u00e9\n-00293 \u00e9\n-00294 \u00e9\n-00295 \u00e9\n-00296 \u00e9\n-00297 \u00e9\n-00298 \u00e9\n-00299 \u00e9\n-00300 \u00e9\n-00301 \u00e9\n-00302 \u00e9\n-00303 \u00e9\n-00304 \u00e9\n-00305 \u00e9\n-00306 \u00e9\n-00307 \u00e9\n-00308 \u00e9\n-00309 \u00e9\n-00310 \u00e9\n-00311 \u00e9\n-00312 \u00e9\n-00313 \u00e9\n-00314 \u00e9\n-00315 \u00e9\n-00316 \u00e9\n-00317 \u00e9\n-00318 \u00e9\n-00319 \u00e9\n-00320 \u00e9\n-00321 \u00e9\n-00322 \u00e9\n-00323 \u00e9\n-00324 \u00e9\n-00325 \u00e9\n-00326 \u00e9\n-00327 \u00e9\n-00328 \u00e9\n-00329 \u00e9\n-00330 \u00e9\n-00331 \u00e9\n-00332 \u00e9\n-00333 \u00e9\n-00334 \u00e9\n-00335 \u00e9\n-00336 \u00e9\n-00337 \u00e9\n-00338 \u00e9\n-00339 \u00e9\n-00340 \u00e9\n-00341 \u00e9\n-00342 \u00e9\n-00343 \u00e9\n-00344 \u00e9\n-00345 \u00e9\n-00346 \u00e9\n-00347 \u00e9\n-00348 \u00e9\n-00349 \u00e9\n-00350 \u00e9\n-00351 \u00e9\n-00352 \u00e9\n-00353 \u00e9\n-00354 \u00e9\n-00355 \u00e9\n-00356 \u00e9\n-00357 \u00e9\n-00358 \u00e9\n-00359 \u00e9\n-00360 \u00e9\n-00361 \u00e9\n-00362 \u00e9\n-00363 \u00e9\n-00364 \u00e9\n-00365 \u00e9\n-00366 \u00e9\n-00367 \u00e9\n-00368 \u00e9\n-00369 \u00e9\n-00370 \u00e9\n-00371 \u00e9\n-00372 \u00e9\n-00373 \u00e9\n-00374 \u00e9\n-00375 \u00e9\n-00376 \u00e9\n-00377 \u00e9\n-00378 \u00e9\n-00379 \u00e9\n-00380 \u00e9\n-00381 \u00e9\n-00382 \u00e9\n-00383 \u00e9\n-00384 \u00e9\n-00385 \u00e9\n-00386 \u00e9\n-00387 \u00e9\n-00388 \u00e9\n-00389 \u00e9\n-00390 \u00e9\n-00391 \u00e9\n-00392 \u00e9\n-00393 \u00e9\n-00394 \u00e9\n-00395 \u00e9\n-00396 \u00e9\n-00397 \u00e9\n-00398 \u00e9\n-00399 \u00e9\n-00400 \u00e9\n-00401 \u00e9\n-00402 \u00e9\n-00403 \u00e9\n-00404 \u00e9\n-00405 \u00e9\n-00406 \u00e9\n-00407 \u00e9\n-00408 \u00e9\n-00409 \u00e9\n-00410 \u00e9\n-00411 \u00e9\n-00412 \u00e9\n-00413 \u00e9\n-00414 \u00e9\n-00415 \u00e9\n-00416 \u00e9\n-00417 \u00e9\n-00418 \u00e9\n-00419 \u00e9\n-00420 \u00e9\n-00421 \u00e9\n-00422 \u00e9\n-00423 \u00e9\n-00424 \u00e9\n-00425 \u00e9\n-00426 \u00e9\n-00427 \u00e9\n-00428 \u00e9\n-00429 \u00e9\n-00430 \u00e9\n-00431 \u00e9\n-00432 \u00e9\n-00433 \u00e9\n-00434 \u00e9\n-00435 \u00e9\n-00436 \u00e9\n-00437 \u00e9\n-00438 \u00e9\n-00439 \u00e9\n-00440 \u00e9\n-00441 \u00e9\n-00442 \u00e9\n-00443 \u00e9\n-00444 \u00e9\n-00445 \u00e9\n-00446 \u00e9\n-00447 \u00e9\n-00448 \u00e9\n-00449 \u00e9\n-00450 \u00e9\n-00451 \u00e9\n-00452 \u00e9\n-00453 \u00e9\n-00454 \u00e9\n-00455 \u00e9\n-00456 \u00e9\n-00457 \u00e9\n-00458 \u00e9\n-00459 \u00e9\n-00460 \u00e9\n-00461 \u00e9\n-00462 \u00e9\n-00463 \u00e9\n-00464 \u00e9\n-00465 \u00e9\n-00466 \u00e9\n-00467 \u00e9\n-00468 \u00e9\n-00469 \u00e9\n-00470 \u00e9\n-00471 \u00e9\n-00472 \u00e9\n-00473 \u00e9\n-00474 \u00e9\n-00475 \u00e9\n-00476 \u00e9\n-00477 \u00e9\n-00478 \u00e9\n-00479 \u00e9\n-00480 \u00e9\n-00481 \u00e9\n-00482 \u00e9\n-00483 \u00e9\n-00484 \u00e9\n-00485 \u00e9\n-00486 \u00e9\n-00487 \u00e9\n-00488 \u00e9\n-00489 \u00e9\n-00490 \u00e9\n-00491 \u00e9\n-00492 \u00e9\n-00493 \u00e9\n-00494 \u00e9\n-00495 \u00e9\n-00496 \u00e9\n-00497 \u00e9\n-00498 \u00e9\n-00499 \u00e9\n-00500 \u00e9\n-00501 \u00e9\n-00502 \u00e9\n-00503 \u00e9\n-00504 \u00e9\n-00505 \u00e9\n-00506 \u00e9\n-00507 \u00e9\n-00508 \u00e9\n-00509 \u00e9\n-00510 \u00e9\n-00511 \u00e9\n-00512 \u00e9\n-00513 \u00e9\n-00514 \u00e9\n-00515 \u00e9\n-00516 \u00e9\n-00517 \u00e9\n-00518 \u00e9\n-00519 \u00e9\n-00520 \u00e9\n-00521 \u00e9\n-00522 \u00e9\n-00523 \u00e9\n-00524 \u00e9\n-00525 \u00e9\n-00526 \u00e9\n-00527 \u00e9\n-00528 \u00e9\n-00529 \u00e9\n-00530 \u00e9\n-00531 \u00e9\n-00532 \u00e9\n-00533 \u00e9\n-00534 \u00e9\n-00535 \u00e9\n-00536 \u00e9\n-00537 \u00e9\n-00538 \u00e9\n-00539 \u00e9\n-00540 \u00e9\n-00541 \u00e9\n-00542 \u00e9\n-00543 \u00e9\n-00544 \u00e9\n-00545 \u00e9\n-00546 \u00e9\n-00547 \u00e9\n-00548 \u00e9\n-00549 \u00e9\n-00550 \u00e9\n-00551 \u00e9\n-00552 \u00e9\n-00553 \u00e9\n-00554 \u00e9\n-00555 \u00e9\n-00556 \u00e9\n-00557 \u00e9\n-00558 \u00e9\n-00559 \u00e9\n-00560 \u00e9\n-00561 \u00e9\n-00562 \u00e9\n-00563 \u00e9\n-00564 \u00e9\n-00565 \u00e9\n-00566 \u00e9\n-00567 \u00e9\n-00568 \u00e9\n-00569 \u00e9\n-00570 \u00e9\n-00571 \u00e9\n-00572 \u00e9\n-00573 \u00e9\n-00574 \u00e9\n-00575 \u00e9\n-00576 \u00e9\n-00577 \u00e9\n-00578 \u00e9\n-00579 \u00e9\n-00580 \u00e9\n-00581 \u00e9\n-00582 \u00e9\n-00583 \u00e9\n-00584 \u00e9\n-00585 \u00e9\n-00586 \u00e9\n-00587 \u00e9\n-00588 \u00e9\n-00589 \u00e9\n-00590 \u00e9\n-00591 \u00e9\n-00592 \u00e9\n-00593 \u00e9\n-00594 \u00e9\n-00595 \u00e9\n-00596 \u00e9\n\u2026 [diff truncated 803 lines for safety; digest=sha256:0fd0cc3ab18efcd881479de9acde0d50b4f2ef4d9e90d3cb091dd6e423443005]",
+   "stats": {
+    "added_lines": 0,
+    "removed_lines": 0,
+    "changed_lines": 700
+   },
+   "mask_tokens": null,
+   "placeholder": "[REDACTED]",
+   "redaction_counts": null,
+   "safety_limits": {
+    "thresholds": {
+     "canonical_bytes": 262144,
+     "diff_bytes": 131072,
+     "diff_lines": 600
+    },
+    "diff": {
+     "total_lines": 1403,
+     "total_bytes": 15440,
+     "truncated_lines": 803,
+     "truncated_bytes": 0,
+     "digest": "sha256:0fd0cc3ab18efcd881479de9acde0d50b4f2ef4d9e90d3cb091dd6e423443005"
+    }
+   }
+  },
+  "payload": {
+   "versions": [
+    "v1",
+    "v2"
+   ],
+   "comparison_count": 1,
+   "comparisons": [
+    {
+     "from": "before",
+     "to": "after",
+     "plan": {
+      "content_type": "text",
+      "from_label": "before",
+      "to_label": "after",
+      "label": null,
+      "mask_tokens": [],
+      "placeholder": "[REDACTED]",
+      "context_lines": 3,
+      "redaction_counts": {},
+      "binary_evidence": [],
+      "safety_limits": {
+       "thresholds": {
+        "canonical_bytes": 262144,
+        "diff_bytes": 131072,
+        "diff_lines": 600
+       },
+       "diff": {
+        "total_lines": 1403,
+        "total_bytes": 15440,
+        "truncated_lines": 803,
+        "truncated_bytes": 0,
+        "digest": "sha256:0fd0cc3ab18efcd881479de9acde0d50b4f2ef4d9e90d3cb091dd6e423443005"
+       }
+      }
+     },
+     "metadata": {
+      "content_type": "text",
+      "context_lines": 3,
+      "baseline_name": "before",
+      "comparison_name": "after"
+     },
+     "summary": {
+      "before_digest": "sha256:67c578759b4701b5427dd6ddca37919a2b356f96f9f5ac13c83ba90b94dfb0cd",
+      "after_digest": "sha256:d055fef267602577dfda44df465ed02b9e48c4445c6460a173bfd5d9a75c5ecf",
+      "diff_digest": "sha256:68b42d78b8ca3ebb4400746be77b0ab87ba021823876901b4b679b1614c1d7b2",
+      "before_lines": 700,
+      "after_lines": 700,
+      "added_lines": 0,
+      "removed_lines": 0,
+      "changed_lines": 700
+     }
+    }
+   ]
+  }
+ }
+]

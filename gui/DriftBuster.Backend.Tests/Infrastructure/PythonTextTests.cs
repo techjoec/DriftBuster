@@ -48,6 +48,19 @@ public sealed class PythonTextTests
         PythonText.StripStart(text).Should().Be(leftStripped);
     }
 
+    // Expected values from CPython 3.13 str.rstrip().
+    [Theory]
+    [InlineData("  a b  ", "  a b")]
+    [InlineData("\u001Fx\u001C\u001D\u001E\u001F", "\u001Fx")]
+    [InlineData("text\u0085\u00A0\u2028\u3000", "text")]
+    [InlineData("x\u200B", "x\u200B")]
+    [InlineData("\t\n\r\v\f", "")]
+    [InlineData("", "")]
+    public void StripEndMatchesPython(string text, string expected)
+    {
+        PythonText.StripEnd(text).Should().Be(expected);
+    }
+
     [Fact]
     public void SplitMatchesStrSplit()
     {

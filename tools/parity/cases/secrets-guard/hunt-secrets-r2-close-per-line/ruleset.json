@@ -1,0 +1,13 @@
+{
+ "version": "per-line",
+ "rules": [
+  {
+   "name": "A",
+   "pattern": "S(?=ECRET)"
+  },
+  {
+   "name": "B",
+   "pattern": "pw"
+  }
+ ]
+}

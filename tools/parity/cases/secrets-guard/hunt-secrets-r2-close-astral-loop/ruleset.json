@@ -1,0 +1,14 @@
+{
+ "version": "astral-loop",
+ "rules": [
+  {
+   "name": "Self",
+   "pattern": "secret",
+   "flags": "i"
+  },
+  {
+   "name": "Pw",
+   "pattern": "pw=\\S+"
+  }
+ ]
+}

@@ -1,0 +1,3 @@
+alphabetaGAMMAdelta	
+k=v
+end tail

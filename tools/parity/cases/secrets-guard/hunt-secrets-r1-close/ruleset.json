@@ -1,0 +1,1 @@
+{"version":"div","rules":[{"name":"SecNotAfterThreeBrackets","pattern":"(?<!\\[\\[\\[)SEC"}]}

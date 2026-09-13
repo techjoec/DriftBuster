@@ -1,0 +1,1 @@
+server a.localhost b.local server c.localversion 1.0.02.0.03.0.0path /opt/x/opt/yserver d.net

@@ -1,0 +1,1 @@
+{"options": {"secret_ignore_patterns": ["(?:x{1,3}){2}+y", "b(?:x?)+?-"]}, "secret_scanner": {"ruleset": {"version": "r", "rules": [{"name": "Pairs", "pattern": "(?:\\d{1,2}){2}+"}, {"name": "Lazy", "pattern": "b(?:(?:.?)+?-)"}, {"name": "Backref", "pattern": "(?i)(s)\\1"}]}}}

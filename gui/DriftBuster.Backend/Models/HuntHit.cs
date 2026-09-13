@@ -18,5 +18,9 @@ namespace DriftBuster.Backend.Models
 
         [JsonPropertyName("excerpt")]
         public string Excerpt { get; set; } = string.Empty;
+
+        /// <summary>The plan transform the hit suggests, when its rule names a token; omitted otherwise.</summary>
+        [JsonPropertyName("metadata")]
+        public HuntHitMetadata? Metadata { get; set; }
     }
 }

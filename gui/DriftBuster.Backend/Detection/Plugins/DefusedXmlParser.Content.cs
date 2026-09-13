@@ -24,14 +24,19 @@ internal sealed partial class DefusedXmlParser
             switch (_text[_pos])
             {
                 case '<':
+                    FlushCanonicalText(open);
                     ReadMarkup(open, ref root);
                     break;
                 case '&':
+                    var referenceStart = _pos;
                     _pos = ScanReference(_pos, _text.Length, out var isCharacter, out var nameSpan);
                     RequireContentReference(isCharacter, nameSpan);
+                    AppendCanonicalReference(open, referenceStart, nameSpan);
                     break;
                 default:
+                    var dataStart = _pos;
                     ReadCharacterData();
+                    AppendCanonicalText(open, dataStart, _pos);
                     break;
             }
         }
@@ -120,8 +125,7 @@ internal sealed partial class DefusedXmlParser
             if (_insertComments && parent is not null)
             {
                 // expat hands the comment data over with line ends normalised to LF.
-                var data = _text[start..(_pos - 3)].Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
-                parent.Add(new XComment(data));
+                parent.Add(new XComment(NormaliseLineEnds(_text[start..(_pos - 3)])));
             }
 
             return;
@@ -136,6 +140,11 @@ internal sealed partial class DefusedXmlParser
         while (!(Require(index) == ']' && Require(index + 1) == ']' && Require(index + 2) == '>'))
         {
             index += CharWidth(index);
+        }
+
+        if (_canonical && parent is not null)
+        {
+            _pendingText.Append(NormaliseLineEnds(_text[(_pos + 9)..index]));
         }
 
         _pos = index + 3;

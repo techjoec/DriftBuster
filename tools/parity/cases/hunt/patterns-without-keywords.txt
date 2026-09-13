@@ -1,0 +1,4 @@
+app01.corp.local responds
+0123456789abcdef0123456789abcdef01234567
+release 1.2.3
+/opt/tool

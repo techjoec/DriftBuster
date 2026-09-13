@@ -1,0 +1,2 @@
+<r a="x&#9;y&#10;z" b="&quot;q&quot; &amp; &lt;" c="&#13;">text &amp; &lt;tag&gt; &#x2028;<c/> tail  <d>  padded  </d>
+</r>

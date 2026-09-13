@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<root>
+  <a>x<?pi y?>z</a>
+  <b><c/>t1<?p?>t2</b>
+</root>

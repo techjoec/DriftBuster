@@ -1,0 +1,2 @@
+install to D:\Apps\Tool and /opt/tool-x
+install path C:\\Program Files\\Vendor

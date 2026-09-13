@@ -55,6 +55,41 @@ public static class PythonText
         return start == 0 ? text : text[start..];
     }
 
+    /// <summary><c>str.rstrip()</c> with no argument.</summary>
+    public static string StripEnd(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var end = text.Length;
+        while (end > 0 && IsSpace(text[end - 1]))
+        {
+            end--;
+        }
+
+        return end == text.Length ? text : text[..end];
+    }
+
+    /// <summary>
+    /// <c>sub in text</c>: a code point subsequence, so an occurrence that would start or end inside a surrogate pair
+    /// (the needle being or ending in a lone surrogate) does not count.
+    /// </summary>
+    public static bool Contains(string text, string sub)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(sub);
+        for (var start = text.IndexOf(sub, StringComparison.Ordinal); start >= 0; start = text.IndexOf(sub, start + 1, StringComparison.Ordinal))
+        {
+            var end = start + sub.Length;
+            var splitsStart = start > 0 && char.IsLowSurrogate(text[start]) && char.IsHighSurrogate(text[start - 1]);
+            var splitsEnd = end > 0 && end < text.Length && char.IsHighSurrogate(text[end - 1]) && char.IsLowSurrogate(text[end]);
+            if (!splitsStart && !splitsEnd)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary><c>str.split()</c> with no separator: runs of whitespace delimit, empties dropped.</summary>
     public static IReadOnlyList<string> Split(string text)
     {

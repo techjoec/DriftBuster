@@ -1,0 +1,3 @@
+<?xml version="1.0"?>
+<!DOCTYPE root [<!ATTLIST root x CDATA "[">]>
+<root x="given"><v>2</v></root>

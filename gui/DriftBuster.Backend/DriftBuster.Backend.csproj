@@ -3,6 +3,8 @@
     <Version>$(DriftBusterCoreVersion)</Version>
     <AssemblyVersion>$(DriftBusterCoreVersion)</AssemblyVersion>
     <FileVersion>$(DriftBusterCoreVersion)</FileVersion>
+    <!-- Infrastructure/UnixFileType.cs: the statx P/Invoke reads its result buffer through a pointer. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,5 +19,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\secret_rules.json" />
+    <EmbeddedResource Include="Resources\unicode_names.txt.gz" />
   </ItemGroup>
 </Project>

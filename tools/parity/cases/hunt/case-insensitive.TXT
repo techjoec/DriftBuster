@@ -1,0 +1,3 @@
+SERVER HOST: APP.CORP.LOCAL
+Host İnternal: İ.lan
+VERSION 10.20.30

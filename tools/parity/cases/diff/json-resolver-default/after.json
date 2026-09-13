@@ -1,0 +1,4 @@
+{
+  "AllowedHosts": "*",
+  "Logging": {"LogLevel": {"Default": "Warning"}}
+}

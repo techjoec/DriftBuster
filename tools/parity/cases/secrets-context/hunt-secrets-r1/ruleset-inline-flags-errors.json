@@ -1,0 +1,1 @@
+{"options": {"secret_ignore_patterns": ["(?i)ok", "a{2,1}", "(?P<n>x)(?P=n)"]}, "secret_scanner": {"ruleset": {"version": "", "rules": [{"name": "AU", "pattern": "(?au)x"}, {"name": "Mid", "pattern": "a(?i)b"}, {"name": "Ok", "pattern": "(?s:.)"}]}}}

@@ -60,4 +60,20 @@ public sealed class PathTextTests
         PathText.CompareCodePoints("ab", "abc").Should().BeNegative();
         PathText.ComparePosixPaths("a", "a").Should().Be(0);
     }
+
+    // CPython sorted() over the same strings: an unpaired surrogate is its own code point, below U+E000 and above U+D7FF.
+    [Fact]
+    public void CompareCodePointsRanksUnpairedSurrogatesAsTheirOwnCodePoints()
+    {
+        string[] items =
+        [
+            "\uFFFF", "\uD83D", "\uE000", "\U0001F600", "\uDE00", "\uD83D\uE000", "\uD83DA", "\U0001F600\uD800", "\U0001F600\uFFFF",
+            "\uDFFF\uD800", "\uD800\U0001F600", "\uD800\uFFFF",
+        ];
+        items.Order(Comparer<string>.Create(PathText.CompareCodePoints)).Should().Equal(
+            "\uD800\uFFFF", "\uD800\U0001F600", "\uD83D", "\uD83DA", "\uD83D\uE000", "\uDE00", "\uDFFF\uD800", "\uE000", "\uFFFF",
+            "\U0001F600", "\U0001F600\uD800", "\U0001F600\uFFFF");
+        PathText.CompareCodePoints("\uD83D", "\uE000").Should().BeNegative();
+        PathText.CompareCodePoints("\uFFFF", "\uDC00").Should().BePositive();
+    }
 }

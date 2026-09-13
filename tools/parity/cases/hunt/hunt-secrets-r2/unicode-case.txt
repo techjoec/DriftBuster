@@ -1,0 +1,6 @@
+host=Kelvin.local and ſrv.corp
+İNSTALL path /opt/dotted
+INSTALL PATH /opt/plain
+server café.local x́y.lan
+version ١.٢.٣ and １.２.３ and 1.2.3.4.5
+certificate thumbprint AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA abcdef0123abcdef0123abcdef0123abcdef0123000000000000000000000000

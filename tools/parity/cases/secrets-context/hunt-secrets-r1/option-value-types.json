@@ -1,0 +1,1 @@
+{"options": {"secret_ignore_rules": [1.0, 1e+100, true, false, {"a": 1}, [1, "x"], -0.0, 12345678901234567890, 0.1], "secret_ignore_patterns": {"k": "v"}}, "secret_scanner": {"ignore_rules": "\u2028a\u00a0b\u3000c\u001cd\u200be", "ignore_patterns": 7}}

@@ -1,0 +1,66 @@
+using System.Text;
+
+using DriftBuster.Backend.Hunt;
+
+namespace DriftBuster.Backend.Tests.Hunt;
+
+/// <summary>Mirror of tests/hunt/test_dynamic_tokens.py.</summary>
+[Collection(HuntSeamCollection.Name)]
+public sealed class DynamicTokensTests : IDisposable
+{
+    private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-tokens-");
+
+    public void Dispose() => _tmp.Delete(recursive: true);
+
+    private string Write(string name, string content)
+    {
+        var path = Path.Combine(_tmp.FullName, name);
+        File.WriteAllText(path, content, new UTF8Encoding(false));
+        return path;
+    }
+
+    [Fact]
+    public void PlanTransformsCaptureRegexGroups()
+    {
+        var target = Write("settings.config", "connectionString=Server=db.internal.local;Database=Main;");
+        var rule = new HuntRule("connection-string", "Capture database host", "database_server", patterns: ["Server=([^;]+)"]);
+
+        var hits = HuntEngine.ExtractHits(File.ReadAllText(target), rule, target, TestContext.Current.CancellationToken);
+        var transforms = HuntEngine.BuildPlanTransforms(hits);
+
+        transforms.Should().ContainSingle();
+        var transform = transforms[0];
+        transform.TokenName.Should().Be("database_server");
+        transform.Value.Should().Be("db.internal.local");
+        transform.Placeholder.Should().Be("{{ database_server }}");
+    }
+
+    [Fact]
+    public void PlanTransformTemplateOverride()
+    {
+        var target = Write("settings.config", "connectionString=Server=db.service;Database=Main;");
+        var rule = new HuntRule("connection-string", "Capture database host", "database_server", patterns: ["Server=([^;]+)"]);
+
+        var hits = HuntEngine.ExtractHits(File.ReadAllText(target), rule, target, TestContext.Current.CancellationToken);
+        var transforms = HuntEngine.BuildPlanTransforms(hits, placeholderTemplate: "<<{token_name}>>");
+
+        transforms.Should().ContainSingle();
+        transforms[0].Placeholder.Should().Be("<<database_server>>");
+    }
+
+    [Fact]
+    public void HuntJsonIncludesPlanTransformMetadata()
+    {
+        var target = Write("config.txt", "Server host: app.local");
+
+        var payload = HuntEngine.ToJson(HuntEngine.HuntPath(target, HuntRules.Default, cancellationToken: TestContext.Current.CancellationToken));
+        var serverEntry = payload.First(entry => string.Equals(
+            (string?)((OrderedDictionary<string, object?>)entry["rule"]!)["name"], "server-name", StringComparison.Ordinal));
+
+        serverEntry.Should().ContainKey("metadata");
+        var transform = (OrderedDictionary<string, object?>)((OrderedDictionary<string, object?>)serverEntry["metadata"]!)["plan_transform"]!;
+        transform["token_name"].Should().Be("server_name");
+        transform["value"].Should().Be("app.local");
+        transform["placeholder"].Should().Be("{{ server_name }}");
+    }
+}

@@ -1,0 +1,12 @@
+--mask
+secret
+--mask
+secretvalue
+--mask
+value
+--mask
+secret
+--mask
+
+--placeholder
+***

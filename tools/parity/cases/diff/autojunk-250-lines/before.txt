@@ -1,0 +1,250 @@
+}
+
+setting_2 = 2
+}
+
+setting_5 = 5
+}
+
+setting_8 = 8
+}
+
+setting_11 = 11
+}
+
+setting_14 = 14
+}
+
+setting_0 = 17
+}
+
+setting_3 = 20
+}
+
+setting_6 = 23
+}
+
+setting_9 = 26
+}
+
+setting_12 = 29
+}
+
+setting_15 = 32
+}
+
+setting_1 = 35
+}
+
+setting_4 = 38
+}
+
+setting_7 = 41
+}
+
+setting_10 = 44
+}
+
+setting_13 = 47
+}
+
+setting_16 = 50
+}
+
+setting_2 = 53
+}
+
+setting_5 = 56
+}
+
+setting_8 = 59
+}
+
+setting_11 = 62
+}
+
+setting_14 = 65
+}
+
+setting_0 = 68
+}
+
+setting_3 = 71
+}
+
+setting_6 = 74
+}
+
+setting_9 = 77
+}
+
+setting_12 = 80
+}
+
+setting_15 = 83
+}
+
+setting_1 = 86
+}
+
+setting_4 = 89
+}
+
+setting_7 = 92
+}
+
+setting_10 = 95
+}
+
+setting_13 = 98
+}
+
+setting_16 = 101
+}
+
+setting_2 = 104
+}
+
+setting_5 = 107
+}
+
+setting_8 = 110
+}
+
+setting_11 = 113
+}
+
+setting_14 = 116
+}
+
+setting_0 = 119
+}
+
+setting_3 = 122
+}
+
+setting_6 = 125
+}
+
+setting_9 = 128
+}
+
+setting_12 = 131
+}
+
+setting_15 = 134
+}
+
+setting_1 = 137
+}
+
+setting_4 = 140
+}
+
+setting_7 = 143
+}
+
+setting_10 = 146
+}
+
+setting_13 = 149
+}
+
+setting_16 = 152
+}
+
+setting_2 = 155
+}
+
+setting_5 = 158
+}
+
+setting_8 = 161
+}
+
+setting_11 = 164
+}
+
+setting_14 = 167
+}
+
+setting_0 = 170
+}
+
+setting_3 = 173
+}
+
+setting_6 = 176
+}
+
+setting_9 = 179
+}
+
+setting_12 = 182
+}
+
+setting_15 = 185
+}
+
+setting_1 = 188
+}
+
+setting_4 = 191
+}
+
+setting_7 = 194
+}
+
+setting_10 = 197
+}
+
+setting_13 = 200
+}
+
+setting_16 = 203
+}
+
+setting_2 = 206
+}
+
+setting_5 = 209
+}
+
+setting_8 = 212
+}
+
+setting_11 = 215
+}
+
+setting_14 = 218
+}
+
+setting_0 = 221
+}
+
+setting_3 = 224
+}
+
+setting_6 = 227
+}
+
+setting_9 = 230
+}
+
+setting_12 = 233
+}
+
+setting_15 = 236
+}
+
+setting_1 = 239
+}
+
+setting_4 = 242
+}
+
+setting_7 = 245
+}
+
+setting_10 = 248
+}

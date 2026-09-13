@@ -1,0 +1,10 @@
+{
+ "version": "loop",
+ "rules": [
+  {
+   "name": "LongS",
+   "pattern": "\u017f+",
+   "flags": "i"
+  }
+ ]
+}

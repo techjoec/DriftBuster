@@ -38,13 +38,15 @@ internal sealed partial class DefusedXmlParser
     private readonly string _text;
     private readonly bool _buildTree;
     private readonly bool _insertComments;
+    private readonly bool _canonical;
     private int _pos;
 
-    private DefusedXmlParser(string text, bool buildTree, bool insertComments = false)
+    private DefusedXmlParser(string text, bool buildTree, bool insertComments = false, bool canonical = false)
     {
         _text = text;
-        _buildTree = buildTree;
-        _insertComments = insertComments;
+        _buildTree = buildTree || canonical;
+        _insertComments = insertComments || canonical;
+        _canonical = canonical;
     }
 
     /// <summary>Thrown at the first point expat (or defusedxml's handlers) would stop the parse.</summary>

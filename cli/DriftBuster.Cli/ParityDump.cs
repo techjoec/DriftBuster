@@ -14,7 +14,7 @@ namespace DriftBuster.Cli;
 /// emit <c>{"path", "error": "DetectorIOError"}</c> for entries the walk could not read ("." for the root itself).
 /// Temporary; deleted with the Python tree.
 /// </summary>
-public static class ParityDump
+public static partial class ParityDump
 {
     private const string RootErrorPath = ".";
 
@@ -28,7 +28,7 @@ public static class ParityDump
         {
         }
 
-        public HashSet<string> Errors { get; } = new(StringComparer.Ordinal);
+        public List<string> Errors { get; } = [];
 
         protected override void HandleError(string path, DetectorIOException error) => Errors.Add(path);
     }
@@ -38,6 +38,11 @@ public static class ParityDump
         var command = new Command("parity-dump", "Canonical JSON dumps for the Python parity harness.") { Hidden = true };
         command.Subcommands.Add(BuildDetect());
         command.Subcommands.Add(BuildDecode());
+        command.Subcommands.Add(BuildDiff());
+        command.Subcommands.Add(BuildCanon());
+        command.Subcommands.Add(BuildHunt());
+        command.Subcommands.Add(BuildSecrets());
+        command.Subcommands.Add(BuildSecretsContext());
         return command;
     }
 
@@ -99,14 +104,23 @@ public static class ParityDump
     /// </summary>
     internal static IReadOnlyList<(string Relative, string Full, bool Errored)> Walk(string root)
     {
+        // py_dump.py compares against Path(root), as Detector.ScanPath spells its root.
+        root = PythonPurePath.Str(root);
         var enumerator = new TolerantDetector();
         var results = enumerator.ScanPath(root);
-        if (enumerator.Errors.Contains(root) && results.Count == 0)
+        var errored = new HashSet<string>(enumerator.Errors, StringComparer.Ordinal);
+        if (errored.Contains(root) && results.Count == 0)
         {
             return [(RootErrorPath, root, true)];
         }
 
-        return results.Select(entry => (Relative(root, entry.Path), entry.Path, enumerator.Errors.Contains(entry.Path))).ToList();
+        // An entry the walk reported without scanning (its stat raised) is listed too, in walk order.
+        var scanned = new HashSet<string>(results.Select(entry => entry.Path), StringComparer.Ordinal);
+        return results.Select(entry => entry.Path)
+            .Concat(enumerator.Errors.Where(path => !scanned.Contains(path) && !string.Equals(path, root, StringComparison.Ordinal)).Distinct(StringComparer.Ordinal))
+            .Order(Comparer<string>.Create((left, right) => PathText.ComparePosixPaths(PathText.ToPosix(left), PathText.ToPosix(right))))
+            .Select(path => (Relative(root, path), path, errored.Contains(path)))
+            .ToList();
     }
 
     internal static IReadOnlyList<IFormatPlugin>? SelectPlugins(string? names)

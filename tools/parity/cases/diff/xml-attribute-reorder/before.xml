@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <add key="a" value="1" enabled="true"/>
+  <add value="  padded  " key="b" empty="   "/>
+</configuration>

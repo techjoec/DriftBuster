@@ -16,6 +16,10 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("hits")]
         public HuntHit[] Hits { get; set; } = System.Array.Empty<HuntHit>();
 
+        /// <summary>Files skipped because they could not be read; omitted when every file was read.</summary>
+        [JsonPropertyName("unreadable_files")]
+        public string[]? UnreadableFiles { get; set; }
+
         [JsonIgnore]
         public string RawJson { get; set; } = string.Empty;
     }

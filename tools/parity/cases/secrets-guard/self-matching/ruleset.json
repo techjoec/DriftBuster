@@ -1,0 +1,10 @@
+{
+ "version": "loop",
+ "rules": [
+  {
+   "name": "SelfMatching",
+   "pattern": "secret",
+   "flags": "i"
+  }
+ ]
+}

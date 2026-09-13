@@ -1,0 +1,15 @@
+{
+ "version": "ignore-zero-width",
+ "rules": [
+  {
+   "name": "Zw",
+   "pattern": "(?=secret)",
+   "flags": "i"
+  },
+  {
+   "name": "Self",
+   "pattern": "secret",
+   "flags": "i"
+  }
+ ]
+}

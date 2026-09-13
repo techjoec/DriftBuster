@@ -1,0 +1,13 @@
+{
+ "version": "loop-after-source",
+ "rules": [
+  {
+   "name": "Self",
+   "pattern": "SECRET"
+  },
+  {
+   "name": "Pw",
+   "pattern": "pw=\\w+"
+  }
+ ]
+}

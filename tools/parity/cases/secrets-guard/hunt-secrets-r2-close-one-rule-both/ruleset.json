@@ -1,0 +1,9 @@
+{
+ "version": "one-rule-both",
+ "rules": [
+  {
+   "name": "Both",
+   "pattern": "SECRET|pw"
+  }
+ ]
+}

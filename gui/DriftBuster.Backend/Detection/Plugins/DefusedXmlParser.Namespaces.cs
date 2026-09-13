@@ -145,6 +145,7 @@ internal sealed partial class DefusedXmlParser
     private XElement? StoreAttributes(string qualifiedName, List<RawAttribute> raw)
     {
         _attributeDefaults.TryGetValue(qualifiedName, out var defaults);
+        _declarations = _canonical ? [] : null;
         var specified = new HashSet<string>(StringComparer.Ordinal);
         var pending = new List<PendingAttribute>();
         foreach (var attribute in raw)
@@ -174,11 +175,14 @@ internal sealed partial class DefusedXmlParser
         }
 
         var node = new XElement(elementName);
-        foreach (var (name, value) in expanded)
+        for (var index = 0; index < expanded.Count; index++)
         {
-            node.Add(new XAttribute(name, value));
+            var attribute = new XAttribute(expanded[index].Name, expanded[index].Value);
+            AnnotateCanonical(attribute, pending[index].Name, []);
+            node.Add(attribute);
         }
 
+        AnnotateCanonical(node, qualifiedName, _declarations);
         return node;
     }
 
@@ -251,6 +255,7 @@ internal sealed partial class DefusedXmlParser
             throw Fail();
         }
 
+        _declarations?.Add(new XmlNamespaceDeclaration(prefix, uri));
         _bindingHistory.Add((prefix, _bindings.TryGetValue(prefix, out var previous) ? previous : null));
         if (uri.Length == 0)
         {

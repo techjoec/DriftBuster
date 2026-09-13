@@ -1,0 +1,4 @@
+server settings follow
+host list below
+app01.corp.local
+web02.lan server

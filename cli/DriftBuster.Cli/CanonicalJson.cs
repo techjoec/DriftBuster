@@ -69,6 +69,19 @@ internal static class CanonicalJson
         }
     }
 
+    /// <summary>
+    /// py_dump.py <c>_key_order</c>: every mapping's keys in enumeration order (which <see cref="Serialize"/> sorts away) as
+    /// <c>[[key, child], ...]</c>, a list of children for a sequence, null for a scalar or a string.
+    /// </summary>
+    public static object? KeyOrder(object? value) => value switch
+    {
+        null or string => null,
+        IDictionary dictionary => Entries(dictionary).Select(pair => (object?)new List<object?> { pair.Key, KeyOrder(pair.Value) }).ToList(),
+        IEnumerable<KeyValuePair<string, object?>> pairs => pairs.Select(pair => (object?)new List<object?> { pair.Key, KeyOrder(pair.Value) }).ToList(),
+        IEnumerable enumerable => enumerable.Cast<object?>().Select(KeyOrder).ToList(),
+        _ => null,
+    };
+
     private static IEnumerable<KeyValuePair<string, object?>> Entries(IDictionary dictionary)
     {
         foreach (DictionaryEntry entry in dictionary)

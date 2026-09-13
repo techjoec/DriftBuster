@@ -1,0 +1,1 @@
+{"version":"hang","rules":[{"name":"NoDoubleBracketSE","pattern":"(?<!\\[\\[)SE"},{"name":"TBracket","pattern":"T\\]"}]}

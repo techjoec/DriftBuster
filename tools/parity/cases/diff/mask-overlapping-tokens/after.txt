@@ -1,0 +1,3 @@
+user=admin secretvalue=rotated
+password=secret-secretvalue-2
+plain line

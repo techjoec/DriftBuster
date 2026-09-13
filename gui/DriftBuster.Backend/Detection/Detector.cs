@@ -7,8 +7,6 @@ using DriftBuster.Backend.Detection.Catalog;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Profiles.Detection;
 
-using Microsoft.Extensions.FileSystemGlobbing;
-
 namespace DriftBuster.Backend.Detection;
 
 /// <summary>Coordinates format plugins to detect configuration types under bounded sampling and an aggregate budget.</summary>
@@ -137,151 +135,17 @@ public class Detector
     /// <summary>Opens the file whose first bytes are sampled; overridable for fault injection.</summary>
     protected internal virtual Stream OpenFile(string path) => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
 
-    /// <summary>
-    /// True when <paramref name="path"/> is an existing regular file, following symlinks the way <c>Path.is_file()</c>
-    /// (a plain <c>stat</c>) does: a dangling link (which <see cref="File.Exists(string)"/> reports as present) is not
-    /// a file, and a relative link target is resolved against the physical directory holding the link, not the lexical
-    /// one, so a link like <c>../shared/x.conf</c> reached through a directory link still resolves.
-    /// </summary>
-    protected internal virtual bool IsFile(string path)
-    {
-        if (!File.Exists(path))
-        {
-            return false;
-        }
+    /// <summary><see cref="PythonPath.IsFile"/>; overridable for fault injection.</summary>
+    protected internal virtual bool IsFile(string path) => PythonPath.IsFile(path);
 
-        try
-        {
-            var info = new FileInfo(path);
-            if (!info.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            {
-                return true;
-            }
-
-            var physical = ResolvePhysicalPath(info.FullName);
-            return physical is not null && File.Exists(physical) && !new FileInfo(physical).Attributes.HasFlag(FileAttributes.ReparsePoint);
-        }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-        {
-            return false;
-        }
-    }
-
-    // Symlink hops the OS allows on one lookup before failing with ELOOP; Python's is_file() then returns False.
-    private const int MaxLinkHops = 40;
+    /// <summary><see cref="PythonPath.ResolvePhysicalPath"/>.</summary>
+    internal static string? ResolvePhysicalPath(string fullPath) => PythonPath.ResolvePhysicalPath(fullPath);
 
     /// <summary>
-    /// <c>realpath</c>: resolves every link component of <paramref name="fullPath"/> against the physical directory
-    /// resolved so far (the OS semantics <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/> does not follow, since it
-    /// joins a relative target with the link's lexical directory). Null for a link loop or a target that cannot be read.
-    /// </summary>
-    internal static string? ResolvePhysicalPath(string fullPath)
-    {
-        var hops = MaxLinkHops;
-        return ResolvePhysicalPath(fullPath, ref hops);
-    }
-
-    private static string? ResolvePhysicalPath(string fullPath, ref int hops)
-    {
-        var root = Path.GetPathRoot(fullPath) ?? string.Empty;
-        var resolved = root.Length == 0 ? Path.DirectorySeparatorChar.ToString() : root;
-        var components = fullPath[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
-        foreach (var component in components)
-        {
-            if (string.Equals(component, ".", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (string.Equals(component, "..", StringComparison.Ordinal))
-            {
-                resolved = Path.GetDirectoryName(resolved) ?? resolved;
-                continue;
-            }
-
-            var candidate = Path.Join(resolved, component);
-            var info = new FileInfo(candidate);
-            string? target;
-            try
-            {
-                target = info.Attributes.HasFlag(FileAttributes.ReparsePoint) ? info.LinkTarget : null;
-            }
-            catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-            {
-                return null;
-            }
-
-            if (target is null)
-            {
-                resolved = candidate;
-                continue;
-            }
-
-            if (hops-- <= 0)
-            {
-                return null;
-            }
-
-            var next = ResolvePhysicalPath(Path.IsPathRooted(target) ? target : Path.Join(resolved, target), ref hops);
-            if (next is null)
-            {
-                return null;
-            }
-
-            resolved = next;
-        }
-
-        return resolved;
-    }
-
-    /// <summary>
-    /// Every entry under <paramref name="root"/> (depth-first, reparse points and symlinked directories not followed,
-    /// unreadable subdirectories skipped) whose posix-style relative path matches <paramref name="glob"/>, in the
-    /// order <c>sorted(root.glob(glob))</c> yields on posix: component by component, code point by code point
-    /// (<see cref="PathText.ComparePosixPaths"/>). The same case-sensitive order is used on every platform.
+    /// The full paths of <c>sorted(root.glob(glob))</c> (<see cref="PythonPath.SortedGlob"/>); overridable for fault injection.
     /// </summary>
     protected internal virtual IReadOnlyList<string> EnumerateFiles(string root, string glob)
-    {
-        var matcher = new Matcher(StringComparison.Ordinal);
-        matcher.AddInclude(glob);
-        var entries = new List<(string Relative, string Full)>();
-        Walk(new DirectoryInfo(root), root, isRoot: true, matcher, entries);
-        entries.Sort((left, right) => PathText.ComparePosixPaths(left.Relative, right.Relative));
-        return entries.Select(entry => entry.Full).ToList();
-    }
-
-    private static void Walk(DirectoryInfo directory, string root, bool isRoot, Matcher matcher, List<(string Relative, string Full)> entries)
-    {
-        FileSystemInfo[] children;
-        try
-        {
-            children = directory.GetFileSystemInfos();
-        }
-        catch (Exception exc) when (!isRoot && exc is UnauthorizedAccessException or IOException)
-        {
-            return;
-        }
-
-        foreach (var child in children)
-        {
-            if (child is DirectoryInfo subdirectory)
-            {
-                if (subdirectory.Attributes.HasFlag(FileAttributes.ReparsePoint))
-                {
-                    continue;
-                }
-
-                Walk(subdirectory, root, isRoot: false, matcher, entries);
-                continue;
-            }
-
-            var relative = PathText.RelativePosix(root, child.FullName);
-            if (matcher.Match(relative).HasMatches)
-            {
-                entries.Add((relative, child.FullName));
-            }
-        }
-    }
+        => PythonPath.SortedGlob(root, glob).Select(Path.GetFullPath).ToList();
 
     private byte[] ReadSample(string path, int readSize)
     {
@@ -422,7 +286,9 @@ public class Detector
     }
 
     /// <summary>
-    /// Scans a file or directory while enforcing the aggregate sampling budget. A file root yields a single entry;
+    /// Scans a file or directory while enforcing the aggregate sampling budget. The root is spelled as <c>Path(root)</c>
+    /// spells it (<see cref="PythonPurePath.Str"/>). Only regular files are scanned (<see cref="PythonPath.IsFile"/>); an entry
+    /// whose name the runtime cannot decode is reported through <see cref="HandleError"/>. A file root yields a single entry;
     /// a missing root raises <see cref="DetectorIOException"/> through <see cref="HandleError"/>; a directory walk
     /// stops after the first file that exhausts the budget.
     /// </summary>
@@ -430,6 +296,8 @@ public class Detector
     public virtual IReadOnlyList<(string Path, DetectionMatch? Match)> ScanPath(string root, string glob = "**/*", bool resetBudget = true)
     {
         ArgumentNullException.ThrowIfNull(root);
+        // root = Path(root): a trailing separator, "//" and "." parts are dropped, so "x.config/" names the file.
+        root = PythonPurePath.Str(root);
         var results = new List<(string Path, DetectionMatch? Match)>();
         try
         {
@@ -484,6 +352,12 @@ public class Detector
             {
                 if (!IsFile(path))
                 {
+                    if (PythonPath.IsUndecodableName(path))
+                    {
+                        // Python opens the name through surrogateescape; the port cannot name the file, so it reports the entry.
+                        HandleError(path, new DetectorIOException(path, "File name is not valid UTF-8; the entry cannot be opened"));
+                    }
+
                     continue;
                 }
 

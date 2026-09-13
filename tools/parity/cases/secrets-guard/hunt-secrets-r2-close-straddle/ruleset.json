@@ -1,0 +1,13 @@
+{
+ "version": "straddle",
+ "rules": [
+  {
+   "name": "Straddle",
+   "pattern": "T\\].*?z"
+  },
+  {
+   "name": "Loop",
+   "pattern": "CRET"
+  }
+ ]
+}

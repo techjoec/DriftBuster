@@ -1,0 +1,1 @@
+{"options": {}, "secret_scanner": {"ruleset": {"version": "n", "rules": [{"name": "Pin", "pattern": "\\N{DIGIT ZERO}{4}"}, {"name": "Dash", "pattern": "\\N{em dash}+", "flags": "i"}, {"name": "Unknown", "pattern": "\\N{NOT A CHARACTER NAME}"}]}}}

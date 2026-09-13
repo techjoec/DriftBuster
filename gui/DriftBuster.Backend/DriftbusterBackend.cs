@@ -16,8 +16,9 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Linq;
+using DriftBuster.Backend.Diff;
+using DriftBuster.Backend.Hunt;
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using Microsoft.Extensions.FileSystemGlobbing;
 
@@ -26,8 +27,6 @@ namespace DriftBuster.Backend
     [ExcludeFromCodeCoverage]
     public sealed partial class DriftbusterBackend : IDriftbusterBackend
     {
-        private const int HuntSampleSize = 128 * 1024;
-        private const string RedactedPlaceholder = "[REDACTED]";
         private const string SecretRulesResourceName = "DriftBuster.Backend.Resources.secret_rules.json";
         private const string MultiServerModule = "driftbuster.multi_server";
         private const string MultiServerSchemaVersion = "multi-server.v1";
@@ -43,77 +42,6 @@ namespace DriftBuster.Backend
         };
 
         private static readonly Encoding Utf8 = new UTF8Encoding(false, false);
-        private static readonly HashSet<string> XmlExtensions = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".config",
-            ".csproj",
-            ".resx",
-            ".targets",
-            ".vbproj",
-            ".xml",
-            ".xaml",
-            ".xslt",
-        };
-        private static readonly IReadOnlyList<HuntRuleDefinition> HuntRules = new[]
-        {
-            new HuntRuleDefinition(
-                "server-name",
-                "Potential hostnames, server names, or FQDN references",
-                "server_name",
-                new[] { "server", "host" },
-                new[]
-                {
-                    ServerNamePattern(),
-                }),
-            new HuntRuleDefinition(
-                "certificate-thumbprint",
-                "Likely certificate thumbprints",
-                "certificate_thumbprint",
-                new[] { "thumbprint", "certificate" },
-                new[]
-                {
-                    CertThumbprint40Pattern(),
-                    CertThumbprint64Pattern(),
-                }),
-            new HuntRuleDefinition(
-                "version-number",
-                "Version identifiers (semver style)",
-                "version",
-                new[] { "version" },
-                new[]
-                {
-                    VersionNumberPattern(),
-                }),
-            new HuntRuleDefinition(
-                "install-path",
-                "Suspicious installation or directory paths",
-                "install_path",
-                new[] { "path", "install" },
-                new[]
-                {
-                    WindowsPathPattern(),
-                    UnixOptPathPattern(),
-                }),
-        };
-
-        [GeneratedRegex(@"\b[a-z0-9_-]+\.(?:local|lan|corp|com|net|internal)\b", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking)]
-        private static partial Regex ServerNamePattern();
-
-        [GeneratedRegex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
-        private static partial Regex CertThumbprint40Pattern();
-
-        [GeneratedRegex(@"\b[0-9a-f]{64}\b", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
-        private static partial Regex CertThumbprint64Pattern();
-
-        [GeneratedRegex(@"\b\d+\.\d+\.\d+(?:\.\d+)?\b", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
-        private static partial Regex VersionNumberPattern();
-
-        [GeneratedRegex(@"[A-Za-z]:\\\\[\\\\\w\-\. ]+", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
-        private static partial Regex WindowsPathPattern();
-
-        [GeneratedRegex(@"/opt/[\w\-\.]+", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
-        private static partial Regex UnixOptPathPattern();
-
         private static readonly char[] GlobCharacters = { '*', '?', '[' };
 
         public Task<string> PingAsync(CancellationToken cancellationToken = default)
@@ -257,11 +185,14 @@ namespace DriftBuster.Backend
             var baselineContent = ReadText(baselinePath);
 
             var comparisons = new List<DiffComparison>();
+            var artifacts = new List<DiffArtifact>();
 
             for (var index = 1; index < resolved.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                comparisons.Add(BuildComparison(resolved[index], baselinePath, baselineName, baselineContent));
+                var (comparison, artifact) = BuildComparison(resolved[index], baselinePath, baselineName, baselineContent);
+                comparisons.Add(comparison);
+                artifacts.Add(artifact);
             }
 
             var result = new DiffResult
@@ -270,38 +201,37 @@ namespace DriftBuster.Backend
                 Comparisons = comparisons.ToArray(),
             };
 
-            var summary = BuildSanitizedSummary(result, resolved);
+            var fileNames = resolved
+                .Select(path => string.IsNullOrWhiteSpace(path) ? string.Empty : Path.GetFileName(path))
+                .ToArray();
+            var summary = DiffBuilder.SummariseDiffResults(artifacts, fileNames);
             result.Summary = summary;
             result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
             result.SanitizedJson = JsonSerializer.Serialize(summary, SerializerOptions);
             return result;
         }
 
-        private static DiffComparison BuildComparison(string candidateVersion, string baselinePath, string baselineName, string baselineContent)
+        private static (DiffComparison Comparison, DiffArtifact Artifact) BuildComparison(string candidateVersion, string baselinePath, string baselineName, string baselineContent)
         {
             var candidatePath = EnsureFile(candidateVersion, false);
             var candidateName = Path.GetFileName(candidatePath);
             var candidateContent = ReadText(candidatePath);
 
-            var contentType = DetectContentType(baselinePath, candidatePath);
-            var canonicalBefore = CanonicaliseContent(baselineContent, contentType);
-            var canonicalAfter = CanonicaliseContent(candidateContent, contentType);
-            var beforeLines = SplitLines(canonicalBefore);
-            var afterLines = SplitLines(canonicalAfter);
-            var unifiedDiff = BuildUnifiedDiff(beforeLines, afterLines, baselineName, candidateName, 3);
+            var contentType = ContentTypeResolver.ResolvePair(baselinePath, candidatePath);
+            var artifact = DiffBuilder.BuildUnifiedDiff(baselineContent, candidateContent, contentType, baselineName, candidateName, contextLines: 3);
 
             var plan = new DiffPlan
             {
-                Before = canonicalBefore,
-                After = canonicalAfter,
+                Before = artifact.CanonicalBefore,
+                After = artifact.CanonicalAfter,
                 ContentType = contentType,
                 FromLabel = baselineName,
                 ToLabel = candidateName,
-                Placeholder = RedactedPlaceholder,
-                ContextLines = 3,
+                Placeholder = artifact.Placeholder,
+                ContextLines = artifact.ContextLines,
             };
 
-            return new DiffComparison
+            var comparison = new DiffComparison
             {
                 From = baselineName,
                 To = candidateName,
@@ -311,685 +241,11 @@ namespace DriftBuster.Backend
                     LeftPath = baselinePath,
                     RightPath = candidatePath,
                     ContentType = contentType,
-                    ContextLines = 3,
+                    ContextLines = artifact.ContextLines,
                 },
-                UnifiedDiff = unifiedDiff,
+                UnifiedDiff = artifact.Diff,
             };
-        }
-
-        private static string DetectContentType(string baselinePath, string candidatePath)
-        {
-            if (IsXmlLike(baselinePath) || IsXmlLike(candidatePath))
-            {
-                return "xml";
-            }
-
-            return "text";
-        }
-
-        private static bool IsXmlLike(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return false;
-            }
-
-            var extension = Path.GetExtension(path);
-            return !string.IsNullOrEmpty(extension) && XmlExtensions.Contains(extension);
-        }
-
-        private static DiffResultSummary BuildSanitizedSummary(DiffResult result, IReadOnlyList<string?> resolved)
-        {
-            var versions = resolved
-                .Select(path => string.IsNullOrWhiteSpace(path) ? string.Empty : Path.GetFileName(path))
-                .ToArray();
-
-            var summaries = result.Comparisons
-                .Select(BuildComparisonSummary)
-                .ToArray();
-
-            return new DiffResultSummary
-            {
-                GeneratedAt = DateTimeOffset.UtcNow,
-                Versions = versions,
-                ComparisonCount = summaries.Length,
-                Comparisons = summaries,
-            };
-        }
-
-        private static DiffComparisonSummary BuildComparisonSummary(DiffComparison comparison)
-        {
-            var plan = comparison.Plan ?? new DiffPlan();
-            var metadata = comparison.Metadata ?? new DiffMetadata();
-
-            var canonicalBefore = CanonicaliseContent(plan.Before ?? string.Empty, plan.ContentType);
-            var canonicalAfter = CanonicaliseContent(plan.After ?? string.Empty, plan.ContentType);
-
-            var beforeLines = SplitLines(canonicalBefore);
-            var afterLines = SplitLines(canonicalAfter);
-            var stats = ComputeDiffStats(beforeLines, afterLines);
-
-            return new DiffComparisonSummary
-            {
-                From = comparison.From ?? string.Empty,
-                To = comparison.To ?? string.Empty,
-                Plan = new DiffPlanSummary
-                {
-                    ContentType = plan.ContentType ?? string.Empty,
-                    FromLabel = plan.FromLabel,
-                    ToLabel = plan.ToLabel,
-                    Label = plan.Label,
-                    MaskTokens = plan.MaskTokens?.Where(token => !string.IsNullOrWhiteSpace(token)).ToArray()
-                        ?? Array.Empty<string>(),
-                    Placeholder = plan.Placeholder ?? string.Empty,
-                    ContextLines = plan.ContextLines,
-                },
-                Metadata = new DiffMetadataSummary
-                {
-                    ContentType = metadata.ContentType ?? string.Empty,
-                    ContextLines = metadata.ContextLines,
-                    BaselineName = SafeFileName(metadata.LeftPath),
-                    ComparisonName = SafeFileName(metadata.RightPath),
-                },
-                Summary = new DiffChangeSummary
-                {
-                    BeforeDigest = ComputeDigest(canonicalBefore),
-                    AfterDigest = ComputeDigest(canonicalAfter),
-                    DiffDigest = ComputeDigest(BuildDiffDigestSeed(canonicalBefore, canonicalAfter)),
-                    BeforeLines = beforeLines.Count,
-                    AfterLines = afterLines.Count,
-                    AddedLines = stats.AddedLines,
-                    RemovedLines = stats.RemovedLines,
-                    ChangedLines = stats.ChangedLines,
-                },
-            };
-        }
-
-        private static string SafeFileName(string? path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return string.Empty;
-            }
-
-            try
-            {
-                return Path.GetFileName(path);
-            }
-            catch
-            {
-                return path;
-            }
-        }
-
-        private static string CanonicaliseContent(string value, string? contentType)
-        {
-            if (string.Equals(contentType, "xml", StringComparison.OrdinalIgnoreCase))
-            {
-                return CanonicaliseXml(value);
-            }
-
-            return CanonicaliseText(value);
-        }
-
-        private static string CanonicaliseText(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return string.Empty;
-            }
-
-            var normalised = value.Replace("\r\n", "\n", StringComparison.Ordinal)
-                .Replace("\r", "\n", StringComparison.Ordinal);
-            var lines = normalised.Split('\n');
-            for (var index = 0; index < lines.Length; index++)
-            {
-                lines[index] = lines[index].TrimEnd();
-            }
-
-            return string.Join("\n", lines);
-        }
-
-        [GeneratedRegex(@"<\?xml[^>]*\?>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
-        private static partial Regex XmlDeclarationPattern();
-
-        private static string CanonicaliseXml(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return string.Empty;
-            }
-
-            var working = value.TrimStart();
-            var declarationMatch = XmlDeclarationPattern().Match(working);
-            var xmlDeclaration = string.Empty;
-            if (declarationMatch.Success)
-            {
-                xmlDeclaration = declarationMatch.Value;
-                working = working[declarationMatch.Length..].TrimStart();
-            }
-
-            var doctype = ExtractDoctype(ref working, value);
-
-            try
-            {
-                var settings = new XmlReaderSettings
-                {
-                    DtdProcessing = DtdProcessing.Parse,
-                    IgnoreComments = false,
-                    IgnoreWhitespace = false,
-                };
-
-                using var reader = XmlReader.Create(new StringReader(working), settings);
-                var document = XDocument.Load(reader, LoadOptions.PreserveWhitespace);
-                if (document.Root is not null)
-                {
-                    NormaliseElement(document.Root);
-                }
-
-                var serialised = document.Root?.ToString(SaveOptions.DisableFormatting) ?? string.Empty;
-                var parts = new List<string>();
-                if (!string.IsNullOrEmpty(xmlDeclaration))
-                {
-                    parts.Add(xmlDeclaration);
-                }
-
-                if (!string.IsNullOrEmpty(doctype))
-                {
-                    parts.Add(doctype);
-                }
-
-                parts.Add(serialised);
-                return string.Join("\n", parts.Where(part => !string.IsNullOrEmpty(part)));
-            }
-            catch
-            {
-                return CanonicaliseText(value);
-            }
-        }
-
-        private static string ExtractDoctype(ref string working, string original)
-        {
-            if (!working.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase))
-            {
-                return string.Empty;
-            }
-
-            var builder = new StringBuilder();
-            var depth = 0;
-            for (var index = 0; index < working.Length; index++)
-            {
-                var character = working[index];
-                builder.Append(character);
-                if (character == '[')
-                {
-                    depth++;
-                }
-                else if (character == ']')
-                {
-                    depth = Math.Max(0, depth - 1);
-                }
-                else if (character == '>' && depth == 0)
-                {
-                    working = working[(index + 1)..].TrimStart();
-                    return builder.ToString();
-                }
-            }
-
-            working = original;
-            return string.Empty;
-        }
-
-        private static void NormaliseElement(XElement element)
-        {
-            var attributes = element.Attributes()
-                .OrderBy(attribute => attribute.Name.ToString(), StringComparer.Ordinal)
-                .ToList();
-            element.RemoveAttributes();
-            foreach (var attribute in attributes)
-            {
-                var value = attribute.Value;
-                var trimmed = value.Trim();
-                element.SetAttributeValue(attribute.Name, string.IsNullOrEmpty(trimmed) ? trimmed : value);
-            }
-
-            if (element.FirstNode is XText firstText)
-            {
-                var trimmed = firstText.Value.Trim();
-                if (string.IsNullOrEmpty(trimmed))
-                {
-                    firstText.Value = trimmed;
-                }
-            }
-
-            foreach (var node in element.Nodes().ToList())
-            {
-                if (node is XElement child)
-                {
-                    NormaliseElement(child);
-                }
-                else if (node is XText textNode)
-                {
-                    var trimmed = textNode.Value.Trim();
-                    if (string.IsNullOrEmpty(trimmed))
-                    {
-                        textNode.Value = trimmed;
-                    }
-                }
-            }
-        }
-
-        private static IReadOnlyList<string> SplitLines(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return Array.Empty<string>();
-            }
-
-            var lines = new List<string>();
-            var start = 0;
-            for (var index = 0; index < value.Length; index++)
-            {
-                if (value[index] != '\n')
-                {
-                    continue;
-                }
-
-                lines.Add(value[start..index]);
-                start = index + 1;
-            }
-
-            if (start < value.Length)
-            {
-                lines.Add(value[start..]);
-            }
-
-            return lines;
-        }
-
-        private static string ComputeDigest(string value)
-        {
-            using var sha256 = SHA256.Create();
-            var data = Utf8.GetBytes(value);
-            var hash = sha256.ComputeHash(data);
-            return $"sha256:{Convert.ToHexString(hash).ToLowerInvariant()}";
-        }
-
-        private static string BuildDiffDigestSeed(string canonicalBefore, string canonicalAfter)
-        {
-            return $"{canonicalBefore}\n---\n{canonicalAfter}";
-        }
-
-        private static string BuildUnifiedDiff(
-            IReadOnlyList<string> beforeLines,
-            IReadOnlyList<string> afterLines,
-            string fromLabel,
-            string toLabel,
-            int contextLines)
-        {
-            var matcher = new SequenceMatcher(beforeLines, afterLines);
-            var opcodes = matcher.GetOpcodes().ToList();
-            if (opcodes.Count == 0)
-            {
-                return $"--- {fromLabel}\n+++ {toLabel}";
-            }
-
-            var groups = GroupOpcodes(opcodes, contextLines);
-            if (groups.Count == 0)
-            {
-                return $"--- {fromLabel}\n+++ {toLabel}";
-            }
-
-            var builder = new StringBuilder();
-            builder.AppendLine($"--- {fromLabel}");
-            builder.AppendLine($"+++ {toLabel}");
-
-            foreach (var group in groups)
-            {
-                if (group.Count == 0)
-                {
-                    continue;
-                }
-
-                var first = group[0];
-                var last = group[^1];
-                var aStart = first.I1;
-                var aEnd = last.I2;
-                var bStart = first.J1;
-                var bEnd = last.J2;
-                var aLen = Math.Max(aEnd - aStart, 0);
-                var bLen = Math.Max(bEnd - bStart, 0);
-                builder.Append(CultureInfo.InvariantCulture, $"@@ -{aStart + 1},{aLen} +{bStart + 1},{bLen} @@").AppendLine();
-
-                foreach (var opcode in group)
-                {
-                    AppendOpcodeLines(builder, opcode, beforeLines, afterLines);
-                }
-            }
-
-            return builder.ToString().TrimEnd('\r', '\n');
-        }
-
-        private static void AppendOpcodeLines(
-            StringBuilder builder,
-            SequenceOpcode opcode,
-            IReadOnlyList<string> beforeLines,
-            IReadOnlyList<string> afterLines)
-        {
-            switch (opcode.Tag)
-            {
-                case SequenceOperation.Equal:
-                    for (var i = opcode.I1; i < opcode.I2; i++)
-                    {
-                        builder.Append(' ');
-                        builder.AppendLine(beforeLines[i]);
-                    }
-
-                    break;
-                case SequenceOperation.Delete:
-                    for (var i = opcode.I1; i < opcode.I2; i++)
-                    {
-                        builder.Append('-');
-                        builder.AppendLine(beforeLines[i]);
-                    }
-
-                    break;
-                case SequenceOperation.Insert:
-                    for (var j = opcode.J1; j < opcode.J2; j++)
-                    {
-                        builder.Append('+');
-                        builder.AppendLine(afterLines[j]);
-                    }
-
-                    break;
-                case SequenceOperation.Replace:
-                    for (var i = opcode.I1; i < opcode.I2; i++)
-                    {
-                        builder.Append('-');
-                        builder.AppendLine(beforeLines[i]);
-                    }
-
-                    for (var j = opcode.J1; j < opcode.J2; j++)
-                    {
-                        builder.Append('+');
-                        builder.AppendLine(afterLines[j]);
-                    }
-
-                    break;
-            }
-        }
-
-        private static List<List<SequenceOpcode>> GroupOpcodes(
-            List<SequenceOpcode> opcodes,
-            int contextLines)
-        {
-            var groups = new List<List<SequenceOpcode>>();
-            var group = new List<SequenceOpcode>();
-            var context = Math.Max(contextLines, 0);
-            var doubleContext = context * 2;
-
-            foreach (var opcode in opcodes)
-            {
-                var tag = opcode.Tag;
-                var i1 = opcode.I1;
-                var i2 = opcode.I2;
-                var j1 = opcode.J1;
-                var j2 = opcode.J2;
-
-                if (tag == SequenceOperation.Equal && i2 - i1 > doubleContext)
-                {
-                    group.Add(new SequenceOpcode(tag, i1, i1 + context, j1, j1 + context));
-                    if (group.Count > 0)
-                    {
-                        groups.Add(group);
-                    }
-
-                    group = new List<SequenceOpcode>();
-                    i1 = Math.Max(i2 - context, i1);
-                    j1 = Math.Max(j2 - context, j1);
-                }
-
-                group.Add(new SequenceOpcode(tag, i1, i2, j1, j2));
-            }
-
-            if (group.Count > 0)
-            {
-                groups.Add(group);
-            }
-
-            if (groups.Count == 0)
-            {
-                return groups;
-            }
-
-            var first = groups[0];
-            if (first.Count > 0 && first[0].Tag == SequenceOperation.Equal)
-            {
-                var op = first[0];
-                var startI = Math.Max(op.I2 - context, op.I1);
-                var startJ = Math.Max(op.J2 - context, op.J1);
-                first[0] = new SequenceOpcode(op.Tag, startI, op.I2, startJ, op.J2);
-            }
-
-            var last = groups[^1];
-            if (last.Count > 0 && last[^1].Tag == SequenceOperation.Equal)
-            {
-                var op = last[^1];
-                var endI = Math.Min(op.I1 + context, op.I2);
-                var endJ = Math.Min(op.J1 + context, op.J2);
-                last[^1] = new SequenceOpcode(op.Tag, op.I1, endI, op.J1, endJ);
-            }
-
-            groups.RemoveAll(g => g.All(op => op.Tag == SequenceOperation.Equal));
-            return groups;
-        }
-
-        private static DiffStats ComputeDiffStats(IReadOnlyList<string> beforeLines, IReadOnlyList<string> afterLines)
-        {
-            if (beforeLines.Count == 0 && afterLines.Count == 0)
-            {
-                return new DiffStats();
-            }
-
-            var matcher = new SequenceMatcher(beforeLines, afterLines);
-            var added = 0;
-            var removed = 0;
-            var changed = 0;
-
-            foreach (var opcode in matcher.GetOpcodes())
-            {
-                switch (opcode.Tag)
-                {
-                    case SequenceOperation.Replace:
-                        changed += Math.Max(opcode.I2 - opcode.I1, opcode.J2 - opcode.J1);
-                        break;
-                    case SequenceOperation.Delete:
-                        removed += opcode.I2 - opcode.I1;
-                        break;
-                    case SequenceOperation.Insert:
-                        added += opcode.J2 - opcode.J1;
-                        break;
-                }
-            }
-
-            return new DiffStats(added, removed, changed);
-        }
-
-        [StructLayout(LayoutKind.Auto)]
-        private readonly record struct DiffStats(int AddedLines, int RemovedLines, int ChangedLines);
-
-        private enum SequenceOperation
-        {
-            Equal,
-            Replace,
-            Delete,
-            Insert,
-        }
-
-        [StructLayout(LayoutKind.Auto)]
-        private readonly record struct SequenceOpcode(SequenceOperation Tag, int I1, int I2, int J1, int J2);
-
-        private sealed class SequenceMatcher
-        {
-            private readonly IReadOnlyList<string> _a;
-            private readonly IReadOnlyList<string> _b;
-            private readonly Dictionary<string, List<int>> _bIndex;
-
-            public SequenceMatcher(IReadOnlyList<string> a, IReadOnlyList<string> b)
-            {
-                _a = a ?? throw new ArgumentNullException(nameof(a));
-                _b = b ?? throw new ArgumentNullException(nameof(b));
-                _bIndex = BuildIndex(b);
-            }
-
-            public IEnumerable<SequenceOpcode> GetOpcodes()
-            {
-                var matchingBlocks = GetMatchingBlocks();
-                matchingBlocks.Add((_a.Count, _b.Count, 0));
-
-                var i = 0;
-                var j = 0;
-                foreach (var (ai, bj, size) in matchingBlocks)
-                {
-                    if (i < ai && j < bj)
-                    {
-                        yield return new SequenceOpcode(SequenceOperation.Replace, i, ai, j, bj);
-                    }
-                    else if (i < ai)
-                    {
-                        yield return new SequenceOpcode(SequenceOperation.Delete, i, ai, j, j);
-                    }
-                    else if (j < bj)
-                    {
-                        yield return new SequenceOpcode(SequenceOperation.Insert, i, i, j, bj);
-                    }
-
-                    if (size > 0)
-                    {
-                        yield return new SequenceOpcode(SequenceOperation.Equal, ai, ai + size, bj, bj + size);
-                    }
-
-                    i = ai + size;
-                    j = bj + size;
-                }
-            }
-
-            private static Dictionary<string, List<int>> BuildIndex(IReadOnlyList<string> sequence)
-            {
-                var index = new Dictionary<string, List<int>>(StringComparer.Ordinal);
-                for (var position = 0; position < sequence.Count; position++)
-                {
-                    var value = sequence[position] ?? string.Empty;
-                    if (!index.TryGetValue(value, out var list))
-                    {
-                        list = new List<int>();
-                        index[value] = list;
-                    }
-
-                    list.Add(position);
-                }
-
-                return index;
-            }
-
-            private List<(int, int, int)> GetMatchingBlocks()
-            {
-                var queue = new Stack<(int alo, int ahi, int blo, int bhi)>();
-                queue.Push((0, _a.Count, 0, _b.Count));
-                var matchingBlocks = new List<(int, int, int)>();
-
-                while (queue.Count > 0)
-                {
-                    var (alo, ahi, blo, bhi) = queue.Pop();
-                    var (i, j, size) = FindLongestMatch(alo, ahi, blo, bhi);
-                    if (size <= 0)
-                    {
-                        continue;
-                    }
-
-                    matchingBlocks.Add((i, j, size));
-
-                    if (alo < i && blo < j)
-                    {
-                        queue.Push((alo, i, blo, j));
-                    }
-
-                    if (i + size < ahi && j + size < bhi)
-                    {
-                        queue.Push((i + size, ahi, j + size, bhi));
-                    }
-                }
-
-                matchingBlocks.Sort((x, y) =>
-                {
-                    var compare = x.Item1.CompareTo(y.Item1);
-                    return compare != 0 ? compare : x.Item2.CompareTo(y.Item2);
-                });
-
-                return matchingBlocks;
-            }
-
-            private (int i, int j, int size) FindLongestMatch(int alo, int ahi, int blo, int bhi)
-            {
-                var bestI = alo;
-                var bestJ = blo;
-                var bestSize = 0;
-                var j2len = new Dictionary<int, int>();
-
-                for (var i = alo; i < ahi; i++)
-                {
-                    var newJ2Len = new Dictionary<int, int>();
-                    var value = _a[i] ?? string.Empty;
-                    if (!_bIndex.TryGetValue(value, out var indices))
-                    {
-                        j2len = newJ2Len;
-                        continue;
-                    }
-
-                    foreach (var j in indices)
-                    {
-                        if (j < blo)
-                        {
-                            continue;
-                        }
-
-                        if (j >= bhi)
-                        {
-                            break;
-                        }
-
-                        var previous = j2len.TryGetValue(j - 1, out var length) ? length + 1 : 1;
-                        newJ2Len[j] = previous;
-                        if (previous > bestSize)
-                        {
-                            bestSize = previous;
-                            bestI = i - bestSize + 1;
-                            bestJ = j - bestSize + 1;
-                        }
-                    }
-
-                    j2len = newJ2Len;
-                }
-
-                while (bestI > alo && bestJ > blo && EqualsAt(bestI - 1, bestJ - 1))
-                {
-                    bestI--;
-                    bestJ--;
-                    bestSize++;
-                }
-
-                while (bestI + bestSize < ahi && bestJ + bestSize < bhi && EqualsAt(bestI + bestSize, bestJ + bestSize))
-                {
-                    bestSize++;
-                }
-
-                return (bestI, bestJ, bestSize);
-            }
-
-            private bool EqualsAt(int indexA, int indexB)
-            {
-                return string.Equals(_a[indexA], _b[indexB], StringComparison.Ordinal);
-            }
+            return (comparison, artifact);
         }
 
 
@@ -1491,6 +747,14 @@ namespace DriftBuster.Backend
 
         private static string EnsureFile(string path, bool isBaseline)
         {
+            if (File.Exists(path) && !PythonPath.IsFile(path))
+            {
+                // A FIFO, socket or device: reading it could block forever (PythonPath.IsFile never opens it).
+                throw new InvalidOperationException(isBaseline
+                    ? $"Baseline path is not a regular file: {path}"
+                    : $"Comparison path is not a regular file: {path}");
+            }
+
             if (!File.Exists(path))
             {
                 if (Directory.Exists(path))
@@ -1516,60 +780,28 @@ namespace DriftBuster.Backend
         private static HuntResult BuildHuntResult(string? directory, string? pattern, CancellationToken cancellationToken)
         {
             var rootPath = ResolvePath(directory);
-            string searchRoot;
-            IReadOnlyCollection<string> files;
-
-            if (File.Exists(rootPath))
-            {
-                searchRoot = Path.GetDirectoryName(rootPath) ?? Path.GetDirectoryName(Path.GetFullPath(rootPath)) ?? Path.GetPathRoot(rootPath)!;
-                files = new[] { rootPath };
-            }
-            else if (Directory.Exists(rootPath))
-            {
-                searchRoot = rootPath;
-                files = EnumerateFilesSafely(rootPath, cancellationToken).ToList();
-            }
-            else
+            if (!File.Exists(rootPath) && !Directory.Exists(rootPath))
             {
                 throw new FileNotFoundException($"Path does not exist: {rootPath}");
             }
 
-            var hits = new List<HuntHitRecord>();
-            foreach (var file in files)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!TryReadSample(file, HuntSampleSize, out var text))
-                {
-                    continue;
-                }
-
-                foreach (var rule in HuntRules)
-                {
-                    if (!rule.MatchesKeywords(text))
-                    {
-                        continue;
-                    }
-
-                    hits.AddRange(rule.ExtractHits(text, file));
-                }
-            }
+            var scan = HuntEngine.HuntPath(rootPath, Hunt.HuntRules.Default, cancellationToken: cancellationToken);
+            var hits = scan.Hits.Select(hit => ToModelHit(hit, scan.RootDirectory));
 
             var trimmedPattern = string.IsNullOrWhiteSpace(pattern) ? null : pattern.Trim();
             if (!string.IsNullOrEmpty(trimmedPattern))
             {
-                hits = hits.Where(hit => hit.Excerpt.Contains(trimmedPattern, StringComparison.OrdinalIgnoreCase)).ToList();
+                hits = hits.Where(hit => hit.Excerpt.Contains(trimmedPattern, StringComparison.OrdinalIgnoreCase));
             }
 
-            var materialisedHits = hits
-                .Select(hit => ToModelHit(hit, searchRoot))
-                .ToArray();
-
+            var materialisedHits = hits.ToArray();
             var result = new HuntResult
             {
                 Directory = rootPath,
                 Pattern = trimmedPattern,
                 Count = materialisedHits.Length,
                 Hits = materialisedHits,
+                UnreadableFiles = scan.UnreadableFiles.Count > 0 ? scan.UnreadableFiles.ToArray() : null,
             };
 
             result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
@@ -1624,51 +856,9 @@ namespace DriftBuster.Backend
             }
         }
 
-        private static bool TryReadSample(string path, int sampleSize, out string text)
+        private static HuntHit ToModelHit(HuntFinding hit, string rootDirectory)
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            var length = (int)Math.Min(sampleSize, stream.Length);
-            if (length == 0)
-            {
-                text = string.Empty;
-                return true;
-            }
-
-            var buffer = ArrayPool<byte>.Shared.Rent(length);
-            try
-            {
-                var read = stream.Read(buffer, 0, length);
-                if (ContainsBinaryData(buffer.AsSpan(0, read)))
-                {
-                    text = string.Empty;
-                    return false;
-                }
-
-                text = Utf8.GetString(buffer, 0, read);
-                return true;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
-        }
-
-        private static bool ContainsBinaryData(ReadOnlySpan<byte> span)
-        {
-            foreach (var value in span)
-            {
-                if (value == 0)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static HuntHit ToModelHit(HuntHitRecord hit, string searchRoot)
-        {
-            var relative = TryGetRelativePath(searchRoot, hit.Path);
+            var transform = HuntEngine.PlanTransformForHit(hit, HuntEngine.DefaultPlaceholderTemplate);
             return new HuntHit
             {
                 Rule = new HuntRuleSummary
@@ -1676,34 +866,26 @@ namespace DriftBuster.Backend
                     Name = hit.Rule.Name,
                     Description = hit.Rule.Description,
                     TokenName = hit.Rule.TokenName,
-                    Keywords = hit.Rule.Keywords,
-                    Patterns = hit.Rule.Patterns.Select(pattern => pattern.ToString()).ToArray(),
+                    Keywords = hit.Rule.Keywords.ToArray(),
+                    Patterns = hit.Rule.Patterns.Select(rulePattern => rulePattern.Pattern).ToArray(),
                 },
                 Path = hit.Path,
-                RelativePath = relative,
+                RelativePath = HuntEngine.RelativeTo(hit.Path, rootDirectory) ?? PathText.Name(hit.Path),
                 LineNumber = hit.LineNumber,
                 Excerpt = hit.Excerpt,
+                Metadata = transform is null
+                    ? null
+                    : new HuntHitMetadata
+                    {
+                        PlanTransform = new HuntPlanTransform
+                        {
+                            TokenName = transform.TokenName,
+                            Value = transform.Value,
+                            Placeholder = transform.Placeholder,
+                            RuleName = transform.RuleName,
+                        },
+                    },
             };
-        }
-
-        private static string TryGetRelativePath(string root, string target)
-        {
-            try
-            {
-                var relative = Path.GetRelativePath(root, target);
-                if (!relative.StartsWith(".", StringComparison.Ordinal))
-                {
-                    return relative.Replace(Path.DirectorySeparatorChar, '/');
-                }
-            }
-            catch (ArgumentException)
-            {
-            }
-            catch (NotSupportedException)
-            {
-            }
-
-            return Path.GetFileName(target);
         }
 
         private static string ResolvePath(string? value)
@@ -1727,58 +909,6 @@ namespace DriftBuster.Backend
             }
 
             return Path.GetFullPath(expanded);
-        }
-
-        private sealed record HuntHitRecord(HuntRuleDefinition Rule, string Path, int LineNumber, string Excerpt);
-
-        [ExcludeFromCodeCoverage]
-        private sealed record HuntRuleDefinition(string Name, string Description, string? TokenName, string[] Keywords, Regex[] Patterns)
-        {
-            public bool MatchesKeywords(string text)
-            {
-                if (Keywords.Length == 0)
-                {
-                    return true;
-                }
-
-                var lower = text.ToLowerInvariant();
-                foreach (var keyword in Keywords)
-                {
-                    if (!lower.Contains(keyword, StringComparison.Ordinal))
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            public IEnumerable<HuntHitRecord> ExtractHits(string text, string path)
-            {
-                var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-                for (var index = 0; index < lines.Length; index++)
-                {
-                    var line = lines[index];
-                    if (string.IsNullOrEmpty(line))
-                    {
-                        continue;
-                    }
-
-                    if (Keywords.Length > 0 &&
-                        !Keywords.Any(keyword => line.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0))
-                    {
-                        continue;
-                    }
-
-                    var matches = Patterns.Length == 0 || Patterns.Any(pattern => pattern.IsMatch(line));
-                    if (!matches)
-                    {
-                        continue;
-                    }
-
-                    yield return new HuntHitRecord(this, path, index + 1, line.Trim());
-                }
-            }
         }
 
         [ExcludeFromCodeCoverage]

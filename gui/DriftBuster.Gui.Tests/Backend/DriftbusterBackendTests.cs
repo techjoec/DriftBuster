@@ -103,6 +103,40 @@ public sealed class DriftbusterBackendTests
     }
 
     [Fact]
+    public async Task DiffAsync_chooses_content_type_from_detection_not_extension()
+    {
+        var directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        var xmlBaseline = Path.Combine(directory.FullName, "settings.txt");
+        var xmlCandidate = Path.Combine(directory.FullName, "settings-new.txt");
+        var jsonBaseline = Path.Combine(directory.FullName, "appsettings.json");
+        var jsonCandidate = Path.Combine(directory.FullName, "appsettings.Production.json");
+        var plainConfig = Path.Combine(directory.FullName, "plain.csproj");
+        File.WriteAllText(xmlBaseline, "<?xml version=\"1.0\"?>\n<configuration>\n  <add b=\"2\" a=\"1\" />\n</configuration>\n");
+        File.WriteAllText(xmlCandidate, "<?xml version=\"1.0\"?>\n<configuration>\n  <add a=\"1\" b=\"3\" />\n</configuration>\n");
+        File.WriteAllText(jsonBaseline, "{\n  \"b\": 1,\n  \"a\": 2\n}\n");
+        File.WriteAllText(jsonCandidate, "{\n  \"a\": 2,\n  \"b\": 1\n}\n");
+        File.WriteAllText(plainConfig, "alpha = 1\n");
+
+        try
+        {
+            var xml = await _backend.DiffAsync(new[] { xmlBaseline, xmlCandidate }, TestContext.Current.CancellationToken);
+            xml.Comparisons[0].Plan.ContentType.Should().Be("xml");
+            xml.Comparisons[0].Plan.Before.Should().Be("<?xml version=\"1.0\"?>\n<configuration><add a=\"1\" b=\"2\" /></configuration>");
+
+            var json = await _backend.DiffAsync(new[] { jsonBaseline, jsonCandidate }, TestContext.Current.CancellationToken);
+            json.Comparisons[0].Plan.ContentType.Should().Be("text");
+            json.Comparisons[0].Metadata.ContentType.Should().Be("text");
+
+            var config = await _backend.DiffAsync(new[] { plainConfig, plainConfig }, TestContext.Current.CancellationToken);
+            config.Comparisons[0].Plan.ContentType.Should().Be("text");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task DiffAsync_throws_for_missing_comparisons()
     {
         var baseline = Path.GetTempFileName();
@@ -137,6 +171,148 @@ public sealed class DriftbusterBackendTests
         finally
         {
             directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task HuntAsync_runs_the_seven_ported_rules_in_walk_order_with_plan_transforms()
+    {
+        var directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(Path.Combine(directory.FullName, "a"));
+        File.WriteAllText(Path.Combine(directory.FullName, "b.config"), "<add name=\"Db\" connectionString=\"Server=sql.corp.local;\" />\n");
+        File.WriteAllText(Path.Combine(directory.FullName, "a", "install.txt"), "install path C:\\Program Files\\Vendor\n");
+        File.WriteAllText(Path.Combine(directory.FullName, "a.txt"), "<feature name=\"x\" enabled=\"true\"/>\n");
+
+        try
+        {
+            var result = await _backend.HuntAsync(directory.FullName, pattern: null, cancellationToken: TestContext.Current.CancellationToken);
+
+            result.Hits.Select(hit => hit.RelativePath).Should().Equal("a/install.txt", "a.txt", "b.config");
+            result.Hits.Select(hit => hit.Rule.Name).Should().Equal("install-path", "feature-flag", "connection-string");
+            var install = result.Hits[0];
+            install.Excerpt.Should().Be("install path C:\\Program Files\\Vendor");
+            install.Metadata!.PlanTransform!.Value.Should().Be("C:\\Program Files");
+            install.Metadata.PlanTransform.Placeholder.Should().Be("{{ install_path }}");
+            install.Rule.Patterns.Should().Equal(@"[A-Za-z]:\\[\w\-\.\s]+", @"/opt/[\w\-\.]+");
+            result.UnreadableFiles.Should().BeNull();
+            result.RawJson.Should().Contain("\"plan_transform\"").And.NotContain("unreadable_files");
+
+            var filtered = await _backend.HuntAsync(directory.FullName, pattern: "  FEATURE ", cancellationToken: TestContext.Current.CancellationToken);
+            filtered.Pattern.Should().Be("FEATURE");
+            filtered.Hits.Select(hit => hit.Rule.Name).Should().Equal("feature-flag");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task HuntAsync_skips_unreadable_files_and_reports_them()
+    {
+        if (OperatingSystem.IsWindows() || string.Equals(Environment.UserName, "root", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        var locked = Path.Combine(directory.FullName, "locked.txt");
+        File.WriteAllText(locked, "server host: locked.corp.local\n");
+        File.WriteAllText(Path.Combine(directory.FullName, "open.txt"), "server host: open.corp.local\n");
+        File.SetUnixFileMode(locked, UnixFileMode.None);
+
+        try
+        {
+            var result = await _backend.HuntAsync(directory.FullName, pattern: null, cancellationToken: TestContext.Current.CancellationToken);
+
+            result.Hits.Select(hit => hit.RelativePath).Should().Equal("open.txt");
+            result.UnreadableFiles.Should().Equal(locked);
+        }
+        finally
+        {
+            File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            directory.Delete(recursive: true);
+        }
+    }
+
+    // No timing race: the tree holds 4000 links to one 128 KiB file, which every hunt rule searches in full (no hits), so an
+    // uncancelled hunt runs for many seconds, far past the 100 ms after which the token is cancelled. HuntAsync forwards its
+    // token into HuntEngine, which polls it before every file and inside every pattern search; the hunt ends with
+    // OperationCanceledException within the test timeout only if that token is honoured.
+    [Fact(Timeout = 60_000)]
+    public async Task HuntAsync_honours_cancellation_while_hunting_a_large_tree()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "symbolic links need privileges on Windows");
+        var directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        try
+        {
+            var source = Path.Combine(directory.FullName, "source.txt");
+            File.WriteAllText(source, string.Concat(Enumerable.Repeat("key=\"flag\" v ", 128 * 1024 / 13)));
+            var tree = Directory.CreateDirectory(Path.Combine(directory.FullName, "tree"));
+            for (var index = 0; index < 4000; index++)
+            {
+                File.CreateSymbolicLink(Path.Combine(tree.FullName, $"f{index:D4}.config"), source);
+            }
+
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            cancellation.CancelAfter(TimeSpan.FromMilliseconds(100));
+            var hunt = () => _backend.HuntAsync(tree.FullName, pattern: null, cancellationToken: cancellation.Token);
+
+            await hunt.Should().ThrowAsync<OperationCanceledException>();
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    // A FIFO passed to the planner is refused from its file type; opening it for reading would block until a writer appeared.
+    [Fact(Timeout = 30_000)]
+    public async Task DiffAsync_refuses_a_fifo_without_opening_it()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "FIFOs are a Linux case");
+        var directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        try
+        {
+            var baseline = Path.Combine(directory.FullName, "baseline.txt");
+            var fifo = Path.Combine(directory.FullName, "pipe.txt");
+            File.WriteAllText(baseline, "a\n");
+            using (var mkfifo = Process.Start(new ProcessStartInfo("mkfifo") { ArgumentList = { fifo } })!)
+            {
+                await mkfifo.WaitForExitAsync(TestContext.Current.CancellationToken);
+            }
+
+            var diff = () => _backend.DiffAsync(new[] { baseline, fifo }, TestContext.Current.CancellationToken);
+
+            (await diff.Should().ThrowAsync<InvalidOperationException>()).WithMessage("Comparison path is not a regular file: *");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    // GUI-only behaviour (expected_divergences.md): the diff planner decodes a UTF-16 or UTF-32 file by its byte order mark,
+    // where Python's multi_server._read_text would read the bytes as UTF-8 with replacement.
+    [Fact]
+    public async Task DiffAsync_decodes_files_by_their_byte_order_mark()
+    {
+        var baseline = Path.GetTempFileName();
+        var comparison = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(baseline, "key = alpha\n", new System.Text.UnicodeEncoding(bigEndian: false, byteOrderMark: true));
+            File.WriteAllText(comparison, "key = beta\n", new System.Text.UTF32Encoding(bigEndian: false, byteOrderMark: true));
+
+            var result = await _backend.DiffAsync(new[] { baseline, comparison }, TestContext.Current.CancellationToken);
+
+            result.Comparisons[0].Plan.Before.Should().Be("key = alpha\n");
+            result.Comparisons[0].Plan.After.Should().Be("key = beta\n");
+        }
+        finally
+        {
+            File.Delete(baseline);
+            File.Delete(comparison);
         }
     }
 

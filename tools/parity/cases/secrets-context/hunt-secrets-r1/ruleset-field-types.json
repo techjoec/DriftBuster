@@ -1,0 +1,1 @@
+{"options": {}, "secret_scanner": {"ruleset": {"version": 1.5, "rules": [{"name": 12, "pattern": ["a", 1]}, {"name": ["n"], "pattern": true, "flags": ["i"]}, {"name": "Num", "pattern": 5, "flags": true, "description": 0}, {"name": "Desc", "pattern": "x", "flags": "Xi", "description": []}, {"name": "Map", "pattern": {"p": "q"}, "description": {"d": 1}}]}}}

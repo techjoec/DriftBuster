@@ -1,0 +1,13 @@
+{
+ "version": "identity",
+ "rules": [
+  {
+   "name": "Id",
+   "pattern": "\\[SECRET\\]"
+  },
+  {
+   "name": "Pw",
+   "pattern": "pw"
+  }
+ ]
+}

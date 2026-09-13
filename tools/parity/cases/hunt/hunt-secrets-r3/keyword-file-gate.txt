@@ -1,0 +1,4 @@
+SERVER config
+nothing here
+HOST=only.host.local
+hoſt=nope.local
