@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Avalonia.BuildServices (pulled in by the Avalonia package) runs an AvaloniaStats target before every compile that
+    starts a detached collector posting build usage data to avaloniaui.net. Its only opt-out is the presence of the
+    AVALONIA_TELEMETRY_OPTOUT environment variable, which a build cannot set for itself. DriftBuster sends no telemetry,
+    so the target is replaced with an empty one here; this file is imported after package targets, so this definition
+    wins for every build path (dotnet build, test, publish, IDEs).
+  -->
+  <Target Name="AvaloniaStats" />
+</Project>
