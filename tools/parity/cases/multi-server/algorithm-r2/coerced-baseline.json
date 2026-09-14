@@ -1,0 +1,5 @@
+{"description": "baseline values Python coerces: priority as a string, is_preferred as the string false (truthy)", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "server01", "label": "S1", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": false, "priority": 3}},
+  {"host_id": "server02", "label": "S2", "scope": "custom_roots", "roots": ["fixtures/multi-server/server02"], "baseline": {"is_preferred": "false", "priority": "7"}}
+ ]}

@@ -1,0 +1,10 @@
+{
+  "description": "a tree holding a FIFO, a socket and a device link, none of them opened",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "special", "label": "Special", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/fifo/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "plain", "label": "Plain", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/fifo/hostB"]}
+  ]
+}

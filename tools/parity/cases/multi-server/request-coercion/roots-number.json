@@ -1,0 +1,5 @@
+{"description": "roots given as a number: iterating it raises TypeError",
+ "aborts": "'int' object is not iterable", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "s1", "label": "S1", "roots": 5}
+ ]}

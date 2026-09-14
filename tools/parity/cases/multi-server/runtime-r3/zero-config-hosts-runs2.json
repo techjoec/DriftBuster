@@ -1,0 +1,11 @@
+{
+  "description": "hosts that evaluate zero configurations (only an unreadable file, only an unmatched binary, an empty directory) and a host with an unreadable file beside readable ones and a secret in a subdirectory; used_cache stays false for zero-config hosts on the second run",
+  "fixes": ["a", "b"], "args": ["--runs", "2"], "requires": ["unprivileged"],
+  "plans": [
+    {"host_id": "locked-only", "label": "LockedOnly", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/zero/locked-only"], "baseline": {"is_preferred": true, "priority": 5, "role": "auto"}},
+    {"host_id": "binary-only", "label": "BinaryOnly", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/zero/binary-only"]},
+    {"host_id": "empty-dir", "label": "EmptyDir", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/zero/empty-dir"]},
+    {"host_id": "mixed", "label": "Mixed", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/zero/mixed"]},
+    {"host_id": "plain", "label": "Plain", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/errmap/good"]}
+  ]
+}

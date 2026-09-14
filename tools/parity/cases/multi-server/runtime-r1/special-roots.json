@@ -1,0 +1,10 @@
+{
+  "description": "roots that exist but are neither file nor directory: a FIFO, a socket and a character device",
+  "fixes": [], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "server01", "label": "server01", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "fifo", "label": "FIFO", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/special/pipe-root"]},
+    {"host_id": "socket", "label": "Socket", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/special/socket-root"]},
+    {"host_id": "device", "label": "Device", "scope": "custom_roots", "roots": ["/dev/null"]}
+  ]
+}

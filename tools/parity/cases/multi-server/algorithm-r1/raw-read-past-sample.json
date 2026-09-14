@@ -1,0 +1,32 @@
+{
+  "description": "a 48-byte sample detects the file; the full read replaces invalid UTF-8, translates CR and CRLF and keeps U+2028, U+0085 and a mid-file BOM; server/host words mark secrets",
+  "fixes": [],
+  "args": [
+    "--sample-size",
+    "48"
+  ],
+  "requires": [],
+  "plans": [
+    {
+      "host_id": "hostA",
+      "label": "hostA",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/rawtail/hostA"
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 0,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "hostB",
+      "label": "hostB",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/rawtail/hostB"
+      ]
+    }
+  ]
+}

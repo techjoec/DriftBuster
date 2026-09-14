@@ -1,0 +1,5 @@
+{"description": "roots are coerced before the baseline: the roots TypeError wins over the priority ValueError",
+ "aborts": "'bool' object is not iterable", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "s1", "label": "S1", "roots": true, "baseline": {"priority": "high"}}
+ ]}

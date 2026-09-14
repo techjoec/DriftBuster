@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="DriftBuster.Backend.Tests" />
+    <!-- The CLI assembly is named driftbuster. -->
+    <InternalsVisibleTo Include="driftbuster" />
     <InternalsVisibleTo Include="DriftBuster.Cli.Tests" />
   </ItemGroup>
 

@@ -1,0 +1,18 @@
+{
+  "description": "all ten fixture servers, server01 preferred",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "server01", "label": "Server 01", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "server02", "label": "Server 02", "scope": "custom_roots", "roots": ["fixtures/multi-server/server02"]},
+    {"host_id": "server03", "label": "Server 03", "scope": "custom_roots", "roots": ["fixtures/multi-server/server03"]},
+    {"host_id": "server04", "label": "Server 04", "scope": "custom_roots", "roots": ["fixtures/multi-server/server04"]},
+    {"host_id": "server05", "label": "Server 05", "scope": "custom_roots", "roots": ["fixtures/multi-server/server05"]},
+    {"host_id": "server06", "label": "Server 06", "scope": "custom_roots", "roots": ["fixtures/multi-server/server06"]},
+    {"host_id": "server07", "label": "Server 07", "scope": "custom_roots", "roots": ["fixtures/multi-server/server07"]},
+    {"host_id": "server08", "label": "Server 08", "scope": "custom_roots", "roots": ["fixtures/multi-server/server08"]},
+    {"host_id": "server09", "label": "Server 09", "scope": "custom_roots", "roots": ["fixtures/multi-server/server09"]},
+    {"host_id": "server10", "label": "Server 10", "scope": "custom_roots", "roots": ["fixtures/multi-server/server10"]}
+  ]
+}

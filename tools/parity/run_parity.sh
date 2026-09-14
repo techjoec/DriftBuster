@@ -3,12 +3,14 @@
 # decode run over fixtures/, tools/parity/cases/<surface>/ and a set of generated file-system cases
 # (unreadable file, unreadable subdirectory, dangling symlink, missing root, unreadable root, tiny
 # sampling budget, a FIFO, a socket and a device link); diff, canon, hunt and secrets run over the inputs listed in
-# run_phase4_surface. Exit 1 on any difference that is not an expected divergence (see
-# expected_divergences.md). Temporary; deleted with the Python tree.
+# run_phase4_surface; multi-server runs every plan file under tools/parity/cases/multi-server/ (run_multi_server_surface).
+# Exit 1 on any difference that is not an expected divergence (see expected_divergences.md). Temporary; deleted with the
+# Python tree.
 #
 # Usage: tools/parity/run_parity.sh <surface> [dump args...]
-#   surfaces: detect, decode, diff, canon, hunt, secrets
+#   surfaces: detect, decode, diff, canon, hunt, secrets, multi-server
 #   example:  tools/parity/run_parity.sh detect            (the full default registry on both sides)
+#             PARITY_MULTI_SERVER_CASES='unreadable|root-' tools/parity/run_parity.sh multi-server   (cases whose path matches)
 #             tools/parity/run_parity.sh detect --plugins text
 set -euo pipefail
 
@@ -20,9 +22,9 @@ fi
 surface="$1"
 shift
 case "$surface" in
-  detect|decode|diff|canon|hunt|secrets) ;;
+  detect|decode|diff|canon|hunt|secrets|multi-server) ;;
   *)
-    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets)" >&2
+    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets, multi-server)" >&2
     exit 2
     ;;
 esac
@@ -466,6 +468,17 @@ compare_records() {
 
 # make_special_files <dir>: a FIFO, a Unix socket and a symlink to /dev/null, none of them a regular file. A walk that opened
 # the FIFO would block forever, so every port dump over them also runs under a timeout.
+# A root spelled shortcut/.. where shortcut -> real/app/nested: the kernel resolves it to real/app, a lexical collapse to the tree
+# itself (whose lexical.* files must never be scanned).
+make_dotdot_tree() {
+  local tree="$1"
+  mkdir -p "$tree/real/app/nested"
+  printf 'server host=physical.corp.local\npassword = Physical12345\nalpha one\nbeta two\n' > "$tree/real/app/app.conf"
+  printf 'server host=nested.corp.local\n' > "$tree/real/app/nested/deep.ini"
+  printf 'server host=lexical.corp.local\npassword = Lexical12345\n' > "$tree/lexical.conf"
+  ln -s real/app/nested "$tree/shortcut"
+}
+
 make_special_files() {
   mkdir -p "$1"
   mkfifo "$1/pipe.ini"
@@ -539,6 +552,8 @@ run_phase4_surface() {
         compare_records "tools/parity/cases/hunt with glob $glob" hunt hunt tools/parity/cases/hunt --glob "$glob" "$@"
       done
       compare_records "generated/missing hunt root" hunt hunt "$work/no-such-hunt-root" "$@"
+      make_dotdot_tree "$work/hunt-dotdot"
+      compare_records "generated/hunt root with .. after a symlink" hunt hunt "$work/hunt-dotdot/shortcut/.." "$@"
       # Generated tree (symlinks cannot be committed portably): a symlinked directory is followed by a wildcard part and
       # not by **, a symlinked file is scanned, a dangling link is skipped.
       local tree="$work/hunt-tree"
@@ -591,6 +606,8 @@ run_phase4_surface() {
       make_special_files "$special"
       printf 'password = Hunter12345\n' > "$special/plain.env"
       compare_records "generated/secrets tree with a fifo, a socket and a device link" secrets secrets "$special" "$@"
+      make_dotdot_tree "$work/secrets-dotdot"
+      compare_records "generated/secrets root with .. after a symlink" secrets secrets "$work/secrets-dotdot/shortcut/.." "$@"
       if [[ "$(id -u)" != "0" ]]; then
         # A file whose stat is refused (inside a listable directory that cannot be searched) is a DetectorIOError record.
         local refused="$work/secrets-refused"
@@ -606,6 +623,370 @@ run_phase4_surface() {
       done < <(find tools/parity/cases/secrets-context -type d | LC_ALL=C sort)
       ;;
   esac
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# multi-server: every .json under tools/parity/cases/multi-server/ (at any depth, outside trees/ directories) holds a request (a
+# "plans" value, decoded by both runners with multi_server._build_plans's coercions) plus harness keys the dumps ignore: "args"
+# (extra dump arguments: --sample-budget, --sample-size, --runs), "requires" ("unprivileged": skipped as root), "fixes" (the plan
+# fixes and platform limits the case exercises), "stock_aborts" (the exception the stock Python run raises out of run()),
+# "aborts" (text every run, the port included, must abort with: a request coercion error or a throttle time.sleep refuses),
+# "divergences" (recorded divergences the case must show: "empty-response-mappings", "diff-summary-replacement",
+# "python-surrogate-encode", the latter compared by multi_server_surrogates.py) and "self_test" (a multi_server_stock.py --self-test run after the case: "wrong-drift-count" or "wrong-used-cache").
+# Roots are repository-relative, or under $PARITY_MULTI_SERVER_WORK for trees generated here and by the generate_trees.sh scripts
+# (modes, FIFOs, sockets, links, undecodable names, files past 128 KiB), which both runners expand.
+#
+# Per case, four dumps: the port, the fixed Python runner (PARITY_MULTI_SERVER_FIXES=1: fixes a and b applied as the port
+# applies them), the fix b Python runner (PARITY_MULTI_SERVER_FIXES=b) and the stock Python runner. The Python runs canonicalise
+# namespaced xml through the port (PARITY_PORT_CLI, fix d, counted from the records file) so everything after canonicalisation
+# is CPython's own. The fixed dump must equal the port dump byte for byte (key_order included); multi_server_stock.py then proves
+# the fix b dump differs from the stock one only where a skipped file or refused root (fix b) or an undecodable name explains
+# it, and the fixed dump from the fix b one only where a collision (fix a) does; each such entry is an expected divergence.
+# ---------------------------------------------------------------------------------------------------------------------
+generate_multi_server_trees() {
+  local tree="$1" i
+  mkdir -p "$tree/unreadable-file/hostA/unsearchable" "$tree/unreadable-file/hostB" "$tree/unreadable-root/locked" \
+    "$tree/large/hostA" "$tree/large/hostB" "$tree/fifo/hostB"
+  printf '{"Server": "locked.corp.local", "Port": 8080}\n' > "$tree/unreadable-file/hostA/app.json"
+  printf '{"Secret": "not readable"}\n' > "$tree/unreadable-file/hostA/locked.json"
+  printf '[core]\nname = hidden\n' > "$tree/unreadable-file/hostA/unsearchable/refused.ini"
+  printf '[core]\nname = visible\n' > "$tree/unreadable-file/hostA/settings.ini"
+  printf '{"Server": "plain.corp.local", "Port": 8080}\n' > "$tree/unreadable-file/hostB/app.json"
+  printf '[core]\nname = visible\n' > "$tree/unreadable-file/hostB/settings.ini"
+  printf '{"Server": "inside.corp.local"}\n' > "$tree/unreadable-root/locked/app.json"
+  printf '{"Server": "file.corp.local"}\n' > "$tree/unreadable-root/locked.json"
+  # 6000 lines of about 28 bytes: past the 128 KiB sample; the hosts differ only on the last line.
+  for i in A B; do
+    awk -v last="$i" 'BEGIN { print "[settings]"; for (n = 1; n <= 6000; n++) printf "setting_%05d = value-%05d\n", n, n; print "tail = " last }' \
+      > "$tree/large/host$i/big.ini"
+  done
+  # A root inside a directory that cannot be searched: its stat fails with EACCES, which Path.exists() raises.
+  mkdir -p "$tree/root-lookup/sealed/root"
+  printf '{"Server": "sealed.corp.local"}\n' > "$tree/root-lookup/sealed/root/app.json"
+  make_special_files "$tree/fifo/hostA"
+  printf '{"Server": "special.corp.local"}\n' > "$tree/fifo/hostA/app.json"
+  printf 'server host=special.corp.local\n' > "$tree/fifo/hostB/regular.ini"
+  printf '{"Server": "special.corp.local"}\n' > "$tree/fifo/hostB/app.json"
+  if [[ "$(id -u)" != "0" ]]; then
+    chmod 000 "$tree/unreadable-file/hostA/locked.json" "$tree/unreadable-root/locked" "$tree/unreadable-root/locked.json"
+    chmod 644 "$tree/unreadable-file/hostA/unsearchable"
+    chmod 000 "$tree/root-lookup/sealed"
+  fi
+}
+
+compare_multi_server() {
+  local case_file="$1" tag rc side count divergences fixd stock_lines stock_aborts aborts declared_divergences shaped self_test
+  local surrogate=0 surrogate_lines=0 surrogate_rc=0 aborted=()
+  shift
+  tag="multi-server-$(printf '%s' "${case_file#tools/parity/cases/multi-server/}" | tr '/' '-')"
+  tag="${tag%.json}"
+  local args=() requires fields=()
+  # The harness keys, read by Python: jq rejects the escaped unpaired surrogates a plan may hold. One line each for requires,
+  # stock_aborts, aborts, divergences and self_test, then one line per dump argument.
+  mapfile -t fields < <(python -c '
+import json, sys
+case = json.load(open(sys.argv[1], encoding="utf-8"))
+print(",".join(case.get("requires") or []))
+for key in ("stock_aborts", "aborts"):
+    print(case.get(key) or "")
+print(",".join(case.get("divergences") or []))
+print(case.get("self_test") or "")
+for arg in case.get("args") or []:
+    print(arg)
+' "$case_file")
+  if [[ "${#fields[@]}" -lt 5 ]]; then
+    status=1
+    echo "FAIL $surface $case_file: the case file cannot be read"
+    return
+  fi
+  requires="${fields[0]}"
+  stock_aborts="${fields[1]}"
+  aborts="${fields[2]}"
+  declared_divergences="${fields[3]}"
+  self_test="${fields[4]}"
+  args=("${fields[@]:5}")
+  if [[ ",$declared_divergences," == *",python-surrogate-encode,"* ]]; then
+    surrogate=1
+  fi
+  if [[ ",$requires," == *",unprivileged,"* && "$(id -u)" == "0" ]]; then
+    echo "skip $surface $case_file: running as root, permission cases are not observable"
+    return
+  fi
+  if [[ -n "$aborts" ]]; then
+    compare_multi_server_abort "$case_file" "$tag" "$aborts" "${args[@]}" "$@"
+    return
+  fi
+  for side in fixed bonly stock; do
+    rc=0
+    PARITY_PORT_CLI="$cli_exe" PARITY_MULTI_SERVER_FIXES="$(case "$side" in fixed) echo 1 ;; bonly) echo b ;; *) echo 0 ;; esac)" \
+      PARITY_MULTI_SERVER_RECORDS="$work/$tag.$side.records.json" PYTHONPATH="$repo_root/src" PYTHON_COLORS=0 \
+      timeout "$port_timeout" python tools/parity/py_dump.py multi-server "$case_file" "${args[@]}" "$@" \
+      > "$work/$tag.$side.json" 2> "$work/$tag.$side.err" || rc=$?
+    if [[ "$side" == stock && -n "$stock_aborts" ]]; then
+      if [[ "$rc" -eq 0 ]] || ! grep -qF -- "$stock_aborts" "$work/$tag.$side.err"; then
+        status=1
+        echo "FAIL $surface $case_file: the stock python dump was expected to abort with '$stock_aborts' (exit $rc)"
+        sed 's/^/     /' "$work/$tag.$side.err" | tail -n 5
+        return
+      fi
+      continue
+    fi
+    # python-surrogate-encode: run() raising UnicodeEncodeError on an unpaired surrogate is the recorded divergence, not a failure.
+    if [[ "$rc" -eq 1 && "$surrogate" == 1 && ! -s "$work/$tag.$side.json" ]] \
+      && tail -n 1 "$work/$tag.$side.err" | grep -q '^UnicodeEncodeError: .*surrogates not allowed'; then
+      aborted+=("$side")
+      continue
+    fi
+    if [[ "$rc" -ne 0 ]]; then
+      status=1
+      echo "FAIL $surface $case_file: $side python dump exited $rc"
+      sed 's/^/     /' "$work/$tag.$side.err" | tail -n 5
+      return
+    fi
+  done
+  if [[ "${#aborted[@]}" -ne 0 && "${#aborted[@]}" -ne 3 ]]; then
+    status=1
+    echo "FAIL $surface $case_file: only the ${aborted[*]} python dump(s) raised on an unpaired surrogate"
+    return
+  fi
+  rc=0
+  timeout "$port_timeout" "$cli_exe" parity-dump multi-server "$case_file" "${args[@]}" "$@" > "$work/$tag.cs.json" 2> "$work/$tag.cs.err" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    status=1
+    echo "FAIL $surface $case_file: port dump exited $rc"
+    sed 's/^/     /' "$work/$tag.cs.err" | tail -n 5
+    return
+  fi
+  for side in $([[ "${#aborted[@]}" -eq 0 ]] && echo fixed bonly) $([[ -z "$stock_aborts" && "${#aborted[@]}" -eq 0 ]] && echo stock) cs; do
+    if [[ "$(wc -l < "$work/$tag.$side.json")" != "1" ]] || ! jq -e 'has("response") and has("progress") and has("cache") and has("key_order")' "$work/$tag.$side.json" > /dev/null 2>&1; then
+      status=1
+      echo "FAIL $surface $case_file: $side dump is not one multi-server document"
+      return
+    fi
+  done
+  count="$(jq '.response.results | length' "$work/$tag.cs.json")"
+  files_total=$((files_total + count))
+  fixd="$(jq '.port_xml_canonical | length' "$work/$tag.fixed.records.json")"
+  rc=0
+  if [[ "${#aborted[@]}" -eq 0 ]]; then
+    python tools/parity/multi_server_stock.py "$case_file" "$work/$tag.stock.json" "$work/$tag.stock.records.json" \
+      "$work/$tag.bonly.json" "$work/$tag.bonly.records.json" "$work/$tag.fixed.json" "$work/$tag.fixed.records.json" \
+      > "$work/$tag.stock.divergences" 2> "$work/$tag.stock.problems" || rc=$?
+  else
+    : > "$work/$tag.stock.divergences"
+    : > "$work/$tag.stock.problems"
+  fi
+  stock_lines="$(wc -l < "$work/$tag.stock.divergences")"
+  shaped=0
+  if ! apply_empty_response_mappings "$case_file" "$tag" "$declared_divergences"; then
+    return
+  fi
+  summaries=0
+  if [[ "${#aborted[@]}" -eq 0 ]] && ! apply_diff_summary_replacement "$case_file" "$tag" "$declared_divergences"; then
+    return
+  fi
+  local port_equal=0 port_compared="$work/$tag.cs.json"
+  if [[ "$surrogate" == 1 ]]; then
+    # A python run that raised before the last run never started the rest: its records are compared with the port's dump of
+    # that run over the same fresh cache.
+    local abort_run runs=1 run_args=() i
+    abort_run="$(python -c 'import json, sys; abort = json.load(open(sys.argv[1], encoding="utf-8")).get("abort"); print(abort["run"] if abort else "")' \
+      "$work/$tag.fixed.records.json")"
+    for ((i = 0; i < ${#args[@]}; i++)); do
+      if [[ "${args[i]}" == --runs ]]; then
+        runs="${args[i + 1]}"
+        i=$((i + 1))
+      elif [[ "${args[i]}" == --runs=* ]]; then
+        runs="${args[i]#--runs=}"
+      else
+        run_args+=("${args[i]}")
+      fi
+    done
+    if [[ -n "$abort_run" && "$abort_run" -lt "$runs" ]]; then
+      port_compared="$work/$tag.cs.run$abort_run.json"
+      rc=0
+      timeout "$port_timeout" "$cli_exe" parity-dump multi-server "$case_file" "${run_args[@]}" --runs "$abort_run" "$@" \
+        > "$port_compared" 2> "$work/$tag.cs.run$abort_run.err" || rc=$?
+      if [[ "$rc" -ne 0 ]]; then
+        status=1
+        echo "FAIL $surface $case_file: port dump of run $abort_run exited $rc"
+        sed 's/^/     /' "$work/$tag.cs.run$abort_run.err" | tail -n 5
+        return
+      fi
+    fi
+    python tools/parity/multi_server_surrogates.py "$case_file" "$work/$tag.fixed.json" "$work/$tag.fixed.records.json" "$port_compared" \
+      > "$work/$tag.surrogates.divergences" 2> "$work/$tag.surrogates.problems" || surrogate_rc=$?
+    surrogate_lines="$(wc -l < "$work/$tag.surrogates.divergences")"
+    [[ "$surrogate_rc" -eq 0 ]] && port_equal=1
+  elif cmp -s "$work/$tag.fixed.json" "$work/$tag.cs.json"; then
+    port_equal=1
+  fi
+  divergences=$((stock_lines + fixd + shaped + summaries + surrogate_lines))
+  expected_total=$((expected_total + divergences))
+  if [[ "$port_equal" -eq 1 && "$rc" -eq 0 ]]; then
+    echo "ok   $surface $case_file: $count hosts, $divergences expected divergences"
+  else
+    status=1
+    echo "FAIL $surface $case_file: $count hosts, $divergences expected divergences"
+    if [[ "$port_equal" -ne 1 && "$surrogate" == 1 ]]; then
+      echo "     fixed python and port differ beyond python-surrogate-encode:"
+      head -c 4000 "$work/$tag.surrogates.problems" | sed 's/^/     /'
+    elif [[ "$port_equal" -ne 1 ]]; then
+      echo "     fixed python dump and port dump differ:"
+      # head closes the pipe early on a long diff; under pipefail that SIGPIPE must not end the whole run.
+      diff -u <(jq . "$work/$tag.fixed.json") <(jq . "$work/$tag.cs.json") | head -c 20000 || true
+      echo
+    fi
+    if [[ "$rc" -ne 0 ]]; then
+      echo "     the python runs differ beyond the declared fixes:"
+      head -c 4000 "$work/$tag.stock.problems" | sed 's/^/     /'
+    fi
+  fi
+  sed 's/^/     expected (/; s/: /, python runs differ): /' "$work/$tag.stock.divergences"
+  if [[ "$surrogate_lines" -gt 0 ]]; then
+    sed 's/^/     expected (/; s/: /, fixed python against the port): /' "$work/$tag.surrogates.divergences"
+  fi
+  if [[ "$fixd" -gt 0 ]]; then
+    echo "     expected (fix d, $fixd namespaced xml text(s) canonicalised by the port for both python runs)"
+  fi
+  if [[ "$shaped" -gt 0 ]]; then
+    echo "     expected (empty-response-mappings: python run([]) returns catalog and drilldown as {}, the port's model holds arrays)"
+  fi
+  if [[ "$summaries" -gt 0 ]]; then
+    echo "     expected (diff-summary-replacement: $summaries drilldown diff_summary value(s) keep an unpaired surrogate in python, U+FFFD in the port's JsonElement)"
+  fi
+  if [[ -n "$self_test" ]]; then
+    rc=0
+    python tools/parity/multi_server_stock.py --self-test "$case_file" "$work/$tag.stock.json" "$work/$tag.stock.records.json" \
+      "$work/$tag.bonly.json" "$work/$tag.bonly.records.json" "$work/$tag.fixed.json" "$work/$tag.fixed.records.json" \
+      > "$work/$tag.self-test" 2>&1 || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+      sed 's/^/     ok   /' "$work/$tag.self-test"
+    else
+      status=1
+      echo "FAIL $surface $case_file: harness self-test $self_test"
+      sed 's/^/     /' "$work/$tag.self-test"
+    fi
+  fi
+}
+
+# The recorded "Empty plans" divergence: run([]) returns catalog and drilldown as empty mappings, the port's model as empty
+# arrays. Only when the case declares it, the fixed dump's response has no results and both values are exactly {}, and the port's
+# are exactly [], are the two {} respelled [] in a copy of the fixed dump (key_order is [] for both shapes); the copy then goes
+# through the byte comparison. A case that shows the shape without declaring it fails that comparison; a declared case that does
+# not show it fails here.
+apply_empty_response_mappings() {
+  local case_file="$1" tag="$2" declared="$3" fixed_shape port_shape
+  fixed_shape="$(jq -c '[.response.results, .response.catalog, .response.drilldown]' "$work/$tag.fixed.json")"
+  port_shape="$(jq -c '[.response.results, .response.catalog, .response.drilldown]' "$work/$tag.cs.json")"
+  local name
+  for name in ${declared//,/ }; do
+    if [[ "$name" != "empty-response-mappings" && "$name" != "python-surrogate-encode" && "$name" != "diff-summary-replacement" ]]; then
+      status=1
+      echo "FAIL $surface $case_file: unknown divergences '$declared' (known: empty-response-mappings, python-surrogate-encode, diff-summary-replacement)"
+      return 1
+    fi
+  done
+  if [[ ",$declared," != *",empty-response-mappings,"* ]]; then
+    return 0
+  fi
+  if [[ "$fixed_shape" != '[[],{},{}]' || "$port_shape" != '[[],[],[]]' ]]; then
+    status=1
+    echo "FAIL $surface $case_file: declares empty-response-mappings but python has $fixed_shape and the port $port_shape"
+    return 1
+  fi
+  if [[ "$(grep -o '"catalog": {}' "$work/$tag.fixed.json" | wc -l)" != "1" || "$(grep -o '"drilldown": {}' "$work/$tag.fixed.json" | wc -l)" != "1" ]]; then
+    status=1
+    echo "FAIL $surface $case_file: the fixed dump does not spell each empty mapping exactly once"
+    return 1
+  fi
+  sed 's/"catalog": {}/"catalog": []/; s/"drilldown": {}/"drilldown": []/' "$work/$tag.fixed.json" > "$work/$tag.fixed.shaped.json"
+  mv "$work/$tag.fixed.shaped.json" "$work/$tag.fixed.json"
+  shaped=1
+}
+
+# The recorded "diff_summary holding an unpaired surrogate" port-model limit: ConfigDrilldown.DiffSummary is a JsonElement, which
+# holds UTF-8, so a lone surrogate Python keeps there (a label heading only empty diffs, which raises nothing) is U+FFFD in the
+# port. Only when the case declares it: in each drilldown entry whose fixed diff_summary holds an escaped lone surrogate, every
+# such escape is replaced by U+FFFD; when that equals the port's diff_summary exactly (key order included), the port's value is
+# written into a copy of the fixed dump, which then goes through the byte comparison. No other field is touched. A declared case
+# that shows no such entry fails here; an undeclared one fails the byte comparison.
+apply_diff_summary_replacement() {
+  local case_file="$1" tag="$2" declared="$3" count
+  if [[ ",$declared," != *",diff-summary-replacement,"* ]]; then
+    return 0
+  fi
+  count="$(python -c '
+import json, re, sys
+escaped = re.compile(r"\\ud[89a-f][0-9a-f]{2}")
+def replaced(value):
+    if isinstance(value, str):
+        return escaped.sub("\ufffd", value)
+    if isinstance(value, dict):
+        return {key: replaced(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [replaced(item) for item in value]
+    return value
+fixed_path, port_path = sys.argv[1], sys.argv[2]
+fixed = json.load(open(fixed_path, encoding="utf-8"))
+port = json.load(open(port_path, encoding="utf-8"))
+spell = lambda value: json.dumps(value, ensure_ascii=False)
+count = 0
+for f_entry, p_entry in zip(fixed["response"]["drilldown"], port["response"]["drilldown"]):
+    summary = f_entry.get("diff_summary")
+    if replaced(summary) != summary and spell(replaced(summary)) == spell(p_entry.get("diff_summary")):
+        f_entry["diff_summary"] = p_entry["diff_summary"]
+        count += 1
+with open(fixed_path + ".summaries", "w", encoding="utf-8") as handle:
+    handle.write(json.dumps(fixed, sort_keys=True, ensure_ascii=False) + "\n")
+print(count)
+' "$work/$tag.fixed.json" "$work/$tag.cs.json")" || count=""
+  if [[ -z "$count" || "$count" == "0" ]]; then
+    status=1
+    echo "FAIL $surface $case_file: declares diff-summary-replacement but no drilldown diff_summary differs from the port's only by U+FFFD for an unpaired surrogate"
+    return 1
+  fi
+  mv "$work/$tag.fixed.json.summaries" "$work/$tag.fixed.json"
+  summaries="$count"
+}
+
+# A case whose every run aborts: the three Python dumps and the port dump must each exit non-zero (a timeout is not an abort)
+# with the case's "aborts" text in its stderr; nothing else exists to compare.
+compare_multi_server_abort() {
+  local case_file="$1" tag="$2" aborts="$3" side rc
+  shift 3
+  for side in fixed bonly stock cs; do
+    rc=0
+    if [[ "$side" == cs ]]; then
+      timeout "$port_timeout" "$cli_exe" parity-dump multi-server "$case_file" "$@" > "$work/$tag.$side.json" 2> "$work/$tag.$side.err" || rc=$?
+    else
+      PARITY_PORT_CLI="$cli_exe" PARITY_MULTI_SERVER_FIXES="$(case "$side" in fixed) echo 1 ;; bonly) echo b ;; *) echo 0 ;; esac)" \
+        PYTHONPATH="$repo_root/src" PYTHON_COLORS=0 \
+        timeout "$port_timeout" python tools/parity/py_dump.py multi-server "$case_file" "$@" \
+        > "$work/$tag.$side.json" 2> "$work/$tag.$side.err" || rc=$?
+    fi
+    if [[ "$rc" -eq 0 || "$rc" -eq 124 ]] || [[ -s "$work/$tag.$side.json" ]] || ! grep -qF -- "$aborts" "$work/$tag.$side.err"; then
+      status=1
+      echo "FAIL $surface $case_file: the $side dump was expected to abort with '$aborts' (exit $rc)"
+      sed 's/^/     /' "$work/$tag.$side.err" | tail -n 5
+      return
+    fi
+  done
+  echo "ok   $surface $case_file: every run aborts with '$aborts'"
+}
+
+run_multi_server_surface() {
+  local tree="$work/multi-server-trees" case_file
+  generate_multi_server_trees "$tree"
+  tools/parity/cases/multi-server/runtime-r1/generate_trees.sh "$tree"
+  tools/parity/cases/multi-server/runtime-r2/generate_trees.sh "$tree"
+  tools/parity/cases/multi-server/runtime-r3/generate_trees.sh "$tree"
+  tools/parity/cases/multi-server/close-r1/generate_trees.sh "$tree"
+  export PARITY_MULTI_SERVER_WORK="$tree"
+  while IFS= read -r case_file; do
+    compare_multi_server "$case_file" "$@"
+  done < <(find tools/parity/cases/multi-server -type d -name trees -prune -o -type f -name '*.json' -print | LC_ALL=C sort \
+    | grep -E -- "${PARITY_MULTI_SERVER_CASES:-.}")
 }
 
 if [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
@@ -640,6 +1021,8 @@ if [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
   compare "generated/file root" "$gen/tree/readable.conf" "$@"
   compare "generated/file root with trailing separator" "$gen/tree/readable.conf/" "$@"
   compare "generated/dangling root" "$gen/tree/dangling" "$@"
+  make_dotdot_tree "$gen/dotdot"
+  compare "generated/root with .. after a symlink" "$gen/dotdot/shortcut/.." "$@"
   if [[ "$surface" == "detect" ]]; then
     # The built-in budget compares add their own --max-total-sample-bytes; a caller-supplied budget already
     # applies to every compare above, and the CLI rejects the option twice, so the built-ins are skipped.
@@ -664,6 +1047,8 @@ if [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
       echo "FAIL $surface generated/unreadable root: python [$py_locked] port [$cs_locked]"
     fi
   fi
+elif [[ "$surface" == "multi-server" ]]; then
+  run_multi_server_surface "$@"
 else
   run_phase4_surface "$@"
 fi

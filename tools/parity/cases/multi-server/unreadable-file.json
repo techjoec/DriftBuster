@@ -1,0 +1,10 @@
+{
+  "description": "fix b: an unreadable file and a file in a directory that cannot be searched are skipped",
+  "fixes": ["b"],
+  "args": [],
+  "requires": ["unprivileged"],
+  "plans": [
+    {"host_id": "locked", "label": "Locked", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/unreadable-file/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "plain", "label": "Plain", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/unreadable-file/hostB"]}
+  ]
+}

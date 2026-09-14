@@ -1,0 +1,10 @@
+{
+  "description": "fix a: two applications holding web.config on each host",
+  "fixes": ["a"],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "hostA", "label": "hostA", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/shared-web-config/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "hostB", "label": "hostB", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/shared-web-config/hostB"]}
+  ]
+}

@@ -1,0 +1,6 @@
+{"description": "int('4.5') in BaselinePreference.from_mapping raises ValueError out of _build_plans",
+ "aborts": "invalid literal for int() with base 10: '4.5'", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"]},
+  {"host_id": "s2", "label": "S2", "roots": ["fixtures/multi-server/server02"], "baseline": {"priority": "4.5"}}
+ ]}

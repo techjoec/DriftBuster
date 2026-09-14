@@ -1,0 +1,5 @@
+{"description": "priority NaN: int() raises ValueError",
+ "aborts": "cannot convert float NaN to integer", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"], "baseline": {"priority": NaN}}
+ ]}

@@ -1,0 +1,2 @@
+{"description": "plans given as a string: a Sequence whose items are not mappings, so no plans and the empty response", "fixes": [], "args": [], "requires": [], "divergences": ["empty-response-mappings"],
+ "plans": "server01"}

@@ -1,0 +1,8 @@
+{
+  "description": "a budget one byte past one root (229): the second root's first file is sampled with one byte, matched or not, and exhausts",
+  "fixes": [], "args": ["--sample-budget", "229"], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r0", "$PARITY_MULTI_SERVER_WORK/r2/budget/missing", "$PARITY_MULTI_SERVER_WORK/r2/budget/r1"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r1", "$PARITY_MULTI_SERVER_WORK/r2/budget/r0"]}
+  ]
+}

@@ -68,6 +68,28 @@ public sealed class PythonReOracleTests
     }
 
     [Fact]
+    public void IsAlnumRejectsEveryLetterAndNumberPythonsTablesLeaveUnassigned()
+    {
+        var mismatches = new List<string>();
+        for (var code = 0; code <= CodePointSet.MaxCodePoint; code++)
+        {
+            if (code is >= 0xD800 and <= 0xDFFF)
+            {
+                continue;
+            }
+
+            var rune = new System.Text.Rune(code);
+            var want = code != '_' && PythonText.IsWordRune(rune) && !Unassigned.Value.Contains(code);
+            if (PythonText.IsAlnum(rune) != want)
+            {
+                mismatches.Add($"U+{code:X4}");
+            }
+        }
+
+        mismatches.Should().BeEmpty();
+    }
+
+    [Fact]
     public void CasedSetMatchesSre()
     {
         var casing = (OrderedDictionary<string, object?>)Data.Value["casing"]!;

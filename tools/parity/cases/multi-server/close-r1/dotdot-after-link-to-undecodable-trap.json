@@ -1,0 +1,28 @@
+{
+  "description": "root links/trap/../x where links/trap -> trap/<0xFF> and trap/U+FFFD -> elsewhere/deep: Python and the port walk and read trap/x/app.ini (name = real); the U+FFFD spelling of the link target would lead to elsewhere/x/app.ini (name = guessed). hostB is the baseline so the drilldown pane shows the text read. Trees from generate_trees.sh",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "divergences": [],
+  "plans": [
+    {
+      "host_id": "hostB",
+      "label": "hostB",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/close-r1/links/trap/../x"
+      ],
+      "baseline": {
+        "is_preferred": true
+      }
+    },
+    {
+      "host_id": "base",
+      "label": "base",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/close-r1/base"
+      ]
+    }
+  ]
+}

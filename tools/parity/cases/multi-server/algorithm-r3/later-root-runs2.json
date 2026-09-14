@@ -1,0 +1,32 @@
+{
+ "description": "roots [missing, missing, r] and a second run against the first run's cache: ids unsuffixed, used_cache true, secrets from the hunt",
+ "fixes": [],
+ "args": [
+  "--runs",
+  "2"
+ ],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "hostA",
+   "label": "hostA",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/runs2/gone1",
+    "tools/parity/cases/multi-server/algorithm-r3/trees/runs2/gone2",
+    "tools/parity/cases/multi-server/algorithm-r3/trees/runs2/r"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "hostB",
+   "label": "hostB",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/runs2/s"
+   ]
+  }
+ ]
+}

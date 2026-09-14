@@ -1,0 +1,9 @@
+{
+  "description": "absolute roots spelled with exactly two leading slashes (POSIX keeps them in str(Path) and os.path.abspath, realpath drops one) and with three; secrets and cache signatures (root fingerprint) are compared over two runs",
+  "fixes": [], "args": ["--runs", "2"], "requires": [],
+  "plans": [
+    {"host_id": "two", "label": "Two", "scope": "custom_roots", "roots": ["/$PARITY_MULTI_SERVER_WORK/r2/errmap/good"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "three", "label": "Three", "scope": "custom_roots", "roots": ["//$PARITY_MULTI_SERVER_WORK/r2/errmap/good"]},
+    {"host_id": "one", "label": "One", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/errmap/good"]}
+  ]
+}

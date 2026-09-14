@@ -116,4 +116,19 @@ public sealed class HuntWalkEntriesTests : IDisposable
         result.UnreadableFiles.Should().Equal(Path.Combine(_tmp.FullName, "d\uFFFD"));
         result.Hits.Select(hit => Path.GetFileName(hit.Path)).Distinct(StringComparer.Ordinal).Should().Equal("good.ini");
     }
+    [Fact]
+    public void ARootWithDotDotAfterASymlinkHuntsTheDirectoryTheKernelReaches()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "'..' after a symlink resolves physically on POSIX kernels");
+        var tree = Path.Combine(_tmp.FullName, "tree");
+        Directory.CreateDirectory(Path.Combine(tree, "real", "app", "nested"));
+        File.WriteAllText(Path.Combine(tree, "real", "app", "app.ini"), "server host=physical.corp.local\n");
+        File.WriteAllText(Path.Combine(tree, "lexical.ini"), "server host=lexical.corp.local\n");
+        Directory.CreateSymbolicLink(Path.Combine(tree, "shortcut"), "real/app/nested");
+
+        var result = HuntEngine.HuntPath($"{tree}/shortcut/..", HuntRules.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Hits.Select(hit => hit.Path).Distinct(StringComparer.Ordinal).Should().Equal($"{tree}/shortcut/../app.ini");
+        result.UnreadableFiles.Should().BeEmpty();
+    }
 }

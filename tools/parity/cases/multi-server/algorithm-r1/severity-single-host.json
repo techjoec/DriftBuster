@@ -1,0 +1,16 @@
+{
+  "description": "one host: max(1, 1 // 2) = 1 and no drift is none",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {
+      "host_id": "h1",
+      "label": "h1",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/sev/h1"
+      ]
+    }
+  ]
+}

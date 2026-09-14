@@ -1,0 +1,45 @@
+{
+ "description": "the baseline m lacks shared.json; hosts z, B, b hold it: fallback is B (U+0042), the pane shows z against B, b matches B",
+ "fixes": [
+  "a"
+ ],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "m",
+   "label": "m",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fallback3/m"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "z",
+   "label": "z",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fallback3/z"
+   ]
+  },
+  {
+   "host_id": "B",
+   "label": "B",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fallback3/B"
+   ]
+  },
+  {
+   "host_id": "b",
+   "label": "b",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fallback3/b"
+   ]
+  }
+ ]
+}

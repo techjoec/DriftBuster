@@ -1,0 +1,6 @@
+{"description": "scope values the runner ignores: upper case, unknown, absent", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "server05", "label": "S5", "scope": "ALL_DRIVES", "roots": ["fixtures/multi-server/server05"]},
+  {"host_id": "server06", "label": "S6", "scope": "network share", "roots": ["fixtures/multi-server/server06"]},
+  {"host_id": "server07", "label": "S7", "roots": ["fixtures/multi-server/server07"]}
+ ]}

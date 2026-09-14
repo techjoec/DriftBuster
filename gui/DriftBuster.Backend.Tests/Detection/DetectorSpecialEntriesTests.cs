@@ -87,4 +87,21 @@ public sealed class DetectorSpecialEntriesTests : IDisposable
         scan.Should().Throw<DetectorIOException>().Which.Message.Should().Contain("Permission denied");
         errors.Should().ContainSingle().Which.Path.Should().Be(file);
     }
+    [Fact]
+    public void ARootWithDotDotAfterASymlinkScansTheDirectoryTheKernelReaches()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "'..' after a symlink resolves physically on POSIX kernels");
+        var tree = Path.Combine(_tmp.FullName, "tree");
+        Directory.CreateDirectory(Path.Combine(tree, "real", "app", "nested"));
+        File.WriteAllText(Path.Combine(tree, "real", "app", "app.conf"), "alpha physical\nbeta two\ngamma three\ndelta four\n");
+        File.WriteAllText(Path.Combine(tree, "lexical.conf"), "alpha lexical\nbeta two\ngamma three\n");
+        Directory.CreateSymbolicLink(Path.Combine(tree, "shortcut"), "real/app/nested");
+        var detector = new Detector();
+
+        var results = detector.ScanPath($"{tree}/shortcut/..");
+
+        results.Select(result => result.Path).Should().Equal($"{tree}/shortcut/../app.conf");
+        results[0].Match.Should().NotBeNull();
+        results[0].Match!.Metadata!["bytes_sampled"].Should().Be(47);
+    }
 }

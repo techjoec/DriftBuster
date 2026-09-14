@@ -1,0 +1,27 @@
+{
+ "description": "JSON keys with U+2028, DEL, an escaped NUL, an astral and a fullwidth character: cache entries written with ensure_ascii=False and sort_keys",
+ "fixes": [],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "hostA",
+   "label": "hostA",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/nonascii/hostA"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "hostB",
+   "label": "hostB",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/nonascii/hostB"
+   ]
+  }
+ ]
+}

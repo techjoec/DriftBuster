@@ -1,0 +1,11 @@
+{
+  "description": "fix b: a root inside a directory that cannot be searched; stock Path.exists() raises PermissionError out of run(), the port refuses the root",
+  "fixes": ["b"],
+  "args": [],
+  "requires": ["unprivileged"],
+  "stock_aborts": "PermissionError: [Errno 13] Permission denied",
+  "plans": [
+    {"host_id": "server01", "label": "server01", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "sealed", "label": "Sealed", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/root-lookup/sealed/root", "fixtures/multi-server/server02"]}
+  ]
+}

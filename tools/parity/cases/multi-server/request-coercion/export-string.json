@@ -1,0 +1,5 @@
+{"description": "a truthy export that is not a mapping: ExportOptions.from_mapping raises AttributeError",
+ "aborts": "'str' object has no attribute 'get'", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"], "export": "all"}
+ ]}

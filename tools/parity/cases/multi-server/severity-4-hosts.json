@@ -1,0 +1,12 @@
+{
+  "description": "four hosts: two drifting is high (4 // 2), one drifting is medium; fix a: x.json and y.json no longer share the json object id",
+  "fixes": ["a"],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "h1", "label": "h1", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/severity/h1"]},
+    {"host_id": "h2", "label": "h2", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/severity/h2"]},
+    {"host_id": "h3", "label": "h3", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/severity/h3"]},
+    {"host_id": "h4", "label": "h4", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/severity/h4"]}
+  ]
+}

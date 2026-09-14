@@ -1,0 +1,28 @@
+{
+  "description": "root links/dotdot/../x where links/dotdot -> dotdot/<0xFF>: the kernel, Python and the port (link targets read as bytes) all reach dotdot/x and scan it; the runtime's U+FFFD spelling of the target names nothing. Trees from generate_trees.sh",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "divergences": [],
+  "plans": [
+    {
+      "host_id": "base",
+      "label": "base",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/close-r1/base"
+      ],
+      "baseline": {
+        "is_preferred": true
+      }
+    },
+    {
+      "host_id": "hostB",
+      "label": "hostB",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/close-r1/links/dotdot/../x"
+      ]
+    }
+  ]
+}

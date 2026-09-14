@@ -29,5 +29,8 @@ namespace DriftBuster.Backend.Models
 
         [JsonPropertyName("availability")]
         public ServerAvailabilityStatus Availability { get; set; } = ServerAvailabilityStatus.Unknown;
+
+        [JsonPropertyName("sampling_guardrail_triggered")]
+        public bool SamplingGuardrailTriggered { get; set; }
     }
 }

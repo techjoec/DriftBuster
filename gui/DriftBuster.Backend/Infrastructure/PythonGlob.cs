@@ -135,7 +135,7 @@ public static class PythonGlob
 
         private static IEnumerable<string> SelectExists(string path, bool exists)
         {
-            if (exists || File.Exists(path) || Directory.Exists(path))
+            if (exists || File.Exists(PythonPath.KernelPath(path)) || Directory.Exists(PythonPath.KernelPath(path)))
             {
                 yield return path;
             }
@@ -222,7 +222,7 @@ public static class PythonGlob
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                return [.. Directory.EnumerateFileSystemEntries(path.Length == 0 ? "." : path).Select(Path.GetFileName).OfType<string>()];
+                return [.. Directory.EnumerateFileSystemEntries(path.Length == 0 ? "." : PythonPath.KernelPath(path)).Select(Path.GetFileName).OfType<string>()];
             }
             catch (Exception exc) when (exc is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
             {
@@ -238,10 +238,10 @@ public static class PythonGlob
         {
             if (followSymlinks)
             {
-                return Directory.Exists(path);
+                return Directory.Exists(PythonPath.KernelPath(path));
             }
 
-            var attributes = File.GetAttributes(path);
+            var attributes = File.GetAttributes(PythonPath.KernelPath(path));
             return attributes.HasFlag(FileAttributes.Directory) && !attributes.HasFlag(FileAttributes.ReparsePoint);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)

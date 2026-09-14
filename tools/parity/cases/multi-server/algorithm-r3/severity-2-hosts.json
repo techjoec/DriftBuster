@@ -1,0 +1,24 @@
+{
+ "description": "two hosts: one drifting reaches max(1, 2 // 2) = 1 (high); an identical file is none",
+ "fixes": [],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "h1",
+   "label": "h1",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev2/h1"
+   ]
+  },
+  {
+   "host_id": "h2",
+   "label": "h2",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev2/h2"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,8 @@
+{
+  "description": "a budget equal to the bytes of one whole root (3 x 76): exhausted on its last file, so the guardrail message appears although nothing was skipped in that root, and the second root is never scanned",
+  "fixes": [], "args": ["--sample-budget", "228"], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r0", "$PARITY_MULTI_SERVER_WORK/r2/budget/r1"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r1"]}
+  ]
+}

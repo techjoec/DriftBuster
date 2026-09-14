@@ -1,0 +1,8 @@
+{
+  "description": "fix b under a 140-byte budget (two 69-byte readable files fill 138, the third gets 2 bytes): a FIFO, a /dev/zero link and a socket first in walk order, two mode-000 files and a file in an unsearchable directory between readable ones; unreadable files consume no budget",
+  "fixes": ["b"], "args": ["--sample-budget", "140"], "requires": ["unprivileged"],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/lockbudget/host"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r0"]}
+  ]
+}

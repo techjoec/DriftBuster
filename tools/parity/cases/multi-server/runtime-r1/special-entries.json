@@ -1,0 +1,8 @@
+{
+  "description": "a tree holding a FIFO, a link to it, a self-loop link, a link to the parent directory and a link to a file outside the root",
+  "fixes": [], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/inner/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/inner/hostB"]}
+  ]
+}

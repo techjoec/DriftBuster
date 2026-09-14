@@ -1,0 +1,35 @@
+{
+ "description": "labels with ':', an inner newline and tab, an astral character, padding, and two hosts sharing one label",
+ "fixes": [],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "h1",
+   "label": " host:one\n",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r2/trees/labels/h1"
+   ]
+  },
+  {
+   "host_id": "h2",
+   "label": "two\nlines\tand 𝔘",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r2/trees/labels/h2"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "h3",
+   "label": "host:one",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r2/trees/labels/h3"
+   ]
+  }
+ ]
+}

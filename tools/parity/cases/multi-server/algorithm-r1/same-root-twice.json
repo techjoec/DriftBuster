@@ -1,0 +1,44 @@
+{
+  "description": "one root listed twice and an overlapping root; second run against the first run's cache",
+  "fixes": [
+    "a"
+  ],
+  "args": [
+    "--runs",
+    "2"
+  ],
+  "requires": [],
+  "plans": [
+    {
+      "host_id": "twice",
+      "label": "Twice",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/overlap/r",
+        "tools/parity/cases/multi-server/algorithm-r1/trees/overlap/r"
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 0,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "nested",
+      "label": "Nested",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/overlap/r",
+        "tools/parity/cases/multi-server/algorithm-r1/trees/overlap/r/sub"
+      ]
+    },
+    {
+      "host_id": "plain",
+      "label": "Plain",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/overlap/s"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "description": "root 'shortcut/..' where shortcut links to real/app/nested: the root is real/app physically, the tree root lexically",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {
+      "host_id": "physical",
+      "label": "Physical",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/dotdot-link/shortcut/.."
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 0,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "other",
+      "label": "Other",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/dotdot-link/other"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "description": "a negative sampling budget is refused when the runner is built",
+  "aborts": "max_total_sample_bytes must be a positive integer",
+  "fixes": [], "args": ["--sample-budget", "-5"], "requires": [],
+  "plans": [{"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostA"]}]
+}

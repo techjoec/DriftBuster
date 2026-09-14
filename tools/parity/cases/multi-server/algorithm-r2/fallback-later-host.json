@@ -1,0 +1,6 @@
+{"description": "the baseline host lacks the config; the fallback baseline (smallest id) is later in plan order than the first present host, so the pane diffs fallback against it under the baseline plan's label", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "base", "label": "Base", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r2/trees/fallback2/base"], "baseline": {"is_preferred": true}},
+  {"host_id": "zeta", "label": "Zeta", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r2/trees/fallback2/zeta"]},
+  {"host_id": "alpha", "label": "Alpha", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r2/trees/fallback2/alpha"]}
+ ]}

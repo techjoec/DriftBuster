@@ -1,0 +1,10 @@
+{
+  "description": "two hosts over the same tree: every severity is none",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "copyA", "label": "Copy A", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"]},
+    {"host_id": "copyB", "label": "Copy B", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"]}
+  ]
+}

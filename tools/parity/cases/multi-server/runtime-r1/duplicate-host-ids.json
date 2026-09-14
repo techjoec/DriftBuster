@@ -1,0 +1,10 @@
+{
+  "description": "two plans share a host id (one missing root, one real) and a third shares a label",
+  "fixes": [], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "dup", "label": "First", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "other", "label": "Other", "scope": "custom_roots", "roots": ["fixtures/multi-server/server02"]},
+    {"host_id": "dup", "label": "Second", "scope": "custom_roots", "roots": ["fixtures/multi-server/no-such"]},
+    {"host_id": "dup2", "label": "Other", "scope": "custom_roots", "roots": ["fixtures/multi-server/server03"]}
+  ]
+}

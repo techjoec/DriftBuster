@@ -138,6 +138,49 @@ public static class PythonText
     }
 
     /// <summary>
+    /// <c>str.isalnum()</c> of one code point under CPython 3.13's Unicode 15.1 tables: letters (L*) and numbers (N*), which is
+    /// <see cref="IsWordRune"/> without '_' and without the letters and numbers first assigned in Unicode 16.0
+    /// (<see cref="Unicode16LettersAndNumbers"/>), which the runtime's 16.0 tables class as L* or N* and Python's as unassigned.
+    /// </summary>
+    public static bool IsAlnum(Rune rune) => rune.Value != '_' && IsWordRune(rune) && !IsUnicode16LetterOrNumber(rune.Value);
+
+    // Every code point .NET 10's categories class as L* or N* that CPython 3.13's str.isalnum() rejects (all Cn under Unicode
+    // 15.1), as inclusive ranges in code point order. The reverse set is empty.
+    private static readonly (int Start, int End)[] Unicode16LettersAndNumbers =
+    [
+        (0x1C89, 0x1C8A), (0xA7CB, 0xA7CD), (0xA7DA, 0xA7DC), (0x105C0, 0x105F3), (0x10D40, 0x10D65), (0x10D6F, 0x10D85),
+        (0x10EC2, 0x10EC4), (0x11380, 0x11389), (0x1138B, 0x1138B), (0x1138E, 0x1138E), (0x11390, 0x113B5), (0x113B7, 0x113B7),
+        (0x113D1, 0x113D1), (0x113D3, 0x113D3), (0x116D0, 0x116E3), (0x11BC0, 0x11BE0), (0x11BF0, 0x11BF9), (0x13460, 0x143FA),
+        (0x16100, 0x1611D), (0x16130, 0x16139), (0x16D40, 0x16D6C), (0x16D70, 0x16D79), (0x18CFF, 0x18CFF), (0x1CCF0, 0x1CCF9),
+        (0x1E5D0, 0x1E5ED), (0x1E5F0, 0x1E5FA),
+    ];
+
+    private static bool IsUnicode16LetterOrNumber(int codePoint)
+    {
+        var low = 0;
+        var high = Unicode16LettersAndNumbers.Length - 1;
+        while (low <= high)
+        {
+            var middle = (low + high) / 2;
+            var (start, end) = Unicode16LettersAndNumbers[middle];
+            if (codePoint < start)
+            {
+                high = middle - 1;
+            }
+            else if (codePoint > end)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// <c>str.lower()</c>: the simple lowercase mapping of every code point, the one unconditional SpecialCasing
     /// expansion (U+0130 to "i\u0307") and the Final_Sigma rule (U+03A3 becomes U+03C2 when a cased code point
     /// precedes it and none follows, skipping case-ignorable code points on both sides). An unpaired surrogate is a

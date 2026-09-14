@@ -10,6 +10,7 @@ namespace DriftBuster.Backend.Tests.Infrastructure;
 /// The \G-anchored patterns driven from each line start yield exactly the ^-anchored MULTILINE match set, for
 /// every pattern each plugin hands to the driver, and do so in linear time over whitespace runs.
 /// </summary>
+[Collection(WallClockCollection.Name)]
 public sealed class LineStartMatcherTests
 {
     public static TheoryData<string, string> PluginPatterns()

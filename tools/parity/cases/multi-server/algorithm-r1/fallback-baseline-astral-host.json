@@ -1,0 +1,39 @@
+{
+  "description": "baseline host lacks shared.json; fallback is the code-point-smallest holder (U+FF21 before U+1F600) while the pane shows the first present plan",
+  "fixes": [
+    "a"
+  ],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {
+      "host_id": "😀host",
+      "label": "Emoji: label",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/fallback/emoji"
+      ]
+    },
+    {
+      "host_id": "zz",
+      "label": "Base:line é",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/fallback/zz"
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 3,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "Ａhost",
+      "label": "Fullwidth",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/fallback/fullwidth"
+      ]
+    }
+  ]
+}

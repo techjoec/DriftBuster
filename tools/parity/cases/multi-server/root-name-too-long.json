@@ -1,0 +1,32 @@
+{
+  "description": "fix b: a root whose last part is longer than a file name may be; stock Path.exists() raises OSError (ENAMETOOLONG) out of run(), the port refuses the root",
+  "fixes": [
+    "b"
+  ],
+  "args": [],
+  "requires": [],
+  "stock_aborts": "OSError: [Errno 36] File name too long",
+  "plans": [
+    {
+      "host_id": "server01",
+      "label": "server01",
+      "scope": "custom_roots",
+      "roots": [
+        "fixtures/multi-server/server01"
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 10,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "long",
+      "label": "Long",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/root-lookup/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+      ]
+    }
+  ]
+}

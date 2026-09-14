@@ -1,0 +1,10 @@
+{
+  "description": "fix a: one host with the same relative path under two roots gets the @root1 suffix",
+  "fixes": ["a"],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "dual", "label": "Dual", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/two-roots/r1", "tools/parity/cases/multi-server/trees/two-roots/r2"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "single", "label": "Single", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/two-roots/r3"]}
+  ]
+}

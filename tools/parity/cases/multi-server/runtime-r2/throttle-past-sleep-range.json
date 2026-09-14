@@ -1,0 +1,8 @@
+{
+  "description": "throttle_seconds 1e10 on a host that scans: time.sleep raises OverflowError out of run(), in both runners",
+  "aborts": "timestamp out of range for platform time_t",
+  "fixes": [], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r0"], "throttle_seconds": 1e10, "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}}
+  ]
+}

@@ -111,7 +111,7 @@ public static partial class HuntEngine
         }
 
         var targets = PythonPath.SortedGlob(root, glob, cancellationToken).Where(IsTarget).ToList();
-        return (targets, Directory.Exists(root) ? PythonPurePath.Str(root) : PythonPurePath.Parent(root));
+        return (targets, Directory.Exists(PythonPath.KernelPath(root)) ? PythonPurePath.Str(root) : PythonPurePath.Parent(root));
     }
 
     // c.is_file(), keeping an entry whose name the runtime cannot decode and one whose stat raises (a file inside a directory
@@ -135,7 +135,7 @@ public static partial class HuntEngine
     /// </summary>
     internal static string? ReadText(string path, long sampleSize)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var sample = new MemoryStream();
         var buffer = new byte[81920];
         var remaining = sampleSize < 0 ? long.MaxValue : sampleSize;

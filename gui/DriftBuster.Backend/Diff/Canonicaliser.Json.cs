@@ -55,9 +55,10 @@ public static partial class Canonicaliser
     /// The C encoder's output for <c>json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2)</c>: ", " never
     /// appears (items end with "," and a new line), keys follow ": ", dictionary items are ordered by key code point,
     /// empty containers are "{}" and "[]", floats use <c>float.__repr__</c> with NaN, Infinity and -Infinity spelled
-    /// as JavaScript does. Nesting is walked on an explicit stack.
+    /// as JavaScript does. Nesting is walked on an explicit stack. With <paramref name="indent"/> false the output is
+    /// <c>json.dumps(value, ensure_ascii=False, sort_keys=True)</c> instead: one line, items separated by ", ".
     /// </summary>
-    internal static string DumpsSorted(object? value)
+    internal static string DumpsSorted(object? value, bool indent = true)
     {
         var builder = new StringBuilder();
         var stack = new Stack<JsonFrame>();
@@ -68,16 +69,25 @@ public static partial class Canonicaliser
             if (frame.Next == frame.Count)
             {
                 stack.Pop();
-                AppendNewLine(builder, frame.Depth).Append(frame.Items is null ? ']' : '}');
+                if (indent)
+                {
+                    AppendNewLine(builder, frame.Depth);
+                }
+
+                builder.Append(frame.Items is null ? ']' : '}');
                 continue;
             }
 
             if (frame.Next > 0)
             {
-                builder.Append(',');
+                builder.Append(indent ? "," : ", ");
             }
 
-            AppendNewLine(builder, frame.Depth + 1);
+            if (indent)
+            {
+                AppendNewLine(builder, frame.Depth + 1);
+            }
+
             object? item;
             if (frame.Items is { } items)
             {

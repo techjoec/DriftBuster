@@ -1,0 +1,8 @@
+{
+  "description": "file names with a backslash, a newline, '#', ':', '?', a leading dot and surrounding spaces",
+  "fixes": [], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/oddnames/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/oddnames/hostB"]}
+  ]
+}

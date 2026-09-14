@@ -1,0 +1,56 @@
+{
+ "description": "a non-preferred host with priority 100 loses to preferred hosts with priorities -5, -5 and -4; -4 wins",
+ "fixes": [],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "p0",
+   "label": "p0",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/pref/p0"
+   ],
+   "baseline": {
+    "is_preferred": false,
+    "priority": 100
+   }
+  },
+  {
+   "host_id": "p1",
+   "label": "p1",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/pref/p1"
+   ],
+   "baseline": {
+    "is_preferred": true,
+    "priority": -5
+   }
+  },
+  {
+   "host_id": "p2",
+   "label": "p2",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/pref/p2"
+   ],
+   "baseline": {
+    "is_preferred": true,
+    "priority": -5
+   }
+  },
+  {
+   "host_id": "p3",
+   "label": "p3",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/pref/p3"
+   ],
+   "baseline": {
+    "is_preferred": true,
+    "priority": -4
+   }
+  }
+ ]
+}

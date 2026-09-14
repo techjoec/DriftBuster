@@ -1,0 +1,27 @@
+{
+ "description": "config_original_filename carrying U+001C and U+3000 padding: the display name is str.strip()ped, ids come from relative paths",
+ "fixes": [],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "hostA",
+   "label": "hostA",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/display/hostA"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "hostB",
+   "label": "hostB",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/display/hostB"
+   ]
+  }
+ ]
+}

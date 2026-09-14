@@ -1,0 +1,8 @@
+{
+  "description": "a root '~\\ud800/x' beside a valid root: Python's os.path.expanduser encodes the user name strictly (pwd.getpwnam) and raises UnicodeEncodeError out of _build_plans; decision S says the port keeps working and leaves the root out",
+  "fixes": [], "args": [], "requires": [], "divergences": ["python-surrogate-encode"],
+  "plans": [
+    {"host_id": "hostA", "label": "hostA", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostA"], "baseline": {"is_preferred": true}},
+    {"host_id": "hostB", "label": "hostB", "scope": "custom_roots", "roots": ["~\ud800/x", "tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostB"]}
+  ]
+}

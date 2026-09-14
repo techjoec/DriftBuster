@@ -1,0 +1,11 @@
+{
+  "description": "two runs against one cache; the second run is dumped",
+  "fixes": [],
+  "args": ["--runs", "2"],
+  "requires": [],
+  "plans": [
+    {"host_id": "server01", "label": "server01", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "server05", "label": "server05", "scope": "custom_roots", "roots": ["fixtures/multi-server/server05"]},
+    {"host_id": "ghost", "label": "Ghost", "scope": "custom_roots", "roots": ["fixtures/multi-server/no-such-server"]}
+  ]
+}

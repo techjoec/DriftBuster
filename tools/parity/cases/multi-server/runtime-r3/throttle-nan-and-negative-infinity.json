@@ -1,0 +1,14 @@
+{
+  "description": "throttle_seconds NaN and -Infinity literals (truthy but not > 0: no sleep), '-inf' and 'nan' strings, a denormal 5e-324 and 1e-9 (sleep rounds up to a nanosecond), and true (float(True) sleeps one second)",
+  "fixes": ["a"], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostA"], "throttle_seconds": NaN, "baseline": {"is_preferred": true, "priority": 1, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostB"], "throttle_seconds": -Infinity},
+    {"host_id": "c", "label": "C", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostC"], "throttle_seconds": " -inf "},
+    {"host_id": "d", "label": "D", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostA"], "throttle_seconds": "nan"},
+    {"host_id": "e", "label": "E", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostB"], "throttle_seconds": 5e-324},
+    {"host_id": "f", "label": "F", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/missing"], "throttle_seconds": Infinity},
+    {"host_id": "g", "label": "G", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostC"], "throttle_seconds": 1e-9},
+    {"host_id": "h", "label": "H", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostC"], "throttle_seconds": true}
+  ]
+}

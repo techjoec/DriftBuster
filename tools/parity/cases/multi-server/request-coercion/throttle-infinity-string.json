@@ -1,0 +1,6 @@
+{"description": "throttle 'Infinity' becomes float inf; time.sleep raises OverflowError after the host is scanned",
+ "aborts": "timestamp out of range for platform time_t", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"], "throttle_seconds": " -Infinity"},
+  {"host_id": "s2", "label": "S2", "roots": ["fixtures/multi-server/server02"], "throttle_seconds": "Infinity"}
+ ]}

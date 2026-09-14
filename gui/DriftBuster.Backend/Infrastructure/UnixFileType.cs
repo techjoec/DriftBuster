@@ -57,7 +57,7 @@ internal static partial class UnixFileType
     /// </summary>
     /// <exception cref="UnauthorizedAccessException">The lookup was refused (<c>EACCES</c>: a component cannot be searched).</exception>
     /// <exception cref="IOException">Any other failure Python's <c>is_file()</c> raises (<c>ENAMETOOLONG</c>, <c>EIO</c>, ...).</exception>
-    internal static unsafe Kind? Stat(string path, bool followSymlinks)
+    internal static Kind? Stat(string path, bool followSymlinks)
     {
         ArgumentNullException.ThrowIfNull(path);
         if (_unavailable)
@@ -72,11 +72,25 @@ internal static partial class UnixFileType
 
         var encoded = new byte[Encoding.UTF8.GetMaxByteCount(path.Length) + 1];
         Encoding.UTF8.GetBytes(path, encoded);
+        return Stat(encoded, followSymlinks, path);
+    }
+
+    /// <summary>
+    /// <see cref="Stat(string, bool)"/> over the bytes the kernel receives, for a path holding a name that is not UTF-8.
+    /// <paramref name="path"/> must end with a NUL byte and hold no other; <paramref name="display"/> names the path in an error.
+    /// </summary>
+    internal static unsafe Kind? Stat(ReadOnlySpan<byte> path, bool followSymlinks, string display)
+    {
+        if (_unavailable)
+        {
+            return null;
+        }
+
         var buffer = stackalloc byte[StatxBufferSize];
         int result;
         try
         {
-            fixed (byte* pathBytes = encoded)
+            fixed (byte* pathBytes = path)
             {
                 result = Statx(AtFdCwd, pathBytes, followSymlinks ? 0 : AtSymlinkNoFollow, StatxTypeMask, buffer);
             }
@@ -102,7 +116,7 @@ internal static partial class UnixFileType
                 return Kind.Missing;
             }
 
-            var message = $"[Errno {error}] {Marshal.GetPInvokeErrorMessage(error)}: '{path}'";
+            var message = $"[Errno {error}] {Marshal.GetPInvokeErrorMessage(error)}: '{display}'";
             throw error == PermissionDenied ? new UnauthorizedAccessException(message) : new IOException(message);
         }
 

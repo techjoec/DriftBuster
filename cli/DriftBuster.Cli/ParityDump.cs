@@ -30,7 +30,7 @@ public static partial class ParityDump
 
         public List<string> Errors { get; } = [];
 
-        protected override void HandleError(string path, DetectorIOException error) => Errors.Add(path);
+        protected internal override void HandleError(string path, DetectorIOException error) => Errors.Add(path);
     }
 
     public static Command Build()
@@ -43,6 +43,7 @@ public static partial class ParityDump
         command.Subcommands.Add(BuildHunt());
         command.Subcommands.Add(BuildSecrets());
         command.Subcommands.Add(BuildSecretsContext());
+        command.Subcommands.Add(BuildMultiServer());
         return command;
     }
 
@@ -203,7 +204,7 @@ public static partial class ParityDump
                 continue;
             }
 
-            var sample = File.ReadAllBytes(full);
+            var sample = File.ReadAllBytes(PythonPath.KernelPath(full));
             var (text, codec) = FormatRegistry.DecodeText(sample);
             var record = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {

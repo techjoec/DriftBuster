@@ -1,0 +1,38 @@
+{
+ "description": "a host id holding a lone surrogate: Python's signature encode raises, so that host goes offline; the port scans it",
+ "fixes": [],
+ "args": [],
+ "requires": [],
+ "divergences": [
+  "python-surrogate-encode"
+ ],
+ "plans": [
+  {
+   "host_id": "hostA",
+   "label": "hostA",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostA"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "host\ud800B",
+   "label": "hostB",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostB"
+   ]
+  },
+  {
+   "host_id": "hostC",
+   "label": "hostC",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostC"
+   ]
+  }
+ ]
+}

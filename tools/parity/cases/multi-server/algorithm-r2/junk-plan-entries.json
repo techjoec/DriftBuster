@@ -1,0 +1,2 @@
+{"description": "non-object plan entries are skipped by _build_plans", "fixes": [], "args": [], "requires": [],
+ "plans": [null, 7, "server01", [], {"host_id": "server01", "label": "S1", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"]}, {"host_id": "server02", "label": "S2", "scope": "custom_roots", "roots": ["fixtures/multi-server/server02"]}]}

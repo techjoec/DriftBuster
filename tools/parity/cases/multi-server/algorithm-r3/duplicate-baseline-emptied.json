@@ -1,0 +1,35 @@
+{
+ "description": "the preferred baseline host id reappears in a later plan without roots: its configs become empty, its label is the later one, both rows are baseline and Missing",
+ "fixes": [],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "X",
+   "label": "First X",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/dupbase/x"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "Y",
+   "label": "Y",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/dupbase/y"
+   ]
+  },
+  {
+   "host_id": "X",
+   "label": "Second X",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/dupbase/none"
+   ]
+  }
+ ]
+}

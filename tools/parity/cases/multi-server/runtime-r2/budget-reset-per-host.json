@@ -1,0 +1,9 @@
+{
+  "description": "a 100-byte budget exhausts on the second file of every host; the budget is reset for each plan, including a repeated root",
+  "fixes": [], "args": ["--sample-budget", "100"], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r0"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r0"]},
+    {"host_id": "c", "label": "C", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/budget/r1", "$PARITY_MULTI_SERVER_WORK/r2/budget/r0"]}
+  ]
+}

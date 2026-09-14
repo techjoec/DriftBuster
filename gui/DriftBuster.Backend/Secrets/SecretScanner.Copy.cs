@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 
+using DriftBuster.Backend.Infrastructure;
+
 namespace DriftBuster.Backend.Secrets;
 
 /// <summary><c>looks_binary</c>, <c>hash_file</c> and <c>copy_with_secret_filter</c>.</summary>
@@ -15,7 +17,7 @@ public static partial class SecretScanner
     {
         try
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var buffer = new byte[1024];
             var total = 0;
             int read;
@@ -35,7 +37,7 @@ public static partial class SecretScanner
     /// <summary><c>hash_file(path)</c>: the SHA-256 of the file as lowercase hex.</summary>
     public static string HashFile(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.Read);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
@@ -273,7 +275,7 @@ public static partial class SecretScanner
     // one read waits for the next), each line keeping its \n.
     private static IEnumerable<string> ReadUniversalLines(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new StreamReader(stream, ReplacingUtf8, detectEncodingFromByteOrderMarks: false, bufferSize: 1 << 16);
         var buffer = new char[1 << 16];
         var line = new StringBuilder();
@@ -331,7 +333,7 @@ public static partial class SecretScanner
 
     private static (long Size, string Sha256) CopyVerbatim(string source, string destination)
     {
-        File.Copy(source, destination, overwrite: true);
+        File.Copy(PythonPath.KernelPath(source), destination, overwrite: true);
         CopyStat(source, destination);
         return (new FileInfo(destination).Length, HashFile(destination));
     }
@@ -343,11 +345,11 @@ public static partial class SecretScanner
         {
             if (!OperatingSystem.IsWindows())
             {
-                File.SetUnixFileMode(destination, File.GetUnixFileMode(source));
+                File.SetUnixFileMode(destination, File.GetUnixFileMode(PythonPath.KernelPath(source)));
             }
 
-            File.SetLastAccessTimeUtc(destination, File.GetLastAccessTimeUtc(source));
-            File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(source));
+            File.SetLastAccessTimeUtc(destination, File.GetLastAccessTimeUtc(PythonPath.KernelPath(source)));
+            File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(PythonPath.KernelPath(source)));
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {

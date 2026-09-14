@@ -1,0 +1,31 @@
+{
+ "description": "two file roots on one host both relate as '.', so the second takes @root1; a directory root beside them and a single file root on another host",
+ "fixes": [
+  "a"
+ ],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "hostA",
+   "label": "hostA",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fileroots/a/app.json",
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fileroots/a/other.json",
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fileroots/a"
+   ],
+   "baseline": {
+    "is_preferred": true
+   }
+  },
+  {
+   "host_id": "hostB",
+   "label": "hostB",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/fileroots/b/app.json"
+   ]
+  }
+ ]
+}

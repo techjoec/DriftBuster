@@ -1,0 +1,10 @@
+{
+  "description": "fix a: three file names that slug alike on one host (@root0, then @root0.2)",
+  "fixes": ["a"],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "hostA", "label": "hostA", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/slug/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "hostB", "label": "hostB", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/trees/slug/hostB"]}
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "description": "collision-chain with --runs 2: stock ids that collide on one host share a cache entry, so the second fix b run misses the cache where the fixed run hits it for every file",
+  "fixes": [
+    "a"
+  ],
+  "args": [
+    "--runs",
+    "2"
+  ],
+  "requires": [],
+  "plans": [
+    {
+      "host_id": "hostA",
+      "label": "hostA",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r3/trees/chain/r0",
+        "tools/parity/cases/multi-server/algorithm-r3/trees/chain/missing",
+        "tools/parity/cases/multi-server/algorithm-r3/trees/chain/r1",
+        "tools/parity/cases/multi-server/algorithm-r3/trees/chain/r1/"
+      ],
+      "baseline": {
+        "is_preferred": true
+      }
+    },
+    {
+      "host_id": "hostB",
+      "label": "hostB",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r3/trees/chain/r1"
+      ]
+    }
+  ]
+}

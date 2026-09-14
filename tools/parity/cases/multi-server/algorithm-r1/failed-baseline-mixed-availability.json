@@ -1,0 +1,54 @@
+{
+  "description": "the preferred baseline has no accessible roots; a permission-denied root host, a missing host and two found hosts",
+  "fixes": [
+    "b"
+  ],
+  "args": [],
+  "requires": [
+    "unprivileged"
+  ],
+  "plans": [
+    {
+      "host_id": "h1",
+      "label": "h1",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/sev/h1"
+      ]
+    },
+    {
+      "host_id": "ghost",
+      "label": "Ghost",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/sev/nowhere"
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 1,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "lockeddir",
+      "label": "Locked",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/unreadable-root/locked"
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 0,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "h2",
+      "label": "h2",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/sev/h2"
+      ]
+    }
+  ]
+}

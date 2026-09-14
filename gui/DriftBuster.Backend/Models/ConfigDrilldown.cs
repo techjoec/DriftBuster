@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.Serialization;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
@@ -29,6 +30,10 @@ namespace DriftBuster.Backend.Models
 
         [JsonPropertyName("unified_diff")]
         public string UnifiedDiff { get; set; } = string.Empty;
+
+        /// <summary>The selected diff's <c>diff_summary_to_payload</c> mapping, keys in Python's order; null when no host holds a diff.</summary>
+        [JsonPropertyName("diff_summary")]
+        public JsonElement? DiffSummary { get; set; }
 
         [JsonPropertyName("has_secrets")]
         public bool HasSecrets { get; set; }

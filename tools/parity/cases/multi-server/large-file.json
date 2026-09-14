@@ -1,0 +1,10 @@
+{
+  "description": "a file over 128 KiB whose only change lies past the sample",
+  "fixes": [],
+  "args": [],
+  "requires": [],
+  "plans": [
+    {"host_id": "big", "label": "Big", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/large/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "bigger", "label": "Bigger", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/large/hostB"]}
+  ]
+}

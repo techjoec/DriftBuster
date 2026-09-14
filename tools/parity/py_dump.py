@@ -12,6 +12,7 @@ Usage:
     py_dump.py hunt <path> [--glob G] [--exclude P]...
     py_dump.py secrets <path> [--ruleset R]
     py_dump.py secrets-context <config.json | directory>
+    py_dump.py multi-server <plans.json> [--sample-budget N] [--sample-size N] [--runs N]
 
 Both surfaces enumerate the path with the Python ``Detector.scan_path`` itself (a tolerant
 subclass that records I/O errors instead of raising), so walk order, symlink handling and
@@ -40,8 +41,22 @@ entries with the root prefix of ``path`` replaced by ``<root>`` (with fix e appl
 ``PARITY_HUNT_FIX_E=1``). ``secrets`` runs ``copy_with_secret_filter`` for every
 enumerated file into a temporary directory with ``SECRET_OPTIONS`` / ``SECRET_SCANNER`` as the context (``--ruleset`` adds a
 ``ruleset`` mapping to the scanner) and prints the size, digest, findings, log lines and the written text; with
-``PARITY_SECRETS_TIMEOUT`` set, a file whose copy has not returned after that many seconds is ``{"path", "error": "Timeout"}``. ``secrets-context`` prints ``build_context`` and
-``manifest_secret_scanner`` for ``{"options": ..., "secret_scanner": ...}`` files.
+``PARITY_SECRETS_TIMEOUT`` set, a file whose copy has not returned after that many seconds is ``{"path", "error": "Timeout"}``.
+``secrets-context`` prints ``build_context`` and ``manifest_secret_scanner`` for ``{"options": ..., "secret_scanner": ...}`` files.
+
+``multi-server`` runs ``MultiServerRunner(cache, sample_budget=..., sample_size=...).run(plans)`` in process over the
+``plans`` of a request file, with a fresh temporary cache (``--runs N`` runs N times against that one cache and dumps the last
+run), and prints one document: ``progress`` (the ``{host_id, status, message}`` of every line ``emit_progress`` wrote during
+the dumped run, captured by replacing its writer), ``response`` and ``cache`` (``{file, signature, sha256}`` per cache file
+in name order), plus ``key_order`` over the three. Every ``timestamp``, ``last_updated``, ``last_seen`` and ``generated_at``
+value is replaced by ``<timestamp>`` (``<invalid timestamp: ...>`` when it is not spelled as ``datetime.now(UTC).isoformat()``
+spells it), and every absolute root in ``results[].roots`` is respelled relative to the working directory, there and inside
+every result ``message``. With ``PARITY_MULTI_SERVER_FIXES=1`` the runner carries plan fixes a and b exactly as the port does,
+with ``b`` fix b alone (see ``_MultiServerFixes``); otherwise the runner is stock. ``PARITY_MULTI_SERVER_RECORDS`` names a
+file that receives every config id the runner assigned (host, root position, relative path, id), with fix b the files skipped
+(and why) and the roots refused, without it the path each failing host's scan raised on, the payloads fix d substituted and,
+when ``_build_plans`` or ``run()`` raises, that exception with the run it ended (the dump then exits with it).
+With ``PARITY_PORT_CLI`` set, a namespaced xml payload is canonicalised by the port (fix d, ``_PortXmlCanonical``).
 
 Every string in a record has each unpaired surrogate (a lone ``\\ud83d`` escape in a JSON key, say) rewritten to the
 six characters ``\\uXXXX`` before serialisation, exactly as the port's ``CanonicalJson`` does: a UTF-8 stdout cannot
@@ -56,6 +71,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import signal
 import sys
 import tempfile
@@ -288,7 +304,7 @@ def _diff_record(
 
     content_type = args.content_type or _resolve_pair(before, after)
     normalisers = diff_module._NORMALISERS
-    original = normalisers[content_type] if content_type in normalisers else None
+    original = normalisers.get(content_type)
     if canonical is not None and original is not None:
         texts = iter(canonical)
         normalisers[content_type] = lambda _payload: next(texts)  # type: ignore[index]
@@ -519,6 +535,467 @@ def cmd_secrets_context(args: argparse.Namespace) -> int:
     return 0
 
 
+TIMESTAMP_TOKEN = "<timestamp>"
+TIMESTAMP_KEYS = frozenset({"timestamp", "last_updated", "last_seen", "generated_at"})
+# datetime.now(UTC).isoformat(): exactly six fraction digits or none, and "+00:00".
+_ISO_UTC = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{6})?\+00:00")
+
+
+def _replace_timestamps(value: object) -> object:
+    if isinstance(value, dict):
+        replaced: dict[str, object] = {}
+        for key, item in value.items():
+            if key in TIMESTAMP_KEYS and isinstance(item, str):
+                replaced[key] = TIMESTAMP_TOKEN if _ISO_UTC.fullmatch(item) else f"<invalid timestamp: {item}>"
+            else:
+                replaced[key] = _replace_timestamps(item)
+        return replaced
+    if isinstance(value, list):
+        return [_replace_timestamps(item) for item in value]
+    return value
+
+
+def _respell_roots(response: dict[str, object]) -> None:
+    """Absolute roots in ``results[].roots`` (and inside each result message) become relative to the working directory."""
+
+    results = response.get("results")
+    if not isinstance(results, list):
+        return
+    cwd = os.getcwd()
+    absolute = {root for result in results for root in result.get("roots", []) if os.path.isabs(root)}
+    spelled = {root: os.path.relpath(root, cwd) for root in absolute}
+    # One pass, longest root first at each position, so a respelled root is never rewritten again by a shorter one.
+    pattern = re.compile("|".join(re.escape(root) for root in sorted(spelled, key=len, reverse=True))) if spelled else None
+    for result in results:
+        result["roots"] = [spelled.get(root, root) for root in result.get("roots", [])]
+        if pattern is not None and isinstance(result.get("message"), str):
+            result["message"] = pattern.sub(lambda match: spelled[match.group()], result["message"])
+
+
+# The largest file the port reads whole into a record (MultiServerRunner.DefaultMaxTextBytes: a sixth of the longest .NET string).
+_PORT_MAX_TEXT_BYTES = 0x3FFFFFDF // 6
+
+
+def _undecodable(path: object) -> bool:
+    """True for a path holding a name os.scandir kept through surrogateescape (bytes that are not UTF-8)."""
+
+    try:
+        str(path).encode("utf-8")
+    except UnicodeEncodeError:
+        return True
+    return False
+
+
+class _MultiServerFixes:
+    """Instruments one ``MultiServerRunner`` and applies the port's plan fixes to it without editing the engine.
+
+    ``fixes`` is ``""`` (stock), ``"b"`` or ``"ab"``. Every mode records the config id the runner assigned to each file (host,
+    root position, relative path) and, in stock mode, the path each host's scan raised on.
+
+    Fix a replaces ``_normalise_config_id``: the id is ``slug(format)/slug(variant)/slug(relative posix path)`` (the variant part
+    only when ``catalog_variant`` is a non-blank string; ``slug(format)#sha1(fallback)[:12]`` when the path slugs to nothing),
+    and a record whose id another record of the same host already holds gets ``@root{index}`` (zero-based position of its root
+    in ``plan.roots``, missing roots counted), then ``.{n}`` from 2 while that is taken too. ``ConfigIdentity`` in the port.
+
+    Fix b makes the host's secret hunt and detector skip a file that cannot be looked up or read, and a detected file whose whole
+    text cannot be read (or is longer than the port reads whole), recording each; a root that cannot be listed or looked up, or a
+    root file that cannot be read, raises ``DetectorIOError`` for the root (``permission_denied``), and a root whose ``exists()``
+    raises counts as existing so it gets there instead of aborting ``run()``. ``SkippingDetector``,
+    ``MultiServerRunner.BuildRecord`` and ``MultiServerRunner.CollectSecretHits`` in the port.
+
+    With fix b the platform limit on undecodable names applies too: a file whose name is not UTF-8 is reported to the detector's
+    error handler before it is sampled and skipped (cause ``undecodable-name``), as the port cannot name it.
+    """
+
+    def __init__(self, multi_server, runner, *, fixes: str) -> None:
+        self._ms = multi_server
+        self.fixes = fixes
+        self.records: list[dict[str, object]] = []
+        self.skipped: list[dict[str, str]] = []
+        self.root_errors: list[dict[str, str]] = []
+        self.stock_errors: list[dict[str, str]] = []
+        self.scans: list[dict[str, object]] = []
+        self.results: list[dict[str, object]] = []
+        self.host: str | None = None
+        self._root: Path | None = None
+        self._positions: list[int] = []
+        self._scan_index = -1
+        self._root_index = -1
+        self._taken: set[str] = set()
+        self._install(runner)
+
+    def _install(self, runner) -> None:
+        detector = runner._detector
+        scan_plan, scan_path, scan_file = runner._scan_plan, detector.scan_path, detector.scan_file
+        normalise, handle_error, collect = runner._normalise_config_id, detector._handle_error, runner._collect_secret_hits
+        result_payload = runner._result_payload
+        fix_a, fix_b = "a" in self.fixes, "b" in self.fixes
+
+        def result_payload_hook(plan, **kwargs):
+            payload = result_payload(plan, **kwargs)
+            self.results.append(payload)
+            return payload
+
+        def scan_plan_hook(plan, roots, secret_paths):
+            self.host = plan.host_id
+            self._positions = self._plan_positions(plan, roots)
+            self._scan_index = -1
+            self._taken = set()
+            return scan_plan(plan, roots, secret_paths)
+
+        def scan_path_hook(root, glob="**/*", *, reset_budget=True):
+            self._scan_index += 1
+            self._root_index = self._positions[self._scan_index] if self._scan_index < len(self._positions) else self._scan_index
+            self._root = Path(root)
+            try:
+                results = scan_path(root, glob, reset_budget=reset_budget)
+            finally:
+                self._root = None
+            matches = sum(1 for _, match in results if match is not None)
+            self.scans.append({"host_id": str(self.host), "plan_index": self.plan_index, "root": str(root), "matches": matches})
+            return [self._readable(path, match) for path, match in results] if fix_b else results
+
+        def scan_file_hook(path):
+            if _undecodable(path):
+                self._cause = "undecodable-name"
+                raise OSError(f"File name is not valid UTF-8; the entry cannot be opened: {path!r}")
+            return scan_file(path)
+
+        def normalise_hook(match, metadata, relative):
+            config_id = self._fixed_config_id(match, metadata, relative) if fix_a else normalise(match, metadata, relative)
+            self.records.append(
+                {"host_id": self.host, "plan_index": self.plan_index, "root_index": self._root_index, "relative_path": relative.as_posix(),
+                 "config_id": config_id}
+            )
+            return config_id
+
+        def handle_error_hook(path, error, *, cause=None):
+            reason, self._cause = self._cause, "unreadable"
+            if self._root is None or Path(path) == self._root:
+                self.root_errors.append({"host_id": str(self.host), "plan_index": self.plan_index, "path": str(path)})
+                return handle_error(path, error, cause=cause)
+            self.skipped.append({"host_id": str(self.host), "plan_index": self.plan_index, "path": str(path), "cause": reason})
+            return None
+
+        def stock_handle_error_hook(path, error, *, cause=None):
+            self.stock_errors.append({"host_id": str(self.host), "plan_index": self.plan_index, "path": str(path)})
+            return handle_error(path, error, cause=cause)
+
+        def collect_hook(roots):
+            for root in roots:
+                try:
+                    listable = root.is_dir()
+                    if listable:
+                        with os.scandir(root):
+                            pass
+                except OSError as exc:
+                    self.root_errors.append({"host_id": str(self.host), "plan_index": self.plan_index, "path": str(root)})
+                    raise DetectorIOError(root, str(exc)) from exc
+            with self._tolerant_hunt():
+                return collect(roots)
+
+        def stock_collect_hook(roots):
+            try:
+                return collect(roots)
+            except OSError as exc:
+                self.stock_errors.append(
+                    {"host_id": str(self.host), "plan_index": self.plan_index, "path": str(getattr(exc, "filename", None))}
+                )
+                raise
+
+        self._cause = "unreadable"
+        runner._scan_plan = scan_plan_hook
+        detector.scan_path = scan_path_hook
+        runner._normalise_config_id = normalise_hook
+        runner._result_payload = result_payload_hook
+        if fix_b:
+            detector.scan_file = scan_file_hook
+            detector._handle_error = handle_error_hook
+            runner._collect_secret_hits = collect_hook
+        else:
+            detector._handle_error = stock_handle_error_hook
+            runner._collect_secret_hits = stock_collect_hook
+
+    @property
+    def plan_index(self) -> int:
+        """The position in the request of the plan being scanned: every plan ends with exactly one ``_result_payload`` call."""
+
+        return len(self.results)
+
+    @staticmethod
+    def _plan_positions(plan, roots) -> list[int]:
+        """The position in ``plan.roots`` of each scanned root: the next plan root spelled the same way."""
+
+        positions: list[int] = []
+        start = 0
+        for index, root in enumerate(roots):
+            found = next((candidate for candidate in range(start, len(plan.roots)) if str(plan.roots[candidate]) == str(root)), -1)
+            positions.append(found if found >= 0 else index)
+            start = found + 1 if found >= 0 else start
+        return positions
+
+    def _readable(self, path: Path, match):
+        """Fix b for a detected file whose whole text the record cannot read: the entry stays, without its match."""
+
+        if match is None or not path.is_file():
+            return path, match
+        try:
+            if path.stat().st_size > _PORT_MAX_TEXT_BYTES:
+                raise OSError(f"File is larger than the {_PORT_MAX_TEXT_BYTES} bytes the scan reads whole: '{path}'")
+            with path.open("rb") as handle:
+                handle.read()
+        except OSError:
+            self.skipped.append({"host_id": str(self.host), "plan_index": self.plan_index, "path": str(path), "cause": "unreadable"})
+            return path, None
+        return path, match
+
+    def tolerate_root_lookups(self, plans) -> None:
+        """Fix b: a root whose ``exists()`` raises counts as existing, so the host scan refuses it as ``permission_denied``."""
+
+        base = type(Path())
+        fixes = self
+
+        class _TolerantRoot(base):  # type: ignore[misc, valid-type]
+            def exists(self, *, follow_symlinks: bool = True) -> bool:
+                try:
+                    return super().exists(follow_symlinks=follow_symlinks)
+                except OSError:
+                    return True
+
+        if "b" in fixes.fixes:
+            for plan in plans:
+                plan.roots = tuple(_TolerantRoot(root) for root in plan.roots)
+
+    def begin_plan(self, host_id: str) -> None:
+        self.host = host_id
+
+    def _fixed_config_id(self, match, metadata, relative: Path) -> str:
+        slugify = self._ms._slugify
+        format_id = str(metadata.get("catalog_format") or match.format_name or "config")
+        variant = metadata.get("catalog_variant")
+        relative_text = relative.as_posix()
+        slug = slugify(relative_text)
+        if slug:
+            parts = [slugify(format_id)]
+            if isinstance(variant, str) and variant.strip():
+                parts.append(slugify(variant))
+            parts.append(slug)
+            config_id = "/".join(part for part in parts if part)
+        else:
+            fallback = relative_text or match.plugin_name or "config"
+            config_id = f"{slugify(format_id)}#{hashlib.sha1(fallback.encode('utf-8', 'ignore')).hexdigest()[:12]}"
+        if config_id in self._taken:
+            suffixed = f"{config_id}@root{self._root_index}"
+            candidate, attempt = suffixed, 2
+            while candidate in self._taken:
+                candidate, attempt = f"{suffixed}.{attempt}", attempt + 1
+            config_id = candidate
+        self._taken.add(config_id)
+        return config_id
+
+    def _tolerant_hunt(self):
+        fixes = self
+        base = type(Path())
+
+        class _TolerantPath(base):  # type: ignore[misc, valid-type]
+            def is_file(self, *, follow_symlinks: bool = True) -> bool:
+                try:
+                    return super().is_file(follow_symlinks=follow_symlinks)
+                except OSError:
+                    fixes.skipped.append(
+                        {"host_id": str(fixes.host), "plan_index": fixes.plan_index, "path": str(self), "cause": "unreadable"}
+                    )
+                    return False
+
+        iter_text = hunt_module._iter_text
+
+        def tolerant_iter_text(path, sample_size):
+            try:
+                return iter_text(path, sample_size)
+            except OSError:
+                fixes.skipped.append({"host_id": str(fixes.host), "plan_index": fixes.plan_index, "path": str(path), "cause": "unreadable"})
+                return None
+
+        class _Patch:
+            def __enter__(self_inner):
+                hunt_module.Path = _TolerantPath
+                hunt_module._iter_text = tolerant_iter_text
+
+            def __exit__(self_inner, *exc_info):
+                hunt_module.Path = Path
+                hunt_module._iter_text = iter_text
+
+        return _Patch()
+
+
+class _PortXmlCanonical:
+    """Fix d seam for the multi-server surface: with ``PARITY_PORT_CLI`` naming the port's ``driftbuster`` executable, an xml
+    text that mentions ``xmlns`` is canonicalised by the port (``parity-dump canon`` over that exact text, written to a scratch
+    file) instead of ``canonicalise_xml``, both where ``_scan_plan`` canonicalises a payload and where ``build_unified_diff``
+    canonicalises the two payloads again. The diff, digests, stats and cache entry after canonicalisation are then CPython's own
+    over the port's canonical texts. Each substitution whose text differs from Python's is recorded (by the SHA-256 of the input
+    text)."""
+
+    def __init__(self, multi_server) -> None:
+        self._ms = multi_server
+        self._original = multi_server._canonicalise
+        self._original_xml = diff_module._NORMALISERS["xml"]
+        self.cli = os.environ.get("PARITY_PORT_CLI")
+        self.substituted: list[str] = []
+
+    def __enter__(self):
+        if self.cli:
+            self._ms._canonicalise = self._canonicalise
+            diff_module._NORMALISERS["xml"] = self._canonicalise_xml  # type: ignore[index]
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        self._ms._canonicalise = self._original
+        diff_module._NORMALISERS["xml"] = self._original_xml  # type: ignore[index]
+
+    def _canonicalise(self, content: str, content_type: str) -> str:
+        if content_type != "xml":
+            return self._original(content, content_type)
+        return self._canonicalise_xml(content)
+
+    def _canonicalise_xml(self, content: str) -> str:
+        python_text = self._original_xml(content)
+        if "xmlns" not in content:
+            return python_text
+        import subprocess
+
+        with tempfile.TemporaryDirectory(prefix="driftbuster-parity-xml-") as scratch:
+            source = Path(scratch) / "payload.xml"
+            source.write_bytes(content.encode("utf-8", "surrogatepass"))
+            completed = subprocess.run(
+                [self.cli, "parity-dump", "canon", str(source), "--content-type", "xml"],
+                check=True,
+                capture_output=True,
+            )
+        port_text = json.loads(completed.stdout.decode("utf-8"))["canonical"]
+        digest = hashlib.sha256(content.encode("utf-8", "surrogatepass")).hexdigest()
+        if port_text != python_text and digest not in self.substituted:
+            self.substituted.append(digest)
+        return port_text
+
+
+def cmd_multi_server(args: argparse.Namespace) -> int:
+    from driftbuster import multi_server as ms
+
+    request = json.loads(Path(args.plans).read_text(encoding="utf-8"))
+    fixes = {"1": "ab", "b": "b"}.get(os.environ.get("PARITY_MULTI_SERVER_FIXES", ""), "")
+    records_path = os.environ.get("PARITY_MULTI_SERVER_RECORDS")
+    progress: list[dict[str, object]] = []
+    instruments: list[_MultiServerFixes] = []
+    writer = ms._emit_json_line
+
+    def capture(payload):
+        if payload.get("type") == "progress":
+            entry = payload["payload"]
+            progress.append({"host_id": entry["host_id"], "status": entry["status"], "message": entry["message"]})
+            if entry["status"] == "running" and instruments:
+                instruments[-1].begin_plan(entry["host_id"])
+
+    _catalog_rejection.take()
+    ms._emit_json_line = capture
+    cache = Path(tempfile.mkdtemp(prefix="driftbuster-parity-multi-server-"))
+    port_xml = _PortXmlCanonical(ms)
+    try:
+        response: object = None
+        for run in range(1, args.runs + 1):
+            progress.clear()
+            instruments.clear()
+            ms._reset_progress_throttle_state()
+            runner = ms.MultiServerRunner(cache, sample_budget=args.sample_budget, sample_size=args.sample_size)
+            instruments.append(_MultiServerFixes(ms, runner, fixes=fixes))
+            port_xml.substituted.clear()
+            stage = "build_plans"
+            try:
+                plans = ms._build_plans(request)
+                instruments[-1].tolerate_root_lookups(plans)
+                stage = "run"
+                with port_xml:
+                    response = runner.run(plans)
+            except Exception as exc:
+                # The dump ends at the run that raised: later runs never start.
+                if records_path:
+                    results = json.loads(json.dumps({"results": instruments[-1].results}))
+                    _respell_roots(results)
+                    _write_multi_server_records(
+                        records_path, instruments[-1], port_xml,
+                        {
+                            "stage": stage,
+                            "run": run,
+                            "type": type(exc).__name__,
+                            "message": str(exc),
+                            "filename": None if getattr(exc, "filename", None) is None else str(exc.filename),  # pyright: ignore[reportAttributeAccessIssue]
+                            "progress": list(progress),
+                            "results": _replace_timestamps(results["results"]),
+                            "cache": _multi_server_cache_listing(cache),
+                        },
+                    )
+                raise
+        rejection = _catalog_rejection.take()
+        if rejection is not None:
+            # Fix c changes catalog_* metadata and so config ids; multi-server cases must not hold such a format.
+            print(f"multi-server case holds a format the Python catalog rejects (fix c): {rejection}", file=sys.stderr)
+            return 3
+        entries = _multi_server_cache_listing(cache)
+    finally:
+        ms._emit_json_line = writer
+        shutil.rmtree(cache, ignore_errors=True)
+
+    payload = json.loads(json.dumps(response))
+    _respell_roots(payload)
+    record: dict[str, object] = {"progress": list(progress), "response": _replace_timestamps(payload), "cache": entries}
+    record["key_order"] = _key_order(record)
+    _emit(record)
+    if records_path:
+        _write_multi_server_records(records_path, instruments[-1], port_xml, None)
+    return 0
+
+
+def _multi_server_cache_listing(cache: Path) -> list[dict[str, object]]:
+    """Every cache entry's file name, stored signature and SHA-256. An entry that is not a JSON object (the empty file a
+    ``DiffCache.save`` leaves when its encode raises after ``write_text`` truncated it) has signature None, as ``DiffCache.load``
+    treats it as missing."""
+
+    entries = []
+    for entry in sorted(cache.iterdir()):
+        raw = entry.read_bytes()
+        try:
+            stored = json.loads(raw.decode("utf-8"))
+        except ValueError:
+            stored = None
+        entries.append(
+            {
+                "file": entry.name,
+                "signature": stored.get("signature") if isinstance(stored, dict) else None,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        )
+    return entries
+
+
+def _write_multi_server_records(records_path: str, instrument: _MultiServerFixes, port_xml: _PortXmlCanonical, abort: object) -> None:
+    """The records file ``multi_server_stock.py`` and ``multi_server_surrogates.py`` read: the id of every record, the fix b skips
+    and refused roots, the path each stock host failed on, every ``scan_path`` call with its match count (each entry naming its
+    plan's position in the request), the fix d substitutions and, for a run that raised, where (``stage``: ``build_plans`` or
+    ``run``; ``run``: which run, from 1), the exception's type, text and file name with the progress, host results and cache
+    entries it left."""
+
+    records = {
+        "records": instrument.records,
+        "skipped": instrument.skipped,
+        "root_errors": instrument.root_errors,
+        "stock_errors": instrument.stock_errors,
+        "scans": instrument.scans,
+        "port_xml_canonical": port_xml.substituted,
+        "abort": abort,
+    }
+    Path(records_path).write_text(json.dumps(_escape_lone_surrogates(records), sort_keys=True, ensure_ascii=False), encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -565,6 +1042,13 @@ def main(argv: list[str] | None = None) -> int:
     secrets_context = sub.add_parser("secrets-context")
     secrets_context.add_argument("path")
     secrets_context.set_defaults(func=cmd_secrets_context)
+
+    multi_server = sub.add_parser("multi-server")
+    multi_server.add_argument("plans")
+    multi_server.add_argument("--sample-budget", type=int, default=None)
+    multi_server.add_argument("--sample-size", type=int, default=None)
+    multi_server.add_argument("--runs", type=int, default=1)
+    multi_server.set_defaults(func=cmd_multi_server)
 
     args = parser.parse_args(argv)
     return args.func(args)

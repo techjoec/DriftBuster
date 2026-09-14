@@ -133,7 +133,7 @@ public class Detector
     }
 
     /// <summary>Opens the file whose first bytes are sampled; overridable for fault injection.</summary>
-    protected internal virtual Stream OpenFile(string path) => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+    protected internal virtual Stream OpenFile(string path) => new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
 
     /// <summary><see cref="PythonPath.IsFile"/>; overridable for fault injection.</summary>
     protected internal virtual bool IsFile(string path) => PythonPath.IsFile(path);
@@ -142,10 +142,11 @@ public class Detector
     internal static string? ResolvePhysicalPath(string fullPath) => PythonPath.ResolvePhysicalPath(fullPath);
 
     /// <summary>
-    /// The full paths of <c>sorted(root.glob(glob))</c> (<see cref="PythonPath.SortedGlob"/>); overridable for fault injection.
+    /// The absolute paths (<see cref="PythonPath.Absolute"/>, ".." parts kept) of <c>sorted(root.glob(glob))</c>
+    /// (<see cref="PythonPath.SortedGlob"/>); overridable for fault injection.
     /// </summary>
     protected internal virtual IReadOnlyList<string> EnumerateFiles(string root, string glob)
-        => PythonPath.SortedGlob(root, glob).Select(Path.GetFullPath).ToList();
+        => PythonPath.SortedGlob(root, glob).Select(PythonPath.Absolute).ToList();
 
     private byte[] ReadSample(string path, int readSize)
     {
@@ -312,7 +313,7 @@ public class Detector
                 return results;
             }
 
-            if (!Directory.Exists(root))
+            if (!Directory.Exists(PythonPath.KernelPath(root)))
             {
                 throw new FileNotFoundException($"Path does not exist: {root}", root);
             }
@@ -392,7 +393,7 @@ public class Detector
         var normalizedTags = ProfileTags.Normalize(tags);
         var scanResults = ScanPath(root, glob);
         var profiled = new List<ProfiledDetection>();
-        var rootIsDir = Directory.Exists(root);
+        var rootIsDir = Directory.Exists(PythonPath.KernelPath(root));
 
         foreach (var (path, detection) in scanResults)
         {

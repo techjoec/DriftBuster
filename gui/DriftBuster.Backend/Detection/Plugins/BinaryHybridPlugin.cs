@@ -61,6 +61,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
     /// </summary>
     internal static int? CountSqliteTables(string path)
     {
+        path = PythonPath.KernelPath(path);
         if (!File.Exists(path))
         {
             return null;

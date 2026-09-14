@@ -42,6 +42,13 @@ internal sealed class SpecialFiles : IDisposable
     public static void CreateUndecodableDirectory(string directory, string content)
         => Run("sh", "-c", "d=\"$1/d$(printf '\\377')\"; mkdir \"$d\" && printf '%s' \"$2\" > \"$d/child.ini\"", "sh", directory, content);
 
+    /// <summary>
+    /// Runs <paramref name="script"/> under <c>sh -c</c> with <paramref name="arguments"/> as <c>$1</c>...; <c>$ff</c> holds the
+    /// single byte 0xFF and <c>$fffd</c> the UTF-8 bytes of U+FFFD, for names and link targets the runtime cannot spell.
+    /// </summary>
+    public static void Shell(string script, params string[] arguments)
+        => Run("sh", ["-c", $"ff=\"$(printf '\\377')\"; fffd=\"$(printf '\\357\\277\\275')\"; {script}", "sh", .. arguments]);
+
     public void Dispose() => _socket.Dispose();
 
     /// <summary>

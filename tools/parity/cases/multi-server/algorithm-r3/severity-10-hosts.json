@@ -1,0 +1,90 @@
+{
+ "description": "ten plans (one without roots) count toward total_hosts: 5 drifting reaches 10 // 2 (high), 3 drifting is medium, a config on eight hosts with one drifting is medium and partial",
+ "fixes": [
+  "a"
+ ],
+ "args": [],
+ "requires": [],
+ "plans": [
+  {
+   "host_id": "h1",
+   "label": "h1",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h1"
+   ]
+  },
+  {
+   "host_id": "h2",
+   "label": "h2",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h2"
+   ]
+  },
+  {
+   "host_id": "h3",
+   "label": "h3",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h3"
+   ]
+  },
+  {
+   "host_id": "h4",
+   "label": "h4",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h4"
+   ]
+  },
+  {
+   "host_id": "h5",
+   "label": "h5",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h5"
+   ]
+  },
+  {
+   "host_id": "h6",
+   "label": "h6",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h6"
+   ]
+  },
+  {
+   "host_id": "h7",
+   "label": "h7",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h7"
+   ]
+  },
+  {
+   "host_id": "h8",
+   "label": "h8",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h8"
+   ]
+  },
+  {
+   "host_id": "h9",
+   "label": "h9",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/h9"
+   ]
+  },
+  {
+   "host_id": "h10",
+   "label": "h10",
+   "scope": "custom_roots",
+   "roots": [
+    "tools/parity/cases/multi-server/algorithm-r3/trees/sev9/none"
+   ]
+  }
+ ]
+}

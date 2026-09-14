@@ -1,0 +1,5 @@
+{"description": "a truthy baseline that is not a mapping: payload.get raises AttributeError",
+ "aborts": "'list' object has no attribute 'get'", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"], "baseline": [true]}
+ ]}

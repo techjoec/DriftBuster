@@ -1,0 +1,77 @@
+{
+  "description": "the preferred baseline's root is a mode-000 directory; then a FIFO root, a /dev/zero link root, a root under a directory that cannot be searched, a missing root, a host with an unsearchable subdirectory and secrets, and a good host; small throttles on failing hosts; stock Python aborts run() on the sealed root lookup",
+  "fixes": [
+    "b"
+  ],
+  "args": [],
+  "requires": [
+    "unprivileged"
+  ],
+  "plans": [
+    {
+      "host_id": "locked",
+      "label": "Locked",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/r2/errmap/locked"
+      ],
+      "throttle_seconds": 0.01,
+      "baseline": {
+        "is_preferred": true,
+        "priority": 10,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "fifo",
+      "label": "FIFO",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/r2/errmap/fifo-root"
+      ],
+      "throttle_seconds": 0.01
+    },
+    {
+      "host_id": "zero",
+      "label": "Zero",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/r2/errmap/zero-root"
+      ]
+    },
+    {
+      "host_id": "sealed",
+      "label": "Sealed",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/r2/errmap/sealed/inner"
+      ]
+    },
+    {
+      "host_id": "missing",
+      "label": "Missing",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/r2/errmap/none"
+      ],
+      "throttle_seconds": 0.01
+    },
+    {
+      "host_id": "partial",
+      "label": "Partial",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/r2/errmap/partial"
+      ]
+    },
+    {
+      "host_id": "good",
+      "label": "Good",
+      "scope": "custom_roots",
+      "roots": [
+        "$PARITY_MULTI_SERVER_WORK/r2/errmap/good"
+      ]
+    }
+  ],
+  "stock_aborts": "PermissionError"
+}

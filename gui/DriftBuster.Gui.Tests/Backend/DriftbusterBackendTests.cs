@@ -324,33 +324,23 @@ public sealed class DriftbusterBackendTests
     }
 
     [Fact]
-    public void BuildMultiServerRequest_uses_data_root_cache_and_migrates_legacy_files()
+    public void PrepareMultiServerCacheDirectory_uses_data_root_cache_and_migrates_legacy_files()
     {
-        var plans = new List<ServerScanPlan>
-        {
-            new() { HostId = "alpha", Label = "Primary" },
-        };
-
         var repositoryRoot = Path.Combine(Path.GetTempPath(), "DriftbusterRepo", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(repositoryRoot);
         try
         {
             var legacyCache = Path.Combine(repositoryRoot, "artifacts", "cache", "diffs");
             Directory.CreateDirectory(legacyCache);
-            var legacyFile = Path.Combine(legacyCache, "sample.json");
-            File.WriteAllText(legacyFile, "{}");
+            File.WriteAllText(Path.Combine(legacyCache, "sample.json"), "{}");
 
-            var method = typeof(DriftbusterBackend).GetMethod("BuildMultiServerRequest", BindingFlags.NonPublic | BindingFlags.Static);
-            var request = method!.Invoke(null, new object[] { plans, repositoryRoot });
-            request.Should().NotBeNull();
+            var method = typeof(DriftbusterBackend).GetMethod("PrepareMultiServerCacheDirectory", BindingFlags.NonPublic | BindingFlags.Static);
+            var cacheDirectory = method!.Invoke(null, new object?[] { repositoryRoot }) as string;
 
-            var cacheDirectory = request!.GetType().GetProperty("CacheDirectory")!.GetValue(request)!.ToString();
             cacheDirectory.Should().NotBeNullOrWhiteSpace();
             cacheDirectory!.StartsWith(_fixture.Root, StringComparison.OrdinalIgnoreCase).Should().BeTrue();
             cacheDirectory.Should().Contain(Path.Combine("cache", "diffs"));
-
-            var migratedFile = Path.Combine(cacheDirectory, "sample.json");
-            File.Exists(migratedFile).Should().BeTrue();
+            File.Exists(Path.Combine(cacheDirectory, "sample.json")).Should().BeTrue();
         }
         finally
         {
@@ -362,79 +352,51 @@ public sealed class DriftbusterBackendTests
     }
 
     [Fact]
-    public void ResolveRepositoryRoot_prefers_app_base_with_packaged_python_sources()
+    public async Task RunServerScansAsync_writes_the_diff_cache_under_the_data_root()
     {
-        var workspace = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriftbusterRepo", Guid.NewGuid().ToString("N")));
-        var cwd = Directory.CreateDirectory(Path.Combine(workspace.FullName, "cwd"));
-        var appBase = Directory.CreateDirectory(Path.Combine(workspace.FullName, "portable"));
-        Directory.CreateDirectory(Path.Combine(appBase.FullName, "src", "driftbuster"));
-        File.WriteAllText(Path.Combine(appBase.FullName, "src", "driftbuster", "multi_server.py"), "# test");
-
-        try
+        var plans = new[]
         {
-            var method = typeof(DriftbusterBackend)
-                .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-                .Single(candidate => string.Equals(candidate.Name, "ResolveRepositoryRoot", StringComparison.Ordinal) &&
-                    candidate.GetParameters().Length == 3);
-
-            var resolved = method!.Invoke(null, new object?[] { cwd.FullName, appBase.FullName, null }) as string;
-            resolved.Should().Be(appBase.FullName);
-        }
-        finally
-        {
-            if (Directory.Exists(workspace.FullName))
+            new ServerScanPlan
             {
-                Directory.Delete(workspace.FullName, recursive: true);
-            }
-        }
+                HostId = "alpha",
+                Label = "Primary",
+                Scope = ServerScanScope.CustomRoots,
+                Roots = new[] { Path.Combine(RepositoryRoot(), "fixtures", "multi-server", "server01") },
+            },
+        };
+
+        var response = await _backend.RunServerScansAsync(plans, progress: null, TestContext.Current.CancellationToken);
+
+        response.Results.Should().ContainSingle().Which.Status.Should().Be(ServerScanStatus.Succeeded);
+        var cacheDirectory = Path.Combine(_fixture.Root, "cache", "diffs");
+        Directory.Exists(cacheDirectory).Should().BeTrue();
+        Directory.GetFiles(cacheDirectory, "*.json").Should().NotBeEmpty();
     }
 
     [Fact]
-    public void ResolveRepositoryRoot_uses_process_directory_when_other_candidates_missing()
+    public async Task RunServerScansAsync_reports_queued_then_runner_progress_and_honours_cancellation()
     {
-        var workspace = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriftbusterRepo", Guid.NewGuid().ToString("N")));
-        var cwd = Directory.CreateDirectory(Path.Combine(workspace.FullName, "cwd"));
-        var appBase = Directory.CreateDirectory(Path.Combine(workspace.FullName, "bundle-extract"));
-        var processDir = Directory.CreateDirectory(Path.Combine(workspace.FullName, "portable"));
-        Directory.CreateDirectory(Path.Combine(processDir.FullName, "src", "driftbuster"));
-        File.WriteAllText(Path.Combine(processDir.FullName, "src", "driftbuster", "multi_server.py"), "# test");
-
-        try
+        var plans = new[]
         {
-            var method = typeof(DriftbusterBackend)
-                .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-                .Single(candidate => string.Equals(candidate.Name, "ResolveRepositoryRoot", StringComparison.Ordinal) &&
-                    candidate.GetParameters().Length == 3);
-
-            var resolved = method!.Invoke(null, new object?[] { cwd.FullName, appBase.FullName, processDir.FullName }) as string;
-            resolved.Should().Be(processDir.FullName);
-        }
-        finally
-        {
-            if (Directory.Exists(workspace.FullName))
+            new ServerScanPlan
             {
-                Directory.Delete(workspace.FullName, recursive: true);
-            }
-        }
-    }
+                HostId = "alpha",
+                Label = "Primary",
+                Scope = ServerScanScope.CustomRoots,
+                Roots = new[] { Path.Combine(RepositoryRoot(), "fixtures", "multi-server", "server01") },
+            },
+        };
+        var updates = new List<ScanProgress>();
 
-    [Fact]
-    public void BuildMultiServerProcessStartInfo_enforces_utf8_python_io()
-    {
-        var repositoryRoot = Path.GetTempPath();
-        var method = typeof(DriftbusterBackend)
-            .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-            .Single(candidate => string.Equals(candidate.Name, "BuildMultiServerProcessStartInfo", StringComparison.Ordinal));
+        await _backend.RunServerScansAsync(plans, new InlineProgress(updates), TestContext.Current.CancellationToken);
 
-        var startInfo = method.Invoke(null, new object[] { repositoryRoot }) as ProcessStartInfo;
-        startInfo.Should().NotBeNull();
-        startInfo!.Environment.Should().ContainKey("PYTHONUNBUFFERED");
-        startInfo.Environment["PYTHONUNBUFFERED"].Should().Be("1");
-        startInfo.Environment.Should().ContainKey("PYTHONIOENCODING");
-        startInfo.Environment["PYTHONIOENCODING"].Should().Be("utf-8");
-        startInfo.StandardInputEncoding!.CodePage.Should().Be(System.Text.Encoding.UTF8.CodePage);
-        startInfo.StandardOutputEncoding!.CodePage.Should().Be(System.Text.Encoding.UTF8.CodePage);
-        startInfo.StandardErrorEncoding!.CodePage.Should().Be(System.Text.Encoding.UTF8.CodePage);
+        updates.Select(update => update.Status).Should().Equal(ServerScanStatus.Queued, ServerScanStatus.Running, ServerScanStatus.Succeeded);
+        updates[1].Message.Should().Be("Scanning Primary");
+
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var cancel = () => _backend.RunServerScansAsync(plans, progress: null, cancelled.Token);
+        await cancel.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -551,7 +513,7 @@ public sealed class DriftbusterBackendTests
     public async Task RunServerScansAsync_executes_multi_server_runner()
     {
         var backend = new DriftbusterBackend();
-        var sampleRoot = Path.Combine("fixtures", "multi-server");
+        var sampleRoot = Path.Combine(RepositoryRoot(), "fixtures", "multi-server");
 
         var plans = new[]
         {
@@ -585,5 +547,23 @@ public sealed class DriftbusterBackendTests
         var appEntry = response.Catalog.First(entry => entry.DisplayName.EndsWith("appsettings.json", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(2, appEntry.PresentHosts.Length);
         Assert.NotEmpty(response.Drilldown);
+    }
+
+    // The scan runs in process, so relative roots resolve against the test host's working directory; fixtures are addressed from
+    // the repository root instead.
+    private static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DriftBuster.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("Unable to locate the repository root from the test host.");
+    }
+
+    private sealed class InlineProgress(List<ScanProgress> updates) : IProgress<ScanProgress>
+    {
+        public void Report(ScanProgress value) => updates.Add(value);
     }
 }

@@ -1,0 +1,35 @@
+{
+  "description": "a small budget runs out inside the first root, so the second root is never scanned",
+  "fixes": [],
+  "args": [
+    "--sample-budget",
+    "150",
+    "--sample-size",
+    "48"
+  ],
+  "requires": [],
+  "plans": [
+    {
+      "host_id": "multi",
+      "label": "Multi",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/budget/r1",
+        "tools/parity/cases/multi-server/algorithm-r1/trees/budget/r2"
+      ],
+      "baseline": {
+        "is_preferred": true,
+        "priority": 0,
+        "role": "auto"
+      }
+    },
+    {
+      "host_id": "late",
+      "label": "Late",
+      "scope": "custom_roots",
+      "roots": [
+        "tools/parity/cases/multi-server/algorithm-r1/trees/budget/r2"
+      ]
+    }
+  ]
+}

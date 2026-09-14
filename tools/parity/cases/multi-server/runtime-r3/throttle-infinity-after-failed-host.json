@@ -1,0 +1,9 @@
+{
+  "description": "an Infinity literal throttle on a host that fails (mode-000 file root): the sleep follows the host's try, so time.sleep raises OverflowError out of run() after the failure is recorded, in every runner",
+  "aborts": "timestamp out of range for platform time_t",
+  "fixes": [], "args": [], "requires": ["unprivileged"],
+  "plans": [
+    {"host_id": "ok", "label": "OK", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostA"]},
+    {"host_id": "locked", "label": "Locked", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/locks/file.json"], "throttle_seconds": Infinity}
+  ]
+}

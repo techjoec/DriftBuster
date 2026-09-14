@@ -1,0 +1,10 @@
+{
+  "description": "roots named [ab], st*r and q? (literal, never patterns: [ab] must not reach the sibling a), holding directories named [x], ** and * and a hidden directory with a hidden secret file",
+  "fixes": [], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "bracket", "label": "Bracket", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/meta/[ab]"], "baseline": {"is_preferred": true, "priority": 1, "role": "auto"}},
+    {"host_id": "star", "label": "Star", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/meta/st*r"]},
+    {"host_id": "question", "label": "Question", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/meta/q?", "$PARITY_MULTI_SERVER_WORK/r3/meta/q?/[x]/app.ini"]},
+    {"host_id": "literal", "label": "Literal", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/meta/a"]}
+  ]
+}

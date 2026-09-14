@@ -1,0 +1,9 @@
+{
+  "description": "the preferred baseline holds no configs; the fallback baseline is the code-point-smallest host id among astral and BMP ids",
+  "fixes": ["a"], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "😀", "label": "Emoji", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/unicode/hostA"]},
+    {"host_id": "empty", "label": "Empty", "scope": "custom_roots", "roots": ["fixtures/multi-server/no-such"], "baseline": {"is_preferred": true, "priority": 1, "role": "auto"}},
+    {"host_id": "～", "label": "Fullwidth", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/unicode/hostB"]}
+  ]
+}

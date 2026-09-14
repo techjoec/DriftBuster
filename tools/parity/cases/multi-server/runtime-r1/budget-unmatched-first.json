@@ -1,0 +1,7 @@
+{
+  "description": "budget exhausted exactly by the unmatched binary file sampled first",
+  "fixes": [], "args": ["--sample-budget", "21"], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/budget/root0"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}}
+  ]
+}

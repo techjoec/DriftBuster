@@ -20,6 +20,7 @@ using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Hunt;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.MultiServer;
 using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace DriftBuster.Backend
@@ -28,8 +29,6 @@ namespace DriftBuster.Backend
     public sealed partial class DriftbusterBackend : IDriftbusterBackend
     {
         private const string SecretRulesResourceName = "DriftBuster.Backend.Resources.secret_rules.json";
-        private const string MultiServerModule = "driftbuster.multi_server";
-        private const string MultiServerSchemaVersion = "multi-server.v1";
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
@@ -104,7 +103,7 @@ namespace DriftBuster.Backend
             {
                 return new ServerScanResponse
                 {
-                    Version = MultiServerSchemaVersion,
+                    Version = MultiServerSchema.Version,
                     Results = Array.Empty<ServerScanResult>(),
                     Catalog = Array.Empty<ConfigCatalogEntry>(),
                     Drilldown = Array.Empty<ConfigDrilldown>(),
@@ -121,23 +120,43 @@ namespace DriftBuster.Backend
 
             InitializePlans(planList, progress, cancellationToken);
 
-            var repositoryRoot = ResolveRepositoryRoot();
-            var request = BuildMultiServerRequest(planList, repositoryRoot);
-            var response = await ExecuteMultiServerAsync(request, progress, cancellationToken, repositoryRoot).ConfigureAwait(false);
-
-            if (response is null)
-            {
-                throw new InvalidOperationException("Multi-server runner returned no payload.");
-            }
-
-            if (string.IsNullOrWhiteSpace(response.Version))
-            {
-                response.Version = MultiServerSchemaVersion;
-            }
+            // The scan runs in process on a pool thread; progress is reported inline on that thread by the runner.
+            var response = await Task.Run(
+                () =>
+                {
+                    var runner = new MultiServerRunner(PrepareMultiServerCacheDirectory(ResolveLegacyCacheRepositoryRoot()));
+                    return runner.Run(planList.Select(MultiServerPlan.FromServerScanPlan), progress, cancellationToken);
+                },
+                cancellationToken).ConfigureAwait(false);
 
             ValidateMultiServerResponse(response);
             return response;
         }
+
+        private static void ValidateMultiServerResponse(ServerScanResponse response)
+            => MultiServerSchema.ValidateResponse(response);
+
+        // The data root's diff cache, after copying the entries a checkout's legacy <repo>/artifacts/cache/diffs holds that the
+        // cache lacks (best effort, before every scan, as the facade always did), resolved as _resolve_cache_dir resolves the
+        // cache_dir the Python bridge was sent: user home expanded, created, and every symlink and ".." followed physically.
+        internal static string PrepareMultiServerCacheDirectory(string? repositoryRoot)
+        {
+            var cacheDirectory = DriftbusterPaths.GetCacheDirectory("diffs");
+            if (!string.IsNullOrWhiteSpace(repositoryRoot))
+            {
+                DiffCache.MigrateLegacyDiffCache(repositoryRoot, cacheDirectory);
+            }
+
+            return DiffCache.ResolveCacheDirectory(cacheDirectory, repositoryRoot: null);
+        }
+
+        // The checkout the working directory, the application base or the process directory lies in; the working directory when
+        // none is inside one.
+        private static string ResolveLegacyCacheRepositoryRoot()
+            => RepositoryRoot.Find(Environment.CurrentDirectory)
+                ?? RepositoryRoot.Find(AppContext.BaseDirectory)
+                ?? RepositoryRoot.Find(Path.GetDirectoryName(Environment.ProcessPath))
+                ?? Environment.CurrentDirectory;
 
         private static void InitializePlans(List<ServerScanPlan> planList, IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
         {
@@ -282,467 +301,6 @@ namespace DriftBuster.Backend
                 ThrottleSeconds = plan.ThrottleSeconds,
                 CachedAt = plan.CachedAt,
             };
-        }
-
-        private static string ResolveRepositoryRoot()
-        {
-            return ResolveRepositoryRoot(
-                Environment.CurrentDirectory,
-                AppContext.BaseDirectory,
-                Path.GetDirectoryName(Environment.ProcessPath));
-        }
-
-        private static string ResolveRepositoryRoot(string currentDirectory, string appBaseDirectory, string? processDirectory)
-        {
-            foreach (var candidate in EnumerateRepositoryRootCandidates(currentDirectory, appBaseDirectory, processDirectory))
-            {
-                var resolved = FindRepositoryRoot(candidate);
-                if (!string.IsNullOrWhiteSpace(resolved))
-                {
-                    return resolved;
-                }
-            }
-
-            return currentDirectory;
-        }
-
-        private static IEnumerable<string> EnumerateRepositoryRootCandidates(string currentDirectory, string appBaseDirectory, string? processDirectory)
-        {
-            if (!string.IsNullOrWhiteSpace(currentDirectory))
-            {
-                yield return currentDirectory;
-            }
-
-            if (!string.IsNullOrWhiteSpace(appBaseDirectory) &&
-                !string.Equals(currentDirectory, appBaseDirectory, StringComparison.OrdinalIgnoreCase))
-            {
-                yield return appBaseDirectory;
-            }
-
-            if (!string.IsNullOrWhiteSpace(processDirectory) &&
-                !string.Equals(currentDirectory, processDirectory, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(appBaseDirectory, processDirectory, StringComparison.OrdinalIgnoreCase))
-            {
-                yield return processDirectory;
-            }
-        }
-
-        private static string? FindRepositoryRoot(string startDirectory)
-        {
-            if (string.IsNullOrWhiteSpace(startDirectory))
-            {
-                return null;
-            }
-
-            DirectoryInfo? current;
-            try
-            {
-                current = new DirectoryInfo(startDirectory);
-            }
-            catch
-            {
-                return null;
-            }
-
-            while (current is not null)
-            {
-                if (File.Exists(Path.Combine(current.FullName, "pyproject.toml")) ||
-                    File.Exists(Path.Combine(current.FullName, "src", "driftbuster", "multi_server.py")))
-                {
-                    return current.FullName;
-                }
-
-                current = current.Parent;
-            }
-
-            return null;
-        }
-
-        private static MultiServerRequest BuildMultiServerRequest(List<ServerScanPlan> plans, string repositoryRoot)
-        {
-            if (plans is null)
-            {
-                throw new ArgumentNullException(nameof(plans));
-            }
-
-            var cacheDirectory = DriftbusterPaths.GetCacheDirectory("diffs");
-            MigrateLegacyDiffCache(repositoryRoot, cacheDirectory);
-            return new MultiServerRequest
-            {
-                Plans = plans,
-                CacheDirectory = cacheDirectory,
-                SchemaVersion = MultiServerSchemaVersion,
-            };
-        }
-
-        private async Task<ServerScanResponse> ExecuteMultiServerAsync(
-            MultiServerRequest request,
-            IProgress<ScanProgress>? progress,
-            CancellationToken cancellationToken,
-            string repositoryRoot)
-        {
-            if (request is null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
-
-            var startInfo = BuildMultiServerProcessStartInfo(repositoryRoot);
-            var requestJson = JsonSerializer.Serialize(request, SerializerOptions);
-
-            using var process = new Process { StartInfo = startInfo };
-            using var cancellationRegistration = cancellationToken.Register(() =>
-            {
-                try
-                {
-                    if (!process.HasExited)
-                    {
-                        process.Kill(entireProcessTree: true);
-                    }
-                }
-                catch
-                {
-                }
-            });
-
-            try
-            {
-                if (!process.Start())
-                {
-                    throw new InvalidOperationException("Failed to launch Python process for multi-server runner.");
-                }
-
-                await SendRequestToProcessAsync(process, requestJson).ConfigureAwait(false);
-
-                var response = await ParseMultiServerOutputAsync(process, progress, cancellationToken).ConfigureAwait(false);
-
-                return response ?? new ServerScanResponse
-                {
-                    Version = MultiServerSchemaVersion,
-                    Results = Array.Empty<ServerScanResult>(),
-                    Catalog = Array.Empty<ConfigCatalogEntry>(),
-                    Drilldown = Array.Empty<ConfigDrilldown>(),
-                };
-            }
-            finally
-            {
-                if (!process.HasExited)
-                {
-                    try
-                    {
-                        process.Kill(entireProcessTree: true);
-                        process.WaitForExit();
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-        }
-
-        private static ProcessStartInfo BuildMultiServerProcessStartInfo(string repositoryRoot)
-        {
-            var pythonExecutable = ResolvePythonExecutable();
-            var startInfo = CreatePythonStartInfo(pythonExecutable, repositoryRoot);
-            var pythonPath = ResolvePythonPath(repositoryRoot);
-
-            if (!string.IsNullOrWhiteSpace(pythonPath))
-            {
-                if (startInfo.Environment.TryGetValue("PYTHONPATH", out var configured) && !string.IsNullOrWhiteSpace(configured))
-                {
-                    if (!configured.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries).Contains(pythonPath, StringComparer.Ordinal))
-                    {
-                        startInfo.Environment["PYTHONPATH"] = string.Join(Path.PathSeparator, pythonPath, configured);
-                    }
-                }
-                else
-                {
-                    var inherited = Environment.GetEnvironmentVariable("PYTHONPATH");
-                    startInfo.Environment["PYTHONPATH"] = string.IsNullOrWhiteSpace(inherited)
-                        ? pythonPath
-                        : string.Join(Path.PathSeparator, pythonPath, inherited);
-                }
-            }
-
-            startInfo.Environment["PYTHONUNBUFFERED"] = "1";
-            startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
-            return startInfo;
-        }
-
-        private static async Task SendRequestToProcessAsync(Process process, string requestJson)
-        {
-            await process.StandardInput.WriteAsync(requestJson).ConfigureAwait(false);
-            await process.StandardInput.WriteAsync(Environment.NewLine).ConfigureAwait(false);
-            await process.StandardInput.FlushAsync().ConfigureAwait(false);
-            process.StandardInput.Close();
-        }
-
-        private static async Task<ServerScanResponse?> ParseMultiServerOutputAsync(
-            Process process,
-            IProgress<ScanProgress>? progress,
-            CancellationToken cancellationToken)
-        {
-            var stderrTask = Task.Run(() => process.StandardError.ReadToEnd());
-
-            ServerScanResponse? response = null;
-            string? line;
-
-            while ((line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) is not null)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    continue;
-                }
-
-                response = DispatchMultiServerMessage(line, progress, response);
-            }
-
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-
-            if (process.ExitCode != 0)
-            {
-                var stderr = await stderrTask.ConfigureAwait(false);
-                throw new InvalidOperationException($"Python runner failed with exit code {process.ExitCode}: {stderr}");
-            }
-
-            return response;
-        }
-
-        private static ServerScanResponse? DispatchMultiServerMessage(
-            string line,
-            IProgress<ScanProgress>? progress,
-            ServerScanResponse? response)
-        {
-            JsonDocument document;
-            try
-            {
-                document = JsonDocument.Parse(line);
-            }
-            catch (JsonException ex)
-            {
-                throw new InvalidOperationException($"Invalid JSON from multi-server runner: {line}", ex);
-            }
-
-            using (document)
-            {
-                var root = document.RootElement;
-                if (!root.TryGetProperty("type", out var typeElement))
-                {
-                    return response;
-                }
-
-                var type = typeElement.GetString();
-                if (string.Equals(type, "progress", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (progress is not null && root.TryGetProperty("payload", out var payloadElement))
-                    {
-                        var update = payloadElement.Deserialize<ScanProgress>(SerializerOptions);
-                        if (update is not null)
-                        {
-                            progress.Report(update);
-                        }
-                    }
-                }
-                else if (string.Equals(type, "result", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (root.TryGetProperty("payload", out var payloadElement))
-                    {
-                        response = payloadElement.Deserialize<ServerScanResponse>(SerializerOptions);
-                    }
-                }
-                else if (string.Equals(type, "error", StringComparison.OrdinalIgnoreCase))
-                {
-                    var message = root.TryGetProperty("message", out var messageElement)
-                        ? messageElement.GetString()
-                        : "Multi-server runner reported an error.";
-                    throw new InvalidOperationException(message ?? "Multi-server runner reported an error.");
-                }
-            }
-
-            return response;
-        }
-
-        private static string ResolvePythonExecutable()
-        {
-            var overridePath = Environment.GetEnvironmentVariable("DRIFTBUSTER_PYTHON");
-            if (!string.IsNullOrWhiteSpace(overridePath))
-            {
-                return overridePath;
-            }
-
-            if (TryLocateExecutable("python3", out var python3))
-            {
-                return python3;
-            }
-
-            if (TryLocateExecutable("python", out var python))
-            {
-                return python;
-            }
-
-            return OperatingSystem.IsWindows() ? "python.exe" : "python3";
-        }
-
-        private static bool TryLocateExecutable(string name, out string fullPath)
-        {
-            if (Path.IsPathRooted(name))
-            {
-                fullPath = name;
-                return File.Exists(name);
-            }
-
-            var entries = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var entry in entries)
-            {
-                var candidate = Path.Combine(entry, name);
-                if (File.Exists(candidate))
-                {
-                    fullPath = candidate;
-                    return true;
-                }
-
-                if (OperatingSystem.IsWindows())
-                {
-                    var exeCandidate = candidate.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-                        ? candidate
-                        : candidate + ".exe";
-                    if (File.Exists(exeCandidate))
-                    {
-                        fullPath = exeCandidate;
-                        return true;
-                    }
-                }
-            }
-
-            fullPath = name;
-            return false;
-        }
-
-        private static string ResolvePythonPath(string repositoryRoot)
-        {
-            var srcCandidate = Path.Combine(repositoryRoot, "src");
-            if (Directory.Exists(Path.Combine(srcCandidate, "driftbuster")))
-            {
-                return srcCandidate;
-            }
-
-            if (Directory.Exists(Path.Combine(repositoryRoot, "driftbuster")))
-            {
-                return repositoryRoot;
-            }
-
-            return string.Empty;
-        }
-
-        private static ProcessStartInfo CreatePythonStartInfo(string pythonExecutable, string workingDirectory)
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = pythonExecutable,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WorkingDirectory = workingDirectory,
-                StandardOutputEncoding = Utf8,
-                StandardErrorEncoding = Utf8,
-                StandardInputEncoding = Utf8,
-            };
-
-            startInfo.ArgumentList.Add("-m");
-            startInfo.ArgumentList.Add(MultiServerModule);
-            return startInfo;
-        }
-
-        private static void MigrateLegacyDiffCache(string repositoryRoot, string cacheDirectory)
-        {
-            if (string.IsNullOrWhiteSpace(repositoryRoot))
-            {
-                return;
-            }
-
-            try
-            {
-                var legacyRoot = Path.Combine(repositoryRoot, "artifacts", "cache", "diffs");
-                if (!Directory.Exists(legacyRoot))
-                {
-                    return;
-                }
-
-                if (!Directory.Exists(cacheDirectory))
-                {
-                    Directory.CreateDirectory(cacheDirectory);
-                }
-
-                foreach (var file in Directory.EnumerateFiles(legacyRoot, "*", SearchOption.TopDirectoryOnly))
-                {
-                    var target = Path.Combine(cacheDirectory, Path.GetFileName(file)!);
-                    if (!File.Exists(target))
-                    {
-                        File.Copy(file, target, overwrite: false);
-                    }
-                }
-            }
-            catch
-            {
-                // Migration is a best-effort convenience for developers; ignore failures.
-            }
-        }
-
-        private static void ValidateMultiServerResponse(ServerScanResponse response)
-        {
-            if (response is null)
-            {
-                throw new ArgumentNullException(nameof(response));
-            }
-
-            if (!string.Equals(response.Version, MultiServerSchemaVersion, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException($"Unsupported multi-server schema version '{response.Version}'. Expected '{MultiServerSchemaVersion}'.");
-            }
-
-            response.Results ??= Array.Empty<ServerScanResult>();
-            response.Catalog ??= Array.Empty<ConfigCatalogEntry>();
-            response.Drilldown ??= Array.Empty<ConfigDrilldown>();
-            response.Summary ??= new ServerScanSummary
-            {
-                BaselineHostId = string.Empty,
-                TotalHosts = response.Results.Length,
-                ConfigsEvaluated = response.Catalog.Length,
-                DriftingConfigs = response.Catalog.Count(entry => entry.DriftCount > 0),
-                GeneratedAt = DateTimeOffset.UtcNow,
-            };
-
-            foreach (var result in response.Results)
-            {
-                result.Roots ??= Array.Empty<string>();
-            }
-
-            foreach (var entry in response.Catalog)
-            {
-                entry.PresentHosts ??= Array.Empty<string>();
-                entry.MissingHosts ??= Array.Empty<string>();
-            }
-
-            foreach (var drilldown in response.Drilldown)
-            {
-                drilldown.Servers ??= Array.Empty<ConfigServerDetail>();
-                drilldown.Notes ??= Array.Empty<string>();
-            }
-        }
-
-        private sealed class MultiServerRequest
-        {
-            [JsonPropertyName("plans")]
-            public List<ServerScanPlan> Plans { get; set; } = new();
-
-            [JsonPropertyName("cache_dir")]
-            public string CacheDirectory { get; set; } = string.Empty;
-
-            [JsonPropertyName("schema_version")]
-            public string SchemaVersion { get; set; } = MultiServerSchemaVersion;
         }
 
         private static string EnsureFile(string path, bool isBaseline)

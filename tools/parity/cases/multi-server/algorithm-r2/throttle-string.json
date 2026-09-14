@@ -1,0 +1,5 @@
+{"description": "throttle_seconds given as strings: float('0.01') sleeps, float('soon') is None", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "server01", "label": "S1", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "throttle_seconds": "0.01"},
+  {"host_id": "server10", "label": "S10", "scope": "custom_roots", "roots": ["fixtures/multi-server/server10"], "throttle_seconds": "soon"}
+ ]}

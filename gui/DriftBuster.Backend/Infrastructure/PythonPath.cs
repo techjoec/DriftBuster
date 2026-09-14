@@ -75,12 +75,131 @@ public static class PythonPath
     private const int MaxLinkHops = 40;
 
     /// <summary>
+    /// <c>str(Path(path).absolute())</c>: a relative path joined onto the working directory, with no normalisation, so a <c>..</c>
+    /// part stays where it is (<see cref="Path.GetFullPath(string)"/> would remove it lexically).
+    /// </summary>
+    public static string Absolute(string path)
+    {
+        var spelled = PythonPurePath.Str(path);
+        if (Path.IsPathRooted(spelled))
+        {
+            return spelled;
+        }
+
+        var cwd = Directory.GetCurrentDirectory();
+        return string.Equals(spelled, ".", StringComparison.Ordinal) ? cwd : PythonPurePath.Join(cwd, spelled);
+    }
+
+    /// <summary>
+    /// A spelling of <paramref name="path"/> that the runtime's file APIs resolve to the entry the operating system resolves
+    /// <paramref name="path"/> to. The runtime removes <c>..</c> parts lexically before every call (<c>link/../x</c> becomes
+    /// <c>x</c>), where a POSIX kernel, and so Python, steps to the parent of wherever <c>link</c> leads. Every part up to the last
+    /// <c>..</c> is therefore walked as the kernel walks it and the rest is appended as written, so a final link stays a link. On
+    /// Linux the walk reads link targets as bytes (<see cref="UnixPathWalk"/>) and expands a link only when a <c>..</c> steps out
+    /// of it, so a target whose name is not UTF-8 is never looked up under the U+FFFD spelling the runtime would give it. A part
+    /// before a <c>..</c> that is missing, a loop or not a directory (the kernel fails that lookup) yields a path under it that
+    /// cannot exist either. When the directory the kernel reaches can only be named with bytes that are not UTF-8, no spelling
+    /// the runtime accepts reaches it: the result is <see cref="Unreachable"/> joined with the rest, which names nothing. A path
+    /// without <c>..</c>, and every path on Windows (whose own path parsing removes <c>..</c> lexically, as the runtime does), is
+    /// returned unchanged.
+    /// </summary>
+    public static string KernelPath(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        if (OperatingSystem.IsWindows() || !path.Contains("..", StringComparison.Ordinal) || !path.Split('/').Contains("..", StringComparer.Ordinal))
+        {
+            return path;
+        }
+
+        var components = Absolute(path).Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var last = Array.LastIndexOf(components, "..");
+        if (UnixPathWalk.KernelPrefix(components[..(last + 1)]) is { } walked)
+        {
+            if (!walked.Nameable)
+            {
+                return Beneath(Unreachable, components.Skip(walked.Outcome == UnixPathWalk.Outcome.Failed ? walked.FailedIndex : last + 1));
+            }
+
+            return walked.Outcome == UnixPathWalk.Outcome.Failed
+                ? UnderFailedPart(walked.Text, components, walked.FailedIndex)
+                : Path.Join(walked.Text, string.Join('/', components.Skip(last + 1)));
+        }
+
+        var resolved = "/";
+        for (var index = 0; index <= last; index++)
+        {
+            var component = components[index];
+            if (string.Equals(component, "..", StringComparison.Ordinal))
+            {
+                resolved = Path.GetDirectoryName(resolved) ?? resolved;
+                continue;
+            }
+
+            var physical = ResolvePhysicalPath(Path.Join(resolved, component));
+            if (physical is null || !IsDirectoryAfterLinks(physical))
+            {
+                return UnderFailedPart(resolved, components, index);
+            }
+
+            resolved = physical;
+        }
+
+        return Path.Join(resolved, string.Join('/', components.Skip(last + 1)));
+    }
+
+    /// <summary>
+    /// The path <see cref="KernelPath"/> spells a result under when the directory the kernel reaches has no UTF-8 name: a name
+    /// under a character device, whose lookup fails with <c>ENOTDIR</c>, so neither it nor anything below it exists, is opened
+    /// or is created.
+    /// </summary>
+    internal const string Unreachable = "/dev/null/unreachable";
+
+    // The failed part joined onto the directory reached before it (a ".." that failed, a link expansion past the hop limit, goes
+    // under Unreachable).
+    private static string UnderFailedPart(string reached, string[] components, int failedIndex)
+        => string.Equals(components[failedIndex], "..", StringComparison.Ordinal)
+            ? Beneath(Unreachable, components.Skip(failedIndex))
+            : Beneath(Path.Join(reached, components[failedIndex]), components.Skip(failedIndex + 1));
+
+    // parts joined under a directory that does not exist, every ".." spelled as the ordinary name "..." so the runtime's lexical
+    // removal never climbs back out of it.
+    private static string Beneath(string directory, IEnumerable<string> parts)
+        => Path.Join(directory, string.Join('/', parts.Select(part => string.Equals(part, "..", StringComparison.Ordinal) ? "..." : part)));
+
+    private static bool IsDirectoryAfterLinks(string physical)
+    {
+        try
+        {
+            return UnixFileType.Stat(physical, followSymlinks: true) is { } kind ? kind == UnixFileType.Kind.Directory : Directory.Exists(physical);
+        }
+        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// <c>realpath</c>: resolves every link component of <paramref name="fullPath"/> against the physical directory
     /// resolved so far (the OS semantics <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/> does not follow, since it
-    /// joins a relative target with the link's lexical directory). Null for a link loop or a target that cannot be read.
+    /// joins a relative target with the link's lexical directory). Null for a link loop or a target that cannot be read. On
+    /// Linux link targets are read as bytes (<see cref="UnixPathWalk"/>); a physical path holding a name that is not UTF-8 comes
+    /// back with U+FFFD for it, text for a hash that names nothing to open (see <see cref="ResolvePhysicalPath(string, out bool)"/>).
     /// </summary>
-    public static string? ResolvePhysicalPath(string fullPath)
+    public static string? ResolvePhysicalPath(string fullPath) => ResolvePhysicalPath(fullPath, out _);
+
+    /// <summary>
+    /// <see cref="ResolvePhysicalPath(string)"/>; <paramref name="nameable"/> is false when the physical path holds a name that
+    /// is not UTF-8, so the text returned must not be opened: the runtime would look up the U+FFFD spelling, a different entry.
+    /// </summary>
+    internal static string? ResolvePhysicalPath(string fullPath, out bool nameable)
     {
+        nameable = true;
+        if (UnixPathWalk.TryResolvePhysical(fullPath, out var walked))
+        {
+            nameable = walked is not { Nameable: false };
+            return walked?.Text;
+        }
+
         var hops = MaxLinkHops;
         return ResolvePhysicalPath(fullPath, ref hops);
     }
@@ -150,9 +269,10 @@ public static class PythonPath
     public static IReadOnlyList<string> SortedGlob(string root, string pattern, CancellationToken cancellationToken = default)
     {
         var paths = PythonGlob.Glob(root, pattern, cancellationToken).ToList();
-        if (Directory.Exists(root))
+        var kernelRoot = KernelPath(root);
+        if (Directory.Exists(kernelRoot))
         {
-            using var listing = Directory.EnumerateFileSystemEntries(root).GetEnumerator();
+            using var listing = Directory.EnumerateFileSystemEntries(kernelRoot).GetEnumerator();
             _ = listing.MoveNext();
         }
 

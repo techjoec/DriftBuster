@@ -1,0 +1,5 @@
+{"description": "priorities at and past the 32-bit range: Python ints are unbounded", "fixes": [], "args": [], "requires": [],
+ "plans": [
+  {"host_id": "server01", "label": "S1", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"priority": 2147483647}},
+  {"host_id": "server02", "label": "S2", "scope": "custom_roots", "roots": ["fixtures/multi-server/server02"], "baseline": {"priority": 3000000000}}
+ ]}

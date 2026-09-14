@@ -1,0 +1,11 @@
+{
+  "description": "fix b: a root directory that cannot be listed and a root file that cannot be read",
+  "fixes": ["b"],
+  "args": [],
+  "requires": ["unprivileged"],
+  "plans": [
+    {"host_id": "server01", "label": "server01", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "lockeddir", "label": "Locked directory", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/unreadable-root/locked"]},
+    {"host_id": "lockedfile", "label": "Locked file", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/unreadable-root/locked.json"]}
+  ]
+}

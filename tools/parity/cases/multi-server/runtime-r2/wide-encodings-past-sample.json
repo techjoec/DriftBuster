@@ -1,0 +1,8 @@
+{
+  "description": "UTF-16LE with BOM past the 128 KiB sample (raw read whole as UTF-8 with replacement), UTF-16BE with CR breaks, an odd byte count and UTF-32 xml",
+  "fixes": [], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/wide/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/wide/hostB"]}
+  ]
+}

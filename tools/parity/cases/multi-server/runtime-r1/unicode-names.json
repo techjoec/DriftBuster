@@ -1,0 +1,8 @@
+{
+  "description": "file names with a Unicode 16.0 letter (U+1C89), an other-number, a combining mark, an astral emoji, U+FF5E and a letter number: slugs and code point order",
+  "fixes": ["a"], "args": [], "requires": [],
+  "plans": [
+    {"host_id": "a", "label": "Hôst A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/unicode/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
+    {"host_id": "b", "label": "Hôst B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/unicode/hostB"]}
+  ]
+}
