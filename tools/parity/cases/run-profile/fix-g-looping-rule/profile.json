@@ -1,0 +1,18 @@
+{
+  "name": "loop",
+  "sources": [
+    "input"
+  ],
+  "secret_scanner": {
+    "ruleset": {
+      "version": "loop",
+      "rules": [
+        {
+          "name": "SelfMatching",
+          "pattern": "secret",
+          "flags": "i"
+        }
+      ]
+    }
+  }
+}

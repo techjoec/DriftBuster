@@ -1,0 +1,9 @@
+{
+  "schedules": [
+    {
+      "name": "negative",
+      "profile": "negative-profile",
+      "every": -5
+    }
+  ]
+}

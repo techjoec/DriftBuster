@@ -1,0 +1,28 @@
+{
+  "schedules": [
+    {
+      "name": "win-list",
+      "profile": "win-list-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "window": [
+        "01:00",
+        "02:00"
+      ]
+    },
+    {
+      "name": "win-str",
+      "profile": "win-str-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "window": "01:00-02:00"
+    },
+    {
+      "name": "win-null",
+      "profile": "win-null-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "window": null
+    }
+  ]
+}

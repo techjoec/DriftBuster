@@ -1,0 +1,14 @@
+{
+  "schedules": [
+    {
+      "name": "nostart",
+      "profile": "nostart-profile",
+      "every": "90s",
+      "window": {
+        "start": "00:00:00",
+        "end": "23:59:59",
+        "timezone": "Asia/Kolkata"
+      }
+    }
+  ]
+}

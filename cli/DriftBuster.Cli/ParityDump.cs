@@ -44,6 +44,10 @@ public static partial class ParityDump
         command.Subcommands.Add(BuildSecrets());
         command.Subcommands.Add(BuildSecretsContext());
         command.Subcommands.Add(BuildMultiServer());
+        command.Subcommands.Add(BuildProfileStore());
+        command.Subcommands.Add(BuildProfileDiff());
+        command.Subcommands.Add(BuildRunProfile());
+        command.Subcommands.Add(BuildSchedule());
         return command;
     }
 

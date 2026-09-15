@@ -1,0 +1,21 @@
+{
+  "schedules": [
+    {
+      "name": "short",
+      "profile": "short-profile",
+      "every": "1h",
+      "window": {
+        "start": "9",
+        "end": "10:00"
+      }
+    },
+    {
+      "name": "no-end",
+      "profile": "no-end-profile",
+      "every": "1h",
+      "window": {
+        "start": "09:00"
+      }
+    }
+  ]
+}

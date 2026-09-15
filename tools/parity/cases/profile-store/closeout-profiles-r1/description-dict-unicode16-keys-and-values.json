@@ -1,0 +1,22 @@
+{
+ "profiles": [
+  {
+   "name": "p",
+   "description": {
+    "\u1b7f": "\ud839\uddff",
+    "\u2426": [
+     "\ud83e\udec6",
+     "\ud83e\udec5"
+    ]
+   },
+   "configs": [
+    {
+     "id": "c",
+     "version": {
+      "\ud81b\udd40": 1.5
+     }
+    }
+   ]
+  }
+ ]
+}

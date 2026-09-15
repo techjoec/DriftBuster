@@ -1,0 +1,18 @@
+{
+  "profiles": [
+    {
+      "name": "p",
+      "tags": [
+        null,
+        "",
+        "  "
+      ],
+      "configs": [
+        {
+          "id": "c",
+          "tags": null
+        }
+      ]
+    }
+  ]
+}

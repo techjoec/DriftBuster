@@ -1,0 +1,11 @@
+{
+  "profiles": [
+    {
+      "name": "web",
+      "config_count": 1,
+      "config_ids": [
+        "a"
+      ]
+    }
+  ]
+}

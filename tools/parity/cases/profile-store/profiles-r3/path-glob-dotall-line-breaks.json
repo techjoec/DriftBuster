@@ -1,0 +1,21 @@
+{
+ "profiles": [
+  {
+   "name": "p",
+   "configs": [
+    {
+     "id": "a",
+     "path_glob": "a*b"
+    },
+    {
+     "id": "b",
+     "path_glob": "a?b"
+    },
+    {
+     "id": "c",
+     "path": "a\rb"
+    }
+   ]
+  }
+ ]
+}

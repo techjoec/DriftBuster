@@ -1,0 +1,7 @@
+{
+  "name": "nomatch",
+  "sources": [
+    "logs/*.missing",
+    "app.json"
+  ]
+}

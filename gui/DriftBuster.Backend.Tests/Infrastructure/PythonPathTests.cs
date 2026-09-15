@@ -183,6 +183,48 @@ public sealed class PythonPathTests : IDisposable
         nameable.Should().BeTrue();
     }
 
+    // CPython 3.13, Path(p).mkdir(parents=True, exist_ok=True) in the same tree: new/../sub/leaf creates new and sub/leaf;
+    // new2/a/../../sub2 creates new2/a and sub2; shortcut/../made creates real/app/made.
+    [Fact]
+    public void MakeDirectoriesStepsOutOfADirectoryItHasJustCreated()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "'..' after a symlink resolves physically on POSIX kernels");
+        var tree = DotDotTree();
+        var before = Directory.EnumerateFileSystemEntries(tree, "*", SearchOption.AllDirectories).ToHashSet(StringComparer.Ordinal);
+
+        PythonPath.MakeDirectories($"{tree}/new/../sub/leaf");
+        PythonPath.MakeDirectories($"{tree}/new2/a/../../sub2");
+        PythonPath.MakeDirectories($"{tree}/shortcut/../made");
+        PythonPath.MakeDirectories($"{tree}/shortcut/../made");
+
+        Directory.EnumerateFileSystemEntries(tree, "*", SearchOption.AllDirectories).Where(entry => !before.Contains(entry)).Order(StringComparer.Ordinal)
+            .Should().Equal(
+                Path.Combine(tree, "new"),
+                Path.Combine(tree, "new2"),
+                Path.Combine(tree, "new2", "a"),
+                Path.Combine(tree, "real", "app", "made"),
+                Path.Combine(tree, "sub"),
+                Path.Combine(tree, "sub", "leaf"),
+                Path.Combine(tree, "sub2"));
+    }
+
+    // CPython 3.13, Path(p).mkdir(parents=True, exist_ok=True): the OSError names the directory whose os.mkdir failed, as str(Path) spells it.
+    [Fact]
+    public void MakeDirectoriesRaisesPythonsOSErrorNamingTheDirectoryThatFailed()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "errno text is the Linux kernel's");
+        var tree = DotDotTree();
+
+        var through = () => PythonPath.MakeDirectories($"{tree}/file.txt/x//y/");
+        through.Should().Throw<IOException>().WithMessage($"[Errno 20] Not a directory: '{tree}/file.txt/x/y'")
+            .Which.HResult.Should().Be(PythonOSError.NotADirectory);
+        var onFile = () => PythonPath.MakeDirectories($"{tree}/./file.txt");
+        onFile.Should().Throw<IOException>().WithMessage($"[Errno 17] File exists: '{tree}/file.txt'")
+            .Which.HResult.Should().Be(PythonOSError.FileExists);
+        PythonPath.MakeDirectories($"{tree}/shortcut/");
+        PythonPath.MakeDirectories(".");
+    }
+
     [Fact]
     public void KernelPathJoinsARelativePathOntoTheWorkingDirectoryFirst()
     {

@@ -7,13 +7,24 @@ public static class PathText
         ? [Path.DirectorySeparatorChar]
         : [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
-    /// <summary>The final path component as <c>PurePath.name</c> returns it: trailing separators ignored, "." and "/" give "".</summary>
+    /// <summary>
+    /// The final path component as <c>PurePath.name</c> returns it: trailing separators and "." parts are dropped first (as the path
+    /// parser drops them), so <c>a/./</c> gives "a", while "." and "/" give "".
+    /// </summary>
     public static string Name(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
         var trimmed = path.TrimEnd(Separators);
-        var name = Path.GetFileName(trimmed);
-        return string.Equals(name, ".", StringComparison.Ordinal) ? string.Empty : name;
+        while (true)
+        {
+            var name = Path.GetFileName(trimmed);
+            if (!string.Equals(name, ".", StringComparison.Ordinal))
+            {
+                return name;
+            }
+
+            trimmed = trimmed[..^1].TrimEnd(Separators);
+        }
     }
 
     /// <summary><see cref="Name"/> lowered with the invariant culture, matching <c>path.name.lower()</c>.</summary>

@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "next-day-gap",
+      "profile": "next-day-gap-profile",
+      "every": "1d",
+      "start_at": "2025-03-08T08:00:00Z",
+      "window": {
+        "start": "02:30",
+        "end": "02:40",
+        "timezone": "America/New_York"
+      }
+    }
+  ]
+}

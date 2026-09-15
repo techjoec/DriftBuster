@@ -1,0 +1,9 @@
+{
+  "schedules": [
+    {
+      "name": "\u001c\u001d\u001e\u001f\u0085",
+      "profile": "\u001c\u001d\u001e\u001f\u0085-profile",
+      "every": "1h"
+    }
+  ]
+}

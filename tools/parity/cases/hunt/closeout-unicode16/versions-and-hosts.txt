@@ -1,0 +1,4 @@
+﻿app version 𜳱.2.3 and version 1.2𑯰.4 and version 7.8.9𖵰
+server host Ᲊapi.corp.local and host apiᲊ.lan and host 𐗀node.internal
+certificate thumbprint 𞗐0123456789abcdef0123456789abcdef01234567𞗑
+version ٣.٤.٥ and version 𝟎.1.2 and server host aࢗb.corp.local

@@ -1,0 +1,19 @@
+{
+ "name": "a b",
+ "sources": [
+  {
+   "path": "Profiles/a-b2",
+   "alias": "x",
+   "optional": true
+  },
+  {
+   "path": "Profiles/*/*.txt",
+   "alias": "g",
+   "optional": true
+  },
+  {
+   "path": "in.txt",
+   "alias": "i"
+  }
+ ]
+}

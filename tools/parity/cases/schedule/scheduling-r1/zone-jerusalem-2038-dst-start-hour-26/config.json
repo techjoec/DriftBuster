@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "il",
+      "profile": "il-profile",
+      "every": "1h",
+      "start_at": "2038-03-25T00:00:00Z",
+      "window": {
+        "start": "02:00",
+        "end": "03:30",
+        "timezone": "Asia/Jerusalem"
+      }
+    }
+  ]
+}

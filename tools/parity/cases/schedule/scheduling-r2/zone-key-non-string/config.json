@@ -1,0 +1,14 @@
+{
+  "schedules": [
+    {
+      "name": "num",
+      "profile": "num-profile",
+      "every": "1h",
+      "window": {
+        "start": "01:00",
+        "end": "02:00",
+        "timezone": 0
+      }
+    }
+  ]
+}

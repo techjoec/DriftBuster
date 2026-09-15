@@ -377,9 +377,11 @@ public class Detector
     }
 
     /// <summary>
-    /// Scans <paramref name="root"/> and annotates every result with the profile configs that apply to its path
-    /// (relative to a directory root, the bare file name otherwise). When any applicable config sets
-    /// <c>ignore_review_flags</c>, a flagged detection gets <c>review_ignored</c> and <c>needs_review</c> cleared.
+    /// <c>scan_with_profiles</c>: scans <paramref name="root"/> and annotates every result with the profile configs that apply to
+    /// its path (<c>path.relative_to(root).as_posix()</c> under a directory root, falling back to the file name when the path is
+    /// not under it; the bare file name for a file root). When any applicable config's metadata sets a truthy
+    /// <c>ignore_review_flags</c>, a detection whose <c>needs_review</c> is truthy gets <c>review_ignored</c> true and
+    /// <c>needs_review</c> false; an exception while reading the applied configs counts as not ignoring.
     /// </summary>
     public IReadOnlyList<ProfiledDetection> ScanWithProfiles(
         string root,
@@ -388,7 +390,10 @@ public class Detector
         string glob = "**/*")
     {
         ArgumentNullException.ThrowIfNull(root);
-        ArgumentNullException.ThrowIfNull(profileStore, nameof(profileStore));
+        if (profileStore is null)
+        {
+            throw new PythonValueException("profile_store must be provided", nameof(profileStore));
+        }
 
         var normalizedTags = ProfileTags.Normalize(tags);
         var scanResults = ScanPath(root, glob);
@@ -397,22 +402,21 @@ public class Detector
 
         foreach (var (path, detection) in scanResults)
         {
-            var relative = rootIsDir ? RelativeToRoot(root, path) : PathText.Name(path);
+            var relative = rootIsDir ? PythonPurePath.RelativeTo(path, root) ?? PathText.Name(path) : PathText.Name(path);
             var applied = profileStore.MatchingConfigs(normalizedTags, relative);
-            if (detection?.Metadata is { } metadata)
+            if (detection?.Metadata is { Count: > 0 } metadata)
             {
                 bool ignore;
                 try
                 {
-                    ignore = applied.Any(cfg => IsTruthy(cfg.Config.Metadata is { } configMetadata
-                        && configMetadata.TryGetValue("ignore_review_flags", out var flag) ? flag : null));
+                    ignore = applied.Any(cfg => PythonBuiltins.IsTruthy(cfg.Config.Metadata.TryGetValue("ignore_review_flags", out var flag) ? flag : null));
                 }
                 catch (Exception exc) when (exc is not OutOfMemoryException)
                 {
                     ignore = false;
                 }
 
-                if (ignore && metadata.TryGetValue("needs_review", out var needsReview) && IsTruthy(needsReview))
+                if (ignore && metadata.TryGetValue("needs_review", out var needsReview) && PythonBuiltins.IsTruthy(needsReview))
                 {
                     metadata["review_ignored"] = true;
                     metadata["needs_review"] = false;
@@ -424,34 +428,6 @@ public class Detector
 
         return profiled;
     }
-
-    // Path.relative_to(root).as_posix(), falling back to the file name when the path is not under the root.
-    private static string RelativeToRoot(string root, string path)
-    {
-        var relative = Path.GetRelativePath(root, path);
-        if (Path.IsPathRooted(relative)
-            || string.Equals(relative, "..", StringComparison.Ordinal)
-            || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-            || relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal))
-        {
-            return PathText.Name(path);
-        }
-
-        return PathText.ToPosix(relative);
-    }
-
-    // Python bool() of the values a metadata mapping can carry.
-    private static bool IsTruthy(object? value) => value switch
-    {
-        null => false,
-        bool flag => flag,
-        string text => text.Length > 0,
-        int number => number != 0,
-        long number => number != 0,
-        double number => number != 0,
-        System.Collections.ICollection collection => collection.Count > 0,
-        _ => true,
-    };
 
     /// <summary>Convenience wrapper mirroring the module-level <c>scan_file</c>: a fresh detector per call.</summary>
     public static DetectionMatch? ScanFileWithDefaults(
@@ -489,7 +465,7 @@ public class Detector
         var offset = 0;
         foreach (var rune in component.EnumerateRunes())
         {
-            if (Rune.IsLetter(rune))
+            if (PythonUnicode.IsAlpha(rune.Value))
             {
                 return string.Concat(component.AsSpan(0, offset), PythonText.Upper(rune), component.AsSpan(offset + rune.Utf16SequenceLength));
             }

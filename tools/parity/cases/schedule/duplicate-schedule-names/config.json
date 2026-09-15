@@ -1,0 +1,14 @@
+{
+  "schedules": [
+    {
+      "name": "same",
+      "profile": "same-profile",
+      "every": "1h"
+    },
+    {
+      "name": "same",
+      "profile": "same-profile",
+      "every": "2h"
+    }
+  ]
+}

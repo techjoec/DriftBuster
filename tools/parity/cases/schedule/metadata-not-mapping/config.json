@@ -1,0 +1,12 @@
+{
+  "schedules": [
+    {
+      "name": "meta",
+      "profile": "meta-profile",
+      "every": "1h",
+      "metadata": [
+        "x"
+      ]
+    }
+  ]
+}

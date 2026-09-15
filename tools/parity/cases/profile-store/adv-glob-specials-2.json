@@ -1,0 +1,25 @@
+{
+  "profiles": [
+    {
+      "name": "g",
+      "configs": [
+        {
+          "id": "negated-empty",
+          "path_glob": "[!]a]"
+        },
+        {
+          "id": "backslash",
+          "path_glob": "a\\*b"
+        },
+        {
+          "id": "regex-chars",
+          "path_glob": "a.(b)+{c}$"
+        },
+        {
+          "id": "newline",
+          "path_glob": "a*"
+        }
+      ]
+    }
+  ]
+}

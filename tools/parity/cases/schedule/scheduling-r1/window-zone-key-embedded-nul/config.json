@@ -1,0 +1,1 @@
+{"schedules": [{"name": "window-zone-key-embedded-nul", "profile": "p", "every": "1h", "window": {"start": "01:00", "end": "02:00", "timezone": "UTC\u0000"}}]}

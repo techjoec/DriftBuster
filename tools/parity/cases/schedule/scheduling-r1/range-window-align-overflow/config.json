@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "edge",
+      "profile": "edge-profile",
+      "every": "1h",
+      "start_at": "9999-12-31T22:00:00Z",
+      "window": {
+        "start": "01:00",
+        "end": "02:00",
+        "timezone": "UTC"
+      }
+    }
+  ]
+}

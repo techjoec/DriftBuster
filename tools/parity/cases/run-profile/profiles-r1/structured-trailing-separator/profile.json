@@ -1,0 +1,13 @@
+{
+  "name": "trail",
+  "sources": [
+    {
+      "path": "./conf//",
+      "alias": "c"
+    },
+    {
+      "path": "conf/../conf/a.txt",
+      "alias": "f"
+    }
+  ]
+}

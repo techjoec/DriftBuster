@@ -1,0 +1,22 @@
+{
+  "profiles": [
+    {
+      "name": "both",
+      "configs": [
+        {
+          "id": "path-and-glob",
+          "path": "exact/app.json",
+          "path_glob": "globbed/*.json"
+        },
+        {
+          "id": "path-only",
+          "path": "globbed/app.json"
+        },
+        {
+          "id": "glob-only",
+          "path_glob": "exact/*"
+        }
+      ]
+    }
+  ]
+}

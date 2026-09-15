@@ -1,0 +1,7 @@
+{
+  "name": "missing",
+  "sources": [
+    "app.json",
+    "nope.json"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "schedules": [
+    {
+      "name": "posixrules",
+      "profile": "posixrules-profile",
+      "every": "1h",
+      "start_at": "2025-03-09T06:30:00Z",
+      "window": {
+        "start": "03:00",
+        "end": "04:00",
+        "timezone": "posixrules"
+      }
+    },
+    {
+      "name": "factory",
+      "profile": "factory-profile",
+      "every": "1h",
+      "start_at": "2025-03-09T06:30:00Z",
+      "window": {
+        "start": "03:00",
+        "end": "04:00",
+        "timezone": "Factory"
+      }
+    },
+    {
+      "name": "right",
+      "profile": "right-profile",
+      "every": "1h",
+      "start_at": "2025-03-09T06:30:00Z",
+      "window": {
+        "start": "03:00",
+        "end": "04:00",
+        "timezone": "right/America/Chicago"
+      }
+    },
+    {
+      "name": "posix",
+      "profile": "posix-profile",
+      "every": "1h",
+      "start_at": "2025-03-09T06:30:00Z",
+      "window": {
+        "start": "03:00",
+        "end": "04:00",
+        "timezone": "right/Asia/Tokyo"
+      }
+    }
+  ]
+}

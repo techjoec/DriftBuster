@@ -1,0 +1,13 @@
+{
+  "name": "through link",
+  "sources": [
+    {
+      "path": "tree/*/sub",
+      "alias": "s"
+    },
+    {
+      "path": "tree/*/f.txt",
+      "alias": "f"
+    }
+  ]
+}

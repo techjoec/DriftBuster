@@ -358,14 +358,8 @@ internal static class PlaceholderFormatter
             return false;
         }
 
-        var rune = new Rune(code);
-        if (Rune.GetUnicodeCategory(rune) != UnicodeCategory.DecimalDigitNumber)
-        {
-            return false;
-        }
-
-        digit = (int)Rune.GetNumericValue(rune);
-        return true;
+        digit = PythonUnicode.DecimalValue(code);
+        return digit >= 0;
     }
 
     // PyObject_ASCII: the repr with every non-ASCII code point backslash-escaped.

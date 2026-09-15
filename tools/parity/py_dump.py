@@ -13,6 +13,11 @@ Usage:
     py_dump.py secrets <path> [--ruleset R]
     py_dump.py secrets-context <config.json | directory>
     py_dump.py multi-server <plans.json> [--sample-budget N] [--sample-size N] [--runs N]
+    py_dump.py profile-store <payload.json> [--tags t1,t2] [--path rel]
+    py_dump.py profile-diff <baseline.json> <current.json>
+    py_dump.py run-profile <profile.json> <workdir> [--scratch DIR]
+    py_dump.py schedule <config.json> <state.json> list|due|mark-complete|skip-until [--at T] [--name N] [--completed-at T]
+                        [--resume-at T] [--now T]
 
 Both surfaces enumerate the path with the Python ``Detector.scan_path`` itself (a tolerant
 subclass that records I/O errors instead of raising), so walk order, symlink handling and
@@ -58,6 +63,26 @@ file that receives every config id the runner assigned (host, root position, rel
 when ``_build_plans`` or ``run()`` raises, that exception with the run it ended (the dump then exits with it).
 With ``PARITY_PORT_CLI`` set, a namespaced xml payload is canonicalised by the port (fix d, ``_PortXmlCanonical``).
 
+``profile-store`` builds the store with ``profile_cli._store_from_payload(_load_json(payload))`` and prints ``summary``,
+``applicable_profiles`` (names) and ``matching_configs`` for ``--tags`` (split on commas) and ``--path``, ``find_config`` for every
+identifier plus one that is not registered, ``to_dict`` and ``round_trip`` (the ``to_dict`` of a store rebuilt from it); a build that
+raises is the record's ``error`` (``{"type", "message"}``), a stage that raises that stage's. ``profile-diff`` prints
+``diff_summary_snapshots`` of two ``_load_json`` payloads as ``diff``, or the ``error``. ``run-profile`` copies ``workdir`` to
+``<scratch>/work`` (the harness gives both dumps one scratch path, so absolute paths agree), makes it the working directory and runs
+``execute_profile`` with a fixed timestamp: ``result`` (``to_dict``), ``collected`` (source, alias directory, relative path, size,
+SHA-256 per file), ``error``, ``redaction_guard`` and ``profiles`` (every file under ``Profiles/`` with size, SHA-256 and the text of
+``profile.json`` and ``metadata.json``), the working directory respelled ``<workdir>``. With ``PARITY_SECRETS_TIMEOUT`` set, a copy that
+has not returned in time (fix g) is redone with ``secrets_guard.py``'s reference model and reported on stderr as ``fix g: <path>``. With
+``PARITY_RUN_PROFILE_SURROGATE_NAMES=1`` a variable or user name holding an unpaired surrogate is looked up as not found instead of
+raising (decision R, ``_SurrogateNameLookups``). A profile with a structured source (a mapping that sets an alias, optional or exclude patterns, names a registry scan or SQL snapshot,
+or that ``OfflineCollectionSource.from_dict`` refuses) has no ``execute_profile`` counterpart: the dump prints ``"mode": "offline-runner"``
+with the ``collected`` set, secret ``findings``, ``redaction_guard`` and expected ``profile_json`` of ``offline_runner.execute_config``
+instead (structured sources, plan decision); a mapping holding only a path is run as that path string. ``schedule`` runs one
+``run_profiles_cli`` schedule command over the manifest and a scratch copy of the state file with ``ProfileScheduler._now`` fixed at
+``--now`` and prints ``output`` (the payload ``_print_json`` receives) or ``error``, then ``state`` (the state file's text); with
+``PARITY_SCHEDULE_JSON_CALL_BUDGET=1`` a decode that ran out of call budget at the nesting limit is redone as ``_JsonCallBudget``
+describes. Each of these records carries ``key_order``.
+
 Every string in a record has each unpaired surrogate (a lone ``\\ud83d`` escape in a JSON key, say) rewritten to the
 six characters ``\\uXXXX`` before serialisation, exactly as the port's ``CanonicalJson`` does: a UTF-8 stdout cannot
 encode the code point and jq rejects the JSON escape of a lone surrogate. A record the dump itself cannot produce
@@ -67,6 +92,7 @@ is emitted as ``{"path", "error": "DumpError: ..."}`` so one file never aborts t
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -996,6 +1022,568 @@ def _write_multi_server_records(records_path: str, instrument: _MultiServerFixes
     Path(records_path).write_text(json.dumps(_escape_lone_surrogates(records), sort_keys=True, ensure_ascii=False), encoding="utf-8")
 
 
+def _error_payload(exc: BaseException) -> dict[str, object]:
+    """The exception as ``{"type", "message"}``: ``type(exc).__name__`` and ``str(exc)`` (``SystemExit`` its code as text)."""
+
+    message = str(exc.code) if isinstance(exc, SystemExit) else str(exc)
+    return {"type": type(exc).__name__, "message": message}
+
+
+def _emit_keyed(record: dict[str, object]) -> None:
+    record["key_order"] = _key_order(record)
+    _emit(record)
+
+
+def _stage(record: dict[str, object], key: str, produce) -> None:
+    """``record[key] = produce()``, or ``{"error": ...}`` when it raises."""
+
+    try:
+        record[key] = produce()
+    except Exception as exc:  # one stage never aborts the record
+        record[key] = {"error": _error_payload(exc)}
+
+
+def _applied_payload(match) -> dict[str, object]:
+    return {
+        "profile": match.profile.name,
+        "config": match.config.identifier,
+        "path": match.config.path,
+        "path_glob": match.config.path_glob,
+        "expected_format": match.config.expected_format,
+        "expected_variant": match.config.expected_variant,
+    }
+
+
+def cmd_profile_store(args: argparse.Namespace) -> int:
+    from driftbuster import profile_cli
+
+    record: dict[str, object] = {}
+    try:
+        store = profile_cli._store_from_payload(profile_cli._load_json(Path(args.payload)))
+    except Exception as exc:
+        record["error"] = _error_payload(exc)
+        _emit_keyed(record)
+        return 0
+    normalise = profile_cli._normalise_payload
+    tags = None if args.tags is None else args.tags.split(",")
+    _stage(record, "summary", lambda: normalise(store.summary()))
+    _stage(record, "applicable_profiles", lambda: [profile.name for profile in store.applicable_profiles(tags)])
+    _stage(record, "matching_configs", lambda: [_applied_payload(match) for match in store.matching_configs(tags, relative_path=args.path)])
+    snapshot = normalise(store.to_dict())
+    identifiers = [config["id"] for profile in snapshot["profiles"] for config in profile["configs"]] + ["<no-such-config>"]
+    record["find_config"] = [
+        {"id": identifier, "matches": [_applied_payload(match) for match in store.find_config(identifier)]} for identifier in identifiers
+    ]
+    record["to_dict"] = snapshot
+    _stage(record, "round_trip", lambda: normalise(profile_cli._store_from_payload(json.loads(json.dumps(snapshot))).to_dict()))
+    _emit_keyed(record)
+    return 0
+
+
+def cmd_profile_diff(args: argparse.Namespace) -> int:
+    from driftbuster import profile_cli
+
+    record: dict[str, object] = {}
+    try:
+        baseline = profile_cli._load_json(Path(args.baseline))
+        current = profile_cli._load_json(Path(args.current))
+        record["diff"] = profile_cli._normalise_payload(profile_cli.diff_summary_snapshots(baseline, current))
+    except Exception as exc:
+        record["error"] = _error_payload(exc)
+    _emit_keyed(record)
+    return 0
+
+
+WORKDIR_TOKEN = "<workdir>"
+RUN_PROFILE_TIMESTAMP = "20250102T030405Z"
+
+
+def _respell(value: object, prefix: str) -> object:
+    """Every str with the scratch working directory replaced by ``<workdir>``."""
+
+    if isinstance(value, str):
+        return value.replace(prefix, WORKDIR_TOKEN)
+    if isinstance(value, dict):
+        return {key: _respell(item, prefix) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_respell(item, prefix) for item in value]
+    return value
+
+
+def _profiles_listing(work: Path, prefix: str) -> list[dict[str, object]]:
+    """Every file under ``Profiles/`` by code point order of its posix path: size, SHA-256 and, for profile.json and
+    metadata.json, the text."""
+
+    root = work / "Profiles"
+    entries: list[dict[str, object]] = []
+    if not root.is_dir():
+        return entries
+    for directory, _dirs, names in os.walk(root):
+        for name in names:
+            path = Path(directory) / name
+            raw = path.read_bytes()
+            entry: dict[str, object] = {
+                "path": path.relative_to(work).as_posix(),
+                "size": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+            if name in {"profile.json", "metadata.json"}:
+                entry["text"] = raw.decode("utf-8", "replace").replace(prefix, WORKDIR_TOKEN)
+            entries.append(entry)
+    return sorted(entries, key=lambda entry: str(entry["path"]))
+
+
+class _GuardedCopy:
+    """Fix g seam for run-profile: each ``copy_with_secret_filter`` call gets ``PARITY_SECRETS_TIMEOUT`` seconds; a copy that has not
+    returned is redone with ``secrets_guard.py``'s reference model (findings and log lines of the abandoned copy discarded), whose
+    guards are recorded. Each substitution is reported on stderr as ``fix g: <display path>``."""
+
+    def __init__(self) -> None:
+        self.original = secret_scanning.copy_with_secret_filter
+        self.guards: list[dict[str, object]] = []
+        self.timeout = float(os.environ.get("PARITY_SECRETS_TIMEOUT") or 0)
+
+    def __enter__(self):
+        secret_scanning.copy_with_secret_filter = self  # type: ignore[assignment]
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        secret_scanning.copy_with_secret_filter = self.original
+
+    def __call__(self, source, destination, *, display_path, context, log, binary_detector=None):
+        if self.timeout <= 0:
+            return self.original(source, destination, display_path=display_path, context=context, log=log)
+        kept = len(context.findings)
+        buffered: list[str] = []
+        previous = signal.signal(signal.SIGALRM, _raise_timeout)
+        signal.setitimer(signal.ITIMER_REAL, self.timeout)
+        try:
+            result = self.original(source, destination, display_path=display_path, context=context, log=buffered.append)
+        except _SecretTimeout:
+            result = None
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous)
+        if result is None:
+            del context.findings[kept:]
+            buffered = []
+            print(f"fix g: {display_path}", file=sys.stderr)
+            result = self._model_copy(Path(source), Path(destination), display_path, context, buffered.append)
+        for message in buffered:
+            log(message)
+        return result
+
+    def _model_copy(self, source: Path, destination: Path, display_path: str, context, log) -> tuple[int, str]:
+        import secrets_guard
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        sanitized: list[str] = []
+        matches = 0
+        with source.open("r", encoding="utf-8", errors="replace") as handle:
+            for lineno, line in enumerate(handle, 1):
+                guards: list[dict[str, object]] = []
+                working, findings, logs = secrets_guard._redact_line(line, lineno, display_path, context, guards)
+                self.guards.extend({"path": display_path, **guard} for guard in guards)
+                context.findings.extend(findings)
+                for message in logs:
+                    log(message)
+                matches += len(logs)
+                sanitized.append(working if logs else line)
+        if matches:
+            destination.write_text("".join(sanitized), encoding="utf-8")
+            log(f"scrubbed {matches} potential secret line(s) from {display_path}")
+        else:
+            shutil.copy2(source, destination)
+        return destination.stat().st_size, secret_scanning.hash_file(destination)
+
+
+class _SurrogateNameLookups:
+    """Decision R seam for run-profile (``PARITY_RUN_PROFILE_SURROGATE_NAMES=1``): a ``$name`` / ``${name}`` lookup in ``os.environ`` or a
+    ``~name`` lookup in ``pwd.getpwnam`` whose name cannot be encoded (it holds an unpaired surrogate) finds nothing instead of raising
+    ``UnicodeEncodeError``, which is how ``PythonOsPath.ExpandVars`` / ``ExpandUser`` treat such a name, so the rest of the run is Python's
+    own. Each lookup handled so is reported on stderr as ``surrogate name lookup: <ascii name>``."""
+
+    MISSING_KEY = b"\0parity-unencodable-name"
+
+    def __init__(self) -> None:
+        import pwd
+
+        self.pwd = pwd
+        self.original_encodekey = os.environ.encodekey  # type: ignore[attr-defined]
+        self.original_getpwnam = pwd.getpwnam
+
+    def __enter__(self):
+        def encodekey(key):
+            try:
+                return self.original_encodekey(key)
+            except UnicodeEncodeError:
+                print(f"surrogate name lookup: {ascii(key)}", file=sys.stderr)
+                return self.MISSING_KEY
+
+        def getpwnam(name):
+            try:
+                return self.original_getpwnam(name)
+            except UnicodeEncodeError:
+                print(f"surrogate name lookup: {ascii(name)}", file=sys.stderr)
+                raise KeyError(name) from None
+
+        os.environ.encodekey = encodekey  # type: ignore[attr-defined]
+        self.pwd.getpwnam = getpwnam
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        os.environ.encodekey = self.original_encodekey  # type: ignore[attr-defined]
+        self.pwd.getpwnam = self.original_getpwnam
+
+
+def _structured_entry(entry: object) -> bool:
+    """A structured source: a mapping naming a registry scan or SQL snapshot, one ``OfflineCollectionSource.from_dict`` refuses, or one
+    that sets an alias, optional or exclude patterns (the port's ``RunProfile.IsStructuredPayload``)."""
+
+    from driftbuster import offline_runner
+
+    if not isinstance(entry, dict):
+        return False
+    if "registry_scan" in entry or "sql_snapshot" in entry:
+        return True
+    try:
+        source = offline_runner.OfflineCollectionSource.from_dict(entry)
+    except Exception:
+        return True
+    return bool(source.alias or source.optional or source.exclude)
+
+
+def _structured(payload: object) -> bool:
+    sources = payload.get("sources") if isinstance(payload, dict) else None
+    return isinstance(sources, list) and any(_structured_entry(entry) for entry in sources)
+
+
+def _path_only_sources(payload: object) -> object:
+    """A mapping source holding only a path is a string source (plan decision): each becomes ``from_dict(entry).path``."""
+
+    from driftbuster import offline_runner
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("sources"), list):
+        return payload
+    sources = [
+        offline_runner.OfflineCollectionSource.from_dict(entry).path if isinstance(entry, dict) else entry for entry in payload["sources"]
+    ]
+    return {**payload, "sources": sources}
+
+
+def _structured_profile_json(config) -> str:
+    """``profile.json`` as the port writes a structured profile: ``RunProfile.to_dict()`` of the profile's name, description, baseline,
+    options and secret scanner, with each source a bare path when it sets nothing else, otherwise ``{path, alias?, optional?, exclude?}``,
+    through ``json.dumps(indent=2, sort_keys=True)``."""
+
+    from driftbuster.core import run_profiles
+
+    profile = config.profile
+    model = run_profiles.RunProfile(
+        name=profile.name,
+        description=profile.description,
+        sources=(),
+        baseline=profile.baseline,
+        options=profile.options,
+        secret_scanner=profile.secret_scanner,
+    )
+    payload = dict(model.to_dict())
+    sources: list[object] = []
+    for source in profile.sources:
+        if not (source.alias or source.optional or source.exclude):
+            sources.append(source.path)
+            continue
+        entry: dict[str, object] = {"path": source.path}
+        if source.alias:
+            entry["alias"] = source.alias
+        if source.optional:
+            entry["optional"] = True
+        if source.exclude:
+            entry["exclude"] = list(source.exclude)
+        sources.append(entry)
+    payload["sources"] = sources
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def _collected_sort_key(entry: dict[str, object]) -> tuple[str, str, str]:
+    return (str(entry["source"]), str(entry["directory"] or ""), str(entry["relative"]))
+
+
+def _offline_run(payload: dict[str, object], scratch: Path, guarded: _GuardedCopy) -> dict[str, object]:
+    """What ``offline_runner.execute_config`` collects for the profile (plan decision, structured sources): ``collected``, the secret
+    ``findings`` and fix g ``redaction_guard`` entries with each display path under its source directory (the offline runner's first part,
+    the source's directory under ``data/``, dropped, as the port reports paths under the source directory), both sorted, and
+    ``profile_json``, the text the port writes for the profile."""
+
+    from driftbuster import offline_runner
+
+    config = offline_runner.OfflineRunnerConfig.from_dict(
+        {
+            "profile": payload,
+            "runner": {
+                "compress": False,
+                "cleanup_staging": False,
+                "include_logs": False,
+                "include_manifest": False,
+                "include_config": False,
+                "output_directory": str(scratch / "offline"),
+            },
+        }
+    )
+    contexts: list[object] = []
+    original_build = offline_runner._build_secret_context
+
+    def capture(options, secret_scanner):
+        context = original_build(options, secret_scanner)
+        contexts.append(context)
+        return context
+
+    offline_runner._build_secret_context = capture
+    try:
+        result = offline_runner.execute_config(config, timestamp=RUN_PROFILE_TIMESTAMP)
+    finally:
+        offline_runner._build_secret_context = original_build
+    aliases = {}
+    for source in config.profile.sources:
+        aliases.setdefault(source.path, getattr(source, "alias", None))
+    collected = [
+        {
+            "source": entry.source,
+            "directory": entry.relative_path.parts[0] if aliases.get(entry.source) else None,
+            "relative": Path(*entry.relative_path.parts[1:]).as_posix(),
+            "size": entry.size,
+            "sha256": entry.sha256,
+        }
+        for entry in result.files
+    ]
+
+    def under_source(path: str) -> str:
+        return path.split("/", 1)[1] if "/" in path else path
+
+    findings = [
+        {"path": under_source(finding.path), "rule": finding.rule, "line": finding.line, "snippet": finding.snippet}
+        for context in contexts
+        for finding in context.findings
+    ]
+    guards = [{**guard, "path": under_source(str(guard["path"]))} for guard in guarded.guards]
+    return {
+        "collected": sorted(collected, key=_collected_sort_key),
+        "findings": _sorted_findings(findings),
+        "redaction_guard": _sorted_findings(guards),
+        "profile_json": _structured_profile_json(config),
+    }
+
+
+def _sorted_findings(entries: list[dict[str, object]]) -> list[dict[str, object]]:
+    return sorted(entries, key=lambda entry: json.dumps(entry, sort_keys=True, ensure_ascii=False))
+
+
+def cmd_run_profile(args: argparse.Namespace) -> int:
+    from driftbuster.core import run_profiles
+
+    profile_path = Path(args.profile).resolve()
+    workdir = Path(args.workdir).resolve()
+    scratch = Path(args.scratch) if args.scratch else Path(tempfile.mkdtemp(prefix="driftbuster-parity-run-profile-"))
+    scratch.mkdir(parents=True, exist_ok=True)
+    work = scratch / "work"
+    if workdir.is_dir():
+        shutil.copytree(workdir, work, symlinks=True)
+    else:
+        work.mkdir()
+    previous = os.getcwd()
+    os.chdir(work)
+    prefix = os.getcwd()
+    record: dict[str, object] = {}
+    lookups = _SurrogateNameLookups() if os.environ.get("PARITY_RUN_PROFILE_SURROGATE_NAMES") == "1" else contextlib.nullcontext()
+    try:
+        payload = json.loads(profile_path.read_text(encoding="utf-8"))
+        if _structured(payload):
+            record["mode"] = "offline-runner"
+            with _GuardedCopy() as guarded, lookups:
+                try:
+                    record.update(_offline_run(payload, scratch, guarded))
+                except Exception as exc:
+                    record["error"] = _error_payload(exc)
+            _emit_keyed(_respell(record, prefix))  # type: ignore[arg-type]
+            return 0
+        with _GuardedCopy() as guarded, lookups:
+            try:
+                profile = run_profiles.RunProfile.from_dict(_path_only_sources(payload))
+                result = run_profiles.execute_profile(profile, timestamp=RUN_PROFILE_TIMESTAMP)
+                record["result"] = json.loads(json.dumps(result.to_dict()))
+                record["collected"] = _run_collected(result)
+            except Exception as exc:
+                record["error"] = _error_payload(exc)
+            if guarded.guards:
+                record["redaction_guard"] = guarded.guards
+        record["profiles"] = _profiles_listing(work, prefix)
+        _emit_keyed(_respell(record, prefix))  # type: ignore[arg-type]
+    finally:
+        os.chdir(previous)
+        shutil.rmtree(scratch, ignore_errors=True)
+    return 0
+
+
+def _run_collected(result) -> list[dict[str, object]]:
+    """``collected`` over an ``execute_profile`` result, as the port computes it: the file's first part under the run is its source
+    directory, named only when the source has an alias (never, for string sources)."""
+
+    collected = []
+    for entry in result.files:
+        parts = entry.destination.relative_to(result.output_dir).parts
+        collected.append(
+            {"source": entry.source, "directory": None, "relative": Path(*parts[1:]).as_posix(), "size": entry.size, "sha256": entry.sha256}
+        )
+    return sorted(collected, key=_collected_sort_key)
+
+
+class _JsonCallBudget:
+    """Interpreter-limit seam for schedule (``PARITY_SCHEDULE_JSON_CALL_BUDGET=1``, "CPython limits inside json.loads" in
+    expected_divergences.md). At the deepest nesting ``json.loads`` decodes (9998 containers under this dump), the C scanner has no
+    recursion budget left for the call it makes to decode ``NaN``, ``Infinity`` or ``-Infinity`` (``parse_constant``) or an integer
+    literal of more than 4300 digits, and raises ``RecursionError: maximum recursion depth exceeded while calling a Python object``.
+    The port decodes the constant and raises the digit limit's ``ValueError`` there. Only when ``json.loads`` raises exactly that
+    ``RecursionError``, this decodes the text again with every such literal in a value position replaced by a string sentinel; when
+    that decode succeeds, the sentinels become the floats and the first integer literal past the limit raises ``int()``'s own
+    ``ValueError``, as a decode with one more call of budget would; otherwise the original ``RecursionError`` is raised. Each decode
+    handled so is reported on stderr as ``json call budget: <n> literal(s)``."""
+
+    MESSAGE = "maximum recursion depth exceeded while calling a Python object"
+    SENTINEL = "\0parity-json-call-budget-"
+    _NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)?")
+    _CONSTANTS = {"NaN": float("nan"), "Infinity": float("inf"), "-Infinity": float("-inf")}
+
+    def __enter__(self):
+        self.original = json.loads
+        json.loads = self.loads  # type: ignore[assignment]
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        json.loads = self.original  # type: ignore[assignment]
+
+    def loads(self, text, *args, **kwargs):
+        try:
+            return self.original(text, *args, **kwargs)
+        except RecursionError as exc:
+            if args or kwargs or not isinstance(text, str) or str(exc) != self.MESSAGE:
+                raise
+            literals = self._value_literals(text)
+            if not literals:
+                raise
+            pieces, last = [], 0
+            for index, (start, end, _) in enumerate(literals):
+                pieces += [text[last:start], json.dumps(self.SENTINEL + str(index))]
+                last = end
+            try:
+                value = self.original("".join(pieces) + text[last:])
+            except (ValueError, RecursionError):
+                raise exc from None
+            print(f"json call budget: {len(literals)} literal(s)", file=sys.stderr)
+            for _, _, literal in literals:
+                if literal not in self._CONSTANTS:
+                    int(literal)
+            return self._restore(value, literals)
+
+    def _restore(self, value, literals):
+        # Iterative: the decoded value is nested as deep as the decoder allows.
+        def swap(item):
+            if isinstance(item, str) and item.startswith(self.SENTINEL):
+                return self._CONSTANTS[literals[int(item[len(self.SENTINEL):])][2]]
+            return item
+
+        stack = [value]
+        while stack:
+            container = stack.pop()
+            keys = container.keys() if isinstance(container, dict) else range(len(container)) if isinstance(container, list) else ()
+            for key in keys:
+                container[key] = swap(container[key])
+                if isinstance(container[key], (dict, list)):
+                    stack.append(container[key])
+        return swap(value)
+
+    def _value_literals(self, text: str) -> list[tuple[int, int, str]]:
+        """``(start, end, literal)`` of every ``NaN`` / ``Infinity`` / ``-Infinity`` and integer literal of more than 4300 digits in a
+        value position (after ``[``, after ``:``, after ``,`` inside an array, or at the top level), outside strings."""
+
+        literals: list[tuple[int, int, str]] = []
+        stack: list[str] = []
+        expecting_value = True
+        index = 0
+        while index < len(text):
+            char = text[index]
+            if char == '"':
+                index += 1
+                while index < len(text) and text[index] != '"':
+                    index += 2 if text[index] == "\\" else 1
+                expecting_value = False
+                index += 1
+                continue
+            if char in "[{":
+                stack.append(char)
+                expecting_value = char == "["
+            elif char in "]}":
+                if stack:
+                    stack.pop()
+                expecting_value = False
+            elif char == ":":
+                expecting_value = True
+            elif char == ",":
+                expecting_value = bool(stack) and stack[-1] == "["
+            elif expecting_value and not char.isspace():
+                constant = next((name for name in self._CONSTANTS if text.startswith(name, index)), None)
+                number = None if constant else self._NUMBER.match(text, index)
+                if constant:
+                    literals.append((index, index + len(constant), constant))
+                    index += len(constant)
+                elif number:
+                    whole = number.group(0)
+                    if number.group(1) is None and number.group(2) is None and len(whole.lstrip("-")) > 4300:
+                        literals.append((index, number.end(), whole))
+                    index = number.end()
+                else:
+                    index += 1
+                expecting_value = False
+                continue
+            index += 1
+        return literals
+
+
+def cmd_schedule(args: argparse.Namespace) -> int:
+    from datetime import datetime
+
+    from driftbuster import run_profiles_cli, scheduler
+
+    now = datetime.fromisoformat(args.now)
+    original_now, original_print = scheduler.ProfileScheduler._now, run_profiles_cli._print_json
+    scratch = Path(tempfile.mkdtemp(prefix="driftbuster-parity-schedule-"))
+    state = scratch / "state.json"
+    if Path(args.state).is_file():
+        shutil.copyfile(args.state, state)
+    captured: list[object] = []
+    argv = ["schedule", args.command, "--config", args.config, "--state", str(state)]
+    for flag, value in (("--at", args.at), ("--name", args.name), ("--completed-at", args.completed_at), ("--resume-at", args.resume_at)):
+        if value is not None:
+            argv += [flag, value]
+    record: dict[str, object] = {}
+    scheduler.ProfileScheduler._now = staticmethod(lambda: now)  # type: ignore[method-assign]
+    run_profiles_cli._print_json = captured.append
+    budget = _JsonCallBudget() if os.environ.get("PARITY_SCHEDULE_JSON_CALL_BUDGET") == "1" else contextlib.nullcontext()
+    try:
+        try:
+            with budget:
+                run_profiles_cli.main(argv)
+            record["output"] = json.loads(json.dumps(captured[0])) if captured else None
+        except (Exception, SystemExit) as exc:
+            record["error"] = _error_payload(exc)
+        record["state"] = state.read_text(encoding="utf-8") if state.is_file() else None
+    finally:
+        scheduler.ProfileScheduler._now = original_now  # type: ignore[method-assign]
+        run_profiles_cli._print_json = original_print
+        shutil.rmtree(scratch, ignore_errors=True)
+    _emit_keyed(record)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1049,6 +1637,34 @@ def main(argv: list[str] | None = None) -> int:
     multi_server.add_argument("--sample-size", type=int, default=None)
     multi_server.add_argument("--runs", type=int, default=1)
     multi_server.set_defaults(func=cmd_multi_server)
+
+    profile_store = sub.add_parser("profile-store")
+    profile_store.add_argument("payload")
+    profile_store.add_argument("--tags", default=None, help="comma-separated activation tags")
+    profile_store.add_argument("--path", default=None, help="relative path for matching_configs")
+    profile_store.set_defaults(func=cmd_profile_store)
+
+    profile_diff = sub.add_parser("profile-diff")
+    profile_diff.add_argument("baseline")
+    profile_diff.add_argument("current")
+    profile_diff.set_defaults(func=cmd_profile_diff)
+
+    run_profile = sub.add_parser("run-profile")
+    run_profile.add_argument("profile")
+    run_profile.add_argument("workdir")
+    run_profile.add_argument("--scratch", default=None, help="directory created for the run and removed after it")
+    run_profile.set_defaults(func=cmd_run_profile)
+
+    schedule = sub.add_parser("schedule")
+    schedule.add_argument("config")
+    schedule.add_argument("state")
+    schedule.add_argument("command", choices=("list", "due", "mark-complete", "skip-until"))
+    schedule.add_argument("--at", default=None)
+    schedule.add_argument("--name", default=None)
+    schedule.add_argument("--completed-at", default=None)
+    schedule.add_argument("--resume-at", default=None)
+    schedule.add_argument("--now", default="2025-03-01T12:00:00+00:00", help="ProfileScheduler._now")
+    schedule.set_defaults(func=cmd_schedule)
 
     args = parser.parse_args(argv)
     return args.func(args)

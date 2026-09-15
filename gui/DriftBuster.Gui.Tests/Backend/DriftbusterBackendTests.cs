@@ -415,7 +415,7 @@ public sealed class DriftbusterBackendTests
             {
                 Name = "Profile One",
                 Baseline = baselineFile,
-                Sources = new[] { baselineFile, Path.Combine(sourceDir.FullName, "*.txt") },
+                Sources = new[] { new RunProfileSource(baselineFile), new RunProfileSource(Path.Combine(sourceDir.FullName, "*.txt")) },
                 Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["key"] = "value" },
             };
 
@@ -448,50 +448,22 @@ public sealed class DriftbusterBackendTests
     }
 
     [Fact]
-    public void EnumerateFilesSafely_returns_nested_files()
-    {
-        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriftbusterTests", Guid.NewGuid().ToString("N")));
-        var nested = Directory.CreateDirectory(Path.Combine(root.FullName, "nested"));
-        var file = Path.Combine(nested.FullName, "entry.txt");
-        File.WriteAllText(file, "content");
-
-        try
-        {
-            var method = typeof(DriftbusterBackend).GetMethod("EnumerateFilesSafely", BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.NotNull(method);
-
-            var results = ((IEnumerable<string>)method!.Invoke(null, new object[] { root.FullName, CancellationToken.None })!).ToArray();
-
-            Assert.Contains(file, results, StringComparer.Ordinal);
-        }
-        finally
-        {
-            if (Directory.Exists(root.FullName))
-            {
-                Directory.Delete(root.FullName, recursive: true);
-            }
-        }
-    }
-
-    [Fact]
-    public async Task ListProfilesAsync_ignores_invalid_entries()
+    public async Task ListProfilesAsync_loads_profiles_and_raises_on_invalid_json()
     {
         var baseDir = Path.Combine(Path.GetTempPath(), "DriftbusterTests", Guid.NewGuid().ToString("N"));
         var profilesRoot = Path.Combine(baseDir, "Profiles");
         Directory.CreateDirectory(profilesRoot);
 
         var validDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Valid"));
-        var invalidDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Broken"));
 
         var profileDefinition = new RunProfileDefinition
         {
             Name = "Valid Profile",
-            Sources = new[] { "config.json" },
+            Sources = new[] { new RunProfileSource("config.json"), new RunProfileSource("logs") { Alias = "logs", Optional = true } },
         };
 
         var json = JsonSerializer.Serialize(profileDefinition, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(Path.Combine(validDir.FullName, "profile.json"), json);
-        File.WriteAllText(Path.Combine(invalidDir.FullName, "profile.json"), "{ invalid json");
 
         try
         {
@@ -499,6 +471,13 @@ public sealed class DriftbusterBackendTests
 
             Assert.Single(result.Profiles);
             Assert.Equal("Valid Profile", result.Profiles[0].Name);
+            Assert.Equal("logs", result.Profiles[0].Sources[1].Alias);
+            Assert.True(result.Profiles[0].Sources[1].Optional);
+
+            // list_profiles reads every profile.json and raises on the first that is not JSON, as Python's json.loads does.
+            var invalidDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Broken"));
+            File.WriteAllText(Path.Combine(invalidDir.FullName, "profile.json"), "{ invalid json");
+            await Assert.ThrowsAnyAsync<ArgumentException>(() => _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken));
         }
         finally
         {

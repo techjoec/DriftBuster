@@ -1,0 +1,15 @@
+{
+  "profiles": [
+    {
+      "name": "kept",
+      "configs": [
+        "x",
+        3,
+        {
+          "id": "c",
+          "path": "a.json"
+        }
+      ]
+    }
+  ]
+}

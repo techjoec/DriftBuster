@@ -1,0 +1,34 @@
+{
+  "schedules": [
+    {
+      "name": "empty-list",
+      "profile": "empty-list-profile",
+      "every": "1h",
+      "start_at": []
+    },
+    {
+      "name": "empty-object",
+      "profile": "empty-object-profile",
+      "every": "1h",
+      "start_at": {}
+    },
+    {
+      "name": "empty-string",
+      "profile": "empty-string-profile",
+      "every": "1h",
+      "start_at": ""
+    },
+    {
+      "name": "false",
+      "profile": "false-profile",
+      "every": "1h",
+      "start_at": false
+    },
+    {
+      "name": "null",
+      "profile": "null-profile",
+      "every": "1h",
+      "start_at": null
+    }
+  ]
+}

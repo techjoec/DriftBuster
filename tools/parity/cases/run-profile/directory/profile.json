@@ -1,0 +1,7 @@
+{
+  "name": "dir",
+  "description": "whole directory",
+  "sources": [
+    "config"
+  ]
+}

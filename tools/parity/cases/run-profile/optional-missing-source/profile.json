@@ -1,0 +1,14 @@
+{
+  "name": "optional",
+  "sources": [
+    {
+      "path": "missing-dir",
+      "optional": true
+    },
+    {
+      "path": "logs/*.none",
+      "optional": true
+    },
+    "app.json"
+  ]
+}

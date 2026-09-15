@@ -1,0 +1,24 @@
+{
+  "profiles": [
+    {
+      "name": "helpers",
+      "tags": [
+        "team:core"
+      ],
+      "configs": [
+        {
+          "id": "app-only",
+          "application": "web"
+        }
+      ]
+    },
+    {
+      "name": "untagged",
+      "configs": [
+        {
+          "id": "free"
+        }
+      ]
+    }
+  ]
+}

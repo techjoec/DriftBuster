@@ -1,0 +1,1 @@
+{"name": "fnm", "sources": [{"path": "d", "alias": "d", "exclude": ["*.txt", "c[[]1].log", "[!a-z]*", "f]g", "h\\i", ".*", "x.y", "*/.h/*", "["]}]}

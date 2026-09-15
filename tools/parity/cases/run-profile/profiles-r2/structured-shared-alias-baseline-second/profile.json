@@ -1,0 +1,14 @@
+{
+  "name": "shared alias",
+  "sources": [
+    {
+      "path": "one/app.ini",
+      "alias": "same"
+    },
+    {
+      "path": "two/app.ini",
+      "alias": "same"
+    }
+  ],
+  "baseline": "two/app.ini"
+}

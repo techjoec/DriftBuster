@@ -1,0 +1,13 @@
+{
+  "name": "same",
+  "sources": [
+    {
+      "path": "one.txt",
+      "alias": "s"
+    },
+    {
+      "path": "dir",
+      "alias": "s"
+    }
+  ]
+}

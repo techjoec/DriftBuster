@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "chicago-y1",
+      "profile": "chicago-y1-profile",
+      "every": "1h",
+      "start_at": "0001-01-01T03:00:00Z",
+      "window": {
+        "start": "20:00",
+        "end": "21:00",
+        "timezone": "America/Chicago"
+      }
+    }
+  ]
+}

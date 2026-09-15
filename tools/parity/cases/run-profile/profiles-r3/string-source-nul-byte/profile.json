@@ -1,0 +1,7 @@
+{
+ "name": "nul",
+ "sources": [
+  "in.txt",
+  "a\u0000b"
+ ]
+}

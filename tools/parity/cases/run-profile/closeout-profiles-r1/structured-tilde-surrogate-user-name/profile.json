@@ -1,0 +1,14 @@
+{
+ "name": "tl",
+ "sources": [
+  {
+   "path": "~\ud800/x.txt",
+   "alias": "t",
+   "optional": true
+  },
+  {
+   "path": "in.txt",
+   "alias": "i"
+  }
+ ]
+}

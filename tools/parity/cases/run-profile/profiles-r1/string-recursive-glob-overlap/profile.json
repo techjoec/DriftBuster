@@ -1,0 +1,6 @@
+{
+  "name": "overlap-str",
+  "sources": [
+    "conf/**"
+  ]
+}

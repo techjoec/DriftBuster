@@ -1,0 +1,9 @@
+{
+  "name": "baseline-first",
+  "sources": [
+    "a.json",
+    "b.json",
+    "c.json"
+  ],
+  "baseline": "c.json"
+}

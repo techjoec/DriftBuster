@@ -1,0 +1,13 @@
+{
+  "profiles": [
+    "just-a-string",
+    {
+      "name": "kept",
+      "configs": [
+        {
+          "id": "c"
+        }
+      ]
+    }
+  ]
+}

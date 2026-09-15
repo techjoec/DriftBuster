@@ -1,0 +1,26 @@
+{
+  "name": "strings",
+  "description": "é \"quoted\" \\ back",
+  "sources": [
+    "app.json"
+  ],
+  "baseline": "app.json",
+  "options": {
+    "b": "2",
+    "a": 1.5,
+    "c": true
+  },
+  "secret_scanner": {
+    "ignore_rules": "PasswordAssignment",
+    "ignore_patterns": [
+      "x",
+      "x",
+      "y"
+    ],
+    "extra": {
+      "z": [
+        1
+      ]
+    }
+  }
+}

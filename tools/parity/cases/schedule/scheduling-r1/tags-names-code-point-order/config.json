@@ -1,0 +1,49 @@
+{
+  "schedules": [
+    {
+      "name": "�",
+      "profile": "�-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "tags": [
+        "😀",
+        "�",
+        "é",
+        "Z",
+        1.0,
+        null,
+        true,
+        {
+          "k": [
+            1,
+            2
+          ]
+        },
+        "  "
+      ]
+    },
+    {
+      "name": "😀",
+      "profile": "😀-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "tags": {
+        "x": 1
+      }
+    },
+    {
+      "name": "B",
+      "profile": "B-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "tags": 0
+    },
+    {
+      "name": "b",
+      "profile": "b-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "tags": 12.5
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"profiles": [{"name": "p", "metadata": ["ab", {"x": 1, "y": 2}, ["k", [1, 2]], ["ab", NaN]], "configs": [{"id": "a", "metadata": {"n": NaN, "i": Infinity, "m": -Infinity, "big": 1e400, "tiny": 5e-324, "neg0": -0.0}}, {"id": "b", "metadata": 0, "tags": ""}, {"id": "c", "metadata": "", "tags": {}}]}]}

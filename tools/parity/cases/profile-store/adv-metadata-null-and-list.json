@@ -1,0 +1,14 @@
+{
+  "profiles": [
+    {
+      "name": "p",
+      "metadata": null,
+      "configs": [
+        {
+          "id": "c",
+          "metadata": []
+        }
+      ]
+    }
+  ]
+}

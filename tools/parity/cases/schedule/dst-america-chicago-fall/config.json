@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "fold",
+      "profile": "fold-profile",
+      "every": "20m",
+      "start_at": "2025-11-02T06:10:00Z",
+      "window": {
+        "start": "01:30",
+        "end": "01:50",
+        "timezone": "America/Chicago"
+      }
+    }
+  ]
+}

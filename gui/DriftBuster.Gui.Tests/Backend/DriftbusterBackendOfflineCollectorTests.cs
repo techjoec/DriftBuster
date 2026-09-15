@@ -26,7 +26,7 @@ public class DriftbusterBackendOfflineCollectorTests
         var profile = new RunProfileDefinition
         {
             Name = "offline-test",
-            Sources = new[] { "C:/logs" },
+            Sources = new[] { new RunProfileSource("C:/logs") },
         };
 
         var packagePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.zip");
@@ -66,6 +66,58 @@ public class DriftbusterBackendOfflineCollectorTests
             }
         }
     }
+
+    [Fact]
+    public async Task PrepareOfflineCollector_writes_structured_sources_in_the_runner_shape()
+    {
+        var backend = new DriftbusterBackend();
+        var profile = new RunProfileDefinition
+        {
+            Name = "structured",
+            Sources = new[]
+            {
+                new RunProfileSource("C:/logs/app.log"),
+                new RunProfileSource("C:/data") { Alias = " data ", Optional = true, Exclude = new[] { "*.tmp", " ", "cache/*" } },
+                new RunProfileSource("  "),
+            },
+        };
+
+        var packagePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.zip");
+        var tempBase = Path.Combine(Path.GetTempPath(), "DriftbusterTests", Guid.NewGuid().ToString("N"));
+        var scriptsDir = Directory.CreateDirectory(Path.Combine(tempBase, "scripts"));
+        File.Copy(LocateRepoFile("scripts", "driftbuster-offline-runner.ps1"), Path.Combine(scriptsDir.FullName, "driftbuster-offline-runner.ps1"), overwrite: true);
+
+        try
+        {
+            var request = new OfflineCollectorRequest { PackagePath = packagePath };
+            var result = await backend.PrepareOfflineCollectorAsync(profile, request, baseDir: tempBase, cancellationToken: TestContext.Current.CancellationToken);
+
+            using var archive = ZipFile.OpenRead(packagePath);
+            using var reader = new StreamReader(archive.GetEntry(result.ConfigFileName)!.Open());
+            using var document = JsonDocument.Parse(reader.ReadToEnd());
+            var profileElement = document.RootElement.GetProperty("profile");
+            Assert.Equal("C:/logs/app.log", profileElement.GetProperty("baseline").GetString());
+
+            var sources = profileElement.GetProperty("sources");
+            Assert.Equal(2, sources.GetArrayLength());
+            Assert.Equal("""{"path":"C:/logs/app.log","optional":false,"exclude":[]}""", Compact(sources[0]));
+            Assert.Equal("""{"path":"C:/data","alias":"data","optional":true,"exclude":["*.tmp"," ","cache/*"]}""", Compact(sources[1]));
+        }
+        finally
+        {
+            if (File.Exists(packagePath))
+            {
+                File.Delete(packagePath);
+            }
+
+            if (Directory.Exists(tempBase))
+            {
+                Directory.Delete(tempBase, recursive: true);
+            }
+        }
+    }
+
+    private static string Compact(JsonElement element) => JsonSerializer.Serialize(element);
 
     private static IDisposable TemporarilyHideFile(string filePath)
     {

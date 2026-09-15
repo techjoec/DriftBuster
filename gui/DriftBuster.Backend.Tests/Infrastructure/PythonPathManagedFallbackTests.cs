@@ -3,7 +3,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Tests.Infrastructure;
 
 /// <summary>
-/// The managed resolution <see cref="PythonPath.KernelPath"/> and <see cref="PythonPath.ResolvePhysicalPath(string)"/> fall back
+/// The managed resolution <see cref="PythonPath.KernelPath"/>, <see cref="PythonPath.ResolvePhysicalPath(string)"/> and <see cref="PythonPath.MakeDirectories"/> fall back
 /// to where no byte walk exists (Windows for <c>ResolvePhysicalPath</c>, Unix systems without the <c>readlink</c> and <c>statx</c>
 /// bindings), run on Linux through <see cref="UnixPathWalk.Disabled"/>. The seam is process-wide, so the class runs alone.
 /// </summary>
@@ -49,6 +49,21 @@ public sealed class PythonPathManagedFallbackTests : IDisposable
             File.Exists(kernel).Should().BeFalse(spelled);
             Directory.Exists(kernel).Should().BeFalse(spelled);
         }
+    }
+
+    [Fact]
+    public void MakeDirectoriesStepsOutOfADirectoryItHasJustCreatedWithoutTheByteWalk()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "'..' after a symlink resolves physically on POSIX kernels");
+        var tree = Tree();
+
+        PythonPath.MakeDirectories($"{tree}/new/../sub/leaf");
+        PythonPath.MakeDirectories($"{tree}/shortcut/../made");
+
+        Directory.Exists(Path.Combine(tree, "new")).Should().BeTrue();
+        Directory.Exists(Path.Combine(tree, "sub", "leaf")).Should().BeTrue();
+        Directory.Exists(Path.Combine(tree, "real", "app", "made")).Should().BeTrue();
+        Directory.Exists(Path.Combine(tree, "made")).Should().BeFalse();
     }
 
     [Fact]

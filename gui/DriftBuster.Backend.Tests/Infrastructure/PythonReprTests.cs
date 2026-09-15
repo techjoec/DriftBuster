@@ -51,6 +51,8 @@ public sealed class PythonReprTests
     [InlineData("\U000E0001", "'\\U000e0001'")]
     [InlineData("\u00e9", "'\u00e9'")]
     [InlineData("a b", "'a b'")]
+    [InlineData("ࢗᲉ␧", "'\\u0897\\u1c89\\u2427'")]
+    [InlineData("\U00013460\U0001FBEF", "'\\U00013460\\U0001fbef'")]
     public void StrReprMatchesPython(string value, string expected)
     {
         PythonRepr.StrRepr(value).Should().Be(expected);

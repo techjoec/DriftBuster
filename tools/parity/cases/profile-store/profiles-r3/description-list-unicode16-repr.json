@@ -1,0 +1,19 @@
+{
+ "profiles": [
+  {
+   "name": "p",
+   "description": [
+    "\u1c89",
+    "\u00e9"
+   ],
+   "configs": [
+    {
+     "id": "a",
+     "application": {
+      "\ud803\udd4e": 1
+     }
+    }
+   ]
+  }
+ ]
+}

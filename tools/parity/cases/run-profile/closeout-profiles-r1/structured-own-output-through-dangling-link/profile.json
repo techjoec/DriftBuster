@@ -1,0 +1,19 @@
+{
+ "name": "lnk",
+ "sources": [
+  {
+   "path": "data",
+   "alias": "d"
+  },
+  {
+   "path": "out",
+   "alias": "o",
+   "optional": true
+  },
+  {
+   "path": "out2/*",
+   "alias": "o2",
+   "optional": true
+  }
+ ]
+}

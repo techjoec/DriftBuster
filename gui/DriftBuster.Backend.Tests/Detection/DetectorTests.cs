@@ -4,13 +4,13 @@ using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Plugins;
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Profiles.Detection;
 
 namespace DriftBuster.Backend.Tests.Detection;
 
 /// <summary>
-/// Mirror of tests/core/test_detector.py plus the doctests in detector.py. The profile store ScanWithProfilesAttachesMatches
-/// needs is the phase 6 DetectionProfileStore, so the test drives <see cref="IProfileMatcher"/> directly.
+/// Mirror of tests/core/test_detector.py plus the doctests in detector.py.
 /// </summary>
 public sealed class DetectorTests : IDisposable
 {
@@ -138,14 +138,6 @@ public sealed class DetectorTests : IDisposable
     private sealed class ExplodingOpenDetector(Action<string, Exception>? onError) : Detector(onError: onError)
     {
         protected internal override Stream OpenFile(string path) => throw new IOException("boom");
-    }
-
-    private sealed class SingleConfigStore(string profileName, string identifier) : IProfileMatcher
-    {
-        public IReadOnlyList<AppliedProfileConfig> MatchingConfigs(IReadOnlySet<string> tags, string? relativePath)
-            => tags.Contains("prod") && string.Equals(relativePath, "appsettings.json", StringComparison.Ordinal)
-                ? [new AppliedProfileConfig(new DetectionProfile(profileName), new DetectionProfileConfig(identifier))]
-                : [];
     }
 
     private sealed class RecordingStore : IProfileMatcher
@@ -287,7 +279,19 @@ public sealed class DetectorTests : IDisposable
         WriteText("configs/appsettings.json", "{\"Logging\": {\"LogLevel\": \"Information\"}}");
 
         var detector = new Detector();
-        var store = new SingleConfigStore("prod", "cfg-prod");
+
+        var profile = new DetectionProfile(
+            "prod",
+            tags: ["prod"],
+            configs:
+            [
+                new DetectionProfileConfig(
+                    "cfg-prod",
+                    path: "appsettings.json",
+                    expectedFormat: "json",
+                    expectedVariant: "structured-settings-json"),
+            ]);
+        var store = new DetectionProfileStore([profile]);
 
         var results = detector.ScanWithProfiles(targetDir, store, tags: ["prod"]);
 
@@ -437,7 +441,7 @@ public sealed class DetectorTests : IDisposable
     {
         var detector = new Detector();
         var act = () => detector.ScanWithProfiles(TmpPath("file"), null!);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("profileStore");
+        act.Should().Throw<PythonValueException>().WithMessage("profile_store must be provided");
     }
 
     [Fact]

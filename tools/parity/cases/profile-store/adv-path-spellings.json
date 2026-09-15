@@ -1,0 +1,41 @@
+{
+  "profiles": [
+    {
+      "name": "spellings",
+      "configs": [
+        {
+          "id": "double-slash",
+          "path": "//etc/app.json"
+        },
+        {
+          "id": "empty",
+          "path": ""
+        },
+        {
+          "id": "dot",
+          "path": "."
+        },
+        {
+          "id": "root",
+          "path": "/"
+        },
+        {
+          "id": "triple",
+          "path": "///x"
+        },
+        {
+          "id": "glob-empty",
+          "path_glob": ""
+        },
+        {
+          "id": "dotdot",
+          "path": "a/../b.json"
+        },
+        {
+          "id": "glob-star",
+          "path_glob": "*"
+        }
+      ]
+    }
+  ]
+}

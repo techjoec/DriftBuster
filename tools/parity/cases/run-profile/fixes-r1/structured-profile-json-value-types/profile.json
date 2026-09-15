@@ -1,0 +1,1 @@
+{"name": 7, "description": 5, "sources": [{"path": "d", "alias": 3, "optional": [0], "exclude": [1, "*.tmp"]}, "f.txt"], "baseline": "f.txt", "options": {"a": [1, 2], "b": null, "c": true}, "secret_scanner": {"ignore_rules": "AwsAccessKeyId, x", "extra": {"k": 1}}, "tags": ["t"]}

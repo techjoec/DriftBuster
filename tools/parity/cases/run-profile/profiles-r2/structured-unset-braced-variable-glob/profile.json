@@ -1,0 +1,9 @@
+{
+  "name": "braced var",
+  "sources": [
+    {
+      "path": "vars/${DRIFTBUSTER_PARITY_UNSET*}",
+      "alias": "v"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "a/b\\c:d",
+  "sources": [
+    "sub/../app.json",
+    "conf/",
+    "./conf//x.ini"
+  ],
+  "baseline": "conf/"
+}

@@ -29,6 +29,11 @@ public sealed class PythonBuiltinsTests
         { "\"1\\u0000\"", "ValueError", "invalid literal for int() with base 10: '1\\x00'" },
         { "\"\\ud835\\udfce3\"", "ok", "3" },
         { "\"x\\u00e9\"", "ValueError", "invalid literal for int() with base 10: 'xé'" },
+        { "\"\\u001c7\\u001f\"", "ValueError", "invalid literal for int() with base 10: '\\x1c7\\x1f'" },
+        { "\"\\u00857\"", "ok", "7" },
+        { "\"\\u000b7\\f\"", "ok", "7" },
+        { "\"\\t7\\r\\n\"", "ok", "7" },
+        { "\"\\u007f7\"", "ValueError", "invalid literal for int() with base 10: '\\x7f7'" },
         { "null", "TypeError", "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'" },
         { "[1]", "TypeError", "int() argument must be a string, a bytes-like object or a real number, not 'list'" },
         { "{\"a\":1}", "TypeError", "int() argument must be a string, a bytes-like object or a real number, not 'dict'" },
@@ -62,6 +67,11 @@ public sealed class PythonBuiltinsTests
         { "\"+-1\"", "ValueError", "could not convert string to float: '+-1'" },
         { "\"  \"", "ValueError", "could not convert string to float: '  '" },
         { "\"1_0e-4\"", "ok", "0.001" },
+        { "\"\\u001c1.5\"", "ValueError", "could not convert string to float: '\\x1c1.5'" },
+        { "\"\\u001f1.5\"", "ValueError", "could not convert string to float: '\\x1f1.5'" },
+        { "\"\\u000b1.5\"", "ok", "1.5" },
+        { "\"\\u0085 1_0.5\\u2028\"", "ok", "10.5" },
+        { "\"\\u007f1.5\"", "ValueError", "could not convert string to float: '\\x7f1.5'" },
         { "true", "ok", "1.0" },
         { "[1]", "TypeError", "float() argument must be a string or a real number, not 'list'" },
         { "{}", "TypeError", "float() argument must be a string or a real number, not 'dict'" },
@@ -155,7 +165,7 @@ public sealed class PythonBuiltinsTests
         PythonBuiltins.Get(Decode("{\"k\": 3}"), "k").Should().Be(3);
         PythonBuiltins.Get(Decode("{}"), "k").Should().BeNull();
         var get = () => PythonBuiltins.Get(Decode("[true]"), "k");
-        get.Should().Throw<InvalidDataException>().Which.Message.Should().Be("'list' object has no attribute 'get'");
+        get.Should().Throw<PythonAttributeException>().Which.Message.Should().Be("'list' object has no attribute 'get'");
     }
 
     [Theory]

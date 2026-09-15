@@ -1,0 +1,18 @@
+{
+  "schedules": [
+    {
+      "name": "order",
+      "profile": "order-profile",
+      "every": "0m",
+      "start_at": "not-a-date",
+      "window": {
+        "start": "99:00",
+        "end": "01:00",
+        "timezone": "Nope/Zone"
+      },
+      "metadata": [
+        1
+      ]
+    }
+  ]
+}

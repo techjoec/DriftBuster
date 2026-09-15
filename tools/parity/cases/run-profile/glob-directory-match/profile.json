@@ -1,0 +1,6 @@
+{
+  "name": "dirglob",
+  "sources": [
+    "app*"
+  ]
+}

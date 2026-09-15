@@ -1,0 +1,22 @@
+{
+  "schedules": [
+    {
+      "name": "max",
+      "profile": "max-profile",
+      "every": "999999999d86399.999999s",
+      "start_at": "2025-03-01T00:00:00Z"
+    },
+    {
+      "name": "third",
+      "profile": "third-profile",
+      "every": "0.3333333333h",
+      "start_at": "2025-03-01T00:00:00Z"
+    },
+    {
+      "name": "micro-days",
+      "profile": "micro-days-profile",
+      "every": "0.00000000001d",
+      "start_at": "2025-03-01T00:00:00Z"
+    }
+  ]
+}

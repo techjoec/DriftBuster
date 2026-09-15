@@ -1,0 +1,9 @@
+{
+  "schedules": [
+    {
+      "name": "boolean",
+      "profile": "boolean-profile",
+      "every": true
+    }
+  ]
+}

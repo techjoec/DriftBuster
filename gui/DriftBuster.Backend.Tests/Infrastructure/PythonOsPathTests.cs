@@ -15,6 +15,7 @@ public sealed class PythonOsPathTests : IDisposable
         ["HOME"] = "/home/tester/",
         ["APP"] = "/opt/app",
         ["EMPTY"] = string.Empty,
+        ["TILDE"] = "~/sub",
     };
 
     // The password database the seams answer from: pwd.getpwnam(name).pw_dir, and pwd.getpwuid(os.getuid()).pw_dir.
@@ -193,5 +194,13 @@ public sealed class PythonOsPathTests : IDisposable
             Environment.Remove("HOMEPATH");
             Environment.Remove("HOMEDRIVE");
         }
+    }
+    // A structured run profile expands a source as offline_runner does (variables, then the user's home); run_profiles expands the home
+    // first, so a variable holding "~" stays literal there.
+    [Fact]
+    public void StructuredRunProfileSourcesExpandVariablesBeforeTheHome()
+    {
+        DriftBuster.Backend.Profiles.Run.RunProfileExecutor.ExpandStructuredPath("$TILDE/x").Should().Be("/home/tester/sub/x");
+        PythonOsPath.ExpandVars(PythonOsPath.ExpandUser("$TILDE/x")).Should().Be("~/sub/x");
     }
 }

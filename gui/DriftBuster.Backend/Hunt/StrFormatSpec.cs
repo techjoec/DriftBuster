@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Infrastructure.PythonRe;
 
 namespace DriftBuster.Backend.Hunt;
@@ -168,12 +169,12 @@ internal static class StrFormatSpec
         for (; position < spec.Length; position++, digits++)
         {
             var code = spec[position];
-            if (PythonCharacterData.IsSurrogate(code) || Rune.GetUnicodeCategory(new Rune(code)) != UnicodeCategory.DecimalDigitNumber)
+            var digit = (long)PythonUnicode.DecimalValue(code);
+            if (digit < 0)
             {
                 break;
             }
 
-            var digit = (long)Rune.GetNumericValue(new Rune(code));
             if (accumulator > (long.MaxValue - digit) / 10)
             {
                 throw new FormatException("Too many decimal digits in format string");

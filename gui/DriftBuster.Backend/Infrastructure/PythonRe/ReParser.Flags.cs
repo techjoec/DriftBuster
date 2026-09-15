@@ -145,5 +145,5 @@ internal static partial class ReParser
 
     // str.isalpha() of a token: every code point a letter (an escape token holds a backslash, so it never is).
     private static bool IsAlpha(int[] token)
-        => token.All(code => !PythonCharacterData.IsSurrogate(code) && System.Text.Rune.IsLetter(new System.Text.Rune(code)));
+        => token.All(PythonUnicode.IsAlpha);
 }

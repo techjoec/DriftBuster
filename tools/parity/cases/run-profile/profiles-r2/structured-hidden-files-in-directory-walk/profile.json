@@ -1,0 +1,16 @@
+{
+  "name": "hidden",
+  "sources": [
+    {
+      "path": "tree",
+      "alias": "t",
+      "exclude": [
+        ".*"
+      ]
+    },
+    {
+      "path": "tree/.*",
+      "alias": "h"
+    }
+  ]
+}

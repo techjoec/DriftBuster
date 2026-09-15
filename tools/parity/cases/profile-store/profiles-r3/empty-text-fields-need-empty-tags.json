@@ -1,0 +1,19 @@
+{
+ "profiles": [
+  {
+   "name": "p",
+   "configs": [
+    {
+     "id": "e",
+     "application": "",
+     "version": "",
+     "branch": ""
+    },
+    {
+     "id": "n",
+     "application": null
+    }
+   ]
+  }
+ ]
+}

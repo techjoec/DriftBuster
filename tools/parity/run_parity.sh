@@ -3,12 +3,13 @@
 # decode run over fixtures/, tools/parity/cases/<surface>/ and a set of generated file-system cases
 # (unreadable file, unreadable subdirectory, dangling symlink, missing root, unreadable root, tiny
 # sampling budget, a FIFO, a socket and a device link); diff, canon, hunt and secrets run over the inputs listed in
-# run_phase4_surface; multi-server runs every plan file under tools/parity/cases/multi-server/ (run_multi_server_surface).
+# run_phase4_surface; multi-server runs every plan file under tools/parity/cases/multi-server/ (run_multi_server_surface);
+# profile-store, run-profile and schedule run every case under tools/parity/cases/<surface>/ (run_phase6_surface).
 # Exit 1 on any difference that is not an expected divergence (see expected_divergences.md). Temporary; deleted with the
 # Python tree.
 #
 # Usage: tools/parity/run_parity.sh <surface> [dump args...]
-#   surfaces: detect, decode, diff, canon, hunt, secrets, multi-server
+#   surfaces: detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule
 #   example:  tools/parity/run_parity.sh detect            (the full default registry on both sides)
 #             PARITY_MULTI_SERVER_CASES='unreadable|root-' tools/parity/run_parity.sh multi-server   (cases whose path matches)
 #             tools/parity/run_parity.sh detect --plugins text
@@ -22,15 +23,23 @@ fi
 surface="$1"
 shift
 case "$surface" in
-  detect|decode|diff|canon|hunt|secrets|multi-server) ;;
+  detect|decode|diff|canon|hunt|secrets|multi-server|profile-store|run-profile|schedule) ;;
   *)
-    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets, multi-server)" >&2
+    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule)" >&2
     exit 2
     ;;
 esac
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
+
+# A case input the repository's ignore patterns match would be left out of a commit, so a fresh clone would compare different inputs.
+ignored_cases="$(find tools/parity/cases \( -type f -o -type l \) -print0 | git check-ignore -z --stdin --no-index | tr '\0' '\n' || true)"
+if [[ -n "$ignored_cases" ]]; then
+  echo "error: git ignores these case inputs (re-include them in tools/parity/cases/.gitignore):" >&2
+  echo "$ignored_cases" >&2
+  exit 2
+fi
 
 run_dotnet() {
   unset __JOE_PROFILE_ENV 2>/dev/null || true
@@ -68,18 +77,12 @@ secrets_timeout="${PARITY_SECRETS_TIMEOUT:-5}"
 #   SQLite file names (plan decision 7): Python opens "file:{path}?mode=ro" as a URI, which decodes %XX and cuts the
 #          path at ? or #, so such a file is never opened there; the port opens the real file. For those paths the
 #          table_count key and the "Enumerated ..." reason are dropped from both records and the rest is compared.
-#   Unicode 16.0 repr (runtime tables): registry-live stores str() of nested keyword and pattern items; Python 3.13
-#          (Unicode 15.1) escapes code points assigned in 16.0 as non-printable, .NET 10 prints them. For a
-#          registry-live record from a case whose file name contains "unicode16", keywords and patterns are dropped
-#          from both records and the rest is compared.
-UNICODE16_REPR='def unicode16_repr: .plugin == "registry-live" and (.path | test("unicode16"));
-  def drop_unicode16_repr: if unicode16_repr then (.metadata |= del(.keywords, .patterns)) else . end;'
 SQLITE_URI_NAMES='def sqlite_uri_name: .plugin == "binary-hybrid" and .format == "embedded-sql-db" and (.path | test("%[0-9A-Fa-f]{2}|[?#]"));
   def drop_sqlite_uri_facts: if sqlite_uri_name then (.metadata |= del(.table_count)) | (.reasons |= map(select(startswith("Enumerated ") | not))) else . end;'
 compare() {
   local label="$1" root="$2"
   shift 2
-  local tag py_out cs_out fixc_count limit_count sqlite_count unicode16_count count
+  local tag py_out cs_out fixc_count limit_count sqlite_count count
   tag="$(echo "$label" | tr '/ ' '__')"
   py_out="$work/$tag.py.jsonl"
   cs_out="$work/$tag.cs.jsonl"
@@ -125,22 +128,18 @@ compare() {
   jq -r '.[]' "$work/$tag.fixc.json" > "$work/$tag.fixc"
   jq -r '.[]' "$work/$tag.limit.json" > "$work/$tag.limit"
   jq -r "$SQLITE_URI_NAMES"' select(sqlite_uri_name) | .path' "$py_out" > "$work/$tag.sqlite"
-  jq -r "$UNICODE16_REPR"' select(unicode16_repr) | .path' "$py_out" > "$work/$tag.unicode16"
   fixc_count="$(wc -l < "$work/$tag.fixc")"
   limit_count="$(wc -l < "$work/$tag.limit")"
   sqlite_count="$(wc -l < "$work/$tag.sqlite")"
-  unicode16_count="$(wc -l < "$work/$tag.unicode16")"
-  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" "$SQLITE_URI_NAMES$UNICODE16_REPR"'
+  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" "$SQLITE_URI_NAMES"'
     .path as $p
     | select(($limit[0] | index($p)) == null)
     | drop_sqlite_uri_facts
-    | drop_unicode16_repr
     | if ($fixc[0] | index($p)) != null then del(.error) else . end' "$py_out" > "$work/$tag.py.filtered"
-  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" "$SQLITE_URI_NAMES$UNICODE16_REPR"'
+  jq -c --slurpfile fixc "$work/$tag.fixc.json" --slurpfile limit "$work/$tag.limit.json" "$SQLITE_URI_NAMES"'
     .path as $p
     | select(($limit[0] | index($p)) == null)
     | drop_sqlite_uri_facts
-    | drop_unicode16_repr
     | if ($fixc[0] | index($p)) != null and .metadata != null
       then .metadata |= with_entries(select(.key | startswith("catalog_") | not)) else . end' "$cs_out" > "$work/$tag.cs.filtered"
   # A CPython limit is only an expected divergence when the port parsed the file as JSON.
@@ -149,7 +148,7 @@ compare() {
 
   count="$(wc -l < "$py_out")"
   files_total=$((files_total + count))
-  local divergences=$((fixc_count + limit_count + sqlite_count + unicode16_count))
+  local divergences=$((fixc_count + limit_count + sqlite_count))
   expected_total=$((expected_total + divergences))
 
   if diff -u "$work/$tag.py.filtered" "$work/$tag.cs.filtered" > "$work/$tag.diff" && [[ ! -s "$work/$tag.limit.bad" ]]; then
@@ -162,9 +161,6 @@ compare() {
   fi
   if [[ "$sqlite_count" -gt 0 ]]; then
     sed 's/^/     expected (plan decision 7, SQLite name read as a URI by Python, table_count not compared): /' "$work/$tag.sqlite"
-  fi
-  if [[ "$unicode16_count" -gt 0 ]]; then
-    sed 's/^/     expected (runtime Unicode tables, repr of Unicode 16.0 code points; keywords and patterns not compared): /' "$work/$tag.unicode16"
   fi
   if [[ "$fixc_count" -gt 0 ]]; then
     sed 's/^/     expected (fix c, plugin output compared without catalog_* keys): /' "$work/$tag.fixc"
@@ -257,7 +253,7 @@ dump_both() {
   shift
   rc=0
   PARITY_HUNT_FIX_E="$([[ "$surface_cmd" == hunt ]] && echo 1 || echo 0)" \
-    PARITY_SECRETS_TIMEOUT="$([[ "$surface_cmd" == secrets ]] && echo "$secrets_timeout" || echo 0)" PYTHONPATH="$repo_root/src" \
+    PARITY_SECRETS_TIMEOUT="$([[ "$surface_cmd" == secrets || "$surface_cmd" == run-profile ]] && echo "$secrets_timeout" || echo 0)" PYTHONPATH="$repo_root/src" \
     python tools/parity/py_dump.py "$surface_cmd" "$@" > "$work/$tag.py.jsonl" 2> "$work/$tag.py.err" || rc=$?
   if [[ "$rc" -ne 0 ]]; then
     echo "FAIL $surface $tag: python dump exited $rc"
@@ -272,9 +268,9 @@ dump_both() {
     return 1
   fi
   for side in py cs; do
-    if ! jq -e -n '[inputs] | length >= 0' "$work/$tag.$side.jsonl" > /dev/null 2> "$work/$tag.$side.err"; then
+    if ! jq -e -n '[inputs] | length >= 0' "$work/$tag.$side.jsonl" > /dev/null 2> "$work/$tag.$side.jq.err"; then
       echo "FAIL $surface $tag: $side dump is not valid JSON lines"
-      sed 's/^/     /' "$work/$tag.$side.err" | tail -n 5
+      sed 's/^/     /' "$work/$tag.$side.jq.err" | tail -n 5
       return 1
     fi
   done
@@ -322,7 +318,7 @@ recompute_fixd() {
   fi
 }
 
-# compare_records <label> <surface command> <normaliser: none|diff|canon|hunt|secrets> <args...>
+# compare_records <label> <surface command> <normaliser: none|diff|canon|hunt|secrets|run-profile|profile-store> <args...>
 compare_records() {
   local label="$1" normaliser="$3" tag count divergences side other dropped
   surface_cmd="$2"
@@ -370,6 +366,32 @@ compare_records() {
         ;;
       secrets)
         jq -c . "$work/$tag.$([[ "$side" == py ]] && echo pymodel || echo cs).jsonl" > "$work/$tag.$side.filtered"
+        ;;
+      profile-store)
+        # Detection profile text fields: where Python keeps a number, bool, list or dict the port holds its str() ("True", "1.0"); the
+        # Python value is replaced by the port's text when it is exactly that str() (recorded divergence), everything else compared as is.
+        if [[ "$side" == py ]]; then
+          python tools/parity/profile_text_fields.py "$work/$tag.py.jsonl" "$work/$tag.cs.jsonl" > "$work/$tag.$side.filtered" 2> "$work/$tag.textfields"
+        else
+          cp "$work/$tag.cs.jsonl" "$work/$tag.$side.filtered"
+        fi
+        ;;
+      run-profile)
+        # Structured sources (plan decision): python ran the offline runner, so the collected file set, the error (type and message), the
+        # secret findings and redaction guards (paths under the source directory, sorted) and profile.json compare; on an error only the
+        # error does.
+        jq -n -c --arg side "$side" --slurpfile py "$work/$tag.py.jsonl" '
+          def findings: map({path, rule, line, snippet}) | sort_by(.path, .line, .rule, .snippet);
+          def guards: map({path, rule, line}) | sort_by(.path, .line, .rule);
+          def offline_py: if .error != null then {error} else {collected, error: null, findings: (.findings | findings),
+            redaction_guard: (.redaction_guard | guards), profile_json} end;
+          def offline_cs: if .error != null then {error} else {collected, error: null, findings: (.result.secrets.findings | findings),
+            redaction_guard: ((.redaction_guard // []) | guards),
+            profile_json: ([.profiles[] | select(.path | endswith("/profile.json")) | .text]
+              | if length == 1 then .[0] else "<\(length) profile.json files>" end)} end;
+          foreach inputs as $r (-1; . + 1; . as $i | $r
+            | if ($py[$i].mode // null) == "offline-runner" then (if $side == "py" then offline_py else offline_cs end) else . end)' \
+          "$work/$tag.$side.jsonl" > "$work/$tag.$side.filtered"
         ;;
       *)
         cp "$work/$tag.$side.jsonl" "$work/$tag.$side.filtered"
@@ -423,6 +445,13 @@ compare_records() {
     secrets)
       divergences="$dropped"
       ;;
+    profile-store)
+      divergences="$(tail -n 1 "$work/$tag.textfields")"
+      ;;
+    run-profile)
+      divergences=$(( $(jq -s '[.[] | select(.mode == "offline-runner")] | length' "$work/$tag.py.jsonl") + $(grep -c '^fix g: ' "$work/$tag.py.err" || true) \
+        + $([[ "${PARITY_RUN_PROFILE_SURROGATE_NAMES:-0}" == 1 ]] && echo 1 || echo 0) ))
+      ;;
     hunt)
       divergences="$(diff <(jq -c 'select(.rule.name == "install-path")' "$work/$tag.pystock.jsonl") \
                           <(jq -c 'select(.rule.name == "install-path")' "$work/$tag.py.jsonl") | grep -c '^[<>]' || true)"
@@ -445,6 +474,25 @@ compare_records() {
   fi
   if [[ "$dropped" -gt 0 ]]; then
     sed 's/^/     expected (fix g, python never returned, port compared with the reference model): /' "$work/$tag.timeout"
+  fi
+  if [[ "$normaliser" == "run-profile" ]]; then
+    if jq -e 'select(.mode == "offline-runner")' "$work/$tag.py.jsonl" > /dev/null; then
+      echo "     expected (structured sources, plan decision: compared against the offline runner, not execute_profile; collected files, error, findings, guards and profile.json)"
+    fi
+    sed -n 's/^fix g: /     expected (fix g, python never returned, the copy compared with the reference model): /p' "$work/$tag.py.err"
+    if [[ "${PARITY_RUN_PROFILE_SURROGATE_NAMES:-0}" == 1 ]]; then
+      if grep -q '^surrogate name lookup: ' "$work/$tag.py.err"; then
+        echo "     expected (python-surrogate-name-lookup, decision R: stock python raised UnicodeEncodeError; compared with python looking up these names as not found)"
+        sed -n 's/^surrogate name lookup: /       name /p' "$work/$tag.py.err"
+      else
+        status=1
+        echo "FAIL $surface $label: declares python-surrogate-name-lookup but python looked up no name holding an unpaired surrogate"
+      fi
+    fi
+    if grep -q '^fix g: ' "$work/$tag.py.err" && ! jq -e 'has("redaction_guard")' "$work/$tag.py.jsonl" > /dev/null; then
+      status=1
+      echo "FAIL $surface $label: fix g: python did not return but the reference model fired no guard"
+    fi
   fi
   if [[ "$normaliser" == "hunt" && "$label" == "tools/parity/cases/hunt" ]]; then
     local expectation rel line value found missed
@@ -989,6 +1037,317 @@ run_multi_server_surface() {
     | grep -E -- "${PARITY_MULTI_SERVER_CASES:-.}")
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Phase 6 surfaces. Every record is compared byte for byte (sorted keys) together with its key_order.
+#   Cases are found at any depth (a group directory such as profiles-r1/ holds cases); a directory holding no case fails the surface.
+#   profile-store: every *.json payload under tools/parity/cases/profile-store/ outside diff/ directories (extra dump arguments, one per
+#          line, in <name>.args), then every <case>/ directory below a diff/ directory holding {baseline,current}.json through profile-diff.
+#   run-profile: every directory under tools/parity/cases/run-profile/ holding profile.json (and workdir/); both dumps copy workdir/ (symlinks
+#          kept as links) to the same scratch directory (--scratch), so absolute paths inside metadata.json and its digest agree. A profile
+#          with a structured source (a mapping that sets alias, optional or exclude, names a registry_scan or sql_snapshot, or that
+#          OfflineCollectionSource.from_dict refuses) has no execute_profile counterpart: py_dump.py runs the offline runner instead
+#          ("mode": "offline-runner") and the normaliser keeps the collected file set (source, alias directory, relative path, size,
+#          SHA-256), the error type and message, the secret findings and redaction guards with each path under its source directory,
+#          sorted, and profile.json as the port must write it (structured sources, plan decision); on an error only the error. A copy
+#          Python never finishes (fix g) is redone by secrets_guard.py's reference model inside py_dump.py (reported on its stderr) and
+#          compared exactly, redaction_guard included. A case's optional "divergences" file may declare python-surrogate-name-lookup
+#          (run_profile_declared).
+#   schedule: every directory under tools/parity/cases/schedule/ holding config.json, an optional state.json and steps (one command with
+#          its arguments per line); each step runs on both sides against that side's state file from the previous step, and the first
+#          step that differs fails the case. Two recorded rows are handled (expected_divergences.md, "Scheduling" and "CPython limits
+#          inside json.loads"): a step whose records differ only in the JSONDecodeError text (SCHEDULE_DECODE_TEXT), and a case whose
+#          "divergences" file declares json-call-budget (schedule_declared).
+# ---------------------------------------------------------------------------------------------------------------------
+# SCHEDULE_DECODE_TEXT, with $cs the port's record: Python's record with its error message replaced by the port's when the two differ only
+# where the "Failed to parse schedules / scheduler state" row says. Both errors are SystemExit; Python's message is that prefix and a
+# JSONDecodeError text ("<reason>: line L column C (char N)", one of the decoder's reasons); the port's is the same prefix and "invalid JSON
+# document", the state file's scratch directory (each dump makes its own) being the only part of the prefix allowed to differ, and only in
+# the state message; neither record has output, and everything else (state, key_order) is equal. Any other pair comes back unchanged.
+SCHEDULE_DECODE_TEXT='
+def reasons: "Expecting value|Expecting property name enclosed in double quotes|Expecting .:. delimiter|Expecting .,. delimiter|Extra data|Unterminated string starting at|Invalid control character at|Invalid \\\\escape|Invalid \\\\uXXXX escape|Unexpected UTF-8 BOM \\(decode using utf-8-sig\\)";
+def parts: capture("^(?<prefix>Failed to parse (?<what>schedules|scheduler state) from .+?): (?<text>(?:" + reasons + "): line [0-9]+ column [0-9]+ \\(char [0-9]+\\))$");
+def scratch: if .what == "scheduler state" then .prefix | sub("/driftbuster-parity-schedule-[A-Za-z0-9_]+/state\\.json$"; "/<scratch>/state.json") else .prefix end;
+. as $py
+| if ($py | has("output")) or ($cs | has("output")) or ($py.error.type != "SystemExit") or ($cs.error.type != "SystemExit")
+    or (($py | del(.error.message)) != ($cs | del(.error.message))) then $py
+  else ([$py.error.message | parts] | .[0]) as $p
+  | if $p == null or ($cs.error.message | endswith(": invalid JSON document") | not) then $py
+    else ($cs.error.message | .[0:length - (": invalid JSON document" | length)]) as $port_prefix
+    | if ($p | scratch) == ({prefix: $port_prefix, what: $p.what} | scratch) then $py | .error.message = $cs.error.message else $py end
+    end
+  end'
+
+# schedule_decode_text_self_test: SCHEDULE_DECODE_TEXT must accept a manifest and a state pair that differ only in the decoder's text and
+# refuse every pair that differs anywhere else.
+schedule_decode_text_self_test() {
+  local failures=0 name py cs want got
+  local manifest='Failed to parse schedules from cases/x/config.json'
+  local state_py='Failed to parse scheduler state from /tmp/driftbuster-parity-schedule-ab_12xyz/state.json'
+  local state_cs='Failed to parse scheduler state from /tmp/driftbuster-parity-schedule-Q0mAc3/state.json'
+  record() { jq -n -c --arg type "$1" --arg message "$2" --arg state "$3" '{error: {type: $type, message: $message}, key_order: [], state: $state}'; }
+  while IFS='|' read -r name want py cs; do
+    got="$(jq -c --argjson cs "$cs" "$SCHEDULE_DECODE_TEXT" <<< "$py")"
+    if [[ "$want" == accept && "$(jq -S -c . <<< "$got")" != "$(jq -S -c . <<< "$cs")" ]] \
+      || [[ "$want" == refuse && "$got" != "$(jq -c . <<< "$py")" ]]; then
+      echo "FAIL schedule harness self-test of SCHEDULE_DECODE_TEXT: $name"
+      failures=1
+    fi
+  done <<EOF_CASES
+extra data in the manifest|accept|$(record SystemExit "$manifest: Extra data: line 1 column 19 (char 18)" "")|$(record SystemExit "$manifest: invalid JSON document" "")
+BOM in the state file|accept|$(record SystemExit "$state_py: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)" s)|$(record SystemExit "$state_cs: invalid JSON document" s)
+port text is not the recorded one|refuse|$(record SystemExit "$manifest: Extra data: line 1 column 19 (char 18)" "")|$(record SystemExit "$manifest: invalid JSON documents" "")
+python text is not a JSONDecodeError|refuse|$(record SystemExit "$manifest: Exceeds the limit (4300 digits)" "")|$(record SystemExit "$manifest: invalid JSON document" "")
+manifest paths differ|refuse|$(record SystemExit "$manifest: Extra data: line 1 column 19 (char 18)" "")|$(record SystemExit "${manifest/x/y}: invalid JSON document" "")
+manifest scratch-like paths differ|refuse|$(record SystemExit "${state_py/scheduler state/schedules}: Extra data: line 1 column 2 (char 1)" "")|$(record SystemExit "${state_cs/scheduler state/schedules}: invalid JSON document" "")
+state paths differ outside the scratch directory|refuse|$(record SystemExit "$state_py: Expecting value: line 1 column 1 (char 0)" s)|$(record SystemExit "${state_cs/tmp/var}: invalid JSON document" s)
+state file text differs|refuse|$(record SystemExit "$manifest: Extra data: line 1 column 19 (char 18)" a)|$(record SystemExit "$manifest: invalid JSON document" b)
+error types differ|refuse|$(record ValueError "$manifest: Extra data: line 1 column 19 (char 18)" "")|$(record SystemExit "$manifest: invalid JSON document" "")
+the port printed output|refuse|$(record SystemExit "$manifest: Extra data: line 1 column 19 (char 18)" "")|$(jq -c '. + {output: []}' <<< "$(record SystemExit "$manifest: invalid JSON document" "")")
+EOF_CASES
+  [[ "$failures" -eq 0 ]] && echo "ok   schedule harness self-test of SCHEDULE_DECODE_TEXT: 2 accepted, 8 refused"
+  return "$failures"
+}
+
+# schedule_declared <case dir>: reads the case's optional "divergences" file (one name per line). The only name is json-call-budget (see
+# _JsonCallBudget in py_dump.py): Python's steps then run with PARITY_SCHEDULE_JSON_CALL_BUDGET=1, and every step on which that seam
+# reports a decode must, run stock, end with exactly RecursionError "maximum recursion depth exceeded while calling a Python object".
+# Sets schedule_call_budget to 1 or 0.
+schedule_declared() {
+  local dir="$1" name
+  schedule_call_budget=0
+  [[ -f "$dir/divergences" ]] || return 0
+  while IFS= read -r name; do
+    [[ -z "$name" ]] && continue
+    if [[ "$name" != "json-call-budget" ]]; then
+      echo "FAIL $surface $dir: unknown divergence '$name' (known: json-call-budget)"
+      return 1
+    fi
+    schedule_call_budget=1
+  done < "$dir/divergences"
+}
+
+compare_schedule() {
+  local dir="$1" tag step line side rc steps=0 failed=0 divergences=0 budget_steps=0
+  shift
+  tag="schedule-$(echo "${dir#tools/parity/cases/schedule/}" | tr '/ ' '__')"
+  if ! schedule_declared "$dir"; then
+    status=1
+    return
+  fi
+  for side in py cs; do
+    rm -f "$work/$tag.$side.state"
+    [[ -f "$dir/state.json" ]] && cp "$dir/state.json" "$work/$tag.$side.state"
+  done
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    steps=$((steps + 1))
+    step="$tag.step$steps"
+    local args=()
+    read -r -a args <<< "$line"
+    rc=0
+    if [[ "$schedule_call_budget" -eq 1 && -f "$work/$tag.py.state" ]]; then
+      cp "$work/$tag.py.state" "$work/$step.py.state-before"
+    fi
+    PARITY_SCHEDULE_JSON_CALL_BUDGET="$schedule_call_budget" PYTHONPATH="$repo_root/src" \
+      python tools/parity/py_dump.py schedule "$dir/config.json" "$work/$tag.py.state" "${args[@]}" "$@" \
+      > "$work/$step.py.jsonl" 2> "$work/$step.py.err" || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+      timeout "$port_timeout" "$cli_exe" parity-dump schedule "$dir/config.json" "$work/$tag.cs.state" "${args[@]}" "$@" \
+        > "$work/$step.cs.jsonl" 2> "$work/$step.cs.err" || rc=$?
+      [[ "$rc" -ne 0 ]] && side=cs
+    else
+      side=py
+    fi
+    if [[ "$rc" -ne 0 ]]; then
+      echo "FAIL $surface $dir: step $steps ($line): $side dump exited $rc"
+      sed 's/^/     /' "$work/$step.$side.err" | tail -n 5
+      failed=1
+      break
+    fi
+    for side in py cs; do
+      if [[ "$(wc -l < "$work/$step.$side.jsonl")" != "1" ]] || ! jq -e 'has("state") and has("key_order")' "$work/$step.$side.jsonl" > /dev/null 2>&1; then
+        echo "FAIL $surface $dir: step $steps ($line): $side dump is not one schedule record"
+        failed=1
+      fi
+    done
+    [[ "$failed" -eq 1 ]] && break
+    if grep -q '^json call budget: ' "$work/$step.py.err"; then
+      # The same step run stock (from the same state file) must end with the call-budget RecursionError.
+      rm -f "$work/$step.stock.state"
+      [[ -f "$work/$step.py.state-before" ]] && cp "$work/$step.py.state-before" "$work/$step.stock.state"
+      PYTHONPATH="$repo_root/src" python tools/parity/py_dump.py schedule "$dir/config.json" "$work/$step.stock.state" "${args[@]}" "$@" \
+        > "$work/$step.stock.jsonl" 2> "$work/$step.stock.err" || true
+      if ! jq -e -s 'length == 1 and .[0].error == {type: "RecursionError", message: "maximum recursion depth exceeded while calling a Python object"}' \
+          "$work/$step.stock.jsonl" > /dev/null 2>&1; then
+        echo "FAIL $surface $dir: step $steps ($line): the call-budget seam decoded, but the stock python dump does not end with its RecursionError"
+        head -c 2000 "$work/$step.stock.jsonl" "$work/$step.stock.err" | sed 's/^/     /'
+        failed=1
+        break
+      fi
+      budget_steps=$((budget_steps + 1))
+    fi
+    if ! cmp -s "$work/$step.py.jsonl" "$work/$step.cs.jsonl"; then
+      jq -c --slurpfile cs "$work/$step.cs.jsonl" '$cs[0] as $cs | '"$SCHEDULE_DECODE_TEXT" "$work/$step.py.jsonl" > "$work/$step.py.decode-text"
+      if ! cmp -s "$work/$step.py.decode-text" <(jq -c . "$work/$step.py.jsonl") \
+          && [[ "$(jq -S -c . "$work/$step.py.decode-text")" == "$(jq -S -c . "$work/$step.cs.jsonl")" ]]; then
+        divergences=$((divergences + 1))
+      else
+        diff -u <(jq . "$work/$step.py.jsonl") <(jq . "$work/$step.cs.jsonl") > "$work/$step.diff" || true
+        echo "FAIL $surface $dir: step $steps ($line) differs"
+        head -c 20000 "$work/$step.diff"
+        echo
+        failed=1
+        break
+      fi
+    fi
+    for side in py cs; do
+      if jq -e '.state == null' "$work/$step.$side.jsonl" > /dev/null; then
+        rm -f "$work/$tag.$side.state"
+      else
+        jq -j '.state' "$work/$step.$side.jsonl" > "$work/$tag.$side.state"
+      fi
+    done
+  done < "$dir/steps"
+  files_total=$((files_total + steps))
+  if [[ "$failed" -eq 0 && "$schedule_call_budget" -eq 1 && "$budget_steps" -eq 0 ]]; then
+    failed=1
+    echo "FAIL $surface $dir: declares json-call-budget but no step decoded through the seam"
+  fi
+  if [[ "$failed" -eq 1 ]]; then
+    status=1
+  elif [[ "$steps" -eq 0 ]]; then
+    status=1
+    echo "FAIL $surface $dir: no steps"
+  else
+    divergences=$((divergences + budget_steps))
+    expected_total=$((expected_total + divergences))
+    if [[ "$divergences" -gt 0 ]]; then
+      echo "ok   $surface $dir: $steps steps, $divergences expected divergences (JSONDecodeError text $((divergences - budget_steps)), json call budget $budget_steps)"
+    else
+      echo "ok   $surface $dir: $steps steps"
+    fi
+  fi
+}
+
+# phase6_case_dirs <listing file> <surface root> <marker>...: writes every directory at any depth below the root that holds one of the
+# marker files (a case), outside workdir/ trees, in C-locale order. A directory that is neither a case, inside one, nor above one (an
+# empty group) is reported and fails the listing, so a misplaced case is never silently skipped.
+phase6_case_dirs() {
+  local listing="$1" root="$2" marker dir case_dir held bad=0
+  shift 2
+  local names=()
+  for marker in "$@"; do
+    names+=(${names[@]:+-o} -name "$marker")
+  done
+  find "$root" -type d -name workdir -prune -o -type f \( "${names[@]}" \) -print | while IFS= read -r dir; do dirname "$dir"; done \
+    | LC_ALL=C sort -u > "$listing"
+  while IFS= read -r dir; do
+    held=0
+    while IFS= read -r case_dir; do
+      if [[ "$case_dir" == "$dir" || "$case_dir" == "$dir/"* || "$dir" == "$case_dir/"* ]]; then
+        held=1
+        break
+      fi
+    done < "$listing"
+    if [[ "$held" -eq 0 ]]; then
+      echo "FAIL $surface $dir: holds no case (no $* at any depth)"
+      bad=1
+    fi
+  done < <(find "$root" -mindepth 1 -type d -name workdir -prune -o -type d -print | LC_ALL=C sort)
+  return "$bad"
+}
+
+# run_profile_declared <case dir> <dump args...>: reads the case's optional "divergences" file (one name per line). The only name is
+# python-surrogate-name-lookup (decision R, "Run profiles" in expected_divergences.md): a variable or user name holding an unpaired
+# surrogate raises UnicodeEncodeError out of Python's expansion, where the port finds no such variable or user. The stock Python dump must
+# end with exactly that error; the case is then compared against a Python dump whose lookups of such names find nothing
+# (PARITY_RUN_PROFILE_SURROGATE_NAMES=1, which must report at least one such lookup). Sets run_profile_surrogate_names to 1 or 0.
+run_profile_declared() {
+  local dir="$1" name tag rc=0
+  shift
+  run_profile_surrogate_names=0
+  [[ -f "$dir/divergences" ]] || return 0
+  while IFS= read -r name; do
+    [[ -z "$name" ]] && continue
+    if [[ "$name" != "python-surrogate-name-lookup" ]]; then
+      echo "FAIL $surface $dir: unknown divergence '$name' (known: python-surrogate-name-lookup)"
+      return 1
+    fi
+    run_profile_surrogate_names=1
+  done < "$dir/divergences"
+  tag="run-profile-stock-$(echo "$dir" | tr '/ ' '__')"
+  PARITY_SECRETS_TIMEOUT="$secrets_timeout" PYTHONPATH="$repo_root/src" python tools/parity/py_dump.py run-profile \
+    "$dir/profile.json" "$dir/workdir" --scratch "$work/run-profile-scratch" "$@" > "$work/$tag.jsonl" 2> "$work/$tag.err" || rc=$?
+  if [[ "$rc" -ne 0 ]] || ! jq -e -s 'length == 1 and .[0].error.type == "UnicodeEncodeError"
+      and (.[0].error.message | test("^.utf-8. codec can.t encode character .\\\\ud[89a-f][0-9a-f]{2}. in position [0-9]+: surrogates not allowed$"))' \
+      "$work/$tag.jsonl" > /dev/null; then
+    echo "FAIL $surface $dir: declares python-surrogate-name-lookup but the stock python dump does not end with that UnicodeEncodeError"
+    head -c 2000 "$work/$tag.jsonl" "$work/$tag.err" | sed 's/^/     /'
+    return 1
+  fi
+}
+
+run_phase6_surface() {
+  local payload dir listing
+  listing="$work/phase6-listing"
+  case "$surface" in
+    profile-store)
+      # The text-field normaliser must replace only at text-field positions: a stringified metadata value under a text field's name fails.
+      if python tools/parity/profile_text_fields.py --self-test > "$work/profile-text-fields.self-test" 2>&1; then
+        sed 's/^/ok   profile-store harness /' "$work/profile-text-fields.self-test"
+      else
+        status=1
+        echo "FAIL profile-store: harness self-test of profile_text_fields.py"
+        sed 's/^/     /' "$work/profile-text-fields.self-test"
+      fi
+      # Payloads at any depth outside diff/ directories; diff pairs are the <case>/ directories below any diff/ directory.
+      while IFS= read -r payload; do
+        local extra=() index
+        [[ -f "${payload%.json}.args" ]] && mapfile -t extra < "${payload%.json}.args"
+        # An argument line "json:<JSON string>" is that string decoded, so an argument can hold a line break.
+        for index in "${!extra[@]}"; do
+          if [[ "${extra[$index]}" == json:* ]]; then
+            extra[index]="$(jq -j -n --argjson value "${extra[$index]#json:}" '$value')"
+          fi
+        done
+        compare_records "$payload" profile-store profile-store "$payload" "${extra[@]}" "$@"
+      done < <(find tools/parity/cases/profile-store -type d -name diff -prune -o -type f -name '*.json' -print | LC_ALL=C sort)
+      while IFS= read -r dir; do
+        if [[ ! -f "$dir/baseline.json" || ! -f "$dir/current.json" ]]; then
+          status=1
+          echo "FAIL $surface $dir: a diff case needs baseline.json and current.json"
+          continue
+        fi
+        compare_records "$dir" profile-diff none "$dir/baseline.json" "$dir/current.json" "$@"
+      done < <(find tools/parity/cases/profile-store -type d -path '*/diff/*' -prune -print | LC_ALL=C sort)
+      ;;
+    run-profile)
+      if ! phase6_case_dirs "$listing" tools/parity/cases/run-profile profile.json; then
+        status=1
+      fi
+      while IFS= read -r dir; do
+        if ! run_profile_declared "$dir" "$@"; then
+          status=1
+          continue
+        fi
+        PARITY_RUN_PROFILE_SURROGATE_NAMES="$run_profile_surrogate_names" \
+          compare_records "$dir" run-profile run-profile "$dir/profile.json" "$dir/workdir" --scratch "$work/run-profile-scratch" "$@"
+      done < "$listing"
+      ;;
+    schedule)
+      if ! schedule_decode_text_self_test; then
+        status=1
+      fi
+      if ! phase6_case_dirs "$listing" tools/parity/cases/schedule steps config.json; then
+        status=1
+      fi
+      while IFS= read -r dir; do
+        compare_schedule "$dir" "$@"
+      done < "$listing"
+      ;;
+  esac
+}
+
 if [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
   compare "fixtures" "fixtures" "$@"
   if [[ -d "tools/parity/cases/$surface" ]]; then
@@ -1049,6 +1408,8 @@ if [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
   fi
 elif [[ "$surface" == "multi-server" ]]; then
   run_multi_server_surface "$@"
+elif [[ "$surface" == "profile-store" || "$surface" == "run-profile" || "$surface" == "schedule" ]]; then
+  run_phase6_surface "$@"
 else
   run_phase4_surface "$@"
 fi

@@ -14,6 +14,10 @@ useDefault = true
 
     # Intentional dummy secrets used by the hunt/secret-scanning test suite
     '''fixtures/secret_samples/''',
+
+    # Dummy secrets in the engine-port parity cases and the CPython regex oracle data
+    '''tools/parity/cases/''',
+    '''gui/DriftBuster\.Backend\.Tests/Infrastructure/Data/python_regex_cases\.json''',
   ]
 
   regexTarget = "match"

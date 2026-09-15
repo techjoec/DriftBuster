@@ -1,0 +1,21 @@
+{
+  "profiles": [
+    {
+      "name": "norm",
+      "configs": [
+        {
+          "id": "dotted",
+          "path": "./config//app.json"
+        },
+        {
+          "id": "trailing",
+          "path": "config/app.json/"
+        },
+        {
+          "id": "glob-dotted",
+          "path_glob": "./config/*.json"
+        }
+      ]
+    }
+  ]
+}

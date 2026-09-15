@@ -1,0 +1,6 @@
+list
+due --at 2025-12-31T00:00:00Z
+mark-complete --name posix
+mark-complete --name etc
+mark-complete --name empty-tz
+list

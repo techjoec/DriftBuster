@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "trail",
+      "profile": "trail-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "window": {
+        "start": "03:00",
+        "end": "04:00",
+        "timezone": "UTC/"
+      }
+    }
+  ]
+}

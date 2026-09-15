@@ -136,7 +136,7 @@ internal static class PythonCharacterData
         var changes = new Dictionary<int, int>();
         for (var code = 0; code < CaseScanLimit; code++)
         {
-            if (IsSurrogate(code) || !MayChangeCase(Rune.GetUnicodeCategory(new Rune(code))))
+            if (IsSurrogate(code) || !MayChangeCase(PythonUnicode.GetCategory(code)))
             {
                 continue;
             }
@@ -166,6 +166,5 @@ internal static class PythonCharacterData
     private static bool IsUnicodeWord(int code) => !IsSurrogate(code) && PythonText.IsWordRune(new Rune(code));
 
     // Py_UNICODE_ISDECIMAL: category Nd.
-    private static bool IsUnicodeDigit(int code)
-        => !IsSurrogate(code) && Rune.GetUnicodeCategory(new Rune(code)) == UnicodeCategory.DecimalDigitNumber;
+    private static bool IsUnicodeDigit(int code) => PythonUnicode.IsDecimal(code);
 }

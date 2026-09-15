@@ -1,0 +1,20 @@
+{
+  "name": "secrets",
+  "sources": [
+    "conf"
+  ],
+  "options": {
+    "secret_ignore_patterns": "ALLOW-THIS",
+    "retries": 3,
+    "flag": null
+  },
+  "secret_scanner": {
+    "ignore_rules": [
+      "AwsAccessKeyId"
+    ],
+    "ignore_patterns": [
+      "^# keep",
+      "(unclosed"
+    ]
+  }
+}

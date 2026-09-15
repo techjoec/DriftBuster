@@ -1,0 +1,34 @@
+{
+  "schedules": [
+    {
+      "name": "spaces",
+      "profile": "spaces-profile",
+      "every": "1h",
+      "start_at": "2025-01-01T00:00:00Z",
+      "window": {
+        "start": " 1:2 ",
+        "end": "+03:04:05"
+      }
+    },
+    {
+      "name": "unicode-digits",
+      "profile": "unicode-digits-profile",
+      "every": "1h",
+      "start_at": "2025-01-01T00:00:00Z",
+      "window": {
+        "start": "١٢:00",
+        "end": "13:00"
+      }
+    },
+    {
+      "name": "equal",
+      "profile": "equal-profile",
+      "every": "1h",
+      "start_at": "2025-01-01T05:00:00Z",
+      "window": {
+        "start": "05:00",
+        "end": "05:00"
+      }
+    }
+  ]
+}

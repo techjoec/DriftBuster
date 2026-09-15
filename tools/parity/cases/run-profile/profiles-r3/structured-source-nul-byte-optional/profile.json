@@ -1,0 +1,19 @@
+{
+ "name": "nuls",
+ "sources": [
+  {
+   "path": "a\u0000b",
+   "optional": true,
+   "alias": "n"
+  },
+  {
+   "path": "*\u0000",
+   "optional": true,
+   "alias": "g"
+  },
+  {
+   "path": "in.txt",
+   "alias": "i"
+  }
+ ]
+}

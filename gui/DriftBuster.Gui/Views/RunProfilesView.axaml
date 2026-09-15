@@ -92,6 +92,25 @@
                                   automation:AutomationProperties.AutomationId="Profiles.Source.Remove" />
                         </StackPanel>
                       </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBox Text="{Binding Alias, Mode=TwoWay}"
+                                 Width="160"
+                                 PlaceholderText="Alias (optional)"
+                                 automation:AutomationProperties.AutomationId="Profiles.Source.Alias"
+                                 automation:AutomationProperties.Name="Source alias" />
+                        <TextBox Text="{Binding Exclude, Mode=TwoWay}"
+                                 Width="260"
+                                 AcceptsReturn="True"
+                                 TextWrapping="NoWrap"
+                                 MinHeight="32"
+                                 PlaceholderText="Exclude patterns (one per line)"
+                                 automation:AutomationProperties.AutomationId="Profiles.Source.Exclude"
+                                 automation:AutomationProperties.Name="Source exclude patterns" />
+                        <CheckBox Content="Optional"
+                                  IsChecked="{Binding Optional, Mode=TwoWay}"
+                                  automation:AutomationProperties.AutomationId="Profiles.Source.Optional"
+                                  automation:AutomationProperties.Name="Optional source" />
+                      </StackPanel>
                       <TextBlock Text="{Binding Error}" Foreground="{DynamicResource Brush.Accent}" Classes="subtitle" />
                     </StackPanel>
                   </Border>

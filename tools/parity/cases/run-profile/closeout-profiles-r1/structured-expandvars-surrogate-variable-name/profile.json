@@ -1,0 +1,14 @@
+{
+ "name": "ev",
+ "sources": [
+  {
+   "path": "${\ud800}/x.txt",
+   "alias": "e",
+   "optional": true
+  },
+  {
+   "path": "in.txt",
+   "alias": "i"
+  }
+ ]
+}

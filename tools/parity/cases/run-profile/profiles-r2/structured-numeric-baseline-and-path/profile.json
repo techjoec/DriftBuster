@@ -1,0 +1,11 @@
+{
+  "name": "numeric",
+  "sources": [
+    {
+      "path": 5,
+      "alias": "five"
+    },
+    "6"
+  ],
+  "baseline": 5
+}

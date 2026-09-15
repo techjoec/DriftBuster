@@ -1,0 +1,22 @@
+{
+  "total_profiles": 2,
+  "total_configs": 4,
+  "profiles": [
+    {
+      "name": "web",
+      "config_count": 3,
+      "config_ids": [
+        "web-app",
+        "web-new",
+        "web-extra"
+      ]
+    },
+    {
+      "name": "cache",
+      "config_count": 1,
+      "config_ids": [
+        "redis"
+      ]
+    }
+  ]
+}

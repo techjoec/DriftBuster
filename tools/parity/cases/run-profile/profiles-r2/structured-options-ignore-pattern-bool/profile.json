@@ -1,0 +1,12 @@
+{
+  "name": "bool ignore",
+  "sources": [
+    {
+      "path": "conf",
+      "alias": "conf"
+    }
+  ],
+  "options": {
+    "secret_ignore_patterns": true
+  }
+}

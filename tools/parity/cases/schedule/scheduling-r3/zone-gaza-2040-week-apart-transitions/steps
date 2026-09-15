@@ -1,0 +1,8 @@
+list
+due --at 2040-10-20T00:00:00Z
+mark-complete --name gaza-overnight
+due --at 2040-10-27T12:00:00+02:00
+mark-complete --name gaza-day
+mark-complete --name gaza-day --completed-at 2040-10-26T22:30:00Z
+skip-until --name gaza-overnight --resume-at 2040-10-26T23:15:00+01:00
+list

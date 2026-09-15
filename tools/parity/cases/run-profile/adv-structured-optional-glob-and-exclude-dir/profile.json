@@ -1,0 +1,19 @@
+{
+  "name": "optglob",
+  "sources": [
+    {
+      "path": "logs/*.log",
+      "optional": true,
+      "exclude": [
+        "b*"
+      ]
+    },
+    {
+      "path": "conf",
+      "alias": "c",
+      "exclude": [
+        "*/"
+      ]
+    }
+  ]
+}

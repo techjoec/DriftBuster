@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "eg",
+      "profile": "eg-profile",
+      "every": "30m",
+      "start_at": "2040-10-25T20:10:00Z",
+      "window": {
+        "start": "23:00",
+        "end": "23:59",
+        "timezone": "Africa/Cairo"
+      }
+    }
+  ]
+}

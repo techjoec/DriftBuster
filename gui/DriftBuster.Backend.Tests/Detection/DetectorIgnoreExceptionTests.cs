@@ -51,29 +51,4 @@ public sealed class DetectorIgnoreExceptionTests : IDisposable
         results[0].Detection!.Metadata.Should().NotContainKey("review_ignored");
         results[0].Profiles.Should().BeOfType<RaisingConfigs>();
     }
-
-    [Fact]
-    public void ScanWithProfilesClearsReviewFlagWhenConfigIgnoresIt()
-    {
-        var target = Path.Combine(_tmp.FullName, "config.yaml");
-        File.WriteAllText(target, "apiVersion: v1\n\tkind: ConfigMap\n", new UTF8Encoding(false));
-
-        var detector = new Detector();
-        var results = detector.ScanWithProfiles(_tmp.FullName, new IgnoringStore());
-
-        var metadata = results.Single().Detection!.Metadata!;
-        metadata["needs_review"].Should().Be(false);
-        metadata["review_ignored"].Should().Be(true);
-    }
-
-    private sealed class IgnoringStore : IProfileMatcher
-    {
-        public IReadOnlyList<AppliedProfileConfig> MatchingConfigs(IReadOnlySet<string> tags, string? relativePath)
-            =>
-            [
-                new AppliedProfileConfig(
-                    new DetectionProfile("prod"),
-                    new DetectionProfileConfig("cfg", new Dictionary<string, object?>(StringComparer.Ordinal) { ["ignore_review_flags"] = true })),
-            ];
-    }
 }

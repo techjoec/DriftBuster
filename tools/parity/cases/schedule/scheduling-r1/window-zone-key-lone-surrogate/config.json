@@ -1,0 +1,1 @@
+{"schedules": [{"name": "window-zone-key-lone-surrogate", "profile": "p", "every": "1h", "window": {"start": "01:00", "end": "02:00", "timezone": "America/\udc80Chicago"}}]}

@@ -1,0 +1,28 @@
+{
+  "schedules": [
+    {
+      "name": "arabic",
+      "profile": "arabic-profile",
+      "every": "١٥m",
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "astral",
+      "profile": "astral-profile",
+      "every": "𝟐h𝟑m",
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "iso-astral",
+      "profile": "iso-astral-profile",
+      "every": "PT𝟏H",
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "fullwidth",
+      "profile": "fullwidth-profile",
+      "every": "１.５h",
+      "start_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}

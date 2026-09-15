@@ -1,0 +1,13 @@
+{
+  "name": "collide",
+  "sources": [
+    {
+      "path": "a",
+      "alias": "same"
+    },
+    {
+      "path": "b",
+      "alias": "same"
+    }
+  ]
+}

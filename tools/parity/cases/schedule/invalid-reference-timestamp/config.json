@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "name": "ok",
+      "profile": "ok-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z"
+    }
+  ]
+}

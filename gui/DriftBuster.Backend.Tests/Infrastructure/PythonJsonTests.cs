@@ -116,4 +116,36 @@ public sealed class PythonJsonTests
         PythonJson.TryLoads("[1, " + Lists(PythonJson.MaxNestingDepth) + "]", out _).Should().BeFalse();
         PythonJson.TryLoads(new string('[', 60000) + new string(']', 60000), out _).Should().BeFalse();
     }
+
+    // CPython 3.13: json.loads raises these past its limits, at the first failure in text order; a syntax error before the limit is a
+    // JSONDecodeError (false).
+    [Fact]
+    public void TryLoadsOrRaiseLimitsRaisesTheInterpreterLimitErrors()
+    {
+        var digits = () => PythonJson.TryLoadsOrRaiseLimits("[-" + new string('1', PythonJson.MaxIntDigits + 1) + "]", out _);
+        digits.Should().Throw<PythonValueException>().WithMessage(
+            "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit");
+        var lists = () => PythonJson.TryLoadsOrRaiseLimits(new string('[', PythonJson.MaxNestingDepth + 1), out _);
+        lists.Should().Throw<PythonRecursionException>().WithMessage("maximum recursion depth exceeded while decoding a JSON array from a unicode string");
+        var objects = () => PythonJson.TryLoadsOrRaiseLimits(string.Concat(Enumerable.Repeat("{\"a\": ", PythonJson.MaxNestingDepth + 1)), out _);
+        objects.Should().Throw<PythonRecursionException>().WithMessage("maximum recursion depth exceeded while decoding a JSON object from a unicode string");
+
+        PythonJson.TryLoadsOrRaiseLimits("[x, " + new string('1', PythonJson.MaxIntDigits + 1) + "]", out _).Should().BeFalse();
+        PythonJson.TryLoadsOrRaiseLimits("[1]", out var value).Should().BeTrue();
+        value.Should().BeEquivalentTo(new List<object?> { 1 });
+        PythonJson.TryLoads("[" + new string('1', PythonJson.MaxIntDigits + 1) + "]", out _).Should().BeFalse();
+    }
+
+    // json.decoder._CONSTANTS: every NaN literal decodes to one float object, so a NaN is found by identity in a set or as a dict key.
+    [Fact]
+    public void EveryNaNLiteralIsOneObject()
+    {
+        var first = (List<object?>)Loads("[NaN, NaN]")!;
+        var second = new List<object?> { Loads("NaN") };
+        ReferenceEquals(first[0], first[1]).Should().BeTrue();
+        ReferenceEquals(first[0], second[0]).Should().BeTrue();
+        PythonValues.Equal(first[0], second[0]).Should().BeTrue();
+        PythonValues.Equal(first[0], double.NaN).Should().BeFalse();
+        new HashSet<object?>(first, PythonValues.HashKeys).Should().ContainSingle();
+    }
 }

@@ -26,7 +26,7 @@ public sealed class PythonUtf8Tests
     {
         var decode = () => PythonUtf8.Decode(bytes);
 
-        decode.Should().Throw<InvalidDataException>().Which.Message.Should().Be(message);
+        decode.Should().Throw<PythonUnicodeDecodeException>().Which.Message.Should().Be(message);
     }
 
     [Fact]

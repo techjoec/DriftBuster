@@ -30,4 +30,30 @@ public static class ProfileTags
 
         return cleaned;
     }
+
+    /// <summary>
+    /// <c>normalize_tags</c> over a JSON value: None is empty; a str yields its code points, a list its items and a dict its keys
+    /// (anything else raises <c>TypeError: '&lt;type&gt;' object is not iterable</c>); falsy items are skipped and any other item
+    /// that is not a str raises <c>AttributeError</c> (<see cref="PythonAttributeException"/>) on <c>strip</c>.
+    /// </summary>
+    public static IReadOnlySet<string> NormalizeValue(object? tags)
+    {
+        if (tags is null)
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        var items = new List<string?>();
+        foreach (var item in PythonBuiltins.Iterate(tags))
+        {
+            if (!PythonBuiltins.IsTruthy(item))
+            {
+                continue;
+            }
+
+            items.Add(item as string ?? throw new PythonAttributeException($"'{PythonBuiltins.TypeName(item)}' object has no attribute 'strip'"));
+        }
+
+        return Normalize(items);
+    }
 }

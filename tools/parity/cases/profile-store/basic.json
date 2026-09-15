@@ -1,0 +1,64 @@
+{
+  "profiles": [
+    {
+      "name": "web",
+      "description": "Web tier",
+      "tags": [
+        "env:prod",
+        " tier:web ",
+        ""
+      ],
+      "metadata": {
+        "owner": "ops",
+        "nested": {
+          "z": 1,
+          "a": [
+            1,
+            2.5,
+            null,
+            true
+          ]
+        }
+      },
+      "configs": [
+        {
+          "id": "web-app",
+          "path": "config/app.json",
+          "expected_format": "json",
+          "expected_variant": "generic",
+          "metadata": {
+            "b": 1,
+            "a": 2
+          }
+        },
+        {
+          "id": "web-configs",
+          "path_glob": "sites/*/web.config",
+          "expected_format": "xml",
+          "tags": [
+            "env:prod"
+          ]
+        },
+        {
+          "id": "web-any"
+        }
+      ]
+    },
+    {
+      "name": "db",
+      "tags": [
+        "env:prod",
+        "tier:db"
+      ],
+      "configs": [
+        {
+          "id": "db-ini",
+          "path": "db/my.ini",
+          "application": "mysql",
+          "version": "8.0",
+          "branch": "main"
+        }
+      ]
+    }
+  ]
+}

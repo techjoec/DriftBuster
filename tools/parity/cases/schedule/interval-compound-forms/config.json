@@ -1,0 +1,46 @@
+{
+  "schedules": [
+    {
+      "name": "compound",
+      "profile": "compound-profile",
+      "every": "1h30m",
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "fraction",
+      "profile": "fraction-profile",
+      "every": "1.5h",
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "iso",
+      "profile": "iso-profile",
+      "every": "PT45M",
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "iso-mixed",
+      "profile": "iso-mixed-profile",
+      "every": "pt1h2m3.5s",
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "numeric",
+      "profile": "numeric-profile",
+      "every": 90,
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "float",
+      "profile": "float-profile",
+      "every": 0.5,
+      "start_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "name": "upper",
+      "profile": "upper-profile",
+      "every": " 2D3H ",
+      "start_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}

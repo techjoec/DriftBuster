@@ -1,0 +1,13 @@
+{
+ "name": "rec",
+ "sources": [
+  {
+   "path": "data",
+   "alias": "d"
+  },
+  {
+   "path": "**/*.txt",
+   "alias": "all"
+  }
+ ]
+}

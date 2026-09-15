@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "name": "bad-start",
+      "profile": "bad-start-profile",
+      "every": "1h",
+      "start_at": "2025-13-01T00:00:00"
+    }
+  ]
+}

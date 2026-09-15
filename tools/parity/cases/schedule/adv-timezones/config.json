@@ -1,0 +1,37 @@
+{
+  "schedules": [
+    {
+      "name": "empty-tz",
+      "profile": "empty-tz-profile",
+      "every": "1h",
+      "start_at": "2025-01-01T00:00:00Z",
+      "window": {
+        "start": "23:59:59",
+        "end": "00:00:00",
+        "timezone": ""
+      }
+    },
+    {
+      "name": "etc",
+      "profile": "etc-profile",
+      "every": "1h",
+      "start_at": "2025-01-01T00:00:00Z",
+      "window": {
+        "start": "01:00",
+        "end": "02:00",
+        "timezone": "Etc/GMT+5"
+      }
+    },
+    {
+      "name": "posix",
+      "profile": "posix-profile",
+      "every": "1h",
+      "start_at": "2025-07-01T00:00:00Z",
+      "window": {
+        "start": "01:00",
+        "end": "02:00",
+        "timezone": "EST5EDT"
+      }
+    }
+  ]
+}

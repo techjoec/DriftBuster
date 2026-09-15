@@ -12,7 +12,10 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.Profiles.Run;
+using DriftBuster.Backend.Scheduling;
 using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.ViewModels;
@@ -22,6 +25,12 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
     private readonly IDriftbusterService _service;
     private readonly ObservableCollection<string> _profileSuggestions = new();
     private bool _disposed;
+
+    // True only while the schedule cards are the manifest as last read. Until then (before the first load, or after a load that failed:
+    // a manifest the scheduler refuses) saving leaves schedules.json alone, so the cards never overwrite a manifest they were not read from.
+    private bool _schedulesLoaded;
+
+    private const string SchedulesNotSavedMessage = "Schedule cards were not saved: the schedule manifest has not been loaded.";
 
     internal Func<ProcessStartInfo, Process?>? ProcessStarterOverride { get; set; }
 
@@ -41,6 +50,13 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
     private string _profileName = string.Empty;
 
     private string _previousProfileName = string.Empty;
+
+    // The last loaded profile's name, description and secret scanner options, and whether it had no baseline: an unedited load saves them
+    // as loaded, so the saved profile behaves as the loaded one.
+    private string? _loadedProfileName;
+    private string? _loadedDescription;
+    private SecretScannerOptions? _loadedSecretScanner;
+    private bool _loadedWithoutBaseline;
 
     [ObservableProperty]
     private string? _profileDescription;
@@ -247,6 +263,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         try
         {
             IsBusy = true;
+            _schedulesLoaded = false;
             var previous = SelectedProfile?.Name;
             Profiles.Clear();
             var response = await _service.ListProfilesAsync().ConfigureAwait(false);
@@ -254,10 +271,11 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             {
                 Profiles.Add(profile);
             }
-            var scheduleResponse = await _service.ListSchedulesAsync().ConfigureAwait(false);
-            ApplySchedules(scheduleResponse.Schedules ?? Array.Empty<ScheduleDefinition>());
+            var scheduleError = await LoadSchedulesAsync().ConfigureAwait(false);
             RebuildProfileSuggestions();
-            StatusMessage = Profiles.Count == 0 ? "No saved profiles." : $"Loaded {Profiles.Count} profile(s).";
+            StatusMessage = scheduleError is not null
+                ? $"The schedule manifest could not be loaded, so schedules are not saved until it loads: {scheduleError}"
+                : Profiles.Count == 0 ? "No saved profiles." : $"Loaded {Profiles.Count} profile(s).";
             if (!string.IsNullOrWhiteSpace(previous))
             {
                 SelectedProfile = Profiles.FirstOrDefault(profile => string.Equals(profile.Name, previous, StringComparison.OrdinalIgnoreCase));
@@ -271,6 +289,38 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         {
             IsBusy = false;
         }
+    }
+
+    // Reads the manifest into the cards; on failure the cards are cleared and the error message returned.
+    private async Task<string?> LoadSchedulesAsync()
+    {
+        try
+        {
+            var scheduleResponse = await _service.ListSchedulesAsync().ConfigureAwait(false);
+            ApplySchedules(scheduleResponse.Schedules ?? Array.Empty<ScheduleDefinition>());
+            _schedulesLoaded = true;
+            return null;
+        }
+        catch (Exception ex)
+        {
+            ApplySchedules(Array.Empty<ScheduleDefinition>());
+            return ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Writes the cards to the manifest when they were read from it; returns true when cards were left unsaved because the manifest has not
+    /// loaded.
+    /// </summary>
+    private async Task<bool> SaveSchedulesIfLoadedAsync(ScheduleDefinition[] schedules)
+    {
+        if (!_schedulesLoaded)
+        {
+            return schedules.Length > 0;
+        }
+
+        await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
+        return false;
     }
 
     partial void OnSelectedProfileChanged(RunProfileDefinition? value)
@@ -345,9 +395,12 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             var profile = BuildCurrentProfile();
             var schedules = BuildCurrentSchedules();
             await _service.SaveProfileAsync(profile).ConfigureAwait(false);
-            await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
-            StatusMessage = $"Saved profile '{profile.Name}'.";
+            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(false);
             await RefreshAsync().ConfigureAwait(true);
+            if (schedulesSkipped && _schedulesLoaded)
+            {
+                StatusMessage = $"Saved profile '{profile.Name}'. {SchedulesNotSavedMessage}";
+            }
         }
         catch (Exception ex)
         {
@@ -373,12 +426,12 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             IsBusy = true;
             var profile = BuildCurrentProfile();
             var schedules = BuildCurrentSchedules();
-            await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
+            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(false);
             var result = await _service.RunProfileAsync(profile, saveProfile: true).ConfigureAwait(false);
             PopulateRunResults(result);
-            StatusMessage = result.Files.Length == 0
+            StatusMessage = (result.Files.Length == 0
                 ? "Run complete. No files were copied."
-                : $"Run complete. Files copied: {result.Files.Length}.";
+                : $"Run complete. Files copied: {result.Files.Length}.") + (schedulesSkipped ? " " + SchedulesNotSavedMessage : string.Empty);
         }
         catch (Exception ex)
         {
@@ -417,7 +470,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             IsBusy = true;
             var schedules = BuildCurrentSchedules();
             await _service.SaveProfileAsync(profile).ConfigureAwait(false);
-            await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
+            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(false);
 
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -438,7 +491,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             };
 
             var result = await _service.PrepareOfflineCollectorAsync(profile, request).ConfigureAwait(false);
-            StatusMessage = $"Offline collector saved to '{result.PackagePath}'.";
+            StatusMessage = $"Offline collector saved to '{result.PackagePath}'." + (schedulesSkipped ? " " + SchedulesNotSavedMessage : string.Empty);
         }
         catch (Exception ex)
         {
@@ -450,32 +503,48 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
     }
 
+    // The profile as edited. Sources keep their declared order (a structured profile collects in that order and names an aliasless source
+    // by its position). The baseline is the saved spelling of its source, or none when the loaded profile had none and the baseline is
+    // still the first source (the run then reads the first source as the baseline, as it did). A name, description, option key or secret
+    // scanner list that is unedited since the load saves as loaded; an edited name or option key is stripped as Python's str.strip strips
+    // it, and option keys are compared exactly (a later row with the same key wins).
     private RunProfileDefinition BuildCurrentProfile()
     {
-        var baseline = Sources.FirstOrDefault(entry => entry.IsBaseline && !string.IsNullOrWhiteSpace(entry.Path));
-        var others = Sources
-            .Where(entry => !ReferenceEquals(entry, baseline))
-            .Where(entry => !string.IsNullOrWhiteSpace(entry.Path))
-            .Select(entry => entry.Path.Trim());
-
-        var orderedSources = new System.Collections.Generic.List<string>();
-        if (baseline is not null && !string.IsNullOrWhiteSpace(baseline.Path))
-        {
-            orderedSources.Add(baseline.Path.Trim());
-        }
-        orderedSources.AddRange(others);
+        var sources = Sources.Where(entry => !string.IsNullOrWhiteSpace(entry.Path)).ToList();
+        var baseline = sources.FirstOrDefault(entry => entry.IsBaseline);
+        var keepNoBaseline = _loadedWithoutBaseline && baseline is not null && ReferenceEquals(baseline, sources[0]);
 
         return new RunProfileDefinition
         {
-            Name = ProfileName.Trim(),
-            Description = string.IsNullOrWhiteSpace(ProfileDescription) ? null : ProfileDescription?.Trim(),
-            Sources = orderedSources.ToArray(),
-            Baseline = baseline?.Path?.Trim() ?? orderedSources.FirstOrDefault(),
-            Options = Options
-                .Where(option => !string.IsNullOrWhiteSpace(option.Key))
-                .ToDictionary(option => option.Key.Trim(), option => option.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase),
-            SecretScanner = CloneSecretScannerOptions(SecretScanner),
+            Name = _loadedProfileName is not null && string.Equals(ProfileName, _loadedProfileName, StringComparison.Ordinal)
+                ? _loadedProfileName
+                : PythonText.Strip(ProfileName),
+            Description = string.Equals(ProfileDescription, _loadedDescription, StringComparison.Ordinal)
+                ? _loadedDescription
+                : string.IsNullOrWhiteSpace(ProfileDescription) ? null : ProfileDescription.Trim(),
+            Sources = sources.Select(entry => entry.ToSource()).ToArray(),
+            Baseline = keepNoBaseline ? null : baseline?.ToSource().Path,
+            Options = BuildOptions(),
+            SecretScanner = ReferenceEquals(SecretScanner, _loadedSecretScanner) ? CopySecretScannerOptions(SecretScanner) : CloneSecretScannerOptions(SecretScanner),
         };
+    }
+
+    private Dictionary<string, string> BuildOptions()
+    {
+        var options = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var option in Options)
+        {
+            var unedited = option.LoadedKey is not null && string.Equals(option.Key, option.LoadedKey, StringComparison.Ordinal);
+            var key = unedited ? option.LoadedKey! : PythonText.Strip(option.Key ?? string.Empty);
+            if (!unedited && key.Length == 0)
+            {
+                continue;
+            }
+
+            options[key] = option.Value ?? string.Empty;
+        }
+
+        return options;
     }
 
     private ScheduleDefinition[] BuildCurrentSchedules()
@@ -502,15 +571,19 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
         ProfileName = profile.Name;
         ProfileDescription = profile.Description;
+        _loadedProfileName = profile.Name;
+        _loadedDescription = profile.Description;
+        _loadedWithoutBaseline = profile.Baseline is null;
 
         Sources.Clear();
+        // The baseline is the first source whose path is exactly the profile's baseline (the store compares paths exactly).
+        var baselineIndex = profile.Baseline is null ? 0 : Array.FindIndex(profile.Sources, source => string.Equals(source.Path, profile.Baseline, StringComparison.Ordinal));
         for (var index = 0; index < profile.Sources.Length; index++)
         {
-            var path = profile.Sources[index];
-            var isBaseline = profile.Baseline is not null
-                ? string.Equals(path, profile.Baseline, StringComparison.OrdinalIgnoreCase)
-                : index == 0;
-            AddSourceEntry(path, isBaseline);
+            var source = profile.Sources[index];
+            var isBaseline = index == baselineIndex;
+            var entry = AddSourceEntry(source.Path, isBaseline);
+            entry.Load(source);
         }
         if (Sources.Count == 0)
         {
@@ -520,10 +593,11 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         Options.Clear();
         foreach (var option in profile.Options)
         {
-            Options.Add(new KeyValueEntry { Key = option.Key, Value = option.Value });
+            Options.Add(new KeyValueEntry { Key = option.Key, Value = option.Value, LoadedKey = option.Key });
         }
 
-        ApplySecretScanner(profile.SecretScanner);
+        SecretScanner = CopySecretScannerOptions(profile.SecretScanner);
+        _loadedSecretScanner = SecretScanner;
 
         SelectedProfile = profile;
         StatusMessage = $"Loaded profile '{profile.Name}'.";
@@ -546,13 +620,17 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             return;
         }
 
-        foreach (var definition in schedules.OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase))
+        // Manifest order: the scheduler registers schedules in that order, which decides the order of runs due together.
+        foreach (var definition in schedules)
         {
             var entry = new ScheduleEntry(this)
             {
                 Name = definition.Name ?? string.Empty,
                 Profile = definition.Profile ?? string.Empty,
                 Every = definition.Every ?? string.Empty,
+                EveryValue = definition.EveryValue,
+                MetadataValues = definition.MetadataValues,
+                ManifestEntry = definition.ManifestEntry,
                 StartAt = string.IsNullOrWhiteSpace(definition.StartAt) ? null : definition.StartAt?.Trim(),
                 WindowStart = definition.Window?.Start?.Trim(),
                 WindowEnd = definition.Window?.End?.Trim(),
@@ -605,6 +683,13 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         SaveCommand.NotifyCanExecuteChanged();
         RunCommand.NotifyCanExecuteChanged();
     }
+
+    // The lists exactly as they are (a loaded profile's patterns are regular expressions, where white space and repeats matter).
+    private static SecretScannerOptions CopySecretScannerOptions(SecretScannerOptions? options) => new()
+    {
+        IgnoreRules = options?.IgnoreRules?.ToArray() ?? Array.Empty<string>(),
+        IgnorePatterns = options?.IgnorePatterns?.ToArray() ?? Array.Empty<string>(),
+    };
 
     private static SecretScannerOptions CloneSecretScannerOptions(SecretScannerOptions? options)
     {
@@ -715,10 +800,25 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
     {
         foreach (var source in Sources)
         {
-            source.Error = ValidateSourceEntry(source);
+            source.Error = ValidateSourceEntry(source) ?? ValidateAlias(source);
         }
 
         NotifyCommands();
+    }
+
+    // Two sources whose aliases name the same run directory would merge or overwrite each other's files.
+    private string? ValidateAlias(SourceEntry entry)
+    {
+        var directory = entry.AliasDirectory;
+        if (directory is null)
+        {
+            return null;
+        }
+
+        var shared = Sources.Any(other => !ReferenceEquals(other, entry)
+            && !string.IsNullOrWhiteSpace(other.Path)
+            && string.Equals(other.AliasDirectory, directory, StringComparison.OrdinalIgnoreCase));
+        return shared ? "Another source uses the same alias." : null;
     }
 
     private void ValidateSchedules()
@@ -733,7 +833,8 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
     private static string? ValidateSourceEntry(SourceEntry entry)
     {
-        var path = entry.Path?.Trim() ?? string.Empty;
+        // The path as it will be saved and run.
+        var path = entry.ToSource().Path;
         if (string.IsNullOrWhiteSpace(path))
         {
             return entry.IsBaseline ? "Select a baseline path." : "Select a source path.";
@@ -742,7 +843,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         if (ContainsGlob(path))
         {
             var baseDirectory = TryGetGlobBaseDirectory(path);
-            if (string.IsNullOrWhiteSpace(baseDirectory) || !Directory.Exists(baseDirectory))
+            if (!entry.Optional && (string.IsNullOrWhiteSpace(baseDirectory) || !Directory.Exists(baseDirectory)))
             {
                 return "Glob base directory not found.";
             }
@@ -759,7 +860,8 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             return "Path is invalid.";
         }
 
-        if (!File.Exists(path) && !Directory.Exists(path))
+        // An optional source that does not exist is skipped by the run.
+        if (!entry.Optional && !File.Exists(path) && !Directory.Exists(path))
         {
             return "Path does not exist.";
         }
@@ -793,20 +895,13 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         var hasWindowEnd = !string.IsNullOrWhiteSpace(entry.WindowEnd);
         var hasWindowTimezone = !string.IsNullOrWhiteSpace(entry.WindowTimezone);
 
-        if (hasWindowStart || hasWindowEnd || hasWindowTimezone)
+        // A window without a time zone is a UTC window, as ScheduleWindow.from_dict reads it.
+        if ((hasWindowStart || hasWindowEnd || hasWindowTimezone) && (!hasWindowStart || !hasWindowEnd))
         {
-            if (!hasWindowStart || !hasWindowEnd)
-            {
-                return "Specify both window start and end times.";
-            }
-
-            if (!hasWindowTimezone)
-            {
-                return "Specify a timezone when defining a window.";
-            }
+            return "Specify both window start and end times.";
         }
 
-        return null;
+        return ScheduleStore.ValidationError(entry.ToDefinition());
     }
 
     private static bool ContainsGlob(string value) => value.IndexOfAny(GlobCharacters) >= 0;
@@ -903,8 +998,32 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
     public sealed partial class SourceEntry : ObservableObject
     {
+        private static readonly string[] LineBreaks = { "\r\n", "\n" };
+
+        // The patterns the entry was loaded with and their text: saved unchanged while the text is, so a pattern holding a line break,
+        // an empty pattern or any other text the editor cannot spell survives a load and save.
+        private string[]? _loadedExclude;
+        private string? _loadedExcludeText;
+
+        // The path and alias the entry was loaded with: saved exactly as loaded while unedited, so a loaded alias with surrounding
+        // whitespace keeps naming the same run directory.
+        private string? _loadedPath;
+        private string? _loadedAlias;
+
         [ObservableProperty]
         private string _path = string.Empty;
+
+        /// <summary>The directory name the source's files are copied under; blank for the default.</summary>
+        [ObservableProperty]
+        private string? _alias;
+
+        /// <summary>Whether a source that is missing or matches nothing is skipped instead of failing the run.</summary>
+        [ObservableProperty]
+        private bool _optional;
+
+        /// <summary>Exclude patterns, one per line, each kept exactly as written (empty lines are ignored).</summary>
+        [ObservableProperty]
+        private string _exclude = string.Empty;
 
         [ObservableProperty]
         private bool _isBaseline;
@@ -922,13 +1041,82 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             Parent?.ValidateSources();
         }
 
+        partial void OnAliasChanged(string? value)
+        {
+            Parent?.ValidateSources();
+        }
+
+        partial void OnOptionalChanged(bool value)
+        {
+            Parent?.ValidateSources();
+        }
+
         public RunProfilesViewModel? Parent { get; set; }
+
+        /// <summary>The run directory the alias names (<c>_safe_name</c>), or null when the source has no alias.</summary>
+        internal string? AliasDirectory => ToSource().Alias is { } alias ? RunProfileStore.SafeName(alias) : null;
+
+        /// <summary>Shows a loaded source's alias, optional flag and exclude patterns, and remembers its path and alias as loaded.</summary>
+        internal void Load(RunProfileSource source)
+        {
+            Alias = source.Alias;
+            Optional = source.Optional;
+            LoadExclude(source.Exclude ?? Array.Empty<string>());
+            _loadedPath = Path;
+            _loadedAlias = Alias;
+        }
+
+        /// <summary>Shows <paramref name="patterns"/> one per line and remembers them, so an unchanged editor saves them as loaded.</summary>
+        internal void LoadExclude(IReadOnlyList<string> patterns)
+        {
+            _loadedExclude = patterns.ToArray();
+            _loadedExcludeText = string.Join('\n', _loadedExclude);
+            Exclude = _loadedExcludeText;
+        }
+
+        internal RunProfileSource ToSource() => new(SavedPath())
+        {
+            Alias = SavedAlias(),
+            Optional = Optional,
+            Exclude = ExcludePatterns(),
+        };
+
+        // The loaded path while unedited; an edited path stripped as Python's str.strip strips it.
+        private string SavedPath()
+            => _loadedPath is not null && string.Equals(Path, _loadedPath, StringComparison.Ordinal) ? _loadedPath : PythonText.Strip(Path ?? string.Empty);
+
+        // The loaded alias while unedited; an edited alias stripped as Python's str.strip strips it, none when that leaves it empty (the
+        // backend drops an alias str.strip empties).
+        private string? SavedAlias()
+        {
+            if (_loadedAlias is not null && string.Equals(Alias, _loadedAlias, StringComparison.Ordinal))
+            {
+                return _loadedAlias;
+            }
+
+            var alias = PythonText.Strip(Alias ?? string.Empty);
+            return alias.Length == 0 ? null : alias;
+        }
+
+        private string[] ExcludePatterns()
+        {
+            var text = Exclude ?? string.Empty;
+            if (_loadedExclude is not null && string.Equals(text, _loadedExcludeText, StringComparison.Ordinal))
+            {
+                return _loadedExclude.ToArray();
+            }
+
+            return text.Split(LineBreaks, StringSplitOptions.None).Where(pattern => pattern.Length > 0).ToArray();
+        }
     }
 
     public sealed partial class KeyValueEntry : ObservableObject
     {
         [ObservableProperty]
         private string _key = string.Empty;
+
+        /// <summary>The key as a loaded profile held it (null for a row added since): an unedited key saves exactly as loaded.</summary>
+        internal string? LoadedKey { get; init; }
 
         [ObservableProperty]
         private string? _value;
@@ -954,6 +1142,15 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         public IRelayCommand AddMetadataCommand { get; }
 
         public IRelayCommand<KeyValueEntry> RemoveMetadataCommand { get; }
+
+        /// <summary>The loaded interval's JSON value when it was not a string; saved while <see cref="Every"/> still shows it.</summary>
+        internal object? EveryValue { get; init; }
+
+        /// <summary>The loaded metadata values that were not strings; each saved while its entry still shows it.</summary>
+        internal IDictionary<string, object?>? MetadataValues { get; init; }
+
+        /// <summary>The manifest entry the card was loaded from; fields the card still shows as loaded are saved as the entry holds them.</summary>
+        internal IReadOnlyDictionary<string, object?>? ManifestEntry { get; init; }
 
         [ObservableProperty]
         private string _name = string.Empty;
@@ -1017,6 +1214,9 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
                 Profile = Profile.Trim(),
                 Every = Every.Trim(),
                 StartAt = string.IsNullOrWhiteSpace(StartAt) ? null : StartAt.Trim(),
+                EveryValue = EveryValue,
+                MetadataValues = MetadataValues,
+                ManifestEntry = ManifestEntry,
             };
 
             var window = BuildWindow();

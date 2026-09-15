@@ -1,0 +1,14 @@
+{
+ "name": "surs",
+ "sources": [
+  {
+   "path": "\udcff",
+   "alias": "s"
+  },
+  {
+   "path": "*\udcff",
+   "alias": "g",
+   "optional": true
+  }
+ ]
+}

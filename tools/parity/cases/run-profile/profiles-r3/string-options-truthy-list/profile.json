@@ -1,0 +1,15 @@
+{
+ "name": "opts",
+ "sources": [
+  "in.txt"
+ ],
+ "options": [
+  [
+   "a",
+   1
+  ]
+ ],
+ "secret_scanner": [
+  1
+ ]
+}

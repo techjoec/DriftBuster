@@ -1,0 +1,26 @@
+{
+  "schedules": [
+    {
+      "name": "spring",
+      "profile": "spring-profile",
+      "every": "1d",
+      "start_at": "2025-03-29T01:30:00Z",
+      "window": {
+        "start": "01:00",
+        "end": "01:59:59",
+        "timezone": "Europe/London"
+      }
+    },
+    {
+      "name": "autumn",
+      "profile": "autumn-profile",
+      "every": "1d",
+      "start_at": "2025-10-25T00:30:00Z",
+      "window": {
+        "start": "01:00",
+        "end": "01:45",
+        "timezone": "Europe/London"
+      }
+    }
+  ]
+}

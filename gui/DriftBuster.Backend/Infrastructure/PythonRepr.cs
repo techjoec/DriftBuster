@@ -188,7 +188,7 @@ public static class PythonRepr
     /// <summary>
     /// <c>str.__repr__</c>: single quotes unless the text holds a single quote and no double quote; backslash and
     /// the chosen quote escaped; \t, \n and \r by name; every other non-printable code point as \xNN, \uNNNN or
-    /// \UNNNNNNNN. Printable is every category but Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs, with U+0020 printable.
+    /// \UNNNNNNNN. Printable is <see cref="PythonText.IsPrintable"/> (Python's Unicode 15.1 <c>str.isprintable()</c>).
     /// </summary>
     public static string StrRepr(string text)
     {
@@ -231,7 +231,7 @@ public static class PythonRepr
         {
             builder.Append('\\').Append(quote);
         }
-        else if (IsPrintable(codePoint))
+        else if (PythonText.IsPrintable(codePoint))
         {
             builder.Append(char.ConvertFromUtf32(codePoint));
         }
@@ -249,21 +249,4 @@ public static class PythonRepr
         }
     }
 
-    // Py_UNICODE_ISPRINTABLE, evaluated on .NET's Unicode tables (Python 3.13 carries Unicode 15.1; a code point
-    // assigned since then differs). A lone surrogate is category Cs, so ConvertFromUtf32 above only sees scalars.
-    private static bool IsPrintable(int codePoint)
-    {
-        if (codePoint == ' ')
-        {
-            return true;
-        }
-
-        return CharUnicodeInfo.GetUnicodeCategory(codePoint) switch
-        {
-            UnicodeCategory.Control or UnicodeCategory.Format or UnicodeCategory.Surrogate or UnicodeCategory.PrivateUse
-                or UnicodeCategory.OtherNotAssigned or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator
-                or UnicodeCategory.SpaceSeparator => false,
-            _ => true,
-        };
-    }
 }

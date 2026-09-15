@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "midnight",
+      "profile": "midnight-profile",
+      "every": "1h",
+      "start_at": "2025-09-06T03:30:00Z",
+      "window": {
+        "start": "00:00",
+        "end": "00:59",
+        "timezone": "America/Santiago"
+      }
+    }
+  ]
+}

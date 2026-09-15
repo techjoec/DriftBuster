@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "name": "win-empty",
+      "profile": "win-empty-profile",
+      "every": "1h",
+      "window": {}
+    }
+  ]
+}

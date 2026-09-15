@@ -1,0 +1,12 @@
+{
+  "name": "scalar ignore",
+  "sources": [
+    {
+      "path": "conf",
+      "alias": "conf"
+    }
+  ],
+  "options": {
+    "secret_ignore_patterns": 5
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schedules": [
+    {
+      "name": "empty",
+      "profile": "empty-profile",
+      "every": "   "
+    }
+  ]
+}

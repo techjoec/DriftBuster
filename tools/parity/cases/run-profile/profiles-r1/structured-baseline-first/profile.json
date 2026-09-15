@@ -1,0 +1,14 @@
+{
+  "name": "basefirst",
+  "sources": [
+    {
+      "path": "b",
+      "alias": "bee"
+    },
+    {
+      "path": "a",
+      "alias": "ay"
+    }
+  ],
+  "baseline": "a"
+}

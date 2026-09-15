@@ -1,0 +1,33 @@
+{
+  "profiles": [
+    {
+      "name": "g",
+      "configs": [
+        {
+          "id": "unclosed",
+          "path_glob": "[abc"
+        },
+        {
+          "id": "negated-empty",
+          "path_glob": "[!]a]"
+        },
+        {
+          "id": "range",
+          "path_glob": "[z-a]*"
+        },
+        {
+          "id": "backslash",
+          "path_glob": "a\\*b"
+        },
+        {
+          "id": "regex-chars",
+          "path_glob": "a.(b)+{c}$"
+        },
+        {
+          "id": "case",
+          "path_glob": "*.JSON"
+        }
+      ]
+    }
+  ]
+}

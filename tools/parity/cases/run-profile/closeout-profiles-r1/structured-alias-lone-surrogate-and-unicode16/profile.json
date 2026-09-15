@@ -1,0 +1,16 @@
+{
+ "name": "al",
+ "sources": [
+  {
+   "path": "in.txt",
+   "alias": "\ud800a\u0897b\ud81b\udd40"
+  },
+  {
+   "path": "in.txt",
+   "alias": "\udcff",
+   "exclude": [
+    "\ud800*"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+{
+  "schedules": [
+    {
+      "name": "null-tz",
+      "profile": "null-tz-profile",
+      "every": "1h",
+      "window": {
+        "start": "01:00",
+        "end": "02:00",
+        "timezone": null
+      }
+    }
+  ]
+}

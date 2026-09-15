@@ -1,0 +1,18 @@
+{
+  "schedules": [
+    {
+      "name": "now",
+      "profile": "now-profile",
+      "every": "30m"
+    },
+    {
+      "name": "windowed",
+      "profile": "windowed-profile",
+      "every": "30m",
+      "window": {
+        "start": "13:00",
+        "end": "14:00"
+      }
+    }
+  ]
+}

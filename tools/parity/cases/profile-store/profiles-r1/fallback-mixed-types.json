@@ -1,0 +1,3 @@
+{"profiles": [{"name": 7.50, "configs": ["skip-me", {"id": ["a", 1]}, {"id": {"k": null}}, 3]},
+              "not-a-mapping",
+              {"name": [1, "two"], "configs": [{"id": true, "expected_format": 1.0, "tags": "ab"}]}]}

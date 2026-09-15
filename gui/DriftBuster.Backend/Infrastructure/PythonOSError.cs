@@ -9,8 +9,17 @@ public static class PythonOSError
     /// <summary><c>ENOENT</c>.</summary>
     public const int NoSuchFile = 2;
 
+    /// <summary><c>EPERM</c>.</summary>
+    public const int OperationNotPermitted = 1;
+
     /// <summary><c>EACCES</c>.</summary>
     public const int PermissionDenied = 13;
+
+    /// <summary><c>EEXIST</c>.</summary>
+    public const int FileExists = 17;
+
+    /// <summary><c>ENOTDIR</c>.</summary>
+    public const int NotADirectory = 20;
 
     /// <summary><c>EISDIR</c>.</summary>
     public const int IsADirectory = 21;
@@ -37,6 +46,20 @@ public static class PythonOSError
             $"[Errno {errno}] {Marshal.GetPInvokeErrorMessage(errno)}: {PythonRepr.StrRepr(filename)}");
         return new IOException(message, inner) { HResult = errno };
     }
+
+    /// <summary>
+    /// The <c>OSError</c> subclass CPython raises for <paramref name="errno"/> (the ones a file-system call on Linux gives; any other is
+    /// <c>OSError</c>).
+    /// </summary>
+    public static string TypeName(int errno) => errno switch
+    {
+        NoSuchFile => "FileNotFoundError",
+        OperationNotPermitted or PermissionDenied => "PermissionError",
+        FileExists => "FileExistsError",
+        NotADirectory => "NotADirectoryError",
+        IsADirectory => "IsADirectoryError",
+        _ => "OSError",
+    };
 
     /// <summary>
     /// The <c>errno</c> behind a runtime I/O exception: the raw error the runtime keeps on Unix (on the exception itself or, for

@@ -1,0 +1,11 @@
+{
+  "schedules": [
+    {
+      "name": "lst",
+      "profile": "lst-profile",
+      "every": [
+        "1h"
+      ]
+    }
+  ]
+}

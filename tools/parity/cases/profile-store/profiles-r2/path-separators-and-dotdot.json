@@ -1,0 +1,1 @@
+{"profiles": [{"name": "p", "configs": [{"id": "fs-sep", "path": "a\u001cb/c"}, {"id": "glob-dotdot", "path_glob": "conf/../*.json"}, {"id": "literal-dotdot", "path": "conf/../a\u0085.json"}, {"id": "nel", "path_glob": "*\u0085*"}]}]}

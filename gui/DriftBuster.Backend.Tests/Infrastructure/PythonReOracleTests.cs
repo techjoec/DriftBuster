@@ -10,8 +10,8 @@ namespace DriftBuster.Backend.Tests.Infrastructure;
 /// <c>lastindex</c>) or compile errors for the hunt rules, the shipped secret rules and adversarial patterns.
 /// </summary>
 /// <remarks>
-/// Code points unassigned under Python's Unicode 15.1 tables may differ (.NET carries 16.0), as in
-/// <c>tools/parity/expected_divergences.md</c>; nothing else may.
+/// Every comparison is exact over every code point: the port reads the runtime's Unicode 16.0 tables through
+/// <see cref="PythonUnicode"/>, which answers as CPython 3.13's Unicode 15.1 tables (<see cref="PythonUnicodeOracleTests"/>).
 /// </remarks>
 public sealed class PythonReOracleTests
 {
@@ -21,8 +21,6 @@ public sealed class PythonReOracleTests
         PythonJson.TryLoads(File.ReadAllText(path), out var value).Should().BeTrue();
         return (OrderedDictionary<string, object?>)value!;
     });
-
-    private static readonly Lazy<CodePointSet> Unassigned = new(() => RangesOf(Data.Value["unassigned"]));
 
     public static TheoryData<int> AtomIndexes => Indexes("atoms");
 
@@ -58,7 +56,7 @@ public sealed class PythonReOracleTests
         for (var code = 0; code <= CodePointSet.MaxCodePoint; code++)
         {
             var want = expected.TryGetValue(code, out var lower) ? lower : code;
-            if (PythonCharacterData.Lower(code) != want && !Unassigned.Value.Contains(code))
+            if (PythonCharacterData.Lower(code) != want)
             {
                 mismatches.Add($"U+{code:X4}: {PythonCharacterData.Lower(code):X4} != {want:X4}");
             }
@@ -68,8 +66,9 @@ public sealed class PythonReOracleTests
     }
 
     [Fact]
-    public void IsAlnumRejectsEveryLetterAndNumberPythonsTablesLeaveUnassigned()
+    public void IsAlnumMatchesStrIsAlnumOnEveryCodePoint()
     {
+        var alnum = RangesOf(Data.Value["alnum"]);
         var mismatches = new List<string>();
         for (var code = 0; code <= CodePointSet.MaxCodePoint; code++)
         {
@@ -79,8 +78,23 @@ public sealed class PythonReOracleTests
             }
 
             var rune = new System.Text.Rune(code);
-            var want = code != '_' && PythonText.IsWordRune(rune) && !Unassigned.Value.Contains(code);
-            if (PythonText.IsAlnum(rune) != want)
+            if (PythonText.IsAlnum(rune) != alnum.Contains(code) || PythonText.IsWordRune(rune) != (code == '_' || alnum.Contains(code)))
+            {
+                mismatches.Add($"U+{code:X4}");
+            }
+        }
+
+        mismatches.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IsPrintableMatchesStrIsPrintableOnEveryCodePoint()
+    {
+        var nonPrintable = RangesOf(Data.Value["nonprintable"]);
+        var mismatches = new List<string>();
+        for (var code = 0; code <= CodePointSet.MaxCodePoint; code++)
+        {
+            if (PythonText.IsPrintable(code) == nonPrintable.Contains(code))
             {
                 mismatches.Add($"U+{code:X4}");
             }
@@ -95,7 +109,7 @@ public sealed class PythonReOracleTests
         var casing = (OrderedDictionary<string, object?>)Data.Value["casing"]!;
         var expected = RangesOf(casing["cased"]);
         var actual = CodePointSet.FromPredicate(PythonCharacterData.IsCased);
-        actual.Except(expected).Except(Unassigned.Value).Ranges.Should().BeEmpty();
+        actual.Except(expected).Ranges.Should().BeEmpty();
         expected.Except(actual).Ranges.Should().BeEmpty();
     }
 
@@ -110,11 +124,11 @@ public sealed class PythonReOracleTests
         parsed.Nodes.Should().ContainSingle();
         var actual = ReCharacterSets.NodeSet(parsed.Nodes[0], parsed.State.Flags);
 
-        expected.Except(actual).Except(Unassigned.Value).Ranges.Should().BeEmpty($"Python matches these for {pattern}");
-        actual.Except(expected).Except(Unassigned.Value).Ranges.Should().BeEmpty($"only Python matches these for {pattern}");
+        expected.Except(actual).Ranges.Should().BeEmpty($"Python matches these for {pattern}");
+        actual.Except(expected).Ranges.Should().BeEmpty($"only Python matches these for {pattern}");
 
         var compiled = PythonPattern.Compile(pattern);
-        foreach (var code in SampleCodePoints(expected).Where(code => !Unassigned.Value.Contains(code)))
+        foreach (var code in SampleCodePoints(expected))
         {
             var spelled = Spell(code);
             (compiled.Match(spelled, TestContext.Current.CancellationToken) is { } match && match.End == spelled.Length).Should().Be(expected.Contains(code), $"U+{code:X4} under {pattern}");

@@ -1,0 +1,14 @@
+{
+ "name": "Links",
+ "sources": [
+  {
+   "path": "data",
+   "alias": "d"
+  },
+  {
+   "path": "Profiles/*",
+   "alias": "p",
+   "optional": true
+  }
+ ]
+}

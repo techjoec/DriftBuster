@@ -1,0 +1,13 @@
+{
+  "profiles": [
+    {
+      "name": "no-configs"
+    },
+    {
+      "name": "tagged",
+      "tags": [
+        "t"
+      ]
+    }
+  ]
+}

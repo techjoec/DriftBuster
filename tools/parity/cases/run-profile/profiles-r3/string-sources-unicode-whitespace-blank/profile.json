@@ -1,0 +1,7 @@
+{
+ "name": "blank-unicode",
+ "sources": [
+  "in.txt",
+  "\u001c\u001f\u0085\u3000\u2028"
+ ]
+}

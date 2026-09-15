@@ -1,0 +1,1 @@
+[{"name": "a", "profile": "p", "every": "1h", "start_at": "2025-03-01T00:00:00Z", "tags": NaN}, {"name": "b", "profile": "p", "every": "1h", "start_at": "2025-03-01T00:00:00Z", "tags": 0.0}, {"name": "c", "profile": "p", "every": "1h", "start_at": "2025-03-01T00:00:00Z", "tags": {"k": 1}}]

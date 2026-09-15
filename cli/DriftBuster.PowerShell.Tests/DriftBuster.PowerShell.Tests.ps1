@@ -118,18 +118,17 @@ Describe 'DriftBuster PowerShell module' {
             $baseDir = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString('N')))
             $script:tempArtifacts += $baseDir.FullName
 
-            $profileJson = @'
-{
-  "name": "ModuleProfile",
-  "baseline": "baseline.txt",
-  "sources": ["baseline.txt", "*.txt"],
-  "options": {"key": "value"},
-  "secret_scanner": {"ignore_rules": ["server-name"]}
-}
-'@
-
             $profilePath = Join-Path $baseDir.FullName 'baseline.txt'
             Set-Content -LiteralPath $profilePath 'baseline data'
+
+            # save_profile validates each source against the file system, so the sources are absolute paths that exist.
+            $profileJson = [ordered]@{
+                name = 'ModuleProfile'
+                baseline = $profilePath
+                sources = @($profilePath, (Join-Path $baseDir.FullName '*.txt'))
+                options = @{ key = 'value' }
+                secret_scanner = @{ ignore_rules = @('server-name') }
+            } | ConvertTo-Json -Depth 4
 
             $saved = $profileJson | Save-DriftBusterRunProfile -BaseDir $baseDir.FullName -PassThru -Confirm:$false
             $saved.name | Should -Be 'ModuleProfile'

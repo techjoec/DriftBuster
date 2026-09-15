@@ -1,0 +1,20 @@
+{
+  "profiles": [
+    {
+      "name": "a",
+      "configs": [
+        {
+          "id": "one"
+        }
+      ]
+    },
+    {
+      "name": "a",
+      "configs": [
+        {
+          "id": "two"
+        }
+      ]
+    }
+  ]
+}

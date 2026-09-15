@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "name": "y1",
+      "profile": "y1-profile",
+      "every": "1h",
+      "start_at": "0001-01-01T00:30:00+01:00"
+    }
+  ]
+}

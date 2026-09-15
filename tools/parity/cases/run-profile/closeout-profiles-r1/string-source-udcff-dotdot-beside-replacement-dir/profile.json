@@ -1,0 +1,7 @@
+{
+ "name": "dd",
+ "sources": [
+  "in.txt",
+  "\udcff/../in.txt"
+ ]
+}

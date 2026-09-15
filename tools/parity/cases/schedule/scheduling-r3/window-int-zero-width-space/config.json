@@ -1,0 +1,14 @@
+{
+  "schedules": [
+    {
+      "name": "v",
+      "profile": "v-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z",
+      "window": {
+        "start": "\u200b12:00",
+        "end": "13:00"
+      }
+    }
+  ]
+}

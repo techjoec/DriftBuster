@@ -1,0 +1,1 @@
+{"schedules": [{"name": "m", "profile": "m-profile", "every": "1h", "start_at": "2025-03-01T00:00:00Z", "metadata": {"tiny": 5e-324, "max": 1.7976931348623157e308, "e22": 1e22, "e21": 1E21, "ugly": 0.30000000000000004, "exp": 123456789012345678e3, "negzero": -0.0, "intlike": 100.0, "sub": 2.2250738585072014E-308, "neg": -1e-7}}]}

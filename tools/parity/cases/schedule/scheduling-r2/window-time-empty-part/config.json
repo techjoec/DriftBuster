@@ -1,0 +1,13 @@
+{
+  "schedules": [
+    {
+      "name": "emp",
+      "profile": "emp-profile",
+      "every": "1h",
+      "window": {
+        "start": "1:2:",
+        "end": "01:00"
+      }
+    }
+  ]
+}

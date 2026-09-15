@@ -1,0 +1,1 @@
+{"name": "twice", "sources": [{"path": "config", "alias": "A", "exclude": ["*.ini"]}, {"path": "config", "alias": "B", "exclude": {"sub/*": 1}}, {"path": "config/sub/app.ini", "alias": "C", "exclude": [null]}]}

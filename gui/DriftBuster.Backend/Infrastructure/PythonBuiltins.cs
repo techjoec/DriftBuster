@@ -10,12 +10,15 @@ namespace DriftBuster.Backend.Infrastructure;
 /// Python's results and error texts: <c>bool()</c>, <c>int()</c>, <c>float()</c>, <c>iter()</c>, <c>type().__name__</c> and
 /// <c>mapping.get</c>. <c>TypeError</c> is <see cref="PythonTypeException"/>, <c>ValueError</c>
 /// <see cref="PythonValueException"/>, <c>OverflowError</c> <see cref="OverflowException"/> and <c>AttributeError</c>
-/// <see cref="InvalidDataException"/>.
+/// <see cref="PythonAttributeException"/>.
 /// </summary>
 public static class PythonBuiltins
 {
     /// <summary><c>sys.get_int_max_str_digits()</c> default.</summary>
     private const int MaxIntStringDigits = 4300;
+
+    // Py_ISSPACE: the whitespace PyLong_FromString and float_from_string_inner strip around the ASCII literal.
+    private static readonly char[] AsciiWhitespace = [' ', '\t', '\n', '\v', '\f', '\r'];
 
     /// <summary><c>type(value).__name__</c>.</summary>
     public static string TypeName(object? value) => value switch
@@ -52,7 +55,7 @@ public static class PythonBuiltins
             return mapping.TryGetValue(key, out var item) ? item : null;
         }
 
-        throw new InvalidDataException($"'{TypeName(value)}' object has no attribute 'get'");
+        throw new PythonAttributeException($"'{TypeName(value)}' object has no attribute 'get'");
     }
 
     /// <summary>
@@ -99,7 +102,7 @@ public static class PythonBuiltins
     private static BigInteger ParseInt(string text)
     {
         var ascii = ToAsciiDigitsAndSpaces(text);
-        var body = ascii?.Trim(' ');
+        var body = ascii?.Trim(AsciiWhitespace);
         var digits = new StringBuilder();
         var valid = body is { Length: > 0 };
         if (valid)
@@ -166,7 +169,7 @@ public static class PythonBuiltins
             ascii = RemoveUnderscoresBetweenDigits(ascii);
         }
 
-        var body = ascii?.Trim(' ');
+        var body = ascii?.Trim(AsciiWhitespace);
         if (body is { Length: > 0 })
         {
             var unsigned = body[0] is '+' or '-' ? body[1..] : body;
@@ -267,8 +270,9 @@ public static class PythonBuiltins
         return previous == '_' ? null : builder.ToString();
     }
 
-    // _PyUnicode_TransformDecimalAndSpaceToASCII: whitespace becomes ' ', a decimal digit its ASCII digit, other ASCII stays;
-    // null when any other non-ASCII code point is present (the conversion then fails).
+    // _PyUnicode_TransformDecimalAndSpaceToASCII: a code point below 127 stays as it is (the ASCII separators U+001C to
+    // U+001F included), other whitespace becomes ' ', a decimal digit its ASCII digit; null when any other code point is
+    // present (the conversion then fails).
     private static string? ToAsciiDigitsAndSpaces(string text)
     {
         var builder = new StringBuilder(text.Length);
@@ -276,15 +280,15 @@ public static class PythonBuiltins
         {
             var step = char.IsSurrogatePair(text, offset) ? 2 : 1;
             var ch = text[offset];
-            if (PythonText.IsSpace(ch))
-            {
-                builder.Append(' ');
-            }
-            else if (step == 1 && ch < 0x80)
+            if (step == 1 && ch < 127)
             {
                 builder.Append(ch);
             }
-            else if (CharUnicodeInfo.GetDecimalDigitValue(text, offset) is var digit and >= 0)
+            else if (step == 1 && PythonText.IsSpace(ch))
+            {
+                builder.Append(' ');
+            }
+            else if (PythonUnicode.DecimalValue(char.ConvertToUtf32(text, offset)) is var digit and >= 0)
             {
                 builder.Append((char)('0' + digit));
             }

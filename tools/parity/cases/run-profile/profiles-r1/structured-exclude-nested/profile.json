@@ -1,0 +1,16 @@
+{
+  "name": "exnest",
+  "sources": [
+    {
+      "path": "root",
+      "alias": "r",
+      "exclude": [
+        "sub/*/*.tmp",
+        "*[[]1]*",
+        "deep",
+        ".*",
+        "sub"
+      ]
+    }
+  ]
+}

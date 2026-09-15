@@ -30,7 +30,7 @@ public sealed class DiffCache
     {
         ArgumentNullException.ThrowIfNull(root);
         Root = root;
-        Directory.CreateDirectory(PythonPath.KernelPath(root));
+        PythonPath.MakeDirectories(root);
     }
 
     public string Root { get; }
@@ -77,7 +77,7 @@ public sealed class DiffCache
 
         if (parsed is not OrderedDictionary<string, object?> payload)
         {
-            throw new InvalidDataException($"'{PythonBuiltins.TypeName(parsed)}' object has no attribute 'get'");
+            throw new PythonAttributeException($"'{PythonBuiltins.TypeName(parsed)}' object has no attribute 'get'");
         }
 
         return payload.TryGetValue("signature", out var stored) && stored is string storedText && string.Equals(storedText, signature, StringComparison.Ordinal)
@@ -202,7 +202,7 @@ public sealed class DiffCache
 
         // _resolve_data_root() returns the data root resolved through symlinks; cache/diffs is appended as written.
         var destination = Path.Combine(CreateAndResolve(DriftbusterPaths.GetDataRoot()), "cache", "diffs");
-        Directory.CreateDirectory(PythonPath.KernelPath(destination));
+        PythonPath.MakeDirectories(destination);
         if (!string.IsNullOrEmpty(repositoryRoot) && !DestinationHasEntries(destination))
         {
             MigrateLegacyDiffCache(repositoryRoot, destination);
@@ -217,8 +217,7 @@ public sealed class DiffCache
     // same directory through its links (Python's resolve() gives the surrogateescape name, which its file calls accept).
     private static string CreateAndResolve(string path)
     {
-        var kernel = PythonPath.KernelPath(path);
-        Directory.CreateDirectory(kernel);
+        PythonPath.MakeDirectories(path);
         var absolute = PythonPath.Absolute(path);
         var physical = PythonPath.ResolvePhysicalPath(absolute, out var nameable);
         return physical is null ? Path.GetFullPath(absolute) : nameable ? physical : Path.GetFullPath(PythonPath.KernelPath(absolute));

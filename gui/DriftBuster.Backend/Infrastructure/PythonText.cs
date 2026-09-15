@@ -120,64 +120,33 @@ public static class PythonText
         return words;
     }
 
-    /// <summary><c>re \w</c> for str patterns: letters (L*), numbers (N*) and underscore, on whole code points.</summary>
-    public static bool IsWordRune(Rune rune)
+    /// <summary>
+    /// <c>re \w</c> for str patterns: letters (L*), numbers (N*) and underscore, on whole code points, under CPython 3.13's Unicode 15.1
+    /// categories (<see cref="PythonUnicode.GetCategory"/>).
+    /// </summary>
+    public static bool IsWordRune(Rune rune) => rune.Value == '_' || PythonUnicode.IsAlnum(rune.Value);
+
+    /// <summary><c>str.isalnum()</c> of one code point under CPython 3.13's Unicode 15.1 tables: letters (L*) and numbers (N*).</summary>
+    public static bool IsAlnum(Rune rune) => PythonUnicode.IsAlnum(rune.Value);
+
+    /// <summary>
+    /// <c>str.isprintable()</c> of one code point (<c>Py_UNICODE_ISPRINTABLE</c>) under CPython 3.13's Unicode 15.1 tables: every
+    /// category but Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs, with U+0020 printable.
+    /// </summary>
+    public static bool IsPrintable(int codePoint)
     {
-        if (rune.Value == '_')
+        if (codePoint == ' ')
         {
             return true;
         }
 
-        return Rune.GetUnicodeCategory(rune) switch
+        return PythonUnicode.GetCategory(codePoint) switch
         {
-            UnicodeCategory.UppercaseLetter or UnicodeCategory.LowercaseLetter or UnicodeCategory.TitlecaseLetter
-                or UnicodeCategory.ModifierLetter or UnicodeCategory.OtherLetter => true,
-            UnicodeCategory.DecimalDigitNumber or UnicodeCategory.LetterNumber or UnicodeCategory.OtherNumber => true,
-            _ => false,
+            UnicodeCategory.Control or UnicodeCategory.Format or UnicodeCategory.Surrogate or UnicodeCategory.PrivateUse
+                or UnicodeCategory.OtherNotAssigned or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator
+                or UnicodeCategory.SpaceSeparator => false,
+            _ => true,
         };
-    }
-
-    /// <summary>
-    /// <c>str.isalnum()</c> of one code point under CPython 3.13's Unicode 15.1 tables: letters (L*) and numbers (N*), which is
-    /// <see cref="IsWordRune"/> without '_' and without the letters and numbers first assigned in Unicode 16.0
-    /// (<see cref="Unicode16LettersAndNumbers"/>), which the runtime's 16.0 tables class as L* or N* and Python's as unassigned.
-    /// </summary>
-    public static bool IsAlnum(Rune rune) => rune.Value != '_' && IsWordRune(rune) && !IsUnicode16LetterOrNumber(rune.Value);
-
-    // Every code point .NET 10's categories class as L* or N* that CPython 3.13's str.isalnum() rejects (all Cn under Unicode
-    // 15.1), as inclusive ranges in code point order. The reverse set is empty.
-    private static readonly (int Start, int End)[] Unicode16LettersAndNumbers =
-    [
-        (0x1C89, 0x1C8A), (0xA7CB, 0xA7CD), (0xA7DA, 0xA7DC), (0x105C0, 0x105F3), (0x10D40, 0x10D65), (0x10D6F, 0x10D85),
-        (0x10EC2, 0x10EC4), (0x11380, 0x11389), (0x1138B, 0x1138B), (0x1138E, 0x1138E), (0x11390, 0x113B5), (0x113B7, 0x113B7),
-        (0x113D1, 0x113D1), (0x113D3, 0x113D3), (0x116D0, 0x116E3), (0x11BC0, 0x11BE0), (0x11BF0, 0x11BF9), (0x13460, 0x143FA),
-        (0x16100, 0x1611D), (0x16130, 0x16139), (0x16D40, 0x16D6C), (0x16D70, 0x16D79), (0x18CFF, 0x18CFF), (0x1CCF0, 0x1CCF9),
-        (0x1E5D0, 0x1E5ED), (0x1E5F0, 0x1E5FA),
-    ];
-
-    private static bool IsUnicode16LetterOrNumber(int codePoint)
-    {
-        var low = 0;
-        var high = Unicode16LettersAndNumbers.Length - 1;
-        while (low <= high)
-        {
-            var middle = (low + high) / 2;
-            var (start, end) = Unicode16LettersAndNumbers[middle];
-            if (codePoint < start)
-            {
-                high = middle - 1;
-            }
-            else if (codePoint > end)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
@@ -260,7 +229,7 @@ public static class PythonText
     // tests case-ignorable first).
     private static bool IsCaseIgnorable(Rune rune)
     {
-        switch (Rune.GetUnicodeCategory(rune))
+        switch (PythonUnicode.GetCategory(rune.Value))
         {
             case UnicodeCategory.NonSpacingMark:
             case UnicodeCategory.EnclosingMark:
@@ -278,7 +247,7 @@ public static class PythonText
     // (ordinal indicators, Roman numerals, circled and squared Latin letters).
     private static bool IsCased(Rune rune)
     {
-        switch (Rune.GetUnicodeCategory(rune))
+        switch (PythonUnicode.GetCategory(rune.Value))
         {
             case UnicodeCategory.UppercaseLetter:
             case UnicodeCategory.LowercaseLetter:

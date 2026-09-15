@@ -56,20 +56,31 @@ public static partial class Canonicaliser
     /// appears (items end with "," and a new line), keys follow ": ", dictionary items are ordered by key code point,
     /// empty containers are "{}" and "[]", floats use <c>float.__repr__</c> with NaN, Infinity and -Infinity spelled
     /// as JavaScript does. Nesting is walked on an explicit stack. With <paramref name="indent"/> false the output is
-    /// <c>json.dumps(value, ensure_ascii=False, sort_keys=True)</c> instead: one line, items separated by ", ".
+    /// <c>json.dumps(value, ensure_ascii=False, sort_keys=True)</c> instead: one line, items separated by ", ". With
+    /// <paramref name="ensureAscii"/> the strings are escaped as <c>ensure_ascii=True</c> escapes them (the default of
+    /// <c>json.dumps</c>): every UTF-16 unit outside space to "~" that has no short escape becomes <c>\uXXXX</c> in lower-case hex.
     /// </summary>
-    internal static string DumpsSorted(object? value, bool indent = true)
+    internal static string DumpsSorted(object? value, bool indent = true, bool ensureAscii = false)
+        => Dumps(value, indent, ensureAscii, sortKeys: true);
+
+    /// <summary>
+    /// <see cref="DumpsSorted"/> with <paramref name="sortKeys"/> false: <c>json.dumps(value, ensure_ascii=..., indent=...)</c>, dictionary
+    /// items in insertion order. A container nested <paramref name="maxIndentDepth"/> levels below the document or deeper is written on one
+    /// line, as without <paramref name="indent"/> (the indented layout grows with the square of the nesting depth).
+    /// </summary>
+    internal static string Dumps(object? value, bool indent, bool ensureAscii, bool sortKeys, int maxIndentDepth = int.MaxValue)
     {
         var builder = new StringBuilder();
         var stack = new Stack<JsonFrame>();
-        WriteJsonValue(builder, stack, value, 0);
+        WriteJsonValue(builder, stack, value, 0, ensureAscii, sortKeys);
         while (stack.Count > 0)
         {
             var frame = stack.Peek();
+            var indented = indent && frame.Depth < maxIndentDepth;
             if (frame.Next == frame.Count)
             {
                 stack.Pop();
-                if (indent)
+                if (indented)
                 {
                     AppendNewLine(builder, frame.Depth);
                 }
@@ -80,10 +91,10 @@ public static partial class Canonicaliser
 
             if (frame.Next > 0)
             {
-                builder.Append(indent ? "," : ", ");
+                builder.Append(indented ? "," : ", ");
             }
 
-            if (indent)
+            if (indented)
             {
                 AppendNewLine(builder, frame.Depth + 1);
             }
@@ -91,7 +102,7 @@ public static partial class Canonicaliser
             object? item;
             if (frame.Items is { } items)
             {
-                AppendJsonString(builder, items[frame.Next].Key).Append(": ");
+                AppendJsonString(builder, items[frame.Next].Key, ensureAscii).Append(": ");
                 item = items[frame.Next].Value;
             }
             else
@@ -100,7 +111,7 @@ public static partial class Canonicaliser
             }
 
             frame.Next++;
-            WriteJsonValue(builder, stack, item, frame.Depth + 1);
+            WriteJsonValue(builder, stack, item, frame.Depth + 1, ensureAscii, sortKeys);
         }
 
         return builder.ToString();
@@ -117,7 +128,7 @@ public static partial class Canonicaliser
         return builder;
     }
 
-    private static void WriteJsonValue(StringBuilder builder, Stack<JsonFrame> stack, object? value, int depth)
+    private static void WriteJsonValue(StringBuilder builder, Stack<JsonFrame> stack, object? value, int depth, bool ensureAscii, bool sortKeys)
     {
         switch (value)
         {
@@ -126,7 +137,11 @@ public static partial class Canonicaliser
                 return;
             case OrderedDictionary<string, object?> dict:
                 var items = dict.ToList();
-                items.Sort((left, right) => PathText.CompareCodePoints(left.Key, right.Key));
+                if (sortKeys)
+                {
+                    items.Sort((left, right) => PathText.CompareCodePoints(left.Key, right.Key));
+                }
+
                 builder.Append('{');
                 stack.Push(new JsonFrame(items, null, depth));
                 return;
@@ -138,17 +153,17 @@ public static partial class Canonicaliser
                 stack.Push(new JsonFrame(null, list, depth));
                 return;
             default:
-                builder.Append(JsonScalar(value));
+                builder.Append(JsonScalar(value, ensureAscii));
                 return;
         }
     }
 
-    private static string JsonScalar(object? value) => value switch
+    private static string JsonScalar(object? value, bool ensureAscii) => value switch
     {
         null => "null",
         true => "true",
         false => "false",
-        string text => AppendJsonString(new StringBuilder(text.Length + 2), text).ToString(),
+        string text => AppendJsonString(new StringBuilder(text.Length + 2), text, ensureAscii).ToString(),
         int number => number.ToString(CultureInfo.InvariantCulture),
         long number => number.ToString(CultureInfo.InvariantCulture),
         BigInteger number => number.ToString(CultureInfo.InvariantCulture),
@@ -161,7 +176,9 @@ public static partial class Canonicaliser
 
     // escape_unicode (ensure_ascii=False): quote and backslash escaped, \b \f \n \r \t by name, other C0 controls as
     // \u00XX in lower-case hex; everything else, DEL, U+2028 and unpaired surrogates included, is written as is.
-    private static StringBuilder AppendJsonString(StringBuilder builder, string text)
+    // py_encode_basestring_ascii (ensure_ascii=True): the same short escapes, and every other unit outside " "-"~" (DEL, every
+    // non-ASCII unit, each half of a surrogate pair) as \uXXXX in lower-case hex.
+    private static StringBuilder AppendJsonString(StringBuilder builder, string text, bool ensureAscii)
     {
         builder.Append('"');
         foreach (var ch in text)
@@ -190,6 +207,7 @@ public static partial class Canonicaliser
                     builder.Append("\\t");
                     break;
                 case < ' ':
+                case > '~' when ensureAscii:
                     builder.Append("\\u").Append(((int)ch).ToString("x4", CultureInfo.InvariantCulture));
                     break;
                 default:

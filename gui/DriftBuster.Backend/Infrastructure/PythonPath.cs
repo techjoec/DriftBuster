@@ -148,6 +148,86 @@ public static class PythonPath
     }
 
     /// <summary>
+    /// <c>Path(path).mkdir(parents=True, exist_ok=True)</c>: every missing directory is created as the kernel reaches it. A <c>..</c>
+    /// after a directory that does not exist yet steps out of that directory once it is created, as Python's retry on
+    /// <c>FileNotFoundError</c> does (<c>new/../sub</c> creates <c>new</c> and <c>sub</c>), where <see cref="KernelPath"/> alone names a
+    /// path under the missing part that nothing can create. A directory that already exists is left as it is.
+    /// </summary>
+    /// <remarks>
+    /// On Linux this is <c>Path.mkdir</c>'s own algorithm over <c>mkdir(2)</c> (<see cref="UnixMkdir"/>): a failure raises the
+    /// <see cref="IOException"/> <see cref="PythonOSError"/> builds for the call's <c>errno</c> (its <see cref="Exception.HResult"/>)
+    /// naming the directory whose call failed as <c>str(Path)</c> spells it (<c>[Errno 17] File exists: 'afile'</c>,
+    /// <c>[Errno 20] Not a directory: 'afile/x'</c>). Elsewhere, and for a path holding a NUL or an unpaired surrogate (or with the
+    /// <see cref="UnixPathWalk.Disabled"/> seam set), the directories are created through the runtime, whose exceptions carry its own text.
+    /// </remarks>
+    public static void MakeDirectories(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var spelled = PythonPurePath.Str(path);
+        if (!UnixPathWalk.Disabled && UnixMkdir.MakeDirectory(spelled) is { } error)
+        {
+            MakeDirectoryAsPython(spelled, error, parents: true);
+            return;
+        }
+
+        var kernel = KernelPath(path);
+        if (Directory.Exists(kernel))
+        {
+            return;
+        }
+
+        var parent = PythonPurePath.Parent(path);
+        if (!string.Equals(kernel, path, StringComparison.Ordinal) && !string.Equals(parent, path, StringComparison.Ordinal))
+        {
+            MakeDirectories(parent);
+            kernel = KernelPath(path);
+        }
+
+        Directory.CreateDirectory(kernel);
+    }
+
+    // pathlib.Path.mkdir(exist_ok=True) after its first os.mkdir(path) failed with error (0: created). ENOENT with parents creates the
+    // parent and retries once without parents; any other error is ignored only when is_dir() is True, whose own raise wins.
+    private static void MakeDirectoryAsPython(string path, int error, bool parents)
+    {
+        if (error == 0)
+        {
+            return;
+        }
+
+        if (error == PythonOSError.NoSuchFile)
+        {
+            var parent = PythonPurePath.Parent(path);
+            if (!parents || string.Equals(parent, path, StringComparison.Ordinal))
+            {
+                throw PythonOSError.Create(error, path);
+            }
+
+            MakeDirectoryAsPython(parent, MakeDirectoryNative(parent), parents: true);
+            MakeDirectoryAsPython(path, MakeDirectoryNative(path), parents: false);
+            return;
+        }
+
+        bool isDirectory;
+        try
+        {
+            isDirectory = UnixFileType.Stat(path, followSymlinks: true) == UnixFileType.Kind.Directory;
+        }
+        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+        {
+            throw PythonOSError.Create(PythonOSError.Errno(exc) ?? error, path, exc);
+        }
+
+        if (!isDirectory)
+        {
+            throw PythonOSError.Create(error, path);
+        }
+    }
+
+    private static int MakeDirectoryNative(string path)
+        => UnixMkdir.MakeDirectory(path) ?? throw new InvalidOperationException("mkdir(2) became unavailable during a call that used it.");
+
+    /// <summary>
     /// The path <see cref="KernelPath"/> spells a result under when the directory the kernel reaches has no UTF-8 name: a name
     /// under a character device, whose lookup fails with <c>ENOTDIR</c>, so neither it nor anything below it exists, is opened
     /// or is created.

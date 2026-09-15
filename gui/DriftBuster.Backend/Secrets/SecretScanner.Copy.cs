@@ -331,7 +331,8 @@ public static partial class SecretScanner
         }
     }
 
-    private static (long Size, string Sha256) CopyVerbatim(string source, string destination)
+    /// <summary><c>shutil.copy2(source, destination)</c> followed by the destination's size and SHA-256.</summary>
+    internal static (long Size, string Sha256) CopyVerbatim(string source, string destination)
     {
         File.Copy(PythonPath.KernelPath(source), destination, overwrite: true);
         CopyStat(source, destination);

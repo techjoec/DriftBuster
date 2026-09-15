@@ -118,5 +118,17 @@ public sealed class DriftbusterServiceTests
             SavedSchedules = schedules.ToList();
             return Task.CompletedTask;
         }
+
+        public Task<ScheduleStatusListResult> ListScheduleStatusAsync(string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException("The GUI does not list scheduler state.");
+
+        public Task<ScheduleDueResult> ListDueSchedulesAsync(string? reference = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException("The GUI does not list due schedules.");
+
+        public Task<ScheduleStateResult> CompleteScheduleAsync(string name, string? completedAt = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException("The GUI does not complete schedules.");
+
+        public Task<ScheduleStateResult> SkipScheduleAsync(string name, string resumeAt, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException("The GUI does not skip schedules.");
     }
 }

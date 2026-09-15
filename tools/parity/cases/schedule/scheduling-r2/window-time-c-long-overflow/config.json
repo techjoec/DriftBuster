@@ -1,0 +1,13 @@
+{
+  "schedules": [
+    {
+      "name": "ovl",
+      "profile": "ovl-profile",
+      "every": "1h",
+      "window": {
+        "start": "01:00",
+        "end": "99999999999999999999:00"
+      }
+    }
+  ]
+}

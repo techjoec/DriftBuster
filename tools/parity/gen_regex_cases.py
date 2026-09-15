@@ -10,8 +10,13 @@ Writes gui/DriftBuster.Backend.Tests/Infrastructure/Data/python_regex_cases.json
 Sections:
 - ``casing``: every code point whose ``_sre.unicode_tolower`` differs from itself, and the ranges ``_sre.unicode_iscased``
   accepts.
-- ``unassigned``: code point ranges of category Cn under the interpreter's Unicode tables, where a newer runtime table may
-  legitimately differ.
+- ``nonprintable``: code point ranges ``str.isprintable()`` rejects.
+- ``categories``: every code point's general category as runs ``[first, last, category]`` covering 0..0x10FFFF; the C# oracle test
+  derives the port's Unicode 15.1 delta table from these runs and the runtime's categories, and fails with the table to paste.
+- ``decimal``: runs ``[first, last, value of first]`` of code points with a ``unicodedata.decimal`` value (``int()``, ``float()``
+  and ``str.format`` digits), consecutive values within a run.
+- ``digit``: the same runs for ``unicodedata.digit`` (``str.isdigit()``).
+- ``alpha`` / ``alnum``: code point ranges ``str.isalpha()`` / ``str.isalnum()`` accept.
 - ``atoms``: for single-character patterns, the ranges of code points ``fullmatch`` accepts.
 - ``patterns``: ``finditer`` and ``search`` results (span, groups, lastindex) or the compile error, per pattern and text.
 - ``pure_path``: ``PurePosixPath`` ``match`` results (or the error), and ``parts`` / ``str`` / ``parent`` / ``relative_to``.
@@ -48,8 +53,48 @@ def casing() -> dict[str, object]:
     return {"lower": lower, "cased": cased}
 
 
-def unassigned() -> list[list[int]]:
-    return _ranges([cp for cp in range(MAX_CP) if unicodedata.category(chr(cp)) == "Cn"])
+def nonprintable() -> list[list[int]]:
+    return _ranges([cp for cp in range(MAX_CP) if not chr(cp).isprintable()])
+
+
+def categories() -> list[list[object]]:
+    runs: list[list[object]] = []
+    for cp in range(MAX_CP):
+        category = unicodedata.category(chr(cp))
+        if runs and runs[-1][2] == category:
+            runs[-1][1] = cp
+        else:
+            runs.append([cp, cp, category])
+    return runs
+
+
+def _value_runs(lookup) -> list[list[int]]:
+    runs: list[list[int]] = []
+    for cp in range(MAX_CP):
+        value = lookup(chr(cp), -1)
+        if value < 0:
+            continue
+        if runs and runs[-1][1] + 1 == cp and runs[-1][2] + (cp - runs[-1][0]) == value:
+            runs[-1][1] = cp
+        else:
+            runs.append([cp, cp, value])
+    return runs
+
+
+def decimal() -> list[list[int]]:
+    return _value_runs(unicodedata.decimal)
+
+
+def digit() -> list[list[int]]:
+    return _value_runs(unicodedata.digit)
+
+
+def alpha() -> list[list[int]]:
+    return _ranges([cp for cp in range(MAX_CP) if chr(cp).isalpha()])
+
+
+def alnum() -> list[list[int]]:
+    return _ranges([cp for cp in range(MAX_CP) if chr(cp).isalnum()])
 
 
 ATOMS: list[str] = [
@@ -500,7 +545,12 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     data = {
         "casing": casing(),
-        "unassigned": unassigned(),
+        "nonprintable": nonprintable(),
+        "categories": categories(),
+        "decimal": decimal(),
+        "digit": digit(),
+        "alpha": alpha(),
+        "alnum": alnum(),
         "atoms": atoms(),
         "patterns": patterns(),
         "pure_path": pure_path(),

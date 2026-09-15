@@ -1,0 +1,22 @@
+{
+  "schedules": [
+    {
+      "name": "quarter",
+      "profile": "quarter-profile",
+      "every": "15m",
+      "start_at": "2025-03-01T11:50:00Z",
+      "tags": [
+        "b",
+        " a ",
+        ""
+      ],
+      "metadata": {
+        "z": 1,
+        "a": [
+          true,
+          null
+        ]
+      }
+    }
+  ]
+}

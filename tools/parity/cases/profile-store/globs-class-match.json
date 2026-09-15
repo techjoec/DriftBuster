@@ -1,0 +1,21 @@
+{
+  "profiles": [
+    {
+      "name": "globs",
+      "configs": [
+        {
+          "id": "class",
+          "path_glob": "logs/[!a]*.log"
+        },
+        {
+          "id": "question",
+          "path_glob": "?.ini"
+        },
+        {
+          "id": "caseful",
+          "path_glob": "LOGS/*.log"
+        }
+      ]
+    }
+  ]
+}

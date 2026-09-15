@@ -1,0 +1,11 @@
+{
+  "name": "exall",
+  "sources": [
+    {
+      "path": "only.txt",
+      "exclude": "*",
+      "optional": true
+    },
+    "keep.txt"
+  ]
+}

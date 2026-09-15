@@ -12,7 +12,7 @@ namespace DriftBuster.Backend.Models
         public string? Description { get; set; }
 
         [JsonPropertyName("sources")]
-        public string[] Sources { get; set; } = System.Array.Empty<string>();
+        public RunProfileSource[] Sources { get; set; } = System.Array.Empty<RunProfileSource>();
 
         [JsonPropertyName("baseline")]
         public string? Baseline { get; set; }

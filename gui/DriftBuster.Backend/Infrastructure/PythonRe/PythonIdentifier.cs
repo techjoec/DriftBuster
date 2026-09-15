@@ -45,6 +45,5 @@ internal static class PythonIdentifier
             or UnicodeCategory.DecimalDigitNumber or UnicodeCategory.ConnectorPunctuation;
     }
 
-    private static UnicodeCategory? Category(int code)
-        => PythonCharacterData.IsSurrogate(code) ? null : Rune.GetUnicodeCategory(new Rune(code));
+    private static UnicodeCategory Category(int code) => PythonUnicode.GetCategory(code);
 }

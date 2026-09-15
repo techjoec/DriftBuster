@@ -10,7 +10,7 @@ public static class PythonUtf8
     private static readonly UTF8Encoding Strict = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     /// <summary>
-    /// The decoded text; a byte sequence that is not UTF-8 raises <see cref="InvalidDataException"/> whose message is
+    /// The decoded text; a byte sequence that is not UTF-8 raises <see cref="PythonUnicodeDecodeException"/> whose message is
     /// <c>str(UnicodeDecodeError)</c>, for example <c>'utf-8' codec can't decode byte 0xff in position 1: invalid start byte</c>.
     /// </summary>
     public static string Decode(byte[] bytes)
@@ -22,7 +22,7 @@ public static class PythonUtf8
         }
         catch (DecoderFallbackException)
         {
-            throw new InvalidDataException(DecodeErrorMessage(bytes));
+            throw new PythonUnicodeDecodeException(DecodeErrorMessage(bytes) ?? "'utf-8' codec can't decode the bytes");
         }
     }
 

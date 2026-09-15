@@ -1,0 +1,1 @@
+{"name": "mixed", "sources": ["conf/**", "conf/sub", {"path": "top.txt", "alias": "t"}]}

@@ -1,0 +1,8 @@
+{
+ "name": "keys",
+ "sources": {
+  "a.txt/.": 1,
+  "link/../a.txt": 2
+ },
+ "baseline": "link/../a.txt"
+}

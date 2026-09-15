@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "lt",
+      "profile": "lt-profile",
+      "every": "1h",
+      "start_at": "2025-03-09T06:30:00Z",
+      "window": {
+        "start": "02:30",
+        "end": "03:30",
+        "timezone": "localtime"
+      }
+    }
+  ]
+}

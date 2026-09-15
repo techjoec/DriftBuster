@@ -1,0 +1,6 @@
+{
+ "name": "loop",
+ "sources": [
+  "tree/**/*.txt"
+ ]
+}

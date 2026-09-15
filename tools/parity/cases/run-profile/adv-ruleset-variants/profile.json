@@ -1,0 +1,42 @@
+{
+  "name": "rules",
+  "sources": [
+    "in.txt"
+  ],
+  "options": {
+    "secret_ignore_rules": [
+      "Zero"
+    ],
+    "secret_ignore_patterns": [
+      "[",
+      "keep-me"
+    ]
+  },
+  "secret_scanner": {
+    "ruleset": {
+      "version": 7,
+      "rules": [
+        {
+          "name": "Zero",
+          "pattern": "(?=x)"
+        },
+        {
+          "name": "Empty",
+          "pattern": ""
+        },
+        {
+          "name": "Digits",
+          "pattern": "\\d{3}",
+          "flags": "im"
+        },
+        {
+          "name": "Bad",
+          "pattern": "("
+        },
+        {
+          "pattern": "nameless"
+        }
+      ]
+    }
+  }
+}

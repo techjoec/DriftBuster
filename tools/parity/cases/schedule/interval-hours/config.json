@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "name": "bihourly",
+      "profile": "bihourly-profile",
+      "every": "2h",
+      "start_at": "2025-03-01T08:00:00"
+    }
+  ]
+}

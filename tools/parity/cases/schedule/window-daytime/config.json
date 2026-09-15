@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "office",
+      "profile": "office-profile",
+      "every": "4h",
+      "start_at": "2025-03-01T20:00:00Z",
+      "window": {
+        "start": "09:00",
+        "end": "17:00:30",
+        "timezone": "UTC"
+      }
+    }
+  ]
+}

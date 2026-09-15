@@ -1,0 +1,1 @@
+{"name": "mid", "sources": [{"path": "root/**/*.json", "alias": "j"}, {"path": "root/**", "alias": "all"}, {"path": "root/.*", "alias": "hidden", "optional": true}]}

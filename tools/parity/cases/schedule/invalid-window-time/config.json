@@ -1,0 +1,13 @@
+{
+  "schedules": [
+    {
+      "name": "bad-hour",
+      "profile": "bad-hour-profile",
+      "every": "1h",
+      "window": {
+        "start": "25:00",
+        "end": "02:00"
+      }
+    }
+  ]
+}

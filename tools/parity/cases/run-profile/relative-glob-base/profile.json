@@ -1,0 +1,6 @@
+{
+  "name": "cwd glob",
+  "sources": [
+    "*.txt"
+  ]
+}

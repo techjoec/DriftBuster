@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "name": "dotted",
+      "profile": "dotted-profile",
+      "every": "1hİx",
+      "start_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}

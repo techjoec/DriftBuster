@@ -1,0 +1,13 @@
+{
+  "schedules": [
+    {
+      "name": "ovf",
+      "profile": "ovf-profile",
+      "every": "1h",
+      "window": {
+        "start": "2147483648:00",
+        "end": "01:00"
+      }
+    }
+  ]
+}

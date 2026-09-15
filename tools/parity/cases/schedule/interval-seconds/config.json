@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "name": "fast",
+      "profile": "fast-profile",
+      "every": "45s",
+      "start_at": "2025-03-01T12:00:30+00:00"
+    }
+  ]
+}

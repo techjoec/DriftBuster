@@ -1,0 +1,11 @@
+{
+  "schedules": [
+    {
+      "name": "obj",
+      "profile": "obj-profile",
+      "every": {
+        "H": 1
+      }
+    }
+  ]
+}

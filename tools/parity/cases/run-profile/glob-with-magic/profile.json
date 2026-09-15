@@ -1,0 +1,6 @@
+{
+  "name": "glob",
+  "sources": [
+    "logs/*.log"
+  ]
+}

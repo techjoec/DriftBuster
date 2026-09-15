@@ -35,9 +35,7 @@ public static class PythonPurePath
         }
         else
         {
-            var anchor = path.StartsWith("//", StringComparison.Ordinal) && !path.StartsWith("///", StringComparison.Ordinal)
-                ? "//"
-                : path.StartsWith('/') ? "/" : string.Empty;
+            var anchor = PosixAnchor(path);
             if (anchor.Length > 0)
             {
                 parts.Add(anchor);
@@ -65,6 +63,25 @@ public static class PythonPurePath
             ? parts[0] + string.Join(separator, parts.Skip(1))
             : string.Join(separator, parts);
     }
+
+    /// <summary>
+    /// <c>str(PurePosixPath(path))</c> on every platform: "/" is the only separator, empty and "." components are dropped, a
+    /// leading "//" (exactly two slashes) is kept as the anchor, and an empty result is ".".
+    /// </summary>
+    public static string PosixStr(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var anchor = PosixAnchor(path);
+        var names = path.Split('/', StringSplitOptions.RemoveEmptyEntries).Where(part => !string.Equals(part, ".", StringComparison.Ordinal));
+        var joined = anchor + string.Join('/', names);
+        return joined.Length == 0 ? "." : joined;
+    }
+
+    // posixpath.splitroot: "//" when the path starts with exactly two slashes, "/" for one or three and more, else none.
+    private static string PosixAnchor(string path)
+        => path.StartsWith("//", StringComparison.Ordinal) && !path.StartsWith("///", StringComparison.Ordinal)
+            ? "//"
+            : path.StartsWith('/') ? "/" : string.Empty;
 
     /// <summary><c>str(PurePath(path).parent)</c>: the path less its last part; "." for a single relative part.</summary>
     public static string Parent(string path)
@@ -190,6 +207,13 @@ public static class PythonPurePath
 
     /// <summary><c>fnmatch._translate(pat, STAR, QUESTION_MARK)</c> joined, with consecutive stars compressed.</summary>
     private static string FnmatchTranslate(string pattern, string star, string questionMark)
+        => string.Concat(FnmatchTranslateParts(pattern, star, questionMark));
+
+    /// <summary>
+    /// <c>fnmatch._translate(pat, STAR, QUESTION_MARK)</c>: the translated pieces, with <paramref name="star"/> (compared by
+    /// reference, so pass a unique instance) standing for each run of consecutive stars.
+    /// </summary>
+    internal static List<string> FnmatchTranslateParts(string pattern, string star, string questionMark)
     {
         var chars = ReTokenizer.CodePoints(pattern).Select(code => ReTokenizer.Text([code])).ToList();
         var result = new List<string>();
@@ -220,7 +244,7 @@ public static class PythonPurePath
             }
         }
 
-        return string.Concat(result);
+        return result;
     }
 
     private static int TranslateBracket(List<string> chars, int i, List<string> result)
@@ -323,7 +347,7 @@ public static class PythonPurePath
     }
 
     /// <summary><c>re.escape</c>: backslash before each of <c>()[]{}?*+-|^$\.&amp;~#</c> and the whitespace characters.</summary>
-    private static string Escape(string text)
+    internal static string Escape(string text)
     {
         var builder = new StringBuilder(text.Length);
         foreach (var ch in text)

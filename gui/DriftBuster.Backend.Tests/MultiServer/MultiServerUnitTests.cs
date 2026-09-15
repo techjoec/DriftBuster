@@ -155,7 +155,7 @@ public sealed class MultiServerUnitTests : IDisposable
 
         var load = () => cache.Load("host", "cfg", "7");
 
-        load.Should().Throw<InvalidDataException>().Which.Message.Should().Be(message);
+        load.Should().Throw<PythonAttributeException>().Which.Message.Should().Be(message);
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public sealed class MultiServerUnitTests : IDisposable
 
         var load = () => cache.Load("host", "cfg", "sig");
 
-        load.Should().Throw<InvalidDataException>().Which.Message.Should().Be("'utf-8' codec can't decode byte 0xff in position 1: invalid start byte");
+        load.Should().Throw<PythonUnicodeDecodeException>().Which.Message.Should().Be("'utf-8' codec can't decode byte 0xff in position 1: invalid start byte");
     }
 
     [Fact]
@@ -267,13 +267,13 @@ public sealed class MultiServerUnitTests : IDisposable
 
     [Theory]
     [InlineData("""{"plans": {"a": 1}}""", "InvalidDataException", "'plans' must be an array")]
-    [InlineData("""[]""", "InvalidDataException", "'list' object has no attribute 'get'")]
+    [InlineData("""[]""", "PythonAttributeException", "'list' object has no attribute 'get'")]
     [InlineData("""{"plans": [{"roots": 5}]}""", "PythonTypeException", "'int' object is not iterable")]
     [InlineData("""{"plans": [{"roots": true, "baseline": {"priority": "high"}}]}""", "PythonTypeException", "'bool' object is not iterable")]
     [InlineData("""{"plans": [{"baseline": {"priority": "4.5"}}]}""", "PythonValueException", "invalid literal for int() with base 10: '4.5'")]
     [InlineData("""{"plans": [{"baseline": {"priority": null}}]}""", "PythonTypeException", "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'")]
-    [InlineData("""{"plans": [{"baseline": "yes"}]}""", "InvalidDataException", "'str' object has no attribute 'get'")]
-    [InlineData("""{"plans": [{"export": [1]}]}""", "InvalidDataException", "'list' object has no attribute 'get'")]
+    [InlineData("""{"plans": [{"baseline": "yes"}]}""", "PythonAttributeException", "'str' object has no attribute 'get'")]
+    [InlineData("""{"plans": [{"export": [1]}]}""", "PythonAttributeException", "'list' object has no attribute 'get'")]
     [InlineData("""{"plans": [{"roots": ["/srv/a", "~a\u0000b/x"]}]}""", "PythonValueException", "embedded null byte")]
     [InlineData("""{"plans": [{"throttle_seconds": 1e999}], "x": 1}""", "", "")]
     public void BuildPlansRaisesPythonsErrors(string request, string exceptionType, string message)

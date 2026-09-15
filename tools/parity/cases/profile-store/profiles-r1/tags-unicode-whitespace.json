@@ -1,0 +1,3 @@
+{"profiles": [{"name": "ws", "tags": ["\u00a0env\u2003", "\u001cprod\u001f", "\u200bzw", "\u0085", "x\u3000"],
+  "configs": [{"id": "c1", "tags": ["\u0009\u000a\u000bprod\u000c\u000d"], "path": "a.json"},
+              {"id": "c2", "application": " app ", "path_glob": "*.json"}]}]}

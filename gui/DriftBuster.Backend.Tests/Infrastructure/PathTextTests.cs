@@ -23,6 +23,15 @@ public sealed class PathTextTests
     [InlineData("a/b.c/", "b.c", ".c")]
     [InlineData("/", "", "")]
     [InlineData("/srv/app/Web.Config", "Web.Config", ".Config")]
+    [InlineData("a/./", "a", "")]
+    [InlineData("dir/file.config/.", "file.config", ".config")]
+    [InlineData("./", "", "")]
+    [InlineData("/.", "", "")]
+    [InlineData("a/./.", "a", "")]
+    [InlineData("./.", "", "")]
+    [InlineData("a/.x", ".x", "")]
+    [InlineData("a/..", "..", "")]
+    [InlineData(".//", "", "")]
     public void NameAndSuffixMatchPathlib(string path, string expectedName, string expectedSuffix)
     {
         PathText.Name(path).Should().Be(expectedName);

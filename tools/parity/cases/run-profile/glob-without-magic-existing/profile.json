@@ -1,0 +1,6 @@
+{
+  "name": "literal",
+  "sources": [
+    "data/file[1].txt"
+  ]
+}

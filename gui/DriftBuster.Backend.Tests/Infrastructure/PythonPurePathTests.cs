@@ -61,6 +61,22 @@ public sealed class PythonPurePathTests
         }
     }
 
+    // str(PurePosixPath(value)) from CPython 3.13; posix on every host.
+    [Theory]
+    [InlineData("", ".")]
+    [InlineData(".", ".")]
+    [InlineData("./", ".")]
+    [InlineData("a//b/./c/", "a/b/c")]
+    [InlineData("/", "/")]
+    [InlineData("//", "//")]
+    [InlineData("///x", "/x")]
+    [InlineData("//x/y", "//x/y")]
+    [InlineData("path\\file.txt", "path\\file.txt")]
+    [InlineData("../a/..", "../a/..")]
+    [InlineData("a/.", "a")]
+    public void PosixStrAgreesWithPurePosixPath(string path, string expected)
+        => PythonPurePath.PosixStr(path).Should().Be(expected);
+
     [Fact]
     public void JoinSpellsTheChildPath()
     {

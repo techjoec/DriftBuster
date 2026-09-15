@@ -1,0 +1,14 @@
+{
+  "name": "baseline glob",
+  "sources": [
+    {
+      "path": "none1/*.txt",
+      "alias": "a"
+    },
+    {
+      "path": "none2/*.txt",
+      "alias": "b"
+    }
+  ],
+  "baseline": "none2/*.txt"
+}

@@ -1,0 +1,20 @@
+{
+  "profiles": [
+    {
+      "name": "p",
+      "configs": [
+        {
+          "id": "with-path",
+          "path": "a.json"
+        },
+        {
+          "id": "with-glob",
+          "path_glob": "*"
+        },
+        {
+          "id": "no-path"
+        }
+      ]
+    }
+  ]
+}

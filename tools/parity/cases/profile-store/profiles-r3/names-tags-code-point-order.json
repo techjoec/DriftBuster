@@ -1,0 +1,118 @@
+{
+ "profiles": [
+  {
+   "name": "\uffff",
+   "tags": [
+    "\ue000",
+    "\ud83d\ude00",
+    "\uffff",
+    "a",
+    "\ud800\udc00"
+   ],
+   "configs": [
+    {
+     "id": "i\uffff",
+     "tags": [
+      "\ud83d\ude00",
+      "\ue000"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "\ud83d\ude00",
+   "tags": [
+    "\ue000",
+    "\ud83d\ude00",
+    "\uffff",
+    "a",
+    "\ud800\udc00"
+   ],
+   "configs": [
+    {
+     "id": "i\ud83d\ude00",
+     "tags": [
+      "\ud83d\ude00",
+      "\ue000"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "\ue000",
+   "tags": [
+    "\ue000",
+    "\ud83d\ude00",
+    "\uffff",
+    "a",
+    "\ud800\udc00"
+   ],
+   "configs": [
+    {
+     "id": "i\ue000",
+     "tags": [
+      "\ud83d\ude00",
+      "\ue000"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a",
+   "tags": [
+    "\ue000",
+    "\ud83d\ude00",
+    "\uffff",
+    "a",
+    "\ud800\udc00"
+   ],
+   "configs": [
+    {
+     "id": "ia",
+     "tags": [
+      "\ud83d\ude00",
+      "\ue000"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "\ud800\udc00b",
+   "tags": [
+    "\ue000",
+    "\ud83d\ude00",
+    "\uffff",
+    "a",
+    "\ud800\udc00"
+   ],
+   "configs": [
+    {
+     "id": "i\ud800\udc00b",
+     "tags": [
+      "\ud83d\ude00",
+      "\ue000"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "\ud800\udc00",
+   "tags": [
+    "\ue000",
+    "\ud83d\ude00",
+    "\uffff",
+    "a",
+    "\ud800\udc00"
+   ],
+   "configs": [
+    {
+     "id": "i\ud800\udc00",
+     "tags": [
+      "\ud83d\ude00",
+      "\ue000"
+     ]
+    }
+   ]
+  }
+ ]
+}

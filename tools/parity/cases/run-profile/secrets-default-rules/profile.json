@@ -1,0 +1,6 @@
+{
+  "name": "default rules",
+  "sources": [
+    "auth_secrets.txt"
+  ]
+}

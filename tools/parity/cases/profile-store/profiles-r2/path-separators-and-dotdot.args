@@ -1,0 +1,2 @@
+--path
+json:"conf/../a\u0085.json"

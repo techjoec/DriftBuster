@@ -1,0 +1,21 @@
+{
+  "profiles": [
+    {
+      "name": "spellings",
+      "configs": [
+        {
+          "id": "dot",
+          "path": "."
+        },
+        {
+          "id": "dotdot",
+          "path": "a/../b.json"
+        },
+        {
+          "id": "slashes",
+          "path": "//etc/app.json"
+        }
+      ]
+    }
+  ]
+}

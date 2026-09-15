@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "name": "lr",
+      "profile": "lr-profile",
+      "every": "1d",
+      "start_at": "1971-06-01T12:00:00Z",
+      "window": {
+        "start": "09:00",
+        "end": "10:00",
+        "timezone": "Africa/Monrovia"
+      }
+    }
+  ]
+}

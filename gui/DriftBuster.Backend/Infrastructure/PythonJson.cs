@@ -35,6 +35,12 @@ public static class PythonJson
     /// </summary>
     public const int MaxNestingDepth = 9998;
 
+    // json.decoder._CONSTANTS: every NaN, Infinity and -Infinity literal any json.loads call decodes is one shared float object, so
+    // PythonValues' identity-first comparison finds a decoded NaN equal to itself wherever it is compared, as CPython's containers do.
+    private static readonly object NaN = double.NaN;
+    private static readonly object PositiveInfinity = double.PositiveInfinity;
+    private static readonly object NegativeInfinity = double.NegativeInfinity;
+
     private sealed class Frame(object container)
     {
         public object Container { get; } = container;
@@ -45,10 +51,33 @@ public static class PythonJson
     }
 
     /// <summary>Decodes <paramref name="text"/>; false when Python's decoder would raise.</summary>
-    public static bool TryLoads(string text, out object? value)
+    public static bool TryLoads(string text, out object? value) => TryLoads(text, out value, out _);
+
+    /// <summary>
+    /// Decodes <paramref name="text"/> for a caller that catches only <c>JSONDecodeError</c>: false for text that is not a JSON document,
+    /// and the exception <c>json.loads</c> raises past an interpreter limit instead, at the first failure in text order:
+    /// <see cref="PythonValueException"/> for an integer literal of more than <see cref="MaxIntDigits"/> digits, and
+    /// <see cref="PythonRecursionException"/> for a container nested deeper than <see cref="MaxNestingDepth"/>.
+    /// </summary>
+    /// <remarks>
+    /// The nesting boundary is the one <c>json.loads</c> hits with the interpreter's frames of a top-level script or the parity dump; a caller
+    /// holding more frames (<c>python -m</c> through <c>runpy</c>) reaches the C recursion limit a few containers earlier.
+    /// </remarks>
+    public static bool TryLoadsOrRaiseLimits(string text, out object? value)
+    {
+        if (TryLoads(text, out value, out var limit))
+        {
+            return true;
+        }
+
+        return limit is null ? false : throw limit;
+    }
+
+    private static bool TryLoads(string text, out object? value, out Exception? limit)
     {
         ArgumentNullException.ThrowIfNull(text);
         value = null;
+        limit = null;
         if (text.StartsWith('﻿'))
         {
             return false;
@@ -58,7 +87,7 @@ public static class PythonJson
         var stack = new Stack<Frame>();
         while (true)
         {
-            if (!TryBeginValue(text, ref pos, stack, out var completed, out var hasValue))
+            if (!TryBeginValue(text, ref pos, stack, out var completed, out var hasValue, ref limit))
             {
                 return false;
             }
@@ -105,7 +134,7 @@ public static class PythonJson
 
     // Parses the value at pos. A non-empty container is pushed and hasValue stays false so the caller parses its
     // first element; an empty container or a scalar is returned as completed.
-    private static bool TryBeginValue(string text, ref int pos, Stack<Frame> stack, out object? completed, out bool hasValue)
+    private static bool TryBeginValue(string text, ref int pos, Stack<Frame> stack, out object? completed, out bool hasValue, ref Exception? limit)
     {
         completed = null;
         hasValue = false;
@@ -117,6 +146,7 @@ public static class PythonJson
         var c = text[pos];
         if ((c is '{' or '[') && stack.Count >= MaxNestingDepth)
         {
+            limit = new PythonRecursionException($"maximum recursion depth exceeded while decoding a JSON {(c == '{' ? "object" : "array")} from a unicode string");
             return false;
         }
 
@@ -157,7 +187,7 @@ public static class PythonJson
             return true;
         }
 
-        hasValue = TryParseScalar(text, ref pos, out completed);
+        hasValue = TryParseScalar(text, ref pos, out completed, ref limit);
         return hasValue;
     }
 
@@ -247,7 +277,7 @@ public static class PythonJson
         return true;
     }
 
-    private static bool TryParseScalar(string text, ref int pos, out object? value)
+    private static bool TryParseScalar(string text, ref int pos, out object? value, ref Exception? limit)
     {
         value = null;
         switch (text[pos])
@@ -270,16 +300,16 @@ public static class PythonJson
                 value = false;
                 return TryLiteral(text, ref pos, "false");
             case 'N':
-                value = double.NaN;
+                value = NaN;
                 return TryLiteral(text, ref pos, "NaN");
             case 'I':
-                value = double.PositiveInfinity;
+                value = PositiveInfinity;
                 return TryLiteral(text, ref pos, "Infinity");
             case '-' when TryLiteral(text, ref pos, "-Infinity"):
-                value = double.NegativeInfinity;
+                value = NegativeInfinity;
                 return true;
             default:
-                return TryParseNumber(text, ref pos, out value);
+                return TryParseNumber(text, ref pos, out value, ref limit);
         }
     }
 
@@ -298,7 +328,7 @@ public static class PythonJson
 
     // _match_number_unicode: -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)? over ASCII digits, where a '.' not followed
     // by a digit and an exponent without digits end the number instead of failing it.
-    private static bool TryParseNumber(string text, ref int pos, out object? value)
+    private static bool TryParseNumber(string text, ref int pos, out object? value, ref Exception? limit)
     {
         value = null;
         var idx = pos;
@@ -345,6 +375,10 @@ public static class PythonJson
 
         if (digitsEnd - digitsStart > MaxIntDigits)
         {
+            limit = new PythonValueException(
+                $"Exceeds the limit ({MaxIntDigits} digits) for integer string conversion: value has {digitsEnd - digitsStart} digits; "
+                + "use sys.set_int_max_str_digits() to increase the limit",
+                nameof(text));
             return false;
         }
 

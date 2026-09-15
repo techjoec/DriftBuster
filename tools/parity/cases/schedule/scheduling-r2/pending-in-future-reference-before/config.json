@@ -1,0 +1,16 @@
+{
+  "schedules": [
+    {
+      "name": "fut",
+      "profile": "fut-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z"
+    },
+    {
+      "name": "past",
+      "profile": "past-profile",
+      "every": "1h",
+      "start_at": "2025-03-01T00:00:00Z"
+    }
+  ]
+}
