@@ -1,0 +1,14 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "config.json",
+  "--json"
+ ],
+ "port": [
+  "scan",
+  "config.json",
+  "--json"
+ ],
+ "description": "test_cli_json_output"
+}

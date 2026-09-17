@@ -1,0 +1,30 @@
+{
+  "profile": {
+    "name": "globcase",
+    "sources": [
+      {
+        "path": "DATA/*.TXT",
+        "alias": "upper-glob",
+        "optional": true
+      },
+      {
+        "path": "data/*.txt",
+        "alias": "lower-glob"
+      },
+      {
+        "path": "DATA/a.txt",
+        "alias": "upper-literal",
+        "optional": true
+      },
+      {
+        "path": "data/[ab].*",
+        "alias": "class"
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

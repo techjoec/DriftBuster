@@ -1,0 +1,13 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.run_profiles_cli",
+  "schedule",
+  "list"
+ ],
+ "port": [
+  "schedule",
+  "list"
+ ],
+ "compare_stderr": true
+}

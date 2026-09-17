@@ -1,0 +1,40 @@
+{
+  "schema": "custom-schema",
+  "version": 3.5,
+  "profile": {
+    "name": "custom-names",
+    "sources": [
+      "a.txt"
+    ],
+    "baseline": "a.txt",
+    "options": {
+      "k": [
+        1,
+        2.5,
+        null,
+        true
+      ]
+    }
+  },
+  "runner": {
+    "output_directory": "out",
+    "manifest_name": "MANIFEST.JSON",
+    "log_name": "run.txt",
+    "data_directory_name": "payload",
+    "logs_directory_name": "diagnostics",
+    "cleanup_staging": false,
+    "include_config": true
+  },
+  "metadata": {
+    "n": 1.25,
+    "big": 123456789012345678901234567890,
+    "u": "é☃",
+    "neg": -0.0,
+    "f": 1.909689623213514e-34,
+    "nested": {
+      "z": [],
+      "a": {}
+    },
+    "sql_exports": "kept without snapshots"
+  }
+}

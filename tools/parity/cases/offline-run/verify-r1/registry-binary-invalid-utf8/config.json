@@ -1,0 +1,20 @@
+{
+  "profile": {
+    "name": "reg-utf8",
+    "sources": [
+      {
+        "registry_scan": {
+          "token": "Parity",
+          "roots": [
+            "HKCU\\Software\\DriftBusterOfflineRunParity\\badutf8"
+          ]
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

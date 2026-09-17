@@ -1,0 +1,22 @@
+{
+  "links": [
+    {
+      "path": "tree/link.txt",
+      "target": "real.txt"
+    },
+    {
+      "path": "tree/outside-dir",
+      "target": "{run}{sep}target",
+      "directory": true
+    },
+    {
+      "path": "file-link.txt",
+      "target": "tree{sep}real.txt"
+    },
+    {
+      "path": "dir-link",
+      "target": "tree",
+      "directory": true
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "profile": {
+    "name": "enc-clean",
+    "sources": [
+      "payload"
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "package_name": "Bundle.ZIP",
+    "encryption": {
+      "keyset_path": "keys/raw.json",
+      "enabled": 1,
+      "mode": "DPAPI-AES"
+    }
+  }
+}

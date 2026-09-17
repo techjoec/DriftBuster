@@ -1,0 +1,14 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.profile_cli",
+  "summary",
+  "store.json"
+ ],
+ "port": [
+  "detection-profile",
+  "summary",
+  "store.json"
+ ],
+ "compare_stderr": true
+}

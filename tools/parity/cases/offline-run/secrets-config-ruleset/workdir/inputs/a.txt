@@ -1,0 +1,6 @@
+tok=abc123 and tok=def
+pin:1234 pin:12
+SECRET-VALUE here
+skip this skip
+IGNORE ME tok=zzz
+nameless

@@ -1,0 +1,12 @@
+{
+  "profile": {
+    "name": "Default Name!",
+    "sources": [
+      "a.txt"
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "package_name": "  "
+  }
+}

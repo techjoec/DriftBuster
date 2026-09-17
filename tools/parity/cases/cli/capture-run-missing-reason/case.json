@@ -1,0 +1,23 @@
+{
+ "python": [
+  "{repo}/scripts/capture.py",
+  "run",
+  "tree",
+  "--operator",
+  "ops",
+  "--environment",
+  "test",
+  "--allow-unmasked"
+ ],
+ "port": [
+  "capture",
+  "run",
+  "tree",
+  "--operator",
+  "ops",
+  "--environment",
+  "test",
+  "--allow-unmasked"
+ ],
+ "compare_stderr": true
+}

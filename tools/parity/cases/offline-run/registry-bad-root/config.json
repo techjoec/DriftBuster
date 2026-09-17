@@ -1,0 +1,18 @@
+{
+  "profile": {
+    "name": "b",
+    "sources": [
+      {
+        "registry_scan": {
+          "token": "t",
+          "roots": [
+            "HKCR\\Software"
+          ]
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out"
+  }
+}

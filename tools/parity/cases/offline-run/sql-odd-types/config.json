@@ -1,0 +1,23 @@
+{
+  "profile": {
+    "name": "sql-odd",
+    "sources": [
+      {
+        "sql_snapshot": {
+          "path": "odd.sqlite"
+        }
+      },
+      {
+        "sql_snapshot": {
+          "path": "empty.sqlite"
+        },
+        "alias": "empty"
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

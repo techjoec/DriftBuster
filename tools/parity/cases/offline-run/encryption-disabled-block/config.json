@@ -1,0 +1,16 @@
+{
+  "profile": {
+    "name": "enc-off",
+    "sources": [
+      "payload"
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "encryption": {
+      "enabled": false,
+      "keyset_path": "keys/none.json"
+    },
+    "cleanup_staging": true
+  }
+}

@@ -1,0 +1,11 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.multi_server"
+ ],
+ "port": [
+  "multi-server"
+ ],
+ "stdin": "{\"schema_version\": \"9\"}",
+ "compare_stderr": true
+}

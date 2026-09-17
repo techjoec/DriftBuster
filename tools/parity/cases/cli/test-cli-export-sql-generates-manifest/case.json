@@ -1,0 +1,40 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "export-sql",
+  "demo.sqlite",
+  "--output-dir",
+  "exports",
+  "--mask-column",
+  "accounts.secret",
+  "--hash-column",
+  "accounts.email",
+  "--placeholder",
+  "[MASK]",
+  "--hash-salt",
+  "pepper"
+ ],
+ "port": [
+  "sql-export",
+  "demo.sqlite",
+  "--output-dir",
+  "exports",
+  "--mask-column",
+  "accounts.secret",
+  "--hash-column",
+  "accounts.email",
+  "--placeholder",
+  "[MASK]",
+  "--hash-salt",
+  "pepper"
+ ],
+ "databases": {
+  "demo.sqlite": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT);INSERT INTO accounts (email, secret) VALUES ('alice@example.com', 'token');"
+ },
+ "compare_stderr": true,
+ "accept": [
+  "run-clock"
+ ],
+ "description": "test_cli_export_sql_generates_manifest"
+}

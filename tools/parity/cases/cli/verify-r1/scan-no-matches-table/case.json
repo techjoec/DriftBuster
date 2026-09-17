@@ -1,0 +1,16 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "conf",
+  "--glob",
+  "*.nothing"
+ ],
+ "port": [
+  "scan",
+  "conf",
+  "--glob",
+  "*.nothing"
+ ],
+ "compare_stderr": true
+}

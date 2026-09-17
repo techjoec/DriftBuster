@@ -1,0 +1,39 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.registry_cli",
+  "emit-config",
+  "Vendor",
+  "--keyword",
+  "server",
+  "--pattern",
+  "^host",
+  "--max-depth",
+  "4",
+  "--root",
+  "HKLM\\Software\\Vendor,view=64",
+  "--remote-target",
+  "srv01,username=ops,transport=winrm",
+  "--alias",
+  "vendor"
+ ],
+ "port": [
+  "registry-scan",
+  "emit-config",
+  "Vendor",
+  "--keyword",
+  "server",
+  "--pattern",
+  "^host",
+  "--max-depth",
+  "4",
+  "--root",
+  "HKLM\\Software\\Vendor,view=64",
+  "--remote-target",
+  "srv01,username=ops,transport=winrm",
+  "--alias",
+  "vendor"
+ ],
+ "compare_stderr": true,
+ "description": "emit-config output on Windows; off Windows both sides refuse with the same message"
+}

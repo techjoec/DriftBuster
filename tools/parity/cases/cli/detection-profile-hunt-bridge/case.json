@@ -1,0 +1,26 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.profile_cli",
+  "hunt-bridge",
+  "store.json",
+  "hunts.json",
+  "--tag",
+  "prod",
+  "--root",
+  "/srv/root",
+  "--sort-keys"
+ ],
+ "port": [
+  "detection-profile",
+  "hunt-bridge",
+  "store.json",
+  "hunts.json",
+  "--tag",
+  "prod",
+  "--root",
+  "/srv/root",
+  "--sort-keys"
+ ],
+ "compare_stderr": true
+}

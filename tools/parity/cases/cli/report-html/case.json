@@ -1,0 +1,24 @@
+{
+ "python": [
+  "{repo}/tools/parity/cli_oracles.py",
+  "report",
+  "config",
+  "--title",
+  "Config <review>",
+  "--mask-token",
+  "Password"
+ ],
+ "port": [
+  "report",
+  "config",
+  "--title",
+  "Config <review>",
+  "--mask-token",
+  "Password"
+ ],
+ "workdir": "{repo}/fixtures",
+ "compare_stderr": true,
+ "accept": [
+  "run-clock"
+ ]
+}

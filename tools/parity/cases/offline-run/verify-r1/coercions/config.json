@@ -1,0 +1,11 @@
+{"schema": null, "version": 2,
+ "profile": {"name": "coerce", "description": 5, "tags": [1, null, true, 2.50, "t"],
+   "options": {"nested": {"x": [1, 2.0, -0.0]}},
+   "sources": [{"path": "a.txt", "alias": 0, "exclude": ["*.none", 7]},
+               {"sql_snapshot": {"path": "db.sqlite", "limit": 2.9, "tables": "t", "mask_columns": {"t": "secret"},
+                 "hash_columns": ["t.v", "bad", ".x", "t."]}, "optional": 0}],
+   "baseline": "db.sqlite"},
+ "runner": {"output_directory": "out", "cleanup_staging": false, "compress": 1, "max_total_bytes": " 1_000_000 ",
+   "package_name": "Paquete-\u00e9 \u2603", "include_config": "no"},
+ "metadata": {"inf": 1e400, "neg0": -0.0, "big": 123456789012345678901234567890, "e5": 1E5, "tiny": -1.5e-7,
+   "u": "\u00e9\ud83d\ude00\u0001\u2028", "dup": 1, "dup": 2}}

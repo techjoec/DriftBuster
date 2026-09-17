@@ -1,0 +1,13 @@
+{
+  "schema": "https://driftbuster.dev/offline-runner/config/v1",
+  "version": 1,
+  "profile": {
+    "name": "Single File",
+    "sources": [
+      "secrets.txt"
+    ]
+  },
+  "runner": {
+    "output_directory": "out"
+  }
+}

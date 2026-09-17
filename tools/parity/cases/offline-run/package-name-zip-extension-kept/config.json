@@ -1,0 +1,13 @@
+{
+  "profile": {
+    "name": "Café Profile! v2",
+    "sources": [
+      "a.txt"
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "package_name": "pkg.ZIP",
+    "cleanup_staging": false
+  }
+}

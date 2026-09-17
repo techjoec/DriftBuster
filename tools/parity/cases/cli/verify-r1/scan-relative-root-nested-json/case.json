@@ -1,0 +1,18 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "./conf/../conf",
+  "--json",
+  "--glob",
+  "**/*.json"
+ ],
+ "port": [
+  "scan",
+  "./conf/../conf",
+  "--json",
+  "--glob",
+  "**/*.json"
+ ],
+ "compare_stderr": true
+}

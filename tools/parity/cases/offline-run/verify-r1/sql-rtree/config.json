@@ -1,0 +1,17 @@
+{
+  "profile": {
+    "name": "sqlrtree",
+    "sources": [
+      {
+        "sql_snapshot": {
+          "path": "rt.sqlite"
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

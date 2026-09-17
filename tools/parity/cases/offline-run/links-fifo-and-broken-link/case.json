@@ -1,0 +1,14 @@
+{
+  "platforms": [
+    "linux"
+  ],
+  "fifos": [
+    "tree/pipe"
+  ],
+  "links": [
+    {
+      "path": "tree/broken.txt",
+      "target": "nowhere.txt"
+    }
+  ]
+}

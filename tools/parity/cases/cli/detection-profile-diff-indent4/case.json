@@ -1,0 +1,20 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.profile_cli",
+  "diff",
+  "baseline.json",
+  "current.json",
+  "--indent",
+  "4"
+ ],
+ "port": [
+  "detection-profile",
+  "diff",
+  "baseline.json",
+  "current.json",
+  "--indent",
+  "4"
+ ],
+ "compare_stderr": true
+}

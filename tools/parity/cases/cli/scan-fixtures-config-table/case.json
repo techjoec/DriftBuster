@@ -1,0 +1,13 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "config"
+ ],
+ "port": [
+  "scan",
+  "config"
+ ],
+ "workdir": "{repo}/fixtures",
+ "compare_stderr": true
+}

@@ -1,0 +1,19 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  ".",
+  "--sample-size",
+  "many"
+ ],
+ "port": [
+  "scan",
+  ".",
+  "--sample-size",
+  "many"
+ ],
+ "compare_stderr": true,
+ "accept": [
+  "parse-error"
+ ]
+}

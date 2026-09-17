@@ -1,0 +1,17 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.run_profiles_cli",
+  "show",
+  "nope"
+ ],
+ "port": [
+  "profile",
+  "show",
+  "nope"
+ ],
+ "compare_stderr": true,
+ "accept": [
+  "traceback"
+ ]
+}

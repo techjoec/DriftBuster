@@ -1,0 +1,14 @@
+{
+  "profile": {
+    "name": "required-glob",
+    "sources": [
+      {
+        "path": "nope/*.txt",
+        "optional": false
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out"
+  }
+}

@@ -1,0 +1,20 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.run_profiles_cli",
+  "run",
+  "--name",
+  "web",
+  "--timestamp",
+  "20250101T000000Z"
+ ],
+ "port": [
+  "profile",
+  "run",
+  "--name",
+  "web",
+  "--timestamp",
+  "20250101T000000Z"
+ ],
+ "compare_stderr": true
+}

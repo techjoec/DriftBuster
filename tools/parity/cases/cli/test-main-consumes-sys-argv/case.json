@@ -1,0 +1,14 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "config.json",
+  "--json"
+ ],
+ "port": [
+  "scan",
+  "config.json",
+  "--json"
+ ],
+ "description": "test_main_consumes_sys_argv"
+}

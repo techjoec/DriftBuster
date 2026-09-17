@@ -1,0 +1,23 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "diff",
+  "left.config",
+  "right.config",
+  "--content-type",
+  "text",
+  "--context-lines",
+  "0"
+ ],
+ "port": [
+  "diff",
+  "left.config",
+  "right.config",
+  "--content-type",
+  "text",
+  "--context-lines",
+  "0"
+ ],
+ "compare_stderr": true
+}

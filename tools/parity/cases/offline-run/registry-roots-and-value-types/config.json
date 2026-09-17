@@ -1,0 +1,30 @@
+{
+  "profile": {
+    "name": "registry-roots",
+    "sources": [
+      {
+        "registry_scan": {
+          "token": "Parity",
+          "roots": [
+            {
+              "hive": "hkcu",
+              "path": "Software\\DriftBusterOfflineRunParity\\values",
+              "view": "64"
+            },
+            "HKCU\\Software\\DriftBusterOfflineRunParity\\values\\Child,view=auto",
+            "HKLM/Software/DriftBusterOfflineRunParityMissing",
+            "HKCU\\Software\\DriftBusterOfflineRunParity\\values\\\\Child",
+            "HKCU\\Software\\DriftBusterOfflineRunParity\\values\\Child\\"
+          ],
+          "keywords": "",
+          "patterns": [],
+          "max_hits": 50
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false
+  }
+}

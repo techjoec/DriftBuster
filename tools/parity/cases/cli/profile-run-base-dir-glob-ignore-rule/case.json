@@ -1,0 +1,28 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.run_profiles_cli",
+  "--base-dir",
+  "{workdir}",
+  "run",
+  "--name",
+  "db",
+  "--timestamp",
+  "t1",
+  "--secret-ignore-rule",
+  "x"
+ ],
+ "port": [
+  "profile",
+  "run",
+  "--base-dir",
+  "{workdir}",
+  "--name",
+  "db",
+  "--timestamp",
+  "t1",
+  "--secret-ignore-rule",
+  "x"
+ ],
+ "compare_stderr": true
+}

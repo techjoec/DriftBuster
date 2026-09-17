@@ -1,0 +1,5 @@
+{
+  "databases": {
+    "db.sqlite": "db.sql"
+  }
+}

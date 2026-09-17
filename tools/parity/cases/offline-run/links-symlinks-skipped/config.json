@@ -1,0 +1,30 @@
+{
+  "profile": {
+    "name": "links",
+    "sources": [
+      {
+        "path": "tree",
+        "alias": "walk"
+      },
+      {
+        "path": "tree/*.txt",
+        "alias": "glob"
+      },
+      {
+        "path": "file-link.txt",
+        "alias": "direct-link",
+        "optional": true
+      },
+      {
+        "path": "dir-link",
+        "alias": "dir-link",
+        "optional": true
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

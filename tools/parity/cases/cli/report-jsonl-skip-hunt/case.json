@@ -1,0 +1,19 @@
+{
+ "python": [
+  "{repo}/tools/parity/cli_oracles.py",
+  "report",
+  "config",
+  "--format",
+  "jsonl",
+  "--skip-hunt"
+ ],
+ "port": [
+  "report",
+  "config",
+  "--format",
+  "jsonl",
+  "--skip-hunt"
+ ],
+ "workdir": "{repo}/fixtures",
+ "compare_stderr": true
+}

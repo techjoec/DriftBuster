@@ -1,0 +1,22 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "diff",
+  "server01/web/web.config",
+  "server02/web/web.config",
+  "server03/web/web.config",
+  "--output-dir",
+  "out/patches"
+ ],
+ "port": [
+  "diff",
+  "server01/web/web.config",
+  "server02/web/web.config",
+  "server03/web/web.config",
+  "--output-dir",
+  "out/patches"
+ ],
+ "workdir": "{repo}/fixtures/multi-server",
+ "compare_stderr": true
+}

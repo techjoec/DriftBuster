@@ -1,0 +1,16 @@
+{
+ "python": [
+  "{repo}/scripts/capture.py",
+  "compare",
+  "snap/base.json",
+  "snap/none.json"
+ ],
+ "port": [
+  "capture",
+  "compare",
+  "snap/base.json",
+  "snap/none.json"
+ ],
+ "workdir": "{repo}/tools/parity/cases/capture/capture-r1/compare-authored-snapshots/workdir",
+ "compare_stderr": true
+}

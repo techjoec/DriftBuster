@@ -1,0 +1,17 @@
+{
+  "profile": {
+    "name": "limit-exact",
+    "sources": [
+      "data",
+      {
+        "path": "data/a.txt",
+        "alias": "again"
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "max_total_bytes": 18,
+    "cleanup_staging": false
+  }
+}

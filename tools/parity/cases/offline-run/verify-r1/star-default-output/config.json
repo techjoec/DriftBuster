@@ -1,0 +1,8 @@
+{
+  "profile": {
+    "name": "star",
+    "sources": [
+      "*"
+    ]
+  }
+}

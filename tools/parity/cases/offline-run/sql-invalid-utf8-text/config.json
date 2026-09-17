@@ -1,0 +1,15 @@
+{
+  "profile": {
+    "name": "sql-bad-text",
+    "sources": [
+      {
+        "sql_snapshot": {
+          "path": "bad.sqlite"
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out"
+  }
+}

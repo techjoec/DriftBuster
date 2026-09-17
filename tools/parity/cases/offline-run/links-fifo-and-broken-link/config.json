@@ -1,0 +1,17 @@
+{
+  "profile": {
+    "name": "specials",
+    "sources": [
+      "tree",
+      {
+        "path": "tree/*",
+        "alias": "glob"
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.run_profiles_cli",
+  "schedule",
+  "mark-complete",
+  "--name",
+  "hourly",
+  "--completed-at",
+  "2025-03-01T00:10:00Z"
+ ],
+ "port": [
+  "schedule",
+  "mark-complete",
+  "--name",
+  "hourly",
+  "--completed-at",
+  "2025-03-01T00:10:00Z"
+ ],
+ "compare_stderr": true
+}

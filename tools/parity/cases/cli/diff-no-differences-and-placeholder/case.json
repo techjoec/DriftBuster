@@ -1,0 +1,27 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "diff",
+  "a.json",
+  "b.json",
+  "--placeholder",
+  "***",
+  "--mask-token",
+  "hunter2",
+  "--mask-token",
+  ""
+ ],
+ "port": [
+  "diff",
+  "a.json",
+  "b.json",
+  "--placeholder",
+  "***",
+  "--mask-token",
+  "hunter2",
+  "--mask-token",
+  ""
+ ],
+ "compare_stderr": true
+}

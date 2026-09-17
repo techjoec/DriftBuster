@@ -1,0 +1,18 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "diff",
+  "a.txt",
+  "missing.txt"
+ ],
+ "port": [
+  "diff",
+  "a.txt",
+  "missing.txt"
+ ],
+ "compare_stderr": true,
+ "accept": [
+  "usage-line"
+ ]
+}

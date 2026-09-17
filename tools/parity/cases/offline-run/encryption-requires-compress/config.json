@@ -1,0 +1,16 @@
+{
+  "profile": {
+    "name": "enc-nocompress",
+    "sources": [
+      "payload"
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "compress": false,
+    "cleanup_staging": false,
+    "encryption": {
+      "keyset_path": "keys/raw.json"
+    }
+  }
+}

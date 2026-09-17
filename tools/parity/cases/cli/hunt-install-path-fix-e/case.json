@@ -1,0 +1,19 @@
+{
+ "python": [
+  "{repo}/tools/parity/cli_oracles.py",
+  "hunt",
+  "app.ini",
+  "--sample-size",
+  "4096"
+ ],
+ "port": [
+  "hunt",
+  "app.ini",
+  "--sample-size",
+  "4096"
+ ],
+ "compare_stderr": true,
+ "accept": [
+  "oracle-fixes"
+ ]
+}

@@ -1,0 +1,9 @@
+{
+  "home": "home",
+  "env": {
+    "DB_OFFLINE_DATA": "{run}{sep}data",
+    "DB_OFFLINE_OUT": "outputs",
+    "XDG_CACHE_HOME": "{run}{sep}..{sep}xdg-cache",
+    "XDG_DATA_HOME": "{run}{sep}..{sep}xdg-data"
+  }
+}

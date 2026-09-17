@@ -1,0 +1,3 @@
+safe
+password = SUPERSECRET123456
+AUTH_TOKEN=ABCDEF1234567890ABCD taillast aws AKIA1234567890ABCDEF second password: hunter2hunter2 and password=anotherone99

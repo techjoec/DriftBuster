@@ -1,0 +1,16 @@
+{
+  "profile": {
+    "name": "no-outputs",
+    "sources": [
+      "a.txt"
+    ]
+  },
+  "settings": {
+    "output_directory": "out",
+    "include_logs": false,
+    "include_manifest": false,
+    "include_config": false,
+    "compress": false,
+    "manifest_name": null
+  }
+}

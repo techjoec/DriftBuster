@@ -1,0 +1,22 @@
+{
+  "profile": {
+    "name": "junction",
+    "sources": [
+      "tree",
+      {
+        "path": "tree/*/*.txt",
+        "alias": "through"
+      },
+      {
+        "path": "junction",
+        "alias": "direct",
+        "optional": true
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

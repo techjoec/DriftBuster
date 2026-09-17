@@ -5,13 +5,16 @@
 # sampling budget, a FIFO, a socket and a device link); diff, canon, hunt and secrets run over the inputs listed in
 # run_phase4_surface; multi-server runs every plan file under tools/parity/cases/multi-server/ (run_multi_server_surface);
 # profile-store, run-profile and schedule run every case under tools/parity/cases/<surface>/ (run_phase6_surface); sql-export,
-# report, registry-scan and capture run every case under tools/parity/cases/<surface>/ (run_phase7_surface).
+# report, registry-scan and capture run every case under tools/parity/cases/<surface>/ (run_phase7_surface); cli runs every case directory
+# under tools/parity/cases/cli/ through tools/parity/cli_parity.py (run_cli_surface); offline-run runs every case directory under
+# tools/parity/cases/offline-run/ that runs on Linux through tools/parity/offline_runner_parity.py (run_offline_run_surface; no build: the
+# port side is scripts/driftbuster-offline-runner.ps1 under pwsh; tools/parity/run_offline_windows.sh runs the Windows cases).
 # Exit 1 on any difference that is not an expected divergence (see expected_divergences.md). Temporary; deleted with the
 # Python tree.
 #
 # Usage: tools/parity/run_parity.sh <surface> [dump args...]
 #   surfaces: detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule, sql-export, report,
-#             registry-scan, capture
+#             registry-scan, capture, cli, offline-run
 #   example:  tools/parity/run_parity.sh detect            (the full default registry on both sides)
 #             PARITY_MULTI_SERVER_CASES='unreadable|root-' tools/parity/run_parity.sh multi-server   (cases whose path matches)
 #             tools/parity/run_parity.sh detect --plugins text
@@ -25,9 +28,9 @@ fi
 surface="$1"
 shift
 case "$surface" in
-  detect|decode|diff|canon|hunt|secrets|multi-server|profile-store|run-profile|schedule|sql-export|report|registry-scan|capture) ;;
+  detect|decode|diff|canon|hunt|secrets|multi-server|profile-store|run-profile|schedule|sql-export|report|registry-scan|capture|cli|offline-run) ;;
   *)
-    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule, sql-export, report, registry-scan, capture)" >&2
+    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule, sql-export, report, registry-scan, capture, cli, offline-run)" >&2
     exit 2
     ;;
 esac
@@ -49,13 +52,15 @@ run_dotnet() {
 }
 
 cli_exe="$repo_root/cli/DriftBuster.Cli/bin/Release/net10.0/driftbuster"
-if [[ "${PARITY_SKIP_BUILD:-0}" != "1" || ! -x "$cli_exe" ]]; then
-  echo "== building cli (Release)"
-  run_dotnet build cli/DriftBuster.Cli/DriftBuster.Cli.csproj -c Release -v q --nologo >/dev/null
-fi
-if [[ ! -x "$cli_exe" ]]; then
-  echo "error: built CLI not found at $cli_exe" >&2
-  exit 2
+if [[ "$surface" != "offline-run" ]]; then
+  if [[ "${PARITY_SKIP_BUILD:-0}" != "1" || ! -x "$cli_exe" ]]; then
+    echo "== building cli (Release)"
+    run_dotnet build cli/DriftBuster.Cli/DriftBuster.Cli.csproj -c Release -v q --nologo >/dev/null
+  fi
+  if [[ ! -x "$cli_exe" ]]; then
+    echo "error: built CLI not found at $cli_exe" >&2
+    exit 2
+  fi
 fi
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/driftbuster-parity.XXXXXX")"
@@ -1481,7 +1486,92 @@ run_phase7_surface() {
   done < "$listing"
 }
 
-if [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
+# ---------------------------------------------------------------------------------------------------------------------
+# cli surface (phase 8): every directory under tools/parity/cases/cli/ holding case.json runs its Python entry point and the built
+# driftbuster command in the same working directory and environment; cli_parity.py compares the exit code, stdout, stderr (when the case
+# asks) and every file written, applying only the acceptors the case declares (expected_divergences.md, "Console tool"). The acceptors'
+# self-test runs first. PARITY_CLI_CASES narrows the run to case paths matching that extended regular expression.
+# ---------------------------------------------------------------------------------------------------------------------
+run_cli_surface() {
+  local listing="$work/cli-listing" counts rc=0
+  if ! python tools/parity/cli_parity.py --self-test; then
+    status=1
+    echo "FAIL cli: cli_parity.py --self-test"
+    return
+  fi
+  if ! phase6_case_dirs "$listing" tools/parity/cases/cli case.json; then
+    status=1
+  fi
+  if [[ -n "${PARITY_CLI_CASES:-}" ]]; then
+    grep -E -- "$PARITY_CLI_CASES" "$listing" > "$listing.selected" || true
+    mv "$listing.selected" "$listing"
+  fi
+  if [[ ! -s "$listing" ]]; then
+    status=1
+    echo "FAIL cli: no cases"
+    return
+  fi
+  mapfile -t cases < "$listing"
+  python tools/parity/cli_parity.py run --cli "$cli_exe" --work "$work/cli" "${cases[@]}" > "$work/cli.out" || rc=$?
+  grep -v '^#counts ' "$work/cli.out" || true
+  counts="$(grep '^#counts ' "$work/cli.out" || true)"
+  if [[ -z "$counts" ]]; then
+    status=1
+    echo "FAIL cli: cli_parity.py exited $rc without a summary"
+    return
+  fi
+  read -r _ cli_cases cli_expected <<< "$counts"
+  files_total=$((files_total + cli_cases))
+  expected_total=$((expected_total + cli_expected))
+  [[ "$rc" -eq 0 ]] || status=1
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# offline-run surface (phase 8): every directory under tools/parity/cases/offline-run/ holding config.json runs
+# offline_runner.execute_config_path and scripts/driftbuster-offline-runner.ps1 (pwsh) in the same run directory; offline_runner_parity.py
+# compares the result or error, every entry left in the run directory and the package's entries, applying only its acceptors
+# (expected_divergences.md, "Offline runner script"). Cases limited to Windows are skipped here (tools/parity/run_offline_windows.sh). The
+# acceptors' self-test runs first. PARITY_OFFLINE_RUN_CASES narrows the run to case paths matching that extended regular expression.
+# ---------------------------------------------------------------------------------------------------------------------
+run_offline_run_surface() {
+  local listing="$work/offline-run-listing" counts rc=0
+  if ! python tools/parity/offline_runner_parity.py --self-test; then
+    status=1
+    echo "FAIL offline-run: offline_runner_parity.py --self-test"
+    return
+  fi
+  if ! phase6_case_dirs "$listing" tools/parity/cases/offline-run config.json; then
+    status=1
+  fi
+  if [[ -n "${PARITY_OFFLINE_RUN_CASES:-}" ]]; then
+    grep -E -- "$PARITY_OFFLINE_RUN_CASES" "$listing" > "$listing.selected" || true
+    mv "$listing.selected" "$listing"
+  fi
+  if [[ ! -s "$listing" ]]; then
+    status=1
+    echo "FAIL offline-run: no cases"
+    return
+  fi
+  mapfile -t cases < "$listing"
+  python tools/parity/offline_runner_parity.py run --platform linux --work "$work/offline-run" "${cases[@]}" > "$work/offline-run.out" || rc=$?
+  grep -v '^#counts ' "$work/offline-run.out" || true
+  counts="$(grep '^#counts ' "$work/offline-run.out" || true)"
+  if [[ -z "$counts" ]]; then
+    status=1
+    echo "FAIL offline-run: offline_runner_parity.py exited $rc without a summary"
+    return
+  fi
+  read -r _ offline_cases offline_expected <<< "$counts"
+  files_total=$((files_total + offline_cases))
+  expected_total=$((expected_total + offline_expected))
+  [[ "$rc" -eq 0 ]] || status=1
+}
+
+if [[ "$surface" == "cli" ]]; then
+  run_cli_surface
+elif [[ "$surface" == "offline-run" ]]; then
+  run_offline_run_surface
+elif [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
   compare "fixtures" "fixtures" "$@"
   if [[ -d "tools/parity/cases/$surface" ]]; then
     compare "tools/parity/cases/$surface" "tools/parity/cases/$surface" "$@"

@@ -1,0 +1,24 @@
+{
+  "profile": {
+    "name": "normcase",
+    "sources": [
+      {
+        "path": "app",
+        "exclude": [
+          "SUB/*.LOG",
+          "Notes.TXT"
+        ]
+      },
+      {
+        "path": "app/keep.dat",
+        "alias": "single",
+        "exclude": "KEEP.*"
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

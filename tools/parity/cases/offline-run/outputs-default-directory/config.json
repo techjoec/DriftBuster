@@ -1,0 +1,12 @@
+{
+  "profile": {
+    "name": "default-output",
+    "sources": [
+      "a.txt"
+    ]
+  },
+  "runner": {
+    "compress": true,
+    "cleanup_staging": false
+  }
+}

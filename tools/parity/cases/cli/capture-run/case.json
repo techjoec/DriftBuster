@@ -1,0 +1,37 @@
+{
+ "python": [
+  "{repo}/scripts/capture.py",
+  "run",
+  "tree",
+  "--capture-id",
+  "cap1",
+  "--operator",
+  "ops",
+  "--environment",
+  "test",
+  "--reason",
+  "parity",
+  "--mask-token",
+  "hunter2"
+ ],
+ "port": [
+  "capture",
+  "run",
+  "tree",
+  "--capture-id",
+  "cap1",
+  "--operator",
+  "ops",
+  "--environment",
+  "test",
+  "--reason",
+  "parity",
+  "--mask-token",
+  "hunter2"
+ ],
+ "compare_stderr": true,
+ "accept": [
+  "run-clock",
+  "capture-durations"
+ ]
+}

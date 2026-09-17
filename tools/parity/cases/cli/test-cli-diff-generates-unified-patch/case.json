@@ -1,0 +1,20 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "diff",
+  "baseline.txt",
+  "candidate.txt",
+  "--mask-token",
+  "secret"
+ ],
+ "port": [
+  "diff",
+  "baseline.txt",
+  "candidate.txt",
+  "--mask-token",
+  "secret"
+ ],
+ "compare_stderr": true,
+ "description": "test_cli_diff_generates_unified_patch"
+}

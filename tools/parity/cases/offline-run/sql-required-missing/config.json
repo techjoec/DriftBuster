@@ -1,0 +1,15 @@
+{
+  "profile": {
+    "name": "sql-missing",
+    "sources": [
+      {
+        "sql_snapshot": {
+          "path": "db/none.sqlite"
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out"
+  }
+}

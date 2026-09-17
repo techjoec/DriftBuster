@@ -1,0 +1,15 @@
+{
+  "platforms": [
+    "windows"
+  ],
+  "junctions": [
+    {
+      "path": "tree/jn",
+      "target": "{run}{sep}target"
+    },
+    {
+      "path": "junction",
+      "target": "{run}{sep}target"
+    }
+  ]
+}

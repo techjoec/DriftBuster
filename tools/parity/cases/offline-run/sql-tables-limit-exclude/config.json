@@ -1,0 +1,46 @@
+{
+  "profile": {
+    "name": "sql-limits",
+    "sources": [
+      {
+        "sql_snapshot": {
+          "path": "db/data.sqlite",
+          "tables": "accounts",
+          "limit": 2.9,
+          "placeholder": 0
+        },
+        "optional": 0
+      },
+      {
+        "sql_snapshot": {
+          "path": "db/data.sqlite",
+          "exclude_tables": [
+            "accounts"
+          ],
+          "mask_columns": {
+            "alpha": "k"
+          }
+        },
+        "alias": "rest"
+      },
+      {
+        "sql_snapshot": {
+          "path": "db/data.sqlite",
+          "tables": [
+            "Zeta",
+            "nope"
+          ],
+          "limit": "1",
+          "hash_columns": [
+            "Zeta.k"
+          ]
+        },
+        "alias": "zeta"
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false
+  }
+}

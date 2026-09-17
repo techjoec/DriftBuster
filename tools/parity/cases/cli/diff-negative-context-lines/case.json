@@ -1,0 +1,22 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.cli",
+  "diff",
+  "a.txt",
+  "a.txt",
+  "--context-lines",
+  "-1"
+ ],
+ "port": [
+  "diff",
+  "a.txt",
+  "a.txt",
+  "--context-lines",
+  "-1"
+ ],
+ "compare_stderr": true,
+ "accept": [
+  "usage-line"
+ ]
+}

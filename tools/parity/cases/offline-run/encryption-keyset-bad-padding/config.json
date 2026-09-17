@@ -1,0 +1,14 @@
+{
+  "profile": {
+    "name": "enc-error",
+    "sources": [
+      "payload"
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "encryption": {
+      "keyset_path": "keys/k.json"
+    }
+  }
+}

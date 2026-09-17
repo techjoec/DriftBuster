@@ -1,0 +1,5 @@
+{
+  "databases": {
+    "space.sqlite": "space.sql"
+  }
+}

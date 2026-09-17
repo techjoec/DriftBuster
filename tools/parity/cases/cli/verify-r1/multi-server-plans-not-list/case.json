@@ -1,0 +1,15 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.multi_server"
+ ],
+ "port": [
+  "multi-server"
+ ],
+ "stdin": "{\"plans\": \"abc\", \"schema_version\": \"\"}",
+ "compare_stderr": true,
+ "accept": [
+  "empty-response-mappings",
+  "run-clock"
+ ]
+}

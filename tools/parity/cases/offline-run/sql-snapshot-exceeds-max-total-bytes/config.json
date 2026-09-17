@@ -1,0 +1,16 @@
+{
+  "profile": {
+    "name": "sql-bytes",
+    "sources": [
+      {
+        "sql_snapshot": {
+          "path": "t.sqlite"
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "max_total_bytes": 64
+  }
+}

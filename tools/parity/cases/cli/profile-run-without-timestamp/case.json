@@ -1,0 +1,21 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.run_profiles_cli",
+  "run",
+  "--profile",
+  "adhoc.json",
+  "--save"
+ ],
+ "port": [
+  "profile",
+  "run",
+  "--profile",
+  "adhoc.json",
+  "--save"
+ ],
+ "compare_stderr": true,
+ "accept": [
+  "run-clock"
+ ]
+}

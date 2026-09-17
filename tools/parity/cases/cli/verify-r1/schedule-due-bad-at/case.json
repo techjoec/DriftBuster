@@ -1,0 +1,21 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.run_profiles_cli",
+  "--base-dir",
+  "base",
+  "schedule",
+  "due",
+  "--at",
+  "yesterday"
+ ],
+ "port": [
+  "schedule",
+  "--base-dir",
+  "base",
+  "due",
+  "--at",
+  "yesterday"
+ ],
+ "compare_stderr": true
+}

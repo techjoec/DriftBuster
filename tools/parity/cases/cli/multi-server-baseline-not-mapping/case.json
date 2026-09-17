@@ -1,0 +1,11 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.multi_server"
+ ],
+ "port": [
+  "multi-server"
+ ],
+ "stdin": "{\"plans\": [{\"host_id\": \"a\", \"label\": \"A\", \"roots\": [\"{workdir}\"], \"baseline\": true}]}",
+ "compare_stderr": true
+}

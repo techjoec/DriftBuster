@@ -1,0 +1,17 @@
+{
+  "profile": {
+    "name": "sqlfts",
+    "sources": [
+      {
+        "sql_snapshot": {
+          "path": "fts.sqlite"
+        }
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false,
+    "compress": false
+  }
+}

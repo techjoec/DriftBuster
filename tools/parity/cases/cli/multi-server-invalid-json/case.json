@@ -1,0 +1,14 @@
+{
+ "python": [
+  "-m",
+  "driftbuster.multi_server"
+ ],
+ "port": [
+  "multi-server"
+ ],
+ "stdin": "{\"plans\": [",
+ "compare_stderr": true,
+ "accept": [
+  "json-decode-reason"
+ ]
+}

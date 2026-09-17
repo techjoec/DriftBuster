@@ -1,0 +1,30 @@
+{
+  "profile": {
+    "name": "registry-token",
+    "sources": [
+      {
+        "registry_scan": {
+          "token": "Microsoft Edge",
+          "keywords": [
+            "driftbuster-no-such-value"
+          ],
+          "time_budget_s": 30
+        },
+        "alias": "token"
+      },
+      {
+        "registry_scan": {
+          "token": "driftbuster-no-such-application",
+          "keywords": [
+            "x"
+          ]
+        },
+        "alias": "none"
+      }
+    ]
+  },
+  "runner": {
+    "output_directory": "out",
+    "cleanup_staging": false
+  }
+}
