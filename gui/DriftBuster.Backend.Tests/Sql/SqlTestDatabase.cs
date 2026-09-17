@@ -8,7 +8,7 @@ using SQLitePCL;
 namespace DriftBuster.Backend.Tests.Sql;
 
 /// <summary>
-/// Builds SQLite databases for the SQL tests the way the Python tests and <c>tools/parity/gen_sql_cases.py</c> build them: each step one
+/// Builds SQLite databases for the SQL tests: each step one
 /// statement stepped to completion in autocommit mode, parameters bound as <c>sqlite3</c> binds them (int as INTEGER, float as REAL, so
 /// NaN stores NULL, str as UTF-8 TEXT, bytes as BLOB, None as NULL).
 /// </summary>
@@ -18,7 +18,7 @@ internal static class SqlTestDatabase
     public static string SampleFixture => RepoPaths.Fixtures("sql", "sample.sqlite");
 
     /// <summary>
-    /// <c>_create_sample_database(path)</c> of tests/offline/test_sql_snapshots.py: the <c>accounts</c> table fixtures/sql/README.md
+    /// The sample database: the <c>accounts</c> table fixtures/sql/README.md
     /// documents, created in autocommit mode, then two rows inserted in one transaction (<c>sqlite3</c>'s implicit <c>BEGIN</c> before the
     /// first INSERT, then <c>commit()</c>).
     /// </summary>
@@ -36,7 +36,7 @@ internal static class SqlTestDatabase
         return path;
     }
 
-    /// <summary>A step with parameters, in the oracle's <c>[sql, [params]]</c> shape.</summary>
+    /// <summary>A step with parameters, in the <c>[sql, [params]]</c> shape.</summary>
     public static List<object?> Step(string sql, params object?[] parameters) => [sql, parameters.ToList()];
 
     /// <summary>Runs every step against <paramref name="path"/>, creating the file when it is missing.</summary>

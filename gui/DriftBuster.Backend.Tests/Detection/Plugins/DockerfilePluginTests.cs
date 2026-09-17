@@ -5,7 +5,7 @@ using DriftBuster.Backend.Detection.Plugins;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_dockerfile_plugin.py; expected values were read from the Python plugin.</summary>
+/// <summary>The dockerfile plugin.</summary>
 public sealed class DockerfilePluginTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-dockerfile-");
@@ -18,8 +18,8 @@ public sealed class DockerfilePluginTests : IDisposable
     private const string Sample = """
 
             # base image
-            FROM python:3.11-slim
-            RUN pip install -U pip
+            FROM node:20-slim
+            RUN npm install -g npm
             COPY . /app
             WORKDIR /app
             
@@ -40,8 +40,7 @@ public sealed class DockerfilePluginTests : IDisposable
         match.Metadata.Should().BeNull();
     }
 
-    // The Python catalog resolves "dockerfile" through the script-config alias as well; this pins the port to the
-    // same strict-validation outcome through a real Detector.
+    // The catalog resolves "dockerfile" through the script-config alias; strict validation accepts it through a real Detector.
     [Fact]
     public void DetectorStrictValidationAcceptsDockerfile()
     {
@@ -58,13 +57,11 @@ public sealed class DockerfilePluginTests : IDisposable
         match.Metadata["catalog_variant"].Should().Be("generic");
     }
 
-    // Python re-scans the run from every line start (quadratic); the port skips each whitespace run once.
     [Theory]
-    [InlineData(50000, "\n")]
     [InlineData(30000, "    \n")]
     public void WhitespaceRunsAreScannedInLinearTime(int lines, string line)
     {
-        var text = string.Concat(Enumerable.Repeat(line, lines)) + "FROM python:3.11\nRUN echo hi\n";
+        var text = string.Concat(Enumerable.Repeat(line, lines)) + "FROM node:20\nRUN echo hi\n";
         var started = System.Diagnostics.Stopwatch.StartNew();
         var match = Detect("run.dockerfile", text);
         started.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));

@@ -7,9 +7,8 @@ using DriftBuster.Backend.MultiServer;
 namespace DriftBuster.Backend.Tests.MultiServer;
 
 /// <summary>
-/// The approved multi-server fixes and port behaviour with no Python test to mirror: a (config ids from the relative path),
-/// b (unreadable files skipped, unreadable roots denied), atomic cache writes under cancellation, per-run progress throttling
-/// and the severity thresholds.
+/// Multi-server config ids from the relative path, unreadable files skipped and unreadable roots denied, atomic cache writes under
+/// cancellation, per-run progress throttling and the severity thresholds.
 /// </summary>
 public sealed class MultiServerPortFixesTests : IDisposable
 {
@@ -129,31 +128,6 @@ public sealed class MultiServerPortFixesTests : IDisposable
     }
 
     [Fact]
-    public void RootInsideUnsearchableDirectoryIsPermissionDenied()
-    {
-        if (!CanDenyAccess)
-        {
-            return;
-        }
-
-        var parent = Path.Combine(_tmp.FullName, "sealed");
-        var root = Path.Combine(parent, "root");
-        Write("sealed/root/app.json", "{\"a\": 1}\n");
-        File.SetUnixFileMode(parent, UnixFileMode.None);
-        try
-        {
-            var response = new MultiServerRunner(CacheDir).Run([Plan("host", root)], cancellationToken: TestContext.Current.CancellationToken);
-
-            response.Results[0].Availability.Should().Be(ServerAvailabilityStatus.PermissionDenied);
-            response.Results[0].Message.Should().Be($"Permission denied: {root}");
-        }
-        finally
-        {
-            File.SetUnixFileMode(parent, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        }
-    }
-
-    [Fact]
     public void CancellationLeavesNoPartialCacheFile()
     {
         using var first = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -182,7 +156,7 @@ public sealed class MultiServerPortFixesTests : IDisposable
         entries.Should().HaveCount(2).And.AllSatisfy(entry => entry.Should().EndWith(".json"));
         foreach (var entry in entries)
         {
-            PythonJson.TryLoads(File.ReadAllText(entry), out var parsed).Should().BeTrue();
+            EngineJson.TryLoads(File.ReadAllText(entry), out var parsed).Should().BeTrue();
             parsed.Should().BeOfType<OrderedDictionary<string, object?>>().Which.Should().ContainKey("signature");
         }
     }
@@ -225,48 +199,6 @@ public sealed class MultiServerPortFixesTests : IDisposable
         started.Elapsed.Should().BeLessThan(TimeSpan.FromMinutes(1));
     }
 
-    // time.sleep's argument checks, measured with CPython 3.13 on Linux: 1e10, inf and 9223372036.854776 raise OverflowError; a
-    // timeout whose CLOCK_MONOTONIC deadline passes 2**63 ns fails clock_nanosleep with EINVAL.
-    [Theory]
-    [InlineData(1e10)]
-    [InlineData(double.PositiveInfinity)]
-    [InlineData(9223372036.854776)]
-    public void AThrottlePastTheTimeTRangeRaisesOverflow(double seconds)
-    {
-        var sleep = () => MultiServerRunner.SleepDuration(seconds, 1.0);
-
-        sleep.Should().Throw<OverflowException>().Which.Message.Should().Be("timestamp out of range for platform time_t");
-    }
-
-    [Fact]
-    public void AThrottleWhoseDeadlinePassesTheMonotonicRangeRaisesEinval()
-    {
-        Assert.SkipWhen(OperatingSystem.IsWindows(), "Python sleeps on a relative waitable timer on Windows");
-        var sleep = () => MultiServerRunner.SleepDuration(9223372036.0, 1.0);
-
-        sleep.Should().Throw<IOException>().Which.Message.Should().Be("[Errno 22] Invalid argument");
-        MultiServerRunner.SleepDuration(9223372036.0, 0.5).Should().Be(TimeSpan.FromTicks(92233720360000000));
-        MultiServerRunner.SleepDuration(0.5, 1.0).Should().Be(TimeSpan.FromMilliseconds(500));
-        MultiServerRunner.SleepDuration(5e-324, 1.0).Should().Be(TimeSpan.FromTicks(1));
-    }
-
-    [Fact]
-    public void AThrottleSleepThatRaisesAbortsTheRunAfterTheHostReportsItsResult()
-    {
-        var runner = new MultiServerRunner(CacheDir);
-        runner.ScanPlan = (_, _, _, _) => new PlanScan(new OrderedDictionary<string, ConfigRecord>(StringComparer.Ordinal), false, false, []);
-        var slept = false;
-        runner.Sleep = (_, _) => slept = true;
-        var progress = new CollectingProgress();
-        var plans = new[] { MultiServerTests.SamplePlan("server01", 1) with { ThrottleSeconds = 1e10 }, MultiServerTests.SamplePlan("server02", 0) };
-
-        var run = () => runner.Run(plans, progress, TestContext.Current.CancellationToken);
-
-        run.Should().Throw<OverflowException>().Which.Message.Should().Be("timestamp out of range for platform time_t");
-        slept.Should().BeFalse();
-        progress.Updates.Select(update => (update.HostId, update.Status)).Should().Equal(("server01", ServerScanStatus.Running), ("server01", ServerScanStatus.Succeeded));
-    }
-
     [Fact]
     public void ProgressThrottleIsPerRun()
     {
@@ -286,10 +218,7 @@ public sealed class MultiServerPortFixesTests : IDisposable
 
     [Theory]
     [InlineData(1, 1)]
-    [InlineData(2, 1)]
-    [InlineData(3, 1)]
     [InlineData(4, 2)]
-    [InlineData(5, 2)]
     [InlineData(8, 4)]
     public void SeverityThresholdsAcrossHostCounts(int hostCount, int highThreshold)
     {

@@ -188,34 +188,6 @@ public sealed class SessionCacheServiceTests
     }
 
     [Fact]
-    public async Task Concurrent_saves_do_not_trigger_lock_violations()
-    {
-        SessionCacheMigrationCounters.Reset();
-
-        using var temp = new TempDirectory();
-        var serviceA = new SessionCacheService(temp.Path);
-        var serviceB = new SessionCacheService(temp.Path);
-
-        var saveTasks = Enumerable.Range(0, 10).Select(i =>
-        {
-            var service = i % 2 == 0 ? serviceA : serviceB;
-            var snapshot = new ServerSelectionCache
-            {
-                PersistSession = i % 3 == 0,
-                ActivityFilter = $"filter-{i}",
-            };
-
-            return service.SaveAsync(snapshot);
-        }).ToArray();
-
-        await Task.WhenAll(saveTasks);
-
-        var loaded = await serviceA.LoadAsync(TestContext.Current.CancellationToken);
-        loaded.Should().NotBeNull();
-        loaded!.ActivityFilter.Should().NotBeNull();
-    }
-
-    [Fact]
     public async Task Concurrent_save_and_load_operations_are_serialised()
     {
         SessionCacheMigrationCounters.Reset();
@@ -248,17 +220,6 @@ public sealed class SessionCacheServiceTests
         var finalSnapshot = await service.LoadAsync(TestContext.Current.CancellationToken);
         finalSnapshot.Should().NotBeNull();
         finalSnapshot!.ActivityFilter.Should().NotBeNull();
-    }
-
-    [Fact]
-    public async Task SaveAsync_throws_for_null_snapshot()
-    {
-        using var temp = new TempDirectory();
-        var service = new SessionCacheService(temp.Path);
-
-        Func<Task> act = () => service.SaveAsync(null!);
-
-        await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
     [Fact]

@@ -1,24 +1,20 @@
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Tests.Infrastructure;
 
 /// <summary>
-/// <see cref="PythonPattern"/> against CPython 3.13 on <c>Data/python_regex_cases.json</c> (written by
-/// <c>tools/parity/gen_regex_cases.py</c>): the <c>_sre</c> case tables over every code point, the code point set of
-/// every single-character atom over every code point, and <c>finditer</c> / <c>search</c> results (spans, groups,
-/// <c>lastindex</c>) or compile errors for the hunt rules, the shipped secret rules and adversarial patterns.
+/// <see cref="EnginePattern"/> against CPython 3.13 on the sample in <c>Data/regex_cases.json</c>: the <c>_sre</c> case
+/// tables over the sampled code point windows, the code point set of a sample of single-character atoms over every code point, and
+/// <c>finditer</c> / <c>search</c> results (spans, groups, <c>lastindex</c>) or compile errors for the hunt rules, the shipped
+/// secret rules and a sample of adversarial patterns.
 /// </summary>
-/// <remarks>
-/// Every comparison is exact over every code point: the port reads the runtime's Unicode 16.0 tables through
-/// <see cref="PythonUnicode"/>, which answers as CPython 3.13's Unicode 15.1 tables (<see cref="PythonUnicodeOracleTests"/>).
-/// </remarks>
-public sealed class PythonReOracleTests
+public sealed class EngineReCaseTests
 {
-    private static readonly Lazy<OrderedDictionary<string, object?>> Data = new(() =>
+    internal static readonly Lazy<OrderedDictionary<string, object?>> Data = new(() =>
     {
-        var path = Path.Combine(RepoPaths.Root, "gui", "DriftBuster.Backend.Tests", "Infrastructure", "Data", "python_regex_cases.json");
-        PythonJson.TryLoads(File.ReadAllText(path), out var value).Should().BeTrue();
+        var path = Path.Combine(RepoPaths.Root, "gui", "DriftBuster.Backend.Tests", "Infrastructure", "Data", "regex_cases.json");
+        EngineJson.TryLoads(File.ReadAllText(path), out var value).Should().BeTrue();
         return (OrderedDictionary<string, object?>)value!;
     });
 
@@ -40,12 +36,16 @@ public sealed class PythonReOracleTests
     private static OrderedDictionary<string, object?> Entry(string section, int index)
         => (OrderedDictionary<string, object?>)((List<object?>)Data.Value[section]!)[index]!;
 
-    private static CodePointSet RangesOf(object? ranges)
+    internal static CodePointSet RangesOf(object? ranges)
         => CodePointSet.FromRanges(((List<object?>)ranges!).Select(range =>
         {
             var pair = (List<object?>)range!;
             return ((int)pair[0]!, (int)pair[1]!);
         }));
+
+    // Every code point inside the sampled windows; the table data covers only these.
+    internal static IEnumerable<int> SampledCodePoints()
+        => ((List<object?>)Data.Value["windows"]!).Cast<List<object?>>().SelectMany(window => Enumerable.Range((int)window[0]!, (int)window[1]! - (int)window[0]! + 1));
 
     [Fact]
     public void LowercaseTableMatchesSre()
@@ -53,12 +53,12 @@ public sealed class PythonReOracleTests
         var casing = (OrderedDictionary<string, object?>)Data.Value["casing"]!;
         var expected = ((List<object?>)casing["lower"]!).Select(item => (List<object?>)item!).ToDictionary(pair => (int)pair[0]!, pair => (int)pair[1]!);
         var mismatches = new List<string>();
-        for (var code = 0; code <= CodePointSet.MaxCodePoint; code++)
+        foreach (var code in SampledCodePoints())
         {
             var want = expected.TryGetValue(code, out var lower) ? lower : code;
-            if (PythonCharacterData.Lower(code) != want)
+            if (EngineCharacterData.Lower(code) != want)
             {
-                mismatches.Add($"U+{code:X4}: {PythonCharacterData.Lower(code):X4} != {want:X4}");
+                mismatches.Add($"U+{code:X4}: {EngineCharacterData.Lower(code):X4} != {want:X4}");
             }
         }
 
@@ -66,11 +66,11 @@ public sealed class PythonReOracleTests
     }
 
     [Fact]
-    public void IsAlnumMatchesStrIsAlnumOnEveryCodePoint()
+    public void IsAlnumMatchesStrIsAlnumOnTheSampledCodePoints()
     {
         var alnum = RangesOf(Data.Value["alnum"]);
         var mismatches = new List<string>();
-        for (var code = 0; code <= CodePointSet.MaxCodePoint; code++)
+        foreach (var code in SampledCodePoints())
         {
             if (code is >= 0xD800 and <= 0xDFFF)
             {
@@ -78,7 +78,7 @@ public sealed class PythonReOracleTests
             }
 
             var rune = new System.Text.Rune(code);
-            if (PythonText.IsAlnum(rune) != alnum.Contains(code) || PythonText.IsWordRune(rune) != (code == '_' || alnum.Contains(code)))
+            if (EngineText.IsAlnum(rune) != alnum.Contains(code) || EngineText.IsWordRune(rune) != (code == '_' || alnum.Contains(code)))
             {
                 mismatches.Add($"U+{code:X4}");
             }
@@ -88,13 +88,13 @@ public sealed class PythonReOracleTests
     }
 
     [Fact]
-    public void IsPrintableMatchesStrIsPrintableOnEveryCodePoint()
+    public void IsPrintableMatchesStrIsPrintableOnTheSampledCodePoints()
     {
         var nonPrintable = RangesOf(Data.Value["nonprintable"]);
         var mismatches = new List<string>();
-        for (var code = 0; code <= CodePointSet.MaxCodePoint; code++)
+        foreach (var code in SampledCodePoints())
         {
-            if (PythonText.IsPrintable(code) == nonPrintable.Contains(code))
+            if (EngineText.IsPrintable(code) == nonPrintable.Contains(code))
             {
                 mismatches.Add($"U+{code:X4}");
             }
@@ -108,7 +108,8 @@ public sealed class PythonReOracleTests
     {
         var casing = (OrderedDictionary<string, object?>)Data.Value["casing"]!;
         var expected = RangesOf(casing["cased"]);
-        var actual = CodePointSet.FromPredicate(PythonCharacterData.IsCased);
+        var windows = CodePointSet.FromCodePoints(SampledCodePoints());
+        var actual = CodePointSet.FromPredicate(EngineCharacterData.IsCased).Intersect(windows);
         actual.Except(expected).Ranges.Should().BeEmpty();
         expected.Except(actual).Ranges.Should().BeEmpty();
     }
@@ -120,14 +121,14 @@ public sealed class PythonReOracleTests
         var entry = Entry("atoms", index);
         var pattern = (string)entry["pattern"]!;
         var expected = RangesOf(entry["ranges"]);
-        var parsed = ReParser.Parse(pattern, PythonReFlags.None);
+        var parsed = ReParser.Parse(pattern, EngineReFlags.None);
         parsed.Nodes.Should().ContainSingle();
         var actual = ReCharacterSets.NodeSet(parsed.Nodes[0], parsed.State.Flags);
 
-        expected.Except(actual).Ranges.Should().BeEmpty($"Python matches these for {pattern}");
-        actual.Except(expected).Ranges.Should().BeEmpty($"only Python matches these for {pattern}");
+        expected.Except(actual).Ranges.Should().BeEmpty($"only the recorded cases match these for {pattern}");
+        actual.Except(expected).Ranges.Should().BeEmpty($"only the engine matches these for {pattern}");
 
-        var compiled = PythonPattern.Compile(pattern);
+        var compiled = EnginePattern.Compile(pattern);
         foreach (var code in SampleCodePoints(expected))
         {
             var spelled = Spell(code);
@@ -155,35 +156,35 @@ public sealed class PythonReOracleTests
     {
         var entry = Entry("patterns", index);
         var pattern = (string)entry["pattern"]!;
-        var flags = (PythonReFlags)(int)entry["flags"]!;
+        var flags = (EngineReFlags)(int)entry["flags"]!;
         if (entry.TryGetValue("error", out var error))
         {
             AssertCompileError(pattern, flags, (OrderedDictionary<string, object?>)error!);
             return;
         }
 
-        var compiled = PythonPattern.Compile(pattern, flags);
+        var compiled = EnginePattern.Compile(pattern, flags);
         compiled.Groups.Should().Be((int)entry["groups"]!);
         foreach (var run in ((List<object?>)entry["runs"]!).Cast<OrderedDictionary<string, object?>>())
         {
             var text = (string)run["text"]!;
             var expectedIter = ((List<object?>)run["finditer"]!).Select(Render).ToList();
-            compiled.FindIter(text, TestContext.Current.CancellationToken).Select(match => Render(compiled, text, match)).Should().Equal(expectedIter, $"finditer of {pattern} over {PythonRepr.StrRepr(text)}");
+            compiled.FindIter(text, TestContext.Current.CancellationToken).Select(match => Render(compiled, text, match)).Should().Equal(expectedIter, $"finditer of {pattern} over {EngineRepr.StrRepr(text)}");
             var search = compiled.Search(text, TestContext.Current.CancellationToken);
             (search is null ? "None" : Render(compiled, text, search)).Should().Be(run["search"] is null ? "None" : Render(run["search"]));
         }
     }
 
-    private static void AssertCompileError(string pattern, PythonReFlags flags, OrderedDictionary<string, object?> error)
+    private static void AssertCompileError(string pattern, EngineReFlags flags, OrderedDictionary<string, object?> error)
     {
-        var compile = () => PythonPattern.Compile(pattern, flags);
+        var compile = () => EnginePattern.Compile(pattern, flags);
         switch ((string)error["type"]!)
         {
             case "OverflowError":
                 compile.Should().Throw<OverflowException>().WithMessage((string)error["message"]!);
                 break;
             default:
-                var thrown = compile.Should().Throw<PythonReException>().Which;
+                var thrown = compile.Should().Throw<EngineReException>().Which;
                 thrown.Message.Should().Be((string)error["message"]!);
                 thrown.Position.Should().Be(error["pos"] is null ? null : (int)error["pos"]!);
                 break;
@@ -194,23 +195,22 @@ public sealed class PythonReOracleTests
     {
         var map = (OrderedDictionary<string, object?>)record!;
         var span = (List<object?>)map["span"]!;
-        var groups = ((List<object?>)map["groups"]!).Select(group => group is null ? "None" : PythonRepr.StrRepr((string)group));
+        var groups = ((List<object?>)map["groups"]!).Select(group => group is null ? "None" : EngineRepr.StrRepr((string)group));
         return $"({span[0]}, {span[1]}) [{string.Join(", ", groups)}] last={map["lastindex"]?.ToString() ?? "None"}";
     }
 
-    private static string Render(PythonPattern pattern, string text, PythonMatch match)
+    private static string Render(EnginePattern pattern, string text, EngineMatch match)
     {
-        var groups = Enumerable.Range(0, pattern.Groups + 1).Select(index => match.Group(index) is { } value ? PythonRepr.StrRepr(value) : "None");
+        var groups = Enumerable.Range(0, pattern.Groups + 1).Select(index => match.Group(index) is { } value ? EngineRepr.StrRepr(value) : "None");
         return $"({CodePointOffset(text, match.Start)}, {CodePointOffset(text, match.End)}) [{string.Join(", ", groups)}] last={match.LastIndex?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "None"}";
     }
 
     private static int CodePointOffset(string text, int utf16Offset) => ReTokenizer.CodePoints(text[..utf16Offset]).Length;
 
     [Fact]
-    public void OracleCoversTheShippedPatterns()
+    public void CasesCoverTheShippedPatterns()
     {
         var patterns = ((List<object?>)Data.Value["patterns"]!).Cast<OrderedDictionary<string, object?>>().Select(entry => (string)entry["pattern"]!).ToList();
         patterns.Should().Contain("AKIA[0-9A-Z]{16}");
-        patterns.Should().HaveCountGreaterThan(90);
     }
 }

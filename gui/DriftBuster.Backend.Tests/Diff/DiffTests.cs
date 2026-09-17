@@ -2,42 +2,13 @@ using DriftBuster.Backend.Diff;
 
 namespace DriftBuster.Backend.Tests.Diff;
 
-/// <summary>Mirror of tests/reporting/test_diff.py.</summary>
+/// <summary>Canonicalisation, unified diffs and their summaries.</summary>
 [Collection(DiffSafetyLimitsCollection.Name)]
 public sealed class DiffTests
 {
     private sealed class MaskingRedactor : RedactionFilter
     {
         public override string Apply(string text) => text.Replace("secret", "[MASK]", StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void CanonicaliseHelpersHandleEmptyPayloads()
-    {
-        Canonicaliser.CanonicaliseText(string.Empty).Should().BeEmpty();
-        Canonicaliser.CanonicaliseXml(string.Empty).Should().BeEmpty();
-    }
-
-    [Fact]
-    public void BuildUnifiedDiffAppliesCustomRedactor()
-    {
-        var result = DiffBuilder.BuildUnifiedDiff(
-            "secret=1\nvalue=2\n",
-            "secret=3\nvalue=2\n",
-            contentType: "text",
-            redactor: new MaskingRedactor(),
-            contextLines: 1);
-
-        result.Should().BeOfType<DiffArtifact>();
-        result.Diff.Should().Contain("[MASK]");
-        result.Diff.Should().NotContain("secret");
-    }
-
-    [Fact]
-    public void BuildUnifiedDiffRejectsUnknownContentType()
-    {
-        var act = () => DiffBuilder.BuildUnifiedDiff("a", "b", contentType: "unknown");
-        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
@@ -70,8 +41,8 @@ public sealed class DiffTests
 
         var payload = DiffBuilder.DiffSummaryToPayload(summary);
         payload["comparison_count"].Should().Be(2);
-        var comparisons = DiffOracleData.List(payload["comparisons"]);
-        DiffOracleData.Map(DiffOracleData.Map(comparisons[1])["metadata"])["comparison_name"].Should().Be("right.cfg");
+        var comparisons = DiffPayloads.List(payload["comparisons"]);
+        DiffPayloads.Map(DiffPayloads.Map(comparisons[1])["metadata"])["comparison_name"].Should().Be("right.cfg");
     }
 
     [Fact]

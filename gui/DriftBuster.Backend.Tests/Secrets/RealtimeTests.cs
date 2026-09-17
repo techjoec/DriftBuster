@@ -5,7 +5,7 @@ using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Tests.Secrets;
 
-/// <summary>Mirror of tests/secret_scanning/test_realtime.py: both tests drive the ported <c>run_profiles.execute_profile</c>.</summary>
+/// <summary>Secret scanning during a run profile execution.</summary>
 [Collection(SecretRuleCacheCollection.Name)]
 public sealed class RealtimeTests : IDisposable
 {
@@ -21,7 +21,7 @@ public sealed class RealtimeTests : IDisposable
     private static OrderedDictionary<string, object?> ReadMetadata(ProfileRunResult result)
     {
         var metadataPath = Path.Combine(result.OutputDir, "metadata.json");
-        PythonJson.TryLoads(File.ReadAllText(metadataPath, Encoding.UTF8), out var metadata).Should().BeTrue();
+        EngineJson.TryLoads(File.ReadAllText(metadataPath, Encoding.UTF8), out var metadata).Should().BeTrue();
         return (OrderedDictionary<string, object?>)metadata!;
     }
 

@@ -37,9 +37,6 @@ public class DriftbusterBackendOfflineCollectorTests
         var scriptSource = LocateRepoFile("scripts", "driftbuster-offline-runner.ps1");
         File.Copy(scriptSource, Path.Combine(scriptsDir, "driftbuster-offline-runner.ps1"), overwrite: true);
 
-        var rulesPath = LocateRepoFile("src", "driftbuster", "secret_rules.json");
-        using var hiddenFile = TemporarilyHideFile(rulesPath);
-
         try
         {
             var request = new OfflineCollectorRequest
@@ -119,18 +116,6 @@ public class DriftbusterBackendOfflineCollectorTests
 
     private static string Compact(JsonElement element) => JsonSerializer.Serialize(element);
 
-    private static IDisposable TemporarilyHideFile(string filePath)
-    {
-        var backupPath = filePath + ".bak";
-        if (File.Exists(backupPath))
-        {
-            File.Delete(backupPath);
-        }
-
-        File.Move(filePath, backupPath);
-        return new FileRestorer(filePath, backupPath);
-    }
-
     private static void ValidateSecretRulesInZip(string packagePath, string configFileName)
     {
         using var archive = ZipFile.OpenRead(packagePath);
@@ -167,32 +152,5 @@ public class DriftbusterBackendOfflineCollectorTests
         }
 
         throw new FileNotFoundException($"Unable to locate '{relative}'.");
-    }
-
-    private sealed class FileRestorer : IDisposable
-    {
-        private readonly string _originalPath;
-        private readonly string _backupPath;
-
-        public FileRestorer(string originalPath, string backupPath)
-        {
-            _originalPath = originalPath;
-            _backupPath = backupPath;
-        }
-
-        public void Dispose()
-        {
-            if (!File.Exists(_backupPath))
-            {
-                return;
-            }
-
-            if (File.Exists(_originalPath))
-            {
-                File.Delete(_originalPath);
-            }
-
-            File.Move(_backupPath, _originalPath);
-        }
     }
 }

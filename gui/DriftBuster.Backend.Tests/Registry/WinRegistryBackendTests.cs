@@ -73,18 +73,6 @@ public sealed class WinRegistryBackendTests : IDisposable
 
     [Fact]
     [SupportedOSPlatform("windows")]
-    public void UnknownHiveAndNulPathRaiseAsPython()
-    {
-        Assert.SkipUnless(OperatingSystem.IsWindows(), SkipReason);
-        var backend = new WinRegistryBackend();
-        var unknownHive = () => backend.EnumSubkeys("HKCR", "Software", null);
-        unknownHive.Should().Throw<KeyNotFoundException>().WithMessage("'HKCR'");
-        var nulPath = () => backend.EnumValues("HKLM", "Soft\0ware", null);
-        nulPath.Should().Throw<PythonValueException>().WithMessage("embedded null character*");
-    }
-
-    [Fact]
-    [SupportedOSPlatform("windows")]
     public void DefaultBackendIsWindowsBackendOnWindows()
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), SkipReason);

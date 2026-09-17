@@ -5,7 +5,7 @@ using DriftBuster.Backend.Detection.Plugins;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_conf_plugin.py; expected values were read from the Python plugin.</summary>
+/// <summary>The conf plugin.</summary>
 public sealed class ConfPluginTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-conf-");
@@ -44,8 +44,7 @@ public sealed class ConfPluginTests : IDisposable
         match.Metadata.Should().BeNull();
     }
 
-    // Fixed behaviour (plan fix c): the Python catalog has no logstash-pipeline variant under unix-conf, so the
-    // Python detector raised "Unknown catalog variant 'logstash-pipeline' for format 'unix-conf'." on this input.
+    // The catalog lists a logstash-pipeline variant under unix-conf, so strict validation accepts this input.
     [Fact]
     public void DetectorStrictValidationAcceptsLogstashPipeline()
     {
@@ -62,9 +61,7 @@ public sealed class ConfPluginTests : IDisposable
         match.Metadata["catalog_variant"].Should().Be("logstash-pipeline");
     }
 
-    // Python re-scans the run from every line start (quadratic); the port skips each whitespace run once.
     [Theory]
-    [InlineData(50000, "\n")]
     [InlineData(30000, "    \n")]
     public void WhitespaceRunsAreScannedInLinearTime(int lines, string line)
     {

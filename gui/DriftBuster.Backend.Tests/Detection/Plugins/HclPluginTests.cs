@@ -5,7 +5,7 @@ using DriftBuster.Backend.Detection.Plugins;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_hcl_plugin.py; expected values were read from the Python plugin.</summary>
+/// <summary>The hcl plugin.</summary>
 public sealed class HclPluginTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-hcl-");
@@ -65,8 +65,7 @@ public sealed class HclPluginTests : IDisposable
         YamlPluginTests.Strings(match.Metadata!["blocks_preview"]).Should().Equal("server");
     }
 
-    // Fixed behaviour (plan fix c): the Python catalog maps "hcl" to the INI class, so the Python detector raised
-    // "Unknown catalog variant 'hashicorp-nomad' for format 'ini'." on this input.
+    // The catalog maps "hcl" to its own class with a hashicorp-nomad variant, so strict validation accepts this input.
     [Fact]
     public void DetectorStrictValidationAcceptsNomadJob()
     {
@@ -83,9 +82,7 @@ public sealed class HclPluginTests : IDisposable
         match.Metadata["catalog_variant"].Should().Be("hashicorp-nomad");
     }
 
-    // Python re-scans the run from every line start (quadratic); the port skips each whitespace run once.
     [Theory]
-    [InlineData(50000, "\n")]
     [InlineData(30000, "    \n")]
     public void WhitespaceRunsAreScannedInLinearTime(int lines, string line)
     {

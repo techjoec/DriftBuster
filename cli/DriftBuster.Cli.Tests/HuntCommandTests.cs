@@ -2,7 +2,7 @@ using System.Text;
 
 namespace DriftBuster.Cli.Tests;
 
-/// <summary><c>driftbuster hunt</c>: <c>hunt_path(..., return_json=True)</c> as one JSON array, readable by <c>detection-profile hunt-bridge</c>.</summary>
+/// <summary><c>driftbuster hunt</c>: hits as one JSON array, readable by <c>detection-profile hunt-bridge</c>.</summary>
 public sealed class HuntCommandTests : IDisposable
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);

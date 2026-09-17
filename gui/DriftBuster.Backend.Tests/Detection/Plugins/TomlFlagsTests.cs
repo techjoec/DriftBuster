@@ -2,7 +2,7 @@ using DriftBuster.Backend.Detection;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_toml_flags.py; expected values were read from the Python plugin.</summary>
+/// <summary>The toml plugin's review flags.</summary>
 public sealed class TomlFlagsTests
 {
     private static DetectionMatch? Detect(string name, string content) => TomlPluginTests.Detect(name, content);
@@ -85,7 +85,7 @@ public sealed class TomlFlagsTests
         match.Confidence.Should().BeApproximately(0.8200000000000001, 1e-9);
         var spacing = TomlPluginTests.Spacing(match);
         spacing.Keys.Should().Equal("before", "allowed_before", "after", "allowed_after", "tab_lines");
-        // Two assignment lines tie at 0 and 1 spaces; Counter.most_common keeps the first seen (the tab line, 0).
+        // Two assignment lines tie at 0 and 1 spaces; the first seen (the tab line, 0) wins.
         spacing["before"].Should().Be(0);
         YamlPluginTests.Ints(spacing["allowed_before"]).Should().Equal(0, 1);
         spacing["after"].Should().Be(0);

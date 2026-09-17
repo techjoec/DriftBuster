@@ -7,7 +7,7 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Tests.Profiles.Run;
 
 /// <summary>
-/// The offline collector package (no Python oracle): the config carries each structured source in the shape
+/// The offline collector package: the config carries each structured source in the shape
 /// scripts/driftbuster-offline-runner.ps1 reads, and the package holds that runner script.
 /// </summary>
 public sealed class OfflineCollectorWriterTests : IDisposable

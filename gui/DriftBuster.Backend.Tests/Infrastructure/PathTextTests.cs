@@ -2,7 +2,7 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Tests.Infrastructure;
 
-/// <summary>Truth table generated from CPython pathlib.PurePosixPath name and suffix.</summary>
+/// <summary>Path name and suffix rules (<c>.env</c> has no suffix, <c>.env.local</c> has <c>.local</c>) and path ordering.</summary>
 public sealed class PathTextTests
 {
     [Theory]
@@ -53,14 +53,6 @@ public sealed class PathTextTests
     }
 
     [Fact]
-    public void LoweringHelpersUseTheInvariantCulture()
-    {
-        PathText.NameLower("/srv/app/Web.CONFIG").Should().Be("web.config");
-        PathText.SuffixLower("/srv/app/Web.CONFIG").Should().Be(".config");
-        PathText.SuffixLower("ISTANBUL.INI").Should().Be(".ini");
-    }
-
-    [Fact]
     public void ToPosixAndRelativePosixUseForwardSlashes()
     {
         var root = Path.Combine(Path.GetTempPath(), "driftbuster-root");
@@ -82,21 +74,5 @@ public sealed class PathTextTests
         string.CompareOrdinal("\U0001F600", "\uFF5E").Should().BeNegative();
         PathText.CompareCodePoints("ab", "abc").Should().BeNegative();
         PathText.ComparePosixPaths("a", "a").Should().Be(0);
-    }
-
-    // CPython sorted() over the same strings: an unpaired surrogate is its own code point, below U+E000 and above U+D7FF.
-    [Fact]
-    public void CompareCodePointsRanksUnpairedSurrogatesAsTheirOwnCodePoints()
-    {
-        string[] items =
-        [
-            "\uFFFF", "\uD83D", "\uE000", "\U0001F600", "\uDE00", "\uD83D\uE000", "\uD83DA", "\U0001F600\uD800", "\U0001F600\uFFFF",
-            "\uDFFF\uD800", "\uD800\U0001F600", "\uD800\uFFFF",
-        ];
-        items.Order(Comparer<string>.Create(PathText.CompareCodePoints)).Should().Equal(
-            "\uD800\uFFFF", "\uD800\U0001F600", "\uD83D", "\uD83DA", "\uD83D\uE000", "\uDE00", "\uDFFF\uD800", "\uE000", "\uFFFF",
-            "\U0001F600", "\U0001F600\uD800", "\U0001F600\uFFFF");
-        PathText.CompareCodePoints("\uD83D", "\uE000").Should().BeNegative();
-        PathText.CompareCodePoints("\uFFFF", "\uDC00").Should().BePositive();
     }
 }

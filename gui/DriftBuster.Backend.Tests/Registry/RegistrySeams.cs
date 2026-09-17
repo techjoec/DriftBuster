@@ -4,7 +4,7 @@ using DriftBuster.Backend.Registry;
 namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
-/// Restores every registry seam on dispose, as pytest's <c>monkeypatch</c> undoes its patches after each test.
+/// Restores every registry seam on dispose, so each test's swaps end with the test.
 /// </summary>
 internal sealed class RegistrySeams : IDisposable
 {

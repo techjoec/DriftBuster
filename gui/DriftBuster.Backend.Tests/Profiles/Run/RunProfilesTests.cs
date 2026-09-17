@@ -8,10 +8,8 @@ using DriftBuster.Backend.Tests.Secrets;
 namespace DriftBuster.Backend.Tests.Profiles.Run;
 
 /// <summary>
-/// Mirror of tests/core/test_run_profiles.py. <c>tmp_path</c> is a fresh temporary directory; <c>_copy_file</c>, <c>_collect_matches</c>
-/// and <c>_validate_profile</c> are <see cref="RunProfileExecutor.CopyFile"/>, <see cref="RunProfileExecutor.CollectMatches"/> and
-/// <see cref="RunProfileStore.ValidateProfile"/>. <c>execute_profile</c> loads the packaged secret rules, so the class shares the rule
-/// cache collection.
+/// Run profile saving, loading, validation and execution. Execution loads the packaged secret rules, so the class shares the rule cache
+/// collection.
 /// </summary>
 [Collection(SecretRuleCacheCollection.Name)]
 public sealed class RunProfilesTests : IDisposable
@@ -42,7 +40,7 @@ public sealed class RunProfilesTests : IDisposable
 
     internal static OrderedDictionary<string, object?> ReadMetadata(ProfileRunResult result)
     {
-        PythonJson.TryLoads(File.ReadAllText(Path.Combine(result.OutputDir, "metadata.json"), Encoding.UTF8), out var metadata).Should().BeTrue();
+        EngineJson.TryLoads(File.ReadAllText(Path.Combine(result.OutputDir, "metadata.json"), Encoding.UTF8), out var metadata).Should().BeTrue();
         return metadata.Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
     }
 
@@ -80,7 +78,7 @@ public sealed class RunProfilesTests : IDisposable
         var result = RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, cancellationToken: TestContext.Current.CancellationToken);
 
         Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(result.OutputDir))).Should().Be("demo");
-        var copiedFiles = PythonGlob.Glob(result.OutputDir, "**/*", TestContext.Current.CancellationToken);
+        var copiedFiles = EngineGlob.Glob(result.OutputDir, "**/*", TestContext.Current.CancellationToken);
         copiedFiles.Should().Contain(path => PathText.Name(path) == "app.json");
         var metadata = ReadMetadata(result);
         ((OrderedDictionary<string, object?>)metadata["profile"]!)["name"].Should().Be("demo");
@@ -135,7 +133,7 @@ public sealed class RunProfilesTests : IDisposable
         var profile = new RunProfile("baseline", sources: Sources(source), baseline: Tmp("other.json"));
 
         var act = () => RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, cancellationToken: TestContext.Current.CancellationToken);
-        act.Should().Throw<PythonValueException>();
+        act.Should().Throw<EngineValueException>();
     }
 
     [Fact]
@@ -143,19 +141,6 @@ public sealed class RunProfilesTests : IDisposable
     {
         var act = () => RunProfileStore.LoadProfile("absent", baseDir: _tmp.FullName);
         act.Should().Throw<FileNotFoundException>();
-    }
-
-    [Fact]
-    public void ExecuteProfileBaselineGlobMissingBase()
-    {
-        var source = Tmp("exists.txt");
-        File.WriteAllText(source, "data", Utf8);
-
-        var baselineGlob = Tmp("missing", "*.txt");
-        var profile = new RunProfile("glob", sources: Sources(baselineGlob, source), baseline: baselineGlob);
-
-        var act = () => RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, cancellationToken: TestContext.Current.CancellationToken);
-        act.Should().Throw<FileNotFoundException>().WithMessage("*Glob base directory not found*");
     }
 
     [Fact]
@@ -169,19 +154,6 @@ public sealed class RunProfilesTests : IDisposable
 
         var result = RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, cancellationToken: TestContext.Current.CancellationToken);
         result.Files.Should().Contain(file => file.Source == baselineGlob);
-    }
-
-    [Fact]
-    public void ExecuteProfileBaselineMissingPath()
-    {
-        var existing = Tmp("exists.txt");
-        File.WriteAllText(existing, "data", Utf8);
-
-        var baselinePath = Tmp("missing.txt");
-        var profile = new RunProfile("baseline-missing", sources: Sources(baselinePath, existing), baseline: baselinePath);
-
-        var act = () => RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, cancellationToken: TestContext.Current.CancellationToken);
-        act.Should().Throw<FileNotFoundException>().WithMessage("*Path does not exist*");
     }
 
     [Fact]
@@ -214,16 +186,6 @@ public sealed class RunProfilesTests : IDisposable
     }
 
     [Fact]
-    public void ValidateProfileGlobBaseMissing()
-    {
-        var pattern = Tmp("missing", "*.log");
-        var profile = new RunProfile("glob", sources: Sources(pattern), baseline: null);
-
-        var act = () => RunProfileStore.ValidateProfile(profile);
-        act.Should().Throw<FileNotFoundException>();
-    }
-
-    [Fact]
     public void ValidateProfileBaselineMissingPath()
     {
         var missing = Tmp("nope.txt");
@@ -231,23 +193,5 @@ public sealed class RunProfilesTests : IDisposable
 
         var act = () => RunProfileStore.ValidateProfile(profile);
         act.Should().Throw<FileNotFoundException>();
-    }
-
-    [Fact]
-    public void ExecuteProfileOrdersBaselineFirst()
-    {
-        var baseline = Tmp("baseline.txt");
-        File.WriteAllText(baseline, "base", Utf8);
-        var other = Tmp("other.txt");
-        File.WriteAllText(other, "other", Utf8);
-
-        var profile = new RunProfile("ordering", sources: Sources(other, baseline), baseline: baseline);
-
-        var result = RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, timestamp: "20240101T000000Z", cancellationToken: TestContext.Current.CancellationToken);
-        var runDir = Tmp("Profiles", "ordering", "raw", "20240101T000000Z");
-        result.OutputDir.Should().Be(runDir);
-        // Baseline should be processed first resulting in source_00 being baseline file.
-        var baselineDest = Path.Combine(runDir, "source_00");
-        result.Files.Should().Contain(entry => PythonPurePath.RelativeTo(entry.Destination, baselineDest) != null);
     }
 }

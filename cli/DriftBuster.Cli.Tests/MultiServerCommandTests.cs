@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// <c>driftbuster multi-server</c> (<c>python -m driftbuster.multi_server</c>): the request on stdin, progress and result lines on stdout
+/// <c>driftbuster multi-server</c>: the request on stdin, progress and result lines on stdout
 /// as <c>json.dumps(record, ensure_ascii=True)</c>, error lines with exit code 1.
 /// </summary>
 public sealed class MultiServerCommandTests : IDisposable
@@ -51,10 +51,10 @@ public sealed class MultiServerCommandTests : IDisposable
 
     [Theory]
     [InlineData("not json", "Invalid JSON payload: invalid JSON document")]
-    [InlineData("[1]", "Unhandled error: 'list' object has no attribute 'get'")]
+    [InlineData("[1]", "Unhandled error: expected a JSON object, not 'list'")]
     [InlineData("{\"schema_version\": 2}", "Unsupported schema version: 2")]
     [InlineData("{\"plans\": 5}", "'plans' must be an array")]
-    [InlineData("{\"cache_dir\": 5}", "Unhandled error: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'int'")]
+    [InlineData("{\"cache_dir\": 5}", "Unhandled error: cache_dir must be a path string, not 'int'")]
     public void RefusedRequestsWriteOneErrorLine(string request, string message)
     {
         var run = CliInvocation.InvokeWithInput(request, "multi-server");

@@ -6,13 +6,8 @@ using DriftBuster.Backend.Sql;
 namespace DriftBuster.Backend.Tests.Sql;
 
 /// <summary>
-/// Mirror of the SQL half of tests/offline/test_sql_snapshots.py. <c>tmp_path</c> is a fresh temporary directory and
-/// <c>_create_sample_database</c> is <see cref="SqlTestDatabase.CreateSampleDatabase"/>. The file's capture test
-/// (<c>test_capture_export_sql_subcommand_writes_manifest</c>) runs <see cref="CaptureRunner.RunSqlExport"/> with the
-/// <c>argparse.Namespace</c> values as <see cref="SqlExportOptions"/>. Its two offline runner tests run <c>execute_config</c> over a
-/// profile with one <c>sql_snapshot</c> source; here they run <see cref="SqlSnapshotCollector.Collect"/>, the port of that branch, and
-/// make Python's manifest assertions on the collection it returns (the summary is the manifest's <c>sources</c> entry, the metadata the
-/// <c>sql_exports</c> entry).
+/// SQL snapshots over <see cref="SqlTestDatabase.CreateSampleDatabase"/>: masking and hashing, limits, the capture SQL export manifest,
+/// and the offline collector's <c>sql_snapshot</c> source (<see cref="SqlSnapshotCollector.Collect"/>).
 /// </summary>
 public sealed class SqlSnapshotsTests : IDisposable
 {
@@ -46,7 +41,7 @@ public sealed class SqlSnapshotsTests : IDisposable
         var rows = ((List<object?>)accounts["rows"]!).Cast<OrderedDictionary<string, object?>>().ToList();
         rows[0]["secret"].Should().Be("[MASK]");
         ((string)rows[0]["email"]!).Should().StartWith("sha256:");
-        PythonBuiltins.Float(rows[0]["balance"]).Should().BeApproximately(42.5, 42.5e-6);
+        EngineBuiltins.Float(rows[0]["balance"]).Should().BeApproximately(42.5, 42.5e-6);
     }
 
     [Fact]
@@ -72,9 +67,9 @@ public sealed class SqlSnapshotsTests : IDisposable
             hashColumns: new[] { "accounts.email" },
             limit: 1);
 
-        PythonJson.TryLoads(File.ReadAllText(destination), out var loaded).Should().BeTrue();
+        EngineJson.TryLoads(File.ReadAllText(destination), out var loaded).Should().BeTrue();
         var table = (OrderedDictionary<string, object?>)((List<object?>)((OrderedDictionary<string, object?>)loaded!)["tables"]!)[0]!;
-        PythonBuiltins.Int(table["row_count"]).Should().Be(2);
+        EngineBuiltins.Int(table["row_count"]).Should().Be(2);
         ((List<object?>)table["rows"]!).Should().HaveCount(1);
         ((OrderedDictionary<string, object?>)((List<object?>)table["rows"]!)[0]!)["secret"].Should().Be("[REDACTED]");
 
@@ -84,7 +79,7 @@ public sealed class SqlSnapshotsTests : IDisposable
         auditPayload["type"].Should().Be("base64");
 
         var build = () => SqliteSnapshots.BuildSqliteSnapshot(dbPath, limit: 0);
-        build.Should().Throw<PythonValueException>();
+        build.Should().Throw<EngineValueException>();
     }
 
     [Fact]
@@ -112,7 +107,7 @@ public sealed class SqlSnapshotsTests : IDisposable
 
         var manifestPath = Path.Combine(outputDir, "sql-manifest.json");
         File.Exists(manifestPath).Should().BeTrue();
-        PythonJson.TryLoads(File.ReadAllText(manifestPath), out var loaded).Should().BeTrue();
+        EngineJson.TryLoads(File.ReadAllText(manifestPath), out var loaded).Should().BeTrue();
         var manifest = (OrderedDictionary<string, object?>)loaded!;
         ((List<object?>)manifest["exports"]!).Should().NotBeEmpty();
         var exportEntry = (OrderedDictionary<string, object?>)((List<object?>)manifest["exports"]!)[0]!;
@@ -124,7 +119,7 @@ public sealed class SqlSnapshotsTests : IDisposable
 
         var snapshotPath = Path.Combine(outputDir, "demo-sql-snapshot.json");
         File.Exists(snapshotPath).Should().BeTrue();
-        PythonJson.TryLoads(File.ReadAllText(snapshotPath), out var snapshotPayload).Should().BeTrue();
+        EngineJson.TryLoads(File.ReadAllText(snapshotPath), out var snapshotPayload).Should().BeTrue();
         var table = (OrderedDictionary<string, object?>)((List<object?>)((OrderedDictionary<string, object?>)snapshotPayload!)["tables"]!)[0]!;
         ((List<object?>)table["masked_columns"]!).Should().Equal("secret");
     }
@@ -148,7 +143,7 @@ public sealed class SqlSnapshotsTests : IDisposable
         var result = SqlSnapshotCollector.Collect(source, destination, alias, baseDir: _tmp.FullName);
 
         result.ResultPath.Should().NotBeNull("expected collected files");
-        PythonJson.TryLoads(File.ReadAllText(result.ResultPath!), out var exported).Should().BeTrue();
+        EngineJson.TryLoads(File.ReadAllText(result.ResultPath!), out var exported).Should().BeTrue();
         var accountTable = (OrderedDictionary<string, object?>)((List<object?>)((OrderedDictionary<string, object?>)exported!)["tables"]!)[0]!;
         ((List<object?>)accountTable["masked_columns"]!).Should().Equal("secret");
         ((string)((OrderedDictionary<string, object?>)((List<object?>)accountTable["rows"]!)[0]!)["email"]!).Should().StartWith("sha256:");

@@ -10,7 +10,7 @@ using DriftBuster.Backend.Profiles.Detection;
 namespace DriftBuster.Backend.Tests.Detection;
 
 /// <summary>
-/// Mirror of tests/core/test_detector.py plus the doctests in detector.py.
+/// <see cref="Detector"/>: plugin ordering, sampling, metadata validation and tree scans.
 /// </summary>
 public sealed class DetectorTests : IDisposable
 {
@@ -60,7 +60,7 @@ public sealed class DetectorTests : IDisposable
         {
             using var handle = File.OpenRead(path);
             _ = handle.ReadByte();
-            return new DetectionMatch(Name, "xml", null, 1.0, ["Static match for doctest"]);
+            return new DetectionMatch(Name, "xml", null, 1.0, ["Static match for fixture"]);
         }
     }
 
@@ -85,7 +85,7 @@ public sealed class DetectorTests : IDisposable
         public string Version => "0.0.0";
 
         public DetectionMatch? Detect(string path, byte[] sample, string? text)
-            => new(Name, "fixture", null, 1.0, ["Static match for doctest"]);
+            => new(Name, "fixture", null, 1.0, ["Static match for fixture"]);
     }
 
     private sealed class DummyPlugin : IFormatPlugin
@@ -202,13 +202,12 @@ public sealed class DetectorTests : IDisposable
             => ExplodeOnOpen ? throw new IOException("boom") : base.OpenFile(path);
     }
 
-    // detector.py module doctest: a static plugin wins, and with sort_plugins=False registration order beats priority.
-    // In Python the doctest itself raises MetadataValidationError because "fixture" is not a catalog format; the
-    // port asserts that outcome and then the ordering claims with a catalog format.
+    // A static plugin wins, and with sortPlugins false registration order beats priority. A plugin reporting a format that is
+    // not in the catalog raises MetadataValidationError; the ordering claims are then asserted with a catalog format.
     [Fact]
-    public void ModuleDoctestStaticAndManualOrdering()
+    public void StaticAndManualPluginOrdering()
     {
-        var self = WriteText("detector.py", "\"\"\"doctest fixture\"\"\"\n");
+        var self = WriteText("detector.txt", "fixture\n");
 
         var unknown = () => Detector.ScanFileWithDefaults(self, sampleSize: 64, plugins: [new UnknownFormatPlugin()]);
         unknown.Should().Throw<MetadataValidationError>().WithMessage("Unknown catalog format: fixture");
@@ -223,11 +222,11 @@ public sealed class DetectorTests : IDisposable
         sorted.ScanFile(self)!.PluginName.Should().Be("static-fixture");
     }
 
-    // Detector class doctest: a plugin returning None yields no match.
+    // A plugin returning None yields no match.
     [Fact]
-    public void ClassDoctestDummyPluginReturnsNull()
+    public void DummyPluginReturnsNull()
     {
-        var self = WriteText("detector.py", "content");
+        var self = WriteText("detector.txt", "content");
         var detector = new Detector(plugins: [new DummyPlugin()], sampleSize: 64);
         detector.ScanFile(self).Should().BeNull();
     }
@@ -332,10 +331,10 @@ public sealed class DetectorTests : IDisposable
     public void DetectorRejectsInvalidSampleSize()
     {
         var act = () => new Detector(sampleSize: 0);
-        act.Should().Throw<PythonValueException>().WithMessage("sample_size must be a positive integer");
+        act.Should().Throw<EngineValueException>().WithMessage("sample_size must be a positive integer");
 
         var budget = () => new Detector(maxTotalSampleBytes: 0);
-        budget.Should().Throw<PythonValueException>().WithMessage("max_total_sample_bytes must be a positive integer");
+        budget.Should().Throw<EngineValueException>().WithMessage("max_total_sample_bytes must be a positive integer");
     }
 
     private sealed class TimingOutPlugin : IFormatPlugin
@@ -350,8 +349,8 @@ public sealed class DetectorTests : IDisposable
             => throw new RegexMatchTimeoutException(text ?? string.Empty, "x", TimeSpan.FromSeconds(2));
     }
 
-    // A plugin whose pattern hits its match timeout reports the file through HandleError like an unreadable one
-    // (Python has no timeouts); a tolerant handler keeps the walk going and later plugins are not consulted.
+    // A plugin whose pattern hits its match timeout reports the file through HandleError like an unreadable one;
+    // a tolerant handler keeps the walk going and later plugins are not consulted.
     [Fact]
     public void PluginRegexTimeoutIsReportedThroughHandleError()
     {
@@ -441,7 +440,7 @@ public sealed class DetectorTests : IDisposable
     {
         var detector = new Detector();
         var act = () => detector.ScanWithProfiles(TmpPath("file"), null!);
-        act.Should().Throw<PythonValueException>().WithMessage("profile_store must be provided");
+        act.Should().Throw<EngineValueException>().WithMessage("profile_store must be provided");
     }
 
     [Fact]
@@ -586,7 +585,7 @@ public sealed class DetectorTests : IDisposable
         detector.Errors.Should().NotBeEmpty();
     }
 
-    // Port-specific: the walk order is sorted(root.glob()) order (component-wise, by code point) and reparse points
+    // The walk order is sorted(root.glob()) order (component-wise, by code point) and reparse points
     // are not followed.
     [Fact]
     public void ScanPathWalksInPurePathOrderAndSkipsSymlinkedDirectories()
@@ -610,7 +609,7 @@ public sealed class DetectorTests : IDisposable
             .Should().Equal("B.txt", "a/sub/y.txt", "a/z.txt", "a.txt", "b.txt");
     }
 
-    // Port-specific: Path.is_file() is false for a dangling symlink, so the entry is skipped rather than raised.
+    // Path.is_file() is false for a dangling symlink, so the entry is skipped rather than raised.
     [Fact]
     public void ScanPathSkipsDanglingSymlinksAndScansLinkedFiles()
     {
@@ -631,7 +630,7 @@ public sealed class DetectorTests : IDisposable
         act.Should().Throw<FileNotFoundException>();
     }
 
-    // Port-specific: Path.is_file() is a plain stat, so the OS resolves a relative link target against the physical
+    // Path.is_file() is a plain stat, so the OS resolves a relative link target against the physical
     // directory holding the link. A scan root reached through a directory link (uplink -> ..) must therefore still
     // find rel.conf -> ../shared/x.conf, which FileSystemInfo.ResolveLinkTarget composes lexically and loses.
     [Fact]
@@ -659,8 +658,8 @@ public sealed class DetectorTests : IDisposable
             .Should().Equal("plain.conf", "rel.conf");
     }
 
-    // Port-specific: a file root whose read fails reports once through on_error with a single "{path}: reason" message,
-    // as DetectorIOError (not an OSError) propagates untouched through Python's scan_path.
+    // A file root whose read fails reports once through on_error with a single "{path}: reason" message,
+    // as DetectorIOError (not an OSError) propagates untouched through the scan.
     [Fact]
     public void ScanPathFileRootReadFailureReportsOnce()
     {
@@ -676,10 +675,10 @@ public sealed class DetectorTests : IDisposable
         calls[0].Error.Message.Should().Be($"{target}: boom");
     }
 
-    // Port-specific: _normalise_reasons uses str.strip()/str.split() (U+001C-U+001F are whitespace) and str.upper()
+    // Reason normalisation uses str.strip()/str.split() (U+001C-U+001F are whitespace) and str.upper()
     // (full mapping) on the first letter, which may be an astral code point (mathematical letters have no uppercase).
     [Fact]
-    public void NormaliseReasonsUsesPythonWhitespaceAndFullUppercase()
+    public void NormaliseReasonsUsesUnicodeWhitespaceAndFullUppercase()
     {
         string[] reasons = ["\u001F\u00DFeta\u001F\uFB01le", "\U0001D41Astral token", "1st-\u01C6:\u03C9"];
         Detector.NormaliseReasons(reasons).Should().Equal("SSeta FIle", "\U0001D41Astral Token", "1St-\u01C4:\u03A9");
@@ -725,5 +724,38 @@ public sealed class DetectorTests : IDisposable
         var detector = new Detector();
         detector.Plugins.Select(plugin => plugin.Name).Should().Equal(DefaultPlugins.GetPlugins().Select(plugin => plugin.Name));
         detector.SampleSize.Should().Be(Detector.DefaultSampleSize);
+    }
+
+    // A name the runtime cannot decode is reported through the error handler instead of being dropped.
+    [Fact(Timeout = 30_000)]
+    public async Task ScanPathReportsAnUndecodableNameInsteadOfDroppingIt()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "file names are bytes only on Linux here");
+        var root = TmpPath("undecodable");
+        Directory.CreateDirectory(root);
+        RunShell("printf 'alpha one\\nbeta two\\n' > \"$1/bad-$(printf '\\377').ini\"", root);
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "good.conf"), "alpha one\nbeta two\n");
+            var errors = new List<string>();
+            var detector = new Detector(onError: (path, _) => errors.Add(path));
+
+            var scan = () => detector.ScanPath(root);
+
+            (await Task.Run(() => scan.Should().Throw<DetectorIOException>().Which, TestContext.Current.CancellationToken))
+                .Message.Should().Contain("not valid UTF-8");
+            errors.Should().ContainSingle().Which.Should().Be(Path.Combine(root, "bad-\uFFFD.ini"));
+        }
+        finally
+        {
+            RunShell("rm -f \"$1\"/bad-*.ini", root);
+        }
+    }
+
+    private static void RunShell(string script, string argument)
+    {
+        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("sh", ["-c", script, "sh", argument]))!;
+        process.WaitForExit();
+        process.ExitCode.Should().Be(0);
     }
 }

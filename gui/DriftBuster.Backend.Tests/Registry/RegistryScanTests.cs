@@ -1,11 +1,11 @@
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Registry;
 
 namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
-/// Mirror of tests/registry/test_registry_scan.py. <c>FakeBackend</c> is <see cref="FakeRegistryBackend"/>; the monkeypatched
-/// <c>scan.is_windows</c> is <see cref="RegistryScan.IsWindowsProbe"/>, restored after the test.
+/// <see cref="RegistryScan"/> over <see cref="FakeRegistryBackend"/>, with <see cref="RegistryScan.IsWindowsProbe"/> swapped and
+/// restored after the test.
 /// </summary>
 [Collection(RegistrySeamCollection.Name)]
 public sealed class RegistryScanTests : IDisposable
@@ -74,11 +74,11 @@ public sealed class RegistryScanTests : IDisposable
             new("HKLM", @"Software\Wow6432Node\VendorB", "32"),
             new("HKCU", @"Software\TinyTool"),
         ];
-        var spec = new SearchSpec { Keywords = ["server", "api"], Patterns = [PythonPattern.Compile(@"api\.internal\.local")] };
+        var spec = new SearchSpec { Keywords = ["server", "api"], Patterns = [EnginePattern.Compile(@"api\.internal\.local")] };
         var hits = RegistryScan.SearchRegistry(roots, spec, backend: fb);
         hits.Should().Contain(h => h.ValueName == "Server");
 
-        var spec2 = new SearchSpec { Patterns = [PythonPattern.Compile("https://")] };
+        var spec2 = new SearchSpec { Patterns = [EnginePattern.Compile("https://")] };
         var hits2 = RegistryScan.SearchRegistry(roots, spec2, backend: fb);
         hits2.Should().Contain(h => h.ValueName == "Endpoint");
     }
@@ -100,7 +100,7 @@ public sealed class RegistryScanTests : IDisposable
         fb.AddKey("HKLM", last, ("Flag", "on"));
 
         RegistryRoot[] roots = [new("HKLM", Base)];
-        var spec = new SearchSpec { Patterns = [PythonPattern.Compile("on")], MaxDepth = 2 };
+        var spec = new SearchSpec { Patterns = [EnginePattern.Compile("on")], MaxDepth = 2 };
         var hits = RegistryScan.SearchRegistry(roots, spec, backend: fb);
         hits.Should().BeEmpty();
     }
@@ -116,7 +116,7 @@ public sealed class RegistryScanTests : IDisposable
             fb.AddKey("HKLM", @"Software\VendorA\AppA\Many", ($"Key{i}", $"value-{i}"));
         }
 
-        var spec = new SearchSpec { Patterns = [PythonPattern.Compile(@"value-\d+")], MaxHits = 3 };
+        var spec = new SearchSpec { Patterns = [EnginePattern.Compile(@"value-\d+")], MaxHits = 3 };
         var hits = RegistryScan.SearchRegistry(roots, spec, backend: fb);
         hits.Should().HaveCount(3);
 

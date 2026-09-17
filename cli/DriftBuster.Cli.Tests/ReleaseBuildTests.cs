@@ -4,9 +4,8 @@ using DriftBuster.Cli.Commands;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Mirror of tests/scripts/test_release_build.py through <see cref="ReleaseBuild"/> and <see cref="ReleaseSteps"/>. The Python package
-/// step is the console tool's publish, the pytest step the .NET test projects, and <c>ensure_dependency</c>'s missing module a missing
-/// executable.
+/// <see cref="ReleaseBuild"/> and <see cref="ReleaseSteps"/> (<c>driftbuster release</c>): the console tool and GUI publishes, the .NET test
+/// projects, and a missing executable.
 /// </summary>
 public sealed class ReleaseBuildTests : IDisposable
 {

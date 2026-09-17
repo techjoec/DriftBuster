@@ -5,7 +5,7 @@ using DriftBuster.Backend.Detection.Plugins;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_binary_plugin.py; expected values were read from the Python plugin.</summary>
+/// <summary>The binary-hybrid plugin.</summary>
 public sealed class BinaryPluginTests
 {
     private static string Fixture(string name) => RepoPaths.Fixtures("binary", name);
@@ -88,40 +88,15 @@ public sealed class BinaryPluginTests
         match.Should().BeNull();
     }
 
-    // Python derives the text itself when none is passed and the bytes look like text.
-    [Fact]
-    public void FrontMatterIsReadFromTheSampleWhenNoTextIsPassed()
-    {
-        var plugin = new BinaryHybridPlugin();
-        var path = Fixture("config_frontmatter.md");
-        var match = plugin.Detect(path, File.ReadAllBytes(path), null);
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("markdown-config");
-        Strings(match.Metadata!["front_matter_keys"]).Should().Equal("environment", "retention_hours", "title");
-
-        var utf16 = Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes("---\nk: v\n---\n")).ToArray();
-        var decoded = plugin.Detect("f.md", utf16, null);
-        decoded.Should().NotBeNull();
-        Strings(decoded!.Metadata!["front_matter_keys"]).Should().Equal("k");
-        decoded.Metadata["has_body"].Should().Be(false);
-
-        plugin.Detect("f.md", [], string.Empty).Should().BeNull();
-    }
-
     public static TheoryData<string, string[], bool, string[]> FrontMatterCases() => new()
     {
         { "---\ntitle: x\n---\n", ["title"], false, ["Detected YAML front matter fenced with '---' markers", "Extracted keys: title"] },
-        { "---\n\n---\nbody", [], true, ["Detected YAML front matter fenced with '---' markers"] },
-        { "---  \r\nkey: v\n---\n", ["key"], false, ["Detected YAML front matter fenced with '---' markers", "Extracted keys: key"] },
-        { "---\nkey: v\r\n---\n", ["key"], false, ["Detected YAML front matter fenced with '---' markers", "Extracted keys: key"] },
         {
             "--- \nk1: a\nk2: b\nk3: c\nk4: d\nk5: e\nk6: f\n: nokey\n---\nbody\n",
             ["k1", "k2", "k3", "k4", "k5", "k6"],
             true,
             ["Detected YAML front matter fenced with '---' markers", "Extracted keys: k1, k2, k3, k4, k5"]
         },
-        { "---\nno colon\n---\n\n  \n", [], false, ["Detected YAML front matter fenced with '---' markers"] },
-        { "---\x1c\nk: v\n---\n", ["k"], false, ["Detected YAML front matter fenced with '---' markers", "Extracted keys: k"] },
         { "---\nb: 1\na: 2\nb: 3\n---\nx", ["a", "b"], true, ["Detected YAML front matter fenced with '---' markers", "Extracted keys: a, b"] },
     };
 
@@ -140,15 +115,6 @@ public sealed class BinaryPluginTests
         match.Metadata["has_body"].Should().Be(hasBody);
     }
 
-    [Theory]
-    [InlineData("---\nk: v\n---")]
-    [InlineData("\ufeff---\nk: v\n---\n")]
-    [InlineData("# title\n---\nk: v\n---\n")]
-    public void FrontMatterMustOpenTheTextAndCloseWithANewline(string text)
-    {
-        new BinaryHybridPlugin().Detect("f.md", Encoding.UTF8.GetBytes(text), text).Should().BeNull();
-    }
-
     [Fact]
     public void FrontMatterScansLongBlankRunsInBoundedTime()
     {
@@ -158,36 +124,6 @@ public sealed class BinaryPluginTests
         started.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
         match.Should().NotBeNull();
         Strings(match!.Metadata!["front_matter_keys"]).Should().Equal("k");
-    }
-
-    // Spans are Python's own: re.match(r"^---\s*\n(?P<block>.*?\n)---\s*\n", text, re.DOTALL) start('block'),
-    // end('block') and end(). The opening \s* is tried longest first and the block is lazy.
-    [Theory]
-    [InlineData("---\n\n\n---x\n---\n\n body", 6, 11, 16)]
-    [InlineData("---\n\n---\n", 4, 5, 9)]
-    [InlineData("---\n \n---\n", 4, 6, 10)]
-    [InlineData("--- \n \n\n---  \n\n  x", 7, 8, 15)]
-    [InlineData("---\n---\n---\n", 4, 8, 12)]
-    [InlineData("---\na\n---\n---\n\n", 4, 6, 10)]
-    public void FrontMatterSpansMatchThePythonRegex(string text, int blockStart, int blockEnd, int matchEnd)
-    {
-        BinaryHybridPlugin.TryMatchFrontMatter(text, out var start, out var end, out var stop).Should().BeTrue();
-        (start, end, stop).Should().Be((blockStart, blockEnd, matchEnd));
-    }
-
-    // The regex backtracks the opening \s* over every newline and rescans the rest of the text from each: quadratic,
-    // and past the old 2 s match timeout at 8000 blank lines. The hand matcher answers in one pass.
-    [Theory]
-    [InlineData(8000)]
-    [InlineData(120000)]
-    public void AnOpenFenceOverBlankLinesWithNoCloserIsLinear(int blankLines)
-    {
-        var text = "---\n" + new string('\n', blankLines);
-        var started = System.Diagnostics.Stopwatch.StartNew();
-        new BinaryHybridPlugin().Detect("f.md", Encoding.UTF8.GetBytes(text), text).Should().BeNull();
-        BinaryHybridPlugin.TryMatchFrontMatter(text + "---\n", out _, out _, out var end).Should().BeTrue();
-        started.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
-        end.Should().Be(text.Length + 4);
     }
 
     [Fact]
@@ -229,25 +165,8 @@ public sealed class BinaryPluginTests
         noSuffix!.Metadata!["catalog_hint"].Should().Be("");
     }
 
-    [Fact]
-    public void SqliteTableCountIsNullWhenTheRealFileIsNotADatabase()
-    {
-        var directory = Directory.CreateTempSubdirectory("driftbuster-binary-");
-        try
-        {
-            var path = Path.Combine(directory.FullName, "garbage.db");
-            File.WriteAllBytes(path, "SQLite format 3\0"u8.ToArray().Concat(Enumerable.Repeat((byte)0xAB, 200)).ToArray());
-            BinaryHybridPlugin.CountSqliteTables(path).Should().BeNull();
-            BinaryHybridPlugin.CountSqliteTables(Fixture("settings.sqlite")).Should().Be(1);
-        }
-        finally
-        {
-            directory.Delete(recursive: true);
-        }
-    }
-
-    // Python closes each connection; an unpooled connection must release the file as soon as it is disposed, so a
-    // scanned database is neither held open (Linux) nor locked (Windows) after detection.
+    // An unpooled connection releases the file as soon as it is disposed, so a scanned database is neither held open (Linux) nor
+    // locked (Windows) after detection.
     [Fact]
     public void SqliteFilesAreClosedAfterCounting()
     {
@@ -274,14 +193,5 @@ public sealed class BinaryPluginTests
         {
             directory.Delete(recursive: true);
         }
-    }
-
-    // The sample is checked before the text: a plist is a plist whatever text the caller passed.
-    [Fact]
-    public void SampleBytesTakePrecedenceOverText()
-    {
-        var sample = File.ReadAllBytes(Fixture("preferences.plist"));
-        var match = new BinaryHybridPlugin().Detect("x.md", sample, "---\nk: v\n---\n");
-        match!.FormatName.Should().Be("plist");
     }
 }

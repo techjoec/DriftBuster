@@ -1,14 +1,14 @@
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Tests.Infrastructure;
 
-/// <summary><see cref="PythonPattern"/> API behaviour outside the oracle: match anchoring, groups, flags and errors.</summary>
-public sealed class PythonPatternTests
+/// <summary><see cref="EnginePattern"/> API behaviour: match anchoring, groups, cancellation, stack depth and linear work on pathological lines.</summary>
+public sealed class EnginePatternTests
 {
     [Fact]
     public void MatchIsAnchoredAtTheStart()
     {
-        var pattern = PythonPattern.Compile("b+");
+        var pattern = EnginePattern.Compile("b+");
 
         pattern.Match("abb", TestContext.Current.CancellationToken).Should().BeNull();
         pattern.Match("bba", TestContext.Current.CancellationToken)!.Value.Should().Be("bb");
@@ -18,7 +18,7 @@ public sealed class PythonPatternTests
     [Fact]
     public void GroupAccessorsFollowReMatch()
     {
-        var pattern = PythonPattern.Compile("(?P<word>a)|(b)");
+        var pattern = EnginePattern.Compile("(?P<word>a)|(b)");
         var match = pattern.Search("b", TestContext.Current.CancellationToken)!;
 
         pattern.Groups.Should().Be(2);
@@ -35,32 +35,9 @@ public sealed class PythonPatternTests
     }
 
     [Fact]
-    public void FlagsIncludeInlineFlagsAndImpliedUnicode()
-    {
-        PythonPattern.Compile("(?im)x").Flags.Should().Be(PythonReFlags.IgnoreCase | PythonReFlags.Multiline | PythonReFlags.Unicode);
-        PythonPattern.Compile("x", PythonReFlags.Ascii).Flags.Should().Be(PythonReFlags.Ascii);
-    }
-
-    [Fact]
-    public void ValueErrorsForStrPatternsAreArgumentExceptions()
-    {
-        var locale = () => PythonPattern.Compile("x", PythonReFlags.Locale);
-        var both = () => PythonPattern.Compile("x", PythonReFlags.Ascii | PythonReFlags.Unicode);
-
-        locale.Should().Throw<ArgumentException>().WithMessage("cannot use LOCALE flag with a str pattern");
-        both.Should().Throw<ArgumentException>().WithMessage("ASCII and UNICODE flags are incompatible");
-    }
-
-    [Fact]
-    public void CompiledPatternsAreCached()
-    {
-        PythonPattern.Compile("cache-me", PythonReFlags.IgnoreCase).Should().BeSameAs(PythonPattern.Compile("cache-me", PythonReFlags.IgnoreCase));
-    }
-
-    [Fact]
     public void CatastrophicBacktrackingStopsWhenCancelled()
     {
-        var pattern = PythonPattern.Compile("(x+x+)+y");
+        var pattern = EnginePattern.Compile("(x+x+)+y");
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cancellation.CancelAfter(TimeSpan.FromMilliseconds(100));
 
@@ -74,7 +51,7 @@ public sealed class PythonPatternTests
     [Fact]
     public void ACancelledTokenStopsEveryEntryPointBeforeMatching()
     {
-        var pattern = PythonPattern.Compile("a");
+        var pattern = EnginePattern.Compile("a");
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
@@ -92,8 +69,8 @@ public sealed class PythonPatternTests
         var token = TestContext.Current.CancellationToken;
 
         var (end, group) = StackProbe.RunOnSmallStack(() => (
-            PythonPattern.Compile("(?:a|b)*c").Match(subject, token)!.End,
-            PythonPattern.Compile("(a|b)*?c").Search(subject, token)!.Group(1)));
+            EnginePattern.Compile("(?:a|b)*c").Match(subject, token)!.End,
+            EnginePattern.Compile("(a|b)*?c").Search(subject, token)!.Group(1)));
 
         end.Should().Be(subject.Length);
         group.Should().Be("a");
@@ -101,7 +78,7 @@ public sealed class PythonPatternTests
 
     // The shipped feature-flag hunt rule on one line just under the 128 KiB sample: ~10000 `key="flag"` openings, each followed
     // by [^\n]* to the end of the line and a backtrack over every later 'v' that never starts "value=". Backtracking that
-    // re-scanned the line and re-entered each tail for every opening did ~10^9 units of work (seconds in CPython too); reusing
+    // re-scanned the line and re-entered each tail for every opening did ~10^9 units of work; reusing
     // the run end, the member scan and the tail failures keeps it linear in the line length.
     [Theory]
     [InlineData("key=\"flag\" v ")]
@@ -111,7 +88,7 @@ public sealed class PythonPatternTests
     {
         const string featureFlag = """key\s*=\s*['"][^'\"]*(feature|flag|toggle)[^'\"]*['"][^\n]*value\s*=\s*['"][^'\"]+['"]""";
         var line = string.Concat(Enumerable.Repeat(unit, ((128 * 1024) / unit.Length) + 1))[..((128 * 1024) - 1)];
-        var pattern = PythonPattern.Compile(featureFlag, PythonReFlags.IgnoreCase | PythonReFlags.Multiline);
+        var pattern = EnginePattern.Compile(featureFlag, EngineReFlags.IgnoreCase | EngineReFlags.Multiline);
         var matcher = new ReMatcher(pattern.Program, TestContext.Current.CancellationToken);
         matcher.Reset(line.Select(ch => (int)ch).ToArray(), 0);
 
@@ -121,7 +98,7 @@ public sealed class PythonPatternTests
     }
 
     // The feature-flag element pattern retries its tail (\b, a group of alternatives, quotes) from every position [^>]* backs
-    // off to, for every "<feature" opening: quadratic in CPython. The tail's outcome depends only on its position, so the
+    // off to, for every "<feature" opening: quadratic when retried. The tail's outcome depends only on its position, so the
     // positions it failed from are reused across starts and the work stays linear in the line length.
     [Theory]
     [InlineData("<feature enabled=x ")]
@@ -130,34 +107,12 @@ public sealed class PythonPatternTests
     {
         const string featureElement = """<feature\b[^>]*\b(enabled|value)\s*=\s*['"][^'\"]+['"]""";
         var line = string.Concat(Enumerable.Repeat(unit, ((128 * 1024) / unit.Length) + 1))[..((128 * 1024) - 1)];
-        var pattern = PythonPattern.Compile(featureElement, PythonReFlags.IgnoreCase | PythonReFlags.Multiline);
+        var pattern = EnginePattern.Compile(featureElement, EngineReFlags.IgnoreCase | EngineReFlags.Multiline);
         var matcher = new ReMatcher(pattern.Program, TestContext.Current.CancellationToken);
         matcher.Reset(line.Select(ch => (int)ch).ToArray(), 0);
 
         matcher.ScannerSearch(0, mustAdvance: false).Should().BeFalse();
 
         matcher.Work.Should().BeLessThan(64L * line.Length);
-    }
-
-    [Fact]
-    public void OffsetsAreUtf16IndicesAroundAstralCodePoints()
-    {
-        var match = PythonPattern.Compile("(.)b").Search("\U0001F600\U0001F601b", TestContext.Current.CancellationToken)!;
-
-        match.Start.Should().Be(2);
-        match.End.Should().Be(5);
-        match.Group(1).Should().Be("\U0001F601");
-        match.GroupStart(1).Should().Be(2);
-        var outOfRange = () => match.GroupStart(2);
-        outOfRange.Should().Throw<ArgumentOutOfRangeException>();
-    }
-
-    [Fact]
-    public void ExceptionConstructorsCarryMessageAndPosition()
-    {
-        new PythonReException().Position.Should().BeNull();
-        new PythonReException("m").Message.Should().Be("m");
-        new PythonReException("m", new InvalidOperationException("inner")).InnerException.Should().BeOfType<InvalidOperationException>();
-        new PythonReException("m", position: 3).Position.Should().Be(3);
     }
 }

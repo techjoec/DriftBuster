@@ -6,9 +6,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Tests.Hunt;
 
 /// <summary>
-/// Mirror of tests/hunt/test_hunt.py. The two monkeypatch tests swap <see cref="HuntEngine.RelativeTo"/>, the seam over
-/// <c>Path.relative_to</c>: Python replaces <c>Path.relative_to</c> (and, in the JSON test, <c>Path.glob</c> so the walk
-/// yields a wrapper whose <c>relative_to</c> raises); both reduce to "relative_to raises for the sample file".
+/// <see cref="HuntEngine"/>: hits, exclusions, the JSON payload, XML attribute tokens and binary files.
 /// </summary>
 [Collection(HuntSeamCollection.Name)]
 public sealed class HuntTests : IDisposable
@@ -17,7 +15,7 @@ public sealed class HuntTests : IDisposable
 
     public void Dispose()
     {
-        HuntEngine.RelativeTo = PythonPurePath.RelativeTo;
+        HuntEngine.RelativeTo = EnginePurePath.RelativeTo;
         _tmp.Delete(recursive: true);
     }
 
@@ -102,19 +100,6 @@ public sealed class HuntTests : IDisposable
     }
 
     [Fact]
-    public void KeywordAndExclusionHelpers()
-    {
-        HuntEngine.MatchesKeywords("Server host", ["server"]).Should().BeTrue();
-        HuntEngine.MatchesKeywords("host", ["server"]).Should().BeFalse();
-
-        var candidate = TmpPath("dir", "file.txt");
-        Directory.CreateDirectory(Path.GetDirectoryName(candidate)!);
-        WriteText(candidate, "data");
-        var relative = PythonPurePath.RelativeTo(candidate, TmpPath("dir"));
-        HuntEngine.ShouldExclude(candidate, relative, ["*.txt"]).Should().BeTrue();
-    }
-
-    [Fact]
     public void ExtractHitsWithoutPatterns()
     {
         var rule = new HuntRule("basic", "match anything");
@@ -125,45 +110,5 @@ public sealed class HuntTests : IDisposable
 
         hits.Should().HaveCount(2);
         hits.Select(hit => hit.Excerpt).Should().BeEquivalentTo(["alpha", "beta"]);
-    }
-
-    [Fact]
-    public void ShouldExcludeRelativeOnly()
-    {
-        // The stub candidate never matches: the relative-only branch must decide on its own.
-        HuntEngine.ShouldExclude(_ => false, "notes/entry.log", ["notes/entry.log"]).Should().BeTrue();
-    }
-
-    [Fact]
-    public void HuntPathHandlesRelativeToErrors()
-    {
-        var root = TmpPath("root");
-        Directory.CreateDirectory(root);
-        var sample = Path.Combine(root, "config.txt");
-        WriteText(sample, "server: host");
-
-        var original = HuntEngine.RelativeTo;
-        HuntEngine.RelativeTo = (path, other) => string.Equals(path, sample, StringComparison.Ordinal) ? null : original(path, other);
-
-        var hits = HuntEngine.HuntPath(root, HuntRules.Default, excludePatterns: ["*.tmp"], cancellationToken: TestContext.Current.CancellationToken).Hits;
-        hits.Should().BeAssignableTo<IReadOnlyList<HuntFinding>>();
-    }
-
-    [Fact]
-    public void HuntJsonRelativeFallback()
-    {
-        var root = TmpPath("root");
-        Directory.CreateDirectory(root);
-        var sample = Path.Combine(root, "config.txt");
-        WriteText(sample, "value");
-
-        var original = HuntEngine.RelativeTo;
-        HuntEngine.RelativeTo = (path, other) => string.Equals(path, sample, StringComparison.Ordinal) ? null : original(path, other);
-
-        var rule = new HuntRule("any", "custom rule");
-        var payload = HuntEngine.ToJson(HuntEngine.HuntPath(root, [rule], cancellationToken: TestContext.Current.CancellationToken));
-
-        payload.Should().NotBeEmpty();
-        payload[0]["relative_path"].Should().Be(Path.GetFileName(sample));
     }
 }

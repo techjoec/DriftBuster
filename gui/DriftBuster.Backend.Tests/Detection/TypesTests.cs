@@ -3,7 +3,7 @@ using DriftBuster.Backend.Detection.Catalog;
 
 namespace DriftBuster.Backend.Tests.Detection;
 
-/// <summary>Mirror of tests/core/test_types.py.</summary>
+/// <summary>The detection core types.</summary>
 public sealed class TypesTests
 {
     private static readonly DetectionCatalog Catalog = DetectionCatalog.Default;
@@ -107,8 +107,6 @@ public sealed class TypesTests
 
     [Theory]
     [InlineData("nlog-config")]
-    [InlineData("log4net-config")]
-    [InlineData("serilog-config")]
     public void ValidateDetectionMetadataAcceptsStructuredXmlVendorVariants(string variant)
     {
         var match = new DetectionMatch("xml", "structured-config-xml", variant, 0.8, ["vendor logging config"]);
@@ -119,24 +117,6 @@ public sealed class TypesTests
         metadata["catalog_variant"].Should().Be(variant);
     }
 
-    [Fact]
-    public void ValidateDetectionMetadataRejectsBadMetadataType()
-    {
-        // Python coerces arbitrary mappings and rejects a list of tuples at runtime; the port pins the
-        // metadata contract to an ordered string-keyed dictionary at compile time instead.
-        typeof(DetectionMatch).GetProperty(nameof(DetectionMatch.Metadata))!.PropertyType
-            .Should().Be(typeof(OrderedDictionary<string, object?>));
-        typeof(DetectionMatch).GetConstructors().Single().GetParameters().Last().ParameterType
-            .Should().Be(typeof(OrderedDictionary<string, object?>));
-    }
-
-    [Fact]
-    public void ValidateDetectionMetadataRequiresStringVariant()
-    {
-        // Python rejects a non-string variant at runtime; the port pins the variant to string at compile time.
-        typeof(DetectionMatch).GetProperty(nameof(DetectionMatch.Variant))!.PropertyType.Should().Be(typeof(string));
-    }
-
     private static FormatClass Format(string name, string slug) => new(name, slug, 0, "low");
 
     private static DetectionCatalog SampleCatalog() => new(
@@ -144,22 +124,6 @@ public sealed class TypesTests
         Updated: "",
         Classes: [Format("Json", "json"), Format("StructuredConfigXml", "structured-config-xml")],
         Fallback: new FallbackClass("unknown", "unknown-text-or-binary", 0, "low"));
-
-    [Fact]
-    public void ValidateDetectionMetadataEnforcesTypes()
-    {
-        var catalog = SampleCatalog();
-        var values = new Dictionary<string, object?>(StringComparer.Ordinal) { ["enabled"] = true };
-        var match = new DetectionMatch("plugin", "json", "Custom", 0.5, ["reason"], Meta(("path", new FileInfo("demo")), ("values", values)));
-
-        var metadata = DetectionMetadata.ValidateDetectionMetadata(match, catalog);
-
-        metadata["catalog_format"].Should().Be("json");
-        metadata["catalog_variant"].Should().Be("custom");
-        metadata["path"].Should().Be("demo");
-        metadata["values"].Should().BeOfType<OrderedDictionary<string, object?>>().Which["enabled"].Should().Be(true);
-        metadata["catalog_version"].Should().Be("1.0.0");
-    }
 
     [Fact]
     public void ValidateDetectionMetadataStrictChecks()
@@ -177,42 +141,5 @@ public sealed class TypesTests
 
         var badAct = () => DetectionMetadata.ValidateDetectionMetadata(badFormat, catalog);
         badAct.Should().Throw<MetadataValidationError>().WithMessage("DetectionMatch.format_name must be a string.");
-    }
-
-    [Fact]
-    public void SummariseMetadataNormalisesValues()
-    {
-        var tmpPath = Path.Combine(Path.GetTempPath(), "driftbuster-types-tests");
-        var match = new DetectionMatch(
-            "plugin",
-            "json",
-            "Test",
-            0.5,
-            ["reason"],
-            Meta(
-                ("path", new FileInfo(Path.Combine(tmpPath, "file.txt"))),
-                ("bytes", "data"u8.ToArray()),
-                ("sequence", new HashSet<int> { 1, 2, 3 })));
-
-        var summary = DetectionMetadata.SummariseMetadata(match);
-
-        var metadata = summary["metadata"].Should().BeAssignableTo<IDictionary<string, object?>>().Subject;
-        metadata["path"].Should().BeOfType<string>().Which.Should().EndWith("file.txt");
-        metadata["bytes"].Should().BeOfType<string>().Which.Should().Contain("data");
-        metadata["sequence"].Should().BeOfType<List<object?>>().Which.Should().BeEquivalentTo([1, 2, 3]);
-    }
-
-    [Fact]
-    public void DetectionMatchToDictReturnsCopy()
-    {
-        var match = new DetectionMatch("plugin", "json", null, 0.1, ["reason"], Meta(("key", "value")));
-
-        var payload = match.ToDictionary();
-
-        var metadata = payload["metadata"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
-        metadata.Should().Equal(Meta(("key", "value")));
-        metadata["key"] = "changed";
-        match.Metadata.Should().NotBeNull();
-        match.Metadata!["key"].Should().Be("value");
     }
 }

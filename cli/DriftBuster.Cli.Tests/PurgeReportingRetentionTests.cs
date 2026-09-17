@@ -2,7 +2,7 @@ using DriftBuster.Cli.Commands;
 
 namespace DriftBuster.Cli.Tests;
 
-/// <summary>Mirror of tests/scripts/test_purge_reporting_retention.py through <see cref="PurgeReportingRetention"/>.</summary>
+/// <summary><see cref="PurgeReportingRetention"/> (<c>driftbuster maint purge-reporting-retention</c>).</summary>
 public sealed class PurgeReportingRetentionTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-purge-");

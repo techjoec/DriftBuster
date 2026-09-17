@@ -5,7 +5,7 @@ using DriftBuster.Backend.Profiles.Detection;
 
 namespace DriftBuster.Backend.Tests.Profiles.Detection;
 
-/// <summary>Mirror of tests/core/test_detector_profile_review_ignore.py: the real YAML plugin flags the tab-indented file.</summary>
+/// <summary>Profiles suppressing review flags: the real YAML plugin flags the tab-indented file.</summary>
 public sealed class DetectorProfileReviewIgnoreTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-review-ignore-");

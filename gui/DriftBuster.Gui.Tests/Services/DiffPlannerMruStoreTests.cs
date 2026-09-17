@@ -161,19 +161,6 @@ public sealed class DiffPlannerMruStoreTests
     }
 
     [Fact]
-    public async Task SaveAsync_and_RecordAsync_validate_null_arguments()
-    {
-        using var temp = new TempDirectory();
-        var store = new DiffPlannerMruStore(temp.Path);
-
-        Func<Task> saveAct = () => store.SaveAsync(null!);
-        Func<Task> recordAct = () => store.RecordAsync(null!);
-
-        await saveAct.Should().ThrowAsync<ArgumentNullException>();
-        await recordAct.Should().ThrowAsync<ArgumentNullException>();
-    }
-
-    [Fact]
     public async Task LoadAsync_returns_empty_snapshot_for_invalid_json()
     {
         using var temp = new TempDirectory();

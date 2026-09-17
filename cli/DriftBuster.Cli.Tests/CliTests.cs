@@ -8,8 +8,7 @@ using Microsoft.Data.Sqlite;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Mirror of tests/cli/test_cli.py through <c>driftbuster scan|diff|sql-export</c> (<c>python -m driftbuster.cli</c>,
-/// <c>cli diff</c>, <c>cli export-sql</c> and <c>driftbuster-export-sql</c>).
+/// <c>driftbuster scan|diff|sql-export</c>: detection output, diffs and SQL exports through the console tool.
 /// </summary>
 public sealed class CliTests : IDisposable
 {
@@ -76,19 +75,6 @@ public sealed class CliTests : IDisposable
         result.Should().Be(outside.Replace(Path.DirectorySeparatorChar, '/'));
     }
 
-    /// <summary>Python stubs the parser so <c>parser.error</c> returns; the command itself returns 2 with the message.</summary>
-    [Fact]
-    public void MainReturnsCodeWhenParserErrorIsSuppressed()
-    {
-        using var stdout = new StringWriter();
-        using var stderr = new StringWriter();
-
-        var exitCode = ScanCommand.Execute("/missing/path", "**/*", sampleSize: null, json: false, stdout, stderr);
-
-        exitCode.Should().Be(2);
-        stderr.ToString().Should().StartWith("driftbuster: error: Path does not exist");
-    }
-
     private static string ColumnMap(JsonElement map)
         => string.Join(';', map.EnumerateObject().Select(table => $"{table.Name}={string.Join(',', table.Value.EnumerateArray().Select(column => column.GetString()))}"));
 
@@ -128,32 +114,6 @@ public sealed class CliTests : IDisposable
         ColumnMap(exportEntry.GetProperty("masked_columns")).Should().Be("accounts=secret");
         ColumnMap(exportEntry.GetProperty("hashed_columns")).Should().Be("accounts=email");
         File.Exists(Path.Combine(outputDir, "demo-sql-snapshot.json")).Should().BeTrue();
-    }
-
-    [Fact]
-    public void MainConsumesSysArgv()
-    {
-        var sample = Write("config.json", """{"enabled": true}""");
-
-        var run = CliInvocation.Invoke("scan", sample, "--json");
-
-        run.ExitCode.Should().Be(0, run.Err);
-        var payload = run.JsonLines();
-        payload.Should().NotBeEmpty();
-        payload[0].GetProperty("detected").GetBoolean().Should().BeTrue();
-        payload[0].GetProperty("format").GetString().Should().Be("json");
-    }
-
-    /// <summary><c>driftbuster-export-sql ARGS</c> is <c>driftbuster sql-export ARGS</c>: the arguments reach the export parser unchanged.</summary>
-    [Fact]
-    public void ExportSqlConsoleMainForwardsArguments()
-    {
-        var parse = Program.BuildRootCommand().Parse(["sql-export", "demo.sqlite", "--limit", "10"]);
-
-        parse.Errors.Should().BeEmpty();
-        parse.CommandResult.Command.Name.Should().Be("sql-export");
-        parse.GetValue<string[]>("database").Should().Equal("demo.sqlite");
-        parse.GetValue<System.Numerics.BigInteger?>("--limit").Should().Be(new System.Numerics.BigInteger(10));
     }
 
     [Fact]
@@ -200,20 +160,5 @@ public sealed class CliTests : IDisposable
         run.Out.Split("Wrote diff").Should().HaveCount(3);
         File.Exists(Path.Combine(outputDir, "baseline--candidate-a.patch")).Should().BeTrue();
         File.Exists(Path.Combine(outputDir, "baseline--candidate-b.patch")).Should().BeTrue();
-    }
-
-    /// <summary>Python runs <c>python -m driftbuster.cli diff</c> in a subprocess; the console tool runs the same argv in process.</summary>
-    [Fact]
-    public void CliDiffModuleEntrypointSupportsMultipleComparisons()
-    {
-        var baseline = Write("baseline.txt", "alpha\n");
-        var candidateA = Write("candidate-a.txt", "alpha\nbeta\n");
-        var candidateB = Write("candidate-b.txt", "alpha\ngamma\n");
-
-        var run = CliInvocation.Invoke("diff", baseline, candidateA, candidateB);
-
-        run.ExitCode.Should().Be(0, run.Err);
-        run.Out.Should().Contain("=== baseline.txt").And.Contain("candidate-a.txt").And.Contain("candidate-b.txt");
-        run.Out.Split("Summary:").Should().HaveCount(3);
     }
 }

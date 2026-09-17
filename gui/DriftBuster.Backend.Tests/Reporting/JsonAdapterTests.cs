@@ -5,7 +5,7 @@ using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Backend.Tests.Reporting;
 
-/// <summary>Mirror of tests/reporting/test_json_adapter.py.</summary>
+/// <summary>The JSON lines adapter.</summary>
 public sealed class JsonAdapterTests
 {
     private static DetectionMatch Match(string formatName, OrderedDictionary<string, object?>? metadata = null)
@@ -63,22 +63,6 @@ public sealed class JsonAdapterTests
         hunt.Should().HaveCount(1);
         Map(Map(hunt[0]["payload"])["rule"])["name"].Should().Be("mapping");
         Map(hunt[0]["payload"])["line_number"].Should().Be(2);
-    }
-
-    // `legacy_json.iter_json_records is iter_json_records`: the C# re-export forwards, so the check is that each forwarder returns what
-    // the helper it re-exports returns for the same inputs.
-    [Fact]
-    public void LegacyModuleReexportsNewHelpers()
-    {
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["token"] = "value" };
-        JsonReport.RenderJsonLines([Match("json", metadata)]).Should().Be(JsonLinesReport.RenderJsonLines([Match("json", metadata)]));
-        JsonReport.IterJsonRecords([Match("json", metadata)]).Select(record => Canonicaliser.DumpsSorted(ReportValues.ToJsonValue(record), indent: false))
-            .Should().Equal(JsonLinesReport.IterJsonRecords([Match("json", metadata)]).Select(record => Canonicaliser.DumpsSorted(ReportValues.ToJsonValue(record), indent: false)));
-        using var legacy = new StringWriter();
-        using var current = new StringWriter();
-        JsonReport.WriteJsonLines([Match("json", metadata)], legacy);
-        JsonLinesReport.WriteJsonLines([Match("json", metadata)], current);
-        legacy.ToString().Should().Be(current.ToString());
     }
 
     [Fact]

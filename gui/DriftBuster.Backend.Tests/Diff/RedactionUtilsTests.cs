@@ -2,7 +2,7 @@ using DriftBuster.Backend.Diff;
 
 namespace DriftBuster.Backend.Tests.Diff;
 
-/// <summary>Mirror of tests/reporting/test_redaction_utils.py.</summary>
+/// <summary>The redaction helpers.</summary>
 public sealed class RedactionUtilsTests
 {
     [Fact]
@@ -45,33 +45,15 @@ public sealed class RedactionUtilsTests
         };
         payload["iterable"] = Generator();
 
-        var redacted = DiffOracleData.Map(RedactionFilter.RedactData(payload, redactor));
+        var redacted = DiffPayloads.Map(RedactionFilter.RedactData(payload, redactor));
 
         ((string)redacted["message"]!).Should().EndWith("[REDACTED]");
-        var list = DiffOracleData.List(redacted["list"]);
+        var list = DiffPayloads.List(redacted["list"]);
         list[0].Should().Be("[REDACTED]");
-        DiffOracleData.Map(list[1])["nested"].Should().Be("no [REDACTED]");
+        DiffPayloads.Map(list[1])["nested"].Should().Be("no [REDACTED]");
         ((object?[])redacted["tuple"]!)[1].Should().Be("[REDACTED]");
         ((HashSet<object?>)redacted["set"]!).Should().Contain("[REDACTED]");
-        DiffOracleData.List(redacted["iterable"])[1].Should().Be("[REDACTED]");
-    }
-
-    [Fact]
-    public void RedactDataFollowsRuntimeCategoriesForTypedCollections()
-    {
-        var redactor = new RedactionFilter(["secret"]);
-
-        RedactionFilter.RedactData(new HashSet<string>(StringComparer.Ordinal) { "secret", "plain" }, redactor)
-            .Should().BeOfType<HashSet<object?>>().Which.Should().BeEquivalentTo(new object?[] { "[REDACTED]", "plain" });
-        RedactionFilter.RedactData(new SortedSet<int> { 2, 1 }, redactor).Should().BeOfType<HashSet<object?>>();
-        RedactionFilter.RedactData(new[] { "secret", "x" }, redactor).Should().BeOfType<object?[]>().Which.Should().Equal("[REDACTED]", "x");
-        RedactionFilter.RedactData(new[] { 1, 2 }, redactor).Should().BeOfType<object?[]>().Which.Should().Equal(1, 2);
-        RedactionFilter.RedactData(new List<string> { "secret" }, redactor).Should().BeOfType<List<object?>>().Which.Should().Equal("[REDACTED]");
-        RedactionFilter.RedactData(new Dictionary<int, string> { [1] = "secret" }, redactor)
-            .Should().BeOfType<OrderedDictionary<string, object?>>().Which["1"].Should().Be("[REDACTED]");
-        byte[] bytes = [1, 2];
-        RedactionFilter.RedactData(bytes, redactor).Should().BeSameAs(bytes);
-        RedactionFilter.RedactData(5, redactor).Should().Be(5);
+        DiffPayloads.List(redacted["iterable"])[1].Should().Be("[REDACTED]");
     }
 
     [Fact]

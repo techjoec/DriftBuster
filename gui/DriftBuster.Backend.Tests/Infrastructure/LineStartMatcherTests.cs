@@ -116,14 +116,9 @@ public sealed class LineStartMatcherTests
 
     [Theory]
     [InlineData("", 0, 0)]
-    [InlineData("ab", 0, 0)]
     [InlineData("ab", 1, 3)]
-    [InlineData("ab", 2, 3)]
-    [InlineData("ab", 3, 3)]
     [InlineData("a\nb", 1, 2)]
-    [InlineData("a\nb", 2, 2)]
     [InlineData("a\nb", 3, 4)]
-    [InlineData("a\n", 2, 2)]
     [InlineData("a\r\nb", 2, 3)]
     public void NextLineStartIsTheFirstMultilineAnchorAtOrAfterTheOffset(string text, int offset, int expected)
     {

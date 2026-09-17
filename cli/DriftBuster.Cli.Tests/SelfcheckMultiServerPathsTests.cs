@@ -5,9 +5,8 @@ using DriftBuster.Cli.Commands;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Mirror of tests/scripts/test_selfcheck_multi_server_paths.py through <see cref="SelfcheckMultiServerPaths"/>. The scenarios run in
-/// process, so the portable root supplies only samples: <c>resolve_pythonpath</c>'s portable-first test becomes the same test of
-/// <see cref="SelfcheckMultiServerPaths.ResolveSamples"/>.
+/// <see cref="SelfcheckMultiServerPaths"/> (<c>driftbuster maint selfcheck-multi-server-paths</c>). The scenarios run in process, so the
+/// portable root supplies only samples, preferred over the repository fixtures by <see cref="SelfcheckMultiServerPaths.ResolveSamples"/>.
 /// </summary>
 public sealed class SelfcheckMultiServerPathsTests : IDisposable
 {

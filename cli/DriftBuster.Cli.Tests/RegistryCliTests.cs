@@ -3,8 +3,7 @@ using DriftBuster.Backend.Registry;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Mirror of tests/registry/test_registry_cli.py through <c>driftbuster registry-scan</c> (<c>registry_cli.main(argv)</c>), with the
-/// Windows gate and registry calls swapped in the <see cref="RegistryCommands"/> seams as Python monkeypatches the module. The seams are
+/// <c>driftbuster registry-scan</c>, with the Windows gate and registry calls swapped in the <see cref="RegistryCommands"/> seams. The seams are
 /// process-wide, so the class runs outside the parallel tests and restores them after each test.
 /// </summary>
 [Collection(WorkingDirectoryCollection.Name)]

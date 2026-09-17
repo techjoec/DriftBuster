@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace DriftBuster.Cli.Tests;
 
-/// <summary><c>driftbuster sql-export</c> (<c>cli.py export-sql</c>): the positive <c>--limit</c> check, <c>--manifest-name</c> and the snapshot names for several databases.</summary>
+/// <summary><c>driftbuster sql-export</c>: the positive <c>--limit</c> check, <c>--manifest-name</c> and the snapshot names for several databases.</summary>
 public sealed class SqlExportCommandTests : IDisposable
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);

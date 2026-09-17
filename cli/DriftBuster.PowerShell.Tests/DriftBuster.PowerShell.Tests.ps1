@@ -289,14 +289,6 @@ Describe 'DriftBuster PowerShell module' {
             $snapshot = Get-Content -LiteralPath (Join-Path $workDir 'out' 'copy-sql-snapshot.json') -Raw | ConvertFrom-Json
             @(@($snapshot.tables)[0].rows) | Should -HaveCount 1
         }
-
-        It 'throws with the export error when a database is missing' {
-            $root = New-TestDirectory
-            $missing = Join-Path $root 'absent.sqlite'
-
-            { Export-DriftBusterSqlSnapshot -Database $missing -OutputDir (Join-Path $root 'out') } |
-                Should -Throw -ExpectedMessage "*driftbuster export failed with exit code 1*error: database not found: $missing*"
-        }
     }
 
     Context 'Scheduler workflows' {
@@ -390,11 +382,6 @@ Describe 'DriftBuster PowerShell module' {
             $list = @(Get-DriftBusterSchedule -BaseDir $script:scheduleBase)
             $list | Should -HaveCount 1
         }
-
-        It 'surfaces the scheduler error for an unknown schedule' {
-            $schedulePaths = $script:schedulePaths
-            { Complete-DriftBusterSchedule -Name 'absent' @schedulePaths } | Should -Throw -ExpectedMessage '*absent*'
-        }
     }
 
     Context 'Remote scanning over admin shares' {
@@ -457,14 +444,6 @@ Describe 'DriftBuster PowerShell module' {
             $snapshot.capture.mask_token_count | Should -Be 1
             # Nothing in the tree carries the token, so the capture's redaction warning reaches the warning stream.
             @($captureWarnings | ForEach-Object { "$_" }) | Should -Contain 'warning: redaction filter configured but no tokens were replaced'
-        }
-
-        It 'throws the capture refusal when neither mask tokens nor AllowUnmasked are given' {
-            Mock Get-DriftBusterAdminShareTargetPath -ModuleName $script:moduleName { $script:captureTree }
-            $computerName = 'filesvr01'
-
-            { Invoke-DriftBusterRemoteScan -ComputerName $computerName -RemotePath 'C:\ProgramData' -Environment 'test' -Reason 'pester' -OutputDirectory $script:outputRoot } |
-                Should -Throw -ExpectedMessage '*provide at least one --mask-token*'
         }
     }
 

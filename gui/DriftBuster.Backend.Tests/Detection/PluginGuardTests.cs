@@ -4,8 +4,8 @@ using DriftBuster.Backend.Detection.Plugins;
 namespace DriftBuster.Backend.Tests.Detection;
 
 /// <summary>
-/// Mirror of tests/formats/test_plugin_guards.py. Python checks yaml, toml, text, dockerfile, hcl, conf and
-/// registry_live; the port also covers ini and json. binary-hybrid is not text-gated on either side.
+/// The text guards of the yaml, toml, text, dockerfile, hcl, conf, registry_live, ini and json plugins. binary-hybrid is not
+/// text-gated.
 /// </summary>
 public sealed class PluginGuardTests
 {

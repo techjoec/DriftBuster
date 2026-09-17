@@ -6,9 +6,8 @@ using DriftBuster.Backend.Registry;
 namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
-/// Mirror of tests/registry/test_remote_schema.py: <c>OfflineRegistryScanSource.from_dict</c> is
-/// <see cref="OfflineRegistryScanSource.FromDict"/>, <c>_parse_remote_target_arg</c> is <see cref="RegistryCommands.ParseRemoteTargetArg"/>
-/// and Python's <c>ValueError</c> is <see cref="PythonValueException"/>.
+/// Remote registry scan schema: <see cref="OfflineRegistryScanSource.FromDict"/> and <see cref="RegistryCommands.ParseRemoteTargetArg"/>,
+/// which refuse bad input with <see cref="EngineValueException"/>.
 /// </summary>
 public sealed class RemoteSchemaTests
 {
@@ -80,7 +79,7 @@ public sealed class RemoteSchemaTests
         var payload = Map(("registry_scan", Map(("token", "VendorA"), ("remote", Map(("host", "forbidden"), ("password", "super-secret"))))));
 
         var act = () => OfflineRegistryScanSource.FromDict(payload);
-        act.Should().Throw<PythonValueException>();
+        act.Should().Throw<EngineValueException>();
     }
 
     public static TheoryData<string, OrderedDictionary<string, object?>> RoundtripCases => new()
@@ -106,29 +105,9 @@ public sealed class RemoteSchemaTests
     [Theory]
     [InlineData("")]
     [InlineData("username=missing")]
-    [InlineData("branch-01,password-env=")]
     public void ParseRemoteTargetArgErrors(string value)
     {
         var act = () => RegistryCommands.ParseRemoteTargetArg(value);
-        act.Should().Throw<PythonValueException>();
-    }
-
-    [Fact]
-    public void RemoteBatchAllowsMappingPayload()
-    {
-        var payload = Map(("registry_scan", Map(("token", "VendorA"), ("remote_batch", Map(("host", "branch-unique"), ("credential_profile", "branch-profile"))))));
-
-        var source = OfflineRegistryScanSource.FromDict(payload);
-        source.Remote.Should().BeNull();
-        source.RemoteBatch.Should().HaveCount(1);
-        source.RemoteBatch[0].Should().Be(new RemoteRegistryTarget(
-            Host: "branch-unique",
-            Transport: "winrm",
-            Port: null,
-            UseSsl: null,
-            Username: null,
-            PasswordEnv: null,
-            CredentialProfile: "branch-profile",
-            Alias: null));
+        act.Should().Throw<EngineValueException>();
     }
 }

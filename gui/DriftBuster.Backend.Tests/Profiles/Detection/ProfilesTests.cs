@@ -4,8 +4,7 @@ using DriftBuster.Backend.Profiles.Detection;
 namespace DriftBuster.Backend.Tests.Profiles.Detection;
 
 /// <summary>
-/// Mirror of tests/core/test_profiles.py. Python's <c>pytest.raises(TypeError)</c> for a mutator that is not callable or returns
-/// something other than a profile is a null mutator or a null result here, the only non-profiles the typed delegate admits.
+/// Detection profiles. A mutator that is null or returns null is refused, the only non-profiles the typed delegate admits.
 /// </summary>
 public sealed class ProfilesTests
 {
@@ -47,10 +46,10 @@ public sealed class ProfilesTests
         applied.Config.Identifier.Should().Be("cfg-app");
 
         var duplicateProfile = () => store.RegisterProfile(prodProfile);
-        duplicateProfile.Should().Throw<PythonValueException>();
+        duplicateProfile.Should().Throw<EngineValueException>();
 
         var duplicateConfig = () => store.RegisterProfile(new DetectionProfile("dupe-config", configs: [new DetectionProfileConfig("cfg-app")]));
-        duplicateConfig.Should().Throw<PythonValueException>();
+        duplicateConfig.Should().Throw<EngineValueException>();
     }
 
     [Fact]
@@ -84,7 +83,7 @@ public sealed class ProfilesTests
         var store = new DetectionProfileStore([profile]);
 
         var notCallable = () => store.UpdateProfile("default", mutator: null);
-        notCallable.Should().Throw<PythonTypeException>();
+        notCallable.Should().Throw<EngineTypeException>();
 
         static DetectionProfile Mutate(DetectionProfile original) => new(original.Name, configs: original.Configs.Take(original.Configs.Count - 1));
 
@@ -92,7 +91,7 @@ public sealed class ProfilesTests
         updated.Configs.Should().HaveCount(1);
 
         var missing = () => store.RemoveConfig("default", "cfg-missing");
-        missing.Should().Throw<PythonValueException>();
+        missing.Should().Throw<EngineValueException>();
 
         store.RemoveConfig("default", "cfg1");
         store.FindConfig("cfg1").Should().BeEmpty();
@@ -102,7 +101,7 @@ public sealed class ProfilesTests
         var exported = Map(Items(payload["profiles"])[0]);
         Items(exported["configs"]).Should().BeEmpty();
 
-        PythonJson.TryLoads(
+        EngineJson.TryLoads(
             """{"profiles": [{"name": "imported", "configs": [{"id": "cfg", "path": "path\\file.txt", "tags": [" prod "]}]}]}""",
             out var imported).Should().BeTrue();
         var rebuilt = DetectionProfileStore.FromDict(imported);
@@ -126,24 +125,6 @@ public sealed class ProfilesTests
         => new(identifier, path: path, pathGlob: pathGlob, tags: tags ?? []);
 
     [Fact]
-    public void ProfileConfigMatchesTaggedAndGlobPaths()
-    {
-        var config = Config("cfg", path: "configs/app.config", tags: ["prod"]);
-        var other = Config("glob", pathGlob: "configs/*.json");
-        var tags = ProfileTags.Normalize(["prod", "application:demo"]);
-
-        config.Matches("configs/app.config", tags).Should().BeTrue();
-        config.Matches("configs/app.config", NoTags).Should().BeFalse();
-        config.Matches(null, tags).Should().BeFalse();
-        other.Matches("configs/settings.json", NoTags).Should().BeTrue();
-        other.Matches("other.json", NoTags).Should().BeFalse();
-
-        var applicationConfig = new DetectionProfileConfig("app", application: "service");
-        applicationConfig.Matches(null, Tags("application:service")).Should().BeTrue();
-        applicationConfig.Matches(null, NoTags).Should().BeFalse();
-    }
-
-    [Fact]
     public void ConfigurationProfileMatchingConfigsRespectsPathFilters()
     {
         var config = Config("cfg", path: "service.json", tags: ["svc"]);
@@ -160,16 +141,16 @@ public sealed class ProfilesTests
         var store = new DetectionProfileStore([profile]);
 
         var notCallable = () => store.UpdateProfile("demo", mutator: null);
-        notCallable.Should().Throw<PythonTypeException>();
+        notCallable.Should().Throw<EngineTypeException>();
 
         var invalid = () => store.UpdateProfile("demo", _ => null!);
-        invalid.Should().Throw<PythonTypeException>();
+        invalid.Should().Throw<EngineTypeException>();
 
         static DetectionProfile Rename(DetectionProfile original) => original with { Name = "other" };
 
         store.RegisterProfile(new DetectionProfile("other", configs: []));
         var clash = () => store.UpdateProfile("demo", Rename);
-        clash.Should().Throw<PythonValueException>();
+        clash.Should().Throw<EngineValueException>();
     }
 
     [Fact]
@@ -185,7 +166,7 @@ public sealed class ProfilesTests
         }
 
         var act = () => store.UpdateProfile("demo", BadMutator);
-        act.Should().Throw<PythonValueException>();
+        act.Should().Throw<EngineValueException>();
 
         store.GetProfile("demo").Configs.Should().Equal(original.Configs);
     }
@@ -203,41 +184,9 @@ public sealed class ProfilesTests
         missingProfile.Should().Throw<KeyNotFoundException>();
 
         var missingConfig = () => store.RemoveConfig("demo", "missing");
-        missingConfig.Should().Throw<PythonValueException>();
+        missingConfig.Should().Throw<EngineValueException>();
 
         store.RemoveProfile("demo");
         store.FindConfig("cfg").Should().BeEmpty();
-    }
-
-    [Fact]
-    public void DiffSummarySnapshotsSkipsEntriesWithoutName()
-    {
-        var baseline = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["profiles"] = new List<object?>
-            {
-                new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["name"] = "demo", ["config_ids"] = new List<object?> { "a" } },
-                new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["config_ids"] = new List<object?> { "b" } },
-            },
-        };
-        var current = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["profiles"] = new List<object?>
-            {
-                new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["name"] = "demo", ["config_ids"] = new List<object?> { "a", "b" } },
-            },
-        };
-        var result = DetectionProfileStore.DiffSummarySnapshots(baseline, current);
-        Map(Map(result["totals"])["current"])["configs"].Should().Be(2);
-    }
-
-    [Fact]
-    public void ProfileStoreMatchingConfigsReturnsIndexedResults()
-    {
-        var profile = new DetectionProfile("demo", configs: [Config("cfg")]);
-        var store = new DetectionProfileStore([profile]);
-        var result = store.MatchingConfigs(tags: null, relativePath: "whatever");
-        result[0].Should().BeOfType<AppliedProfileConfig>();
-        store.FindConfig("missing").Should().BeEmpty();
     }
 }

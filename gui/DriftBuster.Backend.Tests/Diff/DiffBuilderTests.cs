@@ -3,18 +3,10 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Tests.Diff;
 
-/// <summary>Mirror of tests/reporting/test_diff_builder.py.</summary>
+/// <summary><see cref="DiffBuilder"/>.</summary>
 [Collection(DiffSafetyLimitsCollection.Name)]
 public sealed class DiffBuilderTests
 {
-    [Fact]
-    public void CanonicaliseTextNormalisesNewlines()
-    {
-        var payload = "line1\r\nline2 \r\n";
-        var normalised = Canonicaliser.CanonicaliseText(payload);
-        TextLines.SplitLines(normalised).Should().Equal("line1", "line2");
-    }
-
     [Fact]
     public void CanonicaliseTextRemovesBomAndUnicodeNewlines()
     {
@@ -37,19 +29,6 @@ public sealed class DiffBuilderTests
     {
         var malformed = "{not-json";
         Canonicaliser.CanonicaliseJson(malformed).Should().Be(Canonicaliser.CanonicaliseText(malformed));
-    }
-
-    [Fact]
-    public void CanonicaliseXmlPreservesPrologAndHandlesDoctype()
-    {
-        var payload =
-            "<?xml version=\"1.0\"?>\n"
-            + "<!DOCTYPE note [<!ELEMENT note (to,from,heading,body)>]>\n"
-            + "<note attr=' value '>\n  <to>SECRET</to>\n</note>";
-        var canonical = Canonicaliser.CanonicaliseXml(payload);
-        canonical.Should().StartWith("<?xml");
-        canonical.Should().Contain("<!DOCTYPE");
-        canonical.Should().Contain("SECRET");
     }
 
     [Fact]

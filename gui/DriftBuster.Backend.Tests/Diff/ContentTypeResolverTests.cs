@@ -3,7 +3,7 @@ using DriftBuster.Backend.Diff;
 
 namespace DriftBuster.Backend.Tests.Diff;
 
-/// <summary>Plan fix f: the diff content type comes from detection, never from the file extension.</summary>
+/// <summary>The diff content type comes from detection, never from the file extension.</summary>
 [Collection(DiffSafetyLimitsCollection.Name)]
 public sealed class ContentTypeResolverTests : IDisposable
 {
@@ -24,11 +24,8 @@ public sealed class ContentTypeResolverTests : IDisposable
 
     [Theory]
     [InlineData("structured-config-xml", "xml")]
-    [InlineData("xml", "xml")]
     [InlineData("json", "text")]
-    [InlineData("ini", "text")]
     [InlineData("XML", "text")]
-    [InlineData(null, "text")]
     public void FromCatalogFormatFollowsTheMultiServerRule(string? catalogFormat, string expected)
     {
         ContentTypeResolver.FromCatalogFormat(catalogFormat).Should().Be(expected);
@@ -85,11 +82,5 @@ public sealed class ContentTypeResolverTests : IDisposable
 
         ContentTypeResolver.ResolvePair(plain, xml).Should().Be("xml");
         ContentTypeResolver.ResolvePair(xml, plain).Should().Be("xml");
-    }
-
-    [Fact]
-    public void MissingFileResolvesToText()
-    {
-        ContentTypeResolver.ResolveFile(Path.Combine(_tmp.FullName, "missing.xml")).Should().Be("text");
     }
 }

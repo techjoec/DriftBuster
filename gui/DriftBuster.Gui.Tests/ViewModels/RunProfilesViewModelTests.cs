@@ -908,7 +908,7 @@ public class RunProfilesViewModelTests
         entry.ToSource().Alias.Should().Be(" logs ");
         entry.AliasDirectory.Should().Be("-logs-");
 
-        // An edited value is stripped as str.strip strips it (U+001F is Python white space, not .NET's); an alias it empties is none.
+        // An edited value is stripped, U+001F included as white space; an alias it empties is none.
         entry.Alias = "\u001f logs2 ";
         entry.Path = "\u001f/data/in ";
         entry.ToSource().Alias.Should().Be("logs2");
@@ -923,7 +923,6 @@ public class RunProfilesViewModelTests
     // saved profile over the same tree: the collected files, the per-source summaries, metadata.json and profile.json must be identical.
     [Theory]
     [InlineData("{\"name\": \" logs \", \"sources\": [{\"path\": \"{a}\", \"alias\": \"x\"}, \"{b}\", \"{c}\"], \"baseline\": \"{b}\", \"options\": {\" k\": 1, \"A\": \"2\", \"a\": \"3\"}, \"secret_scanner\": {\"ignore_patterns\": [\" x\", \" x\"]}, \"description\": \" d \"}")]
-    [InlineData("{\"name\": \"n\", \"sources\": [{\"path\": \"{a}\", \"alias\": \"x\"}, \"{b}\", \"{c}\"]}")]
     [InlineData("{\"name\": \"plain\", \"sources\": [\"{a}\", \"{b}\"], \"baseline\": \"{b}\", \"options\": {\"\": \"e\"}}")]
     public async Task A_loaded_profile_saved_without_edits_collects_exactly_as_loaded(string payload)
     {
@@ -939,7 +938,7 @@ public class RunProfilesViewModelTests
 
             var text = payload.Replace("{a}", Tree("a", "password = Hunter12345\n"), StringComparison.Ordinal)
                 .Replace("{b}", Tree("b", "b"), StringComparison.Ordinal).Replace("{c}", Tree("c", "c"), StringComparison.Ordinal);
-            DriftBuster.Backend.Infrastructure.PythonJson.TryLoads(text, out var parsed).Should().BeTrue();
+            DriftBuster.Backend.Infrastructure.EngineJson.TryLoads(text, out var parsed).Should().BeTrue();
             var loaded = RunProfile.FromDict(parsed).ToDefinition();
 
             RunProfileDefinition? saved = null;

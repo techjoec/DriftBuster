@@ -2,7 +2,7 @@ using DriftBuster.Backend.Detection;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_yaml_flags_and_gating.py; expected values were read from the Python plugin.</summary>
+/// <summary>The yaml plugin's review flags and gating.</summary>
 public sealed class YamlFlagsAndGatingTests
 {
     private static DetectionMatch? Detect(string name, string content) => YamlPluginTests.Detect(name, content);

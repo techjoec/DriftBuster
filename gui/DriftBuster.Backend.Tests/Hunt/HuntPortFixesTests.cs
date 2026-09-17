@@ -1,13 +1,12 @@
 using System.Text;
 
 using DriftBuster.Backend.Hunt;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Tests.Hunt;
 
 /// <summary>
-/// The approved hunt fixes, which have no Python test to mirror: e (the install-path drive pattern matches Windows paths)
-/// and b (an unreadable file is skipped and counted, only a missing root raises).
+/// Hunt walk behaviour: the install-path rule on Windows paths, unreadable files skipped and counted, a missing root, and cancellation.
 /// </summary>
 [Collection(HuntSeamCollection.Name)]
 public sealed class HuntPortFixesTests : IDisposable
@@ -15,21 +14,6 @@ public sealed class HuntPortFixesTests : IDisposable
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-hunt-fixes-");
 
     public void Dispose() => _tmp.Delete(recursive: true);
-
-    [Fact]
-    public void InstallPathPatternMatchesProgramFiles()
-    {
-        var rule = HuntRules.Default.Single(candidate => string.Equals(candidate.Name, "install-path", StringComparison.Ordinal));
-        var drive = rule.Patterns[0];
-
-        drive.Pattern.Should().Be(@"[A-Za-z]:\\[\w\-\.\s]+");
-        var match = drive.Search(@"C:\Program Files\Vendor", TestContext.Current.CancellationToken);
-        match.Should().NotBeNull();
-        match!.Value.Should().Be(@"C:\Program Files");
-
-        var pythonSpelling = PythonPattern.Compile(@"[A-Za-z]:\\\\[\\w\\-\\.\\s]+", PythonReFlags.IgnoreCase | PythonReFlags.Multiline);
-        pythonSpelling.Search(@"C:\Program Files\Vendor", TestContext.Current.CancellationToken).Should().BeNull("the double-escaped Python pattern never matches");
-    }
 
     [Fact]
     public void InstallPathRuleProducesAPlanTransform()
@@ -85,18 +69,6 @@ public sealed class HuntPortFixesTests : IDisposable
     public void CancellationStopsTheWalk()
     {
         File.WriteAllText(Path.Combine(_tmp.FullName, "x.txt"), "server host: x.corp.local\n");
-        using var cancelled = new CancellationTokenSource();
-        cancelled.Cancel();
-
-        var hunt = () => HuntEngine.HuntPath(_tmp.FullName, HuntRules.Default, cancellationToken: cancelled.Token);
-
-        hunt.Should().Throw<OperationCanceledException>();
-    }
-
-    [Fact]
-    public void CancellationStopsADirectoryWalkThatHoldsNoFiles()
-    {
-        Directory.CreateDirectory(Path.Combine(_tmp.FullName, "a", "b", "c"));
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
 

@@ -7,7 +7,7 @@ using DriftBuster.Backend.Profiles.Detection;
 namespace DriftBuster.Backend.Tests.Detection;
 
 /// <summary>
-/// Mirror of tests/core/test_detector_ignore_exception.py: the real YAML plugin flags the tab-indented file.
+/// Detector review-flag ignore exceptions: the real YAML plugin flags the tab-indented file.
 /// </summary>
 public sealed class DetectorIgnoreExceptionTests : IDisposable
 {

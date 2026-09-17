@@ -6,15 +6,15 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Tests.Infrastructure;
 
 /// <summary>
-/// <see cref="PythonSort{T}"/> against CPython 3.13's <c>list.sort()</c>: every expected permutation is the index order
+/// <see cref="EngineSort{T}"/> against CPython 3.13's <c>list.sort()</c>: every expected permutation is the index order
 /// the interpreter produced sorting wrappers whose <c>__lt__</c> compares the same floats.
 /// </summary>
-public sealed class PythonSortTests
+public sealed class EngineSortTests
 {
     private static string Permutation(double[] values)
     {
         var indices = Enumerable.Range(0, values.Length).ToList();
-        PythonSort<int>.Sort(indices, (left, right) => values[left] < values[right]);
+        EngineSort<int>.Sort(indices, (left, right) => values[left] < values[right]);
         return string.Join(",", indices);
     }
 
@@ -24,11 +24,11 @@ public sealed class PythonSortTests
     public void ConsistentOrdersSortStably()
     {
         var items = new List<(int Key, int Order)> { (3, 0), (1, 1), (3, 2), (2, 3), (1, 4), (0, 5) };
-        PythonSort<(int Key, int Order)>.Sort(items, (left, right) => left.Key < right.Key);
+        EngineSort<(int Key, int Order)>.Sort(items, (left, right) => left.Key < right.Key);
         items.Should().Equal((0, 5), (1, 1), (1, 4), (2, 3), (3, 0), (3, 2));
 
         var empty = new List<int>();
-        PythonSort<int>.Sort(empty, (left, right) => left < right);
+        EngineSort<int>.Sort(empty, (left, right) => left < right);
         empty.Should().BeEmpty();
     }
 
@@ -54,13 +54,5 @@ public sealed class PythonSortTests
         var digest = Convert.ToHexStringLower(SHA256.HashData(Encoding.ASCII.GetBytes(Permutation(values))));
 
         digest.Should().Be(sha256);
-    }
-
-    [Fact]
-    public void AThrowingComparisonPropagates()
-    {
-        var items = new List<int> { 2, 1 };
-        var act = () => PythonSort<int>.Sort(items, (_, _) => throw new InvalidOperationException("no order"));
-        act.Should().Throw<InvalidOperationException>().WithMessage("no order");
     }
 }

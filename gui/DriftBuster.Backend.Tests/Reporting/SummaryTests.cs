@@ -4,7 +4,7 @@ using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Backend.Tests.Reporting;
 
-/// <summary>Mirror of tests/reporting/test_summary.py.</summary>
+/// <summary><see cref="DetectionSummary"/>.</summary>
 public sealed class SummaryTests
 {
     private static DetectionMatch BuildMatch(string formatName, string? variant, double confidence = 0.8, string? pluginName = null)

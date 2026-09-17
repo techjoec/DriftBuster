@@ -4,7 +4,7 @@ using DriftBuster.Backend.Detection.Plugins;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_yaml_keys_break.py.</summary>
+/// <summary>The yaml plugin's top-level key collection stopping at a break.</summary>
 public sealed class YamlKeysBreakTests
 {
     [Fact]

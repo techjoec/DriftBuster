@@ -1,12 +1,11 @@
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
 
 /// <summary>
-/// The secret-scanning tests of tests/core/test_offline_runner.py (<c>_compile_ruleset_from_mapping</c>,
-/// <c>_secret_option_values</c>, <c>_manifest_secret_scanner</c> and <c>_build_secret_context</c> are the
-/// <c>secret_scanning</c> functions re-exported). The runner execution tests of that file move to Pester in phase 8.
+/// The offline runner's secret-scanning helpers: ruleset compilation from a mapping, secret option values, the manifest scanner
+/// block and the secret context. The runner execution tests are Pester tests of the offline runner script.
 /// </summary>
 [Collection(SecretRuleCacheCollection.Name)]
 public sealed class OfflineRunnerTests : IDisposable
@@ -56,7 +55,7 @@ public sealed class OfflineRunnerTests : IDisposable
             rules: [],
             version: "v1",
             ignoreRules: new HashSet<string>(StringComparer.Ordinal) { "Skip" },
-            ignorePatterns: [PythonPattern.Compile("SKIP")],
+            ignorePatterns: [EnginePattern.Compile("SKIP")],
             ignorePatternText: ["SKIP"],
             rulesLoaded: true);
         var manifest = SecretScanner.ManifestSecretScanner(

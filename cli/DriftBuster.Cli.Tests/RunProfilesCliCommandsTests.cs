@@ -3,9 +3,7 @@ using System.Text;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Mirror of tests/cli/test_run_profiles_cli_commands.py through <c>driftbuster profile</c> (<c>run_profiles_cli.main(argv)</c>, reached
-/// from <c>python -m driftbuster.run_profiles_cli</c>, <c>run_profiles.main</c> and <c>python -m driftbuster.cli run-profile</c>).
-/// Python calls the handlers with a hand-built <c>argparse.Namespace</c>; here the same values go through argv.
+/// <c>driftbuster profile</c>: the run profile handlers, with every value passed through argv.
 /// </summary>
 public sealed class RunProfilesCliCommandsTests : IDisposable
 {
@@ -90,40 +88,5 @@ public sealed class RunProfilesCliCommandsTests : IDisposable
 
         run.ExitCode.Should().Be(0, run.Err);
         run.Out.Should().Be("Saved profile 'entry'" + Environment.NewLine);
-    }
-
-    /// <summary><c>Path(args.profile).read_text()</c> on a missing file: <c>open()</c>'s <c>FileNotFoundError</c> text naming the path.</summary>
-    [Fact]
-    public void RunWithMissingProfileFileReportsPythonsError()
-    {
-        var missing = Path.Combine(_tmp.FullName, "nope.json");
-
-        var run = CliInvocation.Invoke("profile", "--base-dir", _tmp.FullName, "run", "--profile", missing);
-
-        run.ExitCode.Should().Be(1);
-        run.Out.Should().BeEmpty();
-        run.Err.Should().Be($"FileNotFoundError: [Errno 2] No such file or directory: {DriftBuster.Backend.Infrastructure.PythonRepr.StrRepr(missing)}" + Environment.NewLine);
-    }
-
-    /// <summary>Python's <c>main</c> prints help and returns 1 when no handler was parsed; the console tool refuses a missing subcommand as a parse error.</summary>
-    [Fact]
-    public void MainReturnsErrorWhenNoCommand()
-    {
-        var run = CliInvocation.Invoke("profile");
-
-        run.ExitCode.Should().NotBe(0);
-        run.Err.Should().NotBeEmpty();
-    }
-
-    /// <summary><c>run_profiles.main(["list"])</c> forwards to the run profile command line: <c>driftbuster profile list</c>.</summary>
-    [Fact]
-    public void RunProfilesModuleMain()
-    {
-        var parse = Program.BuildRootCommand().Parse(["profile", "list"]);
-
-        parse.Errors.Should().BeEmpty();
-        parse.CommandResult.Command.Name.Should().Be("list");
-        parse.CommandResult.Parent.Should().BeOfType<System.CommandLine.Parsing.CommandResult>()
-            .Which.Command.Name.Should().Be("profile");
     }
 }

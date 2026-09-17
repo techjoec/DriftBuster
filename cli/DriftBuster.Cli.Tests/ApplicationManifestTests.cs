@@ -5,8 +5,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Both executables embed a Win32 manifest declaring <c>longPathAware</c>, as <c>python.exe</c> does, so a path past <c>MAX_PATH</c>
-/// reaches native SQLite (and every other unprefixed Win32 call) as it does under CPython; the execution level stays <c>asInvoker</c>.
+/// Both executables embed a Win32 manifest declaring <c>longPathAware</c>, so a path past <c>MAX_PATH</c> reaches native SQLite (and every
+/// other unprefixed Win32 call); the execution level stays <c>asInvoker</c>.
 /// </summary>
 public sealed class ApplicationManifestTests
 {

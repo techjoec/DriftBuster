@@ -1,9 +1,9 @@
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
 
-/// <summary>Mirror of tests/secret_scanning/test_rule_cache.py.</summary>
+/// <summary>The secret rule cache.</summary>
 [Collection(SecretRuleCacheCollection.Name)]
 public sealed class RuleCacheTests : IDisposable
 {
@@ -21,7 +21,7 @@ public sealed class RuleCacheTests : IDisposable
         rules.Should().NotBeEmpty("expected packaged secret rules to be available");
         version.Should().NotBeNullOrEmpty().And.NotBe("none");
 
-        IReadOnlyList<SecretDetectionRule> sentinelRules = [new SecretDetectionRule("sentinel", PythonPattern.Compile("sentinel"))];
+        IReadOnlyList<SecretDetectionRule> sentinelRules = [new SecretDetectionRule("sentinel", EnginePattern.Compile("sentinel"))];
         SecretScanner.RuleCache = sentinelRules;
         SecretScanner.RuleVersion = "cache-version";
         SecretScanner.RuleLoaded = true;

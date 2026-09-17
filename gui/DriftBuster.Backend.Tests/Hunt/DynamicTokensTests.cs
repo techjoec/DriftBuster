@@ -4,7 +4,7 @@ using DriftBuster.Backend.Hunt;
 
 namespace DriftBuster.Backend.Tests.Hunt;
 
-/// <summary>Mirror of tests/hunt/test_dynamic_tokens.py.</summary>
+/// <summary>Hunt rules over dynamic tokens.</summary>
 [Collection(HuntSeamCollection.Name)]
 public sealed class DynamicTokensTests : IDisposable
 {

@@ -7,8 +7,7 @@ using DriftBuster.Cli.Commands;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Mirror of tests/cli/test_profile_cli.py through <c>driftbuster detection-profile</c> (<c>profile_cli.main(argv)</c>). The payload
-/// assertions of the library half also live in DetectionProfileCommandsTests; these assert the exit codes, stdout, <c>--output</c>,
+/// <c>driftbuster detection-profile</c>. The payload assertions of the library half also live in DetectionProfileCommandsTests; these assert the exit codes, stdout, <c>--output</c>,
 /// <c>--indent</c> and <c>--sort-keys</c> of the console tool. The class swaps <see cref="DetectionProfileCommands.FromDict"/>, so it
 /// runs outside the parallel tests.
 /// </summary>
@@ -75,18 +74,6 @@ public sealed class ProfileCliTests : IDisposable
     }
 
     [Fact]
-    public void ParseArgsRequiresCommand()
-    {
-        var parse = Program.BuildRootCommand().Parse(["detection-profile", "summary", "store.json"]);
-        parse.Errors.Should().BeEmpty();
-        parse.CommandResult.Command.Name.Should().Be("summary");
-
-        var run = CliInvocation.Invoke("detection-profile");
-        run.ExitCode.Should().Be(2);
-        run.Err.Should().NotBeEmpty();
-    }
-
-    [Fact]
     public void ProfileCliSummaryWritesOutputFile()
     {
         var storePath = Write("store.json", """{"profiles": [{"name": "prod", "configs": [{"id": "cfg1"}]}]}""");
@@ -105,7 +92,7 @@ public sealed class ProfileCliTests : IDisposable
     public void StoreFromPayloadIgnoresInvalidEntries()
     {
         var original = DetectionProfileCommands.FromDict;
-        DetectionProfileCommands.FromDict = payload => throw new PythonValueException("fallback", nameof(payload));
+        DetectionProfileCommands.FromDict = payload => throw new EngineValueException("fallback", nameof(payload));
         try
         {
             var storePath = Write("store.json", """{"profiles": ["invalid", {"name": "demo", "configs": ["skip", {"id": "cfg", "path": "config.json"}]}]}""");

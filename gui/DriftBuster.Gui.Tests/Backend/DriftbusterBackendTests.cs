@@ -292,8 +292,8 @@ public sealed class DriftbusterBackendTests
         }
     }
 
-    // GUI-only behaviour (expected_divergences.md): the diff planner decodes a UTF-16 or UTF-32 file by its byte order mark,
-    // where Python's multi_server._read_text would read the bytes as UTF-8 with replacement.
+    // GUI-only behaviour: the diff planner decodes a UTF-16 or UTF-32 file by its byte order mark, where multi-server reads the
+    // bytes as UTF-8 with replacement.
     [Fact]
     public async Task DiffAsync_decodes_files_by_their_byte_order_mark()
     {
@@ -474,7 +474,7 @@ public sealed class DriftbusterBackendTests
             Assert.Equal("logs", result.Profiles[0].Sources[1].Alias);
             Assert.True(result.Profiles[0].Sources[1].Optional);
 
-            // list_profiles reads every profile.json and raises on the first that is not JSON, as Python's json.loads does.
+            // Listing reads every profile.json and raises on the first that is not JSON.
             var invalidDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Broken"));
             File.WriteAllText(Path.Combine(invalidDir.FullName, "profile.json"), "{ invalid json");
             await Assert.ThrowsAnyAsync<ArgumentException>(() => _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken));

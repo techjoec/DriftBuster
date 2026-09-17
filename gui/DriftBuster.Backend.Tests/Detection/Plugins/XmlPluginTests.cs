@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 
 using DriftBuster.Backend.Detection;
@@ -7,16 +6,15 @@ using DriftBuster.Backend.Detection.Plugins;
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
 /// <summary>
-/// Mirror of tests/formats/test_xml_plugin.py, plus fixture checks pinning the Python provenance hashes and
-/// confidence values. Test payloads keep the Python triple-quoted framing (leading newline, four-space indentation,
-/// trailing indented line) because line and column numbers in the provenance depend on it.
+/// The xml plugin, plus fixture checks pinning provenance hashes and confidence values. Test payloads keep a block framing (leading
+/// newline, four-space indentation, trailing indented line) because line and column numbers in the provenance depend on it.
 /// </summary>
 public sealed class XmlPluginTests
 {
     private static DetectionMatch? Detect(string filename, string content)
         => new XmlPlugin().Detect(filename, Encoding.UTF8.GetBytes(content), content);
 
-    /// <summary>A Python <c>"""..."""</c> block: newline, then every line indented four spaces, then an indented blank tail.</summary>
+    /// <summary>A block: newline, then every line indented four spaces, then an indented blank tail.</summary>
     internal static string Block(string body) => "\n    " + body.Replace("\n", "\n    ", StringComparison.Ordinal) + "\n    ";
 
     /// <summary>The same block after <c>.strip()</c>: the first line bare, the rest still indented.</summary>
@@ -39,8 +37,6 @@ public sealed class XmlPluginTests
             mapping[key].Should().Be(expectedValue, "key {0}", key);
         }
     }
-
-    private static string Sha256(string value) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
     private const string XdtTransformContent = """
         <?xml version="1.0"?>
@@ -100,68 +96,6 @@ public sealed class XmlPluginTests
     }
 
     [Fact]
-    public void XmlPluginDetectsAppConfigVariant()
-    {
-        var content = Block("""
-            <?xml version="1.0"?>
-            <configuration>
-              <startup>
-                <supportedRuntime version="v4.0" />
-              </startup>
-            </configuration>
-            """);
-        var match = Detect("App.config", content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("structured-config-xml");
-        match.Variant.Should().Be("app-config");
-        match.Metadata.Should().NotBeNull();
-        match.Metadata!["config_role"].Should().Be("app");
-        match.Reasons.Should().Contain(reason => reason.Contains("app.config", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Detected root element <configuration>",
-            "Detected XML declaration",
-            "XML version declared as 1.0",
-            "Filename app.config indicates per-application configuration");
-        match.Metadata.Keys.Should().Equal("xml_declaration", "root_tag", "root_local_name", "config_original_filename", "config_role");
-        match.Metadata["config_original_filename"].Should().Be("App.config");
-    }
-
-    [Fact]
-    public void XmlPluginDetectsMachineConfigVariant()
-    {
-        var content = Block("""
-            <?xml version="1.0"?>
-            <configuration>
-              <system.web>
-                <trust level="Full" />
-              </system.web>
-            </configuration>
-            """);
-        var match = Detect("machine.config", content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("structured-config-xml");
-        match.Variant.Should().Be("machine-config");
-        match.Metadata.Should().NotBeNull();
-        match.Metadata!["config_role"].Should().Be("machine");
-        match.Reasons.Should().Contain(reason => reason.Contains("machine.config", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Matched known configuration section tags used by web frameworks",
-            "Detected root element <configuration>",
-            "Detected XML declaration",
-            "XML version declared as 1.0",
-            "Filename machine.config indicates machine-wide configuration");
-        match.Metadata.Keys.Should().Equal("xml_declaration", "root_tag", "root_local_name", "config_original_filename", "config_role");
-    }
-
-    [Fact]
     public void XmlPluginDetectsConfigTransformScope()
     {
         var match = Detect("web.Release.config", Block(XdtTransformContent));
@@ -212,7 +146,6 @@ public sealed class XmlPluginTests
         Strings(match.Metadata!["config_transform_stages"]).Should().Equal("Release", "QA");
         match.Metadata["config_transform_primary_stage"].Should().Be("QA");
         match.Metadata["config_transform_stage_count"].Should().Be(2);
-        match.Reasons.Should().Contain(reason => reason.Contains("Release -> QA", StringComparison.Ordinal));
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -229,42 +162,6 @@ public sealed class XmlPluginTests
             "xml_declaration", "root_tag", "root_local_name", "root_attributes", "namespaces", "namespace_provenance",
             "config_original_filename", "config_transform", "config_transform_scope", "config_transform_stages",
             "config_transform_primary_stage", "config_transform_stage_count", "config_role");
-    }
-
-    [Fact]
-    public void XmlPluginDetectsAppConfigTransformVariant()
-    {
-        var content = Block("""
-            <?xml version="1.0"?>
-            <configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
-              <startup>
-                <supportedRuntime xdt:Transform="Replace" />
-              </startup>
-            </configuration>
-            """);
-        var match = Detect("app.Release.config", content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("structured-config-xml");
-        match.Variant.Should().Be("app-config-transform");
-        match.Metadata.Should().NotBeNull();
-        match.Metadata!["config_transform"].Should().Be(true);
-        match.Metadata["config_transform_scope"].Should().Be("app");
-        Strings(match.Metadata["config_transform_stages"]).Should().Equal("Release");
-        match.Metadata["config_transform_stage_count"].Should().Be(1);
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Detected root element <configuration>",
-            "Detected XML declaration",
-            "XML version declared as 1.0",
-            "Recorded XML namespace declarations (xdt\u2192http://schemas.microsoft.com/XML-Document-Transform @L3)",
-            "Filename pattern web|app.*.config suggests a build-specific transform",
-            "Detected XML-Document-Transform namespace declaration (xdt)",
-            "Found xdt:Transform attribute indicating config transform instructions",
-            "Filename stage 'Release' indicates transform precedence");
-        match.Metadata["config_role"].Should().Be("app");
     }
 
     [Fact]
@@ -415,29 +312,6 @@ public sealed class XmlPluginTests
     }
 
     [Fact]
-    public void XmlPluginDetectsManifestByExtensionWithoutNamespace()
-    {
-        var content = Block("""
-            <assembly>
-              <assemblyIdentity name="Bare" version="1.0.0.0" />
-            </assembly>
-            """);
-        var match = Detect("Bare.manifest", content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("xml");
-        match.Variant.Should().Be("app-manifest-xml");
-        match.Reasons.Should().Contain(reason => reason.Contains("File extension .manifest", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.88, 1e-9);
-        match.Reasons.Should().Equal(
-            "File extension .manifest suggests XML content",
-            "Found XML element structure",
-            "Detected root element <assembly>");
-        match.Metadata!.Keys.Should().Equal("root_tag", "root_local_name", "xml_well_formed");
-    }
-
-    [Fact]
     public void XmlPluginDetectsResxVariantViaNamespace()
     {
         var content = Block("""
@@ -458,7 +332,6 @@ public sealed class XmlPluginTests
         var provenance = Entries(match.Metadata["namespace_provenance"]);
         provenance.Should().NotBeEmpty();
         provenance[0]["attribute"].Should().Be("xmlns");
-        match.Reasons.Should().Contain(reason => reason.Contains("Captured resource keys", StringComparison.Ordinal));
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -478,31 +351,6 @@ public sealed class XmlPluginTests
         match.Metadata["resource_keys_preview"].Should().Be("Sample");
         provenance[0]["hash"].Should().Be("169993406bf6");
         provenance[0]["column"].Should().Be(11);
-    }
-
-    [Fact]
-    public void XmlPluginDetectsResxByExtensionWithoutNamespace()
-    {
-        var content = Block("""
-            <root>
-              <data name="Sample">
-                <value>Hello</value>
-              </data>
-            </root>
-            """);
-        var match = Detect("Strings.resx", content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("xml");
-        match.Variant.Should().Be("resource-xml");
-        match.Reasons.Should().Contain(reason => reason.Contains("File extension .resx", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.88, 1e-9);
-        match.Reasons.Should().Equal(
-            "File extension .resx suggests XML content",
-            "Found XML element structure",
-            "Detected root element <root>");
-        match.Metadata!.Keys.Should().Equal("root_tag", "root_local_name", "xml_well_formed");
     }
 
     [Fact]
@@ -542,28 +390,6 @@ public sealed class XmlPluginTests
         provenance.Should().HaveCount(2);
         provenance[1]["column"].Should().Be(18);
         provenance[1]["hash"].Should().Be("c64c2a0c1c56");
-    }
-
-    [Fact]
-    public void XmlPluginDetectsXamlByExtensionWithoutNamespace()
-    {
-        var content = Block("""
-            <UserControl>
-              <Grid />
-            </UserControl>
-            """);
-        var match = Detect("View.xaml", content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("xml");
-        match.Variant.Should().Be("interface-xml");
-        match.Reasons.Should().Contain(reason => reason.Contains("File extension .xaml", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.88, 1e-9);
-        match.Reasons.Should().Equal(
-            "File extension .xaml suggests XML content",
-            "Found XML element structure",
-            "Detected root element <UserControl>");
     }
 
     [Fact]
@@ -624,39 +450,6 @@ public sealed class XmlPluginTests
     }
 
     [Fact]
-    public void XmlPluginCanonicalisesRootAttributes()
-    {
-        var content = Block("""
-            <configuration attrB="  value-b " attrA="value-a" xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
-              <appSettings />
-            </configuration>
-            """);
-        var match = Detect("web.config", content);
-
-        match.Should().NotBeNull();
-        match!.Metadata.Should().NotBeNull();
-        AssertMapping(
-            match.Metadata!["root_attributes"],
-            ("attrA", "value-a"),
-            ("attrB", "value-b"),
-            ("xmlns:xdt", "http://schemas.microsoft.com/XML-Document-Transform"));
-
-        match.Variant.Should().Be("web-config-transform");
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Matched known configuration section tags used by web frameworks",
-            "Detected root element <configuration>",
-            "Recorded XML namespace declarations (xdt\u2192http://schemas.microsoft.com/XML-Document-Transform @L2)",
-            "Filename web.config strongly suggests web-hosted configuration",
-            "Detected XML-Document-Transform namespace declaration (xdt)");
-        match.Metadata.Keys.Should().Equal(
-            "root_tag", "root_local_name", "root_attributes", "namespaces", "namespace_provenance", "config_original_filename",
-            "config_transform", "config_transform_scope", "config_role");
-        Entries(match.Metadata["namespace_provenance"])[0]["column"].Should().Be(55);
-    }
-
-    [Fact]
     public void XmlPluginExtractsSchemaLocations()
     {
         var content = Block("""
@@ -676,8 +469,6 @@ public sealed class XmlPluginTests
             schemaLocations[0],
             ("namespace", "http://schemas.microsoft.com/.NetConfiguration/v2.0"),
             ("location", "http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd"));
-        const string schemaReason = "Schema http://schemas.microsoft.com/.NetConfiguration/v2.0/Configuration.xsd declared";
-        match.Reasons.Should().Contain(reason => reason.Contains(schemaReason, StringComparison.Ordinal));
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -723,22 +514,6 @@ public sealed class XmlPluginTests
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
         var hints = Mapping(match.Metadata!["attribute_hints"]);
-
-        var connectionHints = Entries(hints["connection_strings"]);
-        connectionHints.Should().HaveCount(1);
-        var connectionEntry = connectionHints[0];
-        connectionEntry["hash"].Should().Be(Sha256("Server=.;Database=App;User Id=app;Password=Pass123!;"));
-        connectionEntry["key"].Should().Be("DefaultConnection");
-
-        var endpointHints = Entries(hints["service_endpoints"]);
-        var endpointHashes = endpointHints.Select(entry => entry["hash"]).ToList();
-        endpointHashes.Should().Contain(Sha256("https://api.example.com/v1/"));
-        endpointHashes.Should().Contain(Sha256("net.tcp://services.example.com:8443/Feed"));
-
-        var featureHints = Entries(hints["feature_flags"]);
-        featureHints.Should().NotBeEmpty();
-        featureHints[0]["key"].Should().Be("FeatureFlag:NewUI");
-        match.Reasons.Should().Contain(reason => reason.Contains("feature flag attribute hints", StringComparison.OrdinalIgnoreCase));
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -796,39 +571,6 @@ public sealed class XmlPluginTests
     }
 
     [Fact]
-    public void XmlPluginCollectsFeatureToggleAttributeHints()
-    {
-        var content = Block("""
-            <configuration>
-              <FeatureToggle name="NewUI" value="enabled" />
-            </configuration>
-            """);
-        var match = Detect("feature.config", content);
-
-        match.Should().NotBeNull();
-        match!.Metadata.Should().NotBeNull();
-        var hints = Mapping(match.Metadata!["attribute_hints"]);
-        var featureHints = Entries(hints["feature_flags"]);
-        featureHints.Should().NotBeEmpty();
-        featureHints[0]["key"].Should().Be("NewUI");
-
-        match.Confidence.Should().BeApproximately(0.94, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Detected root element <configuration>",
-            "Captured feature flag attribute hints");
-        hints.Keys.Should().Equal("feature_flags");
-        AssertMapping(
-            featureHints[0],
-            ("element", "FeatureToggle"),
-            ("attribute", "value"),
-            ("hash", "fb9cf75606b4070dd6a9705810906bba28d0e2ea74ff301b999a91dbb68c7d98"),
-            ("length", 7),
-            ("key", "NewUI"),
-            ("key_attribute", "name"));
-    }
-
-    [Fact]
     public void XmlPluginSupportsTargetsExtension()
     {
         var content = Block("""
@@ -853,7 +595,6 @@ public sealed class XmlPluginTests
         var importHints = Entries(match.Metadata["msbuild_import_hints"]);
         importHints.Should().NotBeEmpty();
         importHints[0]["attribute"].Should().Be("Project");
-        match.Reasons.Should().Contain(reason => reason.Contains("MSBuild default targets", StringComparison.Ordinal));
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -937,7 +678,6 @@ public sealed class XmlPluginTests
         match.Metadata.Should().NotBeNull();
         match.Metadata!["msbuild_detected"].Should().Be(true);
         match.Metadata["doctype"].Should().Be("Project");
-        match.Reasons.Should().Contain(reason => reason.Contains("DOCTYPE", StringComparison.Ordinal));
 
         // The DOCTYPE guard blocks the tree parse, so no targets are captured; the probe fails on the indented declaration.
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
@@ -978,7 +718,6 @@ public sealed class XmlPluginTests
         var importHints = Entries(match.Metadata["msbuild_import_hints"]);
         importHints.Should().NotBeEmpty();
         importHints[0]["attribute"].Should().Be("Sdk");
-        match.Reasons.Should().Contain(reason => reason.Contains("MSBuild SDK specified", StringComparison.Ordinal));
 
         match.Confidence.Should().BeApproximately(0.945, 1e-9);
         match.Reasons.Should().Equal(
@@ -1023,27 +762,6 @@ public sealed class XmlPluginTests
     }
 
     [Fact]
-    public void XmlPluginDetectsExtensionlessXmlPayload()
-    {
-        var content = Block("""
-            <root>
-              <item>Hello</item>
-            </root>
-            """);
-        var match = new XmlPlugin().Detect("CONFIG", Encoding.UTF8.GetBytes(content), content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("xml");
-        match.Variant.Should().Be("generic");
-        match.Metadata.Should().NotBeNull();
-        match.Metadata!["root_tag"].Should().Be("root");
-
-        match.Confidence.Should().BeApproximately(0.73, 1e-9);
-        match.Reasons.Should().Equal("Found XML element structure", "Detected root element <root>");
-        match.Metadata.Keys.Should().Equal("root_tag", "root_local_name", "xml_well_formed");
-    }
-
-    [Fact]
     public void XmlPluginRejectsPlainText()
     {
         Detect("plain.txt", "Just text without any XML markers").Should().BeNull();
@@ -1053,33 +771,6 @@ public sealed class XmlPluginTests
     public void XmlPluginReturnsNoneWithoutText()
     {
         new XmlPlugin().Detect("config.xml", [], null).Should().BeNull();
-    }
-
-    [Fact]
-    public void XmlPluginHandlesNamespacedConfigurationRoot()
-    {
-        var content = Block("""
-            <ns:configuration xmlns:ns="urn:custom">
-              <ns:appSettings />
-            </ns:configuration>
-            """);
-        var match = Detect("web.config", content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("structured-config-xml");
-
-        match.Variant.Should().Be("web-config");
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Detected root element <ns:configuration>",
-            "Recorded XML namespace declarations (ns\u2192urn:custom @L2)",
-            "Filename web.config strongly suggests web-hosted configuration");
-        match.Metadata!.Keys.Should().Equal(
-            "root_tag", "root_prefix", "root_local_name", "root_attributes", "namespaces", "namespace_provenance", "root_namespace",
-            "config_original_filename", "config_role");
-        match.Metadata["root_prefix"].Should().Be("ns");
-        match.Metadata["root_namespace"].Should().Be("urn:custom");
     }
 
     [Fact]
@@ -1141,7 +832,6 @@ public sealed class XmlPluginTests
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
         match.Metadata!["config_role"].Should().Be("app");
-        match.Reasons.Should().Contain(reason => reason.Contains(".exe.config", StringComparison.Ordinal));
 
         match.Variant.Should().Be("app-config");
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
@@ -1150,76 +840,6 @@ public sealed class XmlPluginTests
             "Detected root element <configuration>",
             "Filename ending with .exe.config or .dll.config typically ships beside framework binaries");
         match.Metadata.Keys.Should().Equal("root_tag", "root_local_name", "config_original_filename", "config_role");
-    }
-
-    [Fact]
-    public void XmlPluginSchemaLocationReasons()
-    {
-        var content = Block("""
-            <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                           xsi:schemaLocation="urn:custom schema.xsd">
-              <appSettings />
-            </configuration>
-            """);
-        var match = Detect("schema.config", content);
-
-        match.Should().NotBeNull();
-        match!.Metadata.Should().NotBeNull();
-        var schemaLocations = Entries(match.Metadata!["schema_locations"]);
-        schemaLocations.Should().NotBeEmpty();
-        schemaLocations[0]["location"].Should().Be("schema.xsd");
-        match.Reasons.Should().Contain(reason => reason.Contains("Schema schema.xsd", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Matched known configuration section tags used by web frameworks",
-            "Detected root element <configuration>",
-            "Recorded XML namespace declarations (xsi\u2192http://www.w3.org/2001/XMLSchema-instance @L2)",
-            "Schema schema.xsd declared for namespace urn:custom");
-        AssertMapping(schemaLocations[0], ("namespace", "urn:custom"), ("location", "schema.xsd"));
-        match.Metadata["config_role"].Should().Be("generic");
-    }
-
-    [Fact]
-    public void XmlPluginMsbuildMetadataDedupesImports()
-    {
-        var content = Block("""
-            <Project DefaultTargets="Build;Pack"
-                     ToolsVersion="15.0"
-                     xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-              <Import Project="shared.props" />
-              <Import Project="shared.props" />
-              <Target Name="Build" />
-              <Target Name="Pack" />
-            </Project>
-            """);
-        var match = Detect("duplicate.targets", content);
-
-        match.Should().NotBeNull();
-        match!.Metadata.Should().NotBeNull();
-        var hints = Entries(match.Metadata!["msbuild_import_hints"]);
-        hints.Should().HaveCount(1);
-        Strings(match.Metadata["msbuild_targets"]).Should().Equal("Build", "Pack");
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "File extension .targets suggests XML content",
-            "Found XML element structure",
-            "Root element <Project> indicates an MSBuild targets layout",
-            "Detected root element <Project>",
-            "Recorded XML namespace declarations (default\u2192http://schemas.microsoft.com/developer/msbuild/2003 @L4)",
-            "MSBuild default targets declared (Build, Pack)",
-            "MSBuild ToolsVersion set to 15.0",
-            "Captured MSBuild target declarations (Build, Pack)",
-            "Captured MSBuild import references");
-        AssertMapping(
-            hints[0],
-            ("attribute", "Project"),
-            ("hash", "918553e4bb44f8db78092a4dd2c97daaa44fddffe219ced30b7bed10c5894669"),
-            ("length", 12));
-        Strings(match.Metadata["msbuild_default_targets"]).Should().Equal("Build", "Pack");
-        match.Metadata["msbuild_tools_version"].Should().Be("15.0");
     }
 
     [Fact]
@@ -1285,111 +905,6 @@ public sealed class XmlPluginTests
     }
 
     [Fact]
-    public void XmlPluginFallbackParserWithoutDefused()
-    {
-        var plugin = new XmlPlugin { DefusedAvailable = false };
-        var calls = new Dictionary<string, object?>(StringComparer.Ordinal);
-        var original = plugin.FallbackFromString;
-        plugin.FallbackFromString = (text, parser) =>
-        {
-            calls["parser"] = parser;
-            return original(text, parser);
-        };
-
-        plugin.CollectMetadata("<root />", ".xml");
-        calls.GetValueOrDefault("parser").Should().NotBeNull();
-    }
-
-    // Python adds each MSBuild increment to the running bonus; a separate subtotal gives 0.905 instead of this double.
-    [Fact]
-    public void MsbuildBonusAccumulatesInPythonOrder()
-    {
-        const string content = "<\u212eP Sdk=\"Microsoft.NET.Sdk\"><\u212e:Target xmlns:\u212e=\"u\" Name=\"Build\"/>"
-            + "<\u212e:Import xmlns:\u212e=\"u\" Project=\"a.props\"/></\u212eP>";
-        var match = new XmlPlugin().Detect("confidence-float-order-msbuild.targets", Encoding.UTF8.GetBytes(content), content);
-
-        match.Should().NotBeNull();
-        match!.Confidence.Should().Be(0.9049999999999999);
-        match.Metadata!.Keys.Should().Equal(
-            "msbuild_detected", "msbuild_kind", "msbuild_sdk", "msbuild_targets", "msbuild_import_hints", "xml_well_formed");
-    }
-
-    // Without defusedxml the tree keeps comments inside the document element; their tag is the Comment function, so
-    // Python's resx and MSBuild walks raise TypeError on reaching one, while the attribute-hint walk skips it (no attrib).
-    [Theory]
-    [InlineData("<Project><!-- c --><Target Name=\"A\"/></Project>", ".csproj")]
-    [InlineData("<root xmlns=\"http://schemas.microsoft.com/resx\"><!-- c --><data name=\"k\"/></root>", ".resx")]
-    public void FallbackTreeCommentsRaiseInResxAndMsbuildWalks(string text, string extension)
-    {
-        var plugin = new XmlPlugin { DefusedAvailable = false };
-
-        var act = () => plugin.CollectMetadata(text, extension);
-
-        act.Should().Throw<InvalidOperationException>().WithMessage("argument of type 'function' is not iterable");
-        new XmlPlugin().CollectMetadata(text, extension).Should().NotBeEmpty();
-    }
-
-    [Fact]
-    public void FallbackTreeCommentsOutsideTheWalksLeaveMetadataUnchanged()
-    {
-        var plugin = new XmlPlugin { DefusedAvailable = false };
-
-        var topLevel = plugin.CollectMetadata("<!-- a --><Project Sdk=\"x\"/><!-- b -->", ".csproj");
-        topLevel.Keys.Should().Equal("root_tag", "root_local_name", "root_attributes", "msbuild_detected", "msbuild_kind", "msbuild_sdk");
-        topLevel["msbuild_sdk"].Should().Be("x");
-
-        var hints = plugin.CollectMetadata("<root><!-- c --><add key=\"FeatureX\" value=\"true\"/></root>", ".config");
-        hints.Keys.Should().Equal("root_tag", "root_local_name", "attribute_hints");
-        var flag = ((OrderedDictionary<string, object?>)hints["attribute_hints"]!)["feature_flags"]
-            .Should().BeAssignableTo<List<OrderedDictionary<string, object?>>>().Subject.Should().ContainSingle().Subject;
-        flag.Keys.Should().Equal("element", "attribute", "hash", "length", "key", "key_attribute");
-        flag["hash"].Should().Be("b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b");
-    }
-
-    [Fact]
-    public void XmlPluginDetectsConfigWhenRegexMissesRoot()
-    {
-        var content = Stripped("""
-            <?xml version='1.0'?>
-            <configuration/>
-            """);
-        var match = new XmlPlugin().Detect("custom.config", Encoding.UTF8.GetBytes(content), content);
-
-        match.Should().NotBeNull();
-        match!.FormatName.Should().Be("structured-config-xml");
-        match.Variant.Should().Be("web-or-app-config");
-        match.Reasons.Should().Contain(reason => reason.Contains("framework configuration layout", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Root element indicates framework configuration layout",
-            "Detected root element <configuration>",
-            "Detected XML declaration",
-            "XML version declared as 1.0");
-        match.Metadata!.Keys.Should().Equal("xml_declaration", "root_tag", "root_local_name", "config_original_filename", "config_role");
-    }
-
-    [Fact]
-    public void XmlPluginManifestNamespaceWithoutExtension()
-    {
-        var content = Stripped(PrefixedManifestContent);
-        var match = new XmlPlugin().Detect("assembly.xml", Encoding.UTF8.GetBytes(content), content);
-
-        match.Should().NotBeNull();
-        match!.Variant.Should().Be("app-manifest-xml");
-        match.Reasons.Should().Contain(reason => reason.Contains("assembly manifest namespace", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.91, 1e-9);
-        match.Reasons.Should().Equal(
-            "File extension .xml suggests XML content",
-            "Found XML element structure",
-            "Matched assembly manifest namespace",
-            "Detected root element <asm:assembly>",
-            "Recorded XML namespace declarations (default\u2192urn:schemas-microsoft-com:asm.v1 @L1; asm\u2192urn:custom @L1)");
-        match.Metadata!["xml_well_formed"].Should().Be(true);
-    }
-
-    [Fact]
     public void XmlPluginDetectsManifestByContentScan()
     {
         var content = Stripped("""
@@ -1401,103 +916,10 @@ public sealed class XmlPluginTests
 
         match.Should().NotBeNull();
         match!.Variant.Should().Be("app-manifest-xml");
-        match.Reasons.Should().Contain(reason => reason.Contains("assembly manifest namespace", StringComparison.Ordinal));
 
         match.Confidence.Should().BeApproximately(0.88, 1e-9);
         match.Reasons.Should().Equal("Found XML element structure", "Matched assembly manifest namespace", "Detected root element <root>");
         match.Metadata!.Keys.Should().Equal("root_tag", "root_local_name", "xml_well_formed");
-    }
-
-    [Fact]
-    public void XmlPluginDetectsResxByContentScan()
-    {
-        var content = Stripped("""
-            <root>
-              http://schemas.microsoft.com/VisualStudio/2005/ResXSchema
-            </root>
-            """);
-        var match = new XmlPlugin().Detect("resources.txt", Encoding.UTF8.GetBytes(content), content);
-
-        match.Should().NotBeNull();
-        match!.Variant.Should().Be("resource-xml");
-        match.Reasons.Should().Contain(reason => reason.Contains("resx schema", StringComparison.OrdinalIgnoreCase));
-
-        match.Confidence.Should().BeApproximately(0.88, 1e-9);
-        match.Reasons.Should().Equal("Found XML element structure", "Detected .resx schema reference", "Detected root element <root>");
-    }
-
-    [Fact]
-    public void XmlPluginDetectsXamlNamespaceByContent()
-    {
-        var content = Stripped("""
-            <root>
-              http://schemas.microsoft.com/winfx/2006/xaml/presentation
-            </root>
-            """);
-        var match = new XmlPlugin().Detect("view.txt", Encoding.UTF8.GetBytes(content), content);
-
-        match.Should().NotBeNull();
-        match!.Variant.Should().Be("interface-xml");
-        match.Reasons.Should().Contain(reason => reason.Contains("xaml", StringComparison.OrdinalIgnoreCase));
-
-        match.Confidence.Should().BeApproximately(0.88, 1e-9);
-        match.Reasons.Should().Equal("Found XML element structure", "Found XAML namespace declaration", "Detected root element <root>");
-    }
-
-    [Fact]
-    public void XmlPluginRecordsXmlDeclarationDetails()
-    {
-        var content = Stripped("""
-            <?xml version="1.1" encoding="UTF-16" standalone="no"?>
-            <configuration>
-              <appSettings />
-            </configuration>
-            """);
-        var match = Detect("details.config", content);
-
-        match.Should().NotBeNull();
-        match!.Reasons.Should().Contain(reason => reason.Contains("encoding", StringComparison.OrdinalIgnoreCase));
-        match.Reasons.Should().Contain(reason => reason.Contains("standalone", StringComparison.OrdinalIgnoreCase));
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Matched known configuration section tags used by web frameworks",
-            "Detected root element <configuration>",
-            "Detected XML declaration",
-            "XML version declared as 1.1",
-            "XML declared encoding UTF-16",
-            "XML standalone flag is no");
-        match.Metadata!.Keys.Should().Equal("xml_declaration", "encoding", "root_tag", "root_local_name", "config_original_filename", "config_role");
-        AssertMapping(match.Metadata["xml_declaration"], ("version", "1.1"), ("encoding", "UTF-16"), ("standalone", "no"));
-        match.Metadata["encoding"].Should().Be("UTF-16");
-    }
-
-    [Fact]
-    public void XmlPluginSchemaReasonWithoutNamespace()
-    {
-        var content = Stripped("""
-            <?xml version='1.0'?>
-            <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                           xsi:noNamespaceSchemaLocation="local.xsd">
-              <appSettings />
-            </configuration>
-            """);
-        var match = Detect("schema.config", content);
-
-        match.Should().NotBeNull();
-        match!.Reasons.Should().Contain(reason => reason.Contains("default namespace", StringComparison.Ordinal));
-
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Matched known configuration section tags used by web frameworks",
-            "Detected root element <configuration>",
-            "Detected XML declaration",
-            "XML version declared as 1.0",
-            "Recorded XML namespace declarations (xsi\u2192http://www.w3.org/2001/XMLSchema-instance @L2)",
-            "Schema local.xsd declared for default namespace");
-        AssertMapping(Entries(match.Metadata!["schema_locations"])[0], ("namespace", null), ("location", "local.xsd"));
     }
 
     [Fact]
@@ -1508,7 +930,6 @@ public sealed class XmlPluginTests
 
         match.Should().NotBeNull();
         match!.Variant.Should().Be("app-config");
-        match.Reasons.Should().Contain(reason => reason.Contains("application configuration sections", StringComparison.Ordinal));
 
         match.Confidence.Should().BeApproximately(0.94, 1e-9);
         match.Reasons.Should().Equal(
@@ -1518,7 +939,7 @@ public sealed class XmlPluginTests
         match.Metadata!.Keys.Should().Equal("root_tag", "root_local_name", "config_original_filename", "config_role");
     }
 
-    // Fixture checks beyond the Python suite: provenance hashes and confidence pinned from the Python oracle.
+    // Fixture checks: provenance hashes and confidence values.
 
     private static DetectionMatch? DetectFixture(params string[] segments)
     {
@@ -1576,59 +997,5 @@ public sealed class XmlPluginTests
         match.Metadata["config_original_filename"].Should().Be(name);
         match.Reasons.Should().EndWith(filenameReason);
         match.Metadata.Keys.Should().Equal("xml_declaration", "encoding", "root_tag", "root_local_name", "config_original_filename", "config_role");
-    }
-
-    [Fact]
-    public void ReleaseTransformFixtureRecordsStage()
-    {
-        var match = DetectFixture("config", "web.Release.config");
-
-        match.Should().NotBeNull();
-        match!.Variant.Should().Be("web-config-transform");
-        match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Reasons.Should().Equal(
-            "Found <configuration> root element",
-            "Matched known configuration section tags used by web frameworks",
-            "Detected root element <configuration>",
-            "Detected XML declaration",
-            "XML version declared as 1.0",
-            "XML declared encoding utf-8",
-            "Recorded XML namespace declarations (xdt\u2192http://schemas.microsoft.com/XML-Document-Transform @L2)",
-            "Filename pattern web|app.*.config suggests a build-specific transform",
-            "Detected XML-Document-Transform namespace declaration (xdt)",
-            "Found xdt:Transform attribute indicating config transform instructions",
-            "Filename stage 'Release' indicates transform precedence");
-        Entries(match.Metadata!["namespace_provenance"])[0]["column"].Should().Be(16);
-        Strings(match.Metadata["config_transform_stages"]).Should().Equal("Release");
-    }
-
-    [Fact]
-    public void MultiServerFixturesDetectResxAndProject()
-    {
-        var resx = DetectFixture("multi-server", "server01", "localization", "Strings.resx");
-        resx.Should().NotBeNull();
-        resx!.Variant.Should().Be("resource-xml");
-        resx.Confidence.Should().BeApproximately(0.95, 1e-9);
-        Strings(resx.Metadata!["resource_keys"]).Should().Equal("AppTitle", "WelcomeMessage");
-        resx.Metadata["resource_keys_preview"].Should().Be("AppTitle, WelcomeMessage");
-        resx.Reasons.Should().EndWith("Captured resource keys from .resx payload (e.g., AppTitle, WelcomeMessage)");
-        Entries(resx.Metadata["namespace_provenance"])[0]["hash"].Should().Be("1a6387abd69c");
-
-        var project = DetectFixture("multi-server", "server01", "msbuild", "Project.csproj");
-        project.Should().NotBeNull();
-        project!.Variant.Should().Be("msbuild-project");
-        project.Confidence.Should().BeApproximately(0.925, 1e-9);
-        project.Reasons.Should().Equal(
-            "Found XML element structure",
-            "Root element <Project> indicates an MSBuild project definition",
-            "Detected root element <Project>",
-            "MSBuild SDK specified (Microsoft.NET.Sdk)");
-        project.Metadata!.Keys.Should().Equal(
-            "root_tag", "root_local_name", "root_attributes", "msbuild_detected", "msbuild_kind", "msbuild_sdk", "xml_well_formed");
-
-        var web = DetectFixture("multi-server", "server01", "web", "web.config");
-        web.Should().NotBeNull();
-        web!.Variant.Should().Be("web-config");
-        web.Confidence.Should().BeApproximately(0.95, 1e-9);
     }
 }

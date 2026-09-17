@@ -125,7 +125,7 @@ public sealed class RealEntryPointIntegrationTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "pyproject.toml")))
+            if (File.Exists(Path.Combine(directory.FullName, "DriftBuster.sln")))
             {
                 return directory.FullName;
             }

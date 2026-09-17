@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace DriftBuster.Cli.Tests;
 
-/// <summary><c>driftbuster capture run|compare|export-sql</c> (<c>scripts/capture.py</c>): the files, text and exit codes of each subcommand.</summary>
+/// <summary><c>driftbuster capture run|compare|export-sql</c>: the files, text and exit codes of each subcommand.</summary>
 public sealed class CaptureCommandTests : IDisposable
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
@@ -76,7 +76,7 @@ public sealed class CaptureCommandTests : IDisposable
         absent.Err.Should().Be($"error: current snapshot not found: {Path.Combine(captures, "none.json")}{Environment.NewLine}");
     }
 
-    /// <summary><c>capture.py export-sql</c> writes <c>sql-manifest.json</c> without reporting it, and leaves a non-positive limit to the exporter.</summary>
+    /// <summary><c>capture export-sql</c> writes <c>sql-manifest.json</c> without reporting it, and leaves a non-positive limit to the exporter.</summary>
     [Fact]
     public void ExportSqlWritesTheManifestSilently()
     {

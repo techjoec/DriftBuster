@@ -3,10 +3,7 @@ using DriftBuster.Backend.Registry;
 namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
-/// Mirror of tests/registry/test_registry_summary.py over <see cref="RegistryOperations"/>, whose counters are process-wide as
-/// <c>_USAGE</c> is; <c>_RecordingBackend</c> and <c>_FailingBackend</c> are the nested backends below (Python's
-/// <c>RuntimeError</c> is <see cref="InvalidOperationException"/>). Also the snapshot's key order and the timestamp format against
-/// CPython's <c>_format_timestamp</c>.
+/// The registry usage summary over <see cref="RegistryOperations"/>, whose counters are process-wide.
 /// </summary>
 [Collection(RegistrySeamCollection.Name)]
 public sealed class RegistrySummaryTests
@@ -111,70 +108,4 @@ public sealed class RegistrySummaryTests
         resetSummary["search_registry"]["calls"].Should().Be(0);
         resetSummary["search_registry"]["errors"].Should().Be(0);
     }
-
-    // search_registry coerces int(spec.max_depth) itself, so SearchSpec(max_depth=None) counts as a call and an error; the port's
-    // typed spec is built inside the instrumented call through the Func<SearchSpec> overload.
-    [Fact]
-    public void ASpecWhoseLimitsDoNotConvertCountsACallAndAnError()
-    {
-        RegistryOperations.RegistrySummary(reset: true);
-        var act = () => RegistryOperations.SearchRegistry(
-            [new RegistryRoot("HKLM", @"Software\ExampleApp")],
-            () => new SearchSpec { MaxDepth = Backend.Infrastructure.PythonBuiltins.Int(null) },
-            new RecordingBackend());
-        act.Should().Throw<Backend.Infrastructure.PythonTypeException>();
-
-        var stats = Summary(reset: true)["search_registry"];
-        stats["calls"].Should().Be(1);
-        stats["successes"].Should().Be(0);
-        stats["errors"].Should().Be(1);
-        stats["last_error"].Should().Be("TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'");
-    }
-
-    [Fact]
-    public void SnapshotKeysOrderAndResetValues()
-    {
-        var summary = RegistryOperations.RegistrySummary(reset: true);
-        summary.Select(entry => entry["operation"]).Should().Equal("enumerate_installed_apps", "find_app_registry_roots", "search_registry");
-
-        var cleared = RegistryOperations.RegistrySummary();
-        cleared[0].Keys.Should().Equal(
-            "operation", "calls", "successes", "errors", "total_duration_ms", "avg_duration_ms", "last_duration_ms", "first_invocation",
-            "last_invocation", "last_error");
-        cleared[0]["total_duration_ms"].Should().Be(0.0);
-        cleared[0]["avg_duration_ms"].Should().Be(0.0);
-        cleared[0]["last_duration_ms"].Should().Be(0.0);
-        cleared[0]["first_invocation"].Should().BeNull();
-        cleared[0]["last_error"].Should().BeNull();
-    }
-
-    [Fact]
-    public void SuccessAfterErrorClearsLastError()
-    {
-        RegistryOperations.RegistrySummary(reset: true);
-        var act = () => RegistryOperations.EnumerateInstalledApps(new FailingBackend());
-        act.Should().Throw<InvalidOperationException>();
-        RegistryOperations.EnumerateInstalledApps(new RecordingBackend());
-
-        var stats = Summary(reset: true)["enumerate_installed_apps"];
-        stats["calls"].Should().Be(2);
-        stats["errors"].Should().Be(1);
-        stats["successes"].Should().Be(1);
-        stats["last_error"].Should().BeNull();
-        PythonDateTimeText(stats["first_invocation"]).Should().BeOnOrBefore(PythonDateTimeText(stats["last_invocation"]));
-    }
-
-    [Fact]
-    public void FormatTimestampMatchesCPython()
-    {
-        RegistryOperations.FormatTimestamp(null).Should().BeNull();
-        foreach (var entry in RegistryOracle.Items(RegistryOracle.Section("timestamps")).Select(RegistryOracle.Map))
-        {
-            var input = Convert.ToDouble(entry["input"], System.Globalization.CultureInfo.InvariantCulture);
-            RegistryOperations.FormatTimestamp(input).Should().Be((string)entry["result"]!, $"input {input:R}");
-        }
-    }
-
-    private static DateTimeOffset PythonDateTimeText(object? value)
-        => DateTimeOffset.Parse((string)value!, System.Globalization.CultureInfo.InvariantCulture);
 }

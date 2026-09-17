@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace DriftBuster.Cli.Tests;
 
-/// <summary>Mirror of tests/scheduler/test_integration.py: <c>run_profiles_cli.main(["--base-dir", tmp, "schedule", ...])</c> as <c>driftbuster schedule</c>.</summary>
+/// <summary><c>driftbuster --base-dir TMP schedule ...</c> end to end.</summary>
 public sealed class ScheduleIntegrationTests : IDisposable
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);

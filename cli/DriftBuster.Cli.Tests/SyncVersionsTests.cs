@@ -5,7 +5,7 @@ using DriftBuster.Cli.Commands;
 
 namespace DriftBuster.Cli.Tests;
 
-/// <summary>Mirror of tests/scripts/test_sync_versions.py through <see cref="VersionSync"/> (<c>driftbuster version</c>).</summary>
+/// <summary><see cref="VersionSync"/> (<c>driftbuster version</c>): file replacement and the update list.</summary>
 public sealed class SyncVersionsTests : IDisposable
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
@@ -44,16 +44,18 @@ public sealed class SyncVersionsTests : IDisposable
             ["catalog"] = "2.0.0",
             ["gui"] = "3.0.0",
             ["powershell"] = "4.0.0",
-            ["formats"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["ini"] = "5.0.0", ["json"] = "6.0.0" },
         };
 
         var recorded = VersionSync.Updates("/tmp/driftbuster", versions).ToList();
 
         recorded.Should().NotBeEmpty();
-        recorded.Should().Contain(update => Path.GetFileName(update.Path) == "pyproject.toml");
+        recorded.Should().Contain(update => Path.GetFileName(update.Path) == "Directory.Build.props" && update.Replacement.Contains("1.0.0", StringComparison.Ordinal));
         recorded.Should().Contain(update => update.Pattern.Contains("GuiVersion", StringComparison.Ordinal));
         recorded.Should().Contain(update => Path.GetFileName(update.Path) == "DetectionCatalogData.cs" && string.Equals(update.Replacement, "Version: \"2.0.0\"", StringComparison.Ordinal));
-        recorded.Should().Contain(update => Path.GetFileName(update.Path) == "JsonPlugin.cs" && string.Equals(update.Replacement, "public string Version => \"6.0.0\"", StringComparison.Ordinal));
+        recorded.Select(update => Path.GetFileName(update.Path)).Distinct(StringComparer.Ordinal).Should().BeEquivalentTo(
+            "Directory.Build.props", "GuiVersion.props", "DriftBuster.psd1", "DetectionCatalogData.cs", "CatalogTests.cs", "DetectorTests.cs",
+            "detection-types.md", "xml-config-diffs.md", "INDIVIDUAL.md", "ENTITY.md");
         recorded.Should().Contain(update => Path.GetFileName(update.Path) == "DriftBuster.psd1" && update.Replacement.Contains("4.0.0", StringComparison.Ordinal));
+        recorded.Should().Contain(update => update.Pattern.Contains("BackendVersion", StringComparison.Ordinal) && update.Replacement.Contains("1.0.0", StringComparison.Ordinal));
     }
 }

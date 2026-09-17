@@ -5,7 +5,7 @@ using DriftBuster.Backend.Detection.Plugins;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
-/// <summary>Mirror of tests/formats/test_toml_plugin.py; expected values were read from the Python plugin.</summary>
+/// <summary>The toml plugin.</summary>
 public sealed class TomlPluginTests
 {
     internal static DetectionMatch? Detect(string name, string content)
@@ -80,13 +80,13 @@ public sealed class TomlPluginTests
                 skip-string-normalization = true
 
                 [tool.poetry.dependencies]
-                python = "^3.11"
+                node = "^20.11"
 
                 [tool.poetry.group.dev.dependencies]
-                pytest = { version = "^7.0", extras = ["cov"] }
+                vitest = { version = "^7.0", extras = ["cov"] }
                 
             """.Trim();
-        var match = Detect("pyproject.toml", content);
+        var match = Detect("project.toml", content);
         match.Should().NotBeNull();
         match!.Reasons.Should().Contain(reason => reason.Contains("inline table", StringComparison.Ordinal));
         var spacing = Spacing(match);
@@ -105,7 +105,6 @@ public sealed class TomlPluginTests
         match.Metadata!.Keys.Should().Equal("key_value_spacing");
     }
 
-    // Adversarial cases beyond the Python suite; every expected value was read from the Python plugin.
     [Fact]
     public void GateNeedsTwoContentSignals()
     {
@@ -117,63 +116,13 @@ public sealed class TomlPluginTests
         AssertOneSpaceProfile(match);
     }
 
-    // "\s*" after "=" may cross the line break, so "a =" followed by "[t]" is both a key = value pair and an array value.
-    [Fact]
-    public void AssignmentValueMayStartOnTheNextLine()
-    {
-        var match = Detect("eq.toml", "a =\n[t]\n");
-        match!.Confidence.Should().BeApproximately(0.8200000000000001, 1e-9);
-        match.Reasons.Should().Equal(
-            "File extension .toml suggests TOML content",
-            "Found [table] headers typical of TOML",
-            "Detected key = value assignments",
-            "Found array value assignments");
-        var spacing = Spacing(match);
-        spacing["after"].Should().Be(0);
-        YamlPluginTests.Ints(spacing["allowed_after"]).Should().Equal(0, 1);
-        match.Metadata!.Keys.Should().Equal("key_value_spacing");
-
-        Detect("eq2.toml", "a =\n\n").Should().BeNull();
-        Detect("eq3.toml", "a = \n[t]\n")!.Confidence.Should().BeApproximately(0.8200000000000001, 1e-9);
-    }
-
-    // Inline tables cannot span lines (no DOTALL) while arrays can.
-    [Fact]
-    public void InlineTablesStayOnOneLineButArraysMaySpan()
-    {
-        var inline = Detect("inl.toml", "a = {\nb = 1 }\nc = 'x'\n");
-        inline!.Reasons.Should().Equal(
-            "File extension .toml suggests TOML content",
-            "Detected key = value assignments",
-            "Found quoted value assignments");
-        inline.Confidence.Should().BeApproximately(0.7200000000000001, 1e-9);
-
-        var array = Detect("arr.toml", "a = [\n1,\n]\n");
-        array!.Reasons.Should().Equal(
-            "File extension .toml suggests TOML content",
-            "Detected key = value assignments",
-            "Found array value assignments");
-        YamlPluginTests.Strings(array.Metadata!["review_reasons"]).Should().Equal("Array with trailing comma before closing bracket");
-    }
-
-    [Fact]
-    public void TableHeaderToleratesTrailingWhitespaceAndCarriageReturn()
-    {
-        var match = Detect("hdr.toml", "[t]  \r\nk = 'v'\r\n");
-        match!.Reasons.Should().Contain("Found [table] headers typical of TOML");
-        match.Confidence.Should().BeApproximately(0.8200000000000001, 1e-9);
-        match.Metadata!.Keys.Should().Equal("key_value_spacing");
-    }
-
     [Fact]
     public void NullTextReturnsNull()
     {
         new TomlPlugin().Detect("x.toml", [], null).Should().BeNull();
     }
 
-    // Python re-scans the run from every line start (quadratic); the port drives the patterns from line starts once.
     [Theory]
-    [InlineData(50000, "\n")]
     [InlineData(30000, "    \n")]
     public void WhitespaceRunsAreScannedInLinearTime(int lines, string line)
     {

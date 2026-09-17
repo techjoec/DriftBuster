@@ -4,7 +4,7 @@ using DriftBuster.Backend.Registry;
 namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
-/// The <c>FakeBackend</c> of tests/registry/test_registry_scan.py: keys by <c>(hive, path)</c>, whatever the view; adding a key lists it
+/// An in-memory registry backend: keys by <c>(hive, path)</c>, whatever the view; adding a key lists it
 /// under its parent; subkeys come back sorted, values in insertion order (a later value of the same name keeps the first slot).
 /// </summary>
 internal sealed class FakeRegistryBackend : IRegistryBackend

@@ -3,8 +3,8 @@ using DriftBuster.Backend.Detection.Plugins;
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
 
 /// <summary>
-/// Mirror of tests/formats/test_xml_plugin_defused.py. Python swaps <c>DEFUSED_ET</c> for a fake whose <c>fromstring</c>
-/// delegates to the plain parser; the mirror swaps the <see cref="XmlPlugin.DefusedFromString"/> seam the same way.
+/// The xml plugin's defused parser path, with the <see cref="XmlPlugin.DefusedFromString"/> seam swapped for one that delegates to the
+/// plain parser.
 /// </summary>
 public sealed class XmlPluginDefusedTests
 {

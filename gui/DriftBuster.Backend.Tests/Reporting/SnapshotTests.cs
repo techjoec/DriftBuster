@@ -4,7 +4,7 @@ using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Backend.Tests.Reporting;
 
-/// <summary>Mirror of tests/reporting/test_snapshot.py.</summary>
+/// <summary><see cref="SnapshotManifest"/>.</summary>
 public sealed class SnapshotTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-snapshot-");

@@ -6,8 +6,8 @@ using DriftBuster.Cli.Commands;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// Mirror of tests/scripts/test_stage_portable_dev.py through <see cref="StagePortable"/> (<c>driftbuster release stage-portable</c>). The
-/// bundle no longer carries Python sources, so <c>copy_python_sources</c> has no counterpart and the bundle test asserts no <c>src</c>.
+/// <see cref="StagePortable"/> (<c>driftbuster release stage-portable</c>). The bundle holds only the published GUI, so the bundle test
+/// asserts no <c>src</c>.
 /// </summary>
 public sealed class StagePortableDevTests : IDisposable
 {
@@ -50,7 +50,7 @@ public sealed class StagePortableDevTests : IDisposable
         var publishDir = Dir("gui", "DriftBuster.Gui", "bin", "Release", "net10.0", "win-x64", "publish");
         File.WriteAllText(Path.Combine(publishDir, "DriftBuster.Gui.exe"), "binary");
         File.WriteAllText(Path.Combine(root, "versions.json"), "{\"gui\": \"0.1.0\"}");
-        var stageDir = Dir("lap_temp", "DriftBuster-Portabletest");
+        var stageDir = Dir("staged");
         File.WriteAllText(Path.Combine(stageDir, "stale.txt"), "stale");
         var options = new StagePortableOptions { StageDir = stageDir, Rid = "win-x64", Configuration = "Release", Timestamp = "20260305-000000Z" };
 

@@ -3,7 +3,7 @@ using DriftBuster.Backend.Detection.Catalog;
 
 namespace DriftBuster.Backend.Tests.Detection;
 
-/// <summary>Mirror of tests/catalog/test_metadata.py, followed by the catalog additions the port makes (plan fix c).</summary>
+/// <summary>Detection catalog metadata, including the plist, markdown-config, logstash-pipeline and hcl entries.</summary>
 public sealed class CatalogTests
 {
     private static readonly DetectionCatalog Catalog = DetectionCatalog.Default;
@@ -64,7 +64,7 @@ public sealed class CatalogTests
             entry.ContainsKey("documentation") && Equals(entry["documentation"], "docs/detection-types.md#ini-dotenv"));
     }
 
-    // Plan fix (c): plugin outputs the Python catalog rejected under strict validation now validate.
+    // Plugin outputs validate under strict validation.
 
     [Theory]
     [InlineData("binary", "plist", "xml-or-binary", "plist", false)]

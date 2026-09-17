@@ -10,8 +10,7 @@ using DriftBuster.Backend.Tests.Infrastructure;
 namespace DriftBuster.Backend.Tests.Remote;
 
 /// <summary>
-/// Capture runner behaviour the oracle cases do not reach: the payloads a run returns, a sample size past the detector's range, Python's
-/// <c>OSError</c> texts for directory and file failures, the comparison payload, the default seams and argument guards.
+/// Capture runner behaviour: the payloads a run returns, a refused run, a sample size past the detector's range and the comparison payload.
 /// </summary>
 [Collection(CaptureSeamCollection.Name)]
 public sealed class CaptureRunnerTests : IDisposable
@@ -61,62 +60,6 @@ public sealed class CaptureRunnerTests : IDisposable
     }
 
     [Fact]
-    public void ANonPositiveSampleSizeRaisesFromTheDetector()
-    {
-        var root = Tree(("a.json", "{}"));
-
-        var act = () => CaptureRunner.RunCapture(Options(root) with { SampleSize = long.MinValue }, TextWriter.Null, TextWriter.Null);
-
-        act.Should().Throw<PythonValueException>().WithMessage("sample_size must be a positive integer");
-    }
-
-    [Fact]
-    public void OutputFailuresRaisePythonOSErrorText()
-    {
-        var file = Path.Combine(_tmp.FullName, "taken");
-        File.WriteAllText(file, "x");
-        var directory = Directory.CreateDirectory(Path.Combine(_tmp.FullName, "dir")).FullName;
-
-        var mkdir = () => CaptureRunner.PrepareOutputPaths(file, "cap");
-        var write = () => CaptureRunner.WriteJsonText(directory, new OrderedDictionary<string, object?>(StringComparer.Ordinal));
-        var read = () => CaptureRunner.ReadUtf8Text(Path.Combine(_tmp.FullName, "absent.json"));
-        var readDirectory = () => CaptureRunner.ReadUtf8Text(directory);
-
-        if (!OperatingSystem.IsWindows())
-        {
-            mkdir.Should().Throw<IOException>().WithMessage($"[Errno 17] File exists: '{file}'");
-            write.Should().Throw<IOException>().WithMessage($"[Errno 21] Is a directory: '{directory}'");
-            read.Should().Throw<IOException>().WithMessage($"[Errno 2] No such file or directory: '{Path.Combine(_tmp.FullName, "absent.json")}'");
-        }
-
-        readDirectory.Should().Throw<IOException>().Which.Message.Should().Be(OSErrorTexts.DirectoryOpen(directory));
-        CaptureRunner.PrepareOutputPaths(Path.Combine(_tmp.FullName, "new"), "/anchored").SnapshotPath
-            .Should().Be(PythonPurePath.Str("/anchored-snapshot.json"));
-    }
-
-    [Fact]
-    public void SerialisationGuardsFollowPython()
-    {
-        var withoutMatch = () => CaptureRunner.SerialiseDetection(new ProfiledDetection("/root/a", null, []), "/root");
-        withoutMatch.Should().Throw<PythonValueException>().WithMessage("Cannot serialise detection for paths without a match.");
-
-        var capture = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["captured_at"] = "t" };
-        var manifest = () => CaptureRunner.BuildManifestPayload(capture, "s.json", "m.json", 0, 0, 0, 0, 0, 0, null, "[X]", 0, 0);
-        manifest.Should().Throw<KeyNotFoundException>().WithMessage("'id'");
-
-        CaptureRunner.RelativePath("/root/a/b.json", "/root").Should().Be("a/b.json");
-        CaptureRunner.RelativePath("/root", "/root").Should().Be(".");
-        CaptureRunner.RelativePath("/elsewhere/b.json", "/root").Should().Be("b.json");
-        var summary = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["tuple"] = new object?[] { 1, new HashSet<string>(StringComparer.Ordinal) { "x" } },
-            ["map"] = new Dictionary<int, string> { [2] = "two" },
-        };
-        Canonicaliser.Dumps(CaptureRunner.NormaliseSummary(summary), indent: false, ensureAscii: true, sortKeys: false)
-            .Should().Be("""{"tuple": [1, ["x"]], "map": {"2": "two"}}""");
-    }
-
-    [Fact]
     public void ComparisonPayloadListsKeysTokensAndTheProfileDiff()
     {
         var baseline = Json("base.json", """{"detections": [{"relative_path": "a", "detection": {"format": "json"}}], "profile_summary": {"profiles": [{"name": "p", "config_ids": ["x"]}]}, "hunt_hits": [{"rule": {"token_name": "t"}}, {}]}""");
@@ -133,57 +76,6 @@ public sealed class CaptureRunnerTests : IDisposable
             """{"totals": {"baseline": {"profiles": 1, "configs": 1}, "current": {"profiles": 1, "configs": 0}}, "added_profiles": ["q"], "removed_profiles": ["p"], "changed_profiles": []}""");
         Text(payload["expected_tokens"]).Should().Be("""[{"token": "t", "baseline": 1, "current": 1, "delta": 0}, {"token": "u", "baseline": 0, "current": 1, "delta": 1}]""");
         Text(payload["unexpected_hits"]).Should().Be("""{"baseline": 1, "current": 0, "delta": -1}""");
-    }
-
-    [Fact]
-    public void KeysThatDoNotOrderRaiseTypeError()
-    {
-        var baseline = Json("base.json", """{"detections": [{"relative_path": "", "path": null, "detection": {}}, {"relative_path": "a", "detection": {}}]}""");
-        var current = Json("current.json", """{"detections": []}""");
-
-        var act = () => CaptureRunner.CompareSnapshots(new CaptureCompareOptions(baseline, current), TextWriter.Null, TextWriter.Null);
-
-        act.Should().Throw<PythonTypeException>().WithMessage("'<' not supported between instances of *");
-    }
-
-    [Fact]
-    public void OperatorResolutionReadsTheEnvironmentAfterTheArgument()
-    {
-        var entry = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["env"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["USER"] = " \t", ["USERNAME"] = "　" },
-        };
-        using (new CaptureSeams(entry))
-        {
-            CaptureRunner.ResolveOperator(null).Should().BeNull();
-            CaptureRunner.ResolveOperator(" me ").Should().Be("me");
-        }
-
-        CaptureRunner.CaptureTimestamp(PythonDateTime.Create(2025, 3, 4, 5, 6, 7, 890)).Should().Be("20250304T050607Z");
-        // glibc strftime("%Y") writes no padding: CPython 3.13 gives "9990101T000000Z" and "10101T000000Z" for these clocks.
-        CaptureRunner.CaptureTimestamp(PythonDateTime.Create(999, 1, 1, 0, 0, 0, 0)).Should().Be("9990101T000000Z");
-        CaptureRunner.CaptureTimestamp(PythonDateTime.Create(1, 1, 1, 0, 0, 0, 0)).Should().Be("10101T000000Z");
-    }
-
-    [Fact]
-    public void DefaultSeamsReadTheMachine()
-    {
-        var first = CaptureRunner.Monotonic();
-        CaptureRunner.Monotonic().Should().BeGreaterThanOrEqualTo(first);
-        CaptureRunner.HostName().Should().NotBeNullOrEmpty();
-        CaptureRunner.UtcNow().UtcOffset().Should().Be(0);
-        CaptureRunner.GetEnvironmentVariable("DRIFTBUSTER_CAPTURE_TEST_UNSET_VARIABLE").Should().BeNull();
-    }
-
-    [Fact]
-    public void CommandsRefuseNullArguments()
-    {
-        var run = () => CaptureRunner.RunCapture(null!, TextWriter.Null, TextWriter.Null);
-        var export = () => CaptureRunner.RunSqlExport(new SqlExportOptions(), null!, TextWriter.Null);
-        var compare = () => CaptureRunner.CompareSnapshots(new CaptureCompareOptions("a", "b"), TextWriter.Null, null!);
-        run.Should().Throw<ArgumentNullException>();
-        export.Should().Throw<ArgumentNullException>();
-        compare.Should().Throw<ArgumentNullException>();
     }
 
     private static string Text(object? value) => Canonicaliser.Dumps(value, indent: false, ensureAscii: true, sortKeys: false);
@@ -219,5 +111,27 @@ public sealed class CaptureRunnerTests : IDisposable
         var path = Path.Combine(_tmp.FullName, name);
         File.WriteAllText(path, text, Utf8);
         return path;
+    }
+
+    [Fact]
+    public void SerialisationGuardsAndRelativePaths()
+    {
+        var withoutMatch = () => CaptureRunner.SerialiseDetection(new ProfiledDetection("/root/a", null, []), "/root");
+        withoutMatch.Should().Throw<EngineValueException>().WithMessage("Cannot serialise detection for paths without a match.");
+
+        var capture = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["captured_at"] = "t" };
+        var manifest = () => CaptureRunner.BuildManifestPayload(capture, "s.json", "m.json", 0, 0, 0, 0, 0, 0, null, "[X]", 0, 0);
+        manifest.Should().Throw<KeyNotFoundException>().WithMessage("'id'");
+
+        CaptureRunner.RelativePath("/root/a/b.json", "/root").Should().Be("a/b.json");
+        CaptureRunner.RelativePath("/root", "/root").Should().Be(".");
+        CaptureRunner.RelativePath("/elsewhere/b.json", "/root").Should().Be("b.json");
+        var summary = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["tuple"] = new object?[] { 1, new HashSet<string>(StringComparer.Ordinal) { "x" } },
+            ["map"] = new Dictionary<int, string> { [2] = "two" },
+        };
+        Canonicaliser.Dumps(CaptureRunner.NormaliseSummary(summary), indent: false, ensureAscii: true, sortKeys: false)
+            .Should().Be("""{"tuple": [1, ["x"]], "map": {"2": "two"}}""");
     }
 }

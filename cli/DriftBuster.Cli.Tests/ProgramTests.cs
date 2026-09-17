@@ -41,7 +41,7 @@ public sealed class ProgramTests
         CliInvocation.Invoke().ExitCode.Should().Be(2);
     }
 
-    /// <summary><c>argparse</c> reads an argument starting with "@" as a value; System.CommandLine's response files are off.</summary>
+    /// <summary>An argument starting with "@" is a value: response files are off.</summary>
     [Fact]
     public void An_at_sign_argument_is_a_value_not_a_response_file()
     {
@@ -51,9 +51,9 @@ public sealed class ProgramTests
         run.Err.Should().Be("driftbuster: error: Path does not exist: @missing-response-file" + Environment.NewLine);
     }
 
-    /// <summary>An exception the command does not handle ends it as an uncaught Python exception does: its last traceback line and exit code 1.</summary>
+    /// <summary>An exception the command does not handle ends it with exit code 1 and one line naming the error.</summary>
     [Fact]
-    public void An_unhandled_exception_exits_one_with_its_python_name()
+    public void An_unhandled_exception_exits_one_with_its_error_name()
     {
         var tmp = Directory.CreateTempSubdirectory("driftbuster-cli-program-");
         try

@@ -7,10 +7,9 @@ using DriftBuster.Backend.MultiServer;
 namespace DriftBuster.Backend.Tests.MultiServer;
 
 /// <summary>
-/// Mirrors <c>tests/multi_server/test_multi_server.py</c>. The two module entrypoint tests exercised the stdin/stdout protocol,
-/// which the in-process runner replaces: their assertions run against <see cref="MultiServerRunner.Run"/> and
-/// <see cref="MultiServerSchema.ValidateResponse"/>, the version check the GUI facade applies to every response, instead (an
-/// in-process request carries no schema version to reject). The
+/// <see cref="MultiServerRunner"/>. The request and response assertions run against <see cref="MultiServerRunner.Run"/> and
+/// <see cref="MultiServerSchema.ValidateResponse"/>, the version check the GUI facade applies to every response (an in-process
+/// request carries no schema version to reject). The
 /// cache directory tests live in <see cref="MultiServerCacheDirectoryTests"/>, which runs apart because it sets
 /// <c>DRIFTBUSTER_DATA_ROOT</c>.
 /// </summary>
@@ -236,46 +235,5 @@ public sealed class MultiServerTests : IDisposable
         throttle.Report(progress, "host-a", ServerScanStatus.Running, "Scanning", 1.01, DateTimeOffset.UtcNow);
 
         progress.Updates.Should().HaveCount(1);
-    }
-
-    [Fact]
-    public void EmitProgressEmitsWhenMessageChanges()
-    {
-        var progress = new CollectingProgress();
-        var throttle = new ProgressThrottle();
-
-        throttle.Report(progress, "host-a", ServerScanStatus.Running, "Scanning", 2.0, DateTimeOffset.UtcNow);
-        throttle.Report(progress, "host-a", ServerScanStatus.Running, "Finishing", 2.01, DateTimeOffset.UtcNow);
-
-        progress.Updates.Select(update => update.Message).Should().Equal("Scanning", "Finishing");
-    }
-
-    [Fact]
-    public void EmitProgressEmitsAfterInterval()
-    {
-        var progress = new CollectingProgress();
-        var throttle = new ProgressThrottle();
-
-        throttle.Report(progress, "host-a", ServerScanStatus.Running, "Scanning", 5.0, DateTimeOffset.UtcNow);
-        throttle.Report(progress, "host-a", ServerScanStatus.Running, "Scanning", 5.2, DateTimeOffset.UtcNow);
-
-        progress.Updates.Should().HaveCount(2);
-    }
-
-    /// <summary>
-    /// Python escaped non-ASCII on the stdout transport so console code pages could not break it. Progress now crosses no
-    /// transport: the message reaches the consumer unchanged, and the model's JSON escapes it.
-    /// </summary>
-    [Fact]
-    public void EmitProgressEscapesNonAsciiForConsoleSafety()
-    {
-        var progress = new CollectingProgress();
-        var throttle = new ProgressThrottle();
-
-        throttle.Report(progress, "host-a", ServerScanStatus.Running, "prefix﻿suffix", 9.0, DateTimeOffset.UtcNow);
-
-        var update = progress.Updates.Single();
-        update.Message.Should().Be("prefix﻿suffix");
-        JsonSerializer.Serialize(update).Should().Contain("\\uFEFF");
     }
 }

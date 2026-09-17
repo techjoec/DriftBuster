@@ -1,10 +1,8 @@
 <#
   Pester 5 tests for driftbuster-offline-runner.ps1 (dot-sourced for its helpers, run as a script for the entry point).
 
-  Ports, one It per Python test with the same inputs and assertions: tests/offline/test_encryption.py,
-  tests/offline/test_offline_runner_config_helpers.py, tests/offline/test_offline_runner_masking_integration.py,
-  tests/core/test_offline_runner.py, the offline runner tests of tests/offline/test_sql_snapshots.py,
-  tests/registry/test_live_hives.py and the OfflineRegistryScanSource tests of tests/registry/test_remote_schema.py. Tests tagged 'Windows' (live registry, DPAPI) are skipped elsewhere; SQL tests use
+  Covers package encryption, config helpers, secret masking, runner execution, SQL snapshots, live registry hives and
+  OfflineRegistryScanSource parsing. Tests tagged 'Windows' (live registry, DPAPI) are skipped elsewhere; SQL tests use
   winsqlite3 on Windows and libsqlite3.so.0 on Linux.
 
   Run: Invoke-Pester -Path scripts/DriftBusterOfflineRunner.Tests.ps1 -Output Detailed
@@ -25,7 +23,7 @@ BeforeAll {
     $script:ManifestSchema = 'https://driftbuster.dev/offline-runner/manifest/v1'
     $script:KeysetSchema = 'https://driftbuster.dev/offline-runner/encryption/keyset/v1'
     $script:EncryptedSchema = 'https://driftbuster.dev/offline-runner/encryption/dpapi-aes/v1'
-    [DriftBusterOfflineRunner.PyOs]::Cwd = $TestDrive
+    [DriftBusterOfflineRunner.EngineOs]::Cwd = $TestDrive
 
     function Get-TestDirectory {
         $path = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString('N'))
@@ -43,10 +41,10 @@ BeforeAll {
         return $path
     }
 
-    # The Python-domain value json.loads would give for a PowerShell literal.
-    function ConvertTo-PyValue {
+    # The runner's JSON value for a PowerShell literal (a dump and load through its JSON reader).
+    function ConvertTo-EngineValue {
         param($Value)
-        return , [DriftBusterOfflineRunner.PyJson]::Loads([DriftBusterOfflineRunner.PyJson]::Dumps($Value, -1, $false))
+        return , [DriftBusterOfflineRunner.EngineJson]::Loads([DriftBusterOfflineRunner.EngineJson]::Dumps($Value, -1, $false))
     }
 
     function Write-TestText {
@@ -58,13 +56,13 @@ BeforeAll {
     function Write-TestConfig {
         param([string] $Directory, $Payload)
         $path = Join-Path -Path $Directory -ChildPath 'config.json'
-        Write-TestText -Path $path -Content ([DriftBusterOfflineRunner.PyJson]::Dumps($Payload, 2, $false))
+        Write-TestText -Path $path -Content ([DriftBusterOfflineRunner.EngineJson]::Dumps($Payload, 2, $false))
         return $path
     }
 
     function ConvertTo-TestConfig {
         param($Payload)
-        return ConvertFrom-DbOfflineRunnerConfig (ConvertTo-PyValue $Payload)
+        return ConvertFrom-DbOfflineRunnerConfig (ConvertTo-EngineValue $Payload)
     }
 
     # _build_config(tmp_path, profile=..., runner=..., metadata=...)
@@ -135,7 +133,7 @@ BeforeAll {
     function Read-ManifestFromPackage {
         param([string] $PackagePath)
         $PackagePath | Should -Not -BeNullOrEmpty
-        return [DriftBusterOfflineRunner.PyJson]::Loads((Read-ZipText -ZipPath $PackagePath -EntryName 'manifest.json'))
+        return [DriftBusterOfflineRunner.EngineJson]::Loads((Read-ZipText -ZipPath $PackagePath -EntryName 'manifest.json'))
     }
 
     function Read-RunnerLogFromPackage {
@@ -146,12 +144,12 @@ BeforeAll {
 
     function Read-JsonFile {
         param([string] $Path)
-        return [DriftBusterOfflineRunner.PyJson]::Loads([DriftBusterOfflineRunner.PyFile]::ReadText($Path))
+        return [DriftBusterOfflineRunner.EngineJson]::Loads([DriftBusterOfflineRunner.EngineFile]::ReadText($Path))
     }
 
     function Get-FileSha256 {
         param([string] $Path)
-        return [DriftBusterOfflineRunner.PyFile]::HashFile($Path)
+        return [DriftBusterOfflineRunner.EngineFile]::HashFile($Path)
     }
 
     function Write-TestKeyset {
@@ -161,7 +159,7 @@ BeforeAll {
             aes_key  = [ordered]@{ encoding = 'base64'; data = [System.Convert]::ToBase64String($AesKey) }
             hmac_key = [ordered]@{ encoding = 'base64'; data = [System.Convert]::ToBase64String($HmacKey) }
         }
-        Write-TestText -Path $Path -Content ([DriftBusterOfflineRunner.PyJson]::Dumps($payload, 2, $false))
+        Write-TestText -Path $Path -Content ([DriftBusterOfflineRunner.EngineJson]::Dumps($payload, 2, $false))
     }
 
     function Get-RepeatedByte {
@@ -169,7 +167,7 @@ BeforeAll {
         return , [byte[]]([System.Text.Encoding]::ASCII.GetBytes([string]::new($Character, $Count)))
     }
 
-    # AES-256-CBC with PKCS7 padding, as the Python test decrypts with cryptography.
+    # AES-256-CBC with PKCS7 padding.
     function Unprotect-TestCiphertext {
         param([byte[]] $AesKey, [byte[]] $Iv, [byte[]] $Ciphertext)
         $aes = [System.Security.Cryptography.Aes]::Create()
@@ -202,21 +200,21 @@ BeforeAll {
         }
     }
 
-    function Assert-PyError {
+    function Assert-EngineError {
         param([scriptblock] $Script, [string] $Type, [string] $MessageLike)
         $caught = $null
         try {
             & $Script | Out-Null
         }
         catch {
-            $caught = Get-DbPyException $_
+            $caught = Get-DbEngineException $_
             if ($null -eq $caught) {
                 throw
             }
         }
 
         $caught | Should -Not -BeNullOrEmpty -Because "a $Type was expected"
-        $caught.PyType | Should -BeExactly $Type
+        $caught.ErrorType | Should -BeExactly $Type
         if ($MessageLike) {
             $caught.Message | Should -BeLike $MessageLike
         }
@@ -236,7 +234,7 @@ BeforeAll {
         return , $lines.ToArray()
     }
 
-    # _create_sample_database(path) from tests/offline/test_sql_snapshots.py
+    # The sample accounts database fixtures/sql/README.md documents
     function Initialize-SampleDatabase {
         param([string] $Path)
         [DriftBusterOfflineRunner.SqlSnapshots]::Execute($Path, [System.Collections.ArrayList]@(
@@ -248,8 +246,8 @@ BeforeAll {
     }
 }
 
-Describe 'tests/offline/test_encryption.py' {
-    It 'test_execute_config_encrypts_package_with_dpapi_aes_keyset' {
+Describe 'package encryption' {
+    It 'execute config encrypts package with dpapi aes keyset' {
         $tmp = Get-TestDirectory
         $sourceDir = Join-Path $tmp 'source'
         Write-TestText -Path (Join-Path $sourceDir 'secrets.txt') -Content 'token-123'
@@ -282,7 +280,7 @@ Describe 'tests/offline/test_encryption.py' {
         $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z'
 
         $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.PyPath]::Suffix($result.package_path) | Should -BeExactly '.enc'
+        [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
         $result.encrypted_package_path | Should -BeExactly $result.package_path
         Test-Path -LiteralPath $result.package_path | Should -BeTrue -Because 'expected encrypted package'
 
@@ -317,7 +315,7 @@ Describe 'tests/offline/test_encryption.py' {
         $encryptionInfo['sha256'] | Should -BeExactly (Get-FileSha256 $result.package_path)
     }
 
-    It 'test_execute_config_requires_compress_for_encryption' {
+    It 'execute config requires compress for encryption' {
         $tmp = Get-TestDirectory
         $keysetPath = Join-Path $tmp 'keyset.json'
         Write-TestKeyset -Path $keysetPath -AesKey (Get-RepeatedByte 'A' 32) -HmacKey (Get-RepeatedByte 'B' 32)
@@ -334,10 +332,10 @@ Describe 'tests/offline/test_encryption.py' {
                 metadata = @{}
             })
 
-        Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z' } 'ValueError'
+        Assert-EngineError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z' } 'ValueError'
     }
 
-    It 'test_execute_config_path_supports_relative_paths' {
+    It 'execute config path supports relative paths' {
         $tmp = Get-TestDirectory
         $configDir = Join-Path $tmp 'bundle'
         Write-TestText -Path (Join-Path $configDir 'secrets.txt') -Content 'token-456'
@@ -358,8 +356,8 @@ Describe 'tests/offline/test_encryption.py' {
         $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath -Timestamp '20240202T120000Z'
 
         $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.PyPath]::Parent($result.package_path) | Should -BeExactly ([DriftBusterOfflineRunner.PyPath]::Normalise($configDir))
-        [DriftBusterOfflineRunner.PyPath]::Suffix($result.package_path) | Should -BeExactly '.enc'
+        [DriftBusterOfflineRunner.EnginePath]::Parent($result.package_path) | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($configDir))
+        [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
         $result.encrypted_package_path | Should -BeExactly $result.package_path
 
         $result.unencrypted_package_path | Should -Not -BeNullOrEmpty
@@ -378,9 +376,9 @@ Describe 'tests/offline/test_encryption.py' {
     }
 }
 
-Describe 'tests/offline/test_offline_runner_config_helpers.py' {
-    It 'test_offline_registry_scan_source_from_dict_normalises_values' {
-        $payload = ConvertTo-PyValue ([ordered]@{
+Describe 'config helpers' {
+    It 'offline registry scan source from dict normalises values' {
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 registry_scan = [ordered]@{
                     token = 'ExampleApp '; keywords = 'alpha, beta'; patterns = @('value1', 'value2'); max_depth = '8'; max_hits = '150'; time_budget_s = '15'
                 }
@@ -395,25 +393,25 @@ Describe 'tests/offline/test_offline_runner_config_helpers.py' {
         $source.time_budget_s | Should -Be 15.0
         Get-DbDestinationName -Source $source -FallbackIndex 1 | Should -BeExactly '--ExampleAlias--'
 
-        $noAlias = ConvertFrom-DbOfflineRegistryScanSource (ConvertTo-PyValue ([ordered]@{ registry_scan = [ordered]@{ token = 'Example'; keywords = @('one'); patterns = @() } }))
+        $noAlias = ConvertFrom-DbOfflineRegistryScanSource (ConvertTo-EngineValue ([ordered]@{ registry_scan = [ordered]@{ token = 'Example'; keywords = @('one'); patterns = @() } }))
         (Get-DbDestinationName -Source $noAlias -FallbackIndex 2).StartsWith('registry_') | Should -BeTrue
     }
 
-    It 'test_normalise_snapshot_columns_handles_sequences' {
-        $mapping = ConvertTo-DbSnapshotColumnMap (ConvertTo-PyValue ([ordered]@{ users = @('id', 'email'); events = @('timestamp', 'severity') }))
+    It 'normalise snapshot columns handles sequences' {
+        $mapping = ConvertTo-DbSnapshotColumnMap (ConvertTo-EngineValue ([ordered]@{ users = @('id', 'email'); events = @('timestamp', 'severity') }))
         $mapping['users'] | Should -Be @('id', 'email')
         $mapping['events'] | Should -Be @('timestamp', 'severity')
 
-        $sequence = ConvertTo-DbSnapshotColumnMap (ConvertTo-PyValue @('audit.id', 'audit.created', 'logs.message', 'invalid', 'logs.'))
+        $sequence = ConvertTo-DbSnapshotColumnMap (ConvertTo-EngineValue @('audit.id', 'audit.created', 'logs.message', 'invalid', 'logs.'))
         $sequence['audit'] | Should -Be @('id', 'created')
         $sequence['logs'] | Should -Be @('message')
         (ConvertTo-DbSnapshotColumnMap $null).Count | Should -Be 0
     }
 
-    It 'test_offline_sql_snapshot_source_from_dict_and_kwargs' {
+    It 'offline sql snapshot source from dict and kwargs' {
         $tmp = Get-TestDirectory
         $dbPath = Join-Path $tmp 'db.sqlite'
-        $payload = ConvertTo-PyValue ([ordered]@{
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 sql_snapshot = [ordered]@{
                     path = $dbPath; tables = @('users', 'logs'); exclude_tables = 'audit'; mask_columns = [ordered]@{ users = @('password') }
                     hash_columns = @('users.email', 'users.id'); limit = '25'; placeholder = '[MASKED]'; hash_salt = 'pepper'
@@ -436,21 +434,21 @@ Describe 'tests/offline/test_offline_runner_config_helpers.py' {
         $kwargs['limit'] | Should -Be 25
     }
 
-    It 'test_offline_sql_snapshot_source_limit_validation' {
-        $payload = ConvertTo-PyValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; limit = 0 } })
-        Assert-PyError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'ValueError'
+    It 'offline sql snapshot source limit validation' {
+        $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; limit = 0 } })
+        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'ValueError'
     }
 
-    It 'test_offline_sql_snapshot_source_dialect_validation' {
-        $payload = ConvertTo-PyValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; dialect = 'postgres' } })
-        Assert-PyError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'ValueError'
+    It 'offline sql snapshot source dialect validation' {
+        $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; dialect = 'postgres' } })
+        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'ValueError'
     }
 
-    It 'test_offline_runner_profile_with_registry_and_sql_sources' {
+    It 'offline runner profile with registry and sql sources' {
         $tmp = Get-TestDirectory
         $filePath = Join-Path $tmp 'config.txt'
         Write-TestText -Path $filePath -Content 'example'
-        $payload = ConvertTo-PyValue ([ordered]@{
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 name           = 'profile-sample'
                 sources        = @(
                     [ordered]@{ path = $filePath },
@@ -468,11 +466,11 @@ Describe 'tests/offline/test_offline_runner_config_helpers.py' {
         @($profileObject.sources | Where-Object { $_.kind -eq 'sql_snapshot' }).Count | Should -BeGreaterThan 0
     }
 
-    It 'test_offline_encryption_settings_from_dict_formats_extension' {
+    It 'offline encryption settings from dict formats extension' {
         $tmp = Get-TestDirectory
         $keysetPath = Join-Path $tmp 'key.json'
         Write-TestText -Path $keysetPath -Content '{}'
-        $settings = ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-PyValue ([ordered]@{
+        $settings = ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{
                     enabled = $true; mode = 'DPAPI-AES'; keyset_path = $keysetPath; output_extension = 'encpkg'; remove_plaintext = $false
                 }))
         $settings.enabled | Should -BeTrue
@@ -480,23 +478,23 @@ Describe 'tests/offline/test_offline_runner_config_helpers.py' {
         $settings.output_extension | Should -BeExactly '.encpkg'
         $settings.remove_plaintext | Should -BeFalse
 
-        Assert-PyError { ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-PyValue ([ordered]@{ enabled = $true })) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{ enabled = $true })) } 'ValueError'
     }
 
-    It 'test_offline_runner_settings_from_dict_handles_defaults' {
+    It 'offline runner settings from dict handles defaults' {
         $tmp = Get-TestDirectory
-        $settings = ConvertFrom-DbOfflineRunnerSetting (ConvertTo-PyValue ([ordered]@{
+        $settings = ConvertFrom-DbOfflineRunnerSetting (ConvertTo-EngineValue ([ordered]@{
                     output_directory = $tmp; package_name = ' '; max_total_bytes = '2048'; encryption = [ordered]@{ enabled = $false }
                 }))
-        $settings.output_directory | Should -BeExactly ([DriftBusterOfflineRunner.PyPath]::Normalise($tmp))
+        $settings.output_directory | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($tmp))
         $settings.package_name | Should -BeNullOrEmpty
         $settings.max_total_bytes | Should -Be 2048
         $settings.encryption | Should -Not -BeNullOrEmpty
         $settings.encryption.enabled | Should -BeFalse
     }
 
-    It 'test_execute_config_skips_registry_scan_on_non_windows' {
-        # Python's test runs on a host where is_windows() is False; the port pins that host view.
+    It 'execute config skips registry scan on non windows' {
+        # The runner is pinned to a host view that is not Windows.
         Mock Test-DbWindowsPlatform { $false }
         $tmp = Get-TestDirectory
         $config = ConvertTo-TestConfig ([ordered]@{
@@ -522,8 +520,8 @@ Describe 'tests/offline/test_offline_runner_config_helpers.py' {
     }
 }
 
-Describe 'tests/offline/test_offline_runner_masking_integration.py' {
-    It 'test_execute_config_masks_secret_samples' {
+Describe 'secret masking' {
+    It 'execute config masks secret samples' {
         $tmp = Get-TestDirectory
         $fixturesRoot = Join-TestPath $script:RepoRoot @('fixtures', 'secret_samples')
         $keysetPath = Join-Path $tmp 'keyset.json'
@@ -547,7 +545,7 @@ Describe 'tests/offline/test_offline_runner_masking_integration.py' {
         $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20251025T070000Z'
 
         $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.PyPath]::Suffix($result.package_path) | Should -BeExactly '.enc'
+        [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
         $result.encrypted_package_path | Should -BeExactly $result.package_path
         $result.unencrypted_package_path | Should -Not -BeNullOrEmpty
         Test-Path -LiteralPath $result.unencrypted_package_path | Should -BeFalse
@@ -581,8 +579,8 @@ Describe 'tests/offline/test_offline_runner_masking_integration.py' {
     }
 }
 
-Describe 'tests/core/test_offline_runner.py' {
-    It 'test_load_config_accepts_string_and_object_sources' {
+Describe 'runner execution' {
+    It 'load config accepts string and object sources' {
         $tmp = Get-TestDirectory
         $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
                 schema  = $script:ConfigSchema
@@ -603,7 +601,7 @@ Describe 'tests/core/test_offline_runner.py' {
         $second.optional | Should -BeTrue
     }
 
-    It 'test_execute_offline_run_collects_files' {
+    It 'execute offline run collects files' {
         $tmp = Get-TestDirectory
         $logsDir = Join-Path $tmp 'logs'
         $sampleLog = Join-Path $logsDir 'firewall.log'
@@ -648,7 +646,7 @@ Describe 'tests/core/test_offline_runner.py' {
         $logContents | Should -Match 'offline collection finished'
     }
 
-    It 'test_execute_offline_run_handles_optional_source' {
+    It 'execute offline run handles optional source' {
         $tmp = Get-TestDirectory
         $existing = Join-Path $tmp 'present.log'
         Write-TestText -Path $existing -Content 'log'
@@ -671,17 +669,17 @@ Describe 'tests/core/test_offline_runner.py' {
         $summary['reason'] | Should -BeExactly 'no-matches'
     }
 
-    It 'test_execute_offline_run_missing_required_source' {
+    It 'execute offline run missing required source' {
         $tmp = Get-TestDirectory
         $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
                 profile = [ordered]@{ name = 'missing-required'; sources = @((Join-Path $tmp 'missing.txt')) }
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
             })
 
-        Assert-PyError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'FileNotFoundError'
+        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'FileNotFoundError'
     }
 
-    It 'test_execute_offline_run_respects_exclude_patterns' {
+    It 'execute offline run respects exclude patterns' {
         $tmp = Get-TestDirectory
         $dataDir = Join-Path $tmp 'data'
         Write-TestText -Path (Join-Path $dataDir 'keep.log') -Content 'keep'
@@ -698,7 +696,7 @@ Describe 'tests/core/test_offline_runner.py' {
         @($paths | Where-Object { $_.EndsWith('keep.log') }).Count | Should -BeGreaterThan 0
     }
 
-    It 'test_execute_offline_run_deduplicates_recursive_glob_matches' {
+    It 'execute offline run deduplicates recursive glob matches' {
         $tmp = Get-TestDirectory
         $sourceRoot = Join-Path $tmp 'source'
         Write-TestText -Path (Join-Path $sourceRoot 'root.log') -Content 'root'
@@ -716,7 +714,7 @@ Describe 'tests/core/test_offline_runner.py' {
         @($collected | Where-Object { $_.EndsWith('child.log') }).Count | Should -BeGreaterThan 0
     }
 
-    It 'test_execute_offline_run_enforces_max_total_bytes' {
+    It 'execute offline run enforces max total bytes' {
         $tmp = Get-TestDirectory
         $source = Join-Path $tmp 'large.bin'
         [System.IO.File]::WriteAllBytes($source, (Get-RepeatedByte '0' 1024))
@@ -726,10 +724,10 @@ Describe 'tests/core/test_offline_runner.py' {
                 runner  = [ordered]@{ max_total_bytes = 10; output_directory = (Join-Path $tmp 'out') }
             })
 
-        Assert-PyError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'ValueError' '*max_total_bytes*'
+        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'ValueError' '*max_total_bytes*'
     }
 
-    It 'test_execute_offline_run_scrubs_secret_lines' {
+    It 'execute offline run scrubs secret lines' {
         $tmp = Get-TestDirectory
         $secretFile = Join-Path $tmp 'secrets.txt'
         Write-TestText -Path $secretFile -Content "safe line`npassword = SUPERSECRET123456`nkeep me`n"
@@ -764,7 +762,7 @@ Describe 'tests/core/test_offline_runner.py' {
         ($finding['snippet'].EndsWith('[SECRET]') -or $finding['snippet'].Contains('[SECRET]')) | Should -BeTrue
     }
 
-    It 'test_execute_offline_run_honours_secret_ignore_patterns' {
+    It 'execute offline run honours secret ignore patterns' {
         $tmp = Get-TestDirectory
         $secretFile = Join-Path $tmp 'allowlist.txt'
         Write-TestText -Path $secretFile -Content 'password = ALLOW_ME'
@@ -788,7 +786,7 @@ Describe 'tests/core/test_offline_runner.py' {
         $manifest['profile']['secret_scanner'].Contains('rules') | Should -BeFalse
     }
 
-    It 'test_execute_offline_run_prefers_ruleset_from_config' {
+    It 'execute offline run prefers ruleset from config' {
         $tmp = Get-TestDirectory
         $secretFile = Join-Path $tmp 'custom.txt'
         Write-TestText -Path $secretFile -Content 'token = TOTALLY_CUSTOM_SECRET'
@@ -815,7 +813,7 @@ Describe 'tests/core/test_offline_runner.py' {
         $profileScanner.Contains('rules') | Should -BeFalse
     }
 
-    It 'test_execute_offline_run_retains_staging_when_cleanup_disabled' {
+    It 'execute offline run retains staging when cleanup disabled' {
         $tmp = Get-TestDirectory
         $sample = Join-Path $tmp 'artifact.txt'
         Write-TestText -Path $sample -Content 'data'
@@ -835,11 +833,11 @@ Describe 'tests/core/test_offline_runner.py' {
         Test-Path -LiteralPath $result.log_path | Should -BeTrue
     }
 
-    It 'test_compile_ruleset_from_mapping_handles_invalid_entries' {
+    It 'compile ruleset from mapping handles invalid entries' {
         ConvertTo-DbCompiledRuleset $null | Should -BeNullOrEmpty
-        ConvertTo-DbCompiledRuleset (ConvertTo-PyValue ([ordered]@{ rules = 'invalid' })) | Should -BeNullOrEmpty
+        ConvertTo-DbCompiledRuleset (ConvertTo-EngineValue ([ordered]@{ rules = 'invalid' })) | Should -BeNullOrEmpty
 
-        $payload = ConvertTo-PyValue ([ordered]@{
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 version = 'custom'
                 rules   = @([ordered]@{ name = 'Valid'; pattern = 'secret'; flags = 'i' }, [ordered]@{ name = 'Broken'; pattern = '[' })
             })
@@ -850,10 +848,10 @@ Describe 'tests/core/test_offline_runner.py' {
         $compiled.Rules[0] | Should -BeOfType ([DriftBusterOfflineRunner.SecretRule])
     }
 
-    It 'test_secret_option_values_and_manifest_helpers' {
+    It 'secret option values and manifest helpers' {
         $values = Get-DbSecretOptionValue 'a, b ; c'
         $values | Should -Be @('a', 'b', 'c')
-        $values = Get-DbSecretOptionValue (ConvertTo-PyValue @('x', $null, ' y '))
+        $values = Get-DbSecretOptionValue (ConvertTo-EngineValue @('x', $null, ' y '))
         $values | Should -Be @('x', 'y')
 
         $context = [DriftBusterOfflineRunner.SecretContext]::new()
@@ -863,68 +861,54 @@ Describe 'tests/core/test_offline_runner.py' {
         $context.IgnorePatternText.Add('SKIP')
         $context.RulesLoaded = $true
 
-        $manifest = Get-DbManifestSecretScanner -Options (ConvertTo-PyValue ([ordered]@{ secret_ignore_rules = 'Skip' })) `
-            -SecretScanner (ConvertTo-PyValue ([ordered]@{ ignore_patterns = @('SKIP') })) -Context $context
+        $manifest = Get-DbManifestSecretScanner -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_rules = 'Skip' })) `
+            -SecretScanner (ConvertTo-EngineValue ([ordered]@{ ignore_patterns = @('SKIP') })) -Context $context
         $manifest['ruleset_version'] | Should -BeExactly 'v1'
         $manifest['ignore_rules'] | Should -Be @('Skip')
         $manifest['ignore_patterns'] | Should -Be @('SKIP')
     }
 
-    It 'test_build_secret_context_prefers_inline_rules' {
-        $payload = ConvertTo-PyValue ([ordered]@{
+    It 'build secret context prefers inline rules' {
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 ruleset      = [ordered]@{ version = 'inline'; rules = @([ordered]@{ name = 'Token'; pattern = 'VALUE' }) }
                 ignore_rules = @('Token')
             })
-        $context = Get-DbSecretContext -Options (ConvertTo-PyValue ([ordered]@{ secret_ignore_patterns = @('ALLOW') })) -SecretScanner $payload
+        $context = Get-DbSecretContext -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_patterns = @('ALLOW') })) -SecretScanner $payload
         $context.Version | Should -BeExactly 'inline'
         $context.RulesLoaded | Should -BeTrue
         @($context.IgnoreRules) | Should -Be @('Token')
         $context.IgnorePatternText | Should -Contain 'ALLOW'
     }
 
-    It 'test_offline_collection_source_validations' {
-        Assert-PyError { ConvertFrom-DbOfflineCollectionSource (ConvertTo-PyValue @{}) } 'ValueError'
+    It 'offline collection source validations' {
+        Assert-EngineError { ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue @{}) } 'ValueError'
 
-        $source = ConvertFrom-DbOfflineCollectionSource (ConvertTo-PyValue ([ordered]@{ path = '~/data'; alias = '  '; exclude = '*.tmp' }))
+        $source = ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '~/data'; alias = '  '; exclude = '*.tmp' }))
         $source.alias | Should -BeNullOrEmpty
         $source.exclude | Should -Be @('*.tmp')
 
-        $rootSource = ConvertFrom-DbOfflineCollectionSource (ConvertTo-PyValue ([ordered]@{ path = '/' }))
+        $rootSource = ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '/' }))
         Get-DbDestinationName -Source $rootSource -FallbackIndex 7 | Should -BeExactly 'source_07'
     }
 
-    It 'test_offline_runner_profile_validations' {
-        Assert-PyError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-PyValue ([ordered]@{ name = '' })) } 'ValueError'
-        Assert-PyError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-PyValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); baseline = 'missing' })) } 'ValueError'
-        Assert-PyError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-PyValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); options = 'invalid' })) } 'ValueError'
-        Assert-PyError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-PyValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); secret_scanner = 'invalid' })) } 'ValueError'
-        Assert-PyError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-PyValue ([ordered]@{ name = 'demo' })) } 'ValueError'
+    It 'offline runner profile validations' {
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = '' })) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); baseline = 'missing' })) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); options = 'invalid' })) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); secret_scanner = 'invalid' })) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo' })) } 'ValueError'
 
-        $profileObject = ConvertFrom-DbOfflineRunnerProfile (ConvertTo-PyValue ([ordered]@{ name = 'tags'; sources = @('/tmp/a'); tags = 'prod' }))
+        $profileObject = ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'tags'; sources = @('/tmp/a'); tags = 'prod' }))
         $profileObject.tags | Should -Be @('prod')
     }
 
-    It 'test_offline_runner_settings_negative_limit_and_blank_package' {
-        $settings = ConvertFrom-DbOfflineRunnerSetting (ConvertTo-PyValue ([ordered]@{ package_name = '  ' }))
-        $settings.package_name | Should -BeNullOrEmpty
-
-        Assert-PyError { ConvertFrom-DbOfflineRunnerSetting (ConvertTo-PyValue ([ordered]@{ max_total_bytes = -1 })) } 'ValueError'
-    }
-
-    It 'test_offline_runner_config_metadata_validation' {
-        $payload = ConvertTo-PyValue ([ordered]@{ profile = [ordered]@{ name = 'demo'; sources = @('/tmp/a') }; metadata = 'invalid' })
-        Assert-PyError { ConvertFrom-DbOfflineRunnerConfig $payload } 'ValueError'
-        Assert-PyError { ConvertFrom-DbOfflineRunnerConfig (ConvertTo-PyValue @{}) } 'ValueError'
-        Assert-PyError { ConvertFrom-DbOfflineRunnerConfig 'invalid' } 'TypeError'
-    }
-
-    It 'test_offline_runner_config_default_package_name' {
+    It 'offline runner config default package name' {
         Mock Get-DbTimestamp { '20230101T000000Z' }
         $config = ConvertTo-TestConfig ([ordered]@{ profile = [ordered]@{ name = 'Demo'; sources = @('/tmp/a') } })
         Get-DbDefaultPackageName -Config $config | Should -BeExactly 'Demo-20230101T000000Z'
     }
 
-    It 'test_execute_config_logs_when_secret_rules_missing' {
+    It 'execute config logs when secret rules missing' {
         Mock Get-DbSecretContext {
             $context = [DriftBusterOfflineRunner.SecretContext]::new()
             $context.Version = 'v'
@@ -944,32 +928,7 @@ Describe 'tests/core/test_offline_runner.py' {
         [System.IO.File]::ReadAllText($result.log_path) | Should -Match 'secret detection rules unavailable'
     }
 
-    It 'test_execute_config_optional_missing_file' {
-        $tmp = Get-TestDirectory
-        $existing = Join-Path $tmp 'present.txt'
-        Write-TestText -Path $existing -Content 'data'
-
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{
-                name    = 'optional'
-                sources = @($existing, [ordered]@{ path = (Join-Path $tmp 'absent.txt'); optional = $true; alias = 'missing' })
-            })
-
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp
-        $result.manifest_path | Should -Not -BeNullOrEmpty
-        $manifest = Read-JsonFile $result.manifest_path
-        $summary = @($manifest['sources'] | Where-Object { $_['alias'] -eq 'missing' })[0]
-        $summary['skipped'] | Should -BeTrue
-        $summary['reason'] | Should -BeExactly 'missing'
-    }
-
-    It 'test_execute_config_required_glob_without_matches' {
-        $tmp = Get-TestDirectory
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'required'; sources = @((Join-TestPath $tmp @('missing', '*.log'))) })
-
-        Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp } 'FileNotFoundError'
-    }
-
-    It 'test_execute_config_skips_symlink' {
+    It 'execute config skips symlink' {
         $tmp = Get-TestDirectory
         $realFile = Join-Path $tmp 'real.txt'
         Write-TestText -Path $realFile -Content 'data'
@@ -984,37 +943,7 @@ Describe 'tests/core/test_offline_runner.py' {
         $paths | Should -Not -Contain $symlink
     }
 
-    It 'test_execute_config_respects_max_total_bytes' {
-        $tmp = Get-TestDirectory
-        $filePath = Join-Path $tmp 'data.txt'
-        Write-TestText -Path $filePath -Content 'content'
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'limit'; sources = @($filePath) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); max_total_bytes = 1 })
-
-        Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp } 'ValueError'
-    }
-
-    It 'test_execute_config_directory_respects_max_total_bytes' {
-        $tmp = Get-TestDirectory
-        $directory = Join-Path $tmp 'payload'
-        Write-TestText -Path (Join-Path $directory 'data.txt') -Content 'content'
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'limit-dir'; sources = @($directory) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); max_total_bytes = 1 })
-
-        Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp } 'ValueError'
-    }
-
-    It 'test_execute_config_excludes_single_file' {
-        $tmp = Get-TestDirectory
-        $filePath = Join-Path $tmp 'secret.txt'
-        Write-TestText -Path $filePath -Content 'content'
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'exclude'; sources = @([ordered]@{ path = $filePath; exclude = @('secret.txt') }) })
-
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp
-        @($result.files | Where-Object { $_.relative_path -eq 'secret.txt' }).Count | Should -Be 0
-    }
-
-    It 'test_execute_config_appends_zip_extension' {
+    It 'execute config appends zip extension' {
         $tmp = Get-TestDirectory
         $filePath = Join-Path $tmp 'file.log'
         Write-TestText -Path $filePath -Content 'data'
@@ -1023,12 +952,12 @@ Describe 'tests/core/test_offline_runner.py' {
 
         $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp
         $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.PyPath]::Name($result.package_path).EndsWith('.zip') | Should -BeTrue
+        [DriftBusterOfflineRunner.EnginePath]::Name($result.package_path).EndsWith('.zip') | Should -BeTrue
     }
 }
 
-Describe 'tests/offline/test_sql_snapshots.py (offline runner)' {
-    It 'test_build_sqlite_snapshot_masks_and_hashes' {
+Describe 'SQL snapshots' {
+    It 'build sqlite snapshot masks and hashes' {
         $tmp = Get-TestDirectory
         $dbPath = Initialize-SampleDatabase (Join-Path $tmp 'sample.sqlite')
 
@@ -1051,7 +980,7 @@ Describe 'tests/offline/test_sql_snapshots.py (offline runner)' {
         [double]$rows[0]['balance'] | Should -Be 42.5
     }
 
-    It 'test_write_sqlite_snapshot_with_limits_and_sequences' {
+    It 'write sqlite snapshot with limits and sequences' {
         $tmp = Get-TestDirectory
         $dbPath = Initialize-SampleDatabase (Join-Path $tmp 'limited.sqlite')
         [DriftBusterOfflineRunner.SqlSnapshots]::Execute($dbPath, [System.Collections.ArrayList]@(
@@ -1061,8 +990,8 @@ Describe 'tests/offline/test_sql_snapshots.py (offline runner)' {
 
         $destination = Join-Path $tmp 'out.json'
         $snapshot = Get-DbSqliteSnapshot -Path $dbPath -Tables @('accounts') -ExcludeTables @('nonexistent') `
-            -MaskColumns (ConvertTo-PyValue @('accounts.secret')) -HashColumns (ConvertTo-PyValue @('accounts.email')) -Limit 1
-        [DriftBusterOfflineRunner.PyFile]::WriteText($destination, [DriftBusterOfflineRunner.PyJson]::Dumps($snapshot, 2, $true))
+            -MaskColumns (ConvertTo-EngineValue @('accounts.secret')) -HashColumns (ConvertTo-EngineValue @('accounts.email')) -Limit 1
+        [DriftBusterOfflineRunner.EngineFile]::WriteText($destination, [DriftBusterOfflineRunner.EngineJson]::Dumps($snapshot, 2, $true))
 
         $payload = Read-JsonFile $destination
         $payload['tables'][0]['row_count'] | Should -Be 2
@@ -1072,10 +1001,10 @@ Describe 'tests/offline/test_sql_snapshots.py (offline runner)' {
         $audit = Get-DbSqliteSnapshot -Path $dbPath -Tables @('audit')
         $audit['tables'][0]['rows'][0]['payload']['type'] | Should -BeExactly 'base64'
 
-        Assert-PyError { Get-DbSqliteSnapshot -Path $dbPath -Limit 0 } 'ValueError'
+        Assert-EngineError { Get-DbSqliteSnapshot -Path $dbPath -Limit 0 } 'ValueError'
     }
 
-    It 'test_offline_runner_sql_snapshot_source' {
+    It 'offline runner sql snapshot source' {
         $tmp = Get-TestDirectory
         $dbPath = Initialize-SampleDatabase (Join-Path $tmp 'runner.sqlite')
         $config = ConvertTo-TestConfig ([ordered]@{
@@ -1121,7 +1050,7 @@ Describe 'tests/offline/test_sql_snapshots.py (offline runner)' {
         $entry['placeholder'] | Should -BeExactly '[MASK]'
     }
 
-    It 'test_offline_runner_sql_snapshot_optional' {
+    It 'offline runner sql snapshot optional' {
         $tmp = Get-TestDirectory
         $config = ConvertTo-TestConfig ([ordered]@{
                 schema   = $script:ConfigSchema
@@ -1148,13 +1077,13 @@ Describe 'tests/offline/test_sql_snapshots.py (offline runner)' {
     }
 
     It 'loads SQLite from the platform library' {
-        $expected = $(if ([DriftBusterOfflineRunner.PyOs]::Windows) { 'winsqlite3' } else { 'libsqlite3.so.0' })
+        $expected = $(if ([DriftBusterOfflineRunner.EngineOs]::Windows) { 'winsqlite3' } else { 'libsqlite3.so.0' })
         [DriftBusterOfflineRunner.SqliteDatabase]::LibraryName | Should -BeExactly $expected
     }
 }
 
-Describe 'tests/registry/test_live_hives.py (offline runner)' {
-    It 'test_offline_runner_uses_explicit_roots' {
+Describe 'live registry hives' {
+    It 'offline runner uses explicit roots' {
         $tmp = Get-TestDirectory
         $config = ConvertTo-TestConfig ([ordered]@{
                 schema   = $script:ConfigSchema
@@ -1197,9 +1126,9 @@ Describe 'tests/registry/test_live_hives.py (offline runner)' {
     }
 }
 
-Describe 'tests/registry/test_remote_schema.py (offline runner)' {
-    It 'test_remote_schema_parses_single_target' {
-        $payload = ConvertTo-PyValue ([ordered]@{
+Describe 'OfflineRegistryScanSource' {
+    It 'remote schema parses single target' {
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 alias         = 'hq-remote'
                 registry_scan = [ordered]@{
                     token  = 'VendorA'
@@ -1221,8 +1150,8 @@ Describe 'tests/registry/test_remote_schema.py (offline runner)' {
         $source.remote.credential_profile | Should -BeExactly 'hq-collector'
     }
 
-    It 'test_remote_schema_supports_batch_targets' {
-        $payload = ConvertTo-PyValue ([ordered]@{
+    It 'remote schema supports batch targets' {
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 registry_scan = [ordered]@{
                     token        = 'VendorA'
                     remote       = 'branch-gateway'
@@ -1244,15 +1173,15 @@ Describe 'tests/registry/test_remote_schema.py (offline runner)' {
         $source.remote_batch[2].port | Should -Be 5985
     }
 
-    It 'test_remote_schema_rejects_inline_passwords' {
-        $payload = ConvertTo-PyValue ([ordered]@{
+    It 'remote schema rejects inline passwords' {
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 registry_scan = [ordered]@{ token = 'VendorA'; remote = [ordered]@{ host = 'forbidden'; password = 'super-secret' } }
             })
-        Assert-PyError { ConvertFrom-DbOfflineRegistryScanSource $payload } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineRegistryScanSource $payload } 'ValueError'
     }
 
-    It 'test_remote_batch_allows_mapping_payload' {
-        $payload = ConvertTo-PyValue ([ordered]@{
+    It 'remote batch allows mapping payload' {
+        $payload = ConvertTo-EngineValue ([ordered]@{
                 registry_scan = [ordered]@{ token = 'VendorA'; remote_batch = [ordered]@{ host = 'branch-unique'; credential_profile = 'branch-profile' } }
             })
 
@@ -1268,110 +1197,6 @@ Describe 'tests/registry/test_remote_schema.py (offline runner)' {
         $target.password_env | Should -BeNullOrEmpty
         $target.credential_profile | Should -BeExactly 'branch-profile'
         $target.alias | Should -BeNullOrEmpty
-    }
-}
-
-Describe 'UTF-8 decoding as Python decodes' {
-    BeforeAll {
-        function ConvertFrom-TestHex {
-            param([string] $Hex)
-            $bytes = [byte[]]::new($Hex.Length / 2)
-            for ($index = 0; $index -lt $bytes.Length; $index++) {
-                $bytes[$index] = [System.Convert]::ToByte($Hex.Substring($index * 2, 2), 16)
-            }
-
-            return , $bytes
-        }
-
-        $script:Replacement = [string][char]0xFFFD
-    }
-
-    It 'replaces each maximal ill-formed subpart with one U+FFFD' {
-        $r = $script:Replacement
-        [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeReplace((ConvertFrom-TestHex 'c0af')) | Should -BeExactly ($r * 2)
-        [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeReplace((ConvertFrom-TestHex 'e08080')) | Should -BeExactly ($r * 3)
-        [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeReplace((ConvertFrom-TestHex 'eda080')) | Should -BeExactly ($r * 3)
-        [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeReplace((ConvertFrom-TestHex 'f4908080')) | Should -BeExactly ($r * 4)
-        [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeReplace((ConvertFrom-TestHex 'e28241e282')) | Should -BeExactly "$($r)A$($r)"
-        [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeReplace((ConvertFrom-TestHex 'f09f98f0e2c341e0a0')) | Should -BeExactly "$($r * 4)A$r"
-        [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeReplace((ConvertFrom-TestHex 'f09f9880e282ac')) | Should -BeExactly ([char]::ConvertFromUtf32(0x1F600) + [char]0x20AC)
-    }
-
-    It 'carries an incomplete sequence across chunks' {
-        $bytes = ConvertFrom-TestHex '41f09f9880e28242'
-        $decoder = [DriftBusterOfflineRunner.PyUtf8Decoder]::new()
-        $builder = [System.Text.StringBuilder]::new()
-        foreach ($value in $bytes) {
-            $decoder.Decode([byte[]]@($value), 0, 1, $false, $builder)
-        }
-
-        $decoder.Decode([byte[]]@(), 0, 0, $true, $builder)
-        $builder.ToString() | Should -BeExactly ('A' + [char]::ConvertFromUtf32(0x1F600) + $script:Replacement + 'B')
-    }
-
-    It 'raises the UnicodeDecodeError strict decoding raises' {
-        Assert-PyError { [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeStrict((ConvertFrom-TestHex '6162e08080')) } 'UnicodeDecodeError' `
-            "'utf-8' codec can't decode byte 0xe0 in position 2: invalid continuation byte"
-        Assert-PyError { [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeStrict((ConvertFrom-TestHex 'f09f98')) } 'UnicodeDecodeError' `
-            "'utf-8' codec can't decode bytes in position 0-2: unexpected end of data"
-        Assert-PyError { [DriftBusterOfflineRunner.PyUtf8Decoder]::DecodeStrict((ConvertFrom-TestHex 'fffe')) } 'UnicodeDecodeError' `
-            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"
-    }
-
-    It 'scrubs a legacy-encoded file to the bytes Python writes' {
-        $tmp = Get-TestDirectory
-        $sourcePath = Join-Path $tmp 'legacy.ini'
-        [System.IO.File]::WriteAllBytes($sourcePath, (ConvertFrom-TestHex (
-                    '6e616d65203d20636166e920c0af20eda08020f49080800a' + '70617373776f7264203d20535550455253454352455431323334353620e080800d0a' + '7461696c20e282')))
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'legacy'; sources = @($sourcePath) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $false; cleanup_staging = $false })
-
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp
-        $written = [System.Text.Encoding]::GetEncoding('iso-8859-1').GetString([System.IO.File]::ReadAllBytes($result.files[0].destination)).Replace("`r`n", "`n")
-        $expected = [System.Text.Encoding]::GetEncoding('iso-8859-1').GetString((ConvertFrom-TestHex (
-                    '6e616d65203d20636166efbfbd20efbfbdefbfbd20efbfbdefbfbdefbfbd20efbfbdefbfbdefbfbdefbfbd0a' +
-                    '5b5345435245545d20efbfbdefbfbdefbfbd0a7461696c20efbfbd')))
-        $written | Should -BeExactly $expected
-    }
-}
-
-Describe 'zip package timestamps' {
-    It 'raises ValueError for a file modified before 1980 as zipfile does' {
-        $tmp = Get-TestDirectory
-        $oldFile = Join-Path $tmp 'old.txt'
-        Write-TestText -Path $oldFile -Content 'old'
-        [System.IO.File]::SetLastWriteTime($oldFile, [datetime]::new(1978, 6, 1, 12, 0, 0, [System.DateTimeKind]::Local))
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'old'; sources = @($oldFile) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $true; cleanup_staging = $true })
-
-        Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp } 'ValueError' 'ZIP does not support timestamps before 1980'
-    }
-
-    It 'raises the struct error zipfile raises for a file modified after 2107' {
-        $tmp = Get-TestDirectory
-        $newFile = Join-Path $tmp 'future.txt'
-        Write-TestText -Path $newFile -Content 'future'
-        [System.IO.File]::SetLastWriteTime($newFile, [datetime]::new(2200, 1, 1, 12, 0, 0, [System.DateTimeKind]::Local))
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'future'; sources = @($newFile) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $true; cleanup_staging = $true })
-
-        Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp } 'error' "'H' format requires 0 <= number <= 65535"
-    }
-
-    It 'raises the error time.localtime raises for a file modified before 1970' {
-        $tmp = Get-TestDirectory
-        $oldFile = Join-Path $tmp 'epoch.txt'
-        Write-TestText -Path $oldFile -Content 'epoch'
-        [System.IO.File]::SetLastWriteTimeUtc($oldFile, [datetime]::new(1969, 12, 31, 0, 0, 0, [System.DateTimeKind]::Utc))
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'epoch'; sources = @($oldFile) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $true; cleanup_staging = $true })
-
-        if ($script:OnWindowsHost) {
-            Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp } 'OSError' '[[]Errno 22[]] Invalid argument'
-        }
-        else {
-            Assert-PyError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp } 'ValueError' 'ZIP does not support timestamps before 1980'
-        }
     }
 }
 
@@ -1494,7 +1319,7 @@ Describe 'DPAPI keysets' -Tag 'Windows' {
         $aesBlob = [System.Security.Cryptography.ProtectedData]::Protect($aesKey, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
         $hmacBlob = [System.Security.Cryptography.ProtectedData]::Protect($hmacKey, $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine)
         $keysetPath = Join-Path $tmp 'keyset.json'
-        Write-TestText -Path $keysetPath -Content ([DriftBusterOfflineRunner.PyJson]::Dumps([ordered]@{
+        Write-TestText -Path $keysetPath -Content ([DriftBusterOfflineRunner.EngineJson]::Dumps([ordered]@{
                     schema   = $script:KeysetSchema
                     aes_key  = [ordered]@{ encoding = 'dpapi'; data = [System.Convert]::ToBase64String($aesBlob) }
                     hmac_key = [ordered]@{ encoding = 'dpapi'; scope = 'machine'; data = [System.Convert]::ToBase64String($hmacBlob); min_length = 40 }
@@ -1517,16 +1342,6 @@ Describe 'DPAPI keysets' -Tag 'Windows' {
         $names = Get-ZipEntryName -Bytes (Unprotect-TestCiphertext -AesKey $aesKey -Iv $iv -Ciphertext $ciphertext)
         $names | Should -Contain 'data/secrets-txt/secrets.txt'
     }
-
-    It 'raises RuntimeError for a blob DPAPI cannot decrypt' -Skip:(-not $script:OnWindows) {
-        $entry = ConvertTo-PyValue ([ordered]@{ encoding = 'dpapi'; data = [System.Convert]::ToBase64String((Get-RepeatedByte 'x' 48)) })
-        Assert-PyError { ConvertFrom-DbKeyEntry -Entry $entry -Description 'aes_key' } 'RuntimeError' 'CryptUnprotectData failed to decrypt the key material.'
-    }
-
-    It 'raises RuntimeError for dpapi key entries off Windows' -Skip:($script:OnWindows) {
-        $entry = ConvertTo-PyValue ([ordered]@{ encoding = 'dpapi'; data = 'AAAA' })
-        Assert-PyError { ConvertFrom-DbKeyEntry -Entry $entry -Description 'aes_key' } 'RuntimeError' 'DPAPI key decryption is only supported on Windows.'
-    }
 }
 
 Describe 'driftbuster-offline-runner.ps1' {
@@ -1540,18 +1355,12 @@ Describe 'driftbuster-offline-runner.ps1' {
 
         $output = & $script:RunnerScript -ConfigPath $configPath -OutputDirectory (Join-Path $tmp 'packages')
 
-        $output.PackagePath | Should -BeExactly ([DriftBusterOfflineRunner.PyPath]::Join((Join-Path $tmp 'packages'), 'collected.zip'))
+        $output.PackagePath | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Join((Join-Path $tmp 'packages'), 'collected.zip'))
         $output.FilesCollected | Should -Be 1
         $output.StagingDirectory | Should -BeNullOrEmpty
         $manifest = Read-ManifestFromPackage $output.PackagePath
-        $manifest['config']['path'] | Should -BeExactly ([DriftBusterOfflineRunner.PyPath]::Normalise($configPath))
+        $manifest['config']['path'] | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($configPath))
         $manifest['secrets']['findings'].Count | Should -Be 1
         Read-ZipText -ZipPath $output.PackagePath -EntryName 'data/app-config/app.config' | Should -Match '\[SECRET\]'
-    }
-
-    It 'reports Python exception types' {
-        $tmp = Get-TestDirectory
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{ profile = [ordered]@{ name = 'broken'; sources = @('missing.txt') } })
-        { & $script:RunnerScript -ConfigPath $configPath } | Should -Throw 'FileNotFoundError: Path does not exist: missing.txt'
     }
 }

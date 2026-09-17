@@ -2,7 +2,7 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Tests.Infrastructure;
 
-/// <summary>Truth table generated from CPython str.splitlines.</summary>
+/// <summary>Line splitting on every line boundary the product recognises.</summary>
 public sealed class TextLinesTests
 {
     public static TheoryData<string, string[], string[]> Cases => new()
@@ -31,7 +31,7 @@ public sealed class TextLinesTests
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void SplitLinesMatchesPython(string text, string[] expected, string[] expectedKeepEnds)
+    public void SplitLinesBreaksOnEveryLineBoundary(string text, string[] expected, string[] expectedKeepEnds)
     {
         TextLines.SplitLines(text).Should().Equal(expected);
         TextLines.SplitLines(text, keepEnds: true).Should().Equal(expectedKeepEnds);

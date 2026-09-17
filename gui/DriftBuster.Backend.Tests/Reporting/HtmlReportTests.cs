@@ -5,7 +5,7 @@ using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Backend.Tests.Reporting;
 
-/// <summary>Mirror of tests/reporting/test_html_report.py.</summary>
+/// <summary><see cref="HtmlReport"/>.</summary>
 public sealed class HtmlReportTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-html-report-");
@@ -35,7 +35,6 @@ public sealed class HtmlReportTests : IDisposable
     public void RenderHtmlReportIncludesSections()
     {
         var redactor = new RedactionFilter(["SECRET", "token"], placeholder: "***");
-        // DiffResult(stats={"added_lines": 1}): the typed artifact always carries the three counters.
         var diff = new DiffArtifact
         {
             CanonicalBefore = "a",
@@ -113,8 +112,7 @@ public sealed class HtmlReportTests : IDisposable
             ToLabel = "after",
             Label = "Config",
         };
-        // confidence="invalid" cannot be held by the typed match; NaN is the corrupt value the double admits (float() of it is not
-        // rejected, and max() keeps the 0.0 peak). The string reaches the summary through RenderDetectionSummaryToleratesInvalidConfidence.
+        // NaN is the corrupt confidence a typed match can hold; a text confidence is covered by RenderDetectionSummaryToleratesInvalidConfidence.
         var corrupted = new DetectionMatch("json", "json", "generic", double.NaN, [], new OrderedDictionary<string, object?>(StringComparer.Ordinal));
 
         var html = HtmlReport.Render(

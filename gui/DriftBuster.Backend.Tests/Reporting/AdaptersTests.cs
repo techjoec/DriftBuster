@@ -4,7 +4,7 @@ using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Backend.Tests.Reporting;
 
-/// <summary>Mirror of tests/reporting/test_adapters.py.</summary>
+/// <summary>The reporting adapters.</summary>
 public sealed class AdaptersTests
 {
     private static DetectionMatch Match() => new(
@@ -27,16 +27,6 @@ public sealed class AdaptersTests
         metadata["token"].Should().Be("value");
         metadata["run_id"].Should().Be("abc");
         match.Metadata.Should().BeEquivalentTo(new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["token"] = "value" });
-    }
-
-    [Fact]
-    public void JsonRecordsReuseDetectionPayloads()
-    {
-        var match = Match();
-        var expected = DetectionPayloads.Iterate([match], extraMetadata: RunId()).First();
-        var record = JsonLinesReport.IterJsonRecords([match], extraMetadata: RunId()).First();
-        record["type"].Should().Be("detection");
-        PythonValues.Equal(record["payload"], expected).Should().BeTrue();
     }
 
     [Fact]

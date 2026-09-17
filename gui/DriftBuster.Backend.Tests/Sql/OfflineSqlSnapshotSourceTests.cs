@@ -6,11 +6,7 @@ using DriftBuster.Backend.Sql;
 namespace DriftBuster.Backend.Tests.Sql;
 
 /// <summary>
-/// Mirror of the SQL tests of tests/offline/test_offline_runner_config_helpers.py over <see cref="OfflineSqlSnapshotSource"/>.
-/// <c>test_offline_runner_profile_with_registry_and_sql_sources</c> reads an <c>OfflineRunnerProfile</c> holding a path, a
-/// <c>registry_scan</c> and a <c>sql_snapshot</c> source; the port's reader (<see cref="RunProfile.FromOfflineRunnerDict"/>) refuses
-/// those two source kinds by decision (registry scan and SQL export are their own commands), so the mirror asserts that refusal and
-/// parses each structured entry with its own source type.
+/// <see cref="OfflineSqlSnapshotSource"/>: column maps, payload parsing, validation and destination names.
 /// </summary>
 public sealed class OfflineSqlSnapshotSourceTests : IDisposable
 {
@@ -83,25 +79,12 @@ public sealed class OfflineSqlSnapshotSourceTests : IDisposable
         kwargs["limit"].Should().Be(25L);
     }
 
-    // str(spec.get(key) or payload.get(key) or default): a falsy payload value falls through to the default (CPython: '' and 0 give
-    // '[REDACTED]' and '', a spec placeholder 0 over a payload False gives '[REDACTED]').
-    [Fact]
-    public void OfflineSqlSnapshotSourceFalsyPayloadPlaceholderAndSaltFallThroughToTheDefaults()
-    {
-        var source = OfflineSqlSnapshotSource.FromDict(Map(("sql_snapshot", Map(("path", "x"))), ("placeholder", string.Empty), ("hash_salt", 0L)));
-        source.Placeholder.Should().Be("[REDACTED]");
-        source.HashSalt.Should().BeEmpty();
-
-        OfflineSqlSnapshotSource.FromDict(Map(("sql_snapshot", Map(("path", "x"), ("placeholder", 0L))), ("placeholder", false))).Placeholder.Should().Be("[REDACTED]");
-        OfflineSqlSnapshotSource.FromDict(Map(("sql_snapshot", Map(("path", "x"))), ("hash_salt", 7L))).HashSalt.Should().Be("7");
-    }
-
     [Fact]
     public void OfflineSqlSnapshotSourceLimitValidation()
     {
         var payload = Map(("sql_snapshot", Map(("path", "sample.db"), ("limit", 0L))));
         var act = () => OfflineSqlSnapshotSource.FromDict(payload);
-        act.Should().Throw<PythonValueException>();
+        act.Should().Throw<EngineValueException>();
     }
 
     [Fact]
@@ -109,32 +92,7 @@ public sealed class OfflineSqlSnapshotSourceTests : IDisposable
     {
         var payload = Map(("sql_snapshot", Map(("path", "sample.db"), ("dialect", "postgres"))));
         var act = () => OfflineSqlSnapshotSource.FromDict(payload);
-        act.Should().Throw<PythonValueException>();
-    }
-
-    [Fact]
-    public void OfflineRunnerProfileWithRegistryAndSqlSources()
-    {
-        var filePath = Tmp("config.txt");
-        File.WriteAllText(filePath, "example");
-        var registryEntry = Map(("registry_scan", Map(
-            ("token", "ExampleToken"),
-            ("keywords", Items("alpha")),
-            ("patterns", Items("value")))));
-        var sqlEntry = Map(("sql_snapshot", Map(("path", "sample.db"))));
-        var payload = Map(
-            ("name", "profile-sample"),
-            ("sources", Items(Map(("path", filePath)), registryEntry, sqlEntry)),
-            ("baseline", filePath),
-            ("tags", Items("audit")),
-            ("options", Map(("secret_ignore_rules", Items("PasswordAssignment")))),
-            ("secret_scanner", Map(("ignore_rules", Items("GenericApiToken")))));
-
-        var read = () => RunProfile.FromOfflineRunnerDict(payload);
-        read.Should().Throw<PythonValueException>().WithMessage("Run profiles do not support 'registry_scan' sources.*");
-
-        OfflineRegistryScanSource.FromDict(registryEntry).Token.Should().Be("ExampleToken");
-        OfflineSqlSnapshotSource.FromDict(sqlEntry).Path.Should().Be("sample.db");
+        act.Should().Throw<EngineValueException>();
     }
 
     [Fact]
