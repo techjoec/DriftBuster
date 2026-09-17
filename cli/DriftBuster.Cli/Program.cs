@@ -38,6 +38,9 @@ public static class Program
         root.Subcommands.Add(SqlExportCommand.Build());
         root.Subcommands.Add(ReportCommand.Build());
         root.Subcommands.Add(CaptureCommand.Build());
+        root.Subcommands.Add(VersionCommand.Build());
+        root.Subcommands.Add(ReleaseCommand.Build());
+        root.Subcommands.Add(MaintCommand.Build());
         root.Subcommands.Add(ParityDump.Build());
         return root;
     }

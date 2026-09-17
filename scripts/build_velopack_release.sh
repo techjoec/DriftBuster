@@ -62,12 +62,8 @@ done
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSIONS_FILE="$ROOT_DIR/versions.json"
 
-if command -v python3 >/dev/null 2>&1; then
-  PYTHON_BIN=python3
-elif command -v python >/dev/null 2>&1; then
-  PYTHON_BIN=python
-else
-  echo "Error: python3/python is required." >&2
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: jq is required." >&2
   exit 1
 fi
 
@@ -76,22 +72,10 @@ if [[ -z "$VERSION" ]]; then
     echo "Error: versions file '$VERSIONS_FILE' not found." >&2
     exit 1
   fi
-  VERSION="$($PYTHON_BIN <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-key = sys.argv[2]
-data = json.loads(path.read_text(encoding='utf-8'))
-value = data.get(key)
-if value is None:
-    print(f"versions.json missing entry for {key}.", file=sys.stderr)
-    sys.exit(1)
-
-print(value)
-PY
-"$VERSIONS_FILE" gui)"
+  if ! VERSION="$(jq -er '.gui // empty' "$VERSIONS_FILE")"; then
+    echo "versions.json missing entry for gui." >&2
+    exit 1
+  fi
 fi
 
 if [[ -z "$VERSION" ]]; then
@@ -154,94 +138,73 @@ for SECTION in '## Core' '## Formats' '## GUI' '## Installer' '## Tooling'; do
   fi
 done
 
-"$PYTHON_BIN" - "$ABS_NOTES" "$VERSION" <<'PY'
-import os
-import re
-import sys
+header_line="$(head -n 1 "$ABS_NOTES")"
+if [[ -z "$header_line" && ! -s "$ABS_NOTES" ]]; then
+  echo "Release notes file is empty." >&2
+  exit 1
+fi
+header_re='^[[:space:]]*#[[:space:]]*DriftBuster[[:space:]]+(.+)$'
+if [[ ! "$header_line" =~ $header_re ]]; then
+  echo "Release notes must start with '# DriftBuster <version>'." >&2
+  exit 1
+fi
+header_version="$(sed -e 's/[[:space:]]*$//' <<<"${BASH_REMATCH[1]}")"
+if [[ "$header_version" != "$VERSION" ]]; then
+  echo "Release notes header version '$header_version' does not match --version '$VERSION'." >&2
+  exit 1
+fi
 
-notes_path, version = sys.argv[1:3]
+# Prints the non-blank, trimmed lines between "## <name>" and the next "## " heading.
+section_entries() {
+  awk -v target="## $1" '
+    { line = $0; gsub(/^[[:space:]]+|[[:space:]]+$/, "", line) }
+    inside && line ~ /^## / { exit }
+    inside && line != "" { print line }
+    !inside && line == target { inside = 1 }
+  ' "$ABS_NOTES"
+}
 
-with open(notes_path, encoding='utf-8') as fh:
-    lines = fh.read().splitlines()
+none_re='^-[[:space:]]*None'
 
-if not lines:
-    print('Release notes file is empty.', file=sys.stderr)
-    sys.exit(1)
+section_has_changes() {
+  local entry
+  while IFS= read -r entry; do
+    if [[ ! "$entry" =~ $none_re ]]; then
+      return 0
+    fi
+  done < <(section_entries "$1")
+  return 1
+}
 
-match = re.match(r"#\s*DriftBuster\s+(.+)$", lines[0].strip())
-if not match:
-    print("Release notes must start with '# DriftBuster <version>'.", file=sys.stderr)
-    sys.exit(1)
+ensure_changelog() {
+  local path="$ROOT_DIR/$1"
+  if [[ ! -f "$path" ]]; then
+    echo "Missing changelog file: $1" >&2
+    exit 1
+  fi
+  if ! grep -qF "## $VERSION" "$path"; then
+    echo "Changelog $1 missing entry for $VERSION." >&2
+    exit 1
+  fi
+}
 
-header_version = match.group(1).strip()
-if header_version != version:
-    print(f"Release notes header version '{header_version}' does not match --version '{version}'.", file=sys.stderr)
-    sys.exit(1)
+if section_has_changes Core; then ensure_changelog notes/changelog/core.md; fi
+if section_has_changes GUI; then ensure_changelog notes/changelog/gui.md; fi
+if section_has_changes Installer; then ensure_changelog notes/changelog/installer.md; fi
+if section_has_changes Tooling; then ensure_changelog notes/changelog/tooling.md; fi
 
-
-def section_block(name: str):
-    target = f"## {name}"
-    start = None
-    for idx, line in enumerate(lines):
-        if line.strip() == target:
-            start = idx + 1
-            break
-    if start is None:
-        print(f"Release notes missing section: {target}", file=sys.stderr)
-        sys.exit(1)
-    end = len(lines)
-    for idx in range(start, len(lines)):
-        if lines[idx].strip().startswith("## "):
-            end = idx
-            break
-    entries = [ln.strip() for ln in lines[start:end] if ln.strip()]
-    return entries
-
-
-sections = {name: section_block(name) for name in ["Core", "GUI", "Installer", "Formats", "Tooling"]}
-
-
-def has_changes(items):
-    return any(not re.match(r"-\s*None\.?", item) for item in items)
-
-
-def ensure_changelog(path: str):
-    if not os.path.exists(path):
-        print(f"Missing changelog file: {path}", file=sys.stderr)
-        sys.exit(1)
-    with open(path, encoding='utf-8') as fh:
-        content = fh.read()
-    if f"## {version}" not in content:
-        print(f"Changelog {path} missing entry for {version}.", file=sys.stderr)
-        sys.exit(1)
-
-
-if has_changes(sections["Core"]):
-    ensure_changelog(os.path.join('notes', 'changelog', 'core.md'))
-
-if has_changes(sections["GUI"]):
-    ensure_changelog(os.path.join('notes', 'changelog', 'gui.md'))
-
-if has_changes(sections["Installer"]):
-    ensure_changelog(os.path.join('notes', 'changelog', 'installer.md'))
-
-if has_changes(sections["Tooling"]):
-    ensure_changelog(os.path.join('notes', 'changelog', 'tooling.md'))
-
-format_entries = sections["Formats"]
-
-if has_changes(format_entries):
-    for entry in format_entries:
-        if re.match(r"-\s*None\.?", entry):
-            continue
-        m = re.match(r"-\s*([A-Za-z0-9 _.-]+):", entry)
-        if not m:
-            print(f"Format bullet must look like '- Name: details'. Offending entry: {entry}", file=sys.stderr)
-            sys.exit(1)
-        slug = m.group(1).strip().lower().replace(' ', '-')
-        path = os.path.join('notes', 'changelog', 'formats', f"{slug}.md")
-        ensure_changelog(path)
-PY
+format_re='^-[[:space:]]*([A-Za-z0-9 _.-]+):'
+while IFS= read -r entry; do
+  if [[ "$entry" =~ $none_re ]]; then
+    continue
+  fi
+  if [[ ! "$entry" =~ $format_re ]]; then
+    echo "Format bullet must look like '- Name: details'. Offending entry: $entry" >&2
+    exit 1
+  fi
+  slug="$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<"${BASH_REMATCH[1]}" | tr '[:upper:] ' '[:lower:]-')"
+  ensure_changelog "notes/changelog/formats/${slug}.md"
+done < <(section_entries Formats)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

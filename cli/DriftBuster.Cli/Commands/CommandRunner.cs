@@ -46,6 +46,7 @@ internal static class CommandRunner
     public static string ErrorName(Exception exc) => exc switch
     {
         CommandExitException => "SystemExit",
+        CalledProcessException => "subprocess.CalledProcessError",
         ScheduleException => "ScheduleError",
         Sqlite3Exception sqlite => sqlite.TypeName,
         PythonReException => "PatternError",

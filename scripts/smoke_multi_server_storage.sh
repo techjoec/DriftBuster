@@ -14,8 +14,21 @@ trap cleanup EXIT
 
 printf 'Using temporary data root: %s\n' "$DATA_ROOT"
 
+# DRIFTBUSTER_CLI points at a driftbuster console executable; without it the CLI project is built and its output used.
+if [[ -n "${DRIFTBUSTER_CLI:-}" ]]; then
+  CLI="$DRIFTBUSTER_CLI"
+else
+  if ! command -v dotnet >/dev/null 2>&1; then
+    PATH="$(env -u __JOE_PROFILE_ENV bash --login -c 'printf %s "$PATH"')"
+    export PATH
+  fi
+  printf 'Building the driftbuster console tool...\n'
+  dotnet build "$ROOT_DIR/cli/DriftBuster.Cli/DriftBuster.Cli.csproj" -c Release -v quiet -nologo >/dev/null
+  CLI="$ROOT_DIR/cli/DriftBuster.Cli/bin/Release/net10.0/driftbuster"
+fi
+
 run_plan() {
-  python -m driftbuster.multi_server <<JSON | tee "$DATA_ROOT/last-run.json" >/dev/null
+  "$CLI" multi-server <<JSON | tee "$DATA_ROOT/last-run.json" >/dev/null
 {
   "plans": [
     {
@@ -52,18 +65,8 @@ run_plan
 
 export SMOKE_LAST_RUN="$DATA_ROOT/last-run.json"
 
-if ! python - <<PY
-import json
-import os
-from pathlib import Path
-
-lines = [line.strip() for line in Path(os.environ["SMOKE_LAST_RUN"]).read_text(encoding="utf-8").splitlines() if line.strip()]
-payload = json.loads(lines[-1]).get("payload", {}) if lines else {}
-results = payload.get("results", [])
-if not any(result.get("used_cache") for result in results):
-    raise SystemExit("cached run did not report used_cache=true")
-PY
-then
+# The last stdout line is {"type": "result", "payload": response}; the hot run must reuse at least one cache entry.
+if ! tail -n 1 "$SMOKE_LAST_RUN" | jq -e '[.payload.results[]? | select(.used_cache == true)] | length > 0' >/dev/null; then
   printf 'Cached run did not report cache reuse.\n' >&2
   exit 1
 fi

@@ -10,6 +10,11 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
+  <!-- A publish for a runtime identifier (dotnet publish -c Release -r win-x64|linux-x64) ships the .NET runtime in the folder so nothing has to be installed on the target. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="DriftBuster.Cli.Tests" />
   </ItemGroup>

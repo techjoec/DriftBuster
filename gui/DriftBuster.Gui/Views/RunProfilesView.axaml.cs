@@ -203,7 +203,7 @@ public partial class RunProfilesView : UserControl
 
         if (string.IsNullOrWhiteSpace(cleaned))
         {
-            cleaned = "offline-collector";
+            return fallback;
         }
 
         if (!cleaned.EndsWith("-offline-collector", StringComparison.OrdinalIgnoreCase))

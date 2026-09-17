@@ -200,6 +200,15 @@ public sealed class RunProfilesViewInteractionTests
         result.Should().NotBe("offline-collector.zip");
     }
 
+    [AvaloniaFact]
+    public void BuildOfflineCollectorName_uses_the_fallback_when_nothing_is_left_after_sanitizing()
+    {
+        var method = typeof(RunProfilesView).GetMethod("BuildOfflineCollectorName", BindingFlags.Static | BindingFlags.NonPublic);
+        method.Should().NotBeNull();
+
+        method!.Invoke(null, new object?[] { "///" }).Should().Be("offline-collector.zip");
+    }
+
     private static RunProfilesViewModel CreateViewModel()
     {
         return new RunProfilesViewModel(new FakeDriftbusterService());
