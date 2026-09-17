@@ -14,7 +14,7 @@ param(
     [switch]$SkipPublish,
     [switch]$SkipSigning,
     [string]$CertificatePath,
-    [string]$CertificatePassword
+    [securestring]$CertificatePassword
 )
 
 Set-StrictMode -Version Latest
@@ -39,7 +39,7 @@ if (-not $runtimeNormalized) {
 $publishDirectory = Join-Path $root "artifacts/gui-packaging/publish-msix/$Configuration/$runtimeNormalized"
 
 if (-not $SkipPublish) {
-    Write-Host "Publishing DriftBuster GUI for $runtimeNormalized..." -ForegroundColor Cyan
+    Write-Information "Publishing DriftBuster GUI for $runtimeNormalized..." -InformationAction Continue
     $publishArgs = @(
         'publish',
         $projectPath,
@@ -51,7 +51,7 @@ if (-not $SkipPublish) {
         '-o', $publishDirectory
     )
 
-    & dotnet @publishArgs | Write-Host
+    & dotnet @publishArgs | ForEach-Object { Write-Information $_ -InformationAction Continue }
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet publish failed for runtime $runtimeNormalized"
     }
@@ -166,9 +166,9 @@ if (Test-Path -LiteralPath $packagePath) {
     Remove-Item -LiteralPath $packagePath -Force
 }
 
-Write-Host "Packing MSIX via $($makeappx.FullName)..." -ForegroundColor Cyan
+Write-Information "Packing MSIX via $($makeappx.FullName)..." -InformationAction Continue
 $makeappxArgs = @('pack', '/d', $intermediateRoot, '/p', $packagePath, '/o')
-& $makeappx.FullName @makeappxArgs | Write-Host
+& $makeappx.FullName @makeappxArgs | ForEach-Object { Write-Information $_ -InformationAction Continue }
 if ($LASTEXITCODE -ne 0) {
     throw "makeappx.exe failed to create MSIX package."
 }
@@ -188,12 +188,12 @@ if (-not $SkipSigning) {
 
     $signArgs = @('sign', '/fd', 'SHA256', '/f', $CertificatePath, '/tr', 'http://timestamp.digicert.com', '/td', 'SHA256')
     if ($CertificatePassword) {
-        $signArgs += @('/p', $CertificatePassword)
+        $signArgs += @('/p', [System.Net.NetworkCredential]::new('', $CertificatePassword).Password)
     }
     $signArgs += $packagePath
 
-    Write-Host "Signing MSIX via $($signtool.FullName)..." -ForegroundColor Cyan
-    & $signtool.FullName @signArgs | Write-Host
+    Write-Information "Signing MSIX via $($signtool.FullName)..." -InformationAction Continue
+    & $signtool.FullName @signArgs | ForEach-Object { Write-Information $_ -InformationAction Continue }
     if ($LASTEXITCODE -ne 0) {
         throw "signtool.exe failed to sign the MSIX package."
     }
@@ -201,5 +201,5 @@ if (-not $SkipSigning) {
     Write-Warning "Skipping signing. The MSIX will require sideloading exemptions."
 }
 
-Write-Host "MSIX package created at $packagePath" -ForegroundColor Green
-Write-Host "Intermediate staging preserved at $intermediateRoot" -ForegroundColor Yellow
+Write-Information "MSIX package created at $packagePath" -InformationAction Continue
+Write-Information "Intermediate staging preserved at $intermediateRoot" -InformationAction Continue

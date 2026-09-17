@@ -1,0 +1,170 @@
+using System.CommandLine;
+using System.Numerics;
+
+using DriftBuster.Backend.Detection;
+using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Profiles.Run;
+using DriftBuster.Backend.Reporting;
+
+namespace DriftBuster.Cli.Commands;
+
+/// <summary>
+/// <c>driftbuster scan PATH</c>: <c>python -m driftbuster.cli PATH</c>. Detects a file or every file under a directory and prints a
+/// table (<c>_emit_table</c>) or one JSON object per file (<c>--json</c>, <c>_emit_json</c>).
+/// </summary>
+internal static class ScanCommand
+{
+    private const string Prog = "driftbuster";
+    private const string Missing = "—";
+    private const int MaxHintWidth = 72;
+    private const int MaxMetadataWidth = 48;
+
+    private static readonly string[] Columns = ["Path", "Format", "Variant", "Confidence", "Severity", "Severity hint", "Metadata keys"];
+
+    public static Command Build()
+    {
+        var path = PythonArguments.Positional("path", "File or directory to scan.");
+        var glob = PythonArguments.Text("--glob", "**/*", "Glob used when scanning directories (default: **/*).");
+        var sampleSize = PythonArguments.OptionalInt("--sample-size", "Bytes to sample from each file (defaults to detector setting).");
+        var json = PythonArguments.Flag("--json", "Emit JSON lines instead of a table.");
+        var command = new Command("scan", "Scan files for DriftBuster formats.") { path, glob, sampleSize, json };
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Execute(
+            parseResult.GetValue(path)!,
+            parseResult.GetValue(glob)!,
+            parseResult.GetValue(sampleSize),
+            parseResult.GetValue(json),
+            stdout,
+            stderr)));
+        return command;
+    }
+
+    /// <summary><c>main(argv)</c> after parsing: exit code 2 with <c>Path does not exist: {path}</c> for a missing path.</summary>
+    internal static int Execute(string path, string glob, BigInteger? sampleSize, bool json, TextWriter stdout, TextWriter stderr)
+    {
+        var root = PythonPurePath.Str(path);
+        IReadOnlyList<(string Path, DetectionMatch? Match)> results;
+        var detector = new Detector(sampleSize: ConsoleText.DetectorSampleSize(sampleSize, Warn), onWarning: Warn);
+        if (PythonPath.IsFile(root))
+        {
+            results = [(root, detector.ScanFile(root))];
+        }
+        else if (!RunProfileStore.Exists(root))
+        {
+            return CommandRunner.ParserError(stderr, Prog, $"Path does not exist: {root}");
+        }
+        else
+        {
+            results = detector.ScanPath(root, glob);
+        }
+
+        if (json)
+        {
+            EmitJson(root, results, stdout);
+        }
+        else
+        {
+            EmitTable(root, results, stdout);
+        }
+
+        return 0;
+
+        void Warn(string message) => ConsoleText.Print(stderr, message);
+    }
+
+    /// <summary>
+    /// <c>_relative_path(root, path)</c>: <c>path.relative_to(root).as_posix()</c>, or <c>path.as_posix()</c> outside the root. The walk
+    /// reports absolute paths where Python joins them to the root as given, so a relative root is also tried in its absolute form.
+    /// </summary>
+    internal static string RelativePath(string root, string path)
+        => PythonPurePath.RelativeTo(path, root)
+            ?? (PythonPurePath.IsAbsolute(path) && !PythonPurePath.IsAbsolute(root) ? PythonPurePath.RelativeTo(path, PythonPath.Absolute(root)) : null)
+            ?? PathText.ToPosix(PythonPurePath.Str(path));
+
+    /// <summary><c>_ellipsize(value, limit)</c> over code points.</summary>
+    internal static string Ellipsize(string value, int limit)
+    {
+        if (ConsoleText.Len(value) <= limit)
+        {
+            return value;
+        }
+
+        return limit <= 1 ? ConsoleText.Head(value, Math.Max(limit, 0)) : ConsoleText.Head(value, limit - 1) + "…";
+    }
+
+    private static void EmitTable(string root, IReadOnlyList<(string Path, DetectionMatch? Match)> results, TextWriter stdout)
+    {
+        var widths = Columns.Select(column => Math.Max(ConsoleText.Len(column), 4)).ToArray();
+        var rows = new List<string[]>();
+        foreach (var (path, match) in results)
+        {
+            var row = TableRow(root, path, match);
+            rows.Add(row);
+            for (var index = 0; index < row.Length; index++)
+            {
+                widths[index] = Math.Max(widths[index], ConsoleText.Len(row[index]));
+            }
+        }
+
+        widths[5] = Math.Min(widths[5], MaxHintWidth);
+        widths[6] = Math.Min(widths[6], MaxMetadataWidth);
+        ConsoleText.Print(stdout, string.Join("  ", Columns.Select((column, index) => ConsoleText.LeftJustify(column, widths[index]))));
+        ConsoleText.Print(stdout, string.Join("  ", widths.Select(width => new string('-', width))));
+        foreach (var row in rows)
+        {
+            ConsoleText.Print(stdout, string.Join("  ", row.Select((value, index) => ConsoleText.LeftJustify(Ellipsize(value, widths[index]), widths[index]))));
+        }
+    }
+
+    private static string[] TableRow(string root, string path, DetectionMatch? match)
+    {
+        var severity = Missing;
+        var severityHint = Missing;
+        var metadataKeys = Missing;
+        if (match?.Metadata is { Count: > 0 } metadata)
+        {
+            var keys = metadata.Keys.ToList();
+            keys.Sort(PathText.CompareCodePoints);
+            metadataKeys = string.Join(", ", keys);
+            severity = TextOrMissing(metadata.GetValueOrDefault("catalog_severity"));
+            severityHint = TextOrMissing(metadata.GetValueOrDefault("catalog_severity_hint"));
+        }
+
+        return
+        [
+            RelativePath(root, path),
+            match?.FormatName ?? Missing,
+            string.IsNullOrEmpty(match?.Variant) ? Missing : match.Variant,
+            match is null ? Missing : ReportValues.FormatFixed(match.Confidence, 2),
+            severity,
+            severityHint,
+            metadataKeys,
+        ];
+    }
+
+    // str(value or "—")
+    private static string TextOrMissing(object? value) => PythonBuiltins.IsTruthy(value) ? PythonRepr.Str(value) : Missing;
+
+    private static void EmitJson(string root, IReadOnlyList<(string Path, DetectionMatch? Match)> results, TextWriter stdout)
+    {
+        foreach (var (path, match) in results)
+        {
+            var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["path"] = RelativePath(root, path),
+                ["detected"] = match is not null,
+            };
+            if (match is not null)
+            {
+                var metadata = match.Metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+                payload["format"] = match.FormatName;
+                payload["variant"] = match.Variant;
+                payload["confidence"] = match.Confidence;
+                payload["severity"] = metadata.GetValueOrDefault("catalog_severity");
+                payload["severity_hint"] = metadata.GetValueOrDefault("catalog_severity_hint");
+                payload["metadata"] = metadata;
+            }
+
+            ConsoleText.Print(stdout, ConsoleText.Dumps(payload, indent: null, sortKeys: true));
+        }
+    }
+}

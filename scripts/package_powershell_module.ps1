@@ -35,7 +35,7 @@ if (-not (Test-Path -LiteralPath $manifestPath)) {
 }
 
 $manifestData = Import-PowerShellDataFile -Path $manifestPath
-$manifest = Test-ModuleManifest -Path $manifestPath
+$null = Test-ModuleManifest -Path $manifestPath
 
 if ($manifestData.ModuleVersion.ToString() -ne $moduleVersion) {
     throw "ModuleVersion in manifest ($($manifestData.ModuleVersion)) does not match versions.json entry ($moduleVersion)."
@@ -65,9 +65,10 @@ if (-not $SkipAnalyzer) {
     Write-Warning "Skipping PSScriptAnalyzer validation by request."
 }
 
-$backendBin = Join-Path $root "gui/DriftBuster.Backend/bin/$Configuration/net8.0/DriftBuster.Backend.dll"
-if (-not (Test-Path -LiteralPath $backendBin)) {
-    throw "Backend assembly not found at $backendBin. Run 'dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c $Configuration' first."
+# A publish folder carries the SQLite dependencies and native runtimes the SQL export and capture cmdlets load.
+$backendPublish = Join-Path $root "gui/DriftBuster.Backend/bin/$Configuration/published"
+if (-not (Test-Path -LiteralPath (Join-Path $backendPublish 'Microsoft.Data.Sqlite.dll'))) {
+    throw "Backend publish output not found at $backendPublish. Run 'dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c $Configuration -o gui/DriftBuster.Backend/bin/$Configuration/published' first."
 }
 
 $stagingRoot = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
@@ -75,7 +76,10 @@ New-Item -ItemType Directory -Path $stagingRoot | Out-Null
 
 try {
     Copy-Item -Path $moduleRoot -Destination $stagingRoot -Recurse -Force
-    Copy-Item -Path $backendBin -Destination (Join-Path $stagingRoot 'DriftBuster.PowerShell') -Force
+    $packageRoot = Join-Path $stagingRoot 'DriftBuster.PowerShell'
+    Get-ChildItem -LiteralPath $backendPublish -File | Where-Object { $_.Extension -in '.dll', '.json' } |
+        Copy-Item -Destination $packageRoot -Force
+    Copy-Item -LiteralPath (Join-Path $backendPublish 'runtimes') -Destination $packageRoot -Recurse -Force
 
     if (-not (Test-Path -LiteralPath $OutputDirectory)) {
         New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
@@ -96,8 +100,8 @@ try {
     $checksumPath = Join-Path $outputPath "$archiveName.sha256"
     Set-Content -LiteralPath $checksumPath -Value "$($hash.Hash)  $archiveName"
 
-    Write-Host "Packaged PowerShell module to $archivePath" -ForegroundColor Green
-    Write-Host "SHA256 checksum saved to $checksumPath" -ForegroundColor Green
+    Write-Information "Packaged PowerShell module to $archivePath" -InformationAction Continue
+    Write-Information "SHA256 checksum saved to $checksumPath" -InformationAction Continue
 }
 finally {
     if (Test-Path -LiteralPath $stagingRoot) {

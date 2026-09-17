@@ -1,23 +1,23 @@
 #!/usr/bin/env pwsh
 param(
-    [string]$Path = "cli"
+    [string[]]$Path = @("cli", "scripts")
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Resolve-Path (Join-Path $PSScriptRoot '..')
-$target = Resolve-Path (Join-Path $root $Path)
+$targets = $Path | ForEach-Object { Resolve-Path (Join-Path $root $_) }
 
 if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
     throw "PSScriptAnalyzer is required. Install via 'Install-Module PSScriptAnalyzer'."
 }
 
-$results = Invoke-ScriptAnalyzer -Path $target -Recurse -Severity @('Error','Warning')
+$results = $targets | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Recurse -Severity @('Error','Warning') }
 
 if ($results) {
     $results | Format-Table
     throw "PSScriptAnalyzer reported $($results.Count) issue(s)."
 }
 
-Write-Host "PSScriptAnalyzer: no issues found in $target" -ForegroundColor Green
+Write-Information "PSScriptAnalyzer: no issues found in $($targets -join ', ')" -InformationAction Continue

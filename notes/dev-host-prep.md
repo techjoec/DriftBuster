@@ -49,7 +49,7 @@
 - [ ] Confirm Windows SDK App Packaging tools are installed (`makeappx.exe`, `signtool.exe`).
 - [ ] Generate MSIX-ready icons under `gui/DriftBuster.Gui/Assets/Msix/` (Square150x150Logo.png, Square44x44Logo.png, StoreLogo.png, Wide310x150Logo.png).
 - [ ] Publish self-contained GUI payload for the target RID (defaults to `win10-x64`).
-- [ ] Pack + sign the MSIX via `pwsh -NonInteractive -File scripts/package_msix.ps1 -Version <major.minor.patch.0> -CertificatePath <pfx> [-CertificatePassword <secret>]`.
+- [ ] Pack + sign the MSIX via `pwsh -NonInteractive -File scripts/package_msix.ps1 -Version <major.minor.patch.0> -CertificatePath <pfx> [-CertificatePassword (Read-Host -AsSecureString)]`.
 - [ ] Archive resulting `.msix`, `AppxManifest.xml`, and PowerShell transcript into `artifacts/gui-packaging/msix/`.
 - [ ] Record SHA256 checksum next to the `.msix` and cross-link evidence in `notes/status/gui-research.md`.
 

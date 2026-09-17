@@ -244,9 +244,12 @@ internal static class ReportValues
     /// <c>json.dumps(value, ensure_ascii=ensureAscii, indent=indent)</c>: the shared two-space layout re-indented, since every line
     /// break the encoder writes is followed only by the indentation (string contents escape their line breaks).
     /// </summary>
-    public static string DumpsIndented(object? value, int indent, bool ensureAscii)
+    public static string DumpsIndented(object? value, int indent, bool ensureAscii) => DumpsIndented(value, indent, ensureAscii, sortKeys: false);
+
+    /// <summary><c>json.dumps(value, ensure_ascii=ensureAscii, indent=indent, sort_keys=sortKeys)</c>, laid out as <see cref="DumpsIndented(object?, int, bool)"/>.</summary>
+    public static string DumpsIndented(object? value, int indent, bool ensureAscii, bool sortKeys)
     {
-        var text = Canonicaliser.Dumps(ToJsonValue(value), indent: true, ensureAscii, sortKeys: false);
+        var text = Canonicaliser.Dumps(ToJsonValue(value), indent: true, ensureAscii, sortKeys);
         if (indent == 2)
         {
             return text;

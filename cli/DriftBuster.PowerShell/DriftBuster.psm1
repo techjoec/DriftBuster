@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $script:ModuleManifest = $null
 $script:BackendVersion = $null
 $script:BackendAssemblyPath = $null
+$script:BackendSourceDirectory = $null
 $script:SerializerOptions = $null
 
 function Write-DriftBusterBackendMissingError {
@@ -134,6 +135,56 @@ function Get-DriftBusterBackendCacheDirectory {
     return $cacheDirectory
 }
 
+function Copy-DriftBusterNativeRuntime {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $SourceDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $CacheDirectory
+    )
+
+    # Microsoft.Data.Sqlite binds the native e_sqlite3 library, which a publish folder keeps under runtimes/<rid>/native.
+    $runtimeId = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+    $sourceNative = Join-Path $SourceDirectory 'runtimes' $runtimeId 'native'
+    if (-not (Test-Path -LiteralPath $sourceNative)) {
+        return
+    }
+
+    $targetNative = Join-Path $CacheDirectory 'runtimes' $runtimeId 'native'
+    if (-not (Test-Path -LiteralPath $targetNative)) {
+        $null = New-Item -ItemType Directory -Path $targetNative -Force
+    }
+
+    foreach ($library in Get-ChildItem -LiteralPath $sourceNative -File) {
+        $targetPath = Join-Path $targetNative $library.Name
+        if (-not (Test-Path -LiteralPath $targetPath) -or (Get-Item -LiteralPath $targetPath).LastWriteTimeUtc -lt $library.LastWriteTimeUtc) {
+            Copy-Item -LiteralPath $library.FullName -Destination $targetPath -Force
+        }
+    }
+}
+
+function Initialize-DriftBusterNativeLibrary {
+    [CmdletBinding()]
+    param()
+
+    # The native library is loaded by full path before first use; the runtime's later load by name resolves to the loaded image.
+    $assemblyDirectory = Split-Path -Parent ([DriftBuster.Backend.DriftbusterBackend].Assembly.Location)
+    $runtimeId = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+    $nativeDirectory = Join-Path $assemblyDirectory 'runtimes' $runtimeId 'native'
+    if (-not (Test-Path -LiteralPath $nativeDirectory)) {
+        return
+    }
+
+    foreach ($library in Get-ChildItem -LiteralPath $nativeDirectory -File -Filter '*e_sqlite3*') {
+        $handle = [IntPtr]::Zero
+        $null = [System.Runtime.InteropServices.NativeLibrary]::TryLoad($library.FullName, [ref]$handle)
+    }
+}
+
 function Get-DriftBusterBackendAssembly {
     param()
 
@@ -172,9 +223,14 @@ function Get-DriftBusterBackendAssembly {
         throw (Write-DriftBusterBackendMissingError -SearchedPaths $searchedPaths)
     }
 
+    # The newest assembly wins, so a fresh build is never shadowed by an older publish folder; on a tie, the folder holding the SQLite
+    # dependencies does.
     $selectedCandidate = $candidatePaths |
         Where-Object { Test-Path -LiteralPath $_ } |
-        Sort-Object { (Get-Item -LiteralPath $_).LastWriteTimeUtc } -Descending |
+        Sort-Object -Property @(
+            @{ Expression = { (Get-Item -LiteralPath $_).LastWriteTimeUtc }; Descending = $true },
+            @{ Expression = { Test-Path -LiteralPath (Join-Path (Split-Path -Parent $_) 'Microsoft.Data.Sqlite.dll') }; Descending = $true }
+        ) |
         Select-Object -First 1
 
     if (-not $selectedCandidate) {
@@ -187,6 +243,7 @@ function Get-DriftBusterBackendAssembly {
     $cacheAssemblyPath = Join-Path $cacheDirectory 'DriftBuster.Backend.dll'
 
     $sourceDirectory = Split-Path -Parent $resolvedCandidate
+    $script:BackendSourceDirectory = $sourceDirectory
 
     if ($resolvedCandidate -ne $cacheAssemblyPath) {
         $shouldCopy = $true
@@ -237,6 +294,8 @@ function Get-DriftBusterBackendAssembly {
             }
         }
     }
+
+    Copy-DriftBusterNativeRuntime -SourceDirectory $sourceDirectory -CacheDirectory $cacheDirectory
 
     $script:BackendAssemblyPath = (Resolve-Path -LiteralPath $cacheAssemblyPath).Path
     return $script:BackendAssemblyPath
@@ -439,6 +498,8 @@ if (-not ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName
     $assemblyPath = Get-DriftBusterBackendAssembly
     Add-Type -Path $assemblyPath
 }
+
+Initialize-DriftBusterNativeLibrary
 
 if (-not $script:DriftBusterBackend) {
     $script:DriftBusterBackend = [DriftBuster.Backend.DriftbusterBackend]::new()
@@ -827,10 +888,121 @@ Invoke-DriftBusterRunProfile -Profile $profile -BaseDir .\.driftbuster
     }
 }
 
-function Export-DriftBusterSqlSnapshot {
+function Wait-DriftBusterTask {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [System.Threading.Tasks.Task]
+        $Task
+    )
+
+    # GetResult rethrows the backend's own exception; PowerShell wraps it in a MethodInvocationException, which is unwrapped here.
+    try {
+        return $Task.GetAwaiter().GetResult()
+    }
+    catch [System.Management.Automation.MethodInvocationException] {
+        if ($_.Exception.InnerException) {
+            throw $_.Exception.InnerException
+        }
+
+        throw
+    }
+}
+
+function Resolve-DriftBusterProviderPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Path
+    )
+
+    # The backend resolves relative paths against the process directory; PowerShell callers mean their current location.
+    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+}
+
+function ConvertTo-DriftBusterScheduleJson {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]
+        $Value
+    )
+
+    # Indented JSON with timestamps left readable; a schedule without a window omits the key, as the scheduler's JSON contract does.
+    $options = [System.Text.Json.JsonSerializerOptions]::new()
+    $options.WriteIndented = $true
+    $options.Encoder = [System.Text.Encodings.Web.JavaScriptEncoder]::UnsafeRelaxedJsonEscaping
+    $node = [System.Text.Json.JsonSerializer]::SerializeToNode($Value, $Value.GetType(), $options)
+    $entries = [System.Collections.Generic.List[object]]::new()
+    if ($node -is [System.Text.Json.Nodes.JsonArray]) {
+        foreach ($item in $node) {
+            $entries.Add($item)
+        }
+    }
+    else {
+        $entries.Add($node)
+    }
+
+    foreach ($entry in $entries) {
+        if ($entry -is [System.Text.Json.Nodes.JsonObject] -and $entry.ContainsKey('window') -and $null -eq $entry['window']) {
+            $null = $entry.Remove('window')
+        }
+    }
+
+    return $node.ToJsonString($options)
+}
+
+function Export-DriftBusterSqlSnapshot {
+<#
+.SYNOPSIS
+Exports anonymised SQLite snapshots through the DriftBuster backend.
+
+.DESCRIPTION
+Calls the backend `ExportSqlSnapshotAsync` API, which writes one
+`<prefix>-sql-snapshot.json` per database and a `sql-manifest.json` under the
+output directory. Masked columns hold the placeholder and hashed columns hold
+salted SHA-256 digests. Returns the manifest as a PowerShell object; throws
+when any database is missing or fails to export.
+
+.PARAMETER Database
+SQLite database paths, exported in order.
+
+.PARAMETER OutputDir
+Directory the snapshots and manifest are written to.
+
+.PARAMETER Table
+Tables to export; every table is exported when omitted.
+
+.PARAMETER ExcludeTable
+Tables never exported.
+
+.PARAMETER MaskColumn
+`table.column` entries whose values are replaced by the placeholder.
+
+.PARAMETER HashColumn
+`table.column` entries whose values are hashed.
+
+.PARAMETER Placeholder
+Text masked columns hold.
+
+.PARAMETER HashSalt
+Salt applied to hashed values.
+
+.PARAMETER Limit
+Maximum rows exported per table.
+
+.PARAMETER Prefix
+Prefix of the snapshot file names.
+
+.EXAMPLE
+Export-DriftBusterSqlSnapshot -Database .\app.sqlite -MaskColumn accounts.secret -HashColumn accounts.email -OutputDir .\exports
+#>
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string[]]
         $Database,
 
@@ -859,93 +1031,388 @@ function Export-DriftBusterSqlSnapshot {
         $Limit,
 
         [string]
-        $Prefix,
-
-        [string]
-        $PythonPath = "python"
+        $Prefix
     )
 
-    $arguments = @("-m", "scripts.capture", "export-sql", "--output-dir", $OutputDir)
-
-    if ($Table) {
-        foreach ($value in $Table) {
-            $arguments += @("--table", $value)
-        }
+    $request = [DriftBuster.Backend.Models.SqlExportRequest]::new()
+    $request.Databases = [string[]]@($Database | ForEach-Object { Resolve-DriftBusterProviderPath -Path $_ })
+    $request.OutputDir = Resolve-DriftBusterProviderPath -Path $OutputDir
+    $request.Tables = [string[]]@($Table | Where-Object { $_ })
+    $request.ExcludeTables = [string[]]@($ExcludeTable | Where-Object { $_ })
+    $request.MaskColumns = [string[]]@($MaskColumn | Where-Object { $_ })
+    $request.HashColumns = [string[]]@($HashColumn | Where-Object { $_ })
+    $request.Placeholder = $Placeholder
+    $request.HashSalt = $HashSalt
+    if ($PSBoundParameters.ContainsKey('Limit')) {
+        $request.Limit = $Limit
+    }
+    if ($Prefix) {
+        $request.Prefix = $Prefix
     }
 
-    if ($ExcludeTable) {
-        foreach ($value in $ExcludeTable) {
-            $arguments += @("--exclude-table", $value)
-        }
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.ExportSqlSnapshotAsync($request)
+    if ($result.Output) {
+        Write-Verbose $result.Output.TrimEnd()
     }
 
-    if ($MaskColumn) {
-        foreach ($value in $MaskColumn) {
-            $arguments += @("--mask-column", $value)
-        }
-    }
-
-    if ($HashColumn) {
-        foreach ($value in $HashColumn) {
-            $arguments += @("--hash-column", $value)
-        }
-    }
-
-    if ($PSBoundParameters.ContainsKey("Placeholder")) {
-        $arguments += @("--placeholder", $Placeholder)
-    }
-
-    if ($PSBoundParameters.ContainsKey("HashSalt")) {
-        $arguments += @("--hash-salt", $HashSalt)
-    }
-
-    if ($PSBoundParameters.ContainsKey("Limit")) {
-        $arguments += @("--limit", [string]$Limit)
-    }
-
-    if ($PSBoundParameters.ContainsKey("Prefix") -and $Prefix) {
-        $arguments += @("--prefix", $Prefix)
-    }
-
-    foreach ($databasePath in $Database) {
-        $arguments += $databasePath
-    }
-
-    Write-Verbose ("Invoking {0} {1}" -f $PythonPath, ($arguments -join ' '))
-    $output = & $PythonPath @arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        $message = "driftbuster export failed with exit code $LASTEXITCODE"
-        if ($output) {
-            $message += "`n" + ($output -join [Environment]::NewLine)
+    if ($result.ExitCode -ne 0) {
+        $message = "driftbuster export failed with exit code $($result.ExitCode)"
+        if ($result.Errors) {
+            $message += "`n" + $result.Errors.TrimEnd()
         }
         throw $message
     }
 
-    if ($output) {
-        Write-Verbose ($output -join [Environment]::NewLine)
+    return ConvertFrom-DriftBusterJson -Json $result.ManifestJson
+}
+
+function Invoke-DriftBusterCaptureRun {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Root,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $OutputDir,
+
+        [string]
+        $ProfilesPath,
+
+        [string[]]
+        $ProfileTag,
+
+        [string[]]
+        $MaskToken,
+
+        [switch]
+        $AllowUnmasked,
+
+        [switch]
+        $SkipHunt,
+
+        [string]
+        $Operator,
+
+        [string]
+        $Environment,
+
+        [string]
+        $Reason
+    )
+
+    $request = [DriftBuster.Backend.Models.CaptureRunRequest]::new()
+    $request.Root = $Root
+    $request.OutputDir = $OutputDir
+    if ($ProfilesPath) {
+        $request.ProfilesPath = $ProfilesPath
+    }
+    $request.ProfileTags = [string[]]@($ProfileTag | Where-Object { $_ })
+    $request.MaskTokens = [string[]]@($MaskToken | Where-Object { $_ })
+    $request.AllowUnmasked = [bool]$AllowUnmasked
+    $request.SkipHunt = [bool]$SkipHunt
+    $request.Operator = if ($Operator) { $Operator } else { $null }
+    $request.Environment = $Environment
+    $request.Reason = $Reason
+
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.RunCaptureAsync($request)
+    if ($result.Output) {
+        Write-Verbose $result.Output.TrimEnd()
     }
 
-    $manifestPath = Join-Path $OutputDir "sql-manifest.json"
-    if (Test-Path -LiteralPath $manifestPath) {
-        $content = Get-Content -LiteralPath $manifestPath -Raw
-        if ($content) {
-            return ConvertFrom-DriftBusterJson -Json $content
+    if ($result.ExitCode -ne 0) {
+        $message = "Capture of $Root failed with exit code $($result.ExitCode)"
+        if ($result.Errors) {
+            $message += "`n" + $result.Errors.TrimEnd()
+        }
+        throw $message
+    }
+
+    if ($result.Errors) {
+        Write-Warning $result.Errors.TrimEnd()
+    }
+
+    return [pscustomobject]@{
+        SnapshotPath = $result.SnapshotPath
+        ManifestPath = $result.ManifestPath
+    }
+}
+
+function Get-DriftBusterAdminShareTargetPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ComputerName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Share,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Path
+    )
+
+    if ($Path.StartsWith('\\')) {
+        return $Path
+    }
+
+    # Built as text rather than with Join-Path so the UNC form is the same on every host OS.
+    $shareRoot = '\\{0}\{1}' -f $ComputerName, $Share
+    $relative = if ($Path -match '^[A-Za-z]:\\') { $Path.Substring(3) } else { $Path }
+    $relative = ($relative -replace '\\+', '\').Trim('\')
+
+    if ([string]::IsNullOrWhiteSpace($relative)) {
+        return $shareRoot
+    }
+
+    return '{0}\{1}' -f $shareRoot, $relative
+}
+
+function Invoke-DriftBusterAdminShareScan {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ComputerName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $RemotePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $AdminShare,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $LocalOutput,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $CaptureParameters,
+
+        [string]
+        $ProfilePath,
+
+        [switch]
+        $PersistShare,
+
+        [System.Management.Automation.PSCredential]
+        $Credential
+    )
+
+    $targetPath = Get-DriftBusterAdminShareTargetPath -ComputerName $ComputerName -Share $AdminShare -Path $RemotePath
+    $driveName = $null
+
+    if ($Credential) {
+        # The drive authenticates the SMB connection; the capture itself reads the UNC path.
+        $driveName = 'DBR{0}' -f ([Guid]::NewGuid().ToString('N').Substring(0, 8).ToUpperInvariant())
+        $driveParams = @{
+            Name       = $driveName
+            PSProvider = 'FileSystem'
+            Root       = ('\\{0}\{1}' -f $ComputerName, $AdminShare)
+            Scope      = 'Script'
+            Credential = $Credential
+        }
+
+        if ($PersistShare) {
+            $driveParams.Persist = $true
+        }
+
+        $null = New-PSDrive @driveParams
+    }
+
+    try {
+        $runParameters = @{} + $CaptureParameters
+        $runParameters.Root = $targetPath
+        $runParameters.OutputDir = $LocalOutput
+        if ($ProfilePath) {
+            $runParameters.ProfilesPath = $ProfilePath
+        }
+
+        $capture = Invoke-DriftBusterCaptureRun @runParameters
+
+        return [pscustomobject]@{
+            ComputerName    = $ComputerName
+            Mode            = 'AdminShare'
+            OutputDirectory = $LocalOutput
+            TargetPath      = $targetPath
+            SnapshotPath    = $capture.SnapshotPath
+            ManifestPath    = $capture.ManifestPath
         }
     }
+    finally {
+        if ($driveName -and -not $PersistShare) {
+            Remove-PSDrive -Name $driveName -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
 
-    return $null
+# Runs on the remote host: creates a unique staging folder under the working directory and reports the paths the scan uses there.
+$script:RemoteStageScript = {
+    param([string] $WorkingDirectory)
+
+    $expanded = $ExecutionContext.InvokeCommand.ExpandString($WorkingDirectory)
+    $staging = Join-Path $expanded ([Guid]::NewGuid().ToString('N'))
+    $moduleDirectory = Join-Path $staging 'DriftBuster'
+    $runtimesDirectory = Join-Path $moduleDirectory 'runtimes'
+    $outputDirectory = Join-Path $staging 'captures'
+    try {
+        foreach ($directory in @($runtimesDirectory, $outputDirectory)) {
+            $null = New-Item -ItemType Directory -Path $directory -Force -ErrorAction Stop
+        }
+    }
+    catch {
+        Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
+        throw
+    }
+
+    [pscustomobject]@{
+        StagingDirectory  = $staging
+        ModuleDirectory   = $moduleDirectory
+        ModuleManifest    = Join-Path $moduleDirectory 'DriftBuster.psd1'
+        RuntimesDirectory = $runtimesDirectory
+        RuntimeIdentifier = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+        ProfilesPath      = Join-Path $staging 'profiles.json'
+        OutputDirectory   = $outputDirectory
+        OutputItems       = Join-Path $outputDirectory '*'
+    }
+}
+
+# Runs on the remote host: imports the staged module and runs the capture in process there.
+$script:RemoteCaptureScript = {
+    param([string] $ModuleManifest, [hashtable] $CaptureParameters)
+
+    $module = Import-Module -Name $ModuleManifest -Force -PassThru -ErrorAction Stop
+    & $module { param($Parameters) Invoke-DriftBusterCaptureRun @Parameters } $CaptureParameters
+}
+
+# Runs on the remote host: removes the staging folder.
+$script:RemoteCleanupScript = {
+    param([string] $StagingDirectory)
+
+    Remove-Item -LiteralPath $StagingDirectory -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+function Copy-DriftBusterStagedModule {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]
+        $Session,
+
+        [Parameter(Mandatory = $true)]
+        [object]
+        $Remote
+    )
+
+    # The module folder and the backend assembly folder land together, so the staged module finds its backend beside it.
+    $backendDirectory = Split-Path -Parent ([DriftBuster.Backend.DriftbusterBackend].Assembly.Location)
+    if ($script:BackendSourceDirectory) {
+        $backendDirectory = $script:BackendSourceDirectory
+    }
+
+    $moduleFiles = @(Get-ChildItem -LiteralPath $PSScriptRoot -File)
+    $backendFiles = @(Get-ChildItem -LiteralPath $backendDirectory -File | Where-Object { $_.Extension -in '.dll', '.json' })
+    foreach ($file in @($moduleFiles + $backendFiles)) {
+        Copy-Item -ToSession $Session -LiteralPath $file.FullName -Destination $Remote.ModuleDirectory -Force -ErrorAction Stop
+    }
+
+    $nativeRuntime = Join-Path $backendDirectory 'runtimes' $Remote.RuntimeIdentifier
+    if (Test-Path -LiteralPath $nativeRuntime) {
+        Copy-Item -ToSession $Session -LiteralPath $nativeRuntime -Destination $Remote.RuntimesDirectory -Recurse -Force -ErrorAction Stop
+    }
+}
+
+function Invoke-DriftBusterWinRMScan {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ComputerName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $RemotePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $LocalOutput,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $CaptureParameters,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SessionParameters,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $RemoteWorkingDirectory,
+
+        [string]
+        $ProfilePath,
+
+        [switch]
+        $KeepRemoteArtifacts
+    )
+
+    $session = New-PSSession @SessionParameters -ErrorAction Stop
+    try {
+        $remote = Invoke-Command -Session $session -ScriptBlock $script:RemoteStageScript -ArgumentList $RemoteWorkingDirectory -ErrorAction Stop
+        try {
+            Copy-DriftBusterStagedModule -Session $session -Remote $remote
+
+            $runParameters = @{} + $CaptureParameters
+            $runParameters.Root = $RemotePath
+            $runParameters.OutputDir = $remote.OutputDirectory
+            if ($ProfilePath) {
+                Copy-Item -ToSession $session -LiteralPath $ProfilePath -Destination $remote.ProfilesPath -Force -ErrorAction Stop
+                $runParameters.ProfilesPath = $remote.ProfilesPath
+            }
+
+            $capture = Invoke-Command -Session $session -ScriptBlock $script:RemoteCaptureScript -ArgumentList $remote.ModuleManifest, $runParameters -ErrorAction Stop
+            Copy-Item -FromSession $session -Path $remote.OutputItems -Destination $LocalOutput -Recurse -Force -ErrorAction Stop
+        }
+        finally {
+            if (-not $KeepRemoteArtifacts) {
+                Invoke-Command -Session $session -ScriptBlock $script:RemoteCleanupScript -ArgumentList $remote.StagingDirectory -ErrorAction Continue
+            }
+        }
+
+        # The remote host reports its own paths; the copies sit under the local output directory with the same file names.
+        return [pscustomobject]@{
+            ComputerName    = $ComputerName
+            Mode            = 'WinRM'
+            OutputDirectory = $LocalOutput
+            SnapshotPath    = Join-Path $LocalOutput (($capture.SnapshotPath -split '[\\/]')[-1])
+            ManifestPath    = Join-Path $LocalOutput (($capture.ManifestPath -split '[\\/]')[-1])
+        }
+    }
+    finally {
+        Remove-PSSession -Session $session
+    }
 }
 
 function Invoke-DriftBusterRemoteScan {
 <#
 .SYNOPSIS
-Runs the DriftBuster capture helper against remote hosts.
+Runs a DriftBuster capture against remote hosts.
 
 .DESCRIPTION
-Coordinates remote capture runs using either administrative SMB shares or
-WinRM remoting. Administrative shares run the capture locally against a UNC
-path, while WinRM sessions stage the capture helper on the remote host,
-execute it, and pull the resulting artefacts back to the caller.
+Coordinates capture runs using either administrative SMB shares or WinRM
+remoting. Administrative share mode runs the backend capture in this process
+against the UNC path. WinRM mode stages this module and the backend assembly
+folder in a unique folder under the remote working directory, imports the
+module there, runs the capture on the remote host, copies the snapshot and
+manifest back, and removes the staged folder.
+
+The capture refuses to run without an environment, a reason, and either mask
+tokens or an explicit -AllowUnmasked.
 
 .PARAMETER ComputerName
 Target host name(s) to scan.
@@ -956,23 +1423,49 @@ roots (for example `C:\ProgramData`) are converted to relative segments when
 admin share access is requested.
 
 .PARAMETER RunProfilePath
-ProfileStore JSON passed to `scripts/capture.py run --profiles`.
+Optional detection profile store JSON applied to the capture.
 
-.PARAMETER PythonPath
-Python executable (or shim) used to invoke `scripts/capture.py`.
+.PARAMETER Environment
+Environment label recorded in the capture manifest.
+
+.PARAMETER Reason
+Reason for the capture, recorded in the manifest.
+
+.PARAMETER Operator
+Operator recorded in the manifest; defaults to DRIFTBUSTER_CAPTURE_OPERATOR,
+USER or USERNAME on the host that runs the capture.
+
+.PARAMETER MaskToken
+Sensitive tokens redacted from the snapshot.
+
+.PARAMETER AllowUnmasked
+Allows a capture without mask tokens.
+
+.PARAMETER ProfileTag
+Tags activating profiles from the profile store.
+
+.PARAMETER SkipHunt
+Skips the hunt scan.
 
 .PARAMETER OutputDirectory
-Local directory that stores copied capture artefacts for each host.
+Local directory that stores the capture artefacts for each host.
 
 .PARAMETER AdminShare
 Administrative share (defaults to `C$`) when using SMB access.
+
+.PARAMETER PersistShare
+Keeps the credential drive mapping after the scan.
 
 .PARAMETER UseWinRM
 Switch to enable WinRM staging instead of direct SMB access.
 
 .PARAMETER RemoteWorkingDirectory
-Directory created on the remote host to stage capture helpers when WinRM is
-used.
+Directory on the remote host under which the staging folder is created when
+WinRM is used. Expanded on the remote host.
+
+.PARAMETER ConfigurationName
+WinRM session configuration; the backend needs PowerShell 7.6, which
+`Enable-PSRemoting` registers as `PowerShell.7`.
 
 .PARAMETER Port
 Custom WinRM port when the remote endpoint does not use the default.
@@ -982,16 +1475,19 @@ Toggle WinRM SSL negotiation for remote endpoints.
 
 .PARAMETER KeepRemoteArtifacts
 Skips remote clean-up when WinRM staging is used so operators can examine the
-artefacts in place.
+staged folder in place. Clean-up removes the staged folder only: the staged
+module's import keeps its versioned backend cache under the remote user's
+DriftBuster data root, as any import of the module does, and reuses it on the
+next scan.
 
 .PARAMETER Credential
 Optional credential applied to the SMB drive mapping or WinRM session.
 
 .EXAMPLE
-Invoke-DriftBusterRemoteScan -ComputerName 'branch-01' -RemotePath 'ProgramData\\Vendor' -RunProfilePath profiles\hq.json
+Invoke-DriftBusterRemoteScan -ComputerName 'branch-01' -RemotePath 'ProgramData\Vendor' -Environment prod -Reason audit -MaskToken 'hunter2'
 
 .EXAMPLE
-Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramData\\Vendor' -RunProfilePath profiles\hq.json -UseWinRM -RemoteWorkingDirectory '$env:ProgramData\\DriftBusterRemote'
+Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\ProgramData\Vendor' -RunProfilePath profiles\hq.json -Environment prod -Reason audit -AllowUnmasked -UseWinRM
 #>
     [CmdletBinding(DefaultParameterSetName = 'AdminShare')]
     [OutputType([pscustomobject])]
@@ -1007,15 +1503,39 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
         [string]
         $RemotePath,
 
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
+        [Parameter()]
         [string]
         $RunProfilePath,
 
-        [Parameter()]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]
-        $PythonPath = 'python',
+        $Environment,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Reason,
+
+        [Parameter()]
+        [string]
+        $Operator,
+
+        [Parameter()]
+        [string[]]
+        $MaskToken,
+
+        [Parameter()]
+        [switch]
+        $AllowUnmasked,
+
+        [Parameter()]
+        [string[]]
+        $ProfileTag,
+
+        [Parameter()]
+        [switch]
+        $SkipHunt,
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
@@ -1041,6 +1561,11 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
         $RemoteWorkingDirectory = '$env:ProgramData\DriftBuster\RemoteScan',
 
         [Parameter(ParameterSetName = 'WinRM')]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $ConfigurationName = 'PowerShell.7',
+
+        [Parameter(ParameterSetName = 'WinRM')]
         [int]
         $Port,
 
@@ -1059,73 +1584,26 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
     )
 
     begin {
-        $resolvedProfile = (Resolve-Path -LiteralPath $RunProfilePath -ErrorAction Stop).Path
-        $captureScriptCandidate = Join-Path $PSScriptRoot '..' '..' 'scripts' 'capture.py'
-        if (-not (Test-Path -LiteralPath $captureScriptCandidate)) {
-            throw "Capture helper not found at $captureScriptCandidate"
+        $resolvedProfile = $null
+        if ($RunProfilePath) {
+            $resolvedProfile = (Resolve-Path -LiteralPath $RunProfilePath -ErrorAction Stop).Path
         }
 
-        $resolvedCaptureScript = (Resolve-Path -LiteralPath $captureScriptCandidate -ErrorAction Stop).Path
-        $scriptDirectory = Split-Path -Parent $resolvedCaptureScript
-
-        if (-not (Test-Path -LiteralPath $OutputDirectory)) {
-            $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
+        $resolvedOutput = Resolve-DriftBusterProviderPath -Path $OutputDirectory
+        if (-not (Test-Path -LiteralPath $resolvedOutput)) {
+            $null = New-Item -ItemType Directory -Path $resolvedOutput -Force
         }
 
-        function Get-AdminShareTargetPath {
-            param(
-                [string] $Computer,
-                [string] $Share,
-                [string] $Path
-            )
-
-            if ([string]::IsNullOrWhiteSpace($Computer)) {
-                throw 'Computer name cannot be empty.'
-            }
-
-            if ($Path.StartsWith('\\')) {
-                return $Path
-            }
-
-            $shareRoot = "\\{0}\{1}" -f $Computer, $Share
-
-            if ($Path -match '^[A-Za-z]:\\') {
-                $relative = $Path.Substring(3)
-            }
-            else {
-                $relative = $Path.TrimStart('\\')
-            }
-
-            if ([string]::IsNullOrWhiteSpace($relative)) {
-                return $shareRoot
-            }
-
-            return Join-Path -Path $shareRoot -ChildPath $relative
+        $captureParameters = @{
+            Environment   = $Environment
+            Reason        = $Reason
+            MaskToken     = @($MaskToken | Where-Object { $_ })
+            ProfileTag    = @($ProfileTag | Where-Object { $_ })
+            AllowUnmasked = [bool]$AllowUnmasked
+            SkipHunt      = [bool]$SkipHunt
         }
-
-        function Get-AdminShareDrivePath {
-            param(
-                [string] $DriveName,
-                [string] $Path
-            )
-
-            if ($Path.StartsWith('\\')) {
-                $trimmed = $Path -replace '^\\\\[^\\]+\\[^\\]+\\?', ''
-            }
-            elseif ($Path -match '^[A-Za-z]:\\') {
-                $trimmed = $Path.Substring(3)
-            }
-            else {
-                $trimmed = $Path.TrimStart('\\')
-            }
-
-            $driveRoot = '{0}:' -f $DriveName
-
-            if ([string]::IsNullOrWhiteSpace($trimmed)) {
-                return $driveRoot
-            }
-
-            return Join-Path -Path $driveRoot -ChildPath $trimmed
+        if ($Operator) {
+            $captureParameters.Operator = $Operator
         }
 
         $results = New-Object System.Collections.Generic.List[object]
@@ -1137,133 +1615,55 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
                 continue
             }
 
-            $localOutput = Join-Path $OutputDirectory $computer
+            $localOutput = Join-Path $resolvedOutput $computer
             if (-not (Test-Path -LiteralPath $localOutput)) {
                 $null = New-Item -ItemType Directory -Path $localOutput -Force
             }
 
             if ($PSCmdlet.ParameterSetName -eq 'WinRM') {
-                $sessionParams = @{ ComputerName = $computer }
+                $sessionParameters = @{ ComputerName = $computer; ConfigurationName = $ConfigurationName }
                 if ($Credential) {
-                    $sessionParams.Credential = $Credential
+                    $sessionParameters.Credential = $Credential
                 }
                 if ($PSBoundParameters.ContainsKey('Port')) {
-                    $sessionParams.Port = $Port
+                    $sessionParameters.Port = $Port
                 }
                 if ($UseSSL) {
-                    $sessionParams.UseSSL = $true
+                    $sessionParameters.UseSSL = $true
                 }
 
-                $session = New-PSSession @sessionParams
-                try {
-                    $remoteRoot = Invoke-Command -Session $session -ScriptBlock {
-                        $expanded = $ExecutionContext.InvokeCommand.ExpandString($using:RemoteWorkingDirectory)
-                        if (-not (Test-Path -LiteralPath $expanded)) {
-                            $null = New-Item -ItemType Directory -Path $expanded -Force
-                        }
-
-                        return (Resolve-Path -LiteralPath $expanded).Path
-                    }
-
-                    $remoteScriptPath = Join-Path $remoteRoot 'capture.py'
-                    $remoteProfilesPath = Join-Path $remoteRoot 'profiles.json'
-                    $remoteOutput = Join-Path $remoteRoot 'captures'
-
-                    Copy-Item -ToSession $session -LiteralPath $resolvedCaptureScript -Destination $remoteScriptPath -Force
-                    Copy-Item -ToSession $session -LiteralPath $resolvedProfile -Destination $remoteProfilesPath -Force
-
-                    Invoke-Command -Session $session -ScriptBlock {
-                        if (-not (Test-Path -LiteralPath $using:remoteOutput)) {
-                            $null = New-Item -ItemType Directory -Path $using:remoteOutput -Force
-                        }
-
-                        Push-Location $using:remoteRoot
-                        try {
-                            & $using:PythonPath 'capture.py' 'run' $using:RemotePath '--profiles' $using:remoteProfilesPath '--output-dir' $using:remoteOutput
-                            $code = $LASTEXITCODE
-                        }
-                        finally {
-                            Pop-Location
-                        }
-
-                        if ($code -ne 0) {
-                            throw "capture.py exited with code $code"
-                        }
-                    }
-
-                    Copy-Item -FromSession $session -Path (Join-Path $remoteOutput '*') -Destination $localOutput -Recurse -Force -ErrorAction SilentlyContinue
-
-                    if (-not $KeepRemoteArtifacts) {
-                        Invoke-Command -Session $session -ScriptBlock {
-                            Remove-Item -LiteralPath $using:remoteProfilesPath -Force -ErrorAction SilentlyContinue
-                            Remove-Item -LiteralPath $using:remoteScriptPath -Force -ErrorAction SilentlyContinue
-                            Remove-Item -LiteralPath $using:remoteOutput -Recurse -Force -ErrorAction SilentlyContinue
-                        }
-                    }
-
-                    $results.Add([pscustomobject]@{
-                        ComputerName    = $computer
-                        Mode            = 'WinRM'
-                        OutputDirectory = $localOutput
-                    }) | Out-Null
+                $scan = @{
+                    ComputerName           = $computer
+                    RemotePath             = $RemotePath
+                    LocalOutput            = $localOutput
+                    CaptureParameters      = $captureParameters
+                    SessionParameters      = $sessionParameters
+                    RemoteWorkingDirectory = $RemoteWorkingDirectory
+                    KeepRemoteArtifacts    = $KeepRemoteArtifacts
                 }
-                finally {
-                    if ($session) {
-                        Remove-PSSession -Session $session
-                    }
+                if ($resolvedProfile) {
+                    $scan.ProfilePath = $resolvedProfile
                 }
+
+                $results.Add((Invoke-DriftBusterWinRMScan @scan)) | Out-Null
             }
             else {
-                $uncPath = Get-AdminShareTargetPath -Computer $computer -Share $AdminShare -Path $RemotePath
-                $driveName = $null
-                $targetPath = $uncPath
-
+                $scan = @{
+                    ComputerName      = $computer
+                    RemotePath        = $RemotePath
+                    AdminShare        = $AdminShare
+                    LocalOutput       = $localOutput
+                    CaptureParameters = $captureParameters
+                    PersistShare      = $PersistShare
+                }
+                if ($resolvedProfile) {
+                    $scan.ProfilePath = $resolvedProfile
+                }
                 if ($Credential) {
-                    $driveName = 'DBR{0}' -f ([Guid]::NewGuid().ToString('N').Substring(0, 8).ToUpper())
-                    $driveRoot = "\\{0}\{1}" -f $computer, $AdminShare
-
-                    $driveParams = @{
-                        Name       = $driveName
-                        PSProvider = 'FileSystem'
-                        Root       = $driveRoot
-                        Scope      = 'Script'
-                        Credential = $Credential
-                    }
-
-                    if ($PersistShare) {
-                        $driveParams.Persist = $true
-                    }
-
-                    $null = New-PSDrive @driveParams
-                    $targetPath = Get-AdminShareDrivePath -DriveName $driveName -Path $RemotePath
+                    $scan.Credential = $Credential
                 }
 
-                try {
-                    Push-Location $scriptDirectory
-                    try {
-                        & $PythonPath $resolvedCaptureScript 'run' $targetPath '--profiles' $resolvedProfile '--output-dir' $localOutput
-                        $exitCode = $LASTEXITCODE
-                    }
-                    finally {
-                        Pop-Location
-                    }
-
-                    if ($exitCode -ne 0) {
-                        throw "Remote capture via admin share failed for $computer with exit code $exitCode."
-                    }
-
-                    $results.Add([pscustomobject]@{
-                        ComputerName    = $computer
-                        Mode            = 'AdminShare'
-                        OutputDirectory = $localOutput
-                        TargetPath      = $targetPath
-                    }) | Out-Null
-                }
-                finally {
-                    if ($driveName -and -not $PersistShare) {
-                        Remove-PSDrive -Name $driveName -Force -ErrorAction SilentlyContinue
-                    }
-                }
+                $results.Add((Invoke-DriftBusterAdminShareScan @scan)) | Out-Null
             }
         }
     }
@@ -1273,53 +1673,74 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\\ProgramDat
     }
 }
 
-function Invoke-DriftBusterScheduleCli {
+function ConvertFrom-DriftBusterScheduleModel {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [string[]]
-        $Arguments,
+        [object]
+        $Model
+    )
 
-        [Parameter()]
-        [string]
-        $PythonPath = "python",
+    # Unlike the other models, schedule entries keep their null timestamps, as the scheduler's JSON contract prints them.
+    $options = [System.Text.Json.JsonSerializerOptions]::new()
+    $json = [System.Text.Json.JsonSerializer]::Serialize($Model, $Model.GetType(), $options)
+    $converted = ConvertFrom-DriftBusterJson -Json $json
+    $window = $converted.PSObject.Properties['window']
+    if ($window -and $null -eq $window.Value) {
+        $converted.PSObject.Properties.Remove('window')
+    }
 
-        [Parameter()]
+    return $converted
+}
+
+function Write-DriftBusterScheduleOutput {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]
+        $Result,
+
         [switch]
         $Raw
     )
 
-    Write-Verbose ("Invoking {0} {1}" -f $PythonPath, ($Arguments -join ' '))
-    $output = & $PythonPath @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        $message = "driftbuster schedule command failed with exit code $LASTEXITCODE"
-        if ($output) {
-            $message += "`n" + ($output -join [Environment]::NewLine)
-        }
-        throw $message
-    }
-
-    $text = if ($output -is [System.Array]) {
-        ($output -join [Environment]::NewLine)
-    }
-    else {
-        [string]$output
-    }
-
-    $trimmed = $text.Trim()
-    if (-not $trimmed) {
-        return $null
-    }
-
+    # An array result (schedules or due runs) is emitted one entry at a time; a state result is a single object.
     if ($Raw) {
-        return $trimmed
+        return ConvertTo-DriftBusterScheduleJson -Value $Result
     }
 
-    return ConvertFrom-DriftBusterJson -Json $trimmed
+    foreach ($entry in @($Result)) {
+        Write-Output (ConvertFrom-DriftBusterScheduleModel -Model $entry)
+    }
 }
 
 function Get-DriftBusterSchedule {
+<#
+.SYNOPSIS
+Lists run profile schedules with their scheduler state.
+
+.DESCRIPTION
+Calls the backend `ListScheduleStatusAsync` API and emits one object per
+schedule, ordered by name, with `name`, `profile`, `interval_seconds`, `tags`,
+`metadata`, `start_at`, `next_run`, `pending` and, when defined, `window`.
+
+.PARAMETER BaseDir
+Base directory whose `Profiles` folder holds the default manifest and state.
+
+.PARAMETER ConfigPath
+Schedule manifest path; defaults to `Profiles/schedules.json` under the base directory.
+
+.PARAMETER StatePath
+Scheduler state path; defaults to `Profiles/scheduler-state.json` under the base directory.
+
+.PARAMETER Raw
+Returns the schedules as JSON text.
+
+.EXAMPLE
+Get-DriftBusterSchedule -BaseDir .\.driftbuster
+#>
     [CmdletBinding()]
+    [OutputType([pscustomobject], [string])]
     param(
         [string]
         $BaseDir,
@@ -1330,30 +1751,45 @@ function Get-DriftBusterSchedule {
         [string]
         $StatePath,
 
-        [string]
-        $PythonPath = "python",
-
         [switch]
         $Raw
     )
 
-    $arguments = @('-m', 'driftbuster.run_profiles_cli')
-    if ($BaseDir) {
-        $arguments += @('--base-dir', $BaseDir)
-    }
-    $arguments += @('schedule', 'list')
-    if ($ConfigPath) {
-        $arguments += @('--config', $ConfigPath)
-    }
-    if ($StatePath) {
-        $arguments += @('--state', $StatePath)
-    }
-
-    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+    $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.ListScheduleStatusAsync($paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
+    Write-DriftBusterScheduleOutput -Result $result.Schedules -Raw:$Raw
 }
 
 function Get-DriftBusterScheduleDue {
+<#
+.SYNOPSIS
+Lists the schedule runs due at a reference time.
+
+.DESCRIPTION
+Calls the backend `ListDueSchedulesAsync` API. Each due run is recorded as
+pending in the scheduler state file until it is completed. Emits one object per
+run with `name`, `profile`, `scheduled_for`, `tags` and `metadata`.
+
+.PARAMETER BaseDir
+Base directory whose `Profiles` folder holds the default manifest and state.
+
+.PARAMETER ConfigPath
+Schedule manifest path.
+
+.PARAMETER StatePath
+Scheduler state path.
+
+.PARAMETER At
+ISO-8601 reference time; a time without an offset is UTC. Defaults to now.
+
+.PARAMETER Raw
+Returns the runs as JSON text.
+
+.EXAMPLE
+Get-DriftBusterScheduleDue -BaseDir .\.driftbuster -At '2025-01-02T00:00:00Z'
+#>
     [CmdletBinding()]
+    [OutputType([pscustomobject], [string])]
     param(
         [string]
         $BaseDir,
@@ -1367,33 +1803,49 @@ function Get-DriftBusterScheduleDue {
         [string]
         $At,
 
-        [string]
-        $PythonPath = "python",
-
         [switch]
         $Raw
     )
 
-    $arguments = @('-m', 'driftbuster.run_profiles_cli')
-    if ($BaseDir) {
-        $arguments += @('--base-dir', $BaseDir)
-    }
-    $arguments += @('schedule', 'due')
-    if ($ConfigPath) {
-        $arguments += @('--config', $ConfigPath)
-    }
-    if ($StatePath) {
-        $arguments += @('--state', $StatePath)
-    }
-    if ($At) {
-        $arguments += @('--at', $At)
-    }
-
-    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+    $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
+    $reference = if ($At) { $At } else { $null }
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.ListDueSchedulesAsync($reference, $paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
+    Write-DriftBusterScheduleOutput -Result $result.Runs -Raw:$Raw
 }
 
 function Complete-DriftBusterSchedule {
+<#
+.SYNOPSIS
+Marks a schedule's pending run complete.
+
+.DESCRIPTION
+Calls the backend `CompleteScheduleAsync` API, which advances the schedule's
+next run and clears its pending run in the state file. Returns `name`,
+`next_run` and `pending`.
+
+.PARAMETER Name
+Schedule name.
+
+.PARAMETER BaseDir
+Base directory whose `Profiles` folder holds the default manifest and state.
+
+.PARAMETER ConfigPath
+Schedule manifest path.
+
+.PARAMETER StatePath
+Scheduler state path.
+
+.PARAMETER CompletedAt
+ISO-8601 completion time; a time without an offset is UTC. Defaults to now.
+
+.PARAMETER Raw
+Returns the state as JSON text.
+
+.EXAMPLE
+Complete-DriftBusterSchedule -Name nightly -BaseDir .\.driftbuster
+#>
     [CmdletBinding()]
+    [OutputType([pscustomobject], [string])]
     param(
         [Parameter(Mandatory = $true)]
         [string]
@@ -1411,33 +1863,48 @@ function Complete-DriftBusterSchedule {
         [string]
         $CompletedAt,
 
-        [string]
-        $PythonPath = "python",
-
         [switch]
         $Raw
     )
 
-    $arguments = @('-m', 'driftbuster.run_profiles_cli')
-    if ($BaseDir) {
-        $arguments += @('--base-dir', $BaseDir)
-    }
-    $arguments += @('schedule', 'mark-complete', '--name', $Name)
-    if ($ConfigPath) {
-        $arguments += @('--config', $ConfigPath)
-    }
-    if ($StatePath) {
-        $arguments += @('--state', $StatePath)
-    }
-    if ($CompletedAt) {
-        $arguments += @('--completed-at', $CompletedAt)
-    }
-
-    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+    $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
+    $completed = if ($CompletedAt) { $CompletedAt } else { $null }
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.CompleteScheduleAsync($Name, $completed, $paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
+    Write-DriftBusterScheduleOutput -Result $result -Raw:$Raw
 }
 
 function Skip-DriftBusterSchedule {
+<#
+.SYNOPSIS
+Skips a schedule's runs until a resume time.
+
+.DESCRIPTION
+Calls the backend `SkipScheduleAsync` API, which moves the schedule's next run
+to the resume time in the state file. Returns `name`, `next_run` and `pending`.
+
+.PARAMETER Name
+Schedule name.
+
+.PARAMETER ResumeAt
+ISO-8601 time the schedule resumes; a time without an offset is UTC.
+
+.PARAMETER BaseDir
+Base directory whose `Profiles` folder holds the default manifest and state.
+
+.PARAMETER ConfigPath
+Schedule manifest path.
+
+.PARAMETER StatePath
+Scheduler state path.
+
+.PARAMETER Raw
+Returns the state as JSON text.
+
+.EXAMPLE
+Skip-DriftBusterSchedule -Name nightly -ResumeAt '2025-01-05T09:30:00Z'
+#>
     [CmdletBinding()]
+    [OutputType([pscustomobject], [string])]
     param(
         [Parameter(Mandatory = $true)]
         [string]
@@ -1456,26 +1923,39 @@ function Skip-DriftBusterSchedule {
         [string]
         $StatePath,
 
-        [string]
-        $PythonPath = "python",
-
         [switch]
         $Raw
     )
 
-    $arguments = @('-m', 'driftbuster.run_profiles_cli')
-    if ($BaseDir) {
-        $arguments += @('--base-dir', $BaseDir)
-    }
-    $arguments += @('schedule', 'skip-until', '--name', $Name, '--resume-at', $ResumeAt)
-    if ($ConfigPath) {
-        $arguments += @('--config', $ConfigPath)
-    }
-    if ($StatePath) {
-        $arguments += @('--state', $StatePath)
-    }
-
-    return Invoke-DriftBusterScheduleCli -Arguments $arguments -PythonPath $PythonPath -Raw:$Raw
+    $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.SkipScheduleAsync($Name, $ResumeAt, $paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
+    Write-DriftBusterScheduleOutput -Result $result -Raw:$Raw
 }
 
-Export-ModuleMember -Function *-DriftBuster*
+function Resolve-DriftBusterSchedulePath {
+    [CmdletBinding()]
+    param(
+        [string]
+        $BaseDir,
+
+        [string]
+        $ConfigPath,
+
+        [string]
+        $StatePath
+    )
+
+    $resolve = {
+        param([string] $Value)
+        if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+        return Resolve-DriftBusterProviderPath -Path $Value
+    }
+
+    return [pscustomobject]@{
+        BaseDir    = & $resolve $BaseDir
+        ConfigPath = & $resolve $ConfigPath
+        StatePath  = & $resolve $StatePath
+    }
+}
+
+Export-ModuleMember -Function @((Get-DriftBusterModuleManifest).FunctionsToExport)

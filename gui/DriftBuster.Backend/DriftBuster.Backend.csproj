@@ -5,6 +5,8 @@
     <FileVersion>$(DriftBusterCoreVersion)</FileVersion>
     <!-- Infrastructure/UnixFileType.cs: the statx P/Invoke reads its result buffer through a pointer. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The PowerShell module loads the backend straight from its build output, which then needs Microsoft.Data.Sqlite and its native runtimes beside it. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>

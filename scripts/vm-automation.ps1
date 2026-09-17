@@ -68,7 +68,7 @@ function Find-DriftBusterPipe {
     }
 
     foreach ($p in $pipes) {
-        Write-Host "Found pipe: $($p.Name)"
+        Write-Information "Found pipe: $($p.Name)" -InformationAction Continue
     }
 
     return $pipes[0].Name

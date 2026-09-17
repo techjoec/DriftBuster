@@ -34,4 +34,20 @@ public sealed record SqlExportOptions
 
     /// <summary><c>--prefix</c> for the snapshot file names.</summary>
     public string? Prefix { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The manifest file name under the output directory: <c>capture.py</c> always writes <c>sql-manifest.json</c>; <c>cli.py export-sql</c>
+    /// takes <c>--manifest-name</c>.
+    /// </summary>
+    public string ManifestName { get; init; } = "sql-manifest.json";
+
+    /// <summary>
+    /// <c>cli.py export-sql</c>'s check before each export: a <c>--limit</c> of zero or less writes
+    /// <c>error: --limit must be positive when provided</c>, sets exit code 1 and skips the database (<c>capture.py</c> leaves the limit to the
+    /// snapshot builder, whose error is reported as a failed export).
+    /// </summary>
+    public bool LimitMustBePositive { get; init; }
+
+    /// <summary><c>cli.py export-sql</c> reports <c>Manifest written to {path}</c> after writing the manifest; <c>capture.py</c> does not.</summary>
+    public bool ReportManifestPath { get; init; }
 }

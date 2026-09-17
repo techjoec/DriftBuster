@@ -270,20 +270,15 @@ public static class RunProfileStore
     }
 
     /// <summary><c>json.loads(path.read_text(encoding="utf-8"))</c>.</summary>
-    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="PythonOSError.DirectoryOpenErrno"/>).</exception>
+    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="PythonOSError.DirectoryOpenErrno"/>), or
+    /// cannot be opened or read (Python's <c>OSError</c> text, naming the path as <c>str(Path)</c> spells it when <c>open()</c> raised).</exception>
     /// <exception cref="PythonUnicodeDecodeException">The bytes are not UTF-8 (<c>UnicodeDecodeError</c>).</exception>
     /// <exception cref="PythonValueException">The text is not a JSON document (<c>JSONDecodeError</c>), or holds an integer past the decoder's
     /// digit limit (<c>ValueError</c>, Python's text).</exception>
     /// <exception cref="PythonRecursionException">Containers nested past the decoder's limit (<c>RecursionError</c>).</exception>
     internal static object? ReadJson(string path)
     {
-        var kernel = PythonPath.KernelPath(path);
-        if (Directory.Exists(kernel))
-        {
-            throw PythonOSError.Create(PythonOSError.DirectoryOpenErrno, path);
-        }
-
-        var text = PythonUtf8.Decode(File.ReadAllBytes(kernel));
+        var text = PythonUtf8.Decode(PythonTextFile.ReadBytes(path, PythonPurePath.Str(path)));
         return PythonJson.TryLoadsOrRaiseLimits(text, out var value)
             ? value
             : throw new PythonValueException($"Invalid JSON document: {path}", nameof(path));

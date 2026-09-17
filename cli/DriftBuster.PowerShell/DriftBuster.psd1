@@ -5,8 +5,8 @@
     Author            = 'DriftBuster'
     CompanyName       = 'DriftBuster'
     Copyright         = '(c) DriftBuster'
-    Description       = 'Windows-first PowerShell helper for DriftBuster diff, hunt, and run-profile workflows.'
-    PowerShellVersion = '7.4'
+    Description       = 'Windows-first PowerShell helper for DriftBuster diff, hunt, run-profile, schedule, SQL export, and remote capture workflows.'
+    PowerShellVersion = '7.6'
     FunctionsToExport = @(
         'Test-DriftBusterPing'
         'Invoke-DriftBusterDiff'
@@ -15,6 +15,11 @@
         'Save-DriftBusterRunProfile'
         'Invoke-DriftBusterRunProfile'
         'Invoke-DriftBusterRemoteScan'
+        'Export-DriftBusterSqlSnapshot'
+        'Get-DriftBusterSchedule'
+        'Get-DriftBusterScheduleDue'
+        'Complete-DriftBusterSchedule'
+        'Skip-DriftBusterSchedule'
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()

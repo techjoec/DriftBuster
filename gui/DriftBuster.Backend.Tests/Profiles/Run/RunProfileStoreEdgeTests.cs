@@ -261,6 +261,38 @@ public sealed class RunProfileStoreEdgeTests : IDisposable
         act.Should().Throw<IOException>().Which.Message.Should().Be(OSErrorTexts.DirectoryOpen(directory));
     }
 
+    /// <summary><c>Path(args.profile).read_text()</c> on a missing file: <c>open()</c>'s error naming the path as <c>str(Path)</c> spells it.</summary>
+    [Fact]
+    public void RunWithAMissingProfileFileRaisesOpensErrorForIt()
+    {
+        var spelled = _tmp.FullName + Path.DirectorySeparatorChar + "." + Path.DirectorySeparatorChar + "nope.json";
+
+        var act = () => RunProfileCommands.Run(spelled, name: null, _tmp.FullName, save: false, timestamp: null, ignoreRules: null, ignorePatterns: null);
+
+        act.Should().Throw<IOException>().Which.Message.Should()
+            .Be($"[Errno 2] No such file or directory: {PythonRepr.StrRepr(Path.Combine(_tmp.FullName, "nope.json"))}");
+    }
+
+    [Fact]
+    public void RunWithAnUnreadableProfileFileRaisesPermissionError()
+    {
+        if (!OperatingSystem.IsLinux() || Environment.IsPrivilegedProcess)
+        {
+            Assert.Skip("file modes refuse the read only for an unprivileged Unix user");
+            return;
+        }
+
+        var path = Path.Combine(_tmp.FullName, "locked.json");
+        File.WriteAllText(path, "{}");
+        File.SetUnixFileMode(path, UnixFileMode.None);
+
+        var act = () => RunProfileCommands.Run(path, name: null, _tmp.FullName, save: false, timestamp: null, ignoreRules: null, ignorePatterns: null);
+
+        var thrown = act.Should().Throw<IOException>().Which;
+        thrown.Message.Should().Be($"[Errno 13] Permission denied: {PythonRepr.StrRepr(path)}");
+        thrown.HResult.Should().Be(PythonOSError.PermissionDenied);
+    }
+
     [Theory]
     [InlineData("""{"sources": ["a", {"path": "b"}]}""", false)]
     [InlineData("""{"sources": [{"path": "b", "alias": " ", "optional": 0, "exclude": []}]}""", false)]

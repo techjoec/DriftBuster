@@ -46,6 +46,12 @@ public static partial class CaptureRunner
                 continue;
             }
 
+            if (LimitRefused(options, stderr))
+            {
+                exitCode = 1;
+                continue;
+            }
+
             SqlSnapshot snapshot;
             try
             {
@@ -65,10 +71,27 @@ public static partial class CaptureRunner
             stdout.Write($"Exported SQL snapshot to {destination}\n");
         }
 
-        var manifestPath = PythonPurePath.Join(outputDir, "sql-manifest.json");
+        var manifestPath = PythonPurePath.Join(outputDir, options.ManifestName);
         var manifest = SqlManifest(exports, tables, excludeTables, maskMap, hashMap, options, hashSalt);
         WriteJsonText(manifestPath, manifest);
+        if (options.ReportManifestPath)
+        {
+            stdout.Write($"Manifest written to {manifestPath}\n");
+        }
+
         return new SqlExportOutcome(exitCode, manifestPath, manifest, written);
+    }
+
+    // cli.py export-sql: `if limit is not None and limit <= 0` after the database is found and before it is exported.
+    private static bool LimitRefused(SqlExportOptions options, TextWriter stderr)
+    {
+        if (!options.LimitMustBePositive || options.Limit is not { } limit || limit > 0)
+        {
+            return false;
+        }
+
+        stderr.Write("error: --limit must be positive when provided\n");
+        return true;
     }
 
     /// <summary>
