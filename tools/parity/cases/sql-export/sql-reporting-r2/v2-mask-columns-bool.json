@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "options": {
+  "mask_columns": true
+ }
+}

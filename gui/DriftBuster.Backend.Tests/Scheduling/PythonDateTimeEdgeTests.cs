@@ -1,6 +1,7 @@
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Profiles.Run;
 using DriftBuster.Backend.Scheduling;
+using DriftBuster.Backend.Tests.Infrastructure;
 using DriftBuster.Backend.Tests.Profiles.Run;
 
 namespace DriftBuster.Backend.Tests.Scheduling;
@@ -66,11 +67,11 @@ public sealed class PythonDateTimeEdgeTests : IDisposable
     }
 
     [Fact]
-    public void StateFileThatIsADirectoryRaisesIsADirectoryError()
+    public void StateFileThatIsADirectoryRaisesOpensErrorForADirectory()
     {
         var state = Directory.CreateDirectory(Path.Combine(_tmp.FullName, "state.json")).FullName;
         FluentActions.Invoking(() => ScheduleStore.LoadScheduleState(state))
-            .Should().Throw<IOException>().WithMessage($"[Errno 21] Is a directory: '{state}'");
+            .Should().Throw<IOException>().Which.Message.Should().Be(OSErrorTexts.DirectoryOpen(state));
     }
 
     [Fact]

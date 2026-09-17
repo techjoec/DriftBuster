@@ -1,0 +1,83 @@
+{
+ "title": "aa title bb",
+ "warnings": [
+  "aa warning",
+  "<span>bb</span>"
+ ],
+ "legal_notice": "aa legal b",
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "aa": "aaa bbb",
+    "b": "aaaa",
+    "list": [
+     "bab",
+     "ab"
+    ]
+   }
+  }
+ ],
+ "mask_tokens": [
+  "b",
+  "aa",
+  "bb",
+  "aa",
+  ""
+ ],
+ "placeholder": "xbx",
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": {
+     "name": "bb",
+     "description": "aa",
+     "token_name": "b"
+    },
+    "path": "aab",
+    "line_number": 1,
+    "excerpt": "bbbb"
+   }
+  }
+ ],
+ "profile_summary": {
+  "total_profiles": "aa",
+  "profiles": [
+   {
+    "name": "bb",
+    "config_count": "aa",
+    "config_ids": [
+     "aa",
+     "b"
+    ]
+   }
+  ]
+ },
+ "diffs": [
+  {
+   "kind": "mapping",
+   "value": {
+    "label": "aa",
+    "diff": "-aa\n+bb",
+    "stats": {
+     "aa": "b"
+    }
+   }
+  }
+ ],
+ "snapshot": {
+  "operator": "aa",
+  "output_name": "bb.json",
+  "legal_metadata": {
+   "aa": "bb"
+  },
+  "extra_metadata": {
+   "aa": "b"
+  }
+ }
+}

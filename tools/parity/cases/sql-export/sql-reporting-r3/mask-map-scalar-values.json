@@ -1,0 +1,28 @@
+{
+ "database": {
+  "script": "r3-scalar-map.sql"
+ },
+ "options": {
+  "mask_columns": {
+   "t": null,
+   "u": true,
+   "v": 1e+100,
+   "w": 12,
+   "": [
+    "a"
+   ],
+   "x": "ab",
+   "y": 0,
+   "z": false
+  },
+  "hash_columns": {
+   "y": false,
+   "x": [
+    "ab",
+    " ",
+    0,
+    null
+   ]
+  }
+ }
+}

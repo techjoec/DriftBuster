@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "accounts.sql"
+ },
+ "options": {
+  "hash_columns": 7
+ }
+}

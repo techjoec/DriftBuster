@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "v2-three-tables.sql"
+ },
+ "options": {
+  "exclude_tables": "ab"
+ }
+}

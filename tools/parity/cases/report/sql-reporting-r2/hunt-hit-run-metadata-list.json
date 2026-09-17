@@ -1,0 +1,22 @@
+{
+ "matches": [],
+ "extra_metadata": {
+  "run_id": "r1"
+ },
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": {
+     "name": "r"
+    },
+    "path": "p",
+    "line_number": 1,
+    "excerpt": "e",
+    "run_metadata": [
+     1
+    ]
+   }
+  }
+ ]
+}

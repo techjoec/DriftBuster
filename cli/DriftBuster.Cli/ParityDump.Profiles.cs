@@ -1,8 +1,10 @@
 using System.CommandLine;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Infrastructure.PythonRe;
 using DriftBuster.Backend.Profiles.Detection;
 using DriftBuster.Backend.Scheduling;
+using DriftBuster.Backend.Sql;
 
 namespace DriftBuster.Cli;
 
@@ -48,13 +50,16 @@ public static partial class ParityDump
 
     /// <summary>
     /// <c>type(exc).__name__</c> of the Python exception each port exception stands for (see the exception mapping of
-    /// <see cref="PythonBuiltins"/>, <see cref="DetectionProfileStore"/> and <see cref="ScheduleException"/>); any other exception keeps
+    /// <see cref="PythonBuiltins"/>, <see cref="DetectionProfileStore"/>, <see cref="ScheduleException"/>, <see cref="Sqlite3Exception"/> and
+    /// <see cref="PythonReException"/>); any other exception keeps
     /// its runtime name, which never equals a Python name and so fails the compare.
     /// </summary>
     internal static string PythonErrorName(Exception exc) => exc switch
     {
         CommandExitException => "SystemExit",
         ScheduleException => "ScheduleError",
+        Sqlite3Exception sqlite => sqlite.TypeName,
+        PythonReException => "PatternError",
         PythonValueException => "ValueError",
         PythonRecursionException => "RecursionError",
         PythonTypeException => "TypeError",
@@ -64,6 +69,8 @@ public static partial class ParityDump
         OverflowException => "OverflowError",
         PythonAttributeException => "AttributeError",
         PythonUnicodeDecodeException => "UnicodeDecodeError",
+        PythonNotImplementedException => "NotImplementedError",
+        PythonRuntimeException => "RuntimeError",
         IOException { HResult: > 0 and < 4096 } => PythonOSError.TypeName(exc.HResult),
         UnauthorizedAccessException => "PermissionError",
         _ => exc.GetType().Name,

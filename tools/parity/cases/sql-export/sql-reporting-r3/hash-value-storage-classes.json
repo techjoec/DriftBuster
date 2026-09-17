@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "r3-hash-values.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "h.v"
+  ],
+  "hash_salt": "pépper😀"
+ }
+}

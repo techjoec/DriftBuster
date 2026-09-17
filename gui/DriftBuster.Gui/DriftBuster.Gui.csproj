@@ -6,6 +6,7 @@
     <UseWindowsForms>false</UseWindowsForms>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>$(DriftBusterGuiVersion)</Version>
     <AssemblyVersion>$(DriftBusterGuiVersion)</AssemblyVersion>
     <FileVersion>$(DriftBusterGuiVersion)</FileVersion>

@@ -1,0 +1,13 @@
+{
+ "database": {
+  "script": "schema-sql-invalid-utf8.sql"
+ },
+ "options": {
+  "exclude_tables": [
+   "t"
+  ],
+  "tables": [
+   "u"
+  ]
+ }
+}

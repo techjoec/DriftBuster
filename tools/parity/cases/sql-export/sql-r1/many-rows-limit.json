@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "many-rows.sql"
+ },
+ "options": {
+  "limit": 3,
+  "mask_columns": [
+   "big.label"
+  ]
+ }
+}

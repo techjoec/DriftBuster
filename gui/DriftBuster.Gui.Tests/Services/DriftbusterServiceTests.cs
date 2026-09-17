@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
+using DriftBuster.Gui.Tests.Fakes;
 
 namespace DriftBuster.Gui.Tests.Services;
 
@@ -46,7 +47,21 @@ public sealed class DriftbusterServiceTests
         backend.SavedSchedules.Should().ContainSingle(schedule => schedule.Name == "nightly" && schedule.Profile == "nightly");
     }
 
-    private sealed class RecordingBackend : IDriftbusterBackend
+    [Fact]
+    public async Task Backend_surfaces_the_gui_does_not_call_are_not_supported()
+    {
+        IDriftbusterBackend backend = new RecordingBackend();
+        var ct = TestContext.Current.CancellationToken;
+
+        await FluentActions.Awaiting(() => backend.ExportSqlSnapshotAsync(new SqlExportRequest(), ct)).Should().ThrowAsync<NotSupportedException>();
+        await FluentActions.Awaiting(() => backend.RunCaptureAsync(new CaptureRunRequest(), ct)).Should().ThrowAsync<NotSupportedException>();
+        await FluentActions.Awaiting(() => backend.CompareCapturesAsync("a.json", "b.json", ct)).Should().ThrowAsync<NotSupportedException>();
+        await FluentActions.Awaiting(() => backend.ListRegistryAppsAsync(ct)).Should().ThrowAsync<NotSupportedException>();
+        await FluentActions.Awaiting(() => backend.SearchRegistryAsync(new RegistrySearchRequest(), ct)).Should().ThrowAsync<NotSupportedException>();
+        await FluentActions.Awaiting(() => backend.BuildReportAsync(new ReportRequest(), ct)).Should().ThrowAsync<NotSupportedException>();
+    }
+
+    private sealed class RecordingBackend : UnsupportedBackendSurfaces, IDriftbusterBackend
     {
         public bool PingCalled { get; private set; }
         public IReadOnlyList<string?> DiffVersions { get; private set; } = new List<string?>();

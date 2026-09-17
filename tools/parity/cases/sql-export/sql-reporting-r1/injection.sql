@@ -1,0 +1,4 @@
+CREATE TABLE a (x);
+INSERT INTO a VALUES (1);
+CREATE TABLE "a)--" (y);
+INSERT INTO "a)--" VALUES (2);

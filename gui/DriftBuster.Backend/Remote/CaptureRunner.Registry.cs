@@ -1,0 +1,98 @@
+using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Profiles.Detection;
+using DriftBuster.Backend.Profiles.Run;
+
+namespace DriftBuster.Backend.Remote;
+
+/// <summary>The registry scan summaries a capture manifest embeds.</summary>
+public static partial class CaptureRunner
+{
+    /// <summary>
+    /// <c>_load_registry_scan_summaries(paths)</c>: each path expanded (<c>~</c>) and resolved, then <see cref="SummariseRegistryScan"/>.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">A path does not exist (<c>registry scan file not found: {path}</c>).</exception>
+    public static IReadOnlyList<OrderedDictionary<string, object?>> LoadRegistryScanSummaries(IEnumerable<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        var summaries = new List<OrderedDictionary<string, object?>>();
+        foreach (var entry in paths)
+        {
+            var scanPath = PythonPath.Resolve(PythonPath.ExpandUser(entry));
+            if (!RunProfileStore.Exists(scanPath))
+            {
+                throw new FileNotFoundException($"registry scan file not found: {scanPath}", scanPath);
+            }
+
+            summaries.Add(SummariseRegistryScan(scanPath));
+        }
+
+        return summaries;
+    }
+
+    /// <summary>
+    /// <c>_summarise_registry_scan(path)</c>: <c>file</c> (the name), <c>path</c>, <c>token</c> (as stored), <c>roots</c> and
+    /// <c>requested_roots</c> (each mapping entry whose stripped <c>str()</c> hive and path are both non-empty, as
+    /// <c>"{hive} \ {path}"</c> plus <c>" (view {view})"</c> for a truthy view) and <c>hit_count</c> (<c>len()</c> of <c>hits</c>, an
+    /// absent or falsy value counting as empty).
+    /// </summary>
+    /// <remarks>
+    /// The file is read as <c>path.read_text(encoding="utf-8")</c> and decoded as <c>json.loads</c> decodes it. Text that is not a JSON
+    /// document raises <c>ValueError("Failed to parse registry scan {path}: invalid JSON document")</c>: <see cref="PythonJson"/> reports no
+    /// decoder reason (Python writes the <c>JSONDecodeError</c> text). Every other error is Python's: <c>AttributeError</c> for a payload
+    /// or root list that is not a mapping where <c>.get</c> is called, <c>TypeError</c> for roots that cannot be iterated or hits without a
+    /// length, <c>UnicodeDecodeError</c>, the decoder's limits, and <c>IsADirectoryError</c>.
+    /// </remarks>
+    public static OrderedDictionary<string, object?> SummariseRegistryScan(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var payload = PythonJson.TryLoadsOrRaiseLimits(ReadUtf8Text(path), out var value)
+            ? value
+            : throw new PythonValueException($"Failed to parse registry scan {path}: invalid JSON document", nameof(path));
+
+        // payload.get(key, []) or []: an absent or falsy value counts as an empty list.
+        var roots = RootLabels(DetectionProfileStore.GetOrDefault(payload, "roots", null));
+        var requested = RootLabels(DetectionProfileStore.GetOrDefault(payload, "requested_roots", null));
+        var token = PythonBuiltins.Get(payload, "token");
+        var hits = DetectionProfileStore.GetOrDefault(payload, "hits", null);
+        return new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["file"] = PathText.Name(path),
+            ["path"] = path,
+            ["token"] = token,
+            ["roots"] = roots,
+            ["requested_roots"] = requested,
+            ["hit_count"] = PythonBuiltins.IsTruthy(hits) ? PythonBuiltins.Len(hits) : 0,
+        };
+    }
+
+    // for entry in value or []: the labels of the mapping entries with a hive and a path.
+    private static List<object?> RootLabels(object? value)
+    {
+        var labels = new List<object?>();
+        if (!PythonBuiltins.IsTruthy(value))
+        {
+            return labels;
+        }
+
+        foreach (var entry in PythonBuiltins.Iterate(value))
+        {
+            if (entry is not IReadOnlyDictionary<string, object?> mapping)
+            {
+                continue;
+            }
+
+            var hive = PythonText.Strip(PythonRepr.Str(DetectionProfileStore.GetOrDefault(mapping, "hive", string.Empty)));
+            var keyPath = PythonText.Strip(PythonRepr.Str(DetectionProfileStore.GetOrDefault(mapping, "path", string.Empty)));
+            if (hive.Length == 0 || keyPath.Length == 0)
+            {
+                continue;
+            }
+
+            var view = PythonBuiltins.Get(mapping, "view");
+            var label = $"{hive} \\ {keyPath}";
+            labels.Add(PythonBuiltins.IsTruthy(view) ? $"{label} (view {PythonRepr.Str(view)})" : label);
+        }
+
+        return labels;
+    }
+}

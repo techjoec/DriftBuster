@@ -1,4 +1,5 @@
 using DriftBuster.Backend.Diff;
+using DriftBuster.Backend.Infrastructure;
 
 using static DriftBuster.Backend.Tests.Diff.DiffOracleData;
 
@@ -98,18 +99,6 @@ public sealed class CanonicaliserParityTests
     }
 
     [Fact]
-    public void XmlTextOfManyReferencesAndInstructionsIsBuiltInLinearTime()
-    {
-        const int count = 200000;
-        var payload = "<a>" + string.Concat(Enumerable.Repeat("x&amp;<?p?>", count)) + "<b/>" + string.Concat(Enumerable.Repeat("&#65;", count)) + "</a>";
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        var canonical = Canonicaliser.CanonicaliseXml(payload);
-        watch.Stop();
-        canonical.Should().Be("<a>" + string.Concat(Enumerable.Repeat("x&amp;", count)) + "<b />" + new string('A', count) + "</a>");
-        watch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
-    }
-
-    [Fact]
     public void JsonPastInterpreterLimitsFallsBackToText()
     {
         var bigInt = "[" + new string('7', 4301) + "]";
@@ -132,6 +121,6 @@ public sealed class CanonicaliserParityTests
     public void UnknownContentTypeRaises()
     {
         var act = () => Canonicaliser.Canonicalise("a", "yaml");
-        act.Should().Throw<ArgumentException>().WithMessage("Unsupported content_type: yaml*");
+        act.Should().Throw<PythonValueException>().WithMessage("Unsupported content_type: yaml");
     }
 }

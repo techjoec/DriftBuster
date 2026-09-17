@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "r2v-blob-single.sql"
+ },
+ "options": {
+  "limit": NaN
+ }
+}

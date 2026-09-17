@@ -79,15 +79,95 @@ public static class PythonPath
     /// part stays where it is (<see cref="Path.GetFullPath(string)"/> would remove it lexically).
     /// </summary>
     public static string Absolute(string path)
+        => Absolute(path, OperatingSystem.IsWindows(), Directory.GetCurrentDirectory(), PythonOsPath.AbsPath);
+
+    /// <summary>
+    /// <c>Path.absolute()</c> in the given flavour over a working directory: an absolute path as it is; a Windows path with a root and
+    /// no drive under the working directory's drive; a Windows path with a drive and no root under that drive's own working
+    /// directory (<paramref name="absPathOfDrive"/>, <c>os.path.abspath(drive)</c>); otherwise under the working directory.
+    /// </summary>
+    internal static string Absolute(string path, bool windows, string cwd, Func<string, string> absPathOfDrive)
     {
-        var spelled = PythonPurePath.Str(path);
-        if (Path.IsPathRooted(spelled))
+        ArgumentNullException.ThrowIfNull(absPathOfDrive);
+        var parsed = PythonPurePath.Parse(path, windows);
+        if (PythonPurePath.IsAbsolute(path, windows))
         {
-            return spelled;
+            return PythonPurePath.Str(path, windows);
         }
 
-        var cwd = Directory.GetCurrentDirectory();
-        return string.Equals(spelled, ".", StringComparison.Ordinal) ? cwd : PythonPurePath.Join(cwd, spelled);
+        if (parsed.Root.Length > 0)
+        {
+            var cwdDrive = PythonPurePath.SplitRoot(cwd, windows).Drive;
+            return PythonPurePath.Format(cwdDrive, parsed.Root, parsed.Tail, windows);
+        }
+
+        var directory = parsed.Drive.Length > 0 ? absPathOfDrive(parsed.Drive) : cwd;
+        if (parsed.Tail.Count == 0)
+        {
+            return directory;
+        }
+
+        var (drive, root, rest) = PythonPurePath.SplitRoot(directory, windows);
+        var separator = windows ? '\\' : '/';
+        return PythonPurePath.Format(drive, root, rest.Length == 0 ? parsed.Tail : [.. rest.Split(separator), .. parsed.Tail], windows);
+    }
+
+    /// <summary>
+    /// <c>str(Path(path).expanduser())</c>: a path with no drive or root whose first name starts with <c>~</c> has that name replaced by
+    /// <c>os.path.expanduser</c> of it (<see cref="PythonOsPath.ExpandUser(string)"/>); any other path is returned as <c>str(Path)</c>.
+    /// </summary>
+    /// <exception cref="PythonRuntimeException">The first name is still <c>~</c>-prefixed after expansion (an account the password
+    /// database does not hold, or no home directory at all): <c>Could not determine home directory.</c></exception>
+    /// <exception cref="PythonValueException">A posix <c>~user</c> name holding a NUL character (<c>embedded null byte</c>).</exception>
+    public static string ExpandUser(string path) => ExpandUser(path, OperatingSystem.IsWindows());
+
+    internal static string ExpandUser(string path, bool windows)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var parsed = PythonPurePath.Parse(path, windows);
+        if (parsed.Anchor.Length > 0 || parsed.Tail.Count == 0 || !parsed.Tail[0].StartsWith('~'))
+        {
+            return PythonPurePath.Str(path, windows);
+        }
+
+        var home = PythonOsPath.ExpandUser(parsed.Tail[0], windows);
+        if (home.StartsWith('~'))
+        {
+            throw new PythonRuntimeException("Could not determine home directory.");
+        }
+
+        var expanded = PythonPurePath.Parse(home, windows);
+        var text = PythonPurePath.Format(expanded.Drive, expanded.Root, [.. expanded.Tail, .. parsed.Tail.Skip(1)], windows);
+        return text.Length == 0 ? "." : text;
+    }
+
+    /// <summary>
+    /// <c>str(Path(path).resolve())</c>. On Windows this is <c>ntpath.realpath</c> (<see cref="PythonNtRealPath"/> over
+    /// <see cref="WindowsNtPathSystem"/>): the entry's stored letter case, 8.3 names expanded, mapped and subst drives replaced by what they
+    /// map, links followed by the OS, and the rest of a path the OS cannot name joined as written. Elsewhere the path is made absolute
+    /// against the working directory, then every link and <c>..</c> followed physically (<see cref="ResolvePhysicalPath(string, out bool)"/>),
+    /// a component that does not exist kept as written. A directory reached only through a name that is not UTF-8 keeps the kernel's
+    /// spelling of it (<see cref="KernelPath"/>), which reaches the same entry through its links; a link loop or a link that cannot be read
+    /// falls back to the lexically normalised absolute path.
+    /// </summary>
+    /// <exception cref="PythonValueException">On posix, a path holding a NUL character (<c>lstat: embedded null character in path</c>).</exception>
+    public static string Resolve(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        // posixpath.realpath lstats every component, and the first lstat refuses a NUL anywhere in the path.
+        if (!OperatingSystem.IsWindows())
+        {
+            PythonOSError.ThrowIfEmbeddedNull(path, "lstat");
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            return PythonPurePath.Str(PythonNtRealPath.RealPath(PythonPurePath.Str(path), WindowsNtPathSystem.Instance));
+        }
+
+        var absolute = Absolute(path);
+        var physical = ResolvePhysicalPath(absolute, out var nameable);
+        return physical is null ? Path.GetFullPath(absolute) : nameable ? physical : Path.GetFullPath(KernelPath(absolute));
     }
 
     /// <summary>
@@ -157,12 +237,14 @@ public static class PythonPath
     /// On Linux this is <c>Path.mkdir</c>'s own algorithm over <c>mkdir(2)</c> (<see cref="UnixMkdir"/>): a failure raises the
     /// <see cref="IOException"/> <see cref="PythonOSError"/> builds for the call's <c>errno</c> (its <see cref="Exception.HResult"/>)
     /// naming the directory whose call failed as <c>str(Path)</c> spells it (<c>[Errno 17] File exists: 'afile'</c>,
-    /// <c>[Errno 20] Not a directory: 'afile/x'</c>). Elsewhere, and for a path holding a NUL or an unpaired surrogate (or with the
+    /// <c>[Errno 20] Not a directory: 'afile/x'</c>). Elsewhere, and for a path holding an unpaired surrogate (or with the
     /// <see cref="UnixPathWalk.Disabled"/> seam set), the directories are created through the runtime, whose exceptions carry its own text.
     /// </remarks>
+    /// <exception cref="PythonValueException">The path holds a NUL character (<c>mkdir: embedded null character in path</c>).</exception>
     public static void MakeDirectories(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
+        PythonOSError.ThrowIfEmbeddedNull(path, "mkdir");
         var spelled = PythonPurePath.Str(path);
         if (!UnixPathWalk.Disabled && UnixMkdir.MakeDirectory(spelled) is { } error)
         {
@@ -215,7 +297,7 @@ public static class PythonPath
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw PythonOSError.Create(PythonOSError.Errno(exc) ?? error, path, exc);
+            throw PythonOSError.Create(PythonOSError.Errno(exc, path) ?? error, path, exc);
         }
 
         if (!isDirectory)

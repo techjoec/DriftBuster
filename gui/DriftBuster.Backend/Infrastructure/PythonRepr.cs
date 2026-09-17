@@ -7,7 +7,8 @@ namespace DriftBuster.Backend.Infrastructure;
 /// <summary>
 /// Python <c>str()</c> and <c>repr()</c> over the values <see cref="PythonJson"/> produces: <c>None</c>,
 /// <c>True</c>/<c>False</c>, integers, floats in the shortest round-trip form with Python's fixed/exponent switch,
-/// strings quoted and escaped as <c>str.__repr__</c> does, and lists and dicts spelled with their elements' reprs.
+/// strings quoted and escaped as <c>str.__repr__</c> does, bytes (<see cref="byte"/> arrays) as <c>b'...'</c>, and lists, tuples
+/// (<see cref="object"/> arrays) and dicts spelled with their elements' reprs.
 /// </summary>
 public static class PythonRepr
 {
@@ -47,11 +48,16 @@ public static class PythonRepr
         {
             case List<object?> list:
                 builder.Append('[');
-                open.Push(new ContainerCursor(list, ']'));
+                open.Push(new ContainerCursor(list, "]"));
+                return;
+            case object?[] tuple:
+                // A one-item tuple keeps its trailing comma: (1,).
+                builder.Append('(');
+                open.Push(new ContainerCursor(tuple, tuple.Length == 1 ? ",)" : ")"));
                 return;
             case OrderedDictionary<string, object?> dict:
                 builder.Append('{');
-                open.Push(new ContainerCursor(dict, '}'));
+                open.Push(new ContainerCursor(dict, "}"));
                 return;
             default:
                 builder.Append(ScalarRepr(value));
@@ -68,29 +74,63 @@ public static class PythonRepr
         BigInteger number => number.ToString(CultureInfo.InvariantCulture),
         double number => Float(number),
         string text => StrRepr(text),
+        byte[] bytes => BytesRepr(bytes),
         _ => throw new ArgumentException($"No Python repr for {value.GetType()}", nameof(value)),
     };
 
-    /// <summary>One open list or dict: writes the ", " separator and, for a dict, the <c>'key': </c> prefix of each item.</summary>
+    /// <summary>
+    /// <c>repr(bytes)</c> (a <see cref="byte"/> array): <c>b'...'</c>, double quotes when the bytes hold a single quote and no double
+    /// quote; backslash, the quote, tab, line feed and carriage return escaped, every other byte outside space to "~" as <c>\xhh</c>.
+    /// </summary>
+    public static string BytesRepr(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        var quote = Array.IndexOf(bytes, (byte)'\'') >= 0 && Array.IndexOf(bytes, (byte)'"') < 0 ? '"' : '\'';
+        var builder = new StringBuilder(bytes.Length + 3).Append('b').Append(quote);
+        foreach (var value in bytes)
+        {
+            var ch = (char)value;
+            if (ch == quote || ch == '\\')
+            {
+                builder.Append('\\').Append(ch);
+            }
+            else if (ch is '\t' or '\n' or '\r')
+            {
+                builder.Append(ch switch { '\t' => "\\t", '\n' => "\\n", _ => "\\r" });
+            }
+            else if (value is < 0x20 or >= 0x7F)
+            {
+                builder.Append("\\x").Append(Convert.ToHexStringLower([value]));
+            }
+            else
+            {
+                builder.Append(ch);
+            }
+        }
+
+        return builder.Append(quote).ToString();
+    }
+
+    /// <summary>One open list, tuple or dict: writes the ", " separator and, for a dict, the <c>'key': </c> prefix of each item.</summary>
     private sealed class ContainerCursor
     {
         private readonly IEnumerator<object?>? _items;
         private readonly IEnumerator<KeyValuePair<string, object?>>? _pairs;
         private bool _started;
 
-        public ContainerCursor(List<object?> list, char closer)
+        public ContainerCursor(IEnumerable<object?> items, string closer)
         {
-            _items = list.GetEnumerator();
+            _items = items.GetEnumerator();
             Closer = closer;
         }
 
-        public ContainerCursor(OrderedDictionary<string, object?> dict, char closer)
+        public ContainerCursor(OrderedDictionary<string, object?> dict, string closer)
         {
             _pairs = dict.GetEnumerator();
             Closer = closer;
         }
 
-        public char Closer { get; }
+        public string Closer { get; }
 
         public bool TryAdvance(StringBuilder builder, out object? item)
         {

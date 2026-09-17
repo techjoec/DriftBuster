@@ -1,0 +1,451 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "V0",
+    "V0s",
+    "Vf",
+    "Vlist",
+    "Vtrue",
+    "Vnone",
+    "Vneg",
+    "Vbytes",
+    "Vempty",
+    "Vws"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\V0",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "V0"
+    ],
+    [
+     "DisplayVersion",
+     0
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\V0s",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "V0s"
+    ],
+    [
+     "DisplayVersion",
+     "0"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vf",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vf"
+    ],
+    [
+     "DisplayVersion",
+     0.0
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vlist",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vlist"
+    ],
+    [
+     "DisplayVersion",
+     [
+      0
+     ]
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vtrue",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vtrue"
+    ],
+    [
+     "DisplayVersion",
+     true
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vnone",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vnone"
+    ],
+    [
+     "DisplayVersion",
+     null
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vneg",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vneg"
+    ],
+    [
+     "DisplayVersion",
+     -0.0
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vbytes",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vbytes"
+    ],
+    [
+     "DisplayVersion",
+     {
+      "$bytes": "76"
+     }
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vempty",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vempty"
+    ],
+    [
+     "DisplayVersion",
+     ""
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vws",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Vws"
+    ],
+    [
+     "DisplayVersion",
+     " "
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "32",
+   "subkeys": [
+    "W1"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\W1",
+   "view": "32",
+   "values": [
+    [
+     "DisplayName",
+     "Wow App"
+    ],
+    [
+     "Publisher",
+     "V0"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "*",
+   "subkeys": [
+    "C1"
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\C1",
+   "view": "*",
+   "values": [
+    [
+     "DisplayName",
+     "cu app"
+    ],
+    [
+     "DisplayVersion",
+     "\u0661"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow\\App",
+   "view": "*",
+   "values": [
+    [
+     "k",
+     "v0 hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\V0",
+   "view": "*",
+   "values": [
+    [
+     "k",
+     "v0 hit"
+    ]
+   ]
+  }
+ ],
+ "find_roots": [
+  {
+   "token": "V0",
+   "installed": [
+    {
+     "display_name": "x",
+     "key_path": "k",
+     "hive": "HKLM",
+     "view": "16"
+    },
+    {
+     "display_name": "x y",
+     "key_path": "k2",
+     "hive": "HKCU",
+     "view": null
+    },
+    {
+     "display_name": "V0",
+     "key_path": "k3",
+     "hive": "HKLM",
+     "publisher": null
+    },
+    {
+     "display_name": "zz",
+     "key_path": "k4",
+     "hive": "HKLM",
+     "publisher": "v0"
+    },
+    {
+     "display_name": "zz",
+     "key_path": "k4",
+     "hive": "HKLM",
+     "publisher": ""
+    }
+   ]
+  },
+  {
+   "token": "",
+   "installed": [
+    {
+     "display_name": "x",
+     "key_path": "k",
+     "hive": "HKLM",
+     "publisher": null
+    }
+   ]
+  },
+  {
+   "token": "\u3000",
+   "installed": [
+    {
+     "display_name": "x",
+     "key_path": "k",
+     "hive": "HKLM"
+    }
+   ]
+  },
+  {
+   "token": "a\\b"
+  },
+  {
+   "token": " V0 "
+  },
+  {
+   "token": "wow"
+  },
+  {
+   "token": "\u212a"
+  }
+ ],
+ "cli": [
+  [
+   "list-apps"
+  ],
+  [
+   "suggest-roots",
+   "V0"
+  ],
+  [
+   "suggest-roots",
+   "wow"
+  ],
+  [
+   "suggest-roots",
+   ""
+  ],
+  [
+   "search",
+   "V0",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--root",
+   "nope",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--pattern",
+   "(",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--pattern",
+   "(",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-depth",
+   "\u0663",
+   "--max-hits",
+   "\uff11",
+   "--time-budget",
+   "1e400"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--time-budget",
+   "nan"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--time-budget",
+   "-0.5"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--root",
+   "nope",
+   "--remote-target",
+   "h=1"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--remote-target",
+   "h,port=\u0665",
+   "--remote-target",
+   "h2,transport=WinRM,alias=A"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "1e400",
+   "--max-depth",
+   "-0",
+   "--max-hits",
+   "+00"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "-0.5",
+   "--max-depth",
+   "-1"
+  ],
+  [
+   "emit-config",
+   "\u00bd",
+   "--alias",
+   "\u2160",
+   "--keyword",
+   "\u3000",
+   "--pattern",
+   "\u200b"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--remote-target",
+   "h,port=-1"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--remote-target",
+   "h,use-ssl=\uff11"
+  ],
+  [
+   "list-apps"
+  ]
+ ]
+}

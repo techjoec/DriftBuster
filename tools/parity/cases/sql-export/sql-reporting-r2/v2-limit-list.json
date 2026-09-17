@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "options": {
+  "limit": [
+   1
+  ]
+ }
+}

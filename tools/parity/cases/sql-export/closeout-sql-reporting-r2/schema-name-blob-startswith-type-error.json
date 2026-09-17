@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "schema-name-blob.sql"
+ },
+ "options": {
+  "exclude_tables": [
+   "t"
+  ]
+ }
+}

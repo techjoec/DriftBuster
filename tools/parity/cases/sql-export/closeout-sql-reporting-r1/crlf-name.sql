@@ -1,0 +1,5 @@
+CREATE TABLE "t
+u" (a);
+INSERT INTO "t
+u" VALUES (1);
+CREATE TABLE s (b);

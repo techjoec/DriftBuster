@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "r2v-autoinc.sql"
+ },
+ "options": {
+  "limit": true
+ }
+}

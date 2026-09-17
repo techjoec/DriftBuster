@@ -1,0 +1,14 @@
+{
+ "matches": [
+  {
+   "plugin": "p",
+   "format": "f",
+   "variant": "v",
+   "confidence": 1,
+   "reasons": []
+  }
+ ],
+ "profile_summary": {
+  "profiles": 5
+ }
+}

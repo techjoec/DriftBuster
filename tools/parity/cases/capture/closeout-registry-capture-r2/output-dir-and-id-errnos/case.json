@@ -1,0 +1,613 @@
+{
+ "steps": [
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "loop/x",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "flink/x",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "flink",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "afile/./x",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "afile/x/y/z",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "dangling",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "dangling/x",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "dlink/made",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "cwd-id"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": ".",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "cwd-id2"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out/sub/keep.txt",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out/sub/keep.txt/",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "flink/x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "dangling/x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "dlink/x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "dlink/../x2"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "flink/../x3"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "loop/./x4"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "../x5"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "."
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": ".."
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  }
+ ]
+}

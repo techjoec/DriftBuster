@@ -1,0 +1,14 @@
+{
+ "database": {
+  "script": "param-literals.sql"
+ },
+ "options": {
+  "mask_columns": [
+   "p.$r"
+  ],
+  "hash_columns": [
+   "p.?1"
+  ],
+  "hash_salt": "@"
+ }
+}

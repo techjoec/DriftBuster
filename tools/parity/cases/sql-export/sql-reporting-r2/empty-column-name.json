@@ -1,0 +1,15 @@
+{
+ "database": {
+  "script": "empty-column.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "t."
+  ],
+  "mask_columns": {
+   "t": [
+    ""
+   ]
+  }
+ }
+}

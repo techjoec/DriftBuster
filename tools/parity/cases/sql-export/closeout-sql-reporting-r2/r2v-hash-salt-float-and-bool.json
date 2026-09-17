@@ -1,0 +1,14 @@
+{
+ "database": {
+  "script": "r2v-autoinc.sql"
+ },
+ "options": {
+  "hash_columns": {
+   "x": [
+    "v"
+   ],
+   "y": "v"
+  },
+  "hash_salt": 1.5
+ }
+}

@@ -67,8 +67,7 @@ public static class RunProfileStore
             joined = PythonPurePath.Join(joined, part);
         }
 
-        var absolute = OperatingSystem.IsWindows() ? Path.IsPathFullyQualified(joined) : joined.StartsWith('/');
-        return absolute ? joined : PythonPurePath.Join(Directory.GetCurrentDirectory(), joined);
+        return PythonPurePath.IsAbsolute(joined) ? joined : PythonPurePath.Join(Directory.GetCurrentDirectory(), joined);
     }
 
     /// <summary>
@@ -212,9 +211,10 @@ public static class RunProfileStore
     }
 
     /// <summary>
-    /// <c>Path.exists()</c>: a <c>stat</c> that follows links succeeds; a lookup error other than <c>ENOENT</c>, <c>ENOTDIR</c>,
-    /// <c>EBADF</c> or <c>ELOOP</c> raises. A path holding an unpaired surrogate does not exist: the runtime would look it up under
-    /// its U+FFFD spelling, a different entry (phase 5 decision R).
+    /// <c>Path.exists()</c>: a <c>stat</c> that follows links succeeds; on Linux a lookup error other than <c>ENOENT</c>, <c>ENOTDIR</c>,
+    /// <c>EBADF</c> or <c>ELOOP</c> raises. Elsewhere the runtime's existence checks answer and never raise (on Windows Python raises for
+    /// an access-denied lookup; recorded in <c>tools/parity/expected_divergences.md</c>). A path holding an unpaired surrogate or a NUL does
+    /// not exist: the runtime would look the former up under its U+FFFD spelling, a different entry (phase 5 decision R).
     /// </summary>
     internal static bool Exists(string path)
     {
@@ -270,7 +270,7 @@ public static class RunProfileStore
     }
 
     /// <summary><c>json.loads(path.read_text(encoding="utf-8"))</c>.</summary>
-    /// <exception cref="IOException">The path is a directory (<c>IsADirectoryError</c>, <see cref="PythonOSError"/>).</exception>
+    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="PythonOSError.DirectoryOpenErrno"/>).</exception>
     /// <exception cref="PythonUnicodeDecodeException">The bytes are not UTF-8 (<c>UnicodeDecodeError</c>).</exception>
     /// <exception cref="PythonValueException">The text is not a JSON document (<c>JSONDecodeError</c>), or holds an integer past the decoder's
     /// digit limit (<c>ValueError</c>, Python's text).</exception>
@@ -280,7 +280,7 @@ public static class RunProfileStore
         var kernel = PythonPath.KernelPath(path);
         if (Directory.Exists(kernel))
         {
-            throw PythonOSError.Create(PythonOSError.IsADirectory, path);
+            throw PythonOSError.Create(PythonOSError.DirectoryOpenErrno, path);
         }
 
         var text = PythonUtf8.Decode(File.ReadAllBytes(kernel));

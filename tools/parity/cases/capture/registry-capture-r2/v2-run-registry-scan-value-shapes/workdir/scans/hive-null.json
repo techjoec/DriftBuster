@@ -1,0 +1,12 @@
+{
+ "roots": [
+  {
+   "hive": null,
+   "path": "p"
+  },
+  {
+   "hive": "HKLM",
+   "path": null
+  }
+ ]
+}

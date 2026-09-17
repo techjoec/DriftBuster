@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "crlf-name.sql"
+ },
+ "options": {
+  "tables": [
+   "t\r\nu",
+   "s"
+  ]
+ }
+}

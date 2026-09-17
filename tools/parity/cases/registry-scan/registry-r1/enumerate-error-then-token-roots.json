@@ -1,0 +1,49 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "a"
+   ],
+   "error": {
+    "errno": 13
+   },
+   "error_on": "subkeys"
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Fallback",
+   "view": "*",
+   "values": [
+    [
+     "Server",
+     "fb"
+    ]
+   ]
+  }
+ ],
+ "find_roots": [
+  {
+   "token": "Fallback"
+  }
+ ],
+ "searches": [
+  {
+   "roots": "Fallback",
+   "keywords": [
+    "server"
+   ]
+  }
+ ],
+ "cli": [
+  [
+   "list-apps"
+  ],
+  [
+   "search",
+   "Fallback"
+  ]
+ ]
+}

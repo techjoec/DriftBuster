@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "t.b"
+  ],
+  "hash_salt": "pépper\n\t😀"
+ }
+}

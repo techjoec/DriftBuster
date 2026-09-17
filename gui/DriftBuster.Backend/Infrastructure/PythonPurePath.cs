@@ -5,158 +5,206 @@ using DriftBuster.Backend.Infrastructure.PythonRe;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// CPython 3.13 <c>PurePath.parts</c> and <c>PurePath.match</c> for the host platform: posix paths split on "/" and match
-/// case-sensitively; Windows paths split on both separators after the drive/root anchor and match case-insensitively.
+/// CPython 3.13 <c>PurePath</c> string operations in the host platform's flavour (<c>PurePosixPath</c>, or <c>PureWindowsPath</c> on
+/// Windows): <c>parts</c>, <c>str</c>, <c>parent</c>, <c>anchor</c>, <c>/</c>, <c>relative_to</c>, <c>is_absolute</c> and <c>match</c>.
 /// </summary>
 /// <remarks>
-/// <c>match</c> compares the pattern's parts with the path's from the right, each part through
-/// <c>glob.translate(part, include_hidden=True, seps=sep)</c> compiled with <see cref="PythonPattern"/>; an anchored
-/// pattern must cover the whole path. <c>**</c> is an ordinary wildcard here, as it is in <c>PurePath.match</c>.
+/// A path is parsed as <c>PurePath._parse_path</c> parses it: the flavour's <c>splitroot</c> (<see cref="PythonNtPath.SplitRoot"/> on
+/// Windows, so <c>\\server\share\</c> is one anchor and a UNC drive written without the separator after the share still gets that
+/// separator as its root), then the rest split on the separator with empty and <c>.</c> names dropped. It is spelled as
+/// <c>_format_parsed_parts</c> spells it (anchor, then the names joined; a relative Windows path whose first name holds a drive gets a
+/// leading <c>.\</c>). Each operation has an internal overload that takes the flavour, so the Windows flavour is compared with
+/// CPython's <c>PureWindowsPath</c> on every host. <c>match</c> compares the pattern's parts with the path's from the right, each part
+/// through <c>glob.translate(part, include_hidden=True, seps=sep)</c> compiled with <see cref="PythonPattern"/> (case-insensitively
+/// on Windows); an anchored pattern must cover the whole path. <c>**</c> is an ordinary wildcard here, as it is in
+/// <c>PurePath.match</c>.
 /// </remarks>
 public static class PythonPurePath
 {
     private static readonly bool Windows = OperatingSystem.IsWindows();
 
-    /// <summary><c>PurePath(path).parts</c>.</summary>
-    public static IReadOnlyList<string> Parts(string path)
+    /// <summary>A parsed path: <c>drive</c>, <c>root</c> and <c>_tail</c>.</summary>
+    internal readonly record struct ParsedPath(string Drive, string Root, IReadOnlyList<string> Tail)
+    {
+        public string Anchor => Drive + Root;
+    }
+
+    /// <summary><c>PurePath._parse_path(path)</c> in the given flavour.</summary>
+    internal static ParsedPath Parse(string path, bool windows)
     {
         ArgumentNullException.ThrowIfNull(path);
-        var parts = new List<string>();
-        string rest;
-        if (Windows)
+        if (path.Length == 0)
         {
-            var anchor = Path.GetPathRoot(path) ?? string.Empty;
-            if (anchor.Length > 0)
-            {
-                parts.Add(anchor.Replace('/', '\\'));
-            }
-
-            rest = path[anchor.Length..];
-        }
-        else
-        {
-            var anchor = PosixAnchor(path);
-            if (anchor.Length > 0)
-            {
-                parts.Add(anchor);
-            }
-
-            rest = path.TrimStart('/');
+            return new ParsedPath(string.Empty, string.Empty, []);
         }
 
-        var separators = Windows ? new[] { '/', '\\' } : ['/'];
-        parts.AddRange(rest.Split(separators, StringSplitOptions.RemoveEmptyEntries).Where(part => !string.Equals(part, ".", StringComparison.Ordinal)));
-        return parts;
+        var separator = windows ? '\\' : '/';
+        var (drive, root, rest) = SplitRoot(windows ? path.Replace('/', '\\') : path, windows);
+        if (windows && root.Length == 0 && drive.StartsWith('\\') && !drive.EndsWith('\\'))
+        {
+            var driveParts = drive.Split('\\');
+            if ((driveParts.Length == 4 && !"?.".Contains(driveParts[2], StringComparison.Ordinal)) || driveParts.Length == 6)
+            {
+                root = "\\";
+            }
+        }
+
+        var tail = rest.Split(separator).Where(name => name.Length > 0 && !string.Equals(name, ".", StringComparison.Ordinal)).ToList();
+        return new ParsedPath(drive, root, tail);
+    }
+
+    /// <summary><c>PurePath._format_parsed_parts(drv, root, tail)</c>; empty for a path with no anchor and no names.</summary>
+    internal static string Format(string drive, string root, IEnumerable<string> tail, bool windows)
+    {
+        var separator = windows ? "\\" : "/";
+        var names = tail as IReadOnlyList<string> ?? tail.ToList();
+        if (drive.Length > 0 || root.Length > 0)
+        {
+            return drive + root + string.Join(separator, names);
+        }
+
+        return windows && names.Count > 0 && PythonNtPath.SplitDrive(names[0]).Drive.Length > 0
+            ? "." + separator + string.Join(separator, names)
+            : string.Join(separator, names);
+    }
+
+    private static string FormatOrDot(string drive, string root, IEnumerable<string> tail, bool windows)
+    {
+        var text = Format(drive, root, tail, windows);
+        return text.Length == 0 ? "." : text;
+    }
+
+    /// <summary><c>PurePath(path).parts</c>.</summary>
+    public static IReadOnlyList<string> Parts(string path) => Parts(path, Windows);
+
+    internal static IReadOnlyList<string> Parts(string path, bool windows)
+    {
+        var parsed = Parse(path, windows);
+        return parsed.Anchor.Length > 0 ? [parsed.Anchor, .. parsed.Tail] : parsed.Tail;
     }
 
     /// <summary><c>str(PurePath(path))</c>: redundant separators and "." components dropped, "." for an empty path.</summary>
-    public static string Str(string path)
-    {
-        var parts = Parts(path);
-        if (parts.Count == 0)
-        {
-            return ".";
-        }
+    public static string Str(string path) => Str(path, Windows);
 
-        var separator = Windows ? "\\" : "/";
-        return HasAnchor(path)
-            ? parts[0] + string.Join(separator, parts.Skip(1))
-            : string.Join(separator, parts);
+    internal static string Str(string path, bool windows)
+    {
+        var parsed = Parse(path, windows);
+        return FormatOrDot(parsed.Drive, parsed.Root, parsed.Tail, windows);
+    }
+
+    /// <summary><c>PurePath(path).anchor</c>: the drive and the root.</summary>
+    public static string Anchor(string path) => Parse(path, Windows).Anchor;
+
+    /// <summary><c>PurePath(path).is_absolute()</c>: a posix path starting with "/"; a Windows path that <c>ntpath.isabs</c> accepts.</summary>
+    public static bool IsAbsolute(string path) => IsAbsolute(path, Windows);
+
+    internal static bool IsAbsolute(string path, bool windows)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        return windows ? PythonNtPath.IsAbs(Str(path, windows)) : path.StartsWith('/');
     }
 
     /// <summary>
     /// <c>str(PurePosixPath(path))</c> on every platform: "/" is the only separator, empty and "." components are dropped, a
     /// leading "//" (exactly two slashes) is kept as the anchor, and an empty result is ".".
     /// </summary>
-    public static string PosixStr(string path)
+    public static string PosixStr(string path) => Str(path, windows: false);
+
+    /// <summary>
+    /// The flavour's <c>os.path.splitroot(path)</c>: <see cref="PythonNtPath.SplitRoot"/> on Windows; on posix no drive, a root of
+    /// "//" when the path starts with exactly two slashes, "/" for one or three and more, else none.
+    /// </summary>
+    internal static (string Drive, string Root, string Remainder) SplitRoot(string path, bool windows)
     {
         ArgumentNullException.ThrowIfNull(path);
-        var anchor = PosixAnchor(path);
-        var names = path.Split('/', StringSplitOptions.RemoveEmptyEntries).Where(part => !string.Equals(part, ".", StringComparison.Ordinal));
-        var joined = anchor + string.Join('/', names);
-        return joined.Length == 0 ? "." : joined;
-    }
+        if (windows)
+        {
+            return PythonNtPath.SplitRoot(path);
+        }
 
-    // posixpath.splitroot: "//" when the path starts with exactly two slashes, "/" for one or three and more, else none.
-    private static string PosixAnchor(string path)
-        => path.StartsWith("//", StringComparison.Ordinal) && !path.StartsWith("///", StringComparison.Ordinal)
+        var root = path.StartsWith("//", StringComparison.Ordinal) && !path.StartsWith("///", StringComparison.Ordinal)
             ? "//"
             : path.StartsWith('/') ? "/" : string.Empty;
-
-    /// <summary><c>str(PurePath(path).parent)</c>: the path less its last part; "." for a single relative part.</summary>
-    public static string Parent(string path)
-    {
-        var parts = Parts(path);
-        var anchored = HasAnchor(path);
-        if (parts.Count <= 1)
-        {
-            return anchored && parts.Count == 1 ? parts[0] : ".";
-        }
-
-        var separator = Windows ? "\\" : "/";
-        var kept = parts.Take(parts.Count - 1).ToList();
-        return anchored ? kept[0] + string.Join(separator, kept.Skip(1)) : string.Join(separator, kept);
+        return (string.Empty, root, path[root.Length..]);
     }
 
-    /// <summary><c>PurePath(path) / relative</c> as a string, <paramref name="relative"/> being posix-style.</summary>
-    public static string Join(string path, string relative)
-    {
-        ArgumentNullException.ThrowIfNull(relative);
-        var root = Str(path);
-        var tail = Windows ? relative.Replace('/', '\\') : relative;
-        if (string.Equals(root, ".", StringComparison.Ordinal))
-        {
-            return Str(tail);
-        }
+    /// <summary><c>str(PurePath(path).parent)</c>: the path less its last name; the path itself when it has no names.</summary>
+    public static string Parent(string path) => Parent(path, Windows);
 
-        var separator = Windows ? "\\" : "/";
-        return Str(root.EndsWith(separator, StringComparison.Ordinal) ? root + tail : root + separator + tail);
+    internal static string Parent(string path, bool windows)
+    {
+        var parsed = Parse(path, windows);
+        return parsed.Tail.Count == 0
+            ? FormatOrDot(parsed.Drive, parsed.Root, parsed.Tail, windows)
+            : FormatOrDot(parsed.Drive, parsed.Root, parsed.Tail.Take(parsed.Tail.Count - 1), windows);
     }
 
     /// <summary>
-    /// <c>PurePath(path).relative_to(root).as_posix()</c>, or null where Python raises <c>ValueError</c> (the root's parts
-    /// are not a prefix of the path's).
+    /// <c>str(PurePath(path) / relative)</c>: the two joined with the flavour's <c>os.path.join</c> (an anchored
+    /// <paramref name="relative"/> replaces the path, a Windows root-relative one keeps the path's drive), then parsed.
     /// </summary>
-    public static string? RelativeTo(string path, string root)
+    public static string Join(string path, string relative) => Join(path, relative, Windows);
+
+    internal static string Join(string path, string relative, bool windows)
     {
-        var pathParts = Parts(path);
-        var rootParts = Parts(root);
-        var comparison = Windows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (rootParts.Count > pathParts.Count || rootParts.Where((part, index) => !string.Equals(part, pathParts[index], comparison)).Any())
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(relative);
+        if (windows)
+        {
+            return Str(PythonNtPath.Join(path, relative), windows);
+        }
+
+        var joined = relative.StartsWith('/') || path.Length == 0 ? relative : path.EndsWith('/') ? path + relative : path + "/" + relative;
+        return Str(joined, windows);
+    }
+
+    /// <summary>
+    /// <c>PurePath(path).relative_to(root).as_posix()</c>, or null where Python raises <c>ValueError</c>: the root must equal the
+    /// path or one of its parents, compared as <c>str()</c> (lower-cased with <c>str.lower</c> on Windows).
+    /// </summary>
+    public static string? RelativeTo(string path, string root) => RelativeTo(path, root, Windows);
+
+    internal static string? RelativeTo(string path, string root, bool windows)
+    {
+        var self = Parse(path, windows);
+        var other = Parse(root, windows);
+        var otherKey = NormCase(FormatOrDot(other.Drive, other.Root, other.Tail, windows), windows);
+        var related = Enumerable.Range(0, self.Tail.Count + 1)
+            .Select(kept => NormCase(FormatOrDot(self.Drive, self.Root, self.Tail.Take(kept), windows), windows))
+            .Contains(otherKey, StringComparer.Ordinal);
+        if (!related)
         {
             return null;
         }
 
-        var remaining = pathParts.Skip(rootParts.Count).ToList();
-        return remaining.Count == 0 ? "." : string.Join('/', remaining);
+        var text = FormatOrDot(string.Empty, string.Empty, self.Tail.Skip(other.Tail.Count), windows);
+        return windows ? text.Replace('\\', '/') : text;
     }
 
-    private static bool HasAnchor(string path) => Windows ? (Path.GetPathRoot(path) ?? string.Empty).Length > 0 : path.StartsWith('/');
+    // PurePath._str_normcase: str(self), lower-cased on Windows.
+    private static string NormCase(string text, bool windows) => windows ? PythonText.Lower(text) : text;
 
     /// <summary><c>PurePath(path).match(pattern)</c>.</summary>
-    public static bool Match(string path, string pattern)
+    public static bool Match(string path, string pattern) => Match(path, pattern, Windows);
+
+    internal static bool Match(string path, string pattern, bool windows)
     {
         ArgumentNullException.ThrowIfNull(pattern);
-        var pathParts = Parts(path).Reverse().ToList();
-        var patternParts = Parts(pattern).Reverse().ToList();
+        var pathParts = Parts(path, windows).Reverse().ToList();
+        var parsedPattern = Parse(pattern, windows);
+        var patternParts = Parts(pattern, windows).Reverse().ToList();
         if (patternParts.Count == 0)
         {
             throw new PythonValueException("empty pattern", nameof(pattern));
         }
 
-        if (pathParts.Count < patternParts.Count)
+        if (pathParts.Count < patternParts.Count || (pathParts.Count > patternParts.Count && parsedPattern.Anchor.Length > 0))
         {
             return false;
         }
 
-        var anchored = Windows ? Path.IsPathRooted(pattern) : pattern.StartsWith('/');
-        if (pathParts.Count > patternParts.Count && anchored)
-        {
-            return false;
-        }
-
-        var flags = Windows ? PythonReFlags.IgnoreCase : PythonReFlags.None;
-        var separator = Windows ? "\\" : "/";
+        var flags = windows ? PythonReFlags.IgnoreCase : PythonReFlags.None;
+        var separator = windows ? "\\" : "/";
         for (var index = 0; index < patternParts.Count; index++)
         {
             var compiled = PythonPattern.Compile(GlobTranslate(patternParts[index], separator), flags);

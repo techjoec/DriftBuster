@@ -1,0 +1,5 @@
+{
+ "database": {
+  "script": "v2-keyword-table.sql"
+ }
+}

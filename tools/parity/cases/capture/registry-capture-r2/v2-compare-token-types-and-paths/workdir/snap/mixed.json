@@ -1,0 +1,16 @@
+{
+ "detections": [],
+ "hunt_hits": [
+  {
+   "rule": {
+    "token_name": "a"
+   }
+  },
+  {
+   "rule": {
+    "token_name": true
+   }
+  }
+ ],
+ "profile_summary": null
+}

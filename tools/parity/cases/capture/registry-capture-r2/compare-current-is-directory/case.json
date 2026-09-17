@@ -1,0 +1,46 @@
+{
+ "steps": [
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/nope.json",
+    "current": "snap"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/ok.json",
+    "current": "snap"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap",
+    "current": "snap"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/ok.json",
+    "current": "./snap/../snap/ok.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/ok.json/",
+    "current": "snap/ok.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap//ok.json",
+    "current": "snap/ok.json"
+   }
+  }
+ ]
+}

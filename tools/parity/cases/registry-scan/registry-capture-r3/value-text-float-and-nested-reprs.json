@@ -1,0 +1,530 @@
+{
+ "enumerate": false,
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "V",
+   "view": "*",
+   "values": [
+    [
+     "f1",
+     1e+16
+    ],
+    [
+     "f2",
+     1000000000000000.0
+    ],
+    [
+     "f3",
+     1e-05
+    ],
+    [
+     "f4",
+     0.0001
+    ],
+    [
+     "f5",
+     1.5e+300
+    ],
+    [
+     "f6",
+     -0.0
+    ],
+    [
+     "f7",
+     123456789.12345679
+    ],
+    [
+     "f8",
+     1e+22
+    ],
+    [
+     "f9",
+     1e+21
+    ],
+    [
+     "f10",
+     5e-324
+    ],
+    [
+     "f11",
+     1.7976931348623157e+308
+    ],
+    [
+     "f12",
+     0.1
+    ],
+    [
+     "f13",
+     100.0
+    ],
+    [
+     "f14",
+     2.5e-07
+    ],
+    [
+     "i1",
+     123456789012345678901234567890
+    ],
+    [
+     "i2",
+     0
+    ],
+    [
+     "i3",
+     true
+    ],
+    [
+     "i4",
+     false
+    ],
+    [
+     "n1",
+     null
+    ],
+    [
+     "l1",
+     [
+      1e+16,
+      1.0,
+      -0.0,
+      true,
+      null,
+      "s",
+      "q\"uote",
+      "it's",
+      "both'\"",
+      "\n\t\u0000\u007f",
+      "\u200b\u00ad",
+      "\ud83d\ude00",
+      "\u0085",
+      "\u001c"
+     ]
+    ],
+    [
+     "l2",
+     [
+      {
+       "k": "v",
+       "n": null,
+       "l": [
+        1,
+        2
+       ]
+      },
+      {
+       "\u00e9": "\u00fc"
+      },
+      {
+       "a'b": "c\"d"
+      },
+      {},
+      []
+     ]
+    ],
+    [
+     "l3",
+     [
+      [
+       [
+        [
+         1
+        ]
+       ]
+      ],
+      [
+       []
+      ],
+      [
+       [
+        null
+       ]
+      ]
+     ]
+    ],
+    [
+     "l4",
+     [
+      {
+       "$bytes": "00ff"
+      },
+      {
+       "$bytes": "27"
+      },
+      {
+       "$bytes": "2722"
+      },
+      {
+       "$bytes": "5c0a"
+      }
+     ]
+    ],
+    [
+     "l5",
+     [
+      "a",
+      {
+       "$bytes": ""
+      }
+     ]
+    ],
+    [
+     "d1",
+     {
+      "k": 1
+     }
+    ],
+    [
+     "d2",
+     {}
+    ],
+    [
+     "s1",
+     "it's"
+    ],
+    [
+     "s2",
+     "q\"uote"
+    ],
+    [
+     "s3",
+     "\n"
+    ],
+    [
+     "s4",
+     ""
+    ],
+    [
+     "b1",
+     {
+      "$bytes": "c3a9"
+     }
+    ],
+    [
+     "b2",
+     {
+      "$bytes": "ff"
+     }
+    ],
+    [
+     "b3",
+     {
+      "$bytes": "e282"
+     }
+    ],
+    [
+     "b4",
+     {
+      "$bytes": "eda080"
+     }
+    ],
+    [
+     "b5",
+     {
+      "$bytes": ""
+     }
+    ],
+    [
+     "Name Only Hit",
+     12
+    ],
+    [
+     "",
+     "empty-name"
+    ],
+    [
+     "\u212a",
+     "kelvin-name"
+    ]
+   ]
+  }
+ ],
+ "searches": [
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "e+16"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "1e"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "e-0"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "'"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "\""
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "\\x"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "b'"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "none"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "true"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "{}"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "[]"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "\ufffd"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "\u00e9"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "k"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "keywords": [
+    "name only"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "^\\d+$"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "^$"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "\\\\u200b|\\\\x1c|\\\\n|\\\\x00"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "^\\[\\[\\["
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "e\\+"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "(?i)NONE"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "\\u212a",
+    "\u212a"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     null
+    ]
+   ],
+   "patterns": [
+    "(?i)k"
+   ]
+  }
+ ]
+}

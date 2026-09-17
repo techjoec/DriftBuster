@@ -1,0 +1,62 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": [
+    "a"
+   ],
+   "metadata": {
+    "k": "a&b&",
+    "m": "&a"
+   }
+  }
+ ],
+ "redactor": {
+  "tokens": [
+   "a",
+   "&",
+   "&a",
+   "",
+   "a"
+  ],
+  "placeholder": "<'&\">"
+ },
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": {
+     "name": "r",
+     "description": "a & b",
+     "token_name": "a"
+    },
+    "path": "a",
+    "line_number": 1,
+    "excerpt": "&&"
+   }
+  }
+ ],
+ "diffs": [
+  {
+   "kind": "mapping",
+   "value": {
+    "label": "a&",
+    "diff": "-a\n+&",
+    "stats": {
+     "a": "&"
+    }
+   }
+  }
+ ],
+ "warnings": [
+  "a & b"
+ ],
+ "legal_notice": "a & b",
+ "snapshot": {
+  "operator": "a&",
+  "output_name": "&a"
+ }
+}

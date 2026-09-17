@@ -1,0 +1,127 @@
+{
+ "enumerate": false,
+ "remote_targets": [
+  "  h  ",
+  "",
+  5,
+  null,
+  {
+   "hostname": "h2"
+  },
+  {
+   "host": ""
+  },
+  {
+   "host": "  "
+  },
+  {
+   "host": "h",
+   "password": null
+  },
+  {
+   "host": "h",
+   "password_env": ""
+  },
+  {
+   "host": "h",
+   "password-env": " E "
+  },
+  {
+   "host": "h",
+   "password_env": null,
+   "password-env": "X"
+  },
+  {
+   "host": "h",
+   "user": "u",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "transport": " SMB "
+  },
+  {
+   "host": "h",
+   "transport": ""
+  },
+  {
+   "host": "h",
+   "transport": null
+  },
+  {
+   "host": "h",
+   "port": "0"
+  },
+  {
+   "host": "h",
+   "port": "12"
+  },
+  {
+   "host": "h",
+   "port": 1.9
+  },
+  {
+   "host": "h",
+   "port": null
+  },
+  {
+   "host": "h",
+   "port": "x"
+  },
+  {
+   "host": "h",
+   "use-ssl": "Off"
+  },
+  {
+   "host": "h",
+   "use_ssl": 1
+  },
+  {
+   "host": "h",
+   "use_ssl": "maybe"
+  },
+  {
+   "host": "h",
+   "use_ssl": null
+  },
+  {
+   "host": "h",
+   "alias": 0
+  },
+  {
+   "host": 7,
+   "alias": " a ",
+   "credential-profile": " "
+  },
+  {
+   "host": "h",
+   "port": [
+    1
+   ]
+  },
+  {
+   "host": "",
+   "hostname": "h3"
+  },
+  {
+   "host": "h",
+   "use_ssl": 2.0
+  },
+  {
+   "host": "h",
+   "password_env": 0
+  },
+  [],
+  {
+   "host": "h",
+   "port": true
+  },
+  {
+   "host": "gw.\u00e9xample",
+   "port": " 5986 ",
+   "use_ssl": "TRUE",
+   "transport": "WinRM",
+   "credential_profile": "ops"
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+{
+ "database": {
+  "script": "blob-schema-two-tables.sql"
+ },
+ "options": {
+  "exclude_tables": [
+   "t"
+  ],
+  "hash_columns": [
+   "u.w"
+  ]
+ }
+}

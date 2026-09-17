@@ -1,0 +1,5 @@
+{
+ "database": {
+  "script": "injection.sql"
+ }
+}

@@ -160,6 +160,27 @@ public sealed class PythonBuiltinsTests
     }
 
     [Fact]
+    public void DictReadsMappingsAndPairSequencesWithPythonsErrors()
+    {
+        var copy = PythonBuiltins.Dict(Decode("{\"b\": 1, \"a\": 2}"));
+        copy.Keys.Should().Equal("b", "a");
+        PythonBuiltins.Dict(Decode("[[\"a\", 1], [\"a\", 2], [\"b\", null]]")).Should().Equal(
+            new Dictionary<string, object?>(StringComparer.Ordinal) { ["a"] = 2, ["b"] = null });
+        PythonBuiltins.Dict(new List<object?> { new object?[] { "k", "v" } })["k"].Should().Be("v");
+        PythonBuiltins.Dict(Decode("[]")).Should().BeEmpty();
+        PythonBuiltins.Dict(Decode("\"\"")).Should().BeEmpty();
+
+        ShouldRaise(() => PythonBuiltins.Dict(Decode("\"abc\"")), "ValueError", "dictionary update sequence element #0 has length 1; 2 is required");
+        ShouldRaise(() => PythonBuiltins.Dict(Decode("[[\"a\", 1], [1, 2, 3]]")), "ValueError", "dictionary update sequence element #1 has length 3; 2 is required");
+        ShouldRaise(() => PythonBuiltins.Dict(Decode("[1]")), "TypeError", "cannot convert dictionary update sequence element #0 to a sequence");
+        ShouldRaise(() => PythonBuiltins.Dict(Decode("5")), "TypeError", "'int' object is not iterable");
+        ShouldRaise(() => PythonBuiltins.Dict(null), "TypeError", "'NoneType' object is not iterable");
+        ShouldRaise(() => PythonBuiltins.Dict(Decode("[[[1], 2]]")), "TypeError", "unhashable type: 'list'");
+        ShouldRaise(() => PythonBuiltins.Dict(Decode("[[1, 2]]")), "TypeError", "dict keys must be str, not 'int'");
+        ShouldRaise(() => PythonBuiltins.Dict(Decode("[[1, 2]]"), "metadata"), "TypeError", "metadata keys must be str, not 'int'");
+    }
+
+    [Fact]
     public void GetOnAValueThatIsNotAMappingRaisesAttributeError()
     {
         PythonBuiltins.Get(Decode("{\"k\": 3}"), "k").Should().Be(3);
@@ -182,4 +203,19 @@ public sealed class PythonBuiltinsTests
     [InlineData("123456789012345678901234567890", true)]
     public void IsTruthyMatchesBool(string json, bool expected)
         => PythonBuiltins.IsTruthy(Decode(json)).Should().Be(expected);
+
+    [Fact]
+    public void LenCountsCodePointsItemsAndKeysAndRefusesScalars()
+    {
+        PythonBuiltins.Len("\U0001F600\ud800").Should().Be(2);
+        PythonBuiltins.Len(new List<object?> { 1, 2 }).Should().Be(2);
+        PythonBuiltins.Len(new object?[] { 1 }).Should().Be(1);
+        PythonBuiltins.Len(new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["a"] = 1 }).Should().Be(1);
+        PythonBuiltins.TypeName(new object?[] { 1 }).Should().Be("tuple");
+
+        var scalar = () => PythonBuiltins.Len(5);
+        scalar.Should().Throw<PythonTypeException>().WithMessage("object of type 'int' has no len()");
+        var none = () => PythonBuiltins.Len(null);
+        none.Should().Throw<PythonTypeException>().WithMessage("object of type 'NoneType' has no len()");
+    }
 }

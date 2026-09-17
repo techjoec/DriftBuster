@@ -1,0 +1,38 @@
+{
+ "matches": [
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "v",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "\uffff": 1,
+    "\ud83d\ude00": 2,
+    "\ue000": 3,
+    "\ud7ff": 4,
+    "A": 5,
+    "a": 6,
+    "\u00e9": 7
+   }
+  }
+ ],
+ "extra_metadata": {
+  "\ud800\udc00": "x",
+  "\ufffd": "y"
+ },
+ "profile_summary": {
+  "\ud83d\ude00": 1,
+  "\uffff": 2,
+  "profiles": []
+ },
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "\ud83d\ude00": 1,
+    "\uffff": 2
+   }
+  }
+ ]
+}

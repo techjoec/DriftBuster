@@ -245,4 +245,41 @@ public sealed class PythonPathTests : IDisposable
 
         PythonPath.SortedGlob($"{tree}/shortcut/..", "**/*", TestContext.Current.CancellationToken).Should().Equal($"{tree}/shortcut/../nested", $"{tree}/shortcut/../x.txt");
     }
+
+    [Fact]
+    public void ResolveFollowsLinksAndParentPartsAndKeepsMissingParts()
+    {
+        var root = PythonPath.Resolve(_tmp.FullName);
+        Directory.CreateDirectory(Path.Combine(root, "real", "sub"));
+        PythonPath.Resolve(Path.Combine(root, "real", "sub", "..", ".", "missing", "x.json")).Should().Be(Path.Combine(root, "real", "missing", "x.json"));
+        if (!OperatingSystem.IsWindows())
+        {
+            Directory.CreateSymbolicLink(Path.Combine(root, "link"), Path.Combine(root, "real", "sub"));
+            PythonPath.Resolve(Path.Combine(root, "link", "..", "y")).Should().Be(Path.Combine(root, "real", "y"));
+            PythonPath.Resolve(Path.Combine(root, "link")).Should().Be(Path.Combine(root, "real", "sub"));
+        }
+
+        var cwd = Directory.GetCurrentDirectory();
+        PythonPath.Resolve(".").Should().Be(PythonPath.Resolve(cwd));
+    }
+
+    /// <summary>
+    /// <c>ntpath.realpath</c>: the stored spelling of an existing entry (letter case, 8.3 names expanded) and the rest of a missing tail as
+    /// written, without the <c>\?\</c> prefix the OS answers with.
+    /// </summary>
+    [Fact]
+    public void ResolveOnWindowsReportsTheStoredSpelling()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "ntpath.realpath is the Windows resolution");
+        var root = PythonPath.Resolve(_tmp.FullName);
+        Directory.CreateDirectory(Path.Combine(root, "MixedCase", "Program Files"));
+        File.WriteAllText(Path.Combine(root, "MixedCase", "Program Files", "Config.json"), "{}");
+
+        PythonPath.Resolve(Path.Combine(root, "mixedcase", "program files", "config.json")).Should().Be(Path.Combine(root, "MixedCase", "Program Files", "Config.json"));
+        PythonPath.Resolve(Path.Combine(root, "mixedcase", "missing", "x.json")).Should().Be(Path.Combine(root, "MixedCase", "missing", "x.json"));
+        PythonPath.Resolve(Path.Combine(root, "MixedCase", "PROGRA~1")).Should().BeOneOf(
+            Path.Combine(root, "MixedCase", "Program Files"),
+            Path.Combine(root, "MixedCase", "PROGRA~1"));
+        PythonPath.Resolve("nul").Should().Be(@"\\.\NUL");
+    }
 }

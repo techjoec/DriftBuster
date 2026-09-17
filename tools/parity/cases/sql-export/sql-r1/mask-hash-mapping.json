@@ -1,0 +1,19 @@
+{
+ "database": {
+  "script": "accounts.sql"
+ },
+ "options": {
+  "mask_columns": {
+   "accounts": [
+    "secret"
+   ]
+  },
+  "hash_columns": {
+   "accounts": [
+    "email"
+   ]
+  },
+  "placeholder": "[MASK]",
+  "hash_salt": "pepper"
+ }
+}

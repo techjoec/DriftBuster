@@ -1,0 +1,80 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": [
+    "detection"
+   ],
+   "metadata": {
+    "type": "detection",
+    "detection": "type",
+    "payload": [
+     "hunt_hit",
+     {
+      "Match": "Generated"
+     }
+    ]
+   }
+  }
+ ],
+ "mask_tokens": [
+  "detection",
+  "type",
+  "payload",
+  "profile_summary",
+  "hunt_hit",
+  "Match",
+  "Generated",
+  "Redaction"
+ ],
+ "placeholder": "X",
+ "profile_summary": {
+  "type": 1,
+  "profiles": [
+   {
+    "name": "hunt_hit",
+    "config_count": "detection",
+    "config_ids": [
+     "type"
+    ]
+   }
+  ]
+ },
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": {
+     "name": "hunt_hit",
+     "description": "detection",
+     "token_name": "type"
+    },
+    "path": "payload",
+    "line_number": 1,
+    "excerpt": "detection"
+   }
+  }
+ ],
+ "title": "Match Generated detection",
+ "warnings": [
+  "detection",
+  "<span>type</span>"
+ ],
+ "legal_notice": "detection Redaction",
+ "extra_metadata": {
+  "payload": "detection"
+ },
+ "snapshot": {
+  "operator": "detection",
+  "output_name": "payload",
+  "legal_metadata": {
+   "detection": "type"
+  },
+  "extra_metadata": {
+   "Match": "Generated"
+  }
+ }
+}

@@ -3,28 +3,19 @@ namespace DriftBuster.Backend.Infrastructure;
 /// <summary>Path text helpers with Python <c>pathlib</c> semantics; ported code never calls <see cref="Path.GetExtension"/>.</summary>
 public static class PathText
 {
-    private static readonly char[] Separators = Path.DirectorySeparatorChar == Path.AltDirectorySeparatorChar
-        ? [Path.DirectorySeparatorChar]
-        : [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
+    private static readonly bool Windows = OperatingSystem.IsWindows();
 
     /// <summary>
-    /// The final path component as <c>PurePath.name</c> returns it: trailing separators and "." parts are dropped first (as the path
-    /// parser drops them), so <c>a/./</c> gives "a", while "." and "/" give "".
+    /// The final path component as <c>PurePath.name</c> returns it in the host flavour: the last name after the anchor, with empty and
+    /// "." parts dropped (as the path parser drops them), so <c>a/./</c> gives "a", while ".", "/" and an anchor alone (a Windows
+    /// <c>\\server\share</c>) give "".
     /// </summary>
-    public static string Name(string path)
-    {
-        ArgumentNullException.ThrowIfNull(path);
-        var trimmed = path.TrimEnd(Separators);
-        while (true)
-        {
-            var name = Path.GetFileName(trimmed);
-            if (!string.Equals(name, ".", StringComparison.Ordinal))
-            {
-                return name;
-            }
+    public static string Name(string path) => Name(path, Windows);
 
-            trimmed = trimmed[..^1].TrimEnd(Separators);
-        }
+    internal static string Name(string path, bool windows)
+    {
+        var parsed = PythonPurePath.Parse(path, windows);
+        return parsed.Tail.Count > 0 ? parsed.Tail[^1] : string.Empty;
     }
 
     /// <summary><see cref="Name"/> lowered with the invariant culture, matching <c>path.name.lower()</c>.</summary>

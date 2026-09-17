@@ -1,0 +1,26 @@
+{
+ "detections": [],
+ "hunt_hits": [
+  {
+   "rule": {
+    "token_name": 123456789012345678901234567890
+   }
+  },
+  {
+   "rule": {
+    "token_name": 1.5e+300
+   }
+  },
+  {
+   "rule": {
+    "token_name": -0.0
+   }
+  },
+  {
+   "rule": {
+    "token_name": 0.0
+   }
+  }
+ ],
+ "profile_summary": null
+}

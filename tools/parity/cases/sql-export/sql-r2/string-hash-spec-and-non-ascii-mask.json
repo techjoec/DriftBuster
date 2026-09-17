@@ -1,0 +1,16 @@
+{
+ "database": {
+  "script": "db.sql"
+ },
+ "options": {
+  "exclude_tables": [
+   "dotted.name"
+  ],
+  "mask_columns": {
+   "Accounts": [
+    "\u00e9"
+   ]
+  },
+  "hash_columns": "Accounts.ID"
+ }
+}

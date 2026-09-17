@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "options": {
+  "limit": -Infinity
+ }
+}

@@ -1,0 +1,192 @@
+{
+ "enumerate": false,
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "K",
+   "view": "*",
+   "values": [
+    [
+     "Server",
+     "api.internal.local"
+    ],
+    [
+     "Stra\u00dfe",
+     "x"
+    ],
+    [
+     "K1",
+     "\u0130stanbul"
+    ],
+    [
+     "K2",
+     1234
+    ],
+    [
+     "K3",
+     {
+      "$bytes": "414243"
+     }
+    ],
+    [
+     "K4",
+     [
+      "One",
+      "Two"
+     ]
+    ],
+    [
+     "https_name",
+     "plain"
+    ],
+    [
+     "Endpoint",
+     "https://svc"
+    ],
+    [
+     "N",
+     "v"
+    ]
+   ]
+  }
+ ],
+ "searches": [
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "server",
+    "api"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "SERVER"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "STRASSE"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "stra\u00dfe"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "i\u0307stanbul"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "23"
+   ],
+   "patterns": [
+    "^\\d+$"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "abc"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "one, two"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "patterns": [
+    "https"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "keywords": [
+    "n v"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "K",
+     null
+    ]
+   ],
+   "patterns": [
+    "zzz",
+    "v$"
+   ]
+  }
+ ]
+}

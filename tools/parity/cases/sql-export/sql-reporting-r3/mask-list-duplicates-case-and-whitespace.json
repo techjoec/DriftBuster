@@ -1,0 +1,30 @@
+{
+ "database": {
+  "script": "r3-mask-list.sql"
+ },
+ "options": {
+  "mask_columns": [
+   "t.a",
+   "t.a",
+   "t.A",
+   " t . b ",
+   "t.b.c",
+   ".x",
+   "t.",
+   "t. ",
+   "t..d",
+   "",
+   null,
+   0,
+   false,
+   "nodot",
+   "  "
+  ],
+  "hash_columns": [
+   "t.a",
+   "t.b",
+   "u.a"
+  ],
+  "hash_salt": "s"
+ }
+}

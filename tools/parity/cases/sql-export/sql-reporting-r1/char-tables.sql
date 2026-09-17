@@ -1,0 +1,6 @@
+CREATE TABLE a (v);
+INSERT INTO a VALUES ('in a');
+CREATE TABLE b (v);
+INSERT INTO b VALUES ('in b');
+CREATE TABLE ab (v);
+INSERT INTO ab VALUES ('in ab');

@@ -1,0 +1,115 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "f1",
+   "variant": "v1",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "catalog_remediations": [
+     {
+      "id": [
+       1
+      ],
+      "summary": {
+       "s": 1
+      },
+      "category": 0,
+      "documentation": ""
+     },
+     {
+      "id": "",
+      "summary": 0
+     },
+     {
+      "summary": "only-summary",
+      "category": "",
+      "documentation": null
+     },
+     "x",
+     5,
+     null,
+     []
+    ],
+    "catalog_severity": "",
+    "catalog_severity_hint": "h1"
+   }
+  },
+  {
+   "plugin": "json",
+   "format": "f1",
+   "variant": "",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "catalog_remediations": [
+     {
+      "id": "[1]",
+      "category": "c",
+      "documentation": "d"
+     },
+     {
+      "summary": "only-summary",
+      "category": "cat2",
+      "documentation": "doc2"
+     },
+     {
+      "id": 0,
+      "summary": "zero-id"
+     },
+     {
+      "id": false,
+      "summary": ""
+     }
+    ],
+    "catalog_severity": 3,
+    "catalog_severity_hint": "h2"
+   }
+  },
+  {
+   "plugin": "json",
+   "format": "f2",
+   "variant": "v1",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "catalog_remediations": "notalist",
+    "catalog_severity": "low"
+   }
+  },
+  {
+   "plugin": "json",
+   "format": "f2",
+   "variant": "v1",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "catalog_remediations": {
+     "id": "x"
+    },
+    "catalog_severity": "low",
+    "catalog_severity_hint": ""
+   }
+  },
+  {
+   "plugin": "json",
+   "format": "f2",
+   "variant": null,
+   "confidence": 0.5,
+   "reasons": [
+    "b",
+    "a",
+    "b"
+   ],
+   "metadata": {
+    "catalog_remediations": [
+     {
+      "summary": "only-summary"
+     }
+    ],
+    "catalog_severity": "high"
+   }
+  }
+ ]
+}

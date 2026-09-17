@@ -7,6 +7,7 @@
     <AssemblyVersion>$(DriftBusterCoreVersion)</AssemblyVersion>
     <FileVersion>$(DriftBusterCoreVersion)</FileVersion>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

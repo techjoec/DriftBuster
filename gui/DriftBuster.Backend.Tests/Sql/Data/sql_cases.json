@@ -1,0 +1,3981 @@
+{
+ "sqlite_version": "3.50.4",
+ "parse_column_map": [
+  {
+   "input": null,
+   "result": []
+  },
+  {
+   "input": {},
+   "result": []
+  },
+  {
+   "input": [],
+   "result": []
+  },
+  {
+   "input": "",
+   "result": []
+  },
+  {
+   "input": 0,
+   "result": []
+  },
+  {
+   "input": false,
+   "result": []
+  },
+  {
+   "input": {
+    "accounts": [
+     "secret",
+     "token"
+    ]
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "secret",
+      "token"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": [
+     "secret"
+    ],
+    "": [
+     "skipped"
+    ],
+    "users": []
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "secret"
+     ]
+    ],
+    [
+     "users",
+     []
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": "secret"
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "s",
+      "e",
+      "c",
+      "r",
+      "e",
+      "t"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": "a b\u3000c"
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "a",
+      "b",
+      "c"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": 5
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "5"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": 2.5
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "2.5"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": true
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "True"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": null
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "None"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": {
+     "nested": [
+      1
+     ]
+    }
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      "{'nested': [1]}"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "accounts": [
+     "",
+     "  ",
+     "\u2028",
+     " spaced ",
+     7,
+     1e+16,
+     null,
+     false,
+     [
+      "x",
+      1
+     ],
+     {
+      "k": "v"
+     }
+    ]
+   },
+   "result": [
+    [
+     "accounts",
+     [
+      " spaced ",
+      "7",
+      "1e+16",
+      "None",
+      "False",
+      "['x', 1]",
+      "{'k': 'v'}"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": {
+    "t\u00e9": [
+     "\ud83d\ude00",
+     "a.b"
+    ]
+   },
+   "result": [
+    [
+     "t\u00e9",
+     [
+      "\ud83d\ude00",
+      "a.b"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": [
+    "accounts.secret",
+    "accounts.email",
+    "users.token"
+   ],
+   "result": [
+    [
+     "accounts",
+     [
+      "secret",
+      "email"
+     ]
+    ],
+    [
+     "users",
+     [
+      "token"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": [
+    "  accounts . secret  ",
+    "accounts.",
+    ".secret",
+    "nodot",
+    "",
+    null,
+    0,
+    [],
+    {}
+   ],
+   "result": [
+    [
+     "accounts",
+     [
+      "secret"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": [
+    "a.b.c",
+    "x..y",
+    "\u3000t\u3000.\u3000c\u3000",
+    "t.\ud83d\ude00",
+    "\u00e9.\u00e8"
+   ],
+   "result": [
+    [
+     "a",
+     [
+      "b.c"
+     ]
+    ],
+    [
+     "x",
+     [
+      ".y"
+     ]
+    ],
+    [
+     "t",
+     [
+      "c",
+      "\ud83d\ude00"
+     ]
+    ],
+    [
+     "\u00e9",
+     [
+      "\u00e8"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": [
+    "users.token",
+    "accounts.secret",
+    "users.name"
+   ],
+   "result": [
+    [
+     "users",
+     [
+      "token",
+      "name"
+     ]
+    ],
+    [
+     "accounts",
+     [
+      "secret"
+     ]
+    ]
+   ]
+  },
+  {
+   "input": "accounts.secret",
+   "result": []
+  },
+  {
+   "input": ".",
+   "result": []
+  },
+  {
+   "input": [
+    "a.b",
+    5
+   ],
+   "error": {
+    "type": "AttributeError",
+    "message": "'int' object has no attribute 'strip'"
+   }
+  },
+  {
+   "input": [
+    "a.b",
+    true
+   ],
+   "error": {
+    "type": "AttributeError",
+    "message": "'bool' object has no attribute 'strip'"
+   }
+  },
+  {
+   "input": [
+    "a.b",
+    2.5
+   ],
+   "error": {
+    "type": "AttributeError",
+    "message": "'float' object has no attribute 'strip'"
+   }
+  },
+  {
+   "input": [
+    "a.b",
+    [
+     "c.d"
+    ]
+   ],
+   "error": {
+    "type": "AttributeError",
+    "message": "'list' object has no attribute 'strip'"
+   }
+  },
+  {
+   "input": [
+    "a.b",
+    {
+     "c": "d"
+    }
+   ],
+   "error": {
+    "type": "AttributeError",
+    "message": "'dict' object has no attribute 'strip'"
+   }
+  },
+  {
+   "input": 5,
+   "error": {
+    "type": "TypeError",
+    "message": "'int' object is not iterable"
+   }
+  },
+  {
+   "input": 2.5,
+   "error": {
+    "type": "TypeError",
+    "message": "'float' object is not iterable"
+   }
+  },
+  {
+   "input": true,
+   "error": {
+    "type": "TypeError",
+    "message": "'bool' object is not iterable"
+   }
+  },
+  {
+   "input": [
+    null,
+    false,
+    0,
+    0.0,
+    "",
+    [],
+    {}
+   ],
+   "result": []
+  }
+ ],
+ "normalise_value": [
+  {
+   "value": null,
+   "result": null
+  },
+  {
+   "value": 0,
+   "result": 0
+  },
+  {
+   "value": 1,
+   "result": 1
+  },
+  {
+   "value": -1,
+   "result": -1
+  },
+  {
+   "value": 9223372036854775807,
+   "result": 9223372036854775807
+  },
+  {
+   "value": -9223372036854775808,
+   "result": -9223372036854775808
+  },
+  {
+   "value": {
+    "$float": "0.0"
+   },
+   "result": {
+    "$float": "0.0"
+   }
+  },
+  {
+   "value": {
+    "$float": "-0.0"
+   },
+   "result": {
+    "$float": "-0.0"
+   }
+  },
+  {
+   "value": {
+    "$float": "42.5"
+   },
+   "result": {
+    "$float": "42.5"
+   }
+  },
+  {
+   "value": {
+    "$float": "13.75"
+   },
+   "result": {
+    "$float": "13.75"
+   }
+  },
+  {
+   "value": {
+    "$float": "0.1"
+   },
+   "result": {
+    "$float": "0.1"
+   }
+  },
+  {
+   "value": {
+    "$float": "1e+16"
+   },
+   "result": {
+    "$float": "1e+16"
+   }
+  },
+  {
+   "value": {
+    "$float": "1e-07"
+   },
+   "result": {
+    "$float": "1e-07"
+   }
+  },
+  {
+   "value": {
+    "$float": "1.5e+300"
+   },
+   "result": {
+    "$float": "1.5e+300"
+   }
+  },
+  {
+   "value": {
+    "$float": "5e-324"
+   },
+   "result": {
+    "$float": "5e-324"
+   }
+  },
+  {
+   "value": {
+    "$float": "123456789.12345679"
+   },
+   "result": {
+    "$float": "123456789.12345679"
+   }
+  },
+  {
+   "value": {
+    "$float": "inf"
+   },
+   "result": {
+    "$float": "inf"
+   }
+  },
+  {
+   "value": {
+    "$float": "-inf"
+   },
+   "result": {
+    "$float": "-inf"
+   }
+  },
+  {
+   "value": "",
+   "result": ""
+  },
+  {
+   "value": "alice@example.com",
+   "result": "alice@example.com"
+  },
+  {
+   "value": "quote ' and \" and \\",
+   "result": "quote ' and \" and \\"
+  },
+  {
+   "value": "controls \u0000\u0001\u001f\u007f \t\n\r\b\f",
+   "result": "controls \u0000\u0001\u001f\u007f \t\n\r\b\f"
+  },
+  {
+   "value": "unicode caf\u00e9 \u2028 \ufeff",
+   "result": "unicode caf\u00e9 \u2028 \ufeff"
+  },
+  {
+   "value": "astral \ud83d\ude00",
+   "result": "astral \ud83d\ude00"
+  },
+  {
+   "value": {
+    "$bytes": ""
+   },
+   "result": {
+    "type": "base64",
+    "value": ""
+   }
+  },
+  {
+   "value": {
+    "$bytes": "6175646974"
+   },
+   "result": {
+    "type": "base64",
+    "value": "YXVkaXQ="
+   }
+  },
+  {
+   "value": {
+    "$bytes": "00017f80ff"
+   },
+   "result": {
+    "type": "base64",
+    "value": "AAF/gP8="
+   }
+  },
+  {
+   "value": {
+    "$bytes": "69742773"
+   },
+   "result": {
+    "type": "base64",
+    "value": "aXQncw=="
+   }
+  },
+  {
+   "value": {
+    "$bytes": "7361792022686922"
+   },
+   "result": {
+    "type": "base64",
+    "value": "c2F5ICJoaSI="
+   }
+  },
+  {
+   "value": {
+    "$bytes": "626f7468202720616e642022"
+   },
+   "result": {
+    "type": "base64",
+    "value": "Ym90aCAnIGFuZCAi"
+   }
+  },
+  {
+   "value": {
+    "$bytes": "6261636b5c736c617368090a0d"
+   },
+   "result": {
+    "type": "base64",
+    "value": "YmFja1xzbGFzaAkKDQ=="
+   }
+  }
+ ],
+ "hash_text": [
+  {
+   "value": null,
+   "salt": "",
+   "result": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+  },
+  {
+   "value": null,
+   "salt": "pepper",
+   "result": "sha256:7931669101af6e45cb56ac9260ef1c2e9a30a7450453cf24f9f8d66d85a335a4"
+  },
+  {
+   "value": null,
+   "salt": "accounts.email:pepper",
+   "result": "sha256:2199fefea7b26a00f8c104534fa63999f2f03e4af679500a032f8bd1edd2de02"
+  },
+  {
+   "value": null,
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:2b9e2fe8ecc49658c467bf6f19e9af6cb02c7ca4d302055a170f18909a925080"
+  },
+  {
+   "value": 0,
+   "salt": "",
+   "result": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  {
+   "value": 0,
+   "salt": "pepper",
+   "result": "sha256:67beb17ca33e8340c3dad5a4f59a31cd876d9a840cd0a2ca5d0ba7b457907db6"
+  },
+  {
+   "value": 0,
+   "salt": "accounts.email:pepper",
+   "result": "sha256:37f84b6d7e7965485402c42c50841f6ca34246fd762e860c78f926419657ace9"
+  },
+  {
+   "value": 0,
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:fbbf471c2182a13ef223d4f59f8e4c852df6665bb314904d3fcf86a3e69980e9"
+  },
+  {
+   "value": 1,
+   "salt": "",
+   "result": "sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+  },
+  {
+   "value": 1,
+   "salt": "pepper",
+   "result": "sha256:02d2c8a77642c129484a576baff80dd186b1ae30e0551ed15d07165e895f420a"
+  },
+  {
+   "value": 1,
+   "salt": "accounts.email:pepper",
+   "result": "sha256:a080cae20654671df0f3df90941ad2ebbe79ea542fd6a55a33997d88b1262d58"
+  },
+  {
+   "value": 1,
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:dde30064d4e80e2435b531743b9361f4e655c2fa9cc8a0f6442e3a0d68d5ff6f"
+  },
+  {
+   "value": -1,
+   "salt": "",
+   "result": "sha256:1bad6b8cf97131fceab8543e81f7757195fbb1d36b376ee994ad1cf17699c464"
+  },
+  {
+   "value": -1,
+   "salt": "pepper",
+   "result": "sha256:e54989038fa0b7934d588208fa285c0f338fd8547916502745c4a27593236071"
+  },
+  {
+   "value": -1,
+   "salt": "accounts.email:pepper",
+   "result": "sha256:1788bceeffe22d00eea40a57849c741b0dee88eb8bcebcd5fe672f23488b0471"
+  },
+  {
+   "value": -1,
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:f5e5658bea46bb4ff367f09bc7f32f93a789a4ee67e0c92eb6727344f35c965e"
+  },
+  {
+   "value": 9223372036854775807,
+   "salt": "",
+   "result": "sha256:b34a1c30a715f6bf8b7243afa7fab883ce3612b7231716bdcbbdc1982e1aed29"
+  },
+  {
+   "value": 9223372036854775807,
+   "salt": "pepper",
+   "result": "sha256:a234989a98ddc5f868253c8c6ae1e86162493102b4c888c7030274deb754f98d"
+  },
+  {
+   "value": 9223372036854775807,
+   "salt": "accounts.email:pepper",
+   "result": "sha256:5583c14cf101e19e9e29d619c3e08d8058c01c6b56acf8811a3cd0e8b3854f6e"
+  },
+  {
+   "value": 9223372036854775807,
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:b3454de9227f9124db69749934668accbe53b7a4f3e1d075c14f26c5e90286bc"
+  },
+  {
+   "value": -9223372036854775808,
+   "salt": "",
+   "result": "sha256:85386477f3af47e4a0b308ee3b3a688df16e8b2228105dd7d4dcd42a9807cb78"
+  },
+  {
+   "value": -9223372036854775808,
+   "salt": "pepper",
+   "result": "sha256:82c88bcd449266110ebd1f5e2446aaf1f3a51498db22ed1976dd580e08f5fe94"
+  },
+  {
+   "value": -9223372036854775808,
+   "salt": "accounts.email:pepper",
+   "result": "sha256:c660a46af2eec000d79c8d54ead5885ba70934349606c61fecd3f567903ef0ef"
+  },
+  {
+   "value": -9223372036854775808,
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:08d7f22c4c42066f3ae69da31d5766324b8785c57a645fc6f848fdbd4db6e3b3"
+  },
+  {
+   "value": {
+    "$float": "0.0"
+   },
+   "salt": "",
+   "result": "sha256:8aed642bf5118b9d3c859bd4be35ecac75b6e873cce34e7b6f554b06f75550d7"
+  },
+  {
+   "value": {
+    "$float": "0.0"
+   },
+   "salt": "pepper",
+   "result": "sha256:a54ef2b194d70eed7bd9214fb5c144d8e308348380b8419d8f27c678ece89c35"
+  },
+  {
+   "value": {
+    "$float": "0.0"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:110fe5bcf5c7ac091da55777ee42285d92c7d33b0300984305211e32fdcc2fe6"
+  },
+  {
+   "value": {
+    "$float": "0.0"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:e97cccd961327c8aa3861e3f2ca76b4314cc282188dd2edbdafabb67da434785"
+  },
+  {
+   "value": {
+    "$float": "-0.0"
+   },
+   "salt": "",
+   "result": "sha256:c26617c7ccbcaa6631b45d851b8cf56e21d2ca624bdb1193afdbd4b560702cec"
+  },
+  {
+   "value": {
+    "$float": "-0.0"
+   },
+   "salt": "pepper",
+   "result": "sha256:e9333ec36244f3cb45755bd8e13a5884485bc60ea4cf6a4dd70e011808e6cd73"
+  },
+  {
+   "value": {
+    "$float": "-0.0"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:f7ccf1d12890c275213322607024a7a1170bd7c2f017cf46c32a07b86f683c23"
+  },
+  {
+   "value": {
+    "$float": "-0.0"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:e7a1a5b46a23330ec926034b35d0b06d6238caa02003269212c25b8eac9ff9df"
+  },
+  {
+   "value": {
+    "$float": "42.5"
+   },
+   "salt": "",
+   "result": "sha256:7b713affffacc53f6dbd3a5fd52117bc3eb5f3881789d2eb26b5f636daa066df"
+  },
+  {
+   "value": {
+    "$float": "42.5"
+   },
+   "salt": "pepper",
+   "result": "sha256:04da97ae52bcfaa8c61c92e5945f68b1bdaec7d547cec576af9c8f793cd2c008"
+  },
+  {
+   "value": {
+    "$float": "42.5"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:7c509c18bdebe47b44d715d46f570bad171544f1cb080b59fde93b189f65d321"
+  },
+  {
+   "value": {
+    "$float": "42.5"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:fff78687e4cf1d028113ecdaea8e5298df48e29341bdff1238c0128e54f2612e"
+  },
+  {
+   "value": {
+    "$float": "13.75"
+   },
+   "salt": "",
+   "result": "sha256:a90a736d463ae3bee00204d79b9317f28bb7d565e29b1741b662c138ca9ddd70"
+  },
+  {
+   "value": {
+    "$float": "13.75"
+   },
+   "salt": "pepper",
+   "result": "sha256:42706953fa6b370334047ca5a78cceeb6f724cf1049882aa713f8a330e2791fd"
+  },
+  {
+   "value": {
+    "$float": "13.75"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:c1d52973d1a18de8bc5210043af0ddc9318ea5056d1a0b208162a675a96b5d4b"
+  },
+  {
+   "value": {
+    "$float": "13.75"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:4ce9feeff8667b8704c258710a8a5b306768e4832e56d5f8a46fac838fd4d5c6"
+  },
+  {
+   "value": {
+    "$float": "0.1"
+   },
+   "salt": "",
+   "result": "sha256:14be4b45f18e0d8c67b4f719b5144eee88497e413709d11d85b096d8e2346310"
+  },
+  {
+   "value": {
+    "$float": "0.1"
+   },
+   "salt": "pepper",
+   "result": "sha256:a1025c04ae070d2962337b3086b9fcc8f590a1d06804cfcf466b3448d56bfd00"
+  },
+  {
+   "value": {
+    "$float": "0.1"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:a684976f16d3518706d376a8ec478bd25fd01dd9173d3255e0f8343f9bf0384a"
+  },
+  {
+   "value": {
+    "$float": "0.1"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:440d4f793c78f62f7ba2b177ec8ab845d952b65d456c137380a428bc5455a1f5"
+  },
+  {
+   "value": {
+    "$float": "1e+16"
+   },
+   "salt": "",
+   "result": "sha256:a144838520595009e7daf5aff8472573f9ce6a4bcd8c30673675618883464ab0"
+  },
+  {
+   "value": {
+    "$float": "1e+16"
+   },
+   "salt": "pepper",
+   "result": "sha256:35e8e2b8283cde7c5a5ce902e76aaefcaab3f9d2207f2517ac079601049cc522"
+  },
+  {
+   "value": {
+    "$float": "1e+16"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:995532364b233979c069c1d38b623148b5c3f19621f1fa1a340f590f583ecb59"
+  },
+  {
+   "value": {
+    "$float": "1e+16"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:9b369d38755b599d59ae91a32f0c65a8429c0fa811f3a9300e0ad950c002f2aa"
+  },
+  {
+   "value": {
+    "$float": "1e-07"
+   },
+   "salt": "",
+   "result": "sha256:e485fac25775a7da830698e7daac582737fc8b43ba4b351467a16cf8ed83122a"
+  },
+  {
+   "value": {
+    "$float": "1e-07"
+   },
+   "salt": "pepper",
+   "result": "sha256:b897a56d537fdd132df6b1aec566cbb92c04892463272e27a9a39d08de61b5c0"
+  },
+  {
+   "value": {
+    "$float": "1e-07"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:b5fb4fd8a3e2a2dc80f87a5edc2d94bdd25dd06c14f3e7d514b500ef876c2448"
+  },
+  {
+   "value": {
+    "$float": "1e-07"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:f640d7beb85b5c8d30016c1ecf0eaa7bfefa84fa6d0eb0a1e649d898bb87bcb7"
+  },
+  {
+   "value": {
+    "$float": "1.5e+300"
+   },
+   "salt": "",
+   "result": "sha256:ba5b9d007ed3bac3aed4e53fff4395ec6e034ab008e90969287e3b8860c31b12"
+  },
+  {
+   "value": {
+    "$float": "1.5e+300"
+   },
+   "salt": "pepper",
+   "result": "sha256:b02da1fd49afd42d27e5fa9dd477ec066b9f62523274117b80fe9e3a79b7ab34"
+  },
+  {
+   "value": {
+    "$float": "1.5e+300"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:0abb0d496cc80ed15ce35f0c6313520d09fade5bfdb7707cbc3a7173aae68dee"
+  },
+  {
+   "value": {
+    "$float": "1.5e+300"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:dc379523f252d84fc16f8afd1223e0174f8eb89a107f669243058405b84c7d5c"
+  },
+  {
+   "value": {
+    "$float": "5e-324"
+   },
+   "salt": "",
+   "result": "sha256:c46e7ca1be4c8734f373a56530787288fa2058d73d07855e9247e949f811a42a"
+  },
+  {
+   "value": {
+    "$float": "5e-324"
+   },
+   "salt": "pepper",
+   "result": "sha256:95d28ba0ac88042f58285f3fb331d7f6e4666deb926eb9b88c378235223f8237"
+  },
+  {
+   "value": {
+    "$float": "5e-324"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:5d583578f75b359ac566542d1dfcd4319790a6ea8fd863f1ca2650077a1c406a"
+  },
+  {
+   "value": {
+    "$float": "5e-324"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:3248d30eedfb7289fad26e3ce3cfb2f9e57487d8bc0f35c07c38170939eee06d"
+  },
+  {
+   "value": {
+    "$float": "123456789.12345679"
+   },
+   "salt": "",
+   "result": "sha256:773807b45c9a120b28c7173e360024cce99d0608d4c5d8f25b9e954d9f1c7ba4"
+  },
+  {
+   "value": {
+    "$float": "123456789.12345679"
+   },
+   "salt": "pepper",
+   "result": "sha256:27d0cbd05649ee787a02fa8d08c2e4c09813b0b65ec29f370e98d22e358d7654"
+  },
+  {
+   "value": {
+    "$float": "123456789.12345679"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:c55a35cc9391a2ccae253253305924d03a78cd9059d1e9b2e9983871a2d9e962"
+  },
+  {
+   "value": {
+    "$float": "123456789.12345679"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:0ceb7536d11af1dfad59ffdc92703ee1b203508f9a92e2e135d1d558e39ffdf7"
+  },
+  {
+   "value": {
+    "$float": "inf"
+   },
+   "salt": "",
+   "result": "sha256:d0067cad9a63e0813759a2bb841051ca73570c0da2e08e840a8eb45db6a7a010"
+  },
+  {
+   "value": {
+    "$float": "inf"
+   },
+   "salt": "pepper",
+   "result": "sha256:4b228264fe395c736b7042f2879b5a0be943ddb36d309492a68893986c2f4b4a"
+  },
+  {
+   "value": {
+    "$float": "inf"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:030dfc60f427978eacb106dad0414126e23b3ca3594cd178ffe0c94c7d52406d"
+  },
+  {
+   "value": {
+    "$float": "inf"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:103f9b0e0787cf8f237ea988e3ce0ac6e64996165e75b88287ae577e6621d1d8"
+  },
+  {
+   "value": {
+    "$float": "-inf"
+   },
+   "salt": "",
+   "result": "sha256:c64ddf11bcd45660f0cf66dd0c22d2b4570ef3d3fc6527a9a6f6c722aefa3c39"
+  },
+  {
+   "value": {
+    "$float": "-inf"
+   },
+   "salt": "pepper",
+   "result": "sha256:98657e1e91fd25c45fe2be0c49ff3e8b3ba42c2e69f4f9bfc3e1a427869b1e5c"
+  },
+  {
+   "value": {
+    "$float": "-inf"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:6652e16335e1d35d0f6711f597317e3809ddff8674cf74268066e0f1c1ddac64"
+  },
+  {
+   "value": {
+    "$float": "-inf"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:751c16a9f12f17ae661cde0db64e05b00c1751515f0ab97110786f24a3c4b6df"
+  },
+  {
+   "value": "",
+   "salt": "",
+   "result": "sha256:12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126"
+  },
+  {
+   "value": "",
+   "salt": "pepper",
+   "result": "sha256:902f2e058132b7234500176954ab1e5612c89ace954c18248d89d21be4279f38"
+  },
+  {
+   "value": "",
+   "salt": "accounts.email:pepper",
+   "result": "sha256:3f1bddd23d0ab36b62d626ccfaad7888a5561aeecd4e7304e82a5b2dcdae3c6d"
+  },
+  {
+   "value": "",
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:72bb8574d3716bd28c78ae9be62083869c2c49f3a05b3861b0594625ba87a128"
+  },
+  {
+   "value": "alice@example.com",
+   "salt": "",
+   "result": "sha256:b595101af3afe93343acb7181bc1593573485685c06d714e9a9398b0207f8952"
+  },
+  {
+   "value": "alice@example.com",
+   "salt": "pepper",
+   "result": "sha256:8dea24110ff5992145d69a11fe1f100ea8e692cca413ac99e52fc2fcbcaa3589"
+  },
+  {
+   "value": "alice@example.com",
+   "salt": "accounts.email:pepper",
+   "result": "sha256:50f3e4e3818005ad5fb413ff436c7043c05e0b9d89df4229cd588d13f2ae9bb7"
+  },
+  {
+   "value": "alice@example.com",
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:994021d3fa208c7c9197ea39c43eb7d43e032fcf1b5a05ddc522aa17853752db"
+  },
+  {
+   "value": "quote ' and \" and \\",
+   "salt": "",
+   "result": "sha256:80b0610179a838ba069eb87fd9bd6794ffbf769028be238db29db2b08d9cce30"
+  },
+  {
+   "value": "quote ' and \" and \\",
+   "salt": "pepper",
+   "result": "sha256:65b2f8ffb3920ae4ee119bce85434a509a0d28bc2beecef162dd0fb36cd58baa"
+  },
+  {
+   "value": "quote ' and \" and \\",
+   "salt": "accounts.email:pepper",
+   "result": "sha256:d59ebd1afa2c5a82a9058fcba2e41d2e66e47677dd6c40cf8efa248448d434fd"
+  },
+  {
+   "value": "quote ' and \" and \\",
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:ae8a0b4816ca57b622635b466e8a8d3584b85fff80c9f0a230e56aad9be7f319"
+  },
+  {
+   "value": "controls \u0000\u0001\u001f\u007f \t\n\r\b\f",
+   "salt": "",
+   "result": "sha256:a7f4b399e6a2d4cd4063878598c7330754e1334e130b908f9aa3218748e61943"
+  },
+  {
+   "value": "controls \u0000\u0001\u001f\u007f \t\n\r\b\f",
+   "salt": "pepper",
+   "result": "sha256:bf219499c62cd91283f1502dfa07d04ef9ed73dc5bea0a7e9aa1f8244399bdfd"
+  },
+  {
+   "value": "controls \u0000\u0001\u001f\u007f \t\n\r\b\f",
+   "salt": "accounts.email:pepper",
+   "result": "sha256:cc1bb1e94909cd2644aecc807a9ae30e605b9861122888bbe123a63c23b78ca3"
+  },
+  {
+   "value": "controls \u0000\u0001\u001f\u007f \t\n\r\b\f",
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:75e3716b1a2fec4028f2274401a6d986d51ef4680bb43b2e91c19a025c011955"
+  },
+  {
+   "value": "unicode caf\u00e9 \u2028 \ufeff",
+   "salt": "",
+   "result": "sha256:596b8532574ac9b9b638a88586620c875907c272f179494e2530dcd5ccd33927"
+  },
+  {
+   "value": "unicode caf\u00e9 \u2028 \ufeff",
+   "salt": "pepper",
+   "result": "sha256:3beab7d3cdfadcf0ff3a8b0669b5eed5fa8ea0927ee4385ca535368b4058df78"
+  },
+  {
+   "value": "unicode caf\u00e9 \u2028 \ufeff",
+   "salt": "accounts.email:pepper",
+   "result": "sha256:0d750ba203299ab4c7dbc606a22e1e3e1473a186192559cc7127c9d8396588ca"
+  },
+  {
+   "value": "unicode caf\u00e9 \u2028 \ufeff",
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:4211054b2ac5f33059bb3a12184cdd7ab864cf60ac5a15c578bc50d4ce4dcf97"
+  },
+  {
+   "value": "astral \ud83d\ude00",
+   "salt": "",
+   "result": "sha256:29945760bc153fa7c9144a8a8468effbac23ccf76bbb9e6c8caee3a95dc574ef"
+  },
+  {
+   "value": "astral \ud83d\ude00",
+   "salt": "pepper",
+   "result": "sha256:f0480e6b7b8ab68ca799e9d77ad2bdc25f9617c406f97b4d457efea0ad4c294f"
+  },
+  {
+   "value": "astral \ud83d\ude00",
+   "salt": "accounts.email:pepper",
+   "result": "sha256:46a63fb89da4e549ed81d507b4275aef2d0ffc6b7ae387ec8eb9cc4cf5376bf7"
+  },
+  {
+   "value": "astral \ud83d\ude00",
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:a5e52798f14a8a09ce15060db0439f16f32966a04d428e8ce54594da60d0acb3"
+  },
+  {
+   "value": {
+    "$bytes": ""
+   },
+   "salt": "",
+   "result": "sha256:273467556eb77f22d457bc9e2fd0a3e2273ee8e40ddf0a57f30195fa666d9152"
+  },
+  {
+   "value": {
+    "$bytes": ""
+   },
+   "salt": "pepper",
+   "result": "sha256:706e80c6aad3e561ce2de1e0dbd60b4f862262bb839bbef24ab1cdcdb293a758"
+  },
+  {
+   "value": {
+    "$bytes": ""
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:5a34c80206390fbb9a12278e62eb0b541801e354fcb9ca7c9b29ca6cd3218642"
+  },
+  {
+   "value": {
+    "$bytes": ""
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:dc5e6a670bb0d33bb16df3063a871cab42a337241f23dbf5dbd64593f29df6d8"
+  },
+  {
+   "value": {
+    "$bytes": "6175646974"
+   },
+   "salt": "",
+   "result": "sha256:3831b2dcd4a748a4e8c332654bffc6bd1afe65e3d37094700a3dc812eafb1c4f"
+  },
+  {
+   "value": {
+    "$bytes": "6175646974"
+   },
+   "salt": "pepper",
+   "result": "sha256:62a5a5c5c4af8304549c45c64d75bab356fe85dc42c2c9d7772292bc8001f74d"
+  },
+  {
+   "value": {
+    "$bytes": "6175646974"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:97b18fc8475fbfeb1cf12992ba777cd2522140e83344b16bc5cd312a5243fc80"
+  },
+  {
+   "value": {
+    "$bytes": "6175646974"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:4ba262d64927ba5420050b9ee55e68693ffa25db157db75ed533a79841d7e43e"
+  },
+  {
+   "value": {
+    "$bytes": "00017f80ff"
+   },
+   "salt": "",
+   "result": "sha256:8f1b0b0616efeb052f527e1cfefdf5933c753650c5dc1076f7d9f81217ba363d"
+  },
+  {
+   "value": {
+    "$bytes": "00017f80ff"
+   },
+   "salt": "pepper",
+   "result": "sha256:75d5c6f11fe14cf4939e45134a5da65a009a214c6cee77d7ee774f723c63f23f"
+  },
+  {
+   "value": {
+    "$bytes": "00017f80ff"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:c11098b40b8afae756a7b43993c3166460dd3be0b04fbf1b2ed951b98a2f34ad"
+  },
+  {
+   "value": {
+    "$bytes": "00017f80ff"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:4b39d67320d801cc8362f46b49c3732e6177c2053cadfd4c550fc5e2b6392726"
+  },
+  {
+   "value": {
+    "$bytes": "69742773"
+   },
+   "salt": "",
+   "result": "sha256:e4c364540ce983e380569507a36349459ae58bc61adefef27ca500973102041f"
+  },
+  {
+   "value": {
+    "$bytes": "69742773"
+   },
+   "salt": "pepper",
+   "result": "sha256:6fff2423b4864c52d705b153a80e280abe0037677bca5c0fd4c195b4771507d6"
+  },
+  {
+   "value": {
+    "$bytes": "69742773"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:32e30d9d5030e7fc9e29f58db08893896309253d1a14c3eae7eb8126acfe0a5e"
+  },
+  {
+   "value": {
+    "$bytes": "69742773"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:348f80e64c598603efa8060f8e951f900b147185860a236b0a487a786d2a1bdf"
+  },
+  {
+   "value": {
+    "$bytes": "7361792022686922"
+   },
+   "salt": "",
+   "result": "sha256:e98701732ecd0bbb93bdb55e7250ce023735d8b108a5f7ef6d662e161a1b19cc"
+  },
+  {
+   "value": {
+    "$bytes": "7361792022686922"
+   },
+   "salt": "pepper",
+   "result": "sha256:7f27b79b41fe3a582f6da73e26a9c09b4dbe3c5b84702df4a1fd73168a3ac0ef"
+  },
+  {
+   "value": {
+    "$bytes": "7361792022686922"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:129069fa9856dbba75139ac190d0244c3ab336ca576cb87178e93b326afcb8f9"
+  },
+  {
+   "value": {
+    "$bytes": "7361792022686922"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:5668942afdd1355a7c018c8714705b2f64be322ada0d1e10d85ca9f3ca3578fd"
+  },
+  {
+   "value": {
+    "$bytes": "626f7468202720616e642022"
+   },
+   "salt": "",
+   "result": "sha256:0e6974a9ad3eba2586a57af5cbc18fad6a4727e48be442432d1d6af4da695bc9"
+  },
+  {
+   "value": {
+    "$bytes": "626f7468202720616e642022"
+   },
+   "salt": "pepper",
+   "result": "sha256:00bfdda36c1f6dee6a56b70c95e66dc66597cbc753babf97a28e1e9a49d699a2"
+  },
+  {
+   "value": {
+    "$bytes": "626f7468202720616e642022"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:9f7d75f408699c601bcef6d3e3e4491931a05d6916e9199b4f82f2454c996677"
+  },
+  {
+   "value": {
+    "$bytes": "626f7468202720616e642022"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:c0582db44ea07ed85912fdef776ede431559416b726b7f4068d98f1694c7eb21"
+  },
+  {
+   "value": {
+    "$bytes": "6261636b5c736c617368090a0d"
+   },
+   "salt": "",
+   "result": "sha256:cda4b4d09c71e2e380ea08cc9e9ad13fa51893264e9fc7dc341ff623c306c4e4"
+  },
+  {
+   "value": {
+    "$bytes": "6261636b5c736c617368090a0d"
+   },
+   "salt": "pepper",
+   "result": "sha256:00058b61ea08a328c639bf69c1e023d696d36811792a1b0ec628035ef21f14ac"
+  },
+  {
+   "value": {
+    "$bytes": "6261636b5c736c617368090a0d"
+   },
+   "salt": "accounts.email:pepper",
+   "result": "sha256:48c05bfb597fa04e190d7cc78f94bf71f0fa6ebbc88dec18cfc9894a47f0e4c7"
+  },
+  {
+   "value": {
+    "$bytes": "6261636b5c736c617368090a0d"
+   },
+   "salt": "s\u00e5lt \ud83d\ude00:x",
+   "result": "sha256:37b5ed2648590884c51dbc7ca0f553432a7873125a00232c70a9acdd6effc809"
+  }
+ ],
+ "databases": [
+  {
+   "name": "accounts-mask-hash-mapping",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "mask_columns": {
+     "accounts": [
+      "secret"
+     ]
+    },
+    "hash_columns": {
+     "accounts": [
+      "email"
+     ]
+    },
+    "placeholder": "[MASK]",
+    "hash_salt": "pepper"
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "sha256:50f3e4e3818005ad5fb413ff436c7043c05e0b9d89df4229cd588d13f2ae9bb7",
+        "secret": "[MASK]",
+        "balance": {
+         "$float": "42.5"
+        }
+       },
+       {
+        "id": 2,
+        "email": "sha256:794733b9f2caae4111fa87aec5b12250b94b845c2a844bbfce753df14eb99e39",
+        "secret": "[MASK]",
+        "balance": {
+         "$float": "13.75"
+        }
+       }
+      ],
+      "masked_columns": [
+       "secret"
+      ],
+      "hashed_columns": [
+       "email"
+      ]
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [\n        \"email\"\n      ],\n      \"masked_columns\": [\n        \"secret\"\n      ],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"sha256:50f3e4e3818005ad5fb413ff436c7043c05e0b9d89df4229cd588d13f2ae9bb7\",\n          \"id\": 1,\n          \"secret\": \"[MASK]\"\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"sha256:794733b9f2caae4111fa87aec5b12250b94b845c2a844bbfce753df14eb99e39\",\n          \"id\": 2,\n          \"secret\": \"[MASK]\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "accounts-list-forms-limit",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ],
+    "CREATE TABLE audit (id INTEGER PRIMARY KEY, payload BLOB)",
+    [
+     "INSERT INTO audit (payload) VALUES (?)",
+     [
+      {
+       "$bytes": "6175646974"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "tables": [
+     "accounts"
+    ],
+    "exclude_tables": [
+     "nonexistent"
+    ],
+    "mask_columns": [
+     "accounts.secret"
+    ],
+    "hash_columns": [
+     "accounts.email"
+    ],
+    "limit": 1
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "sha256:93e397fa1cb91328e9976c6172f76f3ea5b598eb25cb03279d1a655af9366b81",
+        "secret": "[REDACTED]",
+        "balance": {
+         "$float": "42.5"
+        }
+       }
+      ],
+      "masked_columns": [
+       "secret"
+      ],
+      "hashed_columns": [
+       "email"
+      ]
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [\n        \"email\"\n      ],\n      \"masked_columns\": [\n        \"secret\"\n      ],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"sha256:93e397fa1cb91328e9976c6172f76f3ea5b598eb25cb03279d1a655af9366b81\",\n          \"id\": 1,\n          \"secret\": \"[REDACTED]\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "accounts-defaults",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ],
+    "CREATE TABLE audit (id INTEGER PRIMARY KEY, payload BLOB)",
+    [
+     "INSERT INTO audit (payload) VALUES (?)",
+     [
+      {
+       "$bytes": "6175646974"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "alice@example.com",
+        "secret": "token-1",
+        "balance": {
+         "$float": "42.5"
+        }
+       },
+       {
+        "id": 2,
+        "email": "bob@example.com",
+        "secret": "token-2",
+        "balance": {
+         "$float": "13.75"
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "audit",
+      "schema": "CREATE TABLE audit (id INTEGER PRIMARY KEY, payload BLOB)",
+      "columns": [
+       "id",
+       "payload"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "id": 1,
+        "payload": {
+         "type": "base64",
+         "value": "YXVkaXQ="
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"alice@example.com\",\n          \"id\": 1,\n          \"secret\": \"token-1\"\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"bob@example.com\",\n          \"id\": 2,\n          \"secret\": \"token-2\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    },\n    {\n      \"columns\": [\n        \"id\",\n        \"payload\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"audit\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"id\": 1,\n          \"payload\": {\n            \"type\": \"base64\",\n            \"value\": \"YXVkaXQ=\"\n          }\n        }\n      ],\n      \"schema\": \"CREATE TABLE audit (id INTEGER PRIMARY KEY, payload BLOB)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "mask-wins-over-hash-and-unknown-columns",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "mask_columns": {
+     "accounts": [
+      "email",
+      "missing"
+     ],
+     "ghost": [
+      "x"
+     ]
+    },
+    "hash_columns": [
+     "accounts.email",
+     "accounts.balance",
+     "accounts.id",
+     "accounts.secret"
+    ],
+    "placeholder": "",
+    "hash_salt": "s\u00e5lt \ud83d\ude00"
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": "sha256:558c9ede4e1edc4399df7c78240cbb0464fc2a4a46d82506de220780c39aea55",
+        "email": "",
+        "secret": "sha256:0fdaf1b0401a117fa6b77a0e499e019c28d8ee7470812d1a6f2d4c8548737ac1",
+        "balance": "sha256:2860cc644261fa5baad13f245548c6e200d0c5c57d4707e182800fe63e2eceda"
+       },
+       {
+        "id": "sha256:8622e6c7da55b8dfc74337d8aeb54f7bf370d088143f2ea558995075c8e9d9f3",
+        "email": "",
+        "secret": "sha256:bdb8f0e149ba3584ad70afd70cc6d98524574507bc1e18473d05b34acfd10d3e",
+        "balance": "sha256:2225ff6b44bd583dc96b7cb8451868bd031a52249f8cd6ceba05aac9b2205119"
+       }
+      ],
+      "masked_columns": [
+       "email",
+       "missing"
+      ],
+      "hashed_columns": [
+       "email",
+       "balance",
+       "id",
+       "secret"
+      ]
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [\n        \"email\",\n        \"balance\",\n        \"id\",\n        \"secret\"\n      ],\n      \"masked_columns\": [\n        \"email\",\n        \"missing\"\n      ],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": \"sha256:2860cc644261fa5baad13f245548c6e200d0c5c57d4707e182800fe63e2eceda\",\n          \"email\": \"\",\n          \"id\": \"sha256:558c9ede4e1edc4399df7c78240cbb0464fc2a4a46d82506de220780c39aea55\",\n          \"secret\": \"sha256:0fdaf1b0401a117fa6b77a0e499e019c28d8ee7470812d1a6f2d4c8548737ac1\"\n        },\n        {\n          \"balance\": \"sha256:2225ff6b44bd583dc96b7cb8451868bd031a52249f8cd6ceba05aac9b2205119\",\n          \"email\": \"\",\n          \"id\": \"sha256:8622e6c7da55b8dfc74337d8aeb54f7bf370d088143f2ea558995075c8e9d9f3\",\n          \"secret\": \"sha256:bdb8f0e149ba3584ad70afd70cc6d98524574507bc1e18473d05b34acfd10d3e\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "placeholder-none",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "mask_columns": [
+     "accounts.secret"
+    ],
+    "placeholder": null
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "alice@example.com",
+        "secret": null,
+        "balance": {
+         "$float": "42.5"
+        }
+       },
+       {
+        "id": 2,
+        "email": "bob@example.com",
+        "secret": null,
+        "balance": {
+         "$float": "13.75"
+        }
+       }
+      ],
+      "masked_columns": [
+       "secret"
+      ],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [\n        \"secret\"\n      ],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"alice@example.com\",\n          \"id\": 1,\n          \"secret\": null\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"bob@example.com\",\n          \"id\": 2,\n          \"secret\": null\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "tables-and-exclude",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ],
+    "CREATE TABLE b (v)",
+    "INSERT INTO b VALUES (1)",
+    "CREATE TABLE c (v)",
+    "INSERT INTO c VALUES (2)"
+   ],
+   "kwargs": {
+    "tables": [
+     "b",
+     "c",
+     "",
+     "sqlite_sequence",
+     "zzz"
+    ],
+    "exclude_tables": [
+     "c",
+     ""
+    ]
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "b",
+      "schema": "CREATE TABLE b (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "v": 1
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"b\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"v\": 1\n        }\n      ],\n      \"schema\": \"CREATE TABLE b (v)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "exclude-only",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ],
+    "CREATE TABLE b (v)"
+   ],
+   "kwargs": {
+    "exclude_tables": [
+     "accounts"
+    ]
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "b",
+      "schema": "CREATE TABLE b (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"b\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE b (v)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "empty-tables-filter",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "tables": [],
+    "exclude_tables": []
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "alice@example.com",
+        "secret": "token-1",
+        "balance": {
+         "$float": "42.5"
+        }
+       },
+       {
+        "id": 2,
+        "email": "bob@example.com",
+        "secret": "token-2",
+        "balance": {
+         "$float": "13.75"
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"alice@example.com\",\n          \"id\": 1,\n          \"secret\": \"token-1\"\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"bob@example.com\",\n          \"id\": 2,\n          \"secret\": \"token-2\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "limit-larger-than-rows",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "limit": 10
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "alice@example.com",
+        "secret": "token-1",
+        "balance": {
+         "$float": "42.5"
+        }
+       },
+       {
+        "id": 2,
+        "email": "bob@example.com",
+        "secret": "token-2",
+        "balance": {
+         "$float": "13.75"
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"alice@example.com\",\n          \"id\": 1,\n          \"secret\": \"token-1\"\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"bob@example.com\",\n          \"id\": 2,\n          \"secret\": \"token-2\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "limit-int64-overflow",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "limit": 9223372036854775808
+   },
+   "error": {
+    "type": "IntegrityError",
+    "message": "datatype mismatch"
+   }
+  },
+  {
+   "name": "limit-huge",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "limit": 1000000000000000000000000000000
+   },
+   "error": {
+    "type": "IntegrityError",
+    "message": "datatype mismatch"
+   }
+  },
+  {
+   "name": "limit-zero",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "limit": 0
+   },
+   "error": {
+    "type": "ValueError",
+    "message": "limit must be positive when provided"
+   }
+  },
+  {
+   "name": "limit-negative",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "limit": -3
+   },
+   "error": {
+    "type": "ValueError",
+    "message": "limit must be positive when provided"
+   }
+  },
+  {
+   "name": "value-storage-classes",
+   "setup": [
+    "CREATE TABLE v (anything, i INTEGER, r REAL, n NUMERIC, t TEXT, b BLOB)",
+    [
+     "INSERT INTO v VALUES (?, ?, ?, ?, ?, ?)",
+     [
+      9223372036854775807,
+      "12",
+      3,
+      "1e3",
+      45,
+      {
+       "$bytes": "00ff"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO v VALUES (?, ?, ?, ?, ?, ?)",
+     [
+      -9223372036854775808,
+      "abc",
+      "4.0",
+      "0x10",
+      {
+       "$float": "1.5"
+      },
+      "text in blob"
+     ]
+    ],
+    [
+     "INSERT INTO v VALUES (?, ?, ?, ?, ?, ?)",
+     [
+      {
+       "$float": "-0.0"
+      },
+      {
+       "$float": "-0.0"
+      },
+      {
+       "$float": "-0.0"
+      },
+      {
+       "$float": "-0.0"
+      },
+      {
+       "$float": "-0.0"
+      },
+      {
+       "$float": "-0.0"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO v VALUES (?, ?, ?, ?, ?, ?)",
+     [
+      {
+       "$float": "nan"
+      },
+      {
+       "$float": "nan"
+      },
+      {
+       "$float": "nan"
+      },
+      null,
+      {
+       "$bytes": ""
+      },
+      ""
+     ]
+    ],
+    "INSERT INTO v VALUES (9e999, -9e999, 9e999, 1e16, 'x', x'')",
+    [
+     "INSERT INTO v VALUES (?, ?, ?, ?, ?, ?)",
+     [
+      {
+       "$float": "0.1"
+      },
+      {
+       "$float": "1e-07"
+      },
+      {
+       "$float": "5e-324"
+      },
+      {
+       "$float": "123456789.12345679"
+      },
+      "\ud83d\ude00 caf\u00e9",
+      {
+       "$bytes": "69742773"
+      }
+     ]
+    ],
+    "INSERT INTO v VALUES (CAST(x'410042' AS TEXT), '\u2028', 'quote '' \" \\', char(1, 31, 127), x'22275c', NULL)"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "v",
+      "schema": "CREATE TABLE v (anything, i INTEGER, r REAL, n NUMERIC, t TEXT, b BLOB)",
+      "columns": [
+       "anything",
+       "i",
+       "r",
+       "n",
+       "t",
+       "b"
+      ],
+      "row_count": 7,
+      "rows": [
+       {
+        "anything": 9223372036854775807,
+        "i": 12,
+        "r": {
+         "$float": "3.0"
+        },
+        "n": 1000,
+        "t": "45",
+        "b": {
+         "type": "base64",
+         "value": "AP8="
+        }
+       },
+       {
+        "anything": -9223372036854775808,
+        "i": "abc",
+        "r": {
+         "$float": "4.0"
+        },
+        "n": "0x10",
+        "t": "1.5",
+        "b": "text in blob"
+       },
+       {
+        "anything": {
+         "$float": "-0.0"
+        },
+        "i": 0,
+        "r": {
+         "$float": "0.0"
+        },
+        "n": 0,
+        "t": "0.0",
+        "b": {
+         "$float": "-0.0"
+        }
+       },
+       {
+        "anything": null,
+        "i": null,
+        "r": null,
+        "n": null,
+        "t": {
+         "type": "base64",
+         "value": ""
+        },
+        "b": ""
+       },
+       {
+        "anything": {
+         "$float": "inf"
+        },
+        "i": {
+         "$float": "-inf"
+        },
+        "r": {
+         "$float": "inf"
+        },
+        "n": 10000000000000000,
+        "t": "x",
+        "b": {
+         "type": "base64",
+         "value": ""
+        }
+       },
+       {
+        "anything": {
+         "$float": "0.1"
+        },
+        "i": {
+         "$float": "1e-07"
+        },
+        "r": {
+         "$float": "5e-324"
+        },
+        "n": {
+         "$float": "123456789.12345679"
+        },
+        "t": "\ud83d\ude00 caf\u00e9",
+        "b": {
+         "type": "base64",
+         "value": "aXQncw=="
+        }
+       },
+       {
+        "anything": "A\u0000B",
+        "i": "\u2028",
+        "r": "quote ' \" \\",
+        "n": "\u0001\u001f\u007f",
+        "t": {
+         "type": "base64",
+         "value": "Iidc"
+        },
+        "b": null
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"anything\",\n        \"i\",\n        \"r\",\n        \"n\",\n        \"t\",\n        \"b\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"v\",\n      \"row_count\": 7,\n      \"rows\": [\n        {\n          \"anything\": 9223372036854775807,\n          \"b\": {\n            \"type\": \"base64\",\n            \"value\": \"AP8=\"\n          },\n          \"i\": 12,\n          \"n\": 1000,\n          \"r\": 3.0,\n          \"t\": \"45\"\n        },\n        {\n          \"anything\": -9223372036854775808,\n          \"b\": \"text in blob\",\n          \"i\": \"abc\",\n          \"n\": \"0x10\",\n          \"r\": 4.0,\n          \"t\": \"1.5\"\n        },\n        {\n          \"anything\": -0.0,\n          \"b\": -0.0,\n          \"i\": 0,\n          \"n\": 0,\n          \"r\": 0.0,\n          \"t\": \"0.0\"\n        },\n        {\n          \"anything\": null,\n          \"b\": \"\",\n          \"i\": null,\n          \"n\": null,\n          \"r\": null,\n          \"t\": {\n            \"type\": \"base64\",\n            \"value\": \"\"\n          }\n        },\n        {\n          \"anything\": Infinity,\n          \"b\": {\n            \"type\": \"base64\",\n            \"value\": \"\"\n          },\n          \"i\": -Infinity,\n          \"n\": 10000000000000000,\n          \"r\": Infinity,\n          \"t\": \"x\"\n        },\n        {\n          \"anything\": 0.1,\n          \"b\": {\n            \"type\": \"base64\",\n            \"value\": \"aXQncw==\"\n          },\n          \"i\": 1e-07,\n          \"n\": 123456789.12345679,\n          \"r\": 5e-324,\n          \"t\": \"\\ud83d\\ude00 caf\\u00e9\"\n        },\n        {\n          \"anything\": \"A\\u0000B\",\n          \"b\": null,\n          \"i\": \"\\u2028\",\n          \"n\": \"\\u0001\\u001f\\u007f\",\n          \"r\": \"quote ' \\\" \\\\\",\n          \"t\": {\n            \"type\": \"base64\",\n            \"value\": \"Iidc\"\n          }\n        }\n      ],\n      \"schema\": \"CREATE TABLE v (anything, i INTEGER, r REAL, n NUMERIC, t TEXT, b BLOB)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "value-storage-classes-hashed",
+   "setup": [
+    "CREATE TABLE v (anything, i INTEGER, r REAL, t TEXT, b BLOB)",
+    [
+     "INSERT INTO v VALUES (?, ?, ?, ?, ?)",
+     [
+      9223372036854775807,
+      "12",
+      3,
+      "\ud83d\ude00",
+      {
+       "$bytes": "00ff2722"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO v VALUES (?, ?, ?, ?, ?)",
+     [
+      null,
+      {
+       "$float": "-0.0"
+      },
+      {
+       "$float": "1.5"
+      },
+      "tab\there",
+      {
+       "$bytes": "6261636b5c736c617368"
+      }
+     ]
+    ],
+    "INSERT INTO v VALUES (9e999, -9e999, 1e300, CAST(x'410042' AS TEXT), x'')"
+   ],
+   "kwargs": {
+    "hash_columns": {
+     "v": [
+      "anything",
+      "i",
+      "r",
+      "t",
+      "b"
+     ]
+    },
+    "hash_salt": "pepper"
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "v",
+      "schema": "CREATE TABLE v (anything, i INTEGER, r REAL, t TEXT, b BLOB)",
+      "columns": [
+       "anything",
+       "i",
+       "r",
+       "t",
+       "b"
+      ],
+      "row_count": 3,
+      "rows": [
+       {
+        "anything": "sha256:8ded13e6faee67488f9a149ed21cbc96f9b20a53e8370989b00f8717139db2a3",
+        "i": "sha256:1f4bfb43bf8103286c8b020e251410dba4182c5635f91dd1d02c49e7cf538866",
+        "r": "sha256:9c3b926bf63a407753d00b0b9b5ff864dc71c1736ccbd7827bad68709e9b2ee3",
+        "t": "sha256:416a6eb3499652f426df4b0d786a77515cd92ae5947da535566cb9bb451b1c83",
+        "b": "sha256:71f41e7773c358afd19bcbe498ee3ab80f397cfb7dc80a86d83bbfe9a71327ef"
+       },
+       {
+        "anything": "sha256:a35eaff7d6bbde859a9959a638ae55e7fb6eb6da63cf015957e93e4d2a222af9",
+        "i": "sha256:f3e601292cc10cc8457615a782c6af71a281110e178dce767b1d3b6d01570ee1",
+        "r": "sha256:9a310f8fb37c8452400bb239c8223e0ffc79dcaab1e44a194dee2cb5af191a34",
+        "t": "sha256:7d6a6688c22308d325677b71dc2c6fb4814b16d589f532d774974581468a6d6f",
+        "b": "sha256:716e0bae2a9558a8dd4d89c9758e170da5f4378cff8e92695956613b58fe23e1"
+       },
+       {
+        "anything": "sha256:cb6cd6afde4bb63edc3467164371da6977b126cd8edd9b42dce1d698881b348d",
+        "i": "sha256:d0983b2ca6db3e24a918f0c34fcd70e91a9dd22c1327a89a1c1f6831410cea41",
+        "r": "sha256:dcbf8c9f41caf0ffe5ed3ce0afbe3363c7494b0a3b9bc962e1ebb663ed590ba9",
+        "t": "sha256:bf49833b6a8da99d0b1079059d1e203821a4a78c111095640aeefdaf4b4867a8",
+        "b": "sha256:9dd58633b942a442ac60d8fc78ff18f768c4fe7bb677a9eedc073d7ab9f99747"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": [
+       "anything",
+       "i",
+       "r",
+       "t",
+       "b"
+      ]
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"anything\",\n        \"i\",\n        \"r\",\n        \"t\",\n        \"b\"\n      ],\n      \"hashed_columns\": [\n        \"anything\",\n        \"i\",\n        \"r\",\n        \"t\",\n        \"b\"\n      ],\n      \"masked_columns\": [],\n      \"name\": \"v\",\n      \"row_count\": 3,\n      \"rows\": [\n        {\n          \"anything\": \"sha256:8ded13e6faee67488f9a149ed21cbc96f9b20a53e8370989b00f8717139db2a3\",\n          \"b\": \"sha256:71f41e7773c358afd19bcbe498ee3ab80f397cfb7dc80a86d83bbfe9a71327ef\",\n          \"i\": \"sha256:1f4bfb43bf8103286c8b020e251410dba4182c5635f91dd1d02c49e7cf538866\",\n          \"r\": \"sha256:9c3b926bf63a407753d00b0b9b5ff864dc71c1736ccbd7827bad68709e9b2ee3\",\n          \"t\": \"sha256:416a6eb3499652f426df4b0d786a77515cd92ae5947da535566cb9bb451b1c83\"\n        },\n        {\n          \"anything\": \"sha256:a35eaff7d6bbde859a9959a638ae55e7fb6eb6da63cf015957e93e4d2a222af9\",\n          \"b\": \"sha256:716e0bae2a9558a8dd4d89c9758e170da5f4378cff8e92695956613b58fe23e1\",\n          \"i\": \"sha256:f3e601292cc10cc8457615a782c6af71a281110e178dce767b1d3b6d01570ee1\",\n          \"r\": \"sha256:9a310f8fb37c8452400bb239c8223e0ffc79dcaab1e44a194dee2cb5af191a34\",\n          \"t\": \"sha256:7d6a6688c22308d325677b71dc2c6fb4814b16d589f532d774974581468a6d6f\"\n        },\n        {\n          \"anything\": \"sha256:cb6cd6afde4bb63edc3467164371da6977b126cd8edd9b42dce1d698881b348d\",\n          \"b\": \"sha256:9dd58633b942a442ac60d8fc78ff18f768c4fe7bb677a9eedc073d7ab9f99747\",\n          \"i\": \"sha256:d0983b2ca6db3e24a918f0c34fcd70e91a9dd22c1327a89a1c1f6831410cea41\",\n          \"r\": \"sha256:dcbf8c9f41caf0ffe5ed3ce0afbe3363c7494b0a3b9bc962e1ebb663ed590ba9\",\n          \"t\": \"sha256:bf49833b6a8da99d0b1079059d1e203821a4a78c111095640aeefdaf4b4867a8\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE v (anything, i INTEGER, r REAL, t TEXT, b BLOB)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "nan-bits-in-real",
+   "setup": [
+    "CREATE TABLE r (x REAL, y)",
+    [
+     "INSERT INTO r VALUES (?, ?)",
+     [
+      {
+       "$float": "1.5"
+      },
+      "keep"
+     ]
+    ]
+   ],
+   "kwargs": {},
+   "patches": [
+    {
+     "find": "3ff8000000000000",
+     "replace": "7ff8000000000000"
+    }
+   ],
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "r",
+      "schema": "CREATE TABLE r (x REAL, y)",
+      "columns": [
+       "x",
+       "y"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "x": null,
+        "y": "keep"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"x\",\n        \"y\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"r\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"x\": null,\n          \"y\": \"keep\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE r (x REAL, y)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "invalid-utf8-text",
+   "setup": [
+    "CREATE TABLE t (a, v)",
+    "INSERT INTO t VALUES (1, CAST(x'41ff42' AS TEXT))"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "Could not decode to UTF-8 column 'v' with text 'A\ufffdB'"
+   }
+  },
+  {
+   "name": "surrogate-utf8-text",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "INSERT INTO t VALUES (CAST(x'eda080' AS TEXT))"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "Could not decode to UTF-8 column 'v' with text '\ufffd\ufffd\ufffd'"
+   }
+  },
+  {
+   "name": "invalid-utf8-long-text",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "INSERT INTO t VALUES (CAST(x'414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141ff' AS TEXT))"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "Could not decode to UTF-8 column 'v' with text 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+   }
+  },
+  {
+   "name": "invalid-utf8-after-nul",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "INSERT INTO t VALUES (CAST(x'410042ff' AS TEXT))"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "Could not decode to UTF-8 column 'v' with text 'A'"
+   }
+  },
+  {
+   "name": "invalid-utf8-masked-still-decoded",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "INSERT INTO t VALUES (CAST(x'c3' AS TEXT))"
+   ],
+   "kwargs": {
+    "mask_columns": [
+     "t.v"
+    ]
+   },
+   "error": {
+    "type": "OperationalError",
+    "message": "Could not decode to UTF-8 column 'v' with text '\ufffd'"
+   }
+  },
+  {
+   "name": "invalid-utf8-column-name-escape",
+   "setup": [
+    "CREATE TABLE \"t\u00e9\" (\"c\u00f6l\")",
+    "INSERT INTO \"t\u00e9\" VALUES (CAST(x'e282' AS TEXT))"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "Could not decode to UTF-8 column 'c\ufffd\ufffdl' with text '\ufffd\ufffd'"
+   }
+  },
+  {
+   "name": "invalid-utf8-table-name",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "INSERT INTO t VALUES (1)",
+    "PRAGMA writable_schema=ON",
+    "UPDATE sqlite_master SET name = CAST(x'74ff' AS TEXT), tbl_name = CAST(x'74ff' AS TEXT), sql = CAST(x'435245415445205441424c45202274ff22287629' AS TEXT) WHERE name = 't'"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "Could not decode to UTF-8 column 'name' with text 't\ufffd'"
+   }
+  },
+  {
+   "name": "blob-table-name",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "PRAGMA writable_schema=ON",
+    "UPDATE sqlite_master SET name = x'74' WHERE name = 't'"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "TypeError",
+    "message": "startswith first arg must be bytes or a tuple of bytes, not str"
+   }
+  },
+  {
+   "name": "integer-table-name",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "PRAGMA writable_schema=ON",
+    "UPDATE sqlite_master SET name = 5 WHERE name = 't'"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "DatabaseError",
+    "message": "malformed database schema (5)"
+   }
+  },
+  {
+   "name": "blob-table-schema",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "PRAGMA writable_schema=ON",
+    "UPDATE sqlite_master SET sql = CAST(sql AS BLOB) WHERE name = 't'"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "t",
+      "schema": {
+       "$bytes": "435245415445205441424c45207420287629"
+      },
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump_error": {
+    "type": "TypeError",
+    "message": "Object of type bytes is not JSON serializable"
+   }
+  },
+  {
+   "name": "internal-and-non-table-objects",
+   "setup": [
+    "CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT, v)",
+    "INSERT INTO t (v) VALUES ('a')",
+    "INSERT INTO t (v) VALUES ('b')",
+    "CREATE VIEW vw AS SELECT * FROM t",
+    "CREATE INDEX ix ON t (v)",
+    "CREATE TRIGGER tr AFTER INSERT ON t BEGIN SELECT 1; END",
+    "ANALYZE"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "t",
+      "schema": "CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT, v)",
+      "columns": [
+       "id",
+       "v"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "v": "a"
+       },
+       {
+        "id": 2,
+        "v": "b"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"t\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"id\": 1,\n          \"v\": \"a\"\n        },\n        {\n          \"id\": 2,\n          \"v\": \"b\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT, v)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "table-name-ordering",
+   "setup": [
+    "CREATE TABLE \"b\" (v)",
+    "CREATE TABLE \"C\" (v)",
+    "CREATE TABLE \"a\" (v)",
+    "CREATE TABLE \"\u00e9\" (v)",
+    "CREATE TABLE \"z\" (v)",
+    "CREATE TABLE \"\ud83d\ude00\" (v)",
+    "CREATE TABLE \"\uff21\" (v)",
+    "CREATE TABLE \"_x\" (v)"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "C",
+      "schema": "CREATE TABLE \"C\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "_x",
+      "schema": "CREATE TABLE \"_x\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "a",
+      "schema": "CREATE TABLE \"a\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "b",
+      "schema": "CREATE TABLE \"b\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "z",
+      "schema": "CREATE TABLE \"z\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "\u00e9",
+      "schema": "CREATE TABLE \"\u00e9\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "\uff21",
+      "schema": "CREATE TABLE \"\uff21\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "\ud83d\ude00",
+      "schema": "CREATE TABLE \"\ud83d\ude00\" (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"C\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"C\\\" (v)\"\n    },\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"_x\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"_x\\\" (v)\"\n    },\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"a\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"a\\\" (v)\"\n    },\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"b\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"b\\\" (v)\"\n    },\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"z\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"z\\\" (v)\"\n    },\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"\\u00e9\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"\\u00e9\\\" (v)\"\n    },\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"\\uff21\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"\\uff21\\\" (v)\"\n    },\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"\\ud83d\\ude00\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"\\ud83d\\ude00\\\" (v)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "name-with-space",
+   "setup": [
+    "CREATE TABLE \"t t\" (v)",
+    "INSERT INTO \"t t\" VALUES (1)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "near \"t\": syntax error"
+   }
+  },
+  {
+   "name": "name-with-single-quote",
+   "setup": [
+    "CREATE TABLE \"t'x\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "unrecognized token: \"'x)\""
+   }
+  },
+  {
+   "name": "name-with-double-quotes",
+   "setup": [
+    "CREATE TABLE \"\"\"q\"\"\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "no such table: q"
+   }
+  },
+  {
+   "name": "name-bracket-quoted",
+   "setup": [
+    "CREATE TABLE [t] (v)",
+    "INSERT INTO [t] VALUES (1)"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "t",
+      "schema": "CREATE TABLE [t] (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "v": 1
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"t\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"v\": 1\n        }\n      ],\n      \"schema\": \"CREATE TABLE [t] (v)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "name-unicode",
+   "setup": [
+    "CREATE TABLE \"t\u00ebst \ud83d\ude00\" (v)",
+    "INSERT INTO \"t\u00ebst \ud83d\ude00\" VALUES (1)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "near \"\ud83d\ude00\": syntax error"
+   }
+  },
+  {
+   "name": "name-unicode-no-space",
+   "setup": [
+    "CREATE TABLE \"t\u00ebst\ud83d\ude00\" (\"c\u00f6l\")",
+    "INSERT INTO \"t\u00ebst\ud83d\ude00\" VALUES (1)"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "t\u00ebst\ud83d\ude00",
+      "schema": "CREATE TABLE \"t\u00ebst\ud83d\ude00\" (\"c\u00f6l\")",
+      "columns": [
+       "c\u00f6l"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "c\u00f6l": 1
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"c\\u00f6l\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"t\\u00ebst\\ud83d\\ude00\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"c\\u00f6l\": 1\n        }\n      ],\n      \"schema\": \"CREATE TABLE \\\"t\\u00ebst\\ud83d\\ude00\\\" (\\\"c\\u00f6l\\\")\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "name-hyphen",
+   "setup": [
+    "CREATE TABLE \"t-1\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "near \"-\": syntax error"
+   }
+  },
+  {
+   "name": "name-leading-digit",
+   "setup": [
+    "CREATE TABLE \"1t\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "unrecognized token: \"1t\""
+   }
+  },
+  {
+   "name": "name-keyword",
+   "setup": [
+    "CREATE TABLE \"select\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "near \"select\": syntax error"
+   }
+  },
+  {
+   "name": "name-semicolon",
+   "setup": [
+    "CREATE TABLE \"t;x\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "near \";\": syntax error"
+   }
+  },
+  {
+   "name": "name-line-comment",
+   "setup": [
+    "CREATE TABLE \"t--\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "incomplete input"
+   }
+  },
+  {
+   "name": "name-second-statement",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "CREATE TABLE \"t); SELECT (1\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "ProgrammingError",
+    "message": "You can only execute one statement at a time."
+   }
+  },
+  {
+   "name": "name-trailing-comment",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "CREATE TABLE \"t) --\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "near \")\": syntax error"
+   }
+  },
+  {
+   "name": "name-block-comment-reads-other-table",
+   "setup": [
+    "CREATE TABLE t (a, b)",
+    "INSERT INTO t VALUES (1, 'one')",
+    "INSERT INTO t VALUES (2, 'two')",
+    "CREATE TABLE \"t/**/\" (z)"
+   ],
+   "kwargs": {
+    "hash_columns": {
+     "t/**/": [
+      "b"
+     ]
+    }
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "t",
+      "schema": "CREATE TABLE t (a, b)",
+      "columns": [
+       "a",
+       "b"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "a": 1,
+        "b": "one"
+       },
+       {
+        "a": 2,
+        "b": "two"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "t/**/",
+      "schema": "CREATE TABLE \"t/**/\" (z)",
+      "columns": [
+       "a",
+       "b"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "a": 1,
+        "b": "sha256:4cf03d4b392b91bdf084a78e9e47d180b97104a5788398af0781cd7a2aeb4db0"
+       },
+       {
+        "a": 2,
+        "b": "sha256:525b6a1c3871ddd1ddc4abcf5568a29df68b08c59bbe958c778d514a5b159381"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": [
+       "b"
+      ]
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"a\",\n        \"b\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"t\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"a\": 1,\n          \"b\": \"one\"\n        },\n        {\n          \"a\": 2,\n          \"b\": \"two\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE t (a, b)\"\n    },\n    {\n      \"columns\": [\n        \"a\",\n        \"b\"\n      ],\n      \"hashed_columns\": [\n        \"b\"\n      ],\n      \"masked_columns\": [],\n      \"name\": \"t/**/\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"a\": 1,\n          \"b\": \"sha256:4cf03d4b392b91bdf084a78e9e47d180b97104a5788398af0781cd7a2aeb4db0\"\n        },\n        {\n          \"a\": 2,\n          \"b\": \"sha256:525b6a1c3871ddd1ddc4abcf5568a29df68b08c59bbe958c778d514a5b159381\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE \\\"t/**/\\\" (z)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "name-with-limit-words",
+   "setup": [
+    "CREATE TABLE \"t LIMIT 0\" (v)"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "near \"LIMIT\": syntax error"
+   }
+  },
+  {
+   "name": "name-nul-in-sql",
+   "setup": [
+    "CREATE TABLE t (v)",
+    "PRAGMA writable_schema=ON",
+    "UPDATE sqlite_master SET name = 't' || char(0) || 'x' WHERE name = 't'"
+   ],
+   "kwargs": {},
+   "error": {
+    "type": "ProgrammingError",
+    "message": "the query contains a null character"
+   }
+  },
+  {
+   "name": "odd-column-names",
+   "setup": [
+    "CREATE TABLE t (\"a b\", \"it's\", \"\"\"q\"\"\", \"\u00c9\", \"\u00e9\", \"Ab\", \"\ud83d\ude00\", \"[x]\", \"sp \")",
+    "INSERT INTO t VALUES (1, 2, 3, 4, 5, 6, 7, 8, 9)"
+   ],
+   "kwargs": {
+    "mask_columns": {
+     "t": [
+      "it's"
+     ]
+    },
+    "hash_columns": {
+     "t": [
+      "\u00e9",
+      "\ud83d\ude00"
+     ]
+    }
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "t",
+      "schema": "CREATE TABLE t (\"a b\", \"it's\", \"\"\"q\"\"\", \"\u00c9\", \"\u00e9\", \"Ab\", \"\ud83d\ude00\", \"[x]\", \"sp \")",
+      "columns": [
+       "a b",
+       "it's",
+       "\"q\"",
+       "\u00c9",
+       "\u00e9",
+       "Ab",
+       "\ud83d\ude00",
+       "[x]",
+       "sp "
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "a b": 1,
+        "it's": "[REDACTED]",
+        "\"q\"": 3,
+        "\u00c9": 4,
+        "\u00e9": "sha256:d8d63582ded1577b0d512be5149049a55560ecca69698a2af9f0d1a8f748f052",
+        "Ab": 6,
+        "\ud83d\ude00": "sha256:9cc021a846a37d375008ed5b73f072804ccdfac4cb7291ccfa41f2b0308ae6f4",
+        "[x]": 8,
+        "sp ": 9
+       }
+      ],
+      "masked_columns": [
+       "it's"
+      ],
+      "hashed_columns": [
+       "\u00e9",
+       "\ud83d\ude00"
+      ]
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"a b\",\n        \"it's\",\n        \"\\\"q\\\"\",\n        \"\\u00c9\",\n        \"\\u00e9\",\n        \"Ab\",\n        \"\\ud83d\\ude00\",\n        \"[x]\",\n        \"sp \"\n      ],\n      \"hashed_columns\": [\n        \"\\u00e9\",\n        \"\\ud83d\\ude00\"\n      ],\n      \"masked_columns\": [\n        \"it's\"\n      ],\n      \"name\": \"t\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"\\\"q\\\"\": 3,\n          \"Ab\": 6,\n          \"[x]\": 8,\n          \"a b\": 1,\n          \"it's\": \"[REDACTED]\",\n          \"sp \": 9,\n          \"\\u00c9\": 4,\n          \"\\u00e9\": \"sha256:d8d63582ded1577b0d512be5149049a55560ecca69698a2af9f0d1a8f748f052\",\n          \"\\ud83d\\ude00\": \"sha256:9cc021a846a37d375008ed5b73f072804ccdfac4cb7291ccfa41f2b0308ae6f4\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE t (\\\"a b\\\", \\\"it's\\\", \\\"\\\"\\\"q\\\"\\\"\\\", \\\"\\u00c9\\\", \\\"\\u00e9\\\", \\\"Ab\\\", \\\"\\ud83d\\ude00\\\", \\\"[x]\\\", \\\"sp \\\")\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "generated-columns",
+   "setup": [
+    "CREATE TABLE g (a INTEGER, b AS (a * 2), c AS (a || 'x') STORED)",
+    "INSERT INTO g (a) VALUES (1)",
+    "INSERT INTO g (a) VALUES (2)"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "g",
+      "schema": "CREATE TABLE g (a INTEGER, b AS (a * 2), c AS (a || 'x') STORED)",
+      "columns": [
+       "a"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "a": 1
+       },
+       {
+        "a": 2
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"a\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"g\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"a\": 1\n        },\n        {\n          \"a\": 2\n        }\n      ],\n      \"schema\": \"CREATE TABLE g (a INTEGER, b AS (a * 2), c AS (a || 'x') STORED)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "without-rowid-and-rowid-order",
+   "setup": [
+    "CREATE TABLE w (k TEXT PRIMARY KEY, v) WITHOUT ROWID",
+    "INSERT INTO w VALUES ('b', 1)",
+    "INSERT INTO w VALUES ('a', 2)",
+    "CREATE TABLE r (v)",
+    "INSERT INTO r (rowid, v) VALUES (5, 'five')",
+    "INSERT INTO r (rowid, v) VALUES (2, 'two')",
+    "INSERT INTO r (rowid, v) VALUES (9, 'nine')",
+    "DELETE FROM r WHERE rowid = 5"
+   ],
+   "kwargs": {
+    "limit": 1
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "r",
+      "schema": "CREATE TABLE r (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "v": "two"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "w",
+      "schema": "CREATE TABLE w (k TEXT PRIMARY KEY, v) WITHOUT ROWID",
+      "columns": [
+       "k",
+       "v"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "k": "a",
+        "v": 2
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"r\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"v\": \"two\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE r (v)\"\n    },\n    {\n      \"columns\": [\n        \"k\",\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"w\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"k\": \"a\",\n          \"v\": 2\n        }\n      ],\n      \"schema\": \"CREATE TABLE w (k TEXT PRIMARY KEY, v) WITHOUT ROWID\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "strict-table",
+   "setup": [
+    "CREATE TABLE s (i INTEGER, t TEXT, a ANY) STRICT",
+    "INSERT INTO s VALUES (1, 'x', 2.5)"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "s",
+      "schema": "CREATE TABLE s (i INTEGER, t TEXT, a ANY) STRICT",
+      "columns": [
+       "i",
+       "t",
+       "a"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "i": 1,
+        "t": "x",
+        "a": {
+         "$float": "2.5"
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"i\",\n        \"t\",\n        \"a\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"s\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"a\": 2.5,\n          \"i\": 1,\n          \"t\": \"x\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE s (i INTEGER, t TEXT, a ANY) STRICT\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "rtree-virtual-table",
+   "setup": [
+    "CREATE VIRTUAL TABLE rt USING rtree(id, x0, x1)",
+    "INSERT INTO rt VALUES (1, 0.5, 1.5)"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "rt",
+      "schema": "CREATE VIRTUAL TABLE rt USING rtree(id, x0, x1)",
+      "columns": [
+       "id",
+       "x0",
+       "x1"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "id": 1,
+        "x0": {
+         "$float": "0.5"
+        },
+        "x1": {
+         "$float": "1.5"
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "rt_node",
+      "schema": "CREATE TABLE \"rt_node\"(nodeno INTEGER PRIMARY KEY,data)",
+      "columns": [
+       "nodeno",
+       "data"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "nodeno": 1,
+        "data": {
+         "type": "base64",
+         "value": "AAAAAQAAAAAAAAABPwAAAD/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "rt_parent",
+      "schema": "CREATE TABLE \"rt_parent\"(nodeno INTEGER PRIMARY KEY,parentnode)",
+      "columns": [
+       "nodeno",
+       "parentnode"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "rt_rowid",
+      "schema": "CREATE TABLE \"rt_rowid\"(rowid INTEGER PRIMARY KEY,nodeno)",
+      "columns": [
+       "rowid",
+       "nodeno"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "rowid": 1,
+        "nodeno": 1
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"x0\",\n        \"x1\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"rt\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"id\": 1,\n          \"x0\": 0.5,\n          \"x1\": 1.5\n        }\n      ],\n      \"schema\": \"CREATE VIRTUAL TABLE rt USING rtree(id, x0, x1)\"\n    },\n    {\n      \"columns\": [\n        \"nodeno\",\n        \"data\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"rt_node\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"data\": {\n            \"type\": \"base64\",\n            \"value\": \"AAAAAQAAAAAAAAABPwAAAD/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n          },\n          \"nodeno\": 1\n        }\n      ],\n      \"schema\": \"CREATE TABLE \\\"rt_node\\\"(nodeno INTEGER PRIMARY KEY,data)\"\n    },\n    {\n      \"columns\": [\n        \"nodeno\",\n        \"parentnode\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"rt_parent\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE \\\"rt_parent\\\"(nodeno INTEGER PRIMARY KEY,parentnode)\"\n    },\n    {\n      \"columns\": [\n        \"rowid\",\n        \"nodeno\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"rt_rowid\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"nodeno\": 1,\n          \"rowid\": 1\n        }\n      ],\n      \"schema\": \"CREATE TABLE \\\"rt_rowid\\\"(rowid INTEGER PRIMARY KEY,nodeno)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "fts5-virtual-table",
+   "setup": [
+    "CREATE VIRTUAL TABLE f USING fts5(x)",
+    "INSERT INTO f VALUES ('hello world')"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "f",
+      "schema": "CREATE VIRTUAL TABLE f USING fts5(x)",
+      "columns": [
+       "x"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "x": "hello world"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "f_config",
+      "schema": "CREATE TABLE 'f_config'(k PRIMARY KEY, v) WITHOUT ROWID",
+      "columns": [
+       "k",
+       "v"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "k": "version",
+        "v": 4
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "f_content",
+      "schema": "CREATE TABLE 'f_content'(id INTEGER PRIMARY KEY, c0)",
+      "columns": [
+       "id",
+       "c0"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "id": 1,
+        "c0": "hello world"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "f_data",
+      "schema": "CREATE TABLE 'f_data'(id INTEGER PRIMARY KEY, block BLOB)",
+      "columns": [
+       "id",
+       "block"
+      ],
+      "row_count": 3,
+      "rows": [
+       {
+        "id": 1,
+        "block": {
+         "type": "base64",
+         "value": "AQI="
+        }
+       },
+       {
+        "id": 10,
+        "block": {
+         "type": "base64",
+         "value": "AAAAAAEBAQABAQEB"
+        }
+       },
+       {
+        "id": 137438953473,
+        "block": {
+         "type": "base64",
+         "value": "AAAAGAYwaGVsbG8BAgIBBXdvcmxkAQIDBAo="
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "f_docsize",
+      "schema": "CREATE TABLE 'f_docsize'(id INTEGER PRIMARY KEY, sz BLOB)",
+      "columns": [
+       "id",
+       "sz"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "id": 1,
+        "sz": {
+         "type": "base64",
+         "value": "Ag=="
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     },
+     {
+      "name": "f_idx",
+      "schema": "CREATE TABLE 'f_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID",
+      "columns": [
+       "segid",
+       "term",
+       "pgno"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "segid": 1,
+        "term": {
+         "type": "base64",
+         "value": ""
+        },
+        "pgno": 2
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"x\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"f\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"x\": \"hello world\"\n        }\n      ],\n      \"schema\": \"CREATE VIRTUAL TABLE f USING fts5(x)\"\n    },\n    {\n      \"columns\": [\n        \"k\",\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"f_config\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"k\": \"version\",\n          \"v\": 4\n        }\n      ],\n      \"schema\": \"CREATE TABLE 'f_config'(k PRIMARY KEY, v) WITHOUT ROWID\"\n    },\n    {\n      \"columns\": [\n        \"id\",\n        \"c0\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"f_content\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"c0\": \"hello world\",\n          \"id\": 1\n        }\n      ],\n      \"schema\": \"CREATE TABLE 'f_content'(id INTEGER PRIMARY KEY, c0)\"\n    },\n    {\n      \"columns\": [\n        \"id\",\n        \"block\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"f_data\",\n      \"row_count\": 3,\n      \"rows\": [\n        {\n          \"block\": {\n            \"type\": \"base64\",\n            \"value\": \"AQI=\"\n          },\n          \"id\": 1\n        },\n        {\n          \"block\": {\n            \"type\": \"base64\",\n            \"value\": \"AAAAAAEBAQABAQEB\"\n          },\n          \"id\": 10\n        },\n        {\n          \"block\": {\n            \"type\": \"base64\",\n            \"value\": \"AAAAGAYwaGVsbG8BAgIBBXdvcmxkAQIDBAo=\"\n          },\n          \"id\": 137438953473\n        }\n      ],\n      \"schema\": \"CREATE TABLE 'f_data'(id INTEGER PRIMARY KEY, block BLOB)\"\n    },\n    {\n      \"columns\": [\n        \"id\",\n        \"sz\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"f_docsize\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"id\": 1,\n          \"sz\": {\n            \"type\": \"base64\",\n            \"value\": \"Ag==\"\n          }\n        }\n      ],\n      \"schema\": \"CREATE TABLE 'f_docsize'(id INTEGER PRIMARY KEY, sz BLOB)\"\n    },\n    {\n      \"columns\": [\n        \"segid\",\n        \"term\",\n        \"pgno\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"f_idx\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"pgno\": 2,\n          \"segid\": 1,\n          \"term\": {\n            \"type\": \"base64\",\n            \"value\": \"\"\n          }\n        }\n      ],\n      \"schema\": \"CREATE TABLE 'f_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "utf16-database",
+   "setup": [
+    "PRAGMA encoding = 'UTF-16le'",
+    "CREATE TABLE u (v)",
+    [
+     "INSERT INTO u VALUES (?)",
+     [
+      "caf\u00e9 \ud83d\ude00"
+     ]
+    ]
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "u",
+      "schema": "CREATE TABLE u (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "v": "caf\u00e9 \ud83d\ude00"
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"u\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"v\": \"caf\\u00e9 \\ud83d\\ude00\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE u (v)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "utf16-database-lone-surrogate",
+   "setup": [
+    "PRAGMA encoding = 'UTF-16le'",
+    "CREATE TABLE u (v)",
+    "INSERT INTO u VALUES (CAST(x'3d00d8' AS TEXT))"
+   ],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "u",
+      "schema": "CREATE TABLE u (v)",
+      "columns": [
+       "v"
+      ],
+      "row_count": 1,
+      "rows": [
+       {
+        "v": "="
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"v\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"u\",\n      \"row_count\": 1,\n      \"rows\": [\n        {\n          \"v\": \"=\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE u (v)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "empty-database",
+   "setup": [],
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": []
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": []\n}"
+  },
+  {
+   "name": "empty-table",
+   "setup": [
+    "CREATE TABLE e (a, b)"
+   ],
+   "kwargs": {
+    "hash_columns": [
+     "e.a"
+    ]
+   },
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "e",
+      "schema": "CREATE TABLE e (a, b)",
+      "columns": [
+       "a",
+       "b"
+      ],
+      "row_count": 0,
+      "rows": [],
+      "masked_columns": [],
+      "hashed_columns": [
+       "a"
+      ]
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"a\",\n        \"b\"\n      ],\n      \"hashed_columns\": [\n        \"a\"\n      ],\n      \"masked_columns\": [],\n      \"name\": \"e\",\n      \"row_count\": 0,\n      \"rows\": [],\n      \"schema\": \"CREATE TABLE e (a, b)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "dotted-path",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {},
+   "path": "./sub/../case.sqlite",
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/sub/../case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "alice@example.com",
+        "secret": "token-1",
+        "balance": {
+         "$float": "42.5"
+        }
+       },
+       {
+        "id": 2,
+        "email": "bob@example.com",
+        "secret": "token-2",
+        "balance": {
+         "$float": "13.75"
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/sub/../case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"alice@example.com\",\n          \"id\": 1,\n          \"secret\": \"token-1\"\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"bob@example.com\",\n          \"id\": 2,\n          \"secret\": \"token-2\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "trailing-slash-path",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {},
+   "path": "case.sqlite/",
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": [
+     {
+      "name": "accounts",
+      "schema": "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+      "columns": [
+       "id",
+       "email",
+       "secret",
+       "balance"
+      ],
+      "row_count": 2,
+      "rows": [
+       {
+        "id": 1,
+        "email": "alice@example.com",
+        "secret": "token-1",
+        "balance": {
+         "$float": "42.5"
+        }
+       },
+       {
+        "id": 2,
+        "email": "bob@example.com",
+        "secret": "token-2",
+        "balance": {
+         "$float": "13.75"
+        }
+       }
+      ],
+      "masked_columns": [],
+      "hashed_columns": []
+     }
+    ]
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [],\n      \"masked_columns\": [],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"alice@example.com\",\n          \"id\": 1,\n          \"secret\": \"token-1\"\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"bob@example.com\",\n          \"id\": 2,\n          \"secret\": \"token-2\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+  },
+  {
+   "name": "missing-file",
+   "kind": "missing",
+   "kwargs": {},
+   "error": {
+    "type": "FileNotFoundError",
+    "message": "Database not found: {dir}/case.sqlite"
+   }
+  },
+  {
+   "name": "missing-file-limit-zero",
+   "kind": "missing",
+   "kwargs": {
+    "limit": 0
+   },
+   "error": {
+    "type": "ValueError",
+    "message": "limit must be positive when provided"
+   }
+  },
+  {
+   "name": "directory",
+   "kind": "directory",
+   "kwargs": {},
+   "error": {
+    "type": "OperationalError",
+    "message": "unable to open database file"
+   }
+  },
+  {
+   "name": "not-a-database",
+   "kind": "bytes",
+   "content": "68656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c6468656c6c6f20776f726c64",
+   "kwargs": {},
+   "error": {
+    "type": "DatabaseError",
+    "message": "file is not a database"
+   }
+  },
+  {
+   "name": "zero-bytes",
+   "kind": "bytes",
+   "content": "",
+   "kwargs": {},
+   "result": {
+    "database": "case.sqlite",
+    "dialect": "sqlite",
+    "path": "{dir}/case.sqlite",
+    "tables": []
+   },
+   "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"case.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{dir}/case.sqlite\",\n  \"tables\": []\n}"
+  },
+  {
+   "name": "header-only",
+   "kind": "bytes",
+   "content": "53514c69746520666f726d6174203300",
+   "kwargs": {},
+   "error": {
+    "type": "DatabaseError",
+    "message": "file is not a database"
+   }
+  },
+  {
+   "name": "bad-mask-spec",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "mask_columns": [
+     "accounts.secret",
+     5
+    ]
+   },
+   "error": {
+    "type": "AttributeError",
+    "message": "'int' object has no attribute 'strip'"
+   }
+  },
+  {
+   "name": "bad-hash-spec",
+   "setup": [
+    "CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)",
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "alice@example.com",
+      "token-1",
+      {
+       "$float": "42.5"
+      }
+     ]
+    ],
+    [
+     "INSERT INTO accounts (email, secret, balance) VALUES (?, ?, ?)",
+     [
+      "bob@example.com",
+      "token-2",
+      {
+       "$float": "13.75"
+      }
+     ]
+    ]
+   ],
+   "kwargs": {
+    "hash_columns": 7
+   },
+   "error": {
+    "type": "TypeError",
+    "message": "'int' object is not iterable"
+   }
+  },
+  {
+   "name": "missing-file-bad-spec",
+   "kind": "missing",
+   "kwargs": {
+    "mask_columns": 7
+   },
+   "error": {
+    "type": "FileNotFoundError",
+    "message": "Database not found: {dir}/case.sqlite"
+   }
+  }
+ ],
+ "fixture": {
+  "kwargs": {
+   "mask_columns": [
+    "accounts.secret"
+   ],
+   "hash_columns": [
+    "accounts.email"
+   ],
+   "placeholder": "[MASK]",
+   "hash_salt": "pepper"
+  },
+  "dump": "{\n  \"captured_at\": \"<captured_at>\",\n  \"database\": \"sample.sqlite\",\n  \"dialect\": \"sqlite\",\n  \"path\": \"{root}/fixtures/sql/sample.sqlite\",\n  \"tables\": [\n    {\n      \"columns\": [\n        \"id\",\n        \"email\",\n        \"secret\",\n        \"balance\"\n      ],\n      \"hashed_columns\": [\n        \"email\"\n      ],\n      \"masked_columns\": [\n        \"secret\"\n      ],\n      \"name\": \"accounts\",\n      \"row_count\": 2,\n      \"rows\": [\n        {\n          \"balance\": 42.5,\n          \"email\": \"sha256:50f3e4e3818005ad5fb413ff436c7043c05e0b9d89df4229cd588d13f2ae9bb7\",\n          \"id\": 1,\n          \"secret\": \"[MASK]\"\n        },\n        {\n          \"balance\": 13.75,\n          \"email\": \"sha256:794733b9f2caae4111fa87aec5b12250b94b845c2a844bbfce753df14eb99e39\",\n          \"id\": 2,\n          \"secret\": \"[MASK]\"\n        }\n      ],\n      \"schema\": \"CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)\"\n    }\n  ]\n}"
+ }
+}

@@ -79,7 +79,7 @@ public class Detector
     {
         if (sampleSize <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(sampleSize), sampleSize, "sample_size must be a positive integer");
+            throw new PythonValueException("sample_size must be a positive integer", nameof(sampleSize));
         }
 
         if (sampleSize > MaxSampleSize)
@@ -104,7 +104,7 @@ public class Detector
 
         if (value <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "max_total_sample_bytes must be a positive integer");
+            throw new PythonValueException("max_total_sample_bytes must be a positive integer", nameof(value));
         }
 
         return value;

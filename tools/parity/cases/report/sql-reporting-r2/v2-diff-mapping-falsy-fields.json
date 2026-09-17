@@ -1,0 +1,63 @@
+{
+ "matches": [],
+ "diffs": [
+  {
+   "kind": "mapping",
+   "value": {
+    "label": "",
+    "diff": null,
+    "stats": {}
+   }
+  },
+  {
+   "kind": "mapping",
+   "value": {
+    "label": 0,
+    "diff": 5,
+    "stats": [
+     1
+    ],
+    "safety_limits": {
+     "diff": {}
+    }
+   }
+  },
+  {
+   "kind": "mapping",
+   "value": {
+    "label": false,
+    "diff": "",
+    "safety_limits": {
+     "thresholds": {
+      "diff_lines": 3
+     }
+    }
+   }
+  },
+  {
+   "kind": "mapping",
+   "value": {
+    "label": "L",
+    "diff": "x",
+    "stats": {
+     "k": null,
+     "m": 1.0,
+     "<": true
+    },
+    "safety_limits": {
+     "canonical": {
+      "before": {
+       "truncated_bytes": 0
+      },
+      "after": "str"
+     },
+     "diff": {
+      "truncated_lines": 0,
+      "truncated_bytes": 0,
+      "digest": "d"
+     }
+    }
+   }
+  }
+ ]
+}

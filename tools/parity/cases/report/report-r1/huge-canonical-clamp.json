@@ -1,0 +1,18 @@
+{
+ "matches": [],
+ "diffs": [
+  {
+   "kind": "result",
+   "before": {
+    "repeat": "alpha beta gamma delta\n",
+    "count": 12000
+   },
+   "after": {
+    "repeat": "alpha beta gamma DELTA\n",
+    "count": 12000
+   },
+   "label": "Canonical",
+   "context_lines": 0
+  }
+ ]
+}

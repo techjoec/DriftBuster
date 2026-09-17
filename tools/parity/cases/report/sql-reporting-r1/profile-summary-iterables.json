@@ -1,0 +1,25 @@
+{
+ "matches": [
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "v",
+   "confidence": 0.5,
+   "reasons": []
+  }
+ ],
+ "profile_summary": {
+  "total_configs": null,
+  "total_tags": [
+   1,
+   "a"
+  ],
+  "profiles": {
+   "key-one": 1,
+   "key-two": 2
+  }
+ },
+ "extra_metadata": {
+  "m": 1
+ }
+}

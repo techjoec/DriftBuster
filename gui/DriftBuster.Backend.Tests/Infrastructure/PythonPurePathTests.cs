@@ -90,4 +90,11 @@ public sealed class PythonPurePathTests
         PythonPurePath.Join("/", "c").Should().Be("/c");
         PythonPurePath.Join("a//b", "c").Should().Be("a/b/c");
     }
+
+    [Fact]
+    public void JoinWithAnAnchoredChildReplacesThePath()
+    {
+        PythonPurePath.Join("out", "/abs/x.json").Should().Be(OperatingSystem.IsWindows() ? "\\abs\\x.json" : "/abs/x.json");
+        PythonPurePath.Join("out", "nested/cap-snapshot.json").Should().Be(OperatingSystem.IsWindows() ? "out\\nested\\cap-snapshot.json" : "out/nested/cap-snapshot.json");
+    }
 }

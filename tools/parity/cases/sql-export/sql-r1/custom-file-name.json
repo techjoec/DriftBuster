@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "accounts.sql"
+ },
+ "file": "data/\u00e9t\u00e9 db.sqlite",
+ "path": "data/\u00e9t\u00e9 db.sqlite",
+ "timestamp": "2030-12-31T23:59:59+00:00"
+}

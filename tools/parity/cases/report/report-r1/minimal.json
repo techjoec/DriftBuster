@@ -1,0 +1,13 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.375,
+   "reasons": [
+    "structured"
+   ]
+  }
+ ]
+}

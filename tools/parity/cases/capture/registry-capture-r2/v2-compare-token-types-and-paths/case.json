@@ -1,0 +1,151 @@
+{
+ "steps": [
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": "snap/b.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/b.json",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/mixed.json",
+    "current": "snap/mixed.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/mixed-rev.json",
+    "current": "snap/mixed-rev.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/mixed.json",
+    "current": "snap/mixed-rev.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/str-entry.json",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": "snap/list-detection.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/tuple-token.json",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": "snap/dict-token.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/rule-str.json",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": "snap/hits-str.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/big-tokens.json",
+    "current": "snap/big-tokens.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": "snap/big-tokens.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/surrogate-token.json",
+    "current": "snap/surrogate-token.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/dir",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": "snap/nope.json/"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json/",
+    "current": "snap/b.json/"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/nope.json/",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap//a.json",
+    "current": "snap/./b.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": ""
+   }
+  }
+ ]
+}

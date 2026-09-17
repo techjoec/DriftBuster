@@ -114,7 +114,7 @@ public static partial class ScheduleStore
     /// <summary>
     /// <c>_write_schedule_state(scheduler, path)</c>: the snapshot as sorted, indented, ASCII-escaped JSON with a trailing new line, parents
     /// created. A state path Python cannot write raises its <c>OSError</c> text (<see cref="PythonOSError"/>): the parent directory's
-    /// (<see cref="PythonPath.MakeDirectories"/>), or the file's, <c>IsADirectoryError</c> for a directory.
+    /// (<see cref="PythonPath.MakeDirectories"/>), or the file's, <c>open()</c>'s error for a directory (<see cref="PythonOSError.DirectoryOpenErrno"/>).
     /// </summary>
     public static void WriteScheduleState(ProfileScheduler scheduler, string path)
     {
@@ -136,37 +136,14 @@ public static partial class ScheduleStore
     }
 
     // path.write_text(text, encoding="utf-8"): open() names the path as str(Path) spells it in its OSError.
-    private static void WriteText(string path, string text)
-    {
-        var shown = PythonPurePath.Str(path);
-        var kernel = PythonPath.KernelPath(path);
-        if (Directory.Exists(kernel))
-        {
-            throw PythonOSError.Create(PythonOSError.IsADirectory, shown);
-        }
+    private static void WriteText(string path, string text) => PythonTextFile.WriteText(path, text);
 
-        try
-        {
-            File.WriteAllText(kernel, text, Utf8);
-        }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-        {
-            throw PythonOSError.Errno(exc) is { } errno ? PythonOSError.Create(errno, shown, exc) : exc;
-        }
-    }
-
-    // json.loads(path.read_text(encoding="utf-8")): null when the text is not JSON; a directory raises IsADirectoryError, bytes that are
-    // not UTF-8 raise UnicodeDecodeError and the decoder's interpreter limits raise ValueError / RecursionError, all unwrapped as in
-    // Python (the loaders catch only JSONDecodeError).
+    // json.loads(path.read_text(encoding="utf-8")): null when the text is not JSON; a directory raises open()'s error for one (EISDIR on
+    // Unix, EACCES on Windows), bytes that are not UTF-8 raise UnicodeDecodeError and the decoder's interpreter limits raise ValueError /
+    // RecursionError, all unwrapped as in Python (the loaders catch only JSONDecodeError).
     private static JsonValue? ReadJson(string path)
     {
-        var kernel = PythonPath.KernelPath(path);
-        if (Directory.Exists(kernel))
-        {
-            throw PythonOSError.Create(PythonOSError.IsADirectory, path);
-        }
-
-        return PythonJson.TryLoadsOrRaiseLimits(PythonUtf8.Decode(File.ReadAllBytes(kernel)), out var value) ? new JsonValue(value) : null;
+        return PythonJson.TryLoadsOrRaiseLimits(PythonUtf8.Decode(PythonTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;
     }
 
     private sealed record JsonValue(object? Value);

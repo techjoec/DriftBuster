@@ -1,0 +1,19 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": []
+  }
+ ],
+ "profile_summary": {
+  "profiles": [
+   {
+    "name": "n",
+    "config_ids": null
+   }
+  ]
+ }
+}

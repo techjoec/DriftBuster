@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "t.a"
+  ],
+  "hash_salt": true
+ }
+}

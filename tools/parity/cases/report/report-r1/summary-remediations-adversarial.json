@@ -1,0 +1,98 @@
+{
+ "matches": [
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "v2",
+   "confidence": 0.3,
+   "reasons": [
+    "z",
+    "a",
+    "\u00e9",
+    "a"
+   ],
+   "metadata": {
+    "catalog_severity": "high",
+    "catalog_severity_hint": "hint-1",
+    "catalog_remediations": [
+     {
+      "id": "b-id",
+      "category": null,
+      "summary": "B summary",
+      "documentation": null
+     },
+     {
+      "id": "",
+      "category": "cat",
+      "summary": "b-id",
+      "documentation": "doc"
+     },
+     {
+      "id": null,
+      "summary": "summary-only",
+      "category": "first"
+     },
+     {
+      "id": 0,
+      "summary": "",
+      "category": "skipped"
+     },
+     {
+      "id": 7,
+      "summary": 3,
+      "documentation": "numeric"
+     },
+     "not a mapping",
+     {
+      "id": "a-id"
+     },
+     {
+      "id": [
+       1
+      ],
+      "summary": {
+       "k": "v"
+      }
+     }
+    ],
+    "\ud83d\ude00": 1,
+    "Z": 2
+   }
+  },
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "v2",
+   "confidence": 0.1,
+   "reasons": [
+    "b"
+   ],
+   "metadata": {
+    "catalog_severity": "low",
+    "catalog_severity_hint": "hint-2",
+    "catalog_remediations": "string"
+   }
+  },
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "",
+   "confidence": 0.2,
+   "reasons": [],
+   "metadata": {
+    "catalog_severity": 3,
+    "catalog_remediations": {
+     "id": "mapping-not-sequence"
+    }
+   }
+  },
+  {
+   "plugin": "p",
+   "format": "\u00e9",
+   "variant": "a",
+   "confidence": -1.0,
+   "reasons": [],
+   "metadata": null
+  }
+ ]
+}

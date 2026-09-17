@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "nul-text.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "t.w"
+  ]
+ }
+}

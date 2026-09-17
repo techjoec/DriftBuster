@@ -1,0 +1,211 @@
+{
+ "enumerate": false,
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "R",
+   "view": "*",
+   "subkeys": [
+    "",
+    "a\\b",
+    "a",
+    " ",
+    "a\\b",
+    "a"
+   ],
+   "values": [
+    [
+     "r",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "R\\",
+   "view": "*",
+   "values": [
+    [
+     "empty-child",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "R\\a\\b",
+   "view": "*",
+   "values": [
+    [
+     "deep",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "R\\a",
+   "view": "*",
+   "subkeys": [
+    "b"
+   ],
+   "values": [
+    [
+     "a",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "R\\ ",
+   "view": "*",
+   "values": [
+    [
+     "space",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "V",
+   "view": "32",
+   "values": [
+    [
+     "only32",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "V",
+   "view": "64",
+   "values": [
+    [
+     "only64",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "W",
+   "view": "*",
+   "subkeys": [
+    "c"
+   ],
+   "values": [
+    [
+     "any",
+     "hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "W\\c",
+   "view": "64",
+   "values": [
+    [
+     "c64",
+     "hit"
+    ]
+   ]
+  }
+ ],
+ "searches": [
+  {
+   "roots": [
+    [
+     "HKLM",
+     "R",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "R",
+     null
+    ]
+   ],
+   "max_hits": 3
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "V",
+     "32"
+    ],
+    [
+     "HKLM",
+     "V",
+     "64"
+    ],
+    [
+     "HKLM",
+     "V",
+     null
+    ],
+    [
+     "HKLM",
+     "V",
+     "32"
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "W",
+     "64"
+    ],
+    [
+     "HKLM",
+     "W",
+     null
+    ],
+    [
+     "HKLM",
+     "W",
+     "32"
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "R\\a",
+     null
+    ],
+    [
+     "HKLM",
+     "R",
+     null
+    ]
+   ],
+   "max_depth": 1
+  },
+  {
+   "roots": [
+    [
+     "hklm",
+     "R",
+     null
+    ],
+    [
+     "HKLM",
+     "r",
+     null
+    ]
+   ]
+  }
+ ]
+}

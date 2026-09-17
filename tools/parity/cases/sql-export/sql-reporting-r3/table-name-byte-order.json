@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "r3-order.sql"
+ },
+ "options": {
+  "exclude_tables": [
+   "z",
+   "Z"
+  ]
+ }
+}

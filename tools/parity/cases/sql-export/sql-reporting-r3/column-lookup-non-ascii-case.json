@@ -1,0 +1,16 @@
+{
+ "database": {
+  "script": "r3-lookup.sql"
+ },
+ "options": {
+  "mask_columns": [
+   "t.ab",
+   "t.é"
+  ],
+  "hash_columns": [
+   "t.AB",
+   "t.É"
+  ],
+  "hash_salt": "x"
+ }
+}

@@ -1,0 +1,22 @@
+{
+ "tree": [],
+ "find_roots": [
+  {
+   "token": "anything"
+  }
+ ],
+ "searches": [
+  {
+   "roots": "anything"
+  }
+ ],
+ "cli": [
+  [
+   "list-apps"
+  ],
+  [
+   "suggest-roots",
+   "  "
+  ]
+ ]
+}

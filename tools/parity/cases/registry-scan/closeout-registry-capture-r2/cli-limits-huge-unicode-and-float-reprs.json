@@ -1,0 +1,314 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "V0",
+    "N"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\V0",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "V0"
+    ],
+    [
+     "DisplayVersion",
+     "1"
+    ],
+    [
+     "Publisher",
+     "-5 Corp"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\N",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "-.5"
+    ],
+    [
+     "Publisher",
+     "minus"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "32",
+   "subkeys": []
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "*",
+   "subkeys": []
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\V0",
+   "subkeys": [
+    "Sub"
+   ],
+   "values": [
+    [
+     "k",
+     "v0 hit"
+    ],
+    [
+     "",
+     "default -0"
+    ],
+    [
+     "neg",
+     "-.5"
+    ],
+    [
+     "empty",
+     ""
+    ],
+    [
+     "num",
+     7
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\V0\\Sub",
+   "values": [
+    [
+     "deep",
+     "hit deep"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\V0",
+   "view": "32",
+   "values": [
+    [
+     "w",
+     "wow hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\V0",
+   "view": "*",
+   "values": [
+    [
+     "u",
+     "user hit"
+    ]
+   ]
+  }
+ ],
+ "cli": [
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-hits",
+   "99999999999999999999999999",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-depth",
+   "99999999999999999999999999",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-depth",
+   "9223372036854775808",
+   "--max-hits",
+   "18446744073709551616",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-depth",
+   "٠",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-hits",
+   "١",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--time-budget",
+   "١٢.٥",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--time-budget",
+   "0",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--time-budget",
+   "1_000",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-hits",
+   "-0",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--max-hits",
+   "99999999999999999999999999",
+   "--max-depth",
+   "-99999999999999999999999999"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--max-depth",
+   "9223372036854775808",
+   "--max-hits",
+   "9223372036854775807"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "5"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "5."
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   ".5"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "1E2"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "1e22"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "1e16"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "123456789012345678"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "0.1"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "1e-7"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "2.5e-5"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "9007199254740993"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "1.7976931348623157e308"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "5e-324"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   "١"
+  ]
+ ]
+}

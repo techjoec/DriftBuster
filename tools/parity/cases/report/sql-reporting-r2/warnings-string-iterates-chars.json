@@ -1,0 +1,5 @@
+{
+ "matches": [],
+ "warnings": "a<b",
+ "title": "{title} {{x}} %s %(t)s"
+}

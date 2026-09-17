@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Profiles.Detection;
+using DriftBuster.Backend.Tests.Infrastructure;
 
 namespace DriftBuster.Backend.Tests.Profiles.Detection;
 
@@ -193,7 +194,7 @@ public sealed class DetectionProfileCommandsTests : IDisposable
         var directory = Directory.CreateDirectory(Path.Combine(_tmp.FullName, "sub")).FullName;
         var readDirectory = () => DetectionProfileCommands.LoadJson(directory + "/");
         readDirectory.Should().Throw<PythonValueException>()
-            .WithMessage($"Unable to read JSON payload from {directory}: [Errno 21] Is a directory: '{directory}'");
+            .WithMessage($"Unable to read JSON payload from {directory}: {OSErrorTexts.DirectoryOpen(directory)}");
 
         var bad = Path.Combine(_tmp.FullName, "bad.json");
         File.WriteAllBytes(bad, [0xFF, (byte)'{', (byte)'}']);

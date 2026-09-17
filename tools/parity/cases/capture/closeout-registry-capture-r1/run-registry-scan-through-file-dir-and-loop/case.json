@@ -1,0 +1,148 @@
+{
+ "steps": [
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-through-file",
+    "registry_scan": [
+     "afile/x.json"
+    ]
+   }
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-dot",
+    "registry_scan": [
+     "scans/real.json/."
+    ]
+   }
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-dir",
+    "registry_scan": [
+     "scans"
+    ]
+   }
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-loop-child",
+    "registry_scan": [
+     "scans/loop/x"
+    ]
+   }
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-afile-dotdot",
+    "registry_scan": [
+     "afile/../scans/real.json"
+    ]
+   }
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-file-child",
+    "registry_scan": [
+     "scans/real.json/x"
+    ]
+   }
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-file-dotdot",
+    "registry_scan": [
+     "scans/real.json/../real.json"
+    ]
+   }
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2"
+    ],
+    "skip_hunt": true,
+    "capture_id": "s-trailing-dir",
+    "registry_scan": [
+     "scans/"
+    ]
+   }
+  }
+ ]
+}

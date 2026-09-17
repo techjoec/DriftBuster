@@ -1,0 +1,12 @@
+{
+ "database": {
+  "script": "block-comment-name.sql"
+ },
+ "options": {
+  "hash_columns": {
+   "t/**/": [
+    "b"
+   ]
+  }
+ }
+}

@@ -1,0 +1,32 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "a"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\a",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "A"
+    ]
+   ],
+   "error": {
+    "type": "ValueError",
+    "message": "bad data"
+   }
+  }
+ ],
+ "find_roots": [
+  {
+   "token": "a"
+  }
+ ]
+}

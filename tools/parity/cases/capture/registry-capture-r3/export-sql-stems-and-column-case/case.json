@@ -1,0 +1,385 @@
+{
+ "steps": [
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql",
+    "database": [
+     "db/a.db.",
+     "db/.hidden",
+     "db/x.tar.gz",
+     "db/noext",
+     "db/Case.sqlite"
+    ]
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql2",
+    "database": [
+     "db/a.db.",
+     "db/.hidden",
+     "db/x.tar.gz",
+     "db/noext"
+    ],
+    "prefix": "p"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql3/",
+    "database": [
+     "db/a.db./",
+     "db//noext",
+     "db/./Case.sqlite"
+    ]
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql4",
+    "database": [
+     "db/Case.sqlite"
+    ],
+    "mask_column": [
+     "accounts.secret",
+     "Accounts.Secret",
+     "Accounts.secret",
+     "ACCOUNTS.EMAIL"
+    ],
+    "hash_column": [
+     "Accounts.Email",
+     "accounts.email"
+    ]
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql5",
+    "database": [
+     "db/Case.sqlite"
+    ],
+    "table": [
+     "accounts"
+    ],
+    "exclude_table": [
+     "MIXEDCASE"
+    ]
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql6",
+    "database": [
+     "db/Case.sqlite"
+    ],
+    "table": [
+     "Accounts",
+     "Accounts"
+    ],
+    "mask_column": [
+     "MixedCase.v",
+     "mixedcase.k",
+     "MixedCase.K"
+    ]
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql7",
+    "database": [
+     "db/Case.sqlite",
+     "db/Case.sqlite"
+    ],
+    "prefix": "\u00e9"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql8",
+    "database": [
+     "db/Case.sqlite"
+    ],
+    "placeholder": "",
+    "hash_salt": "\u00e9",
+    "hash_column": [
+     "Accounts.secret"
+    ],
+    "mask_column": [
+     "Accounts.Email"
+    ],
+    "limit": 1
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql9",
+    "database": [
+     "db/a.db."
+    ],
+    "prefix": "."
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql9",
+    "database": [
+     "db/a.db."
+    ],
+    "prefix": ".."
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql9",
+    "database": [
+     "db/a.db."
+    ],
+    "prefix": "x/"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql10",
+    "database": [
+     "db/a.db."
+    ],
+    "prefix": "afile/x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql10",
+    "database": [
+     "db/a.db."
+    ],
+    "prefix": "afile/../y"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "output_dir": "sql10",
+    "database": [
+     "db/a.db."
+    ],
+    "prefix": "missing/x"
+   },
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "host": "capture-host.example"
+  }
+ ],
+ "databases": {
+  "db/a.db.": "case.sql",
+  "db/.hidden": "case.sql",
+  "db/x.tar.gz": "case.sql",
+  "db/noext": "case.sql",
+  "db/Case.sqlite": "case.sql"
+ }
+}

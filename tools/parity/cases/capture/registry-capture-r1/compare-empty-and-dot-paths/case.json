@@ -1,0 +1,32 @@
+{
+ "steps": [
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "",
+    "current": ""
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/a.json",
+    "current": ""
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "",
+    "current": "snap/a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "missing.json",
+    "current": "."
+   }
+  }
+ ]
+}

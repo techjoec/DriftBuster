@@ -1,0 +1,25 @@
+{
+ "profiles": [
+  {
+   "name": "app",
+   "tags": [
+    "prod"
+   ],
+   "configs": [
+    {
+     "id": "appsettings",
+     "path": "app/appsettings.json"
+    }
+   ]
+  },
+  {
+   "name": "added",
+   "configs": [
+    {
+     "id": "x",
+     "path": "app/x.yaml"
+    }
+   ]
+  }
+ ]
+}

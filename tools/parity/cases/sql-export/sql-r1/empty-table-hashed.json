@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "empty-table.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "e.a"
+  ]
+ }
+}

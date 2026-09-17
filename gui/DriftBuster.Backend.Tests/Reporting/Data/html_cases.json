@@ -1,0 +1,501 @@
+[
+ {
+  "case": {
+   "name": "minimal",
+   "matches": [
+    {
+     "plugin": "json",
+     "format": "json",
+     "variant": "generic",
+     "confidence": 0.375,
+     "reasons": []
+    }
+   ]
+  },
+  "now": "2026-09-15T18:22:05.123456+00:00",
+  "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>DriftBuster Report</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #eee; }\n    h1, h2 { color: #f6c744; }\n    .meta { font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }\n    .warning { border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }\n    .badge {\n      display: inline-block;\n      padding: 0.1rem 0.4rem;\n      border-radius: 0.25rem;\n      font-size: 0.75rem;\n      margin-left: 0.5rem;\n      background: #f6c744;\n      color: #111;\n    }\n    .match,\n    .diff-block,\n    .profile-summary,\n    .hunt-section {\n      border: 1px solid #333;\n      padding: 1rem;\n      margin-bottom: 1rem;\n      background: #1a1a1a;\n    }\n    .match h3 { margin-top: 0; }\n    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }\n    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }\n    .summary-table { margin-bottom: 1rem; }\n    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }\n    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }\n    .diff-stats li { font-size: 0.85rem; color: #ccc; }\n    .diff-safety { font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }\n    .hunt-section ul { margin: 0.5rem 0 0 1rem; }\n    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }\n  </style>\n</head>\n<body>\n\n<div class=\"meta\">Generated at 2026-09-15T18:22:05.123456Z</div>\n<div class=\"warning\">Derived data only. Do not redistribute without legal approval.</div>\n<section class=\"match summary\"><h2>Detection Summary</h2><table class=\"summary-table\"><thead><tr><th>Format</th><th>Variant</th><th>Matches</th><th>Peak confidence</th></tr></thead><tbody><tr><td>json</td><td>generic</td><td>1</td><td>0.38</td></tr></tbody></table></section>\n<section class=\"match\"><h3>Match 1: json</h3><p><strong>Plugin:</strong> json | <strong>Variant:</strong> generic</p><p><strong>Confidence:</strong> 0.375</p><h4>Reasons</h4><ul><li>None provided</li></ul><h4>Metadata</h4><table></table></section>\n<div class=\"redaction-summary\">\n<h2>Redaction Summary</h2>\n<p>No configured tokens were encountered in this report. Manually inspect before external sharing.</p></div>\n</body></html>"
+ },
+ {
+  "case": {
+   "name": "no-matches",
+   "matches": [],
+   "title": ""
+  },
+  "now": "2026-01-02T03:04:05+00:00",
+  "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title></title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #eee; }\n    h1, h2 { color: #f6c744; }\n    .meta { font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }\n    .warning { border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }\n    .badge {\n      display: inline-block;\n      padding: 0.1rem 0.4rem;\n      border-radius: 0.25rem;\n      font-size: 0.75rem;\n      margin-left: 0.5rem;\n      background: #f6c744;\n      color: #111;\n    }\n    .match,\n    .diff-block,\n    .profile-summary,\n    .hunt-section {\n      border: 1px solid #333;\n      padding: 1rem;\n      margin-bottom: 1rem;\n      background: #1a1a1a;\n    }\n    .match h3 { margin-top: 0; }\n    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }\n    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }\n    .summary-table { margin-bottom: 1rem; }\n    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }\n    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }\n    .diff-stats li { font-size: 0.85rem; color: #ccc; }\n    .diff-safety { font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }\n    .hunt-section ul { margin: 0.5rem 0 0 1rem; }\n    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }\n  </style>\n</head>\n<body>\n\n<div class=\"meta\">Generated at 2026-01-02T03:04:05Z</div>\n<div class=\"warning\">Derived data only. Do not redistribute without legal approval.</div>\n<div class=\"redaction-summary\">\n<h2>Redaction Summary</h2>\n<p>No configured tokens were encountered in this report. Manually inspect before external sharing.</p></div>\n</body></html>"
+ },
+ {
+  "case": {
+   "name": "rich-redactor",
+   "title": "Report <\"&'> \ud83d\ude00",
+   "matches": [
+    {
+     "plugin": "json",
+     "format": "json",
+     "variant": "generic",
+     "confidence": 0.125,
+     "reasons": [
+      "a <reason>",
+      "SECRET in reason"
+     ],
+     "metadata": {
+      "zeta": "<script>alert('x')</script>",
+      "Alpha": true,
+      "alpha": null,
+      "\u00e9t\u00e9": [
+       1,
+       2.5,
+       "SECRET",
+       {
+        "inner": "SECRET & <b>"
+       }
+      ],
+      "\ud83d\ude00": {
+       "nested": {
+        "deeper": [
+         "a",
+         "b"
+        ]
+       },
+       "flag": false
+      },
+      "\uffff": 1180591620717411303424,
+      "nan": NaN,
+      "inf": -Infinity,
+      "empty": {},
+      "list_empty": [],
+      "quote\"key": "it's \"quoted\""
+     }
+    },
+    {
+     "plugin": "json",
+     "format": "json",
+     "variant": "generic",
+     "confidence": 0.375,
+     "reasons": []
+    },
+    {
+     "plugin": "xml",
+     "format": "xml",
+     "variant": "",
+     "confidence": NaN,
+     "reasons": [
+      "empty variant"
+     ],
+     "metadata": {}
+    },
+    {
+     "plugin": "text",
+     "format": "",
+     "variant": null,
+     "confidence": Infinity,
+     "reasons": [
+      "\ud800 lone"
+     ],
+     "metadata": {
+      "b": "\ud835\udd18",
+      "a": "\u00e9"
+     }
+    },
+    {
+     "plugin": "ini",
+     "format": "ini",
+     "variant": "\u2014",
+     "confidence": 1e-07,
+     "reasons": [
+      "dash variant"
+     ]
+    },
+    {
+     "plugin": "ini",
+     "format": "ini",
+     "variant": "Zed",
+     "confidence": 1e+22,
+     "reasons": [
+      "z"
+     ]
+    },
+    {
+     "plugin": "yaml",
+     "format": "yaml",
+     "variant": "secret-variant",
+     "confidence": 0.995,
+     "reasons": []
+    }
+   ],
+   "redactor": {
+    "tokens": [
+     "SECRET",
+     "secret",
+     "Diff",
+     "run"
+    ],
+    "placeholder": "<&>"
+   },
+   "extra_metadata": {
+    "run_id": "run-SECRET",
+    "count": 3,
+    "nested": {
+     "k": [
+      "SECRET"
+     ]
+    }
+   },
+   "warnings": [
+    "Check <manually>",
+    "<span class=\"raw\">kept raw</span>",
+    "<spanish>",
+    ""
+   ],
+   "legal_notice": "Handle & <care>",
+   "profile_summary": {
+    "total_profiles": 2,
+    "total_tags": "<tags>",
+    "profiles": [
+     {
+      "name": "default",
+      "config_count": 1,
+      "config_ids": [
+       "cfg1",
+       "SECRET-cfg"
+      ]
+     },
+     {
+      "name": null,
+      "config_count": "<b>raw</b>",
+      "config_ids": "abc"
+     },
+     {
+      "config_ids": []
+     },
+     "invalid",
+     7
+    ],
+    "run_metadata": {
+     "existing": "value"
+    }
+   },
+   "diffs": [
+    {
+     "kind": "mapping",
+     "value": {
+      "label": "Direct",
+      "diff": ""
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "label": 0,
+      "diff": null,
+      "stats": {},
+      "safety_limits": "ignored"
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "label": "Stats <x>",
+      "diff": "-a <b>\n+SECRET",
+      "stats": {
+       "added_lines": 1,
+       "odd<key>": "v&"
+      }
+     }
+    },
+    {
+     "kind": "result",
+     "before": "a\nSECRET\nc",
+     "after": "a\nb\nc",
+     "label": null
+    },
+    {
+     "kind": "result",
+     "before": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\nline 121\nline 122\nline 123\nline 124\nline 125\nline 126\nline 127\nline 128\nline 129\nline 130\nline 131\nline 132\nline 133\nline 134\nline 135\nline 136\nline 137\nline 138\nline 139\nline 140\nline 141\nline 142\nline 143\nline 144\nline 145\nline 146\nline 147\nline 148\nline 149\nline 150\nline 151\nline 152\nline 153\nline 154\nline 155\nline 156\nline 157\nline 158\nline 159\nline 160\nline 161\nline 162\nline 163\nline 164\nline 165\nline 166\nline 167\nline 168\nline 169\nline 170\nline 171\nline 172\nline 173\nline 174\nline 175\nline 176\nline 177\nline 178\nline 179\nline 180\nline 181\nline 182\nline 183\nline 184\nline 185\nline 186\nline 187\nline 188\nline 189\nline 190\nline 191\nline 192\nline 193\nline 194\nline 195\nline 196\nline 197\nline 198\nline 199\nline 200\nline 201\nline 202\nline 203\nline 204\nline 205\nline 206\nline 207\nline 208\nline 209\nline 210\nline 211\nline 212\nline 213\nline 214\nline 215\nline 216\nline 217\nline 218\nline 219\nline 220\nline 221\nline 222\nline 223\nline 224\nline 225\nline 226\nline 227\nline 228\nline 229\nline 230\nline 231\nline 232\nline 233\nline 234\nline 235\nline 236\nline 237\nline 238\nline 239\nline 240\nline 241\nline 242\nline 243\nline 244\nline 245\nline 246\nline 247\nline 248\nline 249\nline 250\nline 251\nline 252\nline 253\nline 254\nline 255\nline 256\nline 257\nline 258\nline 259\nline 260\nline 261\nline 262\nline 263\nline 264\nline 265\nline 266\nline 267\nline 268\nline 269\nline 270\nline 271\nline 272\nline 273\nline 274\nline 275\nline 276\nline 277\nline 278\nline 279\nline 280\nline 281\nline 282\nline 283\nline 284\nline 285\nline 286\nline 287\nline 288\nline 289\nline 290\nline 291\nline 292\nline 293\nline 294\nline 295\nline 296\nline 297\nline 298\nline 299\nline 300\nline 301\nline 302\nline 303\nline 304\nline 305\nline 306\nline 307\nline 308\nline 309\nline 310\nline 311\nline 312\nline 313\nline 314\nline 315\nline 316\nline 317\nline 318\nline 319\nline 320\nline 321\nline 322\nline 323\nline 324\nline 325\nline 326\nline 327\nline 328\nline 329\nline 330\nline 331\nline 332\nline 333\nline 334\nline 335\nline 336\nline 337\nline 338\nline 339\nline 340\nline 341\nline 342\nline 343\nline 344\nline 345\nline 346\nline 347\nline 348\nline 349\nline 350\nline 351\nline 352\nline 353\nline 354\nline 355\nline 356\nline 357\nline 358\nline 359\nline 360\nline 361\nline 362\nline 363\nline 364\nline 365\nline 366\nline 367\nline 368\nline 369\nline 370\nline 371\nline 372\nline 373\nline 374\nline 375\nline 376\nline 377\nline 378\nline 379\nline 380\nline 381\nline 382\nline 383\nline 384\nline 385\nline 386\nline 387\nline 388\nline 389\nline 390\nline 391\nline 392\nline 393\nline 394\nline 395\nline 396\nline 397\nline 398\nline 399\nline 400\nline 401\nline 402\nline 403\nline 404\nline 405\nline 406\nline 407\nline 408\nline 409\nline 410\nline 411\nline 412\nline 413\nline 414\nline 415\nline 416\nline 417\nline 418\nline 419\nline 420\nline 421\nline 422\nline 423\nline 424\nline 425\nline 426\nline 427\nline 428\nline 429\nline 430\nline 431\nline 432\nline 433\nline 434\nline 435\nline 436\nline 437\nline 438\nline 439\nline 440\nline 441\nline 442\nline 443\nline 444\nline 445\nline 446\nline 447\nline 448\nline 449\nline 450\nline 451\nline 452\nline 453\nline 454\nline 455\nline 456\nline 457\nline 458\nline 459\nline 460\nline 461\nline 462\nline 463\nline 464\nline 465\nline 466\nline 467\nline 468\nline 469\nline 470\nline 471\nline 472\nline 473\nline 474\nline 475\nline 476\nline 477\nline 478\nline 479\nline 480\nline 481\nline 482\nline 483\nline 484\nline 485\nline 486\nline 487\nline 488\nline 489\nline 490\nline 491\nline 492\nline 493\nline 494\nline 495\nline 496\nline 497\nline 498\nline 499\nline 500\nline 501\nline 502\nline 503\nline 504\nline 505\nline 506\nline 507\nline 508\nline 509\nline 510\nline 511\nline 512\nline 513\nline 514\nline 515\nline 516\nline 517\nline 518\nline 519\nline 520\nline 521\nline 522\nline 523\nline 524\nline 525\nline 526\nline 527\nline 528\nline 529\nline 530\nline 531\nline 532\nline 533\nline 534\nline 535\nline 536\nline 537\nline 538\nline 539\nline 540\nline 541\nline 542\nline 543\nline 544\nline 545\nline 546\nline 547\nline 548\nline 549\nline 550\nline 551\nline 552\nline 553\nline 554\nline 555\nline 556\nline 557\nline 558\nline 559\nline 560\nline 561\nline 562\nline 563\nline 564\nline 565\nline 566\nline 567\nline 568\nline 569\nline 570\nline 571\nline 572\nline 573\nline 574\nline 575\nline 576\nline 577\nline 578\nline 579\nline 580\nline 581\nline 582\nline 583\nline 584\nline 585\nline 586\nline 587\nline 588\nline 589\nline 590\nline 591\nline 592\nline 593\nline 594\nline 595\nline 596\nline 597\nline 598\nline 599\nline 600\nline 601\nline 602\nline 603\nline 604\nline 605\nline 606\nline 607\nline 608\nline 609\nline 610\nline 611\nline 612\nline 613\nline 614\nline 615\nline 616\nline 617\nline 618\nline 619\nline 620\nline 621\nline 622\nline 623\nline 624\nline 625\nline 626\nline 627\nline 628\nline 629\nline 630\nline 631\nline 632\nline 633\nline 634\nline 635\nline 636\nline 637\nline 638\nline 639\nline 640\nline 641\nline 642\nline 643\nline 644\nline 645\nline 646\nline 647\nline 648\nline 649\nline 650\nline 651\nline 652\nline 653\nline 654\nline 655\nline 656\nline 657\nline 658\nline 659\nline 660\nline 661\nline 662\nline 663\nline 664\nline 665\nline 666\nline 667\nline 668\nline 669\nline 670\nline 671\nline 672\nline 673\nline 674\nline 675\nline 676\nline 677\nline 678\nline 679\nline 680\nline 681\nline 682\nline 683\nline 684\nline 685\nline 686\nline 687\nline 688\nline 689\nline 690\nline 691\nline 692\nline 693\nline 694\nline 695\nline 696\nline 697\nline 698\nline 699",
+     "after": "changed 0\nchanged 1\nchanged 2\nchanged 3\nchanged 4\nchanged 5\nchanged 6\nchanged 7\nchanged 8\nchanged 9\nchanged 10\nchanged 11\nchanged 12\nchanged 13\nchanged 14\nchanged 15\nchanged 16\nchanged 17\nchanged 18\nchanged 19\nchanged 20\nchanged 21\nchanged 22\nchanged 23\nchanged 24\nchanged 25\nchanged 26\nchanged 27\nchanged 28\nchanged 29\nchanged 30\nchanged 31\nchanged 32\nchanged 33\nchanged 34\nchanged 35\nchanged 36\nchanged 37\nchanged 38\nchanged 39\nchanged 40\nchanged 41\nchanged 42\nchanged 43\nchanged 44\nchanged 45\nchanged 46\nchanged 47\nchanged 48\nchanged 49\nchanged 50\nchanged 51\nchanged 52\nchanged 53\nchanged 54\nchanged 55\nchanged 56\nchanged 57\nchanged 58\nchanged 59\nchanged 60\nchanged 61\nchanged 62\nchanged 63\nchanged 64\nchanged 65\nchanged 66\nchanged 67\nchanged 68\nchanged 69\nchanged 70\nchanged 71\nchanged 72\nchanged 73\nchanged 74\nchanged 75\nchanged 76\nchanged 77\nchanged 78\nchanged 79\nchanged 80\nchanged 81\nchanged 82\nchanged 83\nchanged 84\nchanged 85\nchanged 86\nchanged 87\nchanged 88\nchanged 89\nchanged 90\nchanged 91\nchanged 92\nchanged 93\nchanged 94\nchanged 95\nchanged 96\nchanged 97\nchanged 98\nchanged 99\nchanged 100\nchanged 101\nchanged 102\nchanged 103\nchanged 104\nchanged 105\nchanged 106\nchanged 107\nchanged 108\nchanged 109\nchanged 110\nchanged 111\nchanged 112\nchanged 113\nchanged 114\nchanged 115\nchanged 116\nchanged 117\nchanged 118\nchanged 119\nchanged 120\nchanged 121\nchanged 122\nchanged 123\nchanged 124\nchanged 125\nchanged 126\nchanged 127\nchanged 128\nchanged 129\nchanged 130\nchanged 131\nchanged 132\nchanged 133\nchanged 134\nchanged 135\nchanged 136\nchanged 137\nchanged 138\nchanged 139\nchanged 140\nchanged 141\nchanged 142\nchanged 143\nchanged 144\nchanged 145\nchanged 146\nchanged 147\nchanged 148\nchanged 149\nchanged 150\nchanged 151\nchanged 152\nchanged 153\nchanged 154\nchanged 155\nchanged 156\nchanged 157\nchanged 158\nchanged 159\nchanged 160\nchanged 161\nchanged 162\nchanged 163\nchanged 164\nchanged 165\nchanged 166\nchanged 167\nchanged 168\nchanged 169\nchanged 170\nchanged 171\nchanged 172\nchanged 173\nchanged 174\nchanged 175\nchanged 176\nchanged 177\nchanged 178\nchanged 179\nchanged 180\nchanged 181\nchanged 182\nchanged 183\nchanged 184\nchanged 185\nchanged 186\nchanged 187\nchanged 188\nchanged 189\nchanged 190\nchanged 191\nchanged 192\nchanged 193\nchanged 194\nchanged 195\nchanged 196\nchanged 197\nchanged 198\nchanged 199\nchanged 200\nchanged 201\nchanged 202\nchanged 203\nchanged 204\nchanged 205\nchanged 206\nchanged 207\nchanged 208\nchanged 209\nchanged 210\nchanged 211\nchanged 212\nchanged 213\nchanged 214\nchanged 215\nchanged 216\nchanged 217\nchanged 218\nchanged 219\nchanged 220\nchanged 221\nchanged 222\nchanged 223\nchanged 224\nchanged 225\nchanged 226\nchanged 227\nchanged 228\nchanged 229\nchanged 230\nchanged 231\nchanged 232\nchanged 233\nchanged 234\nchanged 235\nchanged 236\nchanged 237\nchanged 238\nchanged 239\nchanged 240\nchanged 241\nchanged 242\nchanged 243\nchanged 244\nchanged 245\nchanged 246\nchanged 247\nchanged 248\nchanged 249\nchanged 250\nchanged 251\nchanged 252\nchanged 253\nchanged 254\nchanged 255\nchanged 256\nchanged 257\nchanged 258\nchanged 259\nchanged 260\nchanged 261\nchanged 262\nchanged 263\nchanged 264\nchanged 265\nchanged 266\nchanged 267\nchanged 268\nchanged 269\nchanged 270\nchanged 271\nchanged 272\nchanged 273\nchanged 274\nchanged 275\nchanged 276\nchanged 277\nchanged 278\nchanged 279\nchanged 280\nchanged 281\nchanged 282\nchanged 283\nchanged 284\nchanged 285\nchanged 286\nchanged 287\nchanged 288\nchanged 289\nchanged 290\nchanged 291\nchanged 292\nchanged 293\nchanged 294\nchanged 295\nchanged 296\nchanged 297\nchanged 298\nchanged 299\nchanged 300\nchanged 301\nchanged 302\nchanged 303\nchanged 304\nchanged 305\nchanged 306\nchanged 307\nchanged 308\nchanged 309\nchanged 310\nchanged 311\nchanged 312\nchanged 313\nchanged 314\nchanged 315\nchanged 316\nchanged 317\nchanged 318\nchanged 319\nchanged 320\nchanged 321\nchanged 322\nchanged 323\nchanged 324\nchanged 325\nchanged 326\nchanged 327\nchanged 328\nchanged 329\nchanged 330\nchanged 331\nchanged 332\nchanged 333\nchanged 334\nchanged 335\nchanged 336\nchanged 337\nchanged 338\nchanged 339\nchanged 340\nchanged 341\nchanged 342\nchanged 343\nchanged 344\nchanged 345\nchanged 346\nchanged 347\nchanged 348\nchanged 349\nchanged 350\nchanged 351\nchanged 352\nchanged 353\nchanged 354\nchanged 355\nchanged 356\nchanged 357\nchanged 358\nchanged 359\nchanged 360\nchanged 361\nchanged 362\nchanged 363\nchanged 364\nchanged 365\nchanged 366\nchanged 367\nchanged 368\nchanged 369\nchanged 370\nchanged 371\nchanged 372\nchanged 373\nchanged 374\nchanged 375\nchanged 376\nchanged 377\nchanged 378\nchanged 379\nchanged 380\nchanged 381\nchanged 382\nchanged 383\nchanged 384\nchanged 385\nchanged 386\nchanged 387\nchanged 388\nchanged 389\nchanged 390\nchanged 391\nchanged 392\nchanged 393\nchanged 394\nchanged 395\nchanged 396\nchanged 397\nchanged 398\nchanged 399\nchanged 400\nchanged 401\nchanged 402\nchanged 403\nchanged 404\nchanged 405\nchanged 406\nchanged 407\nchanged 408\nchanged 409\nchanged 410\nchanged 411\nchanged 412\nchanged 413\nchanged 414\nchanged 415\nchanged 416\nchanged 417\nchanged 418\nchanged 419\nchanged 420\nchanged 421\nchanged 422\nchanged 423\nchanged 424\nchanged 425\nchanged 426\nchanged 427\nchanged 428\nchanged 429\nchanged 430\nchanged 431\nchanged 432\nchanged 433\nchanged 434\nchanged 435\nchanged 436\nchanged 437\nchanged 438\nchanged 439\nchanged 440\nchanged 441\nchanged 442\nchanged 443\nchanged 444\nchanged 445\nchanged 446\nchanged 447\nchanged 448\nchanged 449\nchanged 450\nchanged 451\nchanged 452\nchanged 453\nchanged 454\nchanged 455\nchanged 456\nchanged 457\nchanged 458\nchanged 459\nchanged 460\nchanged 461\nchanged 462\nchanged 463\nchanged 464\nchanged 465\nchanged 466\nchanged 467\nchanged 468\nchanged 469\nchanged 470\nchanged 471\nchanged 472\nchanged 473\nchanged 474\nchanged 475\nchanged 476\nchanged 477\nchanged 478\nchanged 479\nchanged 480\nchanged 481\nchanged 482\nchanged 483\nchanged 484\nchanged 485\nchanged 486\nchanged 487\nchanged 488\nchanged 489\nchanged 490\nchanged 491\nchanged 492\nchanged 493\nchanged 494\nchanged 495\nchanged 496\nchanged 497\nchanged 498\nchanged 499\nchanged 500\nchanged 501\nchanged 502\nchanged 503\nchanged 504\nchanged 505\nchanged 506\nchanged 507\nchanged 508\nchanged 509\nchanged 510\nchanged 511\nchanged 512\nchanged 513\nchanged 514\nchanged 515\nchanged 516\nchanged 517\nchanged 518\nchanged 519\nchanged 520\nchanged 521\nchanged 522\nchanged 523\nchanged 524\nchanged 525\nchanged 526\nchanged 527\nchanged 528\nchanged 529\nchanged 530\nchanged 531\nchanged 532\nchanged 533\nchanged 534\nchanged 535\nchanged 536\nchanged 537\nchanged 538\nchanged 539\nchanged 540\nchanged 541\nchanged 542\nchanged 543\nchanged 544\nchanged 545\nchanged 546\nchanged 547\nchanged 548\nchanged 549\nchanged 550\nchanged 551\nchanged 552\nchanged 553\nchanged 554\nchanged 555\nchanged 556\nchanged 557\nchanged 558\nchanged 559\nchanged 560\nchanged 561\nchanged 562\nchanged 563\nchanged 564\nchanged 565\nchanged 566\nchanged 567\nchanged 568\nchanged 569\nchanged 570\nchanged 571\nchanged 572\nchanged 573\nchanged 574\nchanged 575\nchanged 576\nchanged 577\nchanged 578\nchanged 579\nchanged 580\nchanged 581\nchanged 582\nchanged 583\nchanged 584\nchanged 585\nchanged 586\nchanged 587\nchanged 588\nchanged 589\nchanged 590\nchanged 591\nchanged 592\nchanged 593\nchanged 594\nchanged 595\nchanged 596\nchanged 597\nchanged 598\nchanged 599\nchanged 600\nchanged 601\nchanged 602\nchanged 603\nchanged 604\nchanged 605\nchanged 606\nchanged 607\nchanged 608\nchanged 609\nchanged 610\nchanged 611\nchanged 612\nchanged 613\nchanged 614\nchanged 615\nchanged 616\nchanged 617\nchanged 618\nchanged 619\nchanged 620\nchanged 621\nchanged 622\nchanged 623\nchanged 624\nchanged 625\nchanged 626\nchanged 627\nchanged 628\nchanged 629\nchanged 630\nchanged 631\nchanged 632\nchanged 633\nchanged 634\nchanged 635\nchanged 636\nchanged 637\nchanged 638\nchanged 639\nchanged 640\nchanged 641\nchanged 642\nchanged 643\nchanged 644\nchanged 645\nchanged 646\nchanged 647\nchanged 648\nchanged 649\nchanged 650\nchanged 651\nchanged 652\nchanged 653\nchanged 654\nchanged 655\nchanged 656\nchanged 657\nchanged 658\nchanged 659\nchanged 660\nchanged 661\nchanged 662\nchanged 663\nchanged 664\nchanged 665\nchanged 666\nchanged 667\nchanged 668\nchanged 669\nchanged 670\nchanged 671\nchanged 672\nchanged 673\nchanged 674\nchanged 675\nchanged 676\nchanged 677\nchanged 678\nchanged 679\nchanged 680\nchanged 681\nchanged 682\nchanged 683\nchanged 684\nchanged 685\nchanged 686\nchanged 687\nchanged 688\nchanged 689\nchanged 690\nchanged 691\nchanged 692\nchanged 693\nchanged 694\nchanged 695\nchanged 696\nchanged 697\nchanged 698\nchanged 699",
+     "label": "Large",
+     "from_label": "old",
+     "to_label": "new"
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "label": "Notice",
+      "diff": "x",
+      "stats": "not a mapping",
+      "safety_limits": {
+       "canonical": {
+        "before": {
+         "truncated_bytes": 12,
+         "digest": "sha256:aa"
+        },
+        "after": {
+         "truncated_bytes": 0,
+         "digest": "sha256:bb"
+        },
+        "odd": "not a mapping",
+        "third": {
+         "truncated_bytes": 5,
+         "digest": ""
+        }
+       },
+       "diff": {
+        "truncated_lines": 0,
+        "truncated_bytes": 0,
+        "digest": null
+       },
+       "thresholds": {
+        "canonical_bytes": 0,
+        "diff_bytes": 20,
+        "diff_lines": 2
+       }
+      }
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "label": "Bytes only",
+      "diff": "y",
+      "safety_limits": {
+       "diff": {
+        "truncated_bytes": 16,
+        "digest": "sha256:cc"
+       },
+       "thresholds": {}
+      }
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "label": "No segments",
+      "diff": "z",
+      "safety_limits": {
+       "canonical": {},
+       "thresholds": {
+        "diff_lines": 3
+       }
+      }
+     }
+    }
+   ],
+   "hunt_hits": [
+    {
+     "kind": "hit",
+     "rule": {
+      "name": "rule",
+      "description": "desc <SECRET>",
+      "token_name": "  token  ",
+      "keywords": [
+       "SECRET",
+       "Host"
+      ],
+      "patterns": [
+       "server\\s+(\\S+)"
+      ]
+     },
+     "path": "/tmp/file.txt",
+     "line_number": 3,
+     "excerpt": "SECRET value"
+    },
+    {
+     "kind": "hit",
+     "rule": {
+      "name": "blank",
+      "description": "",
+      "token_name": "   "
+     },
+     "path": "relative/p\u00e9.cfg",
+     "line_number": 10,
+     "excerpt": "<tag attr='1'>"
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "rule": {
+       "name": "token",
+       "description": "desc",
+       "token_name": "secret"
+      },
+      "path": "sample",
+      "line_number": 1,
+      "excerpt": "value"
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "rule": null,
+      "path": null,
+      "excerpt": 5
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "rule": "text rule",
+      "line_number": [
+       1,
+       2
+      ]
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {
+      "rule": {
+       "token_name": 0
+      },
+      "run_metadata": {
+       "prior": 1
+      }
+     }
+    },
+    {
+     "kind": "mapping",
+     "value": {}
+    }
+   ]
+  },
+  "now": "2026-09-15T18:22:05.123456+00:00",
+  "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>Report &lt;&quot;&amp;&#x27;&gt; \ud83d\ude00</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #eee; }\n    h1, h2 { color: #f6c744; }\n    .meta { font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }\n    .warning { border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }\n    .badge {\n      display: inline-block;\n      padding: 0.1rem 0.4rem;\n      border-radius: 0.25rem;\n      font-size: 0.75rem;\n      margin-left: 0.5rem;\n      background: #f6c744;\n      color: #111;\n    }\n    .match,\n    .diff-block,\n    .profile-summary,\n    .hunt-section {\n      border: 1px solid #333;\n      padding: 1rem;\n      margin-bottom: 1rem;\n      background: #1a1a1a;\n    }\n    .match h3 { margin-top: 0; }\n    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }\n    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }\n    .summary-table { margin-bottom: 1rem; }\n    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }\n    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }\n    .diff-stats li { font-size: 0.85rem; color: #ccc; }\n    .diff-safety { font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }\n    .hunt-section ul { margin: 0.5rem 0 0 1rem; }\n    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }\n  </style>\n</head>\n<body>\n\n<div class=\"meta\">Generated at 2026-09-15T18:22:05.123456Z</div>\n<div class=\"warning\">Check &lt;manually&gt;<br/><span class=\"raw\">kept raw</span><br/><spanish><br/><br/>Derived data only. Do not redistribute without legal approval.<br/>Tokens replaced with &amp;lt;&amp;amp;&amp;gt;. Original values are not stored in this report.<br/><span class=\"badge\">Redaction active</span></div>\n<section class=\"match summary\"><h2>Detection Summary</h2><table class=\"summary-table\"><thead><tr><th>Format</th><th>Variant</th><th>Matches</th><th>Peak confidence</th></tr></thead><tbody><tr><td>ini</td><td>Zed</td><td>1</td><td>10000000000000000000000.00</td></tr><tr><td>ini</td><td>\u2014</td><td>1</td><td>0.00</td></tr><tr><td>json</td><td>generic</td><td>2</td><td>0.38</td></tr><tr><td>unknown</td><td>\u2014</td><td>1</td><td>inf</td></tr><tr><td>xml</td><td>\u2014</td><td>1</td><td>0.00</td></tr><tr><td>yaml</td><td>&lt;&amp;&gt;-variant</td><td>1</td><td>0.99</td></tr></tbody></table></section>\n<section class=\"match\"><h3>Match 1: json</h3><p><strong>Plugin:</strong> json | <strong>Variant:</strong> generic</p><p><strong>Confidence:</strong> 0.125</p><h4>Reasons</h4><ul><li>a &lt;reason&gt;</li><li>&lt;&amp;&gt; in reason</li></ul><h4>Metadata</h4><table><tr><th>Alpha</th><td>True</td></tr>\n<tr><th>alpha</th><td>None</td></tr>\n<tr><th>count</th><td>3</td></tr>\n<tr><th>empty</th><td>{}</td></tr>\n<tr><th>inf</th><td>-inf</td></tr>\n<tr><th>list_empty</th><td>[]</td></tr>\n<tr><th>nan</th><td>nan</td></tr>\n<tr><th>nested</th><td>{&#x27;k&#x27;: [&#x27;&lt;&amp;&gt;&#x27;]}</td></tr>\n<tr><th>quote&quot;key</th><td>it&#x27;s &quot;quoted&quot;</td></tr>\n<tr><th>run_id</th><td>&lt;&amp;&gt;-&lt;&amp;&gt;</td></tr>\n<tr><th>zeta</th><td>&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;</td></tr>\n<tr><th>\u00e9t\u00e9</th><td>[1, 2.5, &#x27;&lt;&amp;&gt;&#x27;, {&#x27;inner&#x27;: &#x27;&lt;&amp;&gt; &amp; &lt;b&gt;&#x27;}]</td></tr>\n<tr><th>\uffff</th><td>1180591620717411303424</td></tr>\n<tr><th>\ud83d\ude00</th><td>{&#x27;nested&#x27;: {&#x27;deeper&#x27;: [&#x27;a&#x27;, &#x27;b&#x27;]}, &#x27;flag&#x27;: False}</td></tr></table></section>\n<section class=\"match\"><h3>Match 2: json</h3><p><strong>Plugin:</strong> json | <strong>Variant:</strong> generic</p><p><strong>Confidence:</strong> 0.375</p><h4>Reasons</h4><ul><li>None provided</li></ul><h4>Metadata</h4><table><tr><th>count</th><td>3</td></tr>\n<tr><th>nested</th><td>{&#x27;k&#x27;: [&#x27;&lt;&amp;&gt;&#x27;]}</td></tr>\n<tr><th>run_id</th><td>&lt;&amp;&gt;-&lt;&amp;&gt;</td></tr></table></section>\n<section class=\"match\"><h3>Match 3: xml</h3><p><strong>Plugin:</strong> xml | <strong>Variant:</strong> \u2014</p><p><strong>Confidence:</strong> nan</p><h4>Reasons</h4><ul><li>empty variant</li></ul><h4>Metadata</h4><table><tr><th>count</th><td>3</td></tr>\n<tr><th>nested</th><td>{&#x27;k&#x27;: [&#x27;&lt;&amp;&gt;&#x27;]}</td></tr>\n<tr><th>run_id</th><td>&lt;&amp;&gt;-&lt;&amp;&gt;</td></tr></table></section>\n<section class=\"match\"><h3>Match 4: </h3><p><strong>Plugin:</strong> text | <strong>Variant:</strong> None</p><p><strong>Confidence:</strong> inf</p><h4>Reasons</h4><ul><li>\ud800 lone</li></ul><h4>Metadata</h4><table><tr><th>a</th><td>\u00e9</td></tr>\n<tr><th>b</th><td>\ud835\udd18</td></tr>\n<tr><th>count</th><td>3</td></tr>\n<tr><th>nested</th><td>{&#x27;k&#x27;: [&#x27;&lt;&amp;&gt;&#x27;]}</td></tr>\n<tr><th>run_id</th><td>&lt;&amp;&gt;-&lt;&amp;&gt;</td></tr></table></section>\n<section class=\"match\"><h3>Match 5: ini</h3><p><strong>Plugin:</strong> ini | <strong>Variant:</strong> \u2014</p><p><strong>Confidence:</strong> 1e-07</p><h4>Reasons</h4><ul><li>dash variant</li></ul><h4>Metadata</h4><table><tr><th>count</th><td>3</td></tr>\n<tr><th>nested</th><td>{&#x27;k&#x27;: [&#x27;&lt;&amp;&gt;&#x27;]}</td></tr>\n<tr><th>run_id</th><td>&lt;&amp;&gt;-&lt;&amp;&gt;</td></tr></table></section>\n<section class=\"match\"><h3>Match 6: ini</h3><p><strong>Plugin:</strong> ini | <strong>Variant:</strong> Zed</p><p><strong>Confidence:</strong> 1e+22</p><h4>Reasons</h4><ul><li>z</li></ul><h4>Metadata</h4><table><tr><th>count</th><td>3</td></tr>\n<tr><th>nested</th><td>{&#x27;k&#x27;: [&#x27;&lt;&amp;&gt;&#x27;]}</td></tr>\n<tr><th>run_id</th><td>&lt;&amp;&gt;-&lt;&amp;&gt;</td></tr></table></section>\n<section class=\"match\"><h3>Match 7: yaml</h3><p><strong>Plugin:</strong> yaml | <strong>Variant:</strong> &lt;&amp;&gt;-variant</p><p><strong>Confidence:</strong> 0.995</p><h4>Reasons</h4><ul><li>None provided</li></ul><h4>Metadata</h4><table><tr><th>count</th><td>3</td></tr>\n<tr><th>nested</th><td>{&#x27;k&#x27;: [&#x27;&lt;&amp;&gt;&#x27;]}</td></tr>\n<tr><th>run_id</th><td>&lt;&amp;&gt;-&lt;&amp;&gt;</td></tr></table></section>\n<section class=\"profile-summary\"><h2>Profile Summary</h2><ul><li>Total Profiles: 2</li><li>Total Tags: &lt;tags&gt;</li></ul><table><thead><tr><th>Name</th><th>Configs</th><th>Config IDs</th></tr></thead><tbody><tr><td>default</td><td>1</td><td>cfg1, &lt;&amp;&gt;-cfg</td></tr><tr><td>None</td><td><b>raw</b></td><td>a, b, c</td></tr><tr><td>None</td><td>0</td><td>\u2014</td></tr></tbody></table></section>\n<section class=\"diffs\"><h2>Configuration Diffs</h2><article class=\"diff-block\"><h3>Direct</h3><pre></pre></article><article class=\"diff-block\"><h3>Diff</h3><pre></pre></article><article class=\"diff-block\"><h3>Stats &lt;x&gt;</h3><ul class=\"diff-stats\"><li>added_lines: 1</li><li>odd&lt;key&gt;: v&amp;</li></ul><pre>-a &lt;b&gt;\n+&lt;&amp;&gt;</pre></article><article class=\"diff-block\"><h3>&lt;&amp;&gt;</h3><ul class=\"diff-stats\"><li>added_lines: 0</li><li>removed_lines: 0</li><li>changed_lines: 1</li></ul><pre>--- before\n+++ after\n@@ -1,3 +1,3 @@\n a\n-&lt;&amp;&gt;\n+b\n c</pre></article><article class=\"diff-block\"><h3>Large</h3><ul class=\"diff-stats\"><li>added_lines: 0</li><li>removed_lines: 0</li><li>changed_lines: 700</li></ul><p class=\"diff-safety\">Diff output truncated for safety: diff truncated 803 lines (digest sha256:94b8b35bc69b63a298ac473d1b65bde561937eea1677700242a4191e86872830); thresholds: canonical\u2264262144 bytes, diff\u2264131072 bytes, diff\u2264600 lines</p><pre>--- old\n+++ new\n@@ -1,700 +1,700 @@\n-line 0\n-line 1\n-line 2\n-line 3\n-line 4\n-line 5\n-line 6\n-line 7\n-line 8\n-line 9\n-line 10\n-line 11\n-line 12\n-line 13\n-line 14\n-line 15\n-line 16\n-line 17\n-line 18\n-line 19\n-line 20\n-line 21\n-line 22\n-line 23\n-line 24\n-line 25\n-line 26\n-line 27\n-line 28\n-line 29\n-line 30\n-line 31\n-line 32\n-line 33\n-line 34\n-line 35\n-line 36\n-line 37\n-line 38\n-line 39\n-line 40\n-line 41\n-line 42\n-line 43\n-line 44\n-line 45\n-line 46\n-line 47\n-line 48\n-line 49\n-line 50\n-line 51\n-line 52\n-line 53\n-line 54\n-line 55\n-line 56\n-line 57\n-line 58\n-line 59\n-line 60\n-line 61\n-line 62\n-line 63\n-line 64\n-line 65\n-line 66\n-line 67\n-line 68\n-line 69\n-line 70\n-line 71\n-line 72\n-line 73\n-line 74\n-line 75\n-line 76\n-line 77\n-line 78\n-line 79\n-line 80\n-line 81\n-line 82\n-line 83\n-line 84\n-line 85\n-line 86\n-line 87\n-line 88\n-line 89\n-line 90\n-line 91\n-line 92\n-line 93\n-line 94\n-line 95\n-line 96\n-line 97\n-line 98\n-line 99\n-line 100\n-line 101\n-line 102\n-line 103\n-line 104\n-line 105\n-line 106\n-line 107\n-line 108\n-line 109\n-line 110\n-line 111\n-line 112\n-line 113\n-line 114\n-line 115\n-line 116\n-line 117\n-line 118\n-line 119\n-line 120\n-line 121\n-line 122\n-line 123\n-line 124\n-line 125\n-line 126\n-line 127\n-line 128\n-line 129\n-line 130\n-line 131\n-line 132\n-line 133\n-line 134\n-line 135\n-line 136\n-line 137\n-line 138\n-line 139\n-line 140\n-line 141\n-line 142\n-line 143\n-line 144\n-line 145\n-line 146\n-line 147\n-line 148\n-line 149\n-line 150\n-line 151\n-line 152\n-line 153\n-line 154\n-line 155\n-line 156\n-line 157\n-line 158\n-line 159\n-line 160\n-line 161\n-line 162\n-line 163\n-line 164\n-line 165\n-line 166\n-line 167\n-line 168\n-line 169\n-line 170\n-line 171\n-line 172\n-line 173\n-line 174\n-line 175\n-line 176\n-line 177\n-line 178\n-line 179\n-line 180\n-line 181\n-line 182\n-line 183\n-line 184\n-line 185\n-line 186\n-line 187\n-line 188\n-line 189\n-line 190\n-line 191\n-line 192\n-line 193\n-line 194\n-line 195\n-line 196\n-line 197\n-line 198\n-line 199\n-line 200\n-line 201\n-line 202\n-line 203\n-line 204\n-line 205\n-line 206\n-line 207\n-line 208\n-line 209\n-line 210\n-line 211\n-line 212\n-line 213\n-line 214\n-line 215\n-line 216\n-line 217\n-line 218\n-line 219\n-line 220\n-line 221\n-line 222\n-line 223\n-line 224\n-line 225\n-line 226\n-line 227\n-line 228\n-line 229\n-line 230\n-line 231\n-line 232\n-line 233\n-line 234\n-line 235\n-line 236\n-line 237\n-line 238\n-line 239\n-line 240\n-line 241\n-line 242\n-line 243\n-line 244\n-line 245\n-line 246\n-line 247\n-line 248\n-line 249\n-line 250\n-line 251\n-line 252\n-line 253\n-line 254\n-line 255\n-line 256\n-line 257\n-line 258\n-line 259\n-line 260\n-line 261\n-line 262\n-line 263\n-line 264\n-line 265\n-line 266\n-line 267\n-line 268\n-line 269\n-line 270\n-line 271\n-line 272\n-line 273\n-line 274\n-line 275\n-line 276\n-line 277\n-line 278\n-line 279\n-line 280\n-line 281\n-line 282\n-line 283\n-line 284\n-line 285\n-line 286\n-line 287\n-line 288\n-line 289\n-line 290\n-line 291\n-line 292\n-line 293\n-line 294\n-line 295\n-line 296\n-line 297\n-line 298\n-line 299\n-line 300\n-line 301\n-line 302\n-line 303\n-line 304\n-line 305\n-line 306\n-line 307\n-line 308\n-line 309\n-line 310\n-line 311\n-line 312\n-line 313\n-line 314\n-line 315\n-line 316\n-line 317\n-line 318\n-line 319\n-line 320\n-line 321\n-line 322\n-line 323\n-line 324\n-line 325\n-line 326\n-line 327\n-line 328\n-line 329\n-line 330\n-line 331\n-line 332\n-line 333\n-line 334\n-line 335\n-line 336\n-line 337\n-line 338\n-line 339\n-line 340\n-line 341\n-line 342\n-line 343\n-line 344\n-line 345\n-line 346\n-line 347\n-line 348\n-line 349\n-line 350\n-line 351\n-line 352\n-line 353\n-line 354\n-line 355\n-line 356\n-line 357\n-line 358\n-line 359\n-line 360\n-line 361\n-line 362\n-line 363\n-line 364\n-line 365\n-line 366\n-line 367\n-line 368\n-line 369\n-line 370\n-line 371\n-line 372\n-line 373\n-line 374\n-line 375\n-line 376\n-line 377\n-line 378\n-line 379\n-line 380\n-line 381\n-line 382\n-line 383\n-line 384\n-line 385\n-line 386\n-line 387\n-line 388\n-line 389\n-line 390\n-line 391\n-line 392\n-line 393\n-line 394\n-line 395\n-line 396\n-line 397\n-line 398\n-line 399\n-line 400\n-line 401\n-line 402\n-line 403\n-line 404\n-line 405\n-line 406\n-line 407\n-line 408\n-line 409\n-line 410\n-line 411\n-line 412\n-line 413\n-line 414\n-line 415\n-line 416\n-line 417\n-line 418\n-line 419\n-line 420\n-line 421\n-line 422\n-line 423\n-line 424\n-line 425\n-line 426\n-line 427\n-line 428\n-line 429\n-line 430\n-line 431\n-line 432\n-line 433\n-line 434\n-line 435\n-line 436\n-line 437\n-line 438\n-line 439\n-line 440\n-line 441\n-line 442\n-line 443\n-line 444\n-line 445\n-line 446\n-line 447\n-line 448\n-line 449\n-line 450\n-line 451\n-line 452\n-line 453\n-line 454\n-line 455\n-line 456\n-line 457\n-line 458\n-line 459\n-line 460\n-line 461\n-line 462\n-line 463\n-line 464\n-line 465\n-line 466\n-line 467\n-line 468\n-line 469\n-line 470\n-line 471\n-line 472\n-line 473\n-line 474\n-line 475\n-line 476\n-line 477\n-line 478\n-line 479\n-line 480\n-line 481\n-line 482\n-line 483\n-line 484\n-line 485\n-line 486\n-line 487\n-line 488\n-line 489\n-line 490\n-line 491\n-line 492\n-line 493\n-line 494\n-line 495\n-line 496\n-line 497\n-line 498\n-line 499\n-line 500\n-line 501\n-line 502\n-line 503\n-line 504\n-line 505\n-line 506\n-line 507\n-line 508\n-line 509\n-line 510\n-line 511\n-line 512\n-line 513\n-line 514\n-line 515\n-line 516\n-line 517\n-line 518\n-line 519\n-line 520\n-line 521\n-line 522\n-line 523\n-line 524\n-line 525\n-line 526\n-line 527\n-line 528\n-line 529\n-line 530\n-line 531\n-line 532\n-line 533\n-line 534\n-line 535\n-line 536\n-line 537\n-line 538\n-line 539\n-line 540\n-line 541\n-line 542\n-line 543\n-line 544\n-line 545\n-line 546\n-line 547\n-line 548\n-line 549\n-line 550\n-line 551\n-line 552\n-line 553\n-line 554\n-line 555\n-line 556\n-line 557\n-line 558\n-line 559\n-line 560\n-line 561\n-line 562\n-line 563\n-line 564\n-line 565\n-line 566\n-line 567\n-line 568\n-line 569\n-line 570\n-line 571\n-line 572\n-line 573\n-line 574\n-line 575\n-line 576\n-line 577\n-line 578\n-line 579\n-line 580\n-line 581\n-line 582\n-line 583\n-line 584\n-line 585\n-line 586\n-line 587\n-line 588\n-line 589\n-line 590\n-line 591\n-line 592\n-line 593\n-line 594\n-line 595\n-line 596\n\u2026 [diff t&lt;&amp;&gt;cated 803 lines for safety; digest=sha256:94b8b35bc69b63a298ac473d1b65bde561937eea1677700242a4191e86872830]</pre></article><article class=\"diff-block\"><h3>Notice</h3><p class=\"diff-safety\">Diff output truncated for safety: before canonical truncated 12 bytes (digest sha256:aa); third canonical truncated 5 bytes; diff output truncated; thresholds: diff\u226420 bytes, diff\u22642 lines</p><pre>x</pre></article><article class=\"diff-block\"><h3>Bytes only</h3><p class=\"diff-safety\">Diff output truncated for safety: diff truncated 16 bytes (digest sha256:cc)</p><pre>y</pre></article><article class=\"diff-block\"><h3>No segments</h3><pre>z</pre></article></section>\n<section class=\"hunt-section\"><h2>Hunt Highlights</h2><ul><li><strong>/tmp/file.txt</strong> \u2014 line 3<br/><em>desc &lt;&lt;&amp;&gt;&gt;</em> <span class=\"badge\">token: token</span><br/><code>&lt;&amp;&gt; value</code></li><li><strong>relative/p\u00e9.cfg</strong> \u2014 line 10<br/><em></em> <br/><code>&lt;tag attr=&#x27;1&#x27;&gt;</code></li><li><strong>sample</strong> \u2014 line 1<br/><em>desc</em> <span class=\"badge\">token: &lt;&amp;&gt;</span><br/><code>value</code></li><li><strong>None</strong> \u2014 line None<br/><em></em> <br/><code>5</code></li><li><strong>None</strong> \u2014 line [1, 2]<br/><em></em> <br/><code>None</code></li><li><strong>None</strong> \u2014 line None<br/><em>None</em> <br/><code>None</code></li><li><strong>None</strong> \u2014 line None<br/><em>None</em> <br/><code>None</code></li></ul></section>\n<div class=\"redaction-summary\">\n<h2>Redaction Summary</h2>\n<ul>\n<li>Diff \u2192 &lt;&amp;&gt; (occurrences: 1)</li>\n<li>SECRET \u2192 &lt;&amp;&gt; (occurrences: 38)</li>\n<li>run \u2192 &lt;&amp;&gt; (occurrences: 16)</li>\n<li>secret \u2192 &lt;&amp;&gt; (occurrences: 3)</li>\n</ul>\n<p>Handle &amp; &lt;care&gt;</p></div>\n</body></html>"
+ },
+ {
+  "case": {
+   "name": "mask-tokens-no-hits",
+   "matches": [
+    {
+     "plugin": "ini",
+     "format": "ini",
+     "variant": "\u2014",
+     "confidence": 1e-07,
+     "reasons": [
+      "dash variant"
+     ]
+    }
+   ],
+   "mask_tokens": [
+    "absent"
+   ],
+   "placeholder": "##",
+   "warnings": []
+  },
+  "now": "2026-01-02T03:04:05+00:00",
+  "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>DriftBuster Report</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #eee; }\n    h1, h2 { color: #f6c744; }\n    .meta { font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }\n    .warning { border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }\n    .badge {\n      display: inline-block;\n      padding: 0.1rem 0.4rem;\n      border-radius: 0.25rem;\n      font-size: 0.75rem;\n      margin-left: 0.5rem;\n      background: #f6c744;\n      color: #111;\n    }\n    .match,\n    .diff-block,\n    .profile-summary,\n    .hunt-section {\n      border: 1px solid #333;\n      padding: 1rem;\n      margin-bottom: 1rem;\n      background: #1a1a1a;\n    }\n    .match h3 { margin-top: 0; }\n    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }\n    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }\n    .summary-table { margin-bottom: 1rem; }\n    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }\n    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }\n    .diff-stats li { font-size: 0.85rem; color: #ccc; }\n    .diff-safety { font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }\n    .hunt-section ul { margin: 0.5rem 0 0 1rem; }\n    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }\n  </style>\n</head>\n<body>\n\n<div class=\"meta\">Generated at 2026-01-02T03:04:05Z</div>\n<div class=\"warning\">Derived data only. Do not redistribute without legal approval.<br/>Tokens replaced with ##. Original values are not stored in this report.<br/><span class=\"badge\">Redaction active</span></div>\n<section class=\"match summary\"><h2>Detection Summary</h2><table class=\"summary-table\"><thead><tr><th>Format</th><th>Variant</th><th>Matches</th><th>Peak confidence</th></tr></thead><tbody><tr><td>ini</td><td>\u2014</td><td>1</td><td>0.00</td></tr></tbody></table></section>\n<section class=\"match\"><h3>Match 1: ini</h3><p><strong>Plugin:</strong> ini | <strong>Variant:</strong> \u2014</p><p><strong>Confidence:</strong> 1e-07</p><h4>Reasons</h4><ul><li>dash variant</li></ul><h4>Metadata</h4><table></table></section>\n<div class=\"redaction-summary\">\n<h2>Redaction Summary</h2>\n<p>No configured tokens were encountered in this report. Manually inspect before external sharing.</p></div>\n</body></html>"
+ },
+ {
+  "case": {
+   "name": "mask-tokens-hits-summary-only",
+   "matches": [
+    {
+     "plugin": "ini",
+     "format": "ini",
+     "variant": "Zed",
+     "confidence": 1e+22,
+     "reasons": [
+      "z"
+     ]
+    }
+   ],
+   "mask_tokens": [
+    "Zed",
+    "z",
+    "ini"
+   ],
+   "extra_metadata": {},
+   "profile_summary": {},
+   "hunt_hits": [],
+   "diffs": []
+  },
+  "now": "2026-09-15T18:22:05.123456+00:00",
+  "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>DriftBuster Report</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #eee; }\n    h1, h2 { color: #f6c744; }\n    .meta { font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }\n    .warning { border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }\n    .badge {\n      display: inline-block;\n      padding: 0.1rem 0.4rem;\n      border-radius: 0.25rem;\n      font-size: 0.75rem;\n      margin-left: 0.5rem;\n      background: #f6c744;\n      color: #111;\n    }\n    .match,\n    .diff-block,\n    .profile-summary,\n    .hunt-section {\n      border: 1px solid #333;\n      padding: 1rem;\n      margin-bottom: 1rem;\n      background: #1a1a1a;\n    }\n    .match h3 { margin-top: 0; }\n    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }\n    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }\n    .summary-table { margin-bottom: 1rem; }\n    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }\n    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }\n    .diff-stats li { font-size: 0.85rem; color: #ccc; }\n    .diff-safety { font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }\n    .hunt-section ul { margin: 0.5rem 0 0 1rem; }\n    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }\n  </style>\n</head>\n<body>\n\n<div class=\"meta\">Generated at 2026-09-15T18:22:05.123456Z</div>\n<div class=\"warning\">Derived data only. Do not redistribute without legal approval.<br/>Tokens replaced with [REDACTED]. Original values are not stored in this report.<br/><span class=\"badge\">Redaction active</span></div>\n<section class=\"match summary\"><h2>Detection Summary</h2><table class=\"summary-table\"><thead><tr><th>Format</th><th>Variant</th><th>Matches</th><th>Peak confidence</th></tr></thead><tbody><tr><td>[REDACTED]</td><td>[REDACTED]</td><td>1</td><td>10000000000000000000000.00</td></tr></tbody></table></section>\n<section class=\"match\"><h3>Match 1: [REDACTED]</h3><p><strong>Plugin:</strong> [REDACTED] | <strong>Variant:</strong> [REDACTED]</p><p><strong>Confidence:</strong> 1e+22</p><h4>Reasons</h4><ul><li>[REDACTED]</li></ul><h4>Metadata</h4><table></table></section>\n<div class=\"redaction-summary\">\n<h2>Redaction Summary</h2>\n<ul>\n<li>Zed \u2192 [REDACTED] (occurrences: 1)</li>\n<li>ini \u2192 [REDACTED] (occurrences: 2)</li>\n<li>z \u2192 [REDACTED] (occurrences: 1)</li>\n</ul></div>\n</body></html>"
+ },
+ {
+  "case": {
+   "name": "extra-metadata-only",
+   "matches": [
+    {
+     "plugin": "yaml",
+     "format": "yaml",
+     "variant": "secret-variant",
+     "confidence": 0.995,
+     "reasons": []
+    },
+    {
+     "plugin": "json",
+     "format": "json",
+     "variant": "generic",
+     "confidence": 0.125,
+     "reasons": [
+      "a <reason>",
+      "SECRET in reason"
+     ],
+     "metadata": {
+      "zeta": "<script>alert('x')</script>",
+      "Alpha": true,
+      "alpha": null,
+      "\u00e9t\u00e9": [
+       1,
+       2.5,
+       "SECRET",
+       {
+        "inner": "SECRET & <b>"
+       }
+      ],
+      "\ud83d\ude00": {
+       "nested": {
+        "deeper": [
+         "a",
+         "b"
+        ]
+       },
+       "flag": false
+      },
+      "\uffff": 1180591620717411303424,
+      "nan": NaN,
+      "inf": -Infinity,
+      "empty": {},
+      "list_empty": [],
+      "quote\"key": "it's \"quoted\""
+     }
+    }
+   ],
+   "extra_metadata": {
+    "run_id": "abc",
+    "zz": [
+     true,
+     null
+    ]
+   },
+   "profile_summary": {
+    "profiles": [
+     {
+      "name": "p",
+      "config_count": 0,
+      "config_ids": [
+       1,
+       2.5,
+       null
+      ]
+     }
+    ]
+   },
+   "hunt_hits": [
+    {
+     "kind": "mapping",
+     "value": {
+      "rule": {
+       "name": "r"
+      },
+      "path": "p",
+      "line_number": 1,
+      "excerpt": "e"
+     }
+    }
+   ]
+  },
+  "now": "2026-01-02T03:04:05+00:00",
+  "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>DriftBuster Report</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #eee; }\n    h1, h2 { color: #f6c744; }\n    .meta { font-size: 0.9rem; color: #ccc; margin-bottom: 1rem; }\n    .warning { border: 1px solid #d9534f; padding: 1rem; margin-bottom: 1.5rem; background: #2a0000; }\n    .badge {\n      display: inline-block;\n      padding: 0.1rem 0.4rem;\n      border-radius: 0.25rem;\n      font-size: 0.75rem;\n      margin-left: 0.5rem;\n      background: #f6c744;\n      color: #111;\n    }\n    .match,\n    .diff-block,\n    .profile-summary,\n    .hunt-section {\n      border: 1px solid #333;\n      padding: 1rem;\n      margin-bottom: 1rem;\n      background: #1a1a1a;\n    }\n    .match h3 { margin-top: 0; }\n    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }\n    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }\n    .summary-table { margin-bottom: 1rem; }\n    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }\n    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }\n    .diff-stats li { font-size: 0.85rem; color: #ccc; }\n    .diff-safety { font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }\n    .hunt-section ul { margin: 0.5rem 0 0 1rem; }\n    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }\n  </style>\n</head>\n<body>\n\n<div class=\"meta\">Generated at 2026-01-02T03:04:05Z</div>\n<div class=\"warning\">Derived data only. Do not redistribute without legal approval.</div>\n<section class=\"match summary\"><h2>Detection Summary</h2><table class=\"summary-table\"><thead><tr><th>Format</th><th>Variant</th><th>Matches</th><th>Peak confidence</th></tr></thead><tbody><tr><td>json</td><td>generic</td><td>1</td><td>0.12</td></tr><tr><td>yaml</td><td>secret-variant</td><td>1</td><td>0.99</td></tr></tbody></table></section>\n<section class=\"match\"><h3>Match 1: yaml</h3><p><strong>Plugin:</strong> yaml | <strong>Variant:</strong> secret-variant</p><p><strong>Confidence:</strong> 0.995</p><h4>Reasons</h4><ul><li>None provided</li></ul><h4>Metadata</h4><table><tr><th>run_id</th><td>abc</td></tr>\n<tr><th>zz</th><td>[True, None]</td></tr></table></section>\n<section class=\"match\"><h3>Match 2: json</h3><p><strong>Plugin:</strong> json | <strong>Variant:</strong> generic</p><p><strong>Confidence:</strong> 0.125</p><h4>Reasons</h4><ul><li>a &lt;reason&gt;</li><li>SECRET in reason</li></ul><h4>Metadata</h4><table><tr><th>Alpha</th><td>True</td></tr>\n<tr><th>alpha</th><td>None</td></tr>\n<tr><th>empty</th><td>{}</td></tr>\n<tr><th>inf</th><td>-inf</td></tr>\n<tr><th>list_empty</th><td>[]</td></tr>\n<tr><th>nan</th><td>nan</td></tr>\n<tr><th>quote&quot;key</th><td>it&#x27;s &quot;quoted&quot;</td></tr>\n<tr><th>run_id</th><td>abc</td></tr>\n<tr><th>zeta</th><td>&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;</td></tr>\n<tr><th>zz</th><td>[True, None]</td></tr>\n<tr><th>\u00e9t\u00e9</th><td>[1, 2.5, &#x27;SECRET&#x27;, {&#x27;inner&#x27;: &#x27;SECRET &amp; &lt;b&gt;&#x27;}]</td></tr>\n<tr><th>\uffff</th><td>1180591620717411303424</td></tr>\n<tr><th>\ud83d\ude00</th><td>{&#x27;nested&#x27;: {&#x27;deeper&#x27;: [&#x27;a&#x27;, &#x27;b&#x27;]}, &#x27;flag&#x27;: False}</td></tr></table></section>\n<section class=\"profile-summary\"><h2>Profile Summary</h2><table><thead><tr><th>Name</th><th>Configs</th><th>Config IDs</th></tr></thead><tbody><tr><td>p</td><td>0</td><td>1, 2.5, None</td></tr></tbody></table></section>\n<section class=\"hunt-section\"><h2>Hunt Highlights</h2><ul><li><strong>p</strong> \u2014 line 1<br/><em>None</em> <br/><code>e</code></li></ul></section>\n<div class=\"redaction-summary\">\n<h2>Redaction Summary</h2>\n<p>No configured tokens were encountered in this report. Manually inspect before external sharing.</p></div>\n</body></html>"
+ }
+]

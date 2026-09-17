@@ -1,0 +1,21 @@
+{
+ "database": {
+  "script": "audit.sql"
+ },
+ "options": {
+  "tables": [
+   "accounts"
+  ],
+  "exclude_tables": [
+   "nonexistent"
+  ],
+  "mask_columns": [
+   "accounts.secret"
+  ],
+  "hash_columns": [
+   "accounts.email"
+  ],
+  "limit": 1,
+  "hash_salt": "fixed-salt"
+ }
+}

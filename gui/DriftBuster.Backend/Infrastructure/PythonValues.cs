@@ -5,9 +5,9 @@ namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
 /// Python <c>==</c>, <c>hash()</c> and <c>&lt;</c> over the values <see cref="PythonJson"/> produces: bool, int and float compare
-/// as numbers (<c>True == 1 == 1.0</c>), str by code point, lists element by element and dicts by their items, each element
-/// compared by identity first as CPython's containers do. Lists and dicts are unhashable, and <c>&lt;</c> exists only between two
-/// strs or two numbers.
+/// as numbers (<c>True == 1 == 1.0</c>), str by code point, lists and tuples (<see cref="object"/> arrays) element by element and dicts
+/// by their items, each element compared by identity first as CPython's containers do. A list never equals a tuple. Lists and dicts are
+/// unhashable (a tuple hashes when its items do), and <c>&lt;</c> exists only between two strs, two numbers, two lists or two tuples.
 /// </summary>
 public static class PythonValues
 {
@@ -37,7 +37,9 @@ public static class PythonValues
             (string a, string b) => string.Equals(a, b, StringComparison.Ordinal),
             (IReadOnlyDictionary<string, object?> a, IReadOnlyDictionary<string, object?> b) => DictsEqual(a, b),
             (string, _) or (_, string) => false,
-            (IList a, IList b) => a.Count == b.Count && Enumerable.Range(0, a.Count).All(index => Equal(a[index], b[index])),
+            (object?[] a, object?[] b) => SequencesEqual(a, b),
+            (object?[], _) or (_, object?[]) => false,
+            (IList a, IList b) => SequencesEqual(a, b),
             _ => false,
         };
     }
@@ -55,8 +57,42 @@ public static class PythonValues
             return CompareNumbers(left, right) < 0;
         }
 
+        if (left is object?[] leftTuple && right is object?[] rightTuple)
+        {
+            return SequenceLessThan(leftTuple, rightTuple);
+        }
+
+        if (left is IList leftList and not (object?[] or IDictionary) && right is IList rightList and not (object?[] or IDictionary))
+        {
+            return SequenceLessThan(leftList, rightList);
+        }
+
         throw new PythonTypeException(
             $"'<' not supported between instances of '{PythonBuiltins.TypeName(left)}' and '{PythonBuiltins.TypeName(right)}'",
+            nameof(left));
+    }
+
+    /// <summary><c>left &lt;= right</c>; <c>TypeError</c> (<see cref="PythonTypeException"/>) when the two have no ordering. A NaN is never <c>&lt;=</c> anything.</summary>
+    public static bool LessThanOrEqual(object? left, object? right)
+    {
+        if (left is string a && right is string b)
+        {
+            return PathText.CompareCodePoints(a, b) <= 0;
+        }
+
+        if (left is not null && right is not null && IsNumber(left) && IsNumber(right))
+        {
+            return CompareNumbers(left, right) <= 0;
+        }
+
+        if ((left is object?[] && right is object?[])
+            || (left is IList and not (object?[] or IDictionary) && right is IList and not (object?[] or IDictionary)))
+        {
+            return Equal(left, right) || LessThan(left, right);
+        }
+
+        throw new PythonTypeException(
+            $"'<=' not supported between instances of '{PythonBuiltins.TypeName(left)}' and '{PythonBuiltins.TypeName(right)}'",
             nameof(left));
     }
 
@@ -77,6 +113,25 @@ public static class PythonValues
         }
 
         return value >= long.MinValue && value <= long.MaxValue ? (long)value : (object)value;
+    }
+
+    private static bool SequencesEqual(IList left, IList right)
+        => left.Count == right.Count && Enumerable.Range(0, left.Count).All(index => Equal(left[index], right[index]));
+
+    // list_richcompare / tuplerichcompare: the first index whose items are not equal decides with that pair's "<"; with none, the
+    // shorter sequence is less.
+    private static bool SequenceLessThan(IList left, IList right)
+    {
+        var shared = Math.Min(left.Count, right.Count);
+        for (var index = 0; index < shared; index++)
+        {
+            if (!Equal(left[index], right[index]))
+            {
+                return LessThan(left[index], right[index]);
+            }
+        }
+
+        return left.Count < right.Count;
     }
 
     private static bool DictsEqual(IReadOnlyDictionary<string, object?> left, IReadOnlyDictionary<string, object?> right)
@@ -133,6 +188,7 @@ public static class PythonValues
             string text => StringComparer.Ordinal.GetHashCode(text),
             double real => double.IsNaN(real) ? 0 : real.GetHashCode(),
             bool or int or long or BigInteger => ((double)ToInteger(obj)).GetHashCode(),
+            object?[] tuple => tuple.Aggregate(tuple.Length, (hash, item) => HashCode.Combine(hash, GetHashCode(item))),
             _ => throw new PythonTypeException($"unhashable type: '{PythonBuiltins.TypeName(obj)}'", nameof(obj)),
         };
     }

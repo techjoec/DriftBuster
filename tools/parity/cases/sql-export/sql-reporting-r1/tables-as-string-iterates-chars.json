@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "char-tables.sql"
+ },
+ "options": {
+  "tables": "ab"
+ }
+}

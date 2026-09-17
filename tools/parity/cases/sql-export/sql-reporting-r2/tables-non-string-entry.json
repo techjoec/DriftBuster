@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "many-tables.sql"
+ },
+ "options": {
+  "tables": [
+   1,
+   "t2"
+  ]
+ }
+}

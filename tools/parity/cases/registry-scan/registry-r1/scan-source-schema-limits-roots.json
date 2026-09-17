@@ -1,0 +1,139 @@
+{
+ "enumerate": false,
+ "scan_sources": [
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_depth": "3",
+    "max_hits": 2.7,
+    "time_budget_s": "1.5"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_depth": null
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_depth": 123456789012345678901234567890
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": "hkcu\\Software\\X,view=32"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": {
+     "hive": "hklm",
+     "path": " P ",
+     "view": "Auto"
+    }
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": null,
+      "path": "P"
+     },
+     {
+      "hive": "x",
+      "path": "P",
+      "view": 64
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "HKLM"
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "HKLM",
+      "path": "p",
+      "view": "16"
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     5
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": true
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": []
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     "HKLM\\A",
+     "bad"
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "HKLM",
+      "path": "p",
+      "view": " "
+     }
+    ]
+   },
+   "alias": "my alias!"
+  },
+  {
+   "registry_scan": {
+    "token": 12
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "Vendor \u00c9t\u00e9/App"
+   },
+   "alias": true
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "time_budget_s": "inf",
+    "max_hits": "-1"
+   }
+  }
+ ]
+}

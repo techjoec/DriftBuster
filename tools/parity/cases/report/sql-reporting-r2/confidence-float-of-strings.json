@@ -1,0 +1,60 @@
+{
+ "matches": [
+  {
+   "plugin": "a",
+   "format": "f",
+   "variant": "v",
+   "confidence": "0.5",
+   "reasons": []
+  },
+  {
+   "plugin": "a",
+   "format": "f",
+   "variant": "v",
+   "confidence": " 1_0 ",
+   "reasons": []
+  },
+  {
+   "plugin": "a",
+   "format": "f",
+   "variant": "w",
+   "confidence": "nan",
+   "reasons": []
+  },
+  {
+   "plugin": "a",
+   "format": "f",
+   "variant": "w",
+   "confidence": "-Infinity",
+   "reasons": []
+  },
+  {
+   "plugin": "a",
+   "format": "f",
+   "variant": "x",
+   "confidence": "٠.٥",
+   "reasons": []
+  },
+  {
+   "plugin": "a",
+   "format": "f",
+   "variant": "x",
+   "confidence": "1e-7",
+   "reasons": []
+  },
+  {
+   "plugin": "a",
+   "format": "g",
+   "variant": "x",
+   "confidence": true,
+   "reasons": []
+  },
+  {
+   "plugin": "a",
+   "format": "g",
+   "variant": "y",
+   "confidence": "0x10",
+   "reasons": []
+  }
+ ]
+}

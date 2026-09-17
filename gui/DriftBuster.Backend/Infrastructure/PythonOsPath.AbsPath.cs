@@ -14,8 +14,8 @@ public static partial class PythonOsPath
         {
             // ntpath.abspath: normpath (which drops trailing separators) and then GetFullPathNameW.
             var full = Path.GetFullPath(path.Length == 0 ? "." : path);
-            var anchor = Path.GetPathRoot(full) ?? string.Empty;
-            return full.Length > anchor.Length ? full.TrimEnd('\\', '/') : full;
+            var (drive, root, _) = PythonNtPath.SplitRoot(full);
+            return full.Length > drive.Length + root.Length ? full.TrimEnd('\\', '/') : full;
         }
 
         return NormPath(path.StartsWith('/') ? path : Join(Directory.GetCurrentDirectory(), path));
@@ -71,15 +71,7 @@ public static partial class PythonOsPath
         ArgumentNullException.ThrowIfNull(path);
         if (OperatingSystem.IsWindows())
         {
-            var anchor = Path.GetPathRoot(path) ?? string.Empty;
-            var rest = path[anchor.Length..];
-            var cut = rest.Length;
-            while (cut > 0 && rest[cut - 1] is not ('/' or '\\'))
-            {
-                cut--;
-            }
-
-            return (anchor + rest[..cut].TrimEnd('/', '\\'), rest[cut..]);
+            return PythonNtPath.Split(path);
         }
 
         var index = path.LastIndexOf('/') + 1;
@@ -92,14 +84,17 @@ public static partial class PythonOsPath
         return (head, path[index..]);
     }
 
-    /// <summary><c>os.path.join(path, name)</c>: a rooted <paramref name="name"/> replaces the path; otherwise one separator joins them.</summary>
+    /// <summary>
+    /// <c>os.path.join(path, name)</c>: a rooted <paramref name="name"/> replaces the path (on Windows keeping the path's drive when
+    /// <paramref name="name"/> has none, <see cref="PythonNtPath.Join"/>); otherwise one separator joins them.
+    /// </summary>
     public static string Join(string path, string name)
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(name);
         if (OperatingSystem.IsWindows())
         {
-            return Path.IsPathRooted(name) || path.Length == 0 ? name : path[^1] is '/' or '\\' or ':' ? path + name : path + "\\" + name;
+            return PythonNtPath.Join(path, name);
         }
 
         if (name.StartsWith('/'))

@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "odd-names.sql"
+ },
+ "options": {
+  "tables": [
+   "t t"
+  ]
+ }
+}

@@ -1,0 +1,106 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "A",
+   "view": "auto",
+   "values": [
+    [
+     "V",
+     "x"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "A",
+   "view": "32",
+   "subkeys": [
+    "B"
+   ],
+   "values": [
+    [
+     "V",
+     "y"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "A\\B",
+   "values": [
+    [
+     "",
+     ""
+    ],
+    [
+     "E",
+     [
+      null
+     ]
+    ],
+    [
+     "F",
+     []
+    ]
+   ]
+  }
+ ],
+ "enumerate": false,
+ "searches": [
+  {
+   "roots": [
+    [
+     "HKLM",
+     "A",
+     "auto"
+    ],
+    [
+     "HKLM",
+     "A",
+     "32"
+    ],
+    [
+     "HKLM",
+     "A",
+     null
+    ]
+   ],
+   "keywords": [
+    ""
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "A",
+     "32"
+    ]
+   ],
+   "patterns": [
+    ""
+   ]
+  }
+ ],
+ "cli": [
+  [
+   "suggest-roots",
+   "x"
+  ],
+  [
+   "emit-config",
+   "T",
+   "--keyword",
+   "a",
+   "--keyword",
+   "b",
+   "--pattern",
+   "("
+  ]
+ ],
+ "descriptors": [
+  "HKLM\\x,view=auto,view=32,",
+  "hkcu\\\u00ff"
+ ]
+}

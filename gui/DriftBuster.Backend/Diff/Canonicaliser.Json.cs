@@ -171,6 +171,7 @@ public static partial class Canonicaliser
         double number when double.IsPositiveInfinity(number) => "Infinity",
         double number when double.IsNegativeInfinity(number) => "-Infinity",
         double number => PythonRepr.Float(number),
+        byte[] => throw new PythonTypeException("Object of type bytes is not JSON serializable", nameof(value)),
         _ => throw new ArgumentException($"Unsupported JSON value type {value.GetType()}", nameof(value)),
     };
 

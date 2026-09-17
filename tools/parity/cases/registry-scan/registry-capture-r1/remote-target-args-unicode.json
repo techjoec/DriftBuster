@@ -1,0 +1,25 @@
+{
+ "enumerate": false,
+ "remote_target_args": [
+  "srv,port=\u0663",
+  "srv,port=\u0661\u0662_\u0663",
+  "srv,\u2003alias\u2003=\u2003a b\u2003",
+  "srv,port=999999999999999999999999",
+  "srv,=v",
+  "srv,port=+7",
+  "srv,port=0",
+  "srv,port=-0",
+  "srv,use-ssl=\u0130",
+  "srv,use-ssl= On ",
+  "srv,USE-SSL=No",
+  "srv,user=a,username=b,user=c",
+  "srv,Password_Env=E,password-env=F",
+  "\u00a0srv\u00a0,alias=x",
+  "srv\u001c,alias=y\u001d",
+  "srv,alias=\u001f",
+  "srv,port=1.0",
+  "srv,port= 0b101",
+  "srv,transport=\u0130X",
+  "srv,trans\u2003port=x"
+ ]
+}

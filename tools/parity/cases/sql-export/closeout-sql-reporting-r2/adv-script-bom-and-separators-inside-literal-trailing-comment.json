@@ -1,0 +1,5 @@
+{
+ "database": {
+  "script": "adv-bom-inside.sql"
+ }
+}

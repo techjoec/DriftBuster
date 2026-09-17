@@ -1,0 +1,354 @@
+{
+ "enumerate": false,
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "E\\0",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 0
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\2",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 2
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\4",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 4
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\11",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 11
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\17",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 17
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\20",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 20
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\21",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 21
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\32",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 32
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\104",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 104
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\110",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 110
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\111",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 111
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\999",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 999
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "E\\4095",
+   "values": [
+    [
+     "v",
+     "x"
+    ]
+   ],
+   "error": {
+    "errno": 4095
+   },
+   "error_on": "both"
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "A"
+   ],
+   "error": {
+    "errno": 2
+   },
+   "error_on": "subkeys"
+  }
+ ],
+ "searches": [
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\0",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\2",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\4",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\11",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\17",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\20",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\21",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\32",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\104",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\110",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\111",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\999",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\4095",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\2",
+     null
+    ]
+   ],
+   "max_depth": 0
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "E\\999",
+     null
+    ],
+    [
+     "HKLM",
+     "Missing",
+     null
+    ]
+   ],
+   "max_hits": 1
+  }
+ ],
+ "cli": [
+  [
+   "search",
+   "x",
+   "--root",
+   "HKLM\\E\\104"
+  ],
+  [
+   "list-apps"
+  ]
+ ]
+}

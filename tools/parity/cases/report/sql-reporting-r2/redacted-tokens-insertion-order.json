@@ -1,0 +1,58 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": [
+    "at first"
+   ],
+   "metadata": {
+    "m": "a cat sat"
+   }
+  }
+ ],
+ "redactor": {
+  "tokens": [
+   "a",
+   "cat",
+   "at",
+   "sat"
+  ],
+  "placeholder": "[a]"
+ },
+ "diffs": [
+  {
+   "kind": "mapping",
+   "value": {
+    "label": "cat",
+    "diff": "sat"
+   }
+  }
+ ],
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": {
+     "name": "sat"
+    },
+    "excerpt": "at"
+   }
+  }
+ ],
+ "profile_summary": {
+  "total_profiles": "cat"
+ },
+ "snapshot": {
+  "operator": "sat",
+  "output_name": "cat.json",
+  "legal_metadata": {
+   "redacted_tokens": {
+    "preset": 9
+   },
+   "classification": "cat"
+  }
+ }
+}

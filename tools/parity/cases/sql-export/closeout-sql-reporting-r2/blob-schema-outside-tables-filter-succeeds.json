@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "blob-schema-two-tables.sql"
+ },
+ "options": {
+  "tables": [
+   "u"
+  ],
+  "limit": 1
+ }
+}

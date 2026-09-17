@@ -1,0 +1,256 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "Bytes",
+    "List",
+    "Zero",
+    "Float",
+    "Ws",
+    "Ctrl",
+    "Dup",
+    "Dup",
+    "Upper",
+    "Lower",
+    "Dotted",
+    "Sharp"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Bytes",
+   "values": [
+    [
+     "DisplayName",
+     {
+      "$bytes": "56656e646f72"
+     }
+    ],
+    [
+     "Publisher",
+     {
+      "$bytes": "27"
+     }
+    ],
+    [
+     "DisplayVersion",
+     {
+      "$bytes": ""
+     }
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\List",
+   "values": [
+    [
+     "DisplayName",
+     [
+      "One",
+      "Two"
+     ]
+    ],
+    [
+     "Publisher",
+     []
+    ],
+    [
+     "InstallLocation",
+     [
+      "C:\\x"
+     ]
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Zero",
+   "values": [
+    [
+     "DisplayName",
+     0
+    ],
+    [
+     "Publisher",
+     "P"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Float",
+   "values": [
+    [
+     "DisplayName",
+     1e+16
+    ],
+    [
+     "DisplayVersion",
+     0.0
+    ],
+    [
+     "UninstallString",
+     1.5
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Ws",
+   "values": [
+    [
+     "DisplayName",
+     "\u2003\u3000 "
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Ctrl",
+   "values": [
+    [
+     "DisplayName",
+     "\u001c\u001dCtrl App\u001e\u001f\u0085"
+    ],
+    [
+     "DisplayVersion",
+     "0"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Dup",
+   "values": [
+    [
+     "DisplayName",
+     "dup"
+    ],
+    [
+     "DisplayName",
+     "Dup Later"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Upper",
+   "values": [
+    [
+     "DisplayName",
+     "ALPHA"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Lower",
+   "values": [
+    [
+     "DisplayName",
+     "alpha"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Dotted",
+   "values": [
+    [
+     "DisplayName",
+     "\u0130stanbul"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Sharp",
+   "values": [
+    [
+     "DisplayName",
+     "i"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "32",
+   "subkeys": [
+    "Upper"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Upper",
+   "values": [
+    [
+     "DisplayName",
+     "Alpha"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "subkeys": [
+    "Upper",
+    "Ctrl"
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Upper",
+   "values": [
+    [
+     "DisplayName",
+     "alpha"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Ctrl",
+   "values": [
+    [
+     "DisplayName",
+     "\u00df"
+    ]
+   ]
+  }
+ ],
+ "find_roots": [
+  {
+   "token": "b'"
+  },
+  {
+   "token": "['one'"
+  },
+  {
+   "token": "alpha"
+  },
+  {
+   "token": "i"
+  },
+  {
+   "token": "\u001c"
+  }
+ ],
+ "cli": [
+  [
+   "list-apps"
+  ],
+  [
+   "suggest-roots",
+   "ctrl"
+  ],
+  [
+   "suggest-roots",
+   "e+16"
+  ]
+ ]
+}

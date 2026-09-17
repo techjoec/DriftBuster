@@ -1,0 +1,77 @@
+{
+ "steps": [
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/capture.sqlite"
+    ],
+    "output_dir": "sql",
+    "mask_column": [
+     "accounts.secret"
+    ],
+    "hash_column": [
+     "accounts.email"
+    ],
+    "placeholder": "[MASK]",
+    "hash_salt": "pepper",
+    "prefix": "demo"
+   },
+   "now": [
+    "2025-03-12T02:00:00.100000+00:00",
+    "2025-03-12T02:00:01.200000+00:00"
+   ]
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/capture.sqlite",
+     "db/audit.db",
+     "db/missing.sqlite"
+    ],
+    "output_dir": "sql",
+    "table": [
+     "audit",
+     "accounts",
+     "ghost"
+    ],
+    "exclude_table": [
+     "audit"
+    ],
+    "mask_column": [
+     "",
+     "nodot",
+     ".secret",
+     "accounts.",
+     "  accounts . secret  ",
+     "a.b.c"
+    ],
+    "hash_column": [
+     "accounts.email",
+     "accounts.email"
+    ],
+    "hash_salt": null,
+    "prefix": "demo",
+    "limit": 1
+   },
+   "now": [
+    "2025-03-12T02:00:02+00:00"
+   ]
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "tree/app/settings.ini"
+    ],
+    "output_dir": "sql-bad",
+    "limit": 0
+   }
+  }
+ ],
+ "databases": {
+  "db/capture.sqlite": "acc.sql",
+  "db/audit.db": "audit.sql"
+ }
+}

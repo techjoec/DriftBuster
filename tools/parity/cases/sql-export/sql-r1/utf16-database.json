@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "utf16.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "u.v"
+  ]
+ }
+}

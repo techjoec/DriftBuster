@@ -38,6 +38,20 @@ public sealed class PathTextTests
         PathText.Suffix(path).Should().Be(expectedSuffix);
     }
 
+    // PurePosixPath(path).name and PureWindowsPath(path).name (CPython 3.13): an anchor alone has no name.
+    [Theory]
+    [InlineData("//server/share", "share", "")]
+    [InlineData("//server/share/db.sqlite", "db.sqlite", "db.sqlite")]
+    [InlineData("C:/", "C:", "")]
+    [InlineData("C:/x/", "x", "x")]
+    [InlineData("//?/UNC/s/sh", "sh", "")]
+    [InlineData("a/./", "a", "a")]
+    public void NameFollowsEachFlavoursAnchor(string path, string posix, string windows)
+    {
+        PathText.Name(path, windows: false).Should().Be(posix);
+        PathText.Name(path, windows: true).Should().Be(windows);
+    }
+
     [Fact]
     public void LoweringHelpersUseTheInvariantCulture()
     {

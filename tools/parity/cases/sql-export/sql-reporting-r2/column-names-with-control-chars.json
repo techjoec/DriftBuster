@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "control-columns.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "t.a\nb"
+  ]
+ }
+}

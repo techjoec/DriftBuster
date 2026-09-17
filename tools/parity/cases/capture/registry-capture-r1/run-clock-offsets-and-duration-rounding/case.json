@@ -1,0 +1,111 @@
+{
+ "steps": [
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2",
+     "corp"
+    ],
+    "capture_id": null,
+    "skip_hunt": true
+   },
+   "now": [
+    "2025-03-12T01:02:03+05:30",
+    "0001-01-01T00:00:00.000001-00:30"
+   ],
+   "monotonic": [
+    0.0,
+    0.0005,
+    0.0015,
+    0.0025,
+    0.0025
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2",
+     "corp"
+    ],
+    "capture_id": "backwards"
+   },
+   "now": [
+    "2025-03-12 01:02:03.5Z"
+   ],
+   "monotonic": [
+    100.0,
+    100.0,
+    99.9995,
+    99.9995,
+    99.9985,
+    99.9975
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2",
+     "corp"
+    ],
+    "capture_id": "huge",
+    "skip_hunt": true
+   },
+   "now": [
+    "9999-12-31T23:59:59.999999+14:00"
+   ],
+   "monotonic": [
+    1e+20,
+    1e+20,
+    1.0000000000000002e+20,
+    1.0000000000000002e+20
+   ],
+   "host": "capture-host.example"
+  },
+  {
+   "command": "run",
+   "args": {
+    "root": "tree",
+    "output_dir": "out",
+    "operator": "alice",
+    "environment": "lab",
+    "reason": "baseline",
+    "mask_tokens": [
+     "hunter2",
+     "corp"
+    ],
+    "capture_id": "seconds-offset",
+    "skip_hunt": true
+   },
+   "now": [
+    "2025-03-12T01:02:03+05:30:15.5"
+   ],
+   "monotonic": [
+    2.675,
+    2.675,
+    5.35,
+    5.35
+   ],
+   "host": "capture-host.example"
+  }
+ ]
+}

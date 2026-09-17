@@ -1,0 +1,75 @@
+{
+ "matches": [
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "v1",
+   "confidence": 0.5,
+   "reasons": [
+    "b",
+    "a",
+    "b"
+   ],
+   "metadata": {
+    "catalog_severity": "low",
+    "catalog_severity_hint": "",
+    "catalog_remediations": [
+     {
+      "id": "r",
+      "category": 0,
+      "documentation": null
+     },
+     {
+      "summary": "only"
+     },
+     {
+      "id": "r"
+     }
+    ]
+   }
+  },
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "v1",
+   "confidence": 0.75,
+   "reasons": [],
+   "metadata": {
+    "catalog_severity": "high",
+    "catalog_severity_hint": "hint",
+    "catalog_remediations": [
+     {
+      "id": "r",
+      "category": "c2",
+      "documentation": "d2",
+      "summary": "s2"
+     },
+     {
+      "summary": "only",
+      "id": "late"
+     },
+     {
+      "summary": "only",
+      "category": "cat"
+     }
+    ]
+   }
+  },
+  {
+   "plugin": "p",
+   "format": "fmt",
+   "variant": "v0",
+   "confidence": 0.25,
+   "reasons": [],
+   "metadata": {
+    "catalog_severity": "high",
+    "catalog_remediations": [
+     {
+      "id": "r",
+      "documentation": "d3"
+     }
+    ]
+   }
+  }
+ ]
+}

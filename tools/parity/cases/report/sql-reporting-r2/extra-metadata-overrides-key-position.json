@@ -1,0 +1,51 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "b": 1,
+    "a": 2,
+    "c": 3
+   }
+  }
+ ],
+ "extra_metadata": {
+  "a": 9,
+  "d": 4,
+  "b": null
+ },
+ "profile_summary": {
+  "run_metadata": {
+   "d": "old",
+   "z": 1
+  },
+  "total_profiles": 1
+ },
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "run_metadata": {
+     "a": "old",
+     "b": "old"
+    },
+    "rule": {
+     "name": "r"
+    }
+   }
+  }
+ ],
+ "snapshot": {
+  "operator": "op",
+  "output_name": "o",
+  "extra_metadata": {
+   "snapshot_output": "preset",
+   "operator": "",
+   "k": 1
+  }
+ }
+}

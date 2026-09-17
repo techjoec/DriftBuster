@@ -1,0 +1,44 @@
+{
+ "matches": [],
+ "profile_summary": {
+  "total_profiles": [
+   1,
+   {
+    "a": null
+   }
+  ],
+  "total_configs": 1e+16,
+  "total_tags": true,
+  "profiles": [
+   {
+    "name": "n",
+    "config_count": null,
+    "config_ids": "abc"
+   },
+   {
+    "name": [
+     "x"
+    ],
+    "config_count": [
+     1,
+     2
+    ],
+    "config_ids": {
+     "k": 1
+    }
+   },
+   {
+    "name": "it's",
+    "config_count": "it's <b>",
+    "config_ids": [
+     1.5,
+     true,
+     null,
+     {
+      "z": "it's"
+     }
+    ]
+   }
+  ]
+ }
+}

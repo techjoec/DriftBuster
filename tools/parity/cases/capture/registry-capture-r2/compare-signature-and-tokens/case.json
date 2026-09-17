@@ -1,0 +1,109 @@
+{
+ "steps": [
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/sig-a.json",
+    "current": "snap/sig-b.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/nan-a.json",
+    "current": "snap/nan-b.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/tokens-a.json",
+    "current": "snap/tokens-b.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/tokens-b.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/rule-null.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/hits-dict.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/dets-dict.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/dets-null.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/hits-null.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/summary-a.json",
+    "current": "snap/summary-empty.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/summary-a.json",
+    "current": "snap/summary-int.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/summary-a.json",
+    "current": "snap/summary-b.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/summary-str.json",
+    "current": "snap/summary-str.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/hit-list.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/tokens-a.json",
+    "current": "snap/tokens-float.json"
+   }
+  }
+ ]
+}

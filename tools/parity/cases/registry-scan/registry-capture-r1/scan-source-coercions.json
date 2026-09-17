@@ -1,0 +1,244 @@
+{
+ "enumerate": false,
+ "scan_sources": [
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_depth": "\u0663",
+    "max_hits": " 1_2 ",
+    "time_budget_s": "1_0"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_depth": "1e3"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_depth": false,
+    "max_hits": true,
+    "time_budget_s": true
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_depth": Infinity
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "max_hits": NaN
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "time_budget_s": " nan "
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "time_budget_s": "-Infinity"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "time_budget_s": "0x1"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "time_budget_s": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "time_budget_s": null
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "time_budget_s": [
+     1
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "keywords": "a\u2003b\u00a0c\u001cd\u200be;f,,g"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "keywords": [
+     "  ",
+     null,
+     [],
+     1.0,
+     {
+      "a": 1
+     },
+     true,
+     "\u2003x\u2003"
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "patterns": [
+     1e+16,
+     0,
+     false
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "\u00dfw",
+      "path": "p"
+     },
+     {
+      "hive": "\ufb01",
+      "path": 0,
+      "view": "\u0663\u0662"
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "HKLM",
+      "path": "p",
+      "view": "\u2003auto\u2003"
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "HKLM",
+      "path": "p",
+      "view": 32.0
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "HKLM",
+      "path": "p",
+      "view": true
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     {
+      "hive": "HKLM",
+      "path": "p",
+      "view": 0
+     }
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     null
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": [
+     [
+      "HKLM",
+      "p"
+     ]
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": "HKLM\\a,view=32,bad"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "  x  "
+   },
+   "alias": "  y  "
+  },
+  {
+   "registry_scan": {
+    "token": "T"
+   },
+   "alias": [
+    "a",
+    "b"
+   ]
+  },
+  {
+   "registry_scan": {
+    "token": "T"
+   },
+   "alias": 0.0
+  },
+  {
+   "registry_scan": {
+    "token": "a/b\\c:d*e?f\"g<h>i|j"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "\u00e9t\u00e9 \ud83d\ude00"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "remote": "h",
+    "max_depth": "bad",
+    "roots": 5
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "T",
+    "roots": 5,
+    "max_depth": "bad"
+   }
+  }
+ ]
+}

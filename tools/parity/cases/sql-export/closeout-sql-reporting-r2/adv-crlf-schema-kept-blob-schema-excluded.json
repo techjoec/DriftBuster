@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "adv-crlf-blob-excluded.sql"
+ },
+ "options": {
+  "exclude_tables": [
+   "a"
+  ]
+ }
+}

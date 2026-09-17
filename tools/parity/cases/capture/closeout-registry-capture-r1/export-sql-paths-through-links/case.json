@@ -1,0 +1,122 @@
+{
+ "steps": [
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/x.sqlite"
+    ],
+    "output_dir": "sql/loop"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/x.sqlite"
+    ],
+    "output_dir": "sql/dangling.sqlite"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/x.sqlite"
+    ],
+    "output_dir": "afile/sub"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "sql/dangling.sqlite"
+    ],
+    "output_dir": "sql"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "sql/loop"
+    ],
+    "output_dir": "sql"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "afile/x.sqlite"
+    ],
+    "output_dir": "sql"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "sql/dl/../db/x.sqlite"
+    ],
+    "output_dir": "sql2"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "sql/db-link.sqlite"
+    ],
+    "output_dir": "sql3",
+    "mask_column": [
+     "t.b"
+    ]
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/x.sqlite"
+    ],
+    "output_dir": "sql",
+    "prefix": "loop/x"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/x.sqlite"
+    ],
+    "output_dir": "sql",
+    "prefix": "dl/../q"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/x.sqlite"
+    ],
+    "output_dir": "sql/dl/../sql4",
+    "prefix": "p"
+   }
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/x.sqlite"
+    ],
+    "output_dir": "sql",
+    "prefix": "loop/../r"
+   }
+  }
+ ],
+ "databases": {
+  "db/x.sqlite": "t.sql"
+ }
+}

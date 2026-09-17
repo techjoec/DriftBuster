@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using System.Text;
 
@@ -170,15 +171,23 @@ public sealed partial class IniPlugin
     }
 
     /// <summary>
-    /// Python <c>round(value, digits)</c> for a finite non-negative double: the exact binary value is rounded to the
-    /// nearest multiple of 10^-digits with ties to even, then converted back. <see cref="Math.Round(double, int)"/>
-    /// rounds the scaled product instead, which differs whenever the multiplication itself rounds onto a midpoint.
+    /// Python <c>round(value, digits)</c> for a non-negative <paramref name="digits"/>: the exact binary value is rounded to the
+    /// nearest multiple of 10^-digits with ties to even, and that decimal is read back as the nearest double, as
+    /// <c>double_round</c> does through <c>_Py_dg_dtoa</c> and <c>_Py_dg_strtod</c>. <see cref="Math.Round(double, int)"/>
+    /// rounds the scaled product instead, which differs whenever the multiplication itself rounds onto a midpoint. NaN and the
+    /// infinities are returned as they are; a negative value rounds as its magnitude does, keeping its sign (so -0.0004 gives -0.0).
     /// </summary>
     internal static double PythonRound(double value, int digits)
     {
-        if (!double.IsFinite(value) || value < 0)
+        ArgumentOutOfRangeException.ThrowIfNegative(digits);
+        if (!double.IsFinite(value) || value == 0.0)
         {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "Only finite non-negative values are supported.");
+            return value;
+        }
+
+        if (value < 0)
+        {
+            return -PythonRound(-value, digits);
         }
 
         var bits = BitConverter.DoubleToInt64Bits(value);
@@ -212,6 +221,6 @@ public sealed partial class IniPlugin
             }
         }
 
-        return (double)quotient / (double)scale;
+        return double.Parse(quotient.ToString(CultureInfo.InvariantCulture) + "E-" + digits.ToString(CultureInfo.InvariantCulture), NumberStyles.Float, CultureInfo.InvariantCulture);
     }
 }

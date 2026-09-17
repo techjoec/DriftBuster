@@ -1,0 +1,546 @@
+[
+ {
+  "input": "\u0000",
+  "escaped": "\u0000"
+ },
+ {
+  "input": "\u0001",
+  "escaped": "\u0001"
+ },
+ {
+  "input": "\u0002",
+  "escaped": "\u0002"
+ },
+ {
+  "input": "\u0003",
+  "escaped": "\u0003"
+ },
+ {
+  "input": "\u0004",
+  "escaped": "\u0004"
+ },
+ {
+  "input": "\u0005",
+  "escaped": "\u0005"
+ },
+ {
+  "input": "\u0006",
+  "escaped": "\u0006"
+ },
+ {
+  "input": "\u0007",
+  "escaped": "\u0007"
+ },
+ {
+  "input": "\b",
+  "escaped": "\b"
+ },
+ {
+  "input": "\t",
+  "escaped": "\t"
+ },
+ {
+  "input": "\n",
+  "escaped": "\n"
+ },
+ {
+  "input": "\u000b",
+  "escaped": "\u000b"
+ },
+ {
+  "input": "\f",
+  "escaped": "\f"
+ },
+ {
+  "input": "\r",
+  "escaped": "\r"
+ },
+ {
+  "input": "\u000e",
+  "escaped": "\u000e"
+ },
+ {
+  "input": "\u000f",
+  "escaped": "\u000f"
+ },
+ {
+  "input": "\u0010",
+  "escaped": "\u0010"
+ },
+ {
+  "input": "\u0011",
+  "escaped": "\u0011"
+ },
+ {
+  "input": "\u0012",
+  "escaped": "\u0012"
+ },
+ {
+  "input": "\u0013",
+  "escaped": "\u0013"
+ },
+ {
+  "input": "\u0014",
+  "escaped": "\u0014"
+ },
+ {
+  "input": "\u0015",
+  "escaped": "\u0015"
+ },
+ {
+  "input": "\u0016",
+  "escaped": "\u0016"
+ },
+ {
+  "input": "\u0017",
+  "escaped": "\u0017"
+ },
+ {
+  "input": "\u0018",
+  "escaped": "\u0018"
+ },
+ {
+  "input": "\u0019",
+  "escaped": "\u0019"
+ },
+ {
+  "input": "\u001a",
+  "escaped": "\u001a"
+ },
+ {
+  "input": "\u001b",
+  "escaped": "\u001b"
+ },
+ {
+  "input": "\u001c",
+  "escaped": "\u001c"
+ },
+ {
+  "input": "\u001d",
+  "escaped": "\u001d"
+ },
+ {
+  "input": "\u001e",
+  "escaped": "\u001e"
+ },
+ {
+  "input": "\u001f",
+  "escaped": "\u001f"
+ },
+ {
+  "input": " ",
+  "escaped": " "
+ },
+ {
+  "input": "!",
+  "escaped": "!"
+ },
+ {
+  "input": "\"",
+  "escaped": "&quot;"
+ },
+ {
+  "input": "#",
+  "escaped": "#"
+ },
+ {
+  "input": "$",
+  "escaped": "$"
+ },
+ {
+  "input": "%",
+  "escaped": "%"
+ },
+ {
+  "input": "&",
+  "escaped": "&amp;"
+ },
+ {
+  "input": "'",
+  "escaped": "&#x27;"
+ },
+ {
+  "input": "(",
+  "escaped": "("
+ },
+ {
+  "input": ")",
+  "escaped": ")"
+ },
+ {
+  "input": "*",
+  "escaped": "*"
+ },
+ {
+  "input": "+",
+  "escaped": "+"
+ },
+ {
+  "input": ",",
+  "escaped": ","
+ },
+ {
+  "input": "-",
+  "escaped": "-"
+ },
+ {
+  "input": ".",
+  "escaped": "."
+ },
+ {
+  "input": "/",
+  "escaped": "/"
+ },
+ {
+  "input": "0",
+  "escaped": "0"
+ },
+ {
+  "input": "1",
+  "escaped": "1"
+ },
+ {
+  "input": "2",
+  "escaped": "2"
+ },
+ {
+  "input": "3",
+  "escaped": "3"
+ },
+ {
+  "input": "4",
+  "escaped": "4"
+ },
+ {
+  "input": "5",
+  "escaped": "5"
+ },
+ {
+  "input": "6",
+  "escaped": "6"
+ },
+ {
+  "input": "7",
+  "escaped": "7"
+ },
+ {
+  "input": "8",
+  "escaped": "8"
+ },
+ {
+  "input": "9",
+  "escaped": "9"
+ },
+ {
+  "input": ":",
+  "escaped": ":"
+ },
+ {
+  "input": ";",
+  "escaped": ";"
+ },
+ {
+  "input": "<",
+  "escaped": "&lt;"
+ },
+ {
+  "input": "=",
+  "escaped": "="
+ },
+ {
+  "input": ">",
+  "escaped": "&gt;"
+ },
+ {
+  "input": "?",
+  "escaped": "?"
+ },
+ {
+  "input": "@",
+  "escaped": "@"
+ },
+ {
+  "input": "A",
+  "escaped": "A"
+ },
+ {
+  "input": "B",
+  "escaped": "B"
+ },
+ {
+  "input": "C",
+  "escaped": "C"
+ },
+ {
+  "input": "D",
+  "escaped": "D"
+ },
+ {
+  "input": "E",
+  "escaped": "E"
+ },
+ {
+  "input": "F",
+  "escaped": "F"
+ },
+ {
+  "input": "G",
+  "escaped": "G"
+ },
+ {
+  "input": "H",
+  "escaped": "H"
+ },
+ {
+  "input": "I",
+  "escaped": "I"
+ },
+ {
+  "input": "J",
+  "escaped": "J"
+ },
+ {
+  "input": "K",
+  "escaped": "K"
+ },
+ {
+  "input": "L",
+  "escaped": "L"
+ },
+ {
+  "input": "M",
+  "escaped": "M"
+ },
+ {
+  "input": "N",
+  "escaped": "N"
+ },
+ {
+  "input": "O",
+  "escaped": "O"
+ },
+ {
+  "input": "P",
+  "escaped": "P"
+ },
+ {
+  "input": "Q",
+  "escaped": "Q"
+ },
+ {
+  "input": "R",
+  "escaped": "R"
+ },
+ {
+  "input": "S",
+  "escaped": "S"
+ },
+ {
+  "input": "T",
+  "escaped": "T"
+ },
+ {
+  "input": "U",
+  "escaped": "U"
+ },
+ {
+  "input": "V",
+  "escaped": "V"
+ },
+ {
+  "input": "W",
+  "escaped": "W"
+ },
+ {
+  "input": "X",
+  "escaped": "X"
+ },
+ {
+  "input": "Y",
+  "escaped": "Y"
+ },
+ {
+  "input": "Z",
+  "escaped": "Z"
+ },
+ {
+  "input": "[",
+  "escaped": "["
+ },
+ {
+  "input": "\\",
+  "escaped": "\\"
+ },
+ {
+  "input": "]",
+  "escaped": "]"
+ },
+ {
+  "input": "^",
+  "escaped": "^"
+ },
+ {
+  "input": "_",
+  "escaped": "_"
+ },
+ {
+  "input": "`",
+  "escaped": "`"
+ },
+ {
+  "input": "a",
+  "escaped": "a"
+ },
+ {
+  "input": "b",
+  "escaped": "b"
+ },
+ {
+  "input": "c",
+  "escaped": "c"
+ },
+ {
+  "input": "d",
+  "escaped": "d"
+ },
+ {
+  "input": "e",
+  "escaped": "e"
+ },
+ {
+  "input": "f",
+  "escaped": "f"
+ },
+ {
+  "input": "g",
+  "escaped": "g"
+ },
+ {
+  "input": "h",
+  "escaped": "h"
+ },
+ {
+  "input": "i",
+  "escaped": "i"
+ },
+ {
+  "input": "j",
+  "escaped": "j"
+ },
+ {
+  "input": "k",
+  "escaped": "k"
+ },
+ {
+  "input": "l",
+  "escaped": "l"
+ },
+ {
+  "input": "m",
+  "escaped": "m"
+ },
+ {
+  "input": "n",
+  "escaped": "n"
+ },
+ {
+  "input": "o",
+  "escaped": "o"
+ },
+ {
+  "input": "p",
+  "escaped": "p"
+ },
+ {
+  "input": "q",
+  "escaped": "q"
+ },
+ {
+  "input": "r",
+  "escaped": "r"
+ },
+ {
+  "input": "s",
+  "escaped": "s"
+ },
+ {
+  "input": "t",
+  "escaped": "t"
+ },
+ {
+  "input": "u",
+  "escaped": "u"
+ },
+ {
+  "input": "v",
+  "escaped": "v"
+ },
+ {
+  "input": "w",
+  "escaped": "w"
+ },
+ {
+  "input": "x",
+  "escaped": "x"
+ },
+ {
+  "input": "y",
+  "escaped": "y"
+ },
+ {
+  "input": "z",
+  "escaped": "z"
+ },
+ {
+  "input": "{",
+  "escaped": "{"
+ },
+ {
+  "input": "|",
+  "escaped": "|"
+ },
+ {
+  "input": "}",
+  "escaped": "}"
+ },
+ {
+  "input": "~",
+  "escaped": "~"
+ },
+ {
+  "input": "\u007f",
+  "escaped": "\u007f"
+ },
+ {
+  "input": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f",
+  "escaped": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !&quot;#$%&amp;&#x27;()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f"
+ },
+ {
+  "input": "\ud800",
+  "escaped": "\ud800"
+ },
+ {
+  "input": "\udfff",
+  "escaped": "\udfff"
+ },
+ {
+  "input": "a\udc80b<\ud83d",
+  "escaped": "a\udc80b&lt;\ud83d"
+ },
+ {
+  "input": "\ud83d\ude00<&>\ud835\udd18",
+  "escaped": "\ud83d\ude00&lt;&amp;&gt;\ud835\udd18"
+ },
+ {
+  "input": "caf\u00e9 \u2014 \"quoted\" 'single' &amp;",
+  "escaped": "caf\u00e9 \u2014 &quot;quoted&quot; &#x27;single&#x27; &amp;amp;"
+ },
+ {
+  "input": "\u2028\u0085\u0000",
+  "escaped": "\u2028\u0085\u0000"
+ },
+ {
+  "input": "",
+  "escaped": ""
+ }
+]

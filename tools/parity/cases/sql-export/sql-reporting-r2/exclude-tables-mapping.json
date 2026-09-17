@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "many-tables.sql"
+ },
+ "options": {
+  "exclude_tables": {
+   "t1": 1,
+   "": 2
+  }
+ }
+}

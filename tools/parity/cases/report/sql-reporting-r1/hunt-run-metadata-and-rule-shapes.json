@@ -1,0 +1,61 @@
+{
+ "matches": [],
+ "extra_metadata": {
+  "run": "r1",
+  "n": [
+   1
+  ]
+ },
+ "hunt_hits": [
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": [
+     "not",
+     "mapping"
+    ],
+    "path": null,
+    "line_number": "12",
+    "excerpt": [
+     "<x>"
+    ],
+    "run_metadata": {
+     "existing": true,
+     "run": "old"
+    }
+   }
+  },
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": {
+     "token_name": 0,
+     "description": null
+    },
+    "path": "p"
+   }
+  },
+  {
+   "kind": "mapping",
+   "value": {}
+  },
+  {
+   "kind": "hit",
+   "rule": {
+    "name": "n",
+    "description": "d <b>",
+    "token_name": "tok",
+    "keywords": [
+     "k1"
+    ],
+    "patterns": [
+     "a\\d+",
+     "b"
+    ]
+   },
+   "path": "dir//sub/./f.txt",
+   "line_number": 7,
+   "excerpt": "a1 & b"
+  }
+ ]
+}

@@ -1,0 +1,2 @@
+CREATE TABLE t (a TEXT);
+INSERT INTO t VALUES ('x');

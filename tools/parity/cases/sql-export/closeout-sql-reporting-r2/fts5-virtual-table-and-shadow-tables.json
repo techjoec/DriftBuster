@@ -1,0 +1,12 @@
+{
+ "database": {
+  "script": "fts5.sql"
+ },
+ "options": {
+  "mask_columns": {
+   "f": [
+    "a"
+   ]
+  }
+ }
+}

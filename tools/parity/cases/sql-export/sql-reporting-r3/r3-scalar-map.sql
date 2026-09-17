@@ -1,0 +1,12 @@
+CREATE TABLE t ("None", other);
+INSERT INTO t VALUES (1, 2);
+CREATE TABLE u ("True", other);
+INSERT INTO u VALUES (1, 2);
+CREATE TABLE v ("1e+100", "1e100");
+INSERT INTO v VALUES (1, 2);
+CREATE TABLE w ("12", other);
+INSERT INTO w VALUES (1, 2);
+CREATE TABLE x (a, b, ab);
+INSERT INTO x VALUES (1, 2, 3);
+CREATE TABLE y ("0", "False");
+INSERT INTO y VALUES (1, 2);

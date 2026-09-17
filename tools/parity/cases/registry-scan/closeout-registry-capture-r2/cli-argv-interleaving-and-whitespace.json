@@ -1,0 +1,290 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "V0",
+    "N"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\V0",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "V0"
+    ],
+    [
+     "DisplayVersion",
+     "1"
+    ],
+    [
+     "Publisher",
+     "-5 Corp"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\N",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "-.5"
+    ],
+    [
+     "Publisher",
+     "minus"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "32",
+   "subkeys": []
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "*",
+   "subkeys": []
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\V0",
+   "subkeys": [
+    "Sub"
+   ],
+   "values": [
+    [
+     "k",
+     "v0 hit"
+    ],
+    [
+     "",
+     "default -0"
+    ],
+    [
+     "neg",
+     "-.5"
+    ],
+    [
+     "empty",
+     ""
+    ],
+    [
+     "num",
+     7
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\V0\\Sub",
+   "values": [
+    [
+     "deep",
+     "hit deep"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\V0",
+   "view": "32",
+   "values": [
+    [
+     "w",
+     "wow hit"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\V0",
+   "view": "*",
+   "values": [
+    [
+     "u",
+     "user hit"
+    ]
+   ]
+  }
+ ],
+ "find_roots": [
+  {
+   "token": "V0"
+  }
+ ],
+ "cli": [
+  [
+   "search",
+   "--keyword",
+   "hit",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0"
+  ],
+  [
+   "search",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--keyword",
+   "hit",
+   "V0"
+  ],
+  [
+   "search",
+   "--root",
+   "HKLM\\Software\\V0",
+   "V0",
+   "--keyword",
+   "hit",
+   "--keyword",
+   "deep"
+  ],
+  [
+   "emit-config",
+   "--alias",
+   "a",
+   "V0",
+   "--alias",
+   "b",
+   "--time-budget",
+   "1",
+   "--time-budget",
+   "2"
+  ],
+  [
+   "emit-config",
+   "--keyword",
+   "k1",
+   "--pattern",
+   "p1",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--remote-target",
+   "h1",
+   "V0",
+   "--remote-target",
+   "h2,port=２"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-depth",
+   " -1 ",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--time-budget",
+   " -2.5 ",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--time-budget",
+   "\t-0.25\n",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-depth",
+   " -7 ",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "search",
+   "V0",
+   "--root",
+   "HKLM\\Software\\V0",
+   "--max-hits",
+   " +1 ",
+   "--keyword",
+   "hit"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--max-depth",
+   "　-3　",
+   "--max-hits",
+   " -4 ",
+   "--time-budget",
+   " -.5 "
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   " nan ",
+   "--max-depth",
+   " 0 "
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   " -inf"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--time-budget",
+   " -.5e1"
+  ],
+  [
+   "emit-config",
+   "V0",
+   "--keyword",
+   "-1",
+   "--keyword",
+   "-2.0",
+   "--pattern",
+   "-.5",
+   "--alias",
+   "-0"
+  ],
+  [
+   "emit-config",
+   "-.0"
+  ],
+  [
+   "suggest-roots",
+   "-000"
+  ],
+  [
+   "search",
+   "V0",
+   "--keyword",
+   "-1.5",
+   "--root",
+   "HKLM\\Software\\V0"
+  ],
+  [
+   "list-apps"
+  ]
+ ]
+}

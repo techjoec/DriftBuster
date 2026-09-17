@@ -1,0 +1,6 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "path": "~/case.sqlite"
+}

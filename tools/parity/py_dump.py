@@ -18,6 +18,10 @@ Usage:
     py_dump.py run-profile <profile.json> <workdir> [--scratch DIR]
     py_dump.py schedule <config.json> <state.json> list|due|mark-complete|skip-until [--at T] [--name N] [--completed-at T]
                         [--resume-at T] [--now T]
+    py_dump.py sql-export <case.json> [--scratch DIR]
+    py_dump.py report <case.json>
+    py_dump.py registry-scan <case.json>
+    py_dump.py capture <case dir>/case.json [--scratch DIR]
 
 Both surfaces enumerate the path with the Python ``Detector.scan_path`` itself (a tolerant
 subclass that records I/O errors instead of raising), so walk order, symlink handling and
@@ -82,6 +86,14 @@ instead (structured sources, plan decision); a mapping holding only a path is ru
 ``--now`` and prints ``output`` (the payload ``_print_json`` receives) or ``error``, then ``state`` (the state file's text); with
 ``PARITY_SCHEDULE_JSON_CALL_BUDGET=1`` a decode that ran out of call budget at the nesting limit is redone as ``_JsonCallBudget``
 describes. Each of these records carries ``key_order``.
+
+The phase 7 surfaces print one record each, with ``key_order``. ``sql-export`` builds the case's database from a SQL script beside the
+case in a fresh scratch working directory and runs ``write_sqlite_snapshot`` with the case's options and a fixed clock (``cmd_sql_export``).
+``report`` renders the HTML report, JSON lines (both key orders), the detection summary and the snapshot manifest over the case's matches,
+diffs, hunt hits, profile summary and redaction settings (``cmd_report``). ``registry-scan`` drives the instrumented registry operations,
+the offline runner's registry schema readers and ``registry_cli.main`` over a fake ``_Backend`` the case describes (``cmd_registry_scan``).
+``capture`` runs ``scripts/capture.py`` ``run``, ``export-sql`` and ``compare`` steps over a copy of the case's ``workdir/`` with the
+clocks, host name and environment pinned and prints each step's result and every file the steps wrote (``cmd_capture``).
 
 Every string in a record has each unpaired surrogate (a lone ``\\ud83d`` escape in a JSON key, say) rewritten to the
 six characters ``\\uXXXX`` before serialisation, exactly as the port's ``CanonicalJson`` does: a UTF-8 stdout cannot
@@ -156,15 +168,42 @@ _LONE_SURROGATE = re.compile("[\ud800-\udfff]")
 
 
 def _escape_lone_surrogates(value: object) -> object:
-    """Rewrites every unpaired surrogate in every str (keys included) to the literal text ``\\uXXXX``."""
+    """Rewrites every unpaired surrogate in every str (keys included) to the literal text ``\\uXXXX``; a tuple becomes a list.
+    Built on an explicit stack, as ``_key_order`` is, so a record nested past the interpreter's frame limit is emitted too."""
 
-    if isinstance(value, str):
-        return _LONE_SURROGATE.sub(lambda match: f"\\u{ord(match.group()):04x}", value)
-    if isinstance(value, dict):
-        return {_escape_lone_surrogates(key): _escape_lone_surrogates(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_escape_lone_surrogates(item) for item in value]
-    return value
+    def scalar(item: object) -> object:
+        return _LONE_SURROGATE.sub(lambda match: f"\\u{ord(match.group()):04x}", item) if isinstance(item, str) else item
+
+    def container(item: object) -> dict | list | None:
+        if isinstance(item, dict):
+            return {}
+        if isinstance(item, (list, tuple)):
+            return []
+        return None
+
+    root = container(value)
+    if root is None:
+        return scalar(value)
+    # (source container, its rewritten container, the next child index)
+    stack: list[tuple[object, dict | list, int]] = [(value, root, 0)]
+    while stack:
+        source, out, index = stack[-1]
+        items = list(source.items()) if isinstance(source, dict) else source
+        if index >= len(items):
+            stack.pop()
+            continue
+        stack[-1] = (source, out, index + 1)
+        child = items[index][1] if isinstance(source, dict) else items[index]
+        rewritten = container(child)
+        if rewritten is not None:
+            stack.append((child, rewritten, 0))
+        else:
+            rewritten = scalar(child)
+        if isinstance(out, dict):
+            out[scalar(items[index][0])] = rewritten
+        else:
+            out.append(rewritten)
+    return root
 
 
 def _emit(record: dict[str, object]) -> None:
@@ -378,13 +417,29 @@ def _diff_record(
 
 def _key_order(value: object) -> object:
     """Every mapping's keys in insertion order, which ``sort_keys`` would hide: ``[[key, child], ...]`` for a mapping, a list
-    of children for a sequence, None for a scalar."""
+    of children for a sequence, None for a scalar. Built on an explicit stack, so a record nested past the interpreter's frame
+    limit (a report whose metadata Python still renders) is described too."""
 
-    if isinstance(value, dict):
-        return [[str(key), _key_order(item)] for key, item in value.items()]
-    if isinstance(value, (list, tuple)):
-        return [_key_order(item) for item in value]
-    return None
+    if not isinstance(value, (dict, list, tuple)):
+        return None
+    root: list = []
+    # (container, its description list, the next child index)
+    stack: list[tuple[object, list, int]] = [(value, root, 0)]
+    while stack:
+        container, out, index = stack[-1]
+        items = list(container.items()) if isinstance(container, dict) else container
+        if index >= len(items):
+            stack.pop()
+            continue
+        stack[-1] = (container, out, index + 1)
+        child = items[index][1] if isinstance(container, dict) else items[index]
+        if isinstance(child, (dict, list, tuple)):
+            described: list = []
+            stack.append((child, described, 0))
+        else:
+            described = None
+        out.append([str(items[index][0]), described] if isinstance(container, dict) else described)
+    return root
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -434,9 +489,11 @@ def cmd_canon(args: argparse.Namespace) -> int:
 FIXED_INSTALL_PATTERN = r"[A-Za-z]:\\[\w\-\.\s]+"
 
 
-def _hunt_rules() -> tuple[hunt_module.HuntRule, ...]:
+def _hunt_rules(fix_e: bool | None = None) -> tuple[hunt_module.HuntRule, ...]:
+    """``default_rules()``, with fix e applied when ``fix_e`` is true (``None``: when ``PARITY_HUNT_FIX_E=1``)."""
+
     rules = hunt_module.default_rules()
-    if os.environ.get("PARITY_HUNT_FIX_E") != "1":
+    if not (os.environ.get("PARITY_HUNT_FIX_E") == "1" if fix_e is None else fix_e):
         return rules
     fixed = []
     for rule in rules:
@@ -1584,6 +1641,569 @@ def cmd_schedule(args: argparse.Namespace) -> int:
     return 0
 
 
+SQL_EXPORT_TIMESTAMP = "2025-04-05T06:07:08.090807+00:00"
+
+
+def _fixed_datetime(moment):
+    """A ``datetime`` subclass whose ``now`` returns ``moment`` (a module's ``datetime`` name swapped for it)."""
+
+    from datetime import datetime
+
+    class _Fixed(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return moment
+
+    return _Fixed
+
+
+@contextlib.contextmanager
+def _patched(target, name, value):
+    original = getattr(target, name)
+    setattr(target, name, value)
+    try:
+        yield
+    finally:
+        setattr(target, name, original)
+
+
+def _file_entry(path: Path, relative: str, prefix: str | None = None) -> dict[str, object]:
+    """``{"path", "size", "sha256", "text"}``: the bytes' size and digest and their text decoded as UTF-8 with replacement (the scratch
+    working directory respelled ``<workdir>`` when ``prefix`` is given)."""
+
+    raw = path.read_bytes()
+    text = raw.decode("utf-8", "replace")
+    return {
+        "path": relative,
+        "size": len(raw),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "text": text.replace(prefix, WORKDIR_TOKEN) if prefix else text,
+    }
+
+
+def _build_sqlite(target: Path, database: dict[str, object], case_dir: Path) -> None:
+    """The case's database at ``target``: ``script`` (a file beside the case, its bytes decoded as strict UTF-8 with the line endings
+    untouched, as ``ParityDump.BuildSqlite`` reads it, run with ``executescript`` in autocommit mode), ``hex`` (the file's bytes),
+    ``kind: directory`` or ``kind: missing``."""
+
+    import sqlite3
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if "script" in database:
+        connection = sqlite3.connect(target, isolation_level=None)
+        try:
+            connection.executescript((case_dir / str(database["script"])).read_bytes().decode("utf-8"))
+        finally:
+            connection.close()
+    elif "hex" in database:
+        target.write_bytes(bytes.fromhex(str(database["hex"])))
+    elif database.get("kind") == "directory":
+        target.mkdir()
+    elif database.get("kind") != "missing":
+        raise SystemExit(f"unsupported database spec {database!r}")
+
+
+def cmd_sql_export(args: argparse.Namespace) -> int:
+    """``write_sqlite_snapshot(Path(case["path"]), Path("snapshot.json"), **case["options"])`` in a fresh scratch working directory holding
+    the case's database, with ``datetime.now`` fixed at ``case["timestamp"]``: ``snapshot`` (``to_dict()``) and ``file`` (the written
+    bytes), or ``error``."""
+
+    from driftbuster.sql import snapshots
+
+    case_path = Path(args.case).resolve()
+    case = json.loads(case_path.read_text(encoding="utf-8"))
+    scratch = Path(args.scratch) if args.scratch else Path(tempfile.mkdtemp(prefix="driftbuster-parity-sql-export-"))
+    work = scratch / "work"
+    work.mkdir(parents=True)
+    previous = os.getcwd()
+    record: dict[str, object] = {}
+    try:
+        _build_sqlite(work / str(case.get("file", "case.sqlite")), case.get("database", {}), case_path.parent)
+        os.chdir(work)
+        from datetime import datetime
+
+        moment = datetime.fromisoformat(str(case.get("timestamp", SQL_EXPORT_TIMESTAMP)))
+        destination = Path("snapshot.json")
+        with _patched(snapshots, "datetime", _fixed_datetime(moment)):
+            try:
+                source = Path(str(case.get("path", "case.sqlite")))
+                snapshot = snapshots.write_sqlite_snapshot(source, destination, **case.get("options", {}))
+                record["snapshot"] = snapshot.to_dict()
+                record["file"] = _file_entry(destination, destination.name)
+            except Exception as exc:
+                record["error"] = _error_payload(exc)
+    finally:
+        os.chdir(previous)
+        shutil.rmtree(scratch, ignore_errors=True)
+    _emit_keyed(record)
+    return 0
+
+
+REPORT_TIMESTAMP = "2026-09-15T18:22:05.123456+00:00"
+
+
+def _report_match(spec: dict[str, object]):
+    """A ``DetectionMatch`` from a case spec, its confidence ``float()`` as the port's typed model holds it; ``validate`` enriches the
+    metadata with the catalog."""
+
+    from driftbuster.catalog import DETECTION_CATALOG
+    from driftbuster.core.types import DetectionMatch, validate_detection_metadata
+
+    match = DetectionMatch(
+        plugin_name=spec["plugin"],  # type: ignore[arg-type]
+        format_name=spec["format"],  # type: ignore[arg-type]
+        variant=spec.get("variant"),  # type: ignore[arg-type]
+        confidence=float(spec["confidence"]),  # type: ignore[arg-type]
+        reasons=list(spec.get("reasons", [])),  # type: ignore[call-overload]
+        metadata=spec.get("metadata"),  # type: ignore[arg-type]
+    )
+    if spec.get("validate"):
+        match.metadata = validate_detection_metadata(match, DETECTION_CATALOG)
+    return match
+
+
+def _report_text(value: object) -> str:
+    """A diff side: the text, or ``{"repeat": text, "count": n}`` for ``text * n`` (keeps large inputs out of the case file)."""
+
+    if isinstance(value, dict):
+        return str(value["repeat"]) * int(value["count"])
+    return value  # type: ignore[return-value]
+
+
+def _report_inputs(case_text: str) -> dict[str, object]:
+    """The case rebuilt from its text (every stage gets fresh inputs: the adapters merge ``run_metadata`` into mappings they are handed and
+    a redactor keeps its counts): matches, diffs (mappings, ``build_unified_diff`` results or ``build_binary_diff`` results), hunt hits
+    (mappings or ``HuntHit`` values) and the redaction arguments."""
+
+    from driftbuster.hunt import HuntHit, HuntRule
+    from driftbuster.reporting.diff import build_binary_diff, build_unified_diff
+    from driftbuster.reporting.redaction import RedactionFilter
+
+    case = json.loads(case_text)
+    diffs: list[object] = []
+    for entry in case.get("diffs", []):
+        if entry["kind"] == "mapping":
+            diffs.append(entry["value"])
+        elif entry["kind"] == "binary":
+            diffs.append(
+                build_binary_diff(
+                    bytes.fromhex(entry["before_hex"]),
+                    bytes.fromhex(entry["after_hex"]),
+                    from_label=entry.get("from_label", "before"),
+                    to_label=entry.get("to_label", "after"),
+                    label=entry.get("label"),
+                    reason=entry.get("reason"),
+                )
+            )
+        else:
+            diffs.append(
+                build_unified_diff(
+                    _report_text(entry["before"]),
+                    _report_text(entry["after"]),
+                    content_type=entry.get("content_type", "text"),
+                    from_label=entry.get("from_label", "before"),
+                    to_label=entry.get("to_label", "after"),
+                    label=entry.get("label"),
+                    mask_tokens=tuple(entry["mask_tokens"]) if "mask_tokens" in entry else None,
+                    context_lines=entry.get("context_lines", 3),
+                )
+            )
+    hits: list[object] = []
+    for entry in case.get("hunt_hits", []):
+        if entry["kind"] == "mapping":
+            hits.append(entry["value"])
+            continue
+        rule = entry["rule"]
+        hits.append(
+            HuntHit(
+                rule=HuntRule(
+                    name=rule["name"],
+                    description=rule["description"],
+                    token_name=rule.get("token_name"),
+                    keywords=tuple(rule.get("keywords", ())),
+                    patterns=tuple(rule.get("patterns", ())),
+                ),
+                path=Path(entry["path"]),
+                line_number=entry["line_number"],
+                excerpt=entry["excerpt"],
+            )
+        )
+    redaction: dict[str, object] = {}
+    if "redactor" in case:
+        redaction["redactor"] = RedactionFilter(tokens=tuple(case["redactor"]["tokens"]), placeholder=case["redactor"]["placeholder"])
+    if "mask_tokens" in case:
+        redaction["mask_tokens"] = tuple(case["mask_tokens"])
+    if "placeholder" in case:
+        redaction["placeholder"] = case["placeholder"]
+    return {
+        "case": case,
+        "matches": [_report_match(spec) for spec in case.get("matches", [])],
+        "diffs": diffs,
+        "hunt_hits": hits,
+        "redaction": redaction,
+    }
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    """``render_html_report`` (``html``), ``render_json_lines`` with sorted and insertion-ordered keys (``json_lines``,
+    ``json_lines_unsorted``), ``summarise_detections`` (``summary``) and ``build_snapshot_manifest`` (``manifest``) over the case, with
+    ``datetime.now`` fixed at ``case["timestamp"]``; a stage that raises is that stage's ``error``. ``PARITY_REPORT_RECURSION_LIMIT``
+    raises ``sys.setrecursionlimit`` first, the oracle run ``run_parity.sh report`` makes for a stage the stock limit ends with
+    ``RecursionError`` (``phase7_divergences.py``)."""
+
+    from datetime import datetime
+
+    if os.environ.get("PARITY_REPORT_RECURSION_LIMIT"):
+        sys.setrecursionlimit(int(os.environ["PARITY_REPORT_RECURSION_LIMIT"]))
+
+    from driftbuster.reporting import html as html_module
+    from driftbuster.reporting import snapshot as snapshot_module
+    from driftbuster.reporting.json_lines import render_json_lines
+    from driftbuster.reporting.summary import summarise_detections
+
+    case_text = Path(args.case).read_text(encoding="utf-8")
+    moment = datetime.fromisoformat(str(json.loads(case_text).get("timestamp", REPORT_TIMESTAMP)))
+    record: dict[str, object] = {}
+
+    def html() -> object:
+        inputs = _report_inputs(case_text)
+        case = inputs["case"]
+        kwargs = {key: case[key] for key in ("title", "profile_summary", "extra_metadata", "warnings", "legal_notice") if key in case}
+        if "diffs" in case:
+            kwargs["diffs"] = inputs["diffs"]
+        if "hunt_hits" in case:
+            kwargs["hunt_hits"] = inputs["hunt_hits"]
+        return html_module.render_html_report(inputs["matches"], **kwargs, **inputs["redaction"])
+
+    def json_lines(sort_keys: bool) -> object:
+        inputs = _report_inputs(case_text)
+        case = inputs["case"]
+        return render_json_lines(
+            inputs["matches"],
+            profile_summary=case.get("profile_summary"),
+            hunt_hits=inputs["hunt_hits"] or None,
+            extra_metadata=case.get("extra_metadata"),
+            sort_keys=sort_keys,
+            **inputs["redaction"],
+        )
+
+    def manifest() -> object:
+        inputs = _report_inputs(case_text)
+        snapshot = inputs["case"].get("snapshot", {})
+        kwargs = {key: snapshot[key] for key in ("output_name", "operator", "legal_metadata", "extra_metadata") if key in snapshot}
+        return snapshot_module.build_snapshot_manifest(inputs["matches"], **kwargs, **inputs["redaction"])
+
+    with _patched(html_module, "datetime", _fixed_datetime(moment)), _patched(snapshot_module, "datetime", _fixed_datetime(moment)):
+        _stage(record, "html", html)
+        _stage(record, "json_lines", lambda: json_lines(True))
+        _stage(record, "json_lines_unsorted", lambda: json_lines(False))
+        _stage(record, "summary", lambda: summarise_detections(_report_inputs(case_text)["matches"]))
+        _stage(record, "manifest", manifest)
+    _emit_keyed(record)
+    return 0
+
+
+def _registry_decode(value: object) -> object:
+    """A case value as ``winreg`` hands it back: ``{"$bytes": hex}`` is bytes, containers are walked."""
+
+    if isinstance(value, dict):
+        if set(value) == {"$bytes"}:
+            return bytes.fromhex(value["$bytes"])
+        return {key: _registry_decode(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_registry_decode(item) for item in value]
+    return value
+
+
+_REGISTRY_ERRORS = {"RuntimeError": RuntimeError, "ValueError": ValueError}
+
+
+def _registry_backend(tree: list[dict[str, object]]):
+    """The ``scan._Backend`` a case's ``tree`` describes. The first key whose hive and path equal the lookup and whose ``view`` (default
+    ``"*"``) is ``"*"`` or the requested view answers; a key with ``denied`` lists nothing (``winreg.OpenKeyEx`` refused, as the Windows
+    backend treats it); a key with ``error`` raises ``OSError(errno, os.strerror(errno))`` for ``{"errno"}`` (``PermissionError`` for
+    13), or ``RuntimeError`` / ``ValueError`` for ``{"type", "message"}``, from ``enum_values`` (and from ``enum_subkeys`` when
+    ``error_on`` is ``"subkeys"`` or ``"both"``); a lookup that finds no key lists nothing. A value is ``[name, data]`` or ``[name, data,
+    registry type]`` (the type documents which ``winreg`` value the data stands for)."""
+
+    from driftbuster.registry import scan
+
+    class _Fake(scan._Backend):
+        def _find(self, hive, path, view):
+            for key in tree:
+                if key["hive"] == hive and key["path"] == path and key.get("view", "*") in {"*", view}:
+                    return key
+            return None
+
+        def _raise(self, key, operation):
+            error = key.get("error")
+            if not error or key.get("error_on", "values") not in {operation, "both"}:
+                return
+            if "errno" in error:
+                raise OSError(error["errno"], os.strerror(error["errno"]))
+            raise _REGISTRY_ERRORS[error["type"]](error["message"])
+
+        def enum_subkeys(self, hive, path, view):
+            key = self._find(hive, path, view)
+            if not key or key.get("denied"):
+                return []
+            self._raise(key, "subkeys")
+            return list(key.get("subkeys", []))
+
+        def enum_values(self, hive, path, view):
+            key = self._find(hive, path, view)
+            if not key or key.get("denied"):
+                return []
+            self._raise(key, "values")
+            return [(entry[0], _registry_decode(entry[1])) for entry in key.get("values", [])]
+
+    return _Fake()
+
+
+def _registry_outcome(produce) -> dict[str, object]:
+    try:
+        return {"result": produce()}
+    except Exception as exc:
+        return {"error": _error_payload(exc)}
+
+
+def _registry_value(value: object) -> object:
+    """A dataclass (``RegistryApp``, ``RegistryHit``, ``RemoteRegistryTarget``, ``OfflineRegistryScanSource``) as its fields, bytes as
+    ``{"$bytes": hex}``, tuples as lists."""
+
+    import dataclasses
+
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return {field.name: _registry_value(getattr(value, field.name)) for field in dataclasses.fields(value)}
+    if isinstance(value, bytes):
+        return {"$bytes": value.hex()}
+    if isinstance(value, (list, tuple)):
+        return [_registry_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _registry_value(item) for key, item in value.items()}
+    return value
+
+
+def _registry_spec(entry: dict[str, object]):
+    from driftbuster.registry import SearchSpec
+
+    kwargs: dict[str, object] = {
+        "keywords": tuple(entry.get("keywords", ())),  # type: ignore[arg-type]
+        "patterns": tuple(re.compile(pattern) for pattern in entry.get("patterns", ())),  # type: ignore[union-attr]
+    }
+    for key in ("max_depth", "max_hits", "time_budget_s"):
+        if key in entry:
+            kwargs[key] = entry[key]
+    return SearchSpec(**kwargs)  # type: ignore[arg-type]
+
+
+def cmd_registry_scan(args: argparse.Namespace) -> int:
+    """A case's fake registry (``_registry_backend``) through the instrumented ``driftbuster.registry`` operations: ``enumerate``
+    (``enumerate_installed_apps``), ``find_roots`` (``find_app_registry_roots`` over the enumerated applications or the case's own),
+    ``searches`` (``search_registry`` over explicit roots or the roots suggested for a token), ``descriptors``
+    (``parse_registry_root_descriptor``), ``remote_targets`` (``RemoteRegistryTarget.from_payload``), ``scan_sources``
+    (``OfflineRegistryScanSource.from_dict`` and ``destination_name(fallback_index=1)``), ``remote_target_args``
+    (``registry_cli._parse_remote_target_arg``), ``cli`` (``registry_cli.main(argv)`` with ``is_windows`` true and the registry calls on
+    the fake: the return code or exception and stdout) and ``usage`` (``registry_summary()`` without durations and timestamps)."""
+
+    import io
+
+    import driftbuster.registry as registry
+    import driftbuster.registry_cli as registry_cli
+    from driftbuster.offline_runner import OfflineRegistryScanSource, RemoteRegistryTarget
+    from driftbuster.registry.scan import RegistryApp
+
+    case = json.loads(Path(args.case).read_text(encoding="utf-8"))
+    backend = _registry_backend(case.get("tree", []))
+    record: dict[str, object] = {}
+    apps: object = ()
+    if case.get("enumerate", True):
+        outcome = _registry_outcome(lambda: registry.enumerate_installed_apps(backend=backend))
+        apps = outcome.get("result", ())
+        record["enumerate"] = _registry_value(outcome)
+
+    def installed(entry: dict[str, object]) -> object:
+        given = entry.get("installed", "enumerated")
+        return apps if given == "enumerated" else tuple(RegistryApp(**app) for app in given)  # type: ignore[union-attr]
+
+    def find_roots(entry: dict[str, object]) -> object:
+        return [list(root) for root in registry.find_app_registry_roots(entry["token"], installed=installed(entry))]  # type: ignore[arg-type]
+
+    record["find_roots"] = [_registry_outcome(lambda entry=entry: find_roots(entry)) for entry in case.get("find_roots", [])]
+
+    def search(entry: dict[str, object]) -> object:
+        given = entry["roots"]
+        roots = (
+            registry.find_app_registry_roots(given, installed=apps)  # type: ignore[arg-type]
+            if isinstance(given, str)
+            else tuple(tuple(root) for root in given)  # type: ignore[union-attr]
+        )
+        return _registry_value(registry.search_registry(roots, _registry_spec(entry), backend=backend))
+
+    record["searches"] = [_registry_outcome(lambda entry=entry: search(entry)) for entry in case.get("searches", [])]
+    record["descriptors"] = [
+        _registry_outcome(lambda text=text: list(registry.parse_registry_root_descriptor(text).as_tuple()))
+        for text in case.get("descriptors", [])
+    ]
+    record["remote_targets"] = [
+        _registry_outcome(lambda payload=payload: _registry_value(RemoteRegistryTarget.from_payload(payload)))
+        for payload in case.get("remote_targets", [])
+    ]
+
+    def scan_source(payload: object) -> object:
+        source = OfflineRegistryScanSource.from_dict(payload)  # type: ignore[arg-type]
+        return {"source": _registry_value(source), "destination_name": source.destination_name(fallback_index=1)}
+
+    record["scan_sources"] = [_registry_outcome(lambda payload=payload: scan_source(payload)) for payload in case.get("scan_sources", [])]
+    record["remote_target_args"] = [
+        _registry_outcome(lambda text=text: registry_cli._parse_remote_target_arg(text)) for text in case.get("remote_target_args", [])
+    ]
+    runs = []
+    for argv in case.get("cli", []):
+        stdout = io.StringIO()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(_patched(registry_cli, "is_windows", lambda: True))
+            enumerate_fake = lambda: registry.enumerate_installed_apps(backend=backend)  # noqa: E731
+            stack.enter_context(_patched(registry_cli, "enumerate_installed_apps", enumerate_fake))
+            stack.enter_context(
+                _patched(registry_cli, "search_registry", lambda roots, spec: registry.search_registry(roots, spec, backend=backend))
+            )
+            stack.enter_context(contextlib.redirect_stdout(stdout))
+            try:
+                run: dict[str, object] = {"exit_code": registry_cli.main(argv)}
+            except (Exception, SystemExit) as exc:
+                run = {"error": _error_payload(exc)}
+        run["stdout"] = stdout.getvalue()
+        runs.append(run)
+    record["cli"] = runs
+    record["usage"] = [
+        {key: entry[key] for key in ("operation", "calls", "successes", "errors", "last_error")} for entry in registry.registry_summary()
+    ]
+    _emit_keyed(record)
+    return 0
+
+
+CAPTURE_NOW = "2025-03-12T01:02:03.456789+00:00"
+
+
+class _RepeatingQueue:
+    """Each call takes the next value; once the list is spent the last value repeats (both dumps read the clocks the same way)."""
+
+    def __init__(self, values: list[object], default: object) -> None:
+        self.values = list(values) or [default]
+        self.index = 0
+
+    def pop(self) -> object:
+        value = self.values[min(self.index, len(self.values) - 1)]
+        self.index += 1
+        return value
+
+
+_CAPTURE_DEFAULTS = {
+    "run": {
+        "root": ".", "profiles": None, "profile_tags": [], "glob": "**/*", "hunt_glob": "**/*", "hunt_exclude": [], "skip_hunt": False,
+        "sample_size": 128 * 1024, "output_dir": "captures", "capture_id": None, "operator": None, "environment": None, "reason": None,
+        "mask_tokens": [], "placeholder": "[REDACTED]", "allow_unmasked": False, "registry_scan": [],
+    },
+    "export-sql": {
+        "database": [], "output_dir": "sql-exports", "table": [], "exclude_table": [], "mask_column": [], "hash_column": [],
+        "placeholder": "[REDACTED]", "hash_salt": "", "limit": None, "prefix": "",
+    },
+    "compare": {"baseline": None, "current": None},
+}
+
+
+def _capture_step(capture, snapshots, step: dict[str, object]) -> dict[str, object]:
+    """One ``scripts/capture.py`` command over ``argparse.Namespace`` built from the parser defaults and ``step["args"]``, with
+    ``datetime.now`` (``now``, shared by the script and ``driftbuster.sql.snapshots``), ``time.monotonic`` (``monotonic``),
+    ``socket.gethostname`` (``host``) and ``os.getenv`` (``env``) pinned, and the hunt's ``default_rules()`` carrying fix e as the port
+    ships it (stock rules with ``PARITY_CAPTURE_FIX_E=0``): the return code or exception, stdout and stderr."""
+
+    import io
+    from datetime import datetime
+    from types import SimpleNamespace
+
+    command = str(step["command"])
+    namespace = dict(_CAPTURE_DEFAULTS[command])
+    namespace.update(step.get("args", {}))  # type: ignore[arg-type]
+    handler = {"run": capture.run_capture, "export-sql": capture.run_sql_export, "compare": capture.compare_snapshots}[command]
+    now = _RepeatingQueue(step.get("now", []), CAPTURE_NOW)  # type: ignore[arg-type]
+    clock = _RepeatingQueue(step.get("monotonic", []), 100.0)  # type: ignore[arg-type]
+    env = dict(step.get("env", {}))  # type: ignore[arg-type]
+    host = str(step.get("host", "capture-host.example"))
+
+    class _Now(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime.fromisoformat(str(now.pop()))
+
+    stdout, stderr = io.StringIO(), io.StringIO()
+    result: dict[str, object] = {"command": command}
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(_patched(capture, "datetime", _Now))
+        stack.enter_context(_patched(snapshots, "datetime", _Now))
+        stack.enter_context(_patched(capture, "time", SimpleNamespace(monotonic=lambda: float(clock.pop()))))  # type: ignore[arg-type]
+        stack.enter_context(_patched(capture, "socket", SimpleNamespace(gethostname=lambda: host)))
+        stack.enter_context(_patched(capture, "os", SimpleNamespace(getenv=lambda key, default=None: env.get(key, default))))
+        fix_e = os.environ.get("PARITY_CAPTURE_FIX_E", "1") == "1"
+        stack.enter_context(_patched(capture, "default_rules", lambda: _hunt_rules(fix_e=fix_e)))
+        stack.enter_context(contextlib.redirect_stdout(stdout))
+        stack.enter_context(contextlib.redirect_stderr(stderr))
+        try:
+            result["exit_code"] = handler(argparse.Namespace(**namespace))
+        except Exception as exc:
+            result["error"] = _error_payload(exc)
+    result["stdout"] = stdout.getvalue()
+    result["stderr"] = stderr.getvalue()
+    return result
+
+
+def _tree_files(root: Path) -> dict[str, bytes]:
+    return {path.relative_to(root).as_posix(): path.read_bytes() for path in root.rglob("*") if path.is_file() and not path.is_symlink()}
+
+
+def cmd_capture(args: argparse.Namespace) -> int:
+    """Copies the case's ``workdir/`` to ``<scratch>/work``, builds its ``databases`` (``{relative path: script}``, each script run with
+    ``executescript``), makes it the working directory and runs each of ``steps`` (``_capture_step``); prints ``steps`` and ``files``: every
+    file under the working directory the steps created or changed, by code point order of its posix path, with size, SHA-256 and text, the
+    working directory respelled ``<workdir>`` throughout."""
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from driftbuster.sql import snapshots
+    from scripts import capture
+
+    case_path = Path(args.case).resolve()
+    case = json.loads(case_path.read_text(encoding="utf-8"))
+    scratch = Path(args.scratch) if args.scratch else Path(tempfile.mkdtemp(prefix="driftbuster-parity-capture-"))
+    scratch.mkdir(parents=True, exist_ok=True)
+    work = scratch / "work"
+    workdir = case_path.parent / "workdir"
+    if workdir.is_dir():
+        shutil.copytree(workdir, work, symlinks=True)
+    else:
+        work.mkdir()
+    previous = os.getcwd()
+    try:
+        for relative, script in case.get("databases", {}).items():
+            _build_sqlite(work / relative, {"script": script}, work)
+        os.chdir(work)
+        prefix = os.getcwd()
+        before = _tree_files(work)
+        steps = [_capture_step(capture, snapshots, step) for step in case.get("steps", [])]
+        after = _tree_files(work)
+        files = [
+            _file_entry(work / relative, relative, prefix)
+            for relative in sorted(after)
+            if before.get(relative) != after[relative]
+        ]
+        record: dict[str, object] = {"steps": steps, "files": files}
+        _emit_keyed(_respell(record, prefix))  # type: ignore[arg-type]
+    finally:
+        os.chdir(previous)
+        shutil.rmtree(scratch, ignore_errors=True)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1665,6 +2285,24 @@ def main(argv: list[str] | None = None) -> int:
     schedule.add_argument("--resume-at", default=None)
     schedule.add_argument("--now", default="2025-03-01T12:00:00+00:00", help="ProfileScheduler._now")
     schedule.set_defaults(func=cmd_schedule)
+
+    sql_export = sub.add_parser("sql-export")
+    sql_export.add_argument("case")
+    sql_export.add_argument("--scratch", default=None, help="directory created for the run and removed after it")
+    sql_export.set_defaults(func=cmd_sql_export)
+
+    report = sub.add_parser("report")
+    report.add_argument("case")
+    report.set_defaults(func=cmd_report)
+
+    registry_scan = sub.add_parser("registry-scan")
+    registry_scan.add_argument("case")
+    registry_scan.set_defaults(func=cmd_registry_scan)
+
+    capture = sub.add_parser("capture")
+    capture.add_argument("case")
+    capture.add_argument("--scratch", default=None, help="directory created for the run and removed after it")
+    capture.set_defaults(func=cmd_capture)
 
     args = parser.parse_args(argv)
     return args.func(args)

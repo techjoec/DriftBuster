@@ -1,0 +1,59 @@
+{
+ "title": "\u62a5\u544a \ud83d\udcc4",
+ "matches": [
+  {
+   "plugin": "ini",
+   "format": "ini",
+   "variant": "sectioned-ini",
+   "confidence": 0.8,
+   "reasons": [
+    "\u00e9\u00e8\u00ea"
+   ],
+   "metadata": {
+    "path": "C:\\Program Files\\\u00c9diteur\\app.ini",
+    "\u540d\u524d": "\u5024",
+    "astral": "\ud83d\ude00\ud835\udd18"
+   }
+  }
+ ],
+ "hunt_hits": [
+  {
+   "kind": "hit",
+   "rule": {
+    "name": "p",
+    "description": "\u00fcber",
+    "token_name": "t\u00f6ken"
+   },
+   "path": "/data/\u65e5\u672c/\ud83d\ude00.conf//",
+   "line_number": 1,
+   "excerpt": "\u2028line\u0085sep"
+  },
+  {
+   "kind": "hit",
+   "rule": {
+    "name": "q",
+    "description": "",
+    "keywords": [
+     "K"
+    ],
+    "patterns": [
+     "a+",
+     "b\\d"
+    ]
+   },
+   "path": "relative/./p\u00e9.cfg",
+   "line_number": 10,
+   "excerpt": "\ud83d lone"
+  }
+ ],
+ "extra_metadata": {
+  "run": "r\u00e9-\ud83d\ude00"
+ },
+ "snapshot": {
+  "operator": "op\u00e9rateur",
+  "output_name": "\u00e9t\u00e9.json",
+  "extra_metadata": {
+   "site": "\u6771\u4eac"
+  }
+ }
+}

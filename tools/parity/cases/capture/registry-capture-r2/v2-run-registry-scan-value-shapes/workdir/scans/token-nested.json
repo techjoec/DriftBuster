@@ -1,0 +1,20 @@
+{
+ "token": {
+  "a": [
+   1,
+   2.5,
+   null,
+   "x",
+   {
+    "b": true
+   }
+  ]
+ },
+ "requested_roots": [
+  {
+   "hive": 1,
+   "path": 2,
+   "view": 3
+  }
+ ]
+}

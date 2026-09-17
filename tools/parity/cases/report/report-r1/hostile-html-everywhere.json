@@ -1,0 +1,117 @@
+{
+ "title": "Report <\"&'> \ud83d\ude00 </title><script>x()</script>",
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.125,
+   "reasons": [
+    "a <reason>",
+    "SECRET in reason"
+   ],
+   "metadata": {
+    "zeta": "<script>alert('x')</script>",
+    "Alpha": true,
+    "alpha": null,
+    "\u00e9t\u00e9": [
+     1,
+     2.5,
+     "SECRET",
+     {
+      "inner": "SECRET & <b>"
+     }
+    ],
+    "\ud83d\ude00": {
+     "nested": {
+      "deeper": [
+       "a",
+       "b"
+      ]
+     },
+     "flag": false
+    },
+    "\uffff": 1180591620717411303424,
+    "empty": {},
+    "list_empty": [],
+    "quote\"key": "it's \"quoted\""
+   }
+  },
+  {
+   "plugin": "xml",
+   "format": "xml",
+   "variant": "",
+   "confidence": 0.5,
+   "reasons": [
+    "empty variant"
+   ],
+   "metadata": {}
+  }
+ ],
+ "warnings": [
+  "Check <manually> & \"quote\"",
+  "<span class=\"raw\">kept raw</span>",
+  "<spanish>",
+  "",
+  "</div><script>1</script>"
+ ],
+ "legal_notice": "Handle & <care> '\"",
+ "profile_summary": {
+  "total_profiles": "<b>2</b>",
+  "total_tags": "<tags>",
+  "profiles": [
+   {
+    "name": "<img src=x>",
+    "config_count": "<b>raw</b>",
+    "config_ids": [
+     "<c1>",
+     "&c2"
+    ]
+   }
+  ]
+ },
+ "hunt_hits": [
+  {
+   "kind": "hit",
+   "rule": {
+    "name": "server-name",
+    "description": "Hostnames <SECRET>",
+    "token_name": "  server_name  ",
+    "keywords": [
+     "server",
+     "Host"
+    ],
+    "patterns": [
+     "server\\s+(\\S+)"
+    ]
+   },
+   "path": "/srv/app/\u00e9t\u00e9/config.ini",
+   "line_number": 3,
+   "excerpt": "server SECRET.corp.local <tag attr='1'>"
+  },
+  {
+   "kind": "mapping",
+   "value": {
+    "rule": {
+     "description": "<desc>",
+     "token_name": "<tok>"
+    },
+    "path": "<p>",
+    "line_number": "<1>",
+    "excerpt": "</code><script>"
+   }
+  }
+ ],
+ "diffs": [
+  {
+   "kind": "mapping",
+   "value": {
+    "label": "<label>",
+    "diff": "-<a>\n+&b",
+    "stats": {
+     "<k>": "<v>"
+    }
+   }
+  }
+ ]
+}

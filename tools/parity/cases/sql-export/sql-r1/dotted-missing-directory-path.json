@@ -1,0 +1,6 @@
+{
+ "database": {
+  "script": "accounts.sql"
+ },
+ "path": "./sub/../case.sqlite"
+}

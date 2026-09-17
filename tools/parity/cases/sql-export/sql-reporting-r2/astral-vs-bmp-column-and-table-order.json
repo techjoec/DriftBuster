@@ -1,0 +1,17 @@
+{
+ "database": {
+  "script": "astral-columns.sql"
+ },
+ "options": {
+  "hash_columns": {
+   "z": [
+    "😀",
+    "Ａ",
+    ""
+   ]
+  },
+  "mask_columns": [
+   "z."
+  ]
+ }
+}

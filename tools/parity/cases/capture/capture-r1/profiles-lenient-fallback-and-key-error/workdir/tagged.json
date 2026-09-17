@@ -1,0 +1,1 @@
+{"profiles": [{"name": "t", "tags": ["x", "y"], "configs": [{"id": "all", "path_glob": "**/*"}]}]}

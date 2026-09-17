@@ -1,0 +1,296 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "Multi",
+    "Tabbed",
+    "Spaces"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Multi",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Multi\nLine"
+    ],
+    [
+     "DisplayVersion",
+     "1\n2"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Tabbed",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "Tab\tbed"
+    ],
+    [
+     "DisplayVersion",
+     "\t"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Spaces",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     " padded "
+    ],
+    [
+     "DisplayVersion",
+     " 1 "
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "P",
+   "view": "*",
+   "values": [
+    [
+     "v",
+     "hit"
+    ]
+   ]
+  }
+ ],
+ "find_roots": [
+  {
+   "token": "x",
+   "installed": [
+    {
+     "display_name": "x",
+     "key_path": "k",
+     "hive": "HKLM",
+     "view": "16"
+    },
+    {
+     "display_name": "x y",
+     "key_path": "k2",
+     "hive": "HKCU",
+     "view": "AUTO"
+    }
+   ]
+  }
+ ],
+ "cli": [
+  [
+   "list-apps"
+  ],
+  [
+   "suggest-roots",
+   "multi"
+  ],
+  [
+   "suggest-roots",
+   "padded"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(?P<n>x)(?P<n>y)"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "\\N{BOGUS}"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "x{2,1}"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(?i"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "\\p"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "[z-a]"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(?<=a+)b"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "a\n\n("
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(\n"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "*"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "\\1"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(?P=nope)"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "a**"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "["
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "\\"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(?z)"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(?P<1>x)"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "\\N"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "a{1,2,3}"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "(?<a-b>x)"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "\\N{LATIN SMALL LETTER A}\\n("
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--pattern",
+   "\\N{LATIN SMALL LETTER H}it"
+  ],
+  [
+   "search",
+   "t",
+   "--root",
+   "HKLM\\P",
+   "--keyword",
+   "HIT",
+   "--pattern",
+   "(?i)HIT"
+  ],
+  [
+   "emit-config",
+   "t",
+   "--pattern",
+   "(",
+   "--remote-target",
+   "k=v"
+  ]
+ ]
+}

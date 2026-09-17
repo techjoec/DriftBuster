@@ -63,10 +63,60 @@ public sealed class PythonValuesTests
     }
 
     [Fact]
+    public void LessThanOrEqualFollowsPython()
+    {
+        PythonValues.LessThanOrEqual(0.5, 0).Should().BeFalse();
+        PythonValues.LessThanOrEqual(0, 0).Should().BeTrue();
+        PythonValues.LessThanOrEqual(false, 0).Should().BeTrue();
+        PythonValues.LessThanOrEqual(-1L, 0).Should().BeTrue();
+        PythonValues.LessThanOrEqual(double.NegativeInfinity, 0).Should().BeTrue();
+        PythonValues.LessThanOrEqual(double.NaN, 0).Should().BeFalse();
+        PythonValues.LessThanOrEqual(0, double.NaN).Should().BeFalse();
+        PythonValues.LessThanOrEqual(BigInteger.Pow(10, 30), 1e30).Should().BeTrue();
+        PythonValues.LessThanOrEqual("a", "a").Should().BeTrue();
+        PythonValues.LessThanOrEqual("b", "a").Should().BeFalse();
+        PythonValues.LessThanOrEqual(new List<object?> { 1 }, new List<object?> { 1 }).Should().BeTrue();
+        PythonValues.LessThanOrEqual(new object?[] { 1, 2 }, new object?[] { 1 }).Should().BeFalse();
+
+        var text = () => PythonValues.LessThanOrEqual("2", 0);
+        text.Should().Throw<PythonTypeException>().WithMessage("'<=' not supported between instances of 'str' and 'int'");
+        var list = () => PythonValues.LessThanOrEqual(new List<object?> { 1 }, 0);
+        list.Should().Throw<PythonTypeException>().WithMessage("'<=' not supported between instances of 'list' and 'int'");
+        var dict = () => PythonValues.LessThanOrEqual(new OrderedDictionary<string, object?>(StringComparer.Ordinal), 0);
+        dict.Should().Throw<PythonTypeException>().WithMessage("'<=' not supported between instances of 'dict' and 'int'");
+    }
+
+    [Fact]
     public void NarrowPicksTheSmallestIntegerType()
     {
         PythonValues.Narrow(new BigInteger(int.MaxValue)).Should().BeOfType<int>();
         PythonValues.Narrow(new BigInteger(int.MinValue) - 1).Should().BeOfType<long>();
         PythonValues.Narrow(new BigInteger(long.MaxValue) + 1).Should().BeOfType<BigInteger>();
+    }
+
+    [Fact]
+    public void TuplesCompareHashAndSortAsPython()
+    {
+        PythonValues.Equal(new object?[] { 1, "a" }, new object?[] { 1.0, "a" }).Should().BeTrue();
+        PythonValues.Equal(new object?[] { 1 }, new List<object?> { 1 }).Should().BeFalse();
+        PythonValues.LessThan(new object?[] { 1, 2 }, new object?[] { 1, 3 }).Should().BeTrue();
+        PythonValues.LessThan(new object?[] { 1 }, new object?[] { 1, 0 }).Should().BeTrue();
+        PythonValues.LessThan(new object?[] { 1, 0 }, new object?[] { 1 }).Should().BeFalse();
+        PythonValues.LessThan(new List<object?> { 1, 2 }, new List<object?> { 1, 3 }).Should().BeTrue();
+
+        var mixed = () => PythonValues.LessThan(new object?[] { "a", null }, new object?[] { "a", 1 });
+        mixed.Should().Throw<PythonTypeException>().WithMessage("'<' not supported between instances of 'NoneType' and 'int'");
+        var tupleAndList = () => PythonValues.LessThan(new object?[] { 1 }, new List<object?> { 1 });
+        tupleAndList.Should().Throw<PythonTypeException>().WithMessage("'<' not supported between instances of 'tuple' and 'list'");
+        var dicts = () => PythonValues.LessThan(new OrderedDictionary<string, object?>(StringComparer.Ordinal), new OrderedDictionary<string, object?>(StringComparer.Ordinal));
+        dicts.Should().Throw<PythonTypeException>().WithMessage("'<' not supported between instances of 'dict' and 'dict'");
+
+        var set = new HashSet<object?>(PythonValues.HashKeys) { new object?[] { 1, "a" }, new object?[] { true, "a" }, new object?[] { 1.0, "a", null } };
+        set.Should().HaveCount(2);
+        var unhashable = () => PythonValues.HashKeys.GetHashCode(new object?[] { 1, new List<object?> { 2 } });
+        unhashable.Should().Throw<PythonTypeException>().WithMessage("unhashable type: 'list'");
+
+        PythonValues.Sorted([new object?[] { "b", 1 }, new object?[] { "a", 2 }, new object?[] { "a", 1 }])
+            .Select(item => PythonRepr.Repr(item)).Should().Equal("('a', 1)", "('a', 2)", "('b', 1)");
     }
 }

@@ -89,6 +89,9 @@ public sealed class PythonReprTests
         };
         PythonRepr.Str(dict).Should().Be("{'b': 1, 'a': [None, False, 2.5], \"q'\": \"b'c\"}");
         PythonRepr.Str(new OrderedDictionary<string, object?>(StringComparer.Ordinal)).Should().Be("{}");
+        PythonRepr.Str(new List<object?> { "a", null, true, new byte[] { (byte)'x' } }).Should().Be("['a', None, True, b'x']");
+        PythonRepr.Repr(new byte[] { (byte)'i', (byte)'t', (byte)'\'', (byte)'s' }).Should().Be("b\"it's\"");
+        PythonBuiltins.TypeName(new byte[] { 1 }).Should().Be("bytes");
 
         var act = () => PythonRepr.Repr(new object());
         act.Should().Throw<ArgumentException>();
@@ -109,5 +112,14 @@ public sealed class PythonReprTests
             .Should().BeTrue();
         var mixedText = StackProbe.RunOnSmallStack(() => PythonRepr.Repr(mixed));
         mixedText.Should().Be(string.Concat(Enumerable.Repeat("{'k': [1, ", 3000)) + "None" + string.Concat(Enumerable.Repeat("]}", 3000)));
+    }
+
+    [Fact]
+    public void TuplesAreSpelledWithParenthesesAtAnyDepth()
+    {
+        PythonRepr.Repr(new object?[] { 1 }).Should().Be("(1,)");
+        PythonRepr.Repr(Array.Empty<object?>()).Should().Be("()");
+        PythonRepr.Repr(new object?[] { null, "a", new List<object?> { 1, new object?[] { 2 } } }).Should().Be("(None, 'a', [1, (2,)])");
+        PythonRepr.Str(new object?[] { "it's", 1e16 }).Should().Be("(\"it's\", 1e+16)");
     }
 }

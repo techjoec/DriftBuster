@@ -1,0 +1,8 @@
+{
+ "database": {
+  "script": "without-rowid.sql"
+ },
+ "options": {
+  "limit": 1
+ }
+}

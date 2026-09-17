@@ -1,0 +1,53 @@
+{
+ "steps": [
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/tokens-a.json",
+    "current": "snap/tokens-b.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/tokens-a.json",
+    "current": "snap/mixed-tokens.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/tokens-a.json",
+    "current": "snap/unhashable-format.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/summary-list.json",
+    "current": "snap/summary-list.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/detection-null.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/keys-int-none.json",
+    "current": "snap/tokens-a.json"
+   }
+  },
+  {
+   "command": "compare",
+   "args": {
+    "baseline": "snap/keys-none-int.json",
+    "current": "snap/tokens-a.json"
+   }
+  }
+ ]
+}

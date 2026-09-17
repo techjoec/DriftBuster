@@ -1,0 +1,410 @@
+{
+ "enumerate": false,
+ "scan_sources": [
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": "0x10"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": 1000.0
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": "\u0661\u0662"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": "12 "
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": ""
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": " "
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": 2.5
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": -2.5
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": 1e+30
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": "1_000"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": "1__0"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": "+0"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": "-0"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": "\u00b2"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": false
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_hits": "true"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "\u0661.\u0665"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": " 1e400 "
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "infinity"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "-nan"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "1_000.5"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "1__0"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "_1"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "1."
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": ".5"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "0x10"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": true
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": null
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": [
+     1
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "1e"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "\u00bd"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "1\u00a0"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "\u30001\u3000"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "time_budget_s": "\uff11.\uff15"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": [
+     1
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": {
+     "a": 1
+    }
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": "1e3"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": 12345678901234567890123456789
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": -0.0
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": 9.99
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": -9.99
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": 1000000000000000.0
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": 1e+22
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "max_depth": 1.2345678901234568e+17
+   }
+  },
+  {
+   "registry_scan": {
+    "token": " x "
+   }
+  },
+  {
+   "registry_scan": {
+    "token": [
+     "a"
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": true
+   }
+  },
+  {
+   "registry_scan": {
+    "token": 1.0
+   }
+  },
+  {
+   "registry_scan": {
+    "token": {
+     "a": null
+    }
+   }
+  },
+  {
+   "registry_scan": {
+    "token": 1e+16
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "\u3000"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": 0.0
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": "a\u3000b\u00a0c;d,,e"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": "  "
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": ";,;"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "patterns": [
+     " ",
+     "x",
+     "\u3000y\u3000"
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": [
+     [
+      "a"
+     ]
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": [
+     1.5,
+     true,
+     null,
+     {
+      "k": 1
+     },
+     1e+16,
+     -0.0
+    ]
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": "\u0085a\u2028b\u2029c"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": "a\u200bb"
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": true
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": 5
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "keywords": {
+     "x": 1
+    }
+   }
+  },
+  {
+   "registry_scan": {
+    "token": "t",
+    "patterns": "\u001cx\u001fy"
+   }
+  }
+ ]
+}

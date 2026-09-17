@@ -1,0 +1,101 @@
+{
+ "steps": [
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/a.sqlite"
+    ],
+    "output_dir": "sql",
+    "table": [
+     ""
+    ],
+    "exclude_table": [
+     ""
+    ],
+    "mask_column": [
+     "accounts.secret.extra",
+     " . ",
+     "."
+    ],
+    "prefix": ""
+   },
+   "now": [
+    "2025-03-12T02:00:00+00:00"
+   ]
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/a.sqlite",
+     "db/a.sqlite"
+    ],
+    "output_dir": "sql",
+    "prefix": "twice"
+   },
+   "now": [
+    "2025-03-12T02:00:01+00:00"
+   ]
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/a.sqlite"
+    ],
+    "output_dir": "sql",
+    "limit": -1
+   },
+   "now": [
+    "2025-03-12T02:00:02+00:00"
+   ]
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/a.sqlite"
+    ],
+    "output_dir": "sql",
+    "prefix": "missing-sub/p"
+   },
+   "now": [
+    "2025-03-12T02:00:03+00:00"
+   ]
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db/.sqlite",
+     "db/a.b.sqlite",
+     "nope/../db/a.sqlite"
+    ],
+    "output_dir": "sql2"
+   },
+   "now": [
+    "2025-03-12T02:00:04+00:00"
+   ]
+  },
+  {
+   "command": "export-sql",
+   "args": {
+    "database": [
+     "db"
+    ],
+    "output_dir": "sql3",
+    "hash_salt": "",
+    "placeholder": "\u2588"
+   },
+   "now": [
+    "2025-03-12T02:00:05+00:00"
+   ]
+  }
+ ],
+ "databases": {
+  "db/a.sqlite": "acc.sql",
+  "db/.sqlite": "acc.sql",
+  "db/a.b.sqlite": "acc.sql"
+ }
+}

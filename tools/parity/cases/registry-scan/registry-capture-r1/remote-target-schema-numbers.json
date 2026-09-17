@@ -1,0 +1,150 @@
+{
+ "enumerate": false,
+ "remote_targets": [
+  {
+   "host": "h",
+   "port": "\u0663"
+  },
+  {
+   "host": "h",
+   "port": " 1_0 "
+  },
+  {
+   "host": "h",
+   "port": Infinity
+  },
+  {
+   "host": "h",
+   "port": NaN
+  },
+  {
+   "host": "h",
+   "port": "1.0"
+  },
+  {
+   "host": "h",
+   "port": -0.5
+  },
+  {
+   "host": "h",
+   "port": 99999999999999999999
+  },
+  {
+   "host": "h",
+   "port": false
+  },
+  {
+   "host": "h",
+   "port": {
+    "a": 1
+   }
+  },
+  {
+   "host": "h",
+   "use_ssl": "\u2003on\u2003"
+  },
+  {
+   "host": "h",
+   "use_ssl": false,
+   "use-ssl": true
+  },
+  {
+   "host": "h",
+   "use_ssl": []
+  },
+  {
+   "host": "h",
+   "use_ssl": {
+    "a": 1
+   }
+  },
+  {
+   "host": "h",
+   "use_ssl": 0
+  },
+  {
+   "host": "h",
+   "use_ssl": 1.0
+  },
+  {
+   "host": "h",
+   "username": [
+    "u"
+   ]
+  },
+  {
+   "host": null,
+   "hostname": "x"
+  },
+  {
+   "host": 1.5
+  },
+  {
+   "host": 1e+16
+  },
+  {
+   "host": true
+  },
+  {
+   "host": [
+    0
+   ]
+  },
+  {
+   "host": {
+    "k": "v"
+   }
+  },
+  {
+   "host": "h",
+   "alias": 1e-07
+  },
+  {
+   "host": "h",
+   "transport": "\u0130X"
+  },
+  {
+   "host": "h",
+   "transport": [
+    "A",
+    "b"
+   ]
+  },
+  {
+   "host": "h",
+   "transport": 0
+  },
+  {
+   "host": "h",
+   "credential_profile": null,
+   "credential-profile": "p"
+  },
+  {
+   "host": "h",
+   "credential_profile": "",
+   "credential-profile": "p"
+  },
+  {
+   "host": "h",
+   "password": "x",
+   "port": "bad"
+  },
+  {
+   "host": "h",
+   "port": "bad",
+   "use_ssl": "bad"
+  },
+  {
+   "host": "h",
+   "password_env": "  ",
+   "port": "bad"
+  },
+  {
+   "host": "\u00a0h\u00a0",
+   "alias": "\u001c"
+  },
+  {
+   "hostname": ""
+  }
+ ]
+}

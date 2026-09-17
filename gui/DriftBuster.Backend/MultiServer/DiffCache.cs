@@ -57,18 +57,10 @@ public sealed class DiffCache
 
         if (kind == UnixFileType.Kind.Directory || (kind is null && Directory.Exists(PythonPath.KernelPath(path))))
         {
-            throw PythonOSError.Create(PythonOSError.IsADirectory, path);
+            throw PythonOSError.Create(PythonOSError.DirectoryOpenErrno, path);
         }
 
-        byte[] raw;
-        try
-        {
-            raw = File.ReadAllBytes(PythonPath.KernelPath(path));
-        }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-        {
-            throw PythonOSError.Errno(exc) is { } errno ? PythonOSError.Create(errno, path, exc) : exc;
-        }
+        var raw = PythonTextFile.ReadBytes(path, path);
 
         if (!PythonJson.TryLoads(PythonUtf8.Decode(raw), out var parsed))
         {
@@ -107,7 +99,7 @@ public sealed class DiffCache
             if (!nameable || !TryWriteTemporary(temporary, bytes))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                File.WriteAllBytes(target, bytes);
+                PythonTextFile.WriteBytes(target, bytes, path);
                 return;
             }
 
@@ -117,7 +109,9 @@ public sealed class DiffCache
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw PythonOSError.Errno(exc) is { } errno ? PythonOSError.Create(errno, path, exc) : exc;
+            throw exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || PythonOSError.Errno(exc, path) is not { } errno
+                ? exc
+                : PythonOSError.Create(errno, path, exc);
         }
         finally
         {
@@ -182,7 +176,7 @@ public sealed class DiffCache
     {
         if (UnixFileType.Stat(target, followSymlinks: true) == UnixFileType.Kind.Directory || (!OperatingSystem.IsLinux() && Directory.Exists(target)))
         {
-            throw PythonOSError.Create(PythonOSError.IsADirectory, path);
+            throw PythonOSError.Create(PythonOSError.DirectoryOpenErrno, path);
         }
     }
 
@@ -218,9 +212,7 @@ public sealed class DiffCache
     private static string CreateAndResolve(string path)
     {
         PythonPath.MakeDirectories(path);
-        var absolute = PythonPath.Absolute(path);
-        var physical = PythonPath.ResolvePhysicalPath(absolute, out var nameable);
-        return physical is null ? Path.GetFullPath(absolute) : nameable ? physical : Path.GetFullPath(PythonPath.KernelPath(absolute));
+        return PythonPath.Resolve(path);
     }
 
     // any(destination.iterdir()); an error counts as entries present, which ends the best-effort migration as Python's does.

@@ -1,0 +1,18 @@
+{
+ "database": {
+  "script": "odd-columns.sql"
+ },
+ "options": {
+  "mask_columns": [
+   "t.\u00c9",
+   "t. ",
+   "T.ID",
+   "t.id"
+  ],
+  "hash_columns": [
+   "t.['a']",
+   " t . \u00e9 ",
+   "t..x"
+  ]
+ }
+}

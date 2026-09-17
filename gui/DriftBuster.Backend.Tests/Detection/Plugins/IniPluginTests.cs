@@ -569,6 +569,13 @@ public sealed class IniPluginTests
         IniPlugin.PythonRound(1.0, 3).Should().Be(1.0);
         IniPlugin.PythonRound(0.0, 3).Should().Be(0.0);
         IniPlugin.PythonRound(2.0 / 3, 3).Should().Be(0.667);
+        IniPlugin.PythonRound(-0.0005, 3).Should().Be(-0.001);
+        double.IsNegative(IniPlugin.PythonRound(-0.0004, 3)).Should().BeTrue();
+        IniPlugin.PythonRound(-2.675, 2).Should().Be(-2.67);
+        IniPlugin.PythonRound(1e22, 3).Should().Be(1e22);
+        IniPlugin.PythonRound(123456789.0125, 3).Should().Be(123456789.013);
+        IniPlugin.PythonRound(double.NaN, 3).Should().Be(double.NaN);
+        IniPlugin.PythonRound(double.NegativeInfinity, 3).Should().Be(double.NegativeInfinity);
         Detect("d.ini", "k=1\n" + string.Join("\n", Enumerable.Range(0, 15).Select(i => $"line{i}")))!.Metadata!["key_density"].Should().Be(0.062);
         Detect("d3.ini", "k=1\n" + string.Join("\n", Enumerable.Range(0, 1999).Select(i => $"line{i}")))!.Metadata!["key_density"].Should().Be(0.001);
     }

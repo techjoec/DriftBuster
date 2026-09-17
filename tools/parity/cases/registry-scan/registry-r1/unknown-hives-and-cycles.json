@@ -1,0 +1,89 @@
+{
+ "enumerate": false,
+ "tree": [
+  {
+   "hive": "HKX",
+   "path": "Nope",
+   "view": "*",
+   "values": [
+    [
+     "A",
+     "x"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Loop",
+   "view": "*",
+   "subkeys": [
+    "",
+    "Loop"
+   ],
+   "values": [
+    [
+     "L",
+     "top"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Loop\\",
+   "view": "*",
+   "values": [
+    [
+     "E",
+     "empty child"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Loop\\Loop",
+   "view": "*",
+   "values": [
+    [
+     "L2",
+     "child"
+    ]
+   ]
+  }
+ ],
+ "searches": [
+  {
+   "roots": [
+    [
+     "HKX",
+     "Nope",
+     null
+    ],
+    [
+     "HKLM",
+     "Loop",
+     null
+    ],
+    [
+     "HKLM",
+     "Loop",
+     "32"
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "Loop\\",
+     null
+    ],
+    [
+     "HKLM",
+     "Loop",
+     null
+    ]
+   ],
+   "max_depth": 1
+  }
+ ]
+}

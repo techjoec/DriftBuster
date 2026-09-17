@@ -1,0 +1,16 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": [],
+   "metadata": {
+    "k": "SECRET"
+   }
+  }
+ ],
+ "mask_tokens": [],
+ "placeholder": "P"
+}

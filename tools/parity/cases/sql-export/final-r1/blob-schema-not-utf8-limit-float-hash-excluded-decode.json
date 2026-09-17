@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "blob-schema-limit-float-hash-and-excluded-decode.sql"
+ },
+ "options": {
+  "limit": 1.5,
+  "hash_columns": {"a": ["s"]},
+  "exclude_tables": ["b"]
+ }
+}

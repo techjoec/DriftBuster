@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "r2v-blob-single.sql"
+ },
+ "options": {
+  "limit": true,
+  "mask_columns": [
+   "a.v"
+  ]
+ }
+}

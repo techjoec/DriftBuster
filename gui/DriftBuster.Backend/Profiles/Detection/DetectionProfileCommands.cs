@@ -31,16 +31,11 @@ public static class DetectionProfileCommands
         byte[] raw;
         try
         {
-            raw = Directory.Exists(PythonPath.KernelPath(shown))
-                ? throw PythonOSError.Create(PythonOSError.IsADirectory, shown)
-                : File.ReadAllBytes(PythonPath.KernelPath(shown));
+            raw = PythonTextFile.ReadBytes(shown, shown);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            var reason = exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || PythonOSError.Errno(exc) is not { } errno
-                ? exc.Message
-                : PythonOSError.Create(errno, shown).Message;
-            throw new PythonValueException($"Unable to read JSON payload from {shown}: {reason}", nameof(path), exc);
+            throw new PythonValueException($"Unable to read JSON payload from {shown}: {exc.Message}", nameof(path), exc);
         }
 
         return PythonJson.TryLoadsOrRaiseLimits(PythonUtf8.Decode(raw), out var value)

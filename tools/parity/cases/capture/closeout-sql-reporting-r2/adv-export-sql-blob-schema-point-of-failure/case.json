@@ -1,0 +1,55 @@
+{
+ "databases": {
+  "db/blob.sqlite": "blob-then-decode.sql",
+  "db/plain.sqlite": "plain.sql"
+ },
+ "steps": [
+  {
+   "command": "export-sql",
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "args": {
+    "database": [
+     "db/blob.sqlite",
+     "db/plain.sqlite"
+    ],
+    "output_dir": "sql"
+   }
+  },
+  {
+   "command": "export-sql",
+   "now": [
+    "2025-03-12T01:02:03.456789+00:00",
+    "2025-03-12T01:02:04+00:00",
+    "2025-03-12T01:02:05.000001+00:00"
+   ],
+   "monotonic": [
+    100.0,
+    100.0005,
+    101.2345,
+    101.2345,
+    102.0015,
+    102.6665
+   ],
+   "args": {
+    "database": [
+     "db/plain.sqlite",
+     "db/blob.sqlite"
+    ],
+    "output_dir": "sql2",
+    "limit": 1
+   }
+  }
+ ]
+}

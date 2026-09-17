@@ -1,0 +1,15 @@
+{
+ "database": {
+  "script": "odd-names.sql"
+ },
+ "options": {
+  "tables": [
+   "t\u00ebst\ud83d\ude00"
+  ],
+  "hash_columns": {
+   "t\u00ebst\ud83d\ude00": [
+    "c\u00f6l"
+   ]
+  }
+ }
+}

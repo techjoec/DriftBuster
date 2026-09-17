@@ -1,0 +1,7 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "file": ":memory:",
+ "path": ":memory:"
+}

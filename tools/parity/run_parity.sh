@@ -4,12 +4,14 @@
 # (unreadable file, unreadable subdirectory, dangling symlink, missing root, unreadable root, tiny
 # sampling budget, a FIFO, a socket and a device link); diff, canon, hunt and secrets run over the inputs listed in
 # run_phase4_surface; multi-server runs every plan file under tools/parity/cases/multi-server/ (run_multi_server_surface);
-# profile-store, run-profile and schedule run every case under tools/parity/cases/<surface>/ (run_phase6_surface).
+# profile-store, run-profile and schedule run every case under tools/parity/cases/<surface>/ (run_phase6_surface); sql-export,
+# report, registry-scan and capture run every case under tools/parity/cases/<surface>/ (run_phase7_surface).
 # Exit 1 on any difference that is not an expected divergence (see expected_divergences.md). Temporary; deleted with the
 # Python tree.
 #
 # Usage: tools/parity/run_parity.sh <surface> [dump args...]
-#   surfaces: detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule
+#   surfaces: detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule, sql-export, report,
+#             registry-scan, capture
 #   example:  tools/parity/run_parity.sh detect            (the full default registry on both sides)
 #             PARITY_MULTI_SERVER_CASES='unreadable|root-' tools/parity/run_parity.sh multi-server   (cases whose path matches)
 #             tools/parity/run_parity.sh detect --plugins text
@@ -23,9 +25,9 @@ fi
 surface="$1"
 shift
 case "$surface" in
-  detect|decode|diff|canon|hunt|secrets|multi-server|profile-store|run-profile|schedule) ;;
+  detect|decode|diff|canon|hunt|secrets|multi-server|profile-store|run-profile|schedule|sql-export|report|registry-scan|capture) ;;
   *)
-    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule)" >&2
+    echo "error: unknown surface '$surface' (detect, decode, diff, canon, hunt, secrets, multi-server, profile-store, run-profile, schedule, sql-export, report, registry-scan, capture)" >&2
     exit 2
     ;;
 esac
@@ -1348,6 +1350,137 @@ run_phase6_surface() {
   esac
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Phase 7 surfaces. Each case is one record per side, compared byte for byte (sorted keys, key_order included); jq is not used to read
+# the records, since it reads NaN as null. Cases are found at any depth (a group directory such as sql-r1/ holds cases); a directory
+# holding no case fails the surface.
+#   sql-export, report, registry-scan: every *.json under tools/parity/cases/<surface>/ is a case (a sql-export case names a SQL script
+#          beside it). sql-export and capture dumps run in the same scratch directory ($work/<surface>-scratch, removed before each
+#          dump) so the paths the engine writes into files agree.
+#   capture: every directory under tools/parity/cases/capture/ holding case.json (its workdir/ beside it, pruned from discovery).
+#   The Python dumps pin the clocks, host name and environment through py_dump.py's seams; capture's hunt runs default_rules() with
+#   fix e applied as the port ships it, and a third dump with stock rules (PARITY_CAPTURE_FIX_E=0) that differs from it counts the case
+#   as one expected divergence (expected_divergences.md, "Registry, SQL export, reporting and capture").
+# ---------------------------------------------------------------------------------------------------------------------
+PRETTY_RECORD='import json, sys
+sys.setrecursionlimit(20000)
+print(json.dumps(json.loads(open(sys.argv[1], encoding="utf-8").read()), indent=1, sort_keys=True, ensure_ascii=False))'
+
+# compare_phase7 <label> <case> [dump args...]: both dumps of one case; exactly one JSON line each, byte for byte equal.
+compare_phase7() {
+  local label="$1" tag side rc scratch=""
+  shift
+  tag="$surface-$(echo "${label#tools/parity/cases/$surface/}" | tr '/ ' '__')"
+  local args=("$@")
+  if [[ "$surface" == "sql-export" || "$surface" == "capture" ]]; then
+    scratch="$work/$surface-scratch"
+    args+=(--scratch "$scratch")
+  fi
+  for side in py cs; do
+    [[ -n "$scratch" ]] && { chmod -R u+rwX "$scratch" 2>/dev/null || true; rm -rf "$scratch"; }
+    rc=0
+    if [[ "$side" == py ]]; then
+      PYTHONPATH="$repo_root/src" PYTHON_COLORS=0 timeout "$port_timeout" python tools/parity/py_dump.py "$surface" "${args[@]}" \
+        > "$work/$tag.py.json" 2> "$work/$tag.py.err" || rc=$?
+    else
+      timeout "$port_timeout" "$cli_exe" parity-dump "$surface" "${args[@]}" > "$work/$tag.cs.json" 2> "$work/$tag.cs.err" || rc=$?
+    fi
+    if [[ "$rc" -ne 0 ]]; then
+      status=1
+      echo "FAIL $surface $label: $side dump exited $rc"
+      sed 's/^/     /' "$work/$tag.$side.err" | tail -n 5
+      return
+    fi
+    if [[ "$(wc -l < "$work/$tag.$side.json")" != "1" ]] || ! python -c "$PRETTY_RECORD" "$work/$tag.$side.json" > "$work/$tag.$side.pretty" 2> "$work/$tag.$side.err"; then
+      status=1
+      echo "FAIL $surface $label: $side dump is not one JSON record"
+      sed 's/^/     /' "$work/$tag.$side.err" | tail -n 5
+      return
+    fi
+  done
+  local fixe=0
+  if [[ "$surface" == capture ]]; then
+    # fix e: the same case run with stock default_rules(); a record that differs counts as one expected divergence.
+    rm -rf "$scratch"
+    rc=0
+    PARITY_CAPTURE_FIX_E=0 PYTHONPATH="$repo_root/src" PYTHON_COLORS=0 timeout "$port_timeout" python tools/parity/py_dump.py "$surface" "${args[@]}" \
+      > "$work/$tag.pystock.json" 2> "$work/$tag.pystock.err" || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+      status=1
+      echo "FAIL $surface $label: stock python dump exited $rc"
+      sed 's/^/     /' "$work/$tag.pystock.err" | tail -n 5
+      return
+    fi
+    cmp -s "$work/$tag.pystock.json" "$work/$tag.py.json" || fixe=1
+  fi
+  [[ -n "$scratch" ]] && rm -rf "$scratch"
+  files_total=$((files_total + 1))
+  expected_total=$((expected_total + fixe))
+  if cmp -s "$work/$tag.py.json" "$work/$tag.cs.json"; then
+    echo "ok   $surface $label$([[ "$fixe" -eq 1 ]] && echo ": 1 expected divergence")"
+    if [[ "$fixe" -eq 1 ]]; then
+      echo "     expected (fix e: the hunt finds Windows install paths with the port's pattern; stock python's record differs)"
+    fi
+    return
+  fi
+  # Recorded divergences (report: a RecursionError stage the port renders, checked against a second CPython run of the case with a
+  # raised recursion limit; capture: a mixed-type key sort TypeError naming the operands in the other order, or EISDIR from a write
+  # through a final dangling link whose target ends in "/" that the port reports as EACCES): the Python record with
+  # each accepted difference replaced by the port's must equal the port's.
+  local accepted=""
+  if [[ "$surface" == report ]]; then
+    rc=0
+    PARITY_REPORT_RECURSION_LIMIT=20000 PYTHONPATH="$repo_root/src" PYTHON_COLORS=0 timeout "$port_timeout" python tools/parity/py_dump.py "$surface" "${args[@]}" \
+      > "$work/$tag.pyraised.json" 2> "$work/$tag.pyraised.err" || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+      status=1
+      echo "FAIL $surface $label: raised-limit python dump exited $rc"
+      sed 's/^/     /' "$work/$tag.pyraised.err" | tail -n 5
+      return
+    fi
+    accepted="$(python tools/parity/phase7_divergences.py "$surface" "$work/$tag.py.json" "$work/$tag.cs.json" "$work/$tag.pyraised.json" 2> "$work/$tag.accept.err")" || accepted=""
+  elif [[ "$surface" == capture ]]; then
+    accepted="$(python tools/parity/phase7_divergences.py "$surface" "$work/$tag.py.json" "$work/$tag.cs.json" "$label" 2> "$work/$tag.accept.err")" || accepted=""
+  fi
+  if [[ -n "$accepted" ]]; then
+    expected_total=$((expected_total + accepted))
+    echo "ok   $surface $label: $((accepted + fixe)) expected divergence(s)"
+    echo "     expected ($surface: $accepted recorded $([[ "$surface" == report ]] && echo "RecursionError stage(s) the port renders as CPython does with a raised limit" || echo "TypeError operand order(s) or EISDIR through a dangling trailing-slash link"); see expected_divergences.md)"
+  else
+    status=1
+    echo "FAIL $surface $label: records differ"
+    [[ -s "$work/$tag.accept.err" ]] && sed 's/^/     /' "$work/$tag.accept.err"
+    diff -u "$work/$tag.py.pretty" "$work/$tag.cs.pretty" | head -c 20000 || true
+    echo
+  fi
+}
+
+run_phase7_surface() {
+  local listing="$work/phase7-listing" dir file
+  if [[ "$surface" == report || "$surface" == capture ]] && ! python tools/parity/phase7_divergences.py --self-test > /dev/null; then
+    status=1
+    echo "FAIL $surface: phase7_divergences.py --self-test"
+    return
+  fi
+  if [[ "$surface" == capture ]]; then
+    if ! phase6_case_dirs "$listing" tools/parity/cases/capture case.json; then
+      status=1
+    fi
+    while IFS= read -r dir; do
+      compare_phase7 "$dir" "$dir/case.json" "$@"
+    done < "$listing"
+    return
+  fi
+  if ! phase6_case_dirs "$listing" "tools/parity/cases/$surface" '*.json'; then
+    status=1
+  fi
+  while IFS= read -r dir; do
+    while IFS= read -r file; do
+      compare_phase7 "$file" "$file" "$@"
+    done < <(find "$dir" -maxdepth 1 -type f -name '*.json' | LC_ALL=C sort)
+  done < "$listing"
+}
+
 if [[ "$surface" == "detect" || "$surface" == "decode" ]]; then
   compare "fixtures" "fixtures" "$@"
   if [[ -d "tools/parity/cases/$surface" ]]; then
@@ -1410,6 +1543,8 @@ elif [[ "$surface" == "multi-server" ]]; then
   run_multi_server_surface "$@"
 elif [[ "$surface" == "profile-store" || "$surface" == "run-profile" || "$surface" == "schedule" ]]; then
   run_phase6_surface "$@"
+elif [[ "$surface" == "sql-export" || "$surface" == "report" || "$surface" == "registry-scan" || "$surface" == "capture" ]]; then
+  run_phase7_surface "$@"
 else
   run_phase4_surface "$@"
 fi

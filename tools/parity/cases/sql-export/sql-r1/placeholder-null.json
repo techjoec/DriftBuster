@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "accounts.sql"
+ },
+ "options": {
+  "mask_columns": [
+   "accounts.secret"
+  ],
+  "placeholder": null
+ }
+}

@@ -1,0 +1,1 @@
+{"detections": [{"relative_path": "a", "detection": {"format": 12345678901234567890, "variant": true}}, {"relative_path": "a", "detection": {"format": 1.2345678901234567e+19, "variant": 1}}, {"relative_path": "a", "detection": {"format": 1.2345678901234567e+19, "variant": 1.0, "extra": "changed"}}], "hunt_hits": [], "profile_summary": null}

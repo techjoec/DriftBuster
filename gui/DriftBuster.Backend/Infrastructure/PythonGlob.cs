@@ -63,10 +63,9 @@ public static class PythonGlob
     private static List<string> PatternParts(string pattern)
     {
         var pureParts = PythonPurePath.Parts(pattern);
-        var anchored = Windows ? Path.IsPathRooted(pattern) : pattern.StartsWith('/');
-        if (anchored)
+        if (PythonPurePath.Anchor(pattern).Length > 0)
         {
-            throw new NotSupportedException("Non-relative patterns are unsupported");
+            throw new PythonNotImplementedException("Non-relative patterns are unsupported");
         }
 
         var parts = pureParts.ToList();
@@ -84,7 +83,7 @@ public static class PythonGlob
         return parts;
     }
 
-    private static int AnchorLength(string path) => Windows ? (Path.GetPathRoot(path) ?? string.Empty).Length : path.StartsWith('/') ? 1 : 0;
+    private static int AnchorLength(string path) => PythonPurePath.Anchor(path).Length;
 
     private static bool IsSpecial(string part) => part is "" or "." or "..";
 
@@ -255,7 +254,7 @@ public static class PythonGlob
     {
         if (Windows)
         {
-            var tail = path[(Path.GetPathRoot(path) ?? string.Empty).Length..];
+            var tail = PythonNtPath.SplitRoot(path).Remainder;
             return tail.Length == 0 || tail[^1] is '\\' or '/' ? path : path + "\\";
         }
 

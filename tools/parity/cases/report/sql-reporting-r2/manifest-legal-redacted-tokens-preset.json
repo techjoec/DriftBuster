@@ -1,0 +1,29 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": [
+    "SECRET"
+   ]
+  }
+ ],
+ "mask_tokens": [
+  "SECRET"
+ ],
+ "placeholder": "##",
+ "snapshot": {
+  "legal_metadata": {
+   "redacted_tokens": "preset",
+   "warnings": null,
+   "zzz": 1,
+   "classification": [
+    "a"
+   ]
+  },
+  "operator": "",
+  "output_name": ""
+ }
+}

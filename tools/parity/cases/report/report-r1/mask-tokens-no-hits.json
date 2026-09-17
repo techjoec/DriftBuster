@@ -1,0 +1,20 @@
+{
+ "matches": [
+  {
+   "plugin": "ini",
+   "format": "ini",
+   "variant": "\u2014",
+   "confidence": 1e-07,
+   "reasons": [
+    "dash variant"
+   ]
+  }
+ ],
+ "mask_tokens": [
+  "absent"
+ ],
+ "placeholder": "##",
+ "snapshot": {
+  "operator": "op"
+ }
+}

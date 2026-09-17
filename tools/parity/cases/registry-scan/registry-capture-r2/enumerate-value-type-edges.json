@@ -1,0 +1,396 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "zero",
+    "five",
+    "true",
+    "emptylist",
+    "list",
+    "map",
+    "fzero",
+    "fone",
+    "bytes",
+    "spaced",
+    "dup",
+    "dup",
+    "App",
+    "APP",
+    "sharp",
+    "kelvin",
+    "astral",
+    "bmp",
+    "missing"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\zero",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     0
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\five",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     5
+    ],
+    [
+     "Publisher",
+     0
+    ],
+    [
+     "DisplayVersion",
+     []
+    ],
+    [
+     "UninstallString",
+     {}
+    ],
+    [
+     "InstallLocation",
+     false
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\true",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     true
+    ],
+    [
+     "Publisher",
+     "0"
+    ],
+    [
+     "DisplayVersion",
+     0.0
+    ],
+    [
+     "InstallLocation",
+     -0.0
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\emptylist",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     []
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\list",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     [
+      "a",
+      "b"
+     ]
+    ],
+    [
+     "Publisher",
+     {
+      "a": 1
+     }
+    ],
+    [
+     "DisplayVersion",
+     [
+      null
+     ]
+    ],
+    [
+     "UninstallString",
+     1e+16
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\map",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     {
+      "n": "v"
+     }
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\fzero",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     0.0
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\fone",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     1.0
+    ],
+    [
+     "Publisher",
+     2.5
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\bytes",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     {
+      "$bytes": "2027"
+     }
+    ],
+    [
+     "Publisher",
+     {
+      "$bytes": ""
+     }
+    ],
+    [
+     "DisplayVersion",
+     {
+      "$bytes": "22"
+     }
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\spaced",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "  app  "
+    ],
+    [
+     "Publisher",
+     "  P  "
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\dup",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "first"
+    ],
+    [
+     "DisplayName",
+     "second"
+    ],
+    [
+     "Publisher",
+     "p1"
+    ],
+    [
+     "Publisher",
+     ""
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\App",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "App"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\APP",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "APP"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\sharp",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "ẞ"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\kelvin",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "K"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\astral",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "😀"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\bmp",
+   "view": "64",
+   "values": [
+    [
+     "DisplayName",
+     "￿"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "32",
+   "subkeys": [
+    "App",
+    "app"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\App",
+   "view": "32",
+   "values": [
+    [
+     "DisplayName",
+     "app"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\app",
+   "view": "32",
+   "values": [
+    [
+     "DisplayName",
+     "App"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "*",
+   "subkeys": [
+    "a",
+    "b"
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\a",
+   "view": "*",
+   "values": [
+    [
+     "DisplayName",
+     "app"
+    ],
+    [
+     "DisplayVersion",
+     "0"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\b",
+   "view": "*",
+   "values": [
+    [
+     "DisplayName",
+     "APP"
+    ],
+    [
+     "DisplayVersion",
+     ""
+    ]
+   ]
+  }
+ ],
+ "find_roots": [
+  {
+   "token": "app"
+  },
+  {
+   "token": "5"
+  },
+  {
+   "token": "true"
+  },
+  {
+   "token": "'"
+  },
+  {
+   "token": "0"
+  }
+ ],
+ "cli": [
+  [
+   "list-apps"
+  ],
+  [
+   "suggest-roots",
+   "app"
+  ]
+ ]
+}

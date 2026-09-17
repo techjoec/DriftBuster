@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "accounts.email"
+  ],
+  "hash_salt": null
+ }
+}

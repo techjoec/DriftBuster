@@ -45,5 +45,23 @@ namespace DriftBuster.Backend
             IEnumerable<ServerScanPlan> plans,
             IProgress<ScanProgress>? progress = null,
             CancellationToken cancellationToken = default);
+
+        /// <summary>Exports anonymised SQLite snapshots and their <c>sql-manifest.json</c> (<c>capture.py export-sql</c>).</summary>
+        Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>Captures a redacted detection and hunt snapshot with its manifest (<c>capture.py run</c>).</summary>
+        Task<CaptureRunResult> RunCaptureAsync(CaptureRunRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>Compares a baseline capture snapshot with a current one (<c>capture.py compare</c>).</summary>
+        Task<CaptureCompareResult> CompareCapturesAsync(string baselinePath, string currentPath, CancellationToken cancellationToken = default);
+
+        /// <summary>The installed applications the registry's Uninstall keys list. Windows only.</summary>
+        Task<RegistryAppListResult> ListRegistryAppsAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Searches registry values under explicit roots or the roots suggested for a token. Windows only.</summary>
+        Task<RegistrySearchResult> SearchRegistryAsync(RegistrySearchRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>Scans a tree and renders its detections and hunt hits as an HTML report or JSON lines.</summary>
+        Task<ReportResult> BuildReportAsync(ReportRequest request, CancellationToken cancellationToken = default);
     }
 }

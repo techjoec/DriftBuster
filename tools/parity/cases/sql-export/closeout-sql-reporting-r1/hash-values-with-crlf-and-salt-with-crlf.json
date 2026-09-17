@@ -1,0 +1,13 @@
+{
+ "database": {
+  "script": "cr-mixed.sql"
+ },
+ "options": {
+  "hash_columns": [
+   "t.a",
+   "t.b",
+   "t.c"
+  ],
+  "hash_salt": "\r\n"
+ }
+}

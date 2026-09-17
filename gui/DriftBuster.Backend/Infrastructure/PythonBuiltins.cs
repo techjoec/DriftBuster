@@ -28,6 +28,8 @@ public static class PythonBuiltins
         int or long or BigInteger => "int",
         double => "float",
         string => "str",
+        byte[] => "bytes",
+        object?[] => "tuple",
         IDictionary or IReadOnlyDictionary<string, object?> => "dict",
         IEnumerable => "list",
         _ => value.GetType().Name,
@@ -46,6 +48,29 @@ public static class PythonBuiltins
         ICollection collection => collection.Count > 0,
         _ => true,
     };
+
+    /// <summary>
+    /// <c>len(value)</c>: the code points of a str (an unpaired surrogate is one), the items of a list or tuple, the keys of a dict;
+    /// anything else raises <c>TypeError: object of type '&lt;type&gt;' has no len()</c>.
+    /// </summary>
+    public static int Len(object? value) => value switch
+    {
+        string text => CodePointCount(text),
+        IReadOnlyDictionary<string, object?> mapping => mapping.Count,
+        ICollection collection => collection.Count,
+        _ => throw new PythonTypeException($"object of type '{TypeName(value)}' has no len()", nameof(value)),
+    };
+
+    private static int CodePointCount(string text)
+    {
+        var count = 0;
+        for (var offset = 0; offset < text.Length; offset += char.IsSurrogatePair(text, offset) ? 2 : 1)
+        {
+            count++;
+        }
+
+        return count;
+    }
 
     /// <summary><c>value.get(key)</c> on a mapping; any other value raises <c>AttributeError</c>.</summary>
     public static object? Get(object? value, string key)
@@ -81,6 +106,70 @@ public static class PythonBuiltins
         }
 
         return items;
+    }
+
+    /// <summary>
+    /// <c>dict(value)</c>: a mapping is copied in its order; a str, list or tuple is read as key/value pairs, each item an iterable of
+    /// exactly two elements (<c>TypeError: cannot convert dictionary update sequence element #N to a sequence</c>, <c>ValueError:
+    /// dictionary update sequence element #N has length L; 2 is required</c>), a later pair replacing an earlier key; any other value
+    /// raises <c>TypeError: '&lt;type&gt;' object is not iterable</c>. A pair whose key is a list or dict raises Python's
+    /// <c>unhashable type</c>; one whose key is any other non-str value raises <c>TypeError: {what} keys must be str, not '&lt;type&gt;'</c>,
+    /// the port's typed mappings holding str keys only.
+    /// </summary>
+    public static OrderedDictionary<string, object?> Dict(object? value, string what = "dict")
+    {
+        var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        if (value is IReadOnlyDictionary<string, object?> mapping)
+        {
+            foreach (var (key, item) in mapping)
+            {
+                copy[key] = item;
+            }
+
+            return copy;
+        }
+
+        if (value is not (IList or string))
+        {
+            throw new PythonTypeException($"'{TypeName(value)}' object is not iterable", nameof(value));
+        }
+
+        var index = 0;
+        foreach (var item in Iterate(value))
+        {
+            var (key, element) = DictPair(item, index, what);
+            copy[key] = element;
+            index++;
+        }
+
+        return copy;
+    }
+
+    private static (string Key, object? Value) DictPair(object? item, int index, string what)
+    {
+        if (item is not (string or IList or IReadOnlyDictionary<string, object?>))
+        {
+            throw new PythonTypeException(
+                string.Create(CultureInfo.InvariantCulture, $"cannot convert dictionary update sequence element #{index} to a sequence"),
+                nameof(item));
+        }
+
+        var elements = Iterate(item).ToList();
+        if (elements.Count != 2)
+        {
+            throw new PythonValueException(
+                string.Create(CultureInfo.InvariantCulture, $"dictionary update sequence element #{index} has length {elements.Count}; 2 is required"),
+                nameof(item));
+        }
+
+        if (elements[0] is { } candidate)
+        {
+            _ = PythonValues.HashKeys.GetHashCode(candidate);
+        }
+
+        return elements[0] is string key
+            ? (key, elements[1])
+            : throw new PythonTypeException($"{what} keys must be str, not '{TypeName(elements[0])}'", nameof(item));
     }
 
     /// <summary><c>int(value)</c>: bools and ints as themselves, floats truncated, strs parsed in base 10.</summary>

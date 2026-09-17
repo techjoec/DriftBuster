@@ -76,17 +76,67 @@ internal static partial class UnixFileType
     }
 
     /// <summary>
+    /// The <c>errno</c> a <c>stat</c> of <paramref name="path"/> fails with (0 when it succeeds), the kernel's own answer to why a path
+    /// cannot be opened (<c>ENOTDIR</c> for a component that is a file, <c>ENOENT</c>, <c>ELOOP</c>, ...); null when this platform or
+    /// kernel offers no <c>statx</c>, or the path holds a NUL character.
+    /// </summary>
+    internal static unsafe int? StatError(string path, bool followSymlinks)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        if (_unavailable || path.Contains('\0', StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var encoded = new byte[Encoding.UTF8.GetMaxByteCount(path.Length) + 1];
+        Encoding.UTF8.GetBytes(path, encoded);
+        var buffer = stackalloc byte[StatxBufferSize];
+        return Call(encoded, followSymlinks, buffer);
+    }
+
+    /// <summary>
     /// <see cref="Stat(string, bool)"/> over the bytes the kernel receives, for a path holding a name that is not UTF-8.
     /// <paramref name="path"/> must end with a NUL byte and hold no other; <paramref name="display"/> names the path in an error.
     /// </summary>
     internal static unsafe Kind? Stat(ReadOnlySpan<byte> path, bool followSymlinks, string display)
+    {
+        var buffer = stackalloc byte[StatxBufferSize];
+        var error = Call(path, followSymlinks, buffer);
+        if (error is null)
+        {
+            return null;
+        }
+
+        if (error is { } failed and not 0)
+        {
+            if (Array.IndexOf(IgnoredErrors, failed) >= 0)
+            {
+                return Kind.Missing;
+            }
+
+            // The errno travels as HResult (on the inner exception of an UnauthorizedAccessException), where PythonOSError.Errno and the
+            // error name mappers read it.
+            var raised = PythonOSError.Create(failed, display);
+            throw failed == PermissionDenied ? new UnauthorizedAccessException(raised.Message, raised) : raised;
+        }
+
+        // stx_mode is a native-endian __u16.
+        return (System.Runtime.CompilerServices.Unsafe.ReadUnaligned<ushort>(buffer + StatxModeOffset) & FileTypeMask) switch
+        {
+            RegularFileType => Kind.Regular,
+            DirectoryFileType => Kind.Directory,
+            _ => Kind.Other,
+        };
+    }
+
+    // statx into buffer: 0, the errno it failed with, or null when the call is unavailable (marking it so for every later call).
+    private static unsafe int? Call(ReadOnlySpan<byte> path, bool followSymlinks, byte* buffer)
     {
         if (_unavailable)
         {
             return null;
         }
 
-        var buffer = stackalloc byte[StatxBufferSize];
         int result;
         try
         {
@@ -101,31 +151,19 @@ internal static partial class UnixFileType
             return null;
         }
 
-        if (result != 0)
+        if (result == 0)
         {
-            // ENOSYS: a kernel before 4.11; EPERM: a seccomp filter that predates statx. Neither is an answer about the path.
-            var error = Marshal.GetLastPInvokeError();
-            if (error is NoSuchSystemCall or OperationNotPermitted)
-            {
-                _unavailable = true;
-                return null;
-            }
-
-            if (Array.IndexOf(IgnoredErrors, error) >= 0)
-            {
-                return Kind.Missing;
-            }
-
-            var message = $"[Errno {error}] {Marshal.GetPInvokeErrorMessage(error)}: '{display}'";
-            throw error == PermissionDenied ? new UnauthorizedAccessException(message) : new IOException(message);
+            return 0;
         }
 
-        // stx_mode is a native-endian __u16.
-        return (System.Runtime.CompilerServices.Unsafe.ReadUnaligned<ushort>(buffer + StatxModeOffset) & FileTypeMask) switch
+        // ENOSYS: a kernel before 4.11; EPERM: a seccomp filter that predates statx. Neither is an answer about the path.
+        var error = Marshal.GetLastPInvokeError();
+        if (error is NoSuchSystemCall or OperationNotPermitted)
         {
-            RegularFileType => Kind.Regular,
-            DirectoryFileType => Kind.Directory,
-            _ => Kind.Other,
-        };
+            _unavailable = true;
+            return null;
+        }
+
+        return error;
     }
 }

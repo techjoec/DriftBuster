@@ -1,0 +1,144 @@
+{
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "view": "64",
+   "subkeys": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\A",
+   "values": [
+    [
+     "DisplayName",
+     "Tool A"
+    ],
+    [
+     "DisplayVersion",
+     0
+    ],
+    [
+     "Publisher",
+     "Tools"
+    ]
+   ]
+  },
+  {
+   "hive": "HKLM",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\B",
+   "values": [
+    [
+     "DisplayName",
+     "Tool B"
+    ],
+    [
+     "DisplayVersion",
+     " "
+    ],
+    [
+     "Publisher",
+     "Tools"
+    ]
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+   "subkeys": [
+    "C"
+   ]
+  },
+  {
+   "hive": "HKCU",
+   "path": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\C",
+   "values": [
+    [
+     "DisplayName",
+     "Tool C"
+    ],
+    [
+     "DisplayVersion",
+     [
+      "1",
+      "2"
+     ]
+    ]
+   ]
+  }
+ ],
+ "cli": [
+  [
+   "list-apps"
+  ],
+  [
+   "suggest-roots",
+   "tools"
+  ],
+  [
+   "suggest-roots",
+   ""
+  ],
+  [
+   "emit-config",
+   "T",
+   "--root",
+   "HKLM\\bad,view=16",
+   "--remote-target",
+   "k=v"
+  ],
+  [
+   "emit-config",
+   "T",
+   "--remote-target",
+   "gw,port=x",
+   "--root",
+   "HKLM\\ok"
+  ],
+  [
+   "emit-config",
+   "T",
+   "--alias",
+   "0",
+   "--keyword",
+   "",
+   "--pattern",
+   "",
+   "--remote-target",
+   "a",
+   "--remote-target",
+   "b,alias=\u2603"
+  ],
+  [
+   "emit-config",
+   "\ud83d\ude00",
+   "--root",
+   "HKCU\\x,view=64",
+   "--root",
+   "HKLM\\y"
+  ],
+  [
+   "search",
+   "tools",
+   "--pattern",
+   "[",
+   "--root",
+   "bad"
+  ],
+  [
+   "search",
+   "tools",
+   "--pattern",
+   "("
+  ],
+  [
+   "search",
+   "Tool",
+   "--keyword",
+   "tool"
+  ]
+ ]
+}

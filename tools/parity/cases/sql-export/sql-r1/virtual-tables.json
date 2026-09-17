@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "virtual.sql"
+ },
+ "options": {
+  "tables": [
+   "rt",
+   "f"
+  ]
+ }
+}

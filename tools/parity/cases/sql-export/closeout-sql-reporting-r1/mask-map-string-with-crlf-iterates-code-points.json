@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "cr-mixed.sql"
+ },
+ "options": {
+  "mask_columns": {
+   "t": "a\r\nb"
+  }
+ }
+}

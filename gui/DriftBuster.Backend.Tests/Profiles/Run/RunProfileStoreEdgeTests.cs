@@ -4,6 +4,7 @@ using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Profiles.Run;
+using DriftBuster.Backend.Tests.Infrastructure;
 using DriftBuster.Backend.Tests.Secrets;
 
 using static DriftBuster.Backend.Tests.Profiles.Run.RunProfilesTests;
@@ -250,14 +251,14 @@ public sealed class RunProfileStoreEdgeTests : IDisposable
     }
 
     [Fact]
-    public void ListProfilesRaisesIsADirectoryErrorForADirectoryNamedProfileJson()
+    public void ListProfilesRaisesOpensErrorForADirectoryNamedProfileJson()
     {
         Write("Profiles/a/profile.json", """{"name": "a", "sources": ["x"]}""");
         var directory = Directory.CreateDirectory(Path.Combine(_tmp.FullName, "Profiles", "dirjson", "profile.json")).FullName;
 
         var act = () => RunProfileStore.ListProfiles(baseDir: _tmp.FullName, TestContext.Current.CancellationToken);
 
-        act.Should().Throw<IOException>().Which.Message.Should().Be($"[Errno 21] Is a directory: '{directory}'");
+        act.Should().Throw<IOException>().Which.Message.Should().Be(OSErrorTexts.DirectoryOpen(directory));
     }
 
     [Theory]

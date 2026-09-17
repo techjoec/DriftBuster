@@ -1,0 +1,16 @@
+{
+ "database": {
+  "script": "adv-crlf-identifiers.sql"
+ },
+ "options": {
+  "mask_columns": [
+   "t.c\r\nd"
+  ],
+  "hash_columns": {
+   "t": [
+    "e\rf",
+    "g"
+   ]
+  }
+ }
+}

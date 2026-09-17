@@ -332,10 +332,10 @@ public sealed class DetectorTests : IDisposable
     public void DetectorRejectsInvalidSampleSize()
     {
         var act = () => new Detector(sampleSize: 0);
-        act.Should().Throw<ArgumentOutOfRangeException>().WithMessage("sample_size must be a positive integer*");
+        act.Should().Throw<PythonValueException>().WithMessage("sample_size must be a positive integer");
 
         var budget = () => new Detector(maxTotalSampleBytes: 0);
-        budget.Should().Throw<ArgumentOutOfRangeException>().WithMessage("max_total_sample_bytes must be a positive integer*");
+        budget.Should().Throw<PythonValueException>().WithMessage("max_total_sample_bytes must be a positive integer");
     }
 
     private sealed class TimingOutPlugin : IFormatPlugin

@@ -1,0 +1,28 @@
+{
+ "matches": [],
+ "hunt_hits": [
+  {
+   "kind": "hit",
+   "rule": {
+    "name": "n",
+    "description": "d",
+    "keywords": [
+     "\u00c9COLE"
+    ],
+    "patterns": [
+     "(?x) a b # c"
+    ]
+   },
+   "path": "",
+   "line_number": -1,
+   "excerpt": "\u0000\u001f"
+  }
+ ],
+ "redactor": {
+  "tokens": [
+   "",
+   "n"
+  ],
+  "placeholder": ""
+ }
+}

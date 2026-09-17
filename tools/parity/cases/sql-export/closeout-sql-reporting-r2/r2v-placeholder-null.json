@@ -1,0 +1,12 @@
+{
+ "database": {
+  "script": "r2v-autoinc.sql"
+ },
+ "options": {
+  "mask_columns": [
+   "x.v",
+   "y.v"
+  ],
+  "placeholder": null
+ }
+}

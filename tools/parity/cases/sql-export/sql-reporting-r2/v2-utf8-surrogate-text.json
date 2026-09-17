@@ -1,0 +1,10 @@
+{
+ "database": {
+  "script": "v2-utf8-variants.sql"
+ },
+ "options": {
+  "tables": [
+   "s"
+  ]
+ }
+}

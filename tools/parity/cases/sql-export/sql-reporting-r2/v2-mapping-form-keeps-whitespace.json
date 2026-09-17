@@ -1,0 +1,16 @@
+{
+ "database": {
+  "script": "base.sql"
+ },
+ "options": {
+  "mask_columns": {
+   "t": [
+    " a",
+    "a "
+   ]
+  },
+  "hash_columns": {
+   "t": " b"
+  }
+ }
+}

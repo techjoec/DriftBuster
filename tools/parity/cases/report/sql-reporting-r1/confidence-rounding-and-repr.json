@@ -1,0 +1,109 @@
+{
+ "matches": [
+  {
+   "plugin": "p",
+   "format": "a",
+   "variant": "half-even",
+   "confidence": 0.125,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "a",
+   "variant": "half-even",
+   "confidence": 0.12,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "b",
+   "variant": "three-eighths",
+   "confidence": 0.375,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "c",
+   "variant": "2.675",
+   "confidence": 2.675,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "d",
+   "variant": "huge",
+   "confidence": 1e+300,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "e",
+   "variant": "denormal",
+   "confidence": 5e-324,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "f",
+   "variant": "e16",
+   "confidence": 1e+16,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "g",
+   "variant": "neg",
+   "confidence": -0.5,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "h",
+   "variant": "tiny-mid",
+   "confidence": 0.005,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "i",
+   "variant": "long",
+   "confidence": 0.30000000000000004,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "j",
+   "variant": "int-like",
+   "confidence": 3.0,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "k",
+   "variant": "ten-e22",
+   "confidence": 1e+22,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "l",
+   "variant": "point-five-rounding",
+   "confidence": 0.625,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "m",
+   "variant": "1e-5",
+   "confidence": 1e-05,
+   "reasons": []
+  },
+  {
+   "plugin": "p",
+   "format": "n",
+   "variant": "1.5e300neg",
+   "confidence": -1.5e+300,
+   "reasons": []
+  }
+ ]
+}

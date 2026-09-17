@@ -1,0 +1,14 @@
+{
+ "matches": [],
+ "profile_summary": {
+  "profiles": "abc",
+  "total_profiles": 0
+ },
+ "warnings": [
+  "<SPAN>upper</SPAN>",
+  "<span",
+  "<span>raw & kept",
+  "x"
+ ],
+ "title": "{title} {0} %s"
+}

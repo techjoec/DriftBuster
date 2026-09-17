@@ -1,0 +1,18 @@
+{
+ "database": {
+  "script": "storage-classes.sql"
+ },
+ "options": {
+  "hash_columns": {
+   "v": [
+    "anything",
+    "i",
+    "r",
+    "n",
+    "t",
+    "b"
+   ]
+  },
+  "hash_salt": "pepper"
+ }
+}

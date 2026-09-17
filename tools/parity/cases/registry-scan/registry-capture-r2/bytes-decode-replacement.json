@@ -1,0 +1,203 @@
+{
+ "enumerate": false,
+ "tree": [
+  {
+   "hive": "HKLM",
+   "path": "B",
+   "view": "*",
+   "values": [
+    [
+     "overlong3",
+     {
+      "$bytes": "e08080"
+     }
+    ],
+    [
+     "trunc4",
+     {
+      "$bytes": "f09080"
+     }
+    ],
+    [
+     "past-max",
+     {
+      "$bytes": "f4908080"
+     }
+    ],
+    [
+     "overlong2",
+     {
+      "$bytes": "c0af"
+     }
+    ],
+    [
+     "surrogate",
+     {
+      "$bytes": "eda080"
+     }
+    ],
+    [
+     "five",
+     {
+      "$bytes": "f8888080"
+     }
+    ],
+    [
+     "mid",
+     {
+      "$bytes": "61e18062"
+     }
+    ],
+    [
+     "tail",
+     {
+      "$bytes": "f09f98"
+     }
+    ],
+    [
+     "mixed",
+     {
+      "$bytes": "ff61c3a962"
+     }
+    ],
+    [
+     "nul",
+     {
+      "$bytes": "0061"
+     }
+    ],
+    [
+     "empty",
+     {
+      "$bytes": ""
+     }
+    ],
+    [
+     "cont-only",
+     {
+      "$bytes": "8080"
+     }
+    ],
+    [
+     "bom",
+     {
+      "$bytes": "efbbbf61"
+     }
+    ],
+    [
+     "astral",
+     {
+      "$bytes": "f09f9880"
+     }
+    ],
+    [
+     "max",
+     {
+      "$bytes": "f48fbfbf"
+     }
+    ],
+    [
+     "e0a0",
+     {
+      "$bytes": "e0a0"
+     }
+    ],
+    [
+     "ed9f",
+     {
+      "$bytes": "ed9fbf"
+     }
+    ],
+    [
+     "f5",
+     {
+      "$bytes": "f5808080"
+     }
+    ]
+   ]
+  }
+ ],
+ "searches": [
+  {
+   "roots": [
+    [
+     "HKLM",
+     "B",
+     null
+    ]
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "B",
+     null
+    ]
+   ],
+   "keywords": [
+    "�"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "B",
+     null
+    ]
+   ],
+   "patterns": [
+    "^�{3}$"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "B",
+     null
+    ]
+   ],
+   "patterns": [
+    "^�$"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "B",
+     null
+    ]
+   ],
+   "keywords": [
+    "é"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "B",
+     null
+    ]
+   ],
+   "patterns": [
+    "\\x00"
+   ]
+  },
+  {
+   "roots": [
+    [
+     "HKLM",
+     "B",
+     null
+    ]
+   ],
+   "patterns": [
+    "^﻿"
+   ]
+  }
+ ]
+}

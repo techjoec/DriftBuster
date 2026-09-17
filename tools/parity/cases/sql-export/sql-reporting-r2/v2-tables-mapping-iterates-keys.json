@@ -1,0 +1,11 @@
+{
+ "database": {
+  "script": "v2-three-tables.sql"
+ },
+ "options": {
+  "tables": {
+   "ab": 0,
+   "": 1
+  }
+ }
+}

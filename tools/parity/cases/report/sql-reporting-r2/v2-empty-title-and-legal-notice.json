@@ -1,0 +1,14 @@
+{
+ "matches": [
+  {
+   "plugin": "json",
+   "format": "json",
+   "variant": "generic",
+   "confidence": 0.5,
+   "reasons": []
+  }
+ ],
+ "title": "",
+ "legal_notice": "",
+ "warnings": []
+}
