@@ -1,83 +1,81 @@
 # Customising DriftBuster
 
-DriftBuster ships with sensible defaults, but you can adjust sampling,
-registries, and output to suit local workflows. This guide covers the most
-common tweaks.
+DriftBuster ships with sensible defaults, but you can adjust sampling, plugin
+ordering, and output to suit local workflows. This guide covers the most common
+tweaks.
 
-## Adjust Sampling
+## Console Options
 
-```python
-from driftbuster import Detector
-
-detector = Detector(sample_size=256 * 1024)  # 256 KiB samples
-result = detector.scan_file("web.config")
+```sh
+driftbuster scan <path> --glob "**/*.config" --sample-size 262144 --json
 ```
 
-- `sample_size` controls how much content is read per file (default 128 KiB).
-- Values above 512 KiB are clamped to protect memory usage.
-- Supply `text_decoder` or `on_error` callbacks if you need custom decoding or
-  error handling.
+- `--glob` narrows directory scans (default `**/*`).
+- `--sample-size` sets the bytes read per file (default 128 KiB).
+- `--json` streams newline-delimited JSON for pipelines.
+- `driftbuster hunt` and `driftbuster capture run` take the same `--glob` and
+  `--sample-size` options; `capture run` adds `--hunt-glob` and
+  `--hunt-exclude` for the hunt pass.
+
+## Adjust Sampling in Code
+
+```csharp
+using DriftBuster.Backend.Detection;
+
+var detector = new Detector(sampleSize: 256 * 1024);  // 256 KiB samples
+var match = detector.ScanFile("web.config");
+```
+
+- `sampleSize` controls how much content is read per file (default
+  `Detector.DefaultSampleSize`, 128 KiB).
+- Values above `Detector.MaxSampleSize` (512 KiB) are clamped with a warning.
+- `maxTotalSampleBytes` caps the bytes sampled across a whole scan (default
+  16 MiB); `SampleBudgetExhausted` reports when a scan hit it.
+- `onError` receives read failures before they are raised; `onWarning`
+  receives guardrail warnings.
 
 ## Reorder or Extend Plugins
 
-```python
-from driftbuster import Detector, register
-from driftbuster.formats.registry import get_plugins
+```csharp
+using DriftBuster.Backend.Detection;
 
-class MyPlugin:
-    name = "my-plugin"
-    priority = 50
-    version = "0.1.0"
+var plugins = DefaultPlugins.CreateBuiltIns().Append(new MyPlugin());
+var detector = new Detector(plugins, sortPlugins: true);
 
-    def detect(self, path, sample, text):
-        return None
-
-register(MyPlugin())
-detector = Detector(plugins=get_plugins(), sort_plugins=True)
+sealed class MyPlugin : IFormatPlugin
+{
+    public string Name => "my-plugin";
+    public string Version => "0.1.0";
+    public int Priority => 50;
+    public DetectionMatch? Detect(string path, byte[] sample, string? text) => null;
+}
 ```
 
-- `register` enforces unique plugin names. Declare a `version` string for
-  documentation (`docs/format-support.md`).
-- Keep the canonical value in `versions.json` and run
-  `python scripts/sync_versions.py` so docs and manifests stay aligned when you
-  change plugin versions.
-- `sort_plugins=True` respects priority values; `False` keeps the order passed
-  to the detector, which is useful when experimenting with overrides.
-- Call `driftbuster.formats.registry_summary()` to confirm the final ordering
-  before scanning.
+- `FormatRegistry.Register` enforces unique plugin names. Declare a `Version`
+  string and record it in `docs/format-support.md`.
+- `sortPlugins: true` orders plugins by `Priority`; `false` keeps the order
+  passed to the detector, which is useful when experimenting with overrides.
+- `FormatRegistry.RegistrySummary()` reports the final ordering of a registry.
 
 ## Combine with Profiles
 
-```python
-from driftbuster import Detector, ProfileStore
+```csharp
+using DriftBuster.Backend.Detection;
+using DriftBuster.Backend.Profiles.Detection;
 
-store = ProfileStore.from_dict({...})
-detector = Detector()
-results = detector.scan_with_profiles(
-    "./deployments",
-    profile_store=store,
-    tags=["env:prod"],
-)
+var store = DetectionProfileStore.FromDict(DetectionProfileCommands.LoadJson("profiles.json"));
+var results = new Detector().ScanWithProfiles("./deployments", store, tags: ["env:prod"]);
 ```
 
-- `scan_with_profiles` returns the detection alongside any matching profiles so
-  you can log baselines during manual reviews.
+- `ScanWithProfiles` returns each detection alongside the profile configs that
+  apply to it so you can log baselines during manual reviews.
 - See `docs/profile-usage.md` for a short walkthrough or
-  `docs/configuration-profiles.md` for the full API surface.
+  `docs/configuration-profiles.md` for the data model.
 
-## CLI Options
+## Reporting and Redaction
 
-```
-python -m driftbuster.cli <path> --glob "**/*.config" --sample-size 262144 --json
-```
-
-- `--glob` narrows directory scans.
-- `--sample-size` mirrors the Detector argument.
-- `--json` streams newline-delimited JSON for pipelines or notebooks.
-
-## Reporting Hooks
-
-- `driftbuster.reporting.build_unified_diff` accepts a `redactor` or
-  `mask_tokens` to scrub sensitive values before saving diffs.
-- Pair canonicalised diffs with metadata from `summarise_metadata(match)` to
+- `driftbuster diff --mask-token <value> --placeholder <text>` scrubs values
+  before diffs are written; `--content-type` picks the canonicalisation.
+- `driftbuster report --mask-token <value>` redacts HTML and JSON lines reports.
+- Pair diffs with the detection metadata from `driftbuster scan --json` to
   provide context when sharing results.

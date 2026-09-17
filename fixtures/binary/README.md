@@ -4,8 +4,8 @@ Synthetic samples supporting the binary/hybrid format adapters:
 
 - `settings.sqlite` — SQLite database populated with anonymous configuration
   keys. Created with `sqlite3` and contains no production data.
-- `preferences.plist` — Binary property list generated via Python's
-  `plistlib` with placeholder values.
+- `preferences.plist` — Binary property list (`bplist00`) with placeholder
+  values.
 - `config_frontmatter.md` — Markdown document containing YAML front matter used
   to exercise hybrid detection paths.
 

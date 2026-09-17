@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Capture pipeline checklist
 
 - **Prepare environment:**

@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Reporting adapters checklist
 
 - **Before running:** gather approved redaction tokens (from hunt hits or legal

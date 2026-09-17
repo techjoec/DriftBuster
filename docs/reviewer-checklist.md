@@ -7,19 +7,16 @@ log the run.
 ## Reference docs
 
 - `docs/legal-safeguards.md` — vendor-neutral and anti-DRM guardrails.
-- `docs/testing-strategy.md` — manual lint/test commands and deferred
-  automation backlog.
+- `docs/testing-strategy.md` — test, coverage and lint commands.
 - `docs/format-playbook.md` — detector workflow + diff/hunt checklist.
 
 ## Manual verification
 
 ```text
-compileall: python -m compileall src
-ruff(core): ruff check src/driftbuster/core
-ruff(formats/registry_live): ruff check src/driftbuster/formats/registry_live
-ruff(registry helpers): ruff check src/driftbuster/registry
-coverage(py): coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90
-coverage(net): dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet
+build:    dotnet build DriftBuster.sln
+coverage: ./scripts/verify_coverage.sh
+lint:     ./scripts/lint_all.sh
+secrets:  gitleaks dir . -v
 ```
 
 Check off each line once you've read the output and confirmed no surprises.
@@ -33,7 +30,7 @@ Check off each line once you've read the output and confirmed no surprises.
 - [ ] Hunt/profile approvals recorded (`notes/checklists/hunt-profile-review.md`,
       `notes/checklists/profile-summary.md`).
 - [ ] Legal review log updated (`notes/checklists/legal-review.md`).
-- [ ] Follow-up TODOs (automation, backlog updates) mirrored in `CLOUDTASKS.md`.
+- [ ] Follow-up TODOs (automation, backlog updates) filed in the issue tracker.
 
 Store this file locally if you want to annotate it; the committed copy should
 remain a template.

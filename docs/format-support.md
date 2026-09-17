@@ -2,9 +2,9 @@
 
 This document tracks the configuration formats that DriftBuster understands
 today, their current maturity, and the module versions declared by each format
-plugin. Versions are surfaced directly from the underlying plugin classes via
-`driftbuster.formats.plugin_versions()` so the registry and documentation stay
-aligned.
+plugin. Versions come from each plugin class's `Version` property and are
+reported by `FormatRegistry.PluginVersions()`, so keep this table in step with
+the code.
 
 | Format family            | Variants / focus                                                 | Plugin | Module version | Status       | Notes |
 |--------------------------|------------------------------------------------------------------|--------|----------------|--------------|-------|
@@ -15,17 +15,16 @@ aligned.
 | INI                       | Classic/sectionless, dotenv gating, directive spillover metadata | ini    | 0.0.2          | Preview     | Records encoding, comment style, sensitive key hints, and classifies dotenv/unix-conf/hybrid variants for remediation planning. |
 | YAML                     | Generic YAML, Kubernetes manifest hints                           | yaml   | 0.0.3          | Preview      | Parser-free heuristics capture document markers, indentation tolerances, review metadata, and `apiVersion`/`kind` hints. |
 | Conf DSL                 | Logstash pipeline configs (`input`/`filter`/`output` blocks)      | conf   | 0.0.1          | Preview      | Tight heuristics avoid stealing `.conf` INI-like files covered by the INI plugin. |
-| Text config              | Directive-style configs (OpenSSH, OpenVPN)                        | text   | 0.0.1          | Preview      | Fallback detector for whitespace-delimited directives; filename/content hints refine variants. |
+| Text config              | Directive-style configs (OpenSSH, OpenVPN)                        | text   | 0.0.2          | Preview      | Fallback detector for whitespace-delimited directives; filename/content hints refine variants. |
 | TOML                     | Generic TOML, arrays of tables                                    | toml   | 0.0.3          | Preview      | Detects `[table]`, `[[array-of-tables]]`, inline tables, spacing tolerances, dotted keys, quoted/array values; parser-free. |
 | HCL                      | HashiCorp configs (Nomad/Vault/Consul)                            | hcl    | 0.0.1          | Preview      | Detects `job {}`, `server {}`, `listener {}`, `seal {}` blocks + `key = value` pairs. |
 | Dockerfile               | Multi-stage builds and directives                                 | dockerfile | 0.0.1       | Preview      | Filename/Dockerfile hint, `FROM` on first non-comment line, and common directives (RUN/COPY/ARG). |
-
-Last updated: 2025-10-24.
+| Binary hybrid            | SQLite databases, binary property lists, Markdown with YAML front matter | binary-hybrid | 0.1.0 | Preview | Header signatures on the raw sample; SQLite table count and plist top-level keys recorded as metadata. |
 
 ## Catalog reference links
 
-`validate_detection_metadata` now surfaces a `catalog_references` array sourced
-from `driftbuster.catalog`. Each entry points to the reviewer guidance for that
+Detection metadata carries a `catalog_references` array sourced from the
+catalog. Each entry points to the reviewer guidance for that
 format so downstream tooling can deep link into the appropriate reference
 material. Current mappings:
 
@@ -48,9 +47,8 @@ material. Current mappings:
 ## Version Tracking Guidance
 
 - When you adjust detection heuristics or metadata for a plugin, bump its
-  `version` attribute in the plugin class (for example,
-  `JsonPlugin.version`).
-- Run `driftbuster.formats.registry_summary()` to confirm ordering, priorities,
+  `Version` property in the plugin class (for example, `JsonPlugin.Version`).
+- Check `FormatRegistry.RegistrySummary()` to confirm ordering, priorities,
   and versions after registering new plugins.
 - Update this matrix whenever a plugin version changes or a new format module
   lands so downstream users can see maturity at a glance.
@@ -61,5 +59,3 @@ material. Current mappings:
   heuristics before additional formats leave HOLD.
 - `docs/detection-types.md` lists catalog priorities and the usage data backing
   each class.
-- `CLOUDTASKS.md` area A8 tracks the remaining XML backlog items (canonical transforms,
-  schema provenance, namespace reporting).

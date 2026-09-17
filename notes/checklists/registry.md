@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Registry smoke-test checklist
 
 - **Fixture mix:** XML, JSON, binary sample set from `notes/checklists/core-scan.md` reused for registry verification.

@@ -1,8 +1,9 @@
 # Plugin Test Checklist
 
 This checklist standardizes tests for new and existing format plugins under
-`src/driftbuster/formats/`. Keep per‑file coverage ≥ 90% and validate behavior
-end‑to‑end where practical.
+`gui/DriftBuster.Backend/Detection/Plugins/`, with tests in
+`gui/DriftBuster.Backend.Tests/Detection/Plugins/`. Validate behavior end‑to‑end
+where practical and keep the merged coverage gate (83% total line) green.
 
 Recommended test cases:
 
@@ -35,8 +36,8 @@ Recommended test cases:
     YAML tabs, TOML trailing commas, INI malformed sections).
 
 - Security‑safe parsing
-  - If a “defused” parser is supported (e.g. defusedxml), cover the secure
-    branch and the fallback branch, including cases that disable parsing
+  - If a hardened parser is used (e.g. the XML plugin's `DefusedXmlParser`), cover the
+    secure branch and the fallback branch, including cases that disable parsing
     (e.g. inputs with DOCTYPE/ENTITY declarations).
 
 - Error handling and resilience
@@ -57,15 +58,15 @@ Test scaffolding tips:
 - Centralize sample builders (small helpers that return well‑formed vs. malformed
   content). Keep samples concise and focused on the condition under test.
 - Prefer plain strings/bytes and run through the detector via
-  `driftbuster.core.detector.Detector` to emulate realistic calls. For internal
+  `Detector` (`gui/DriftBuster.Backend/Detection/Detector.cs`) to emulate realistic calls. For internal
   branches that are hard to reach, call internal helpers directly with clear
   intent.
-- For platform‑specific details (e.g. XML secure paths), monkeypatch adapters
-  rather than relying on optional dependencies being installed in the test env.
+- For platform‑specific details (e.g. XML secure paths), use the internal test
+  seams rather than relying on the host platform.
 
 Verification targets:
 
-- The plugin module’s file coverage ≥ 90%.
+- The merged coverage gate (`scripts/verify_coverage.sh`) stays green.
 - Negative tests are present (not just “happy path”).
 - Sampling limits are explicitly tested once.
 - At least one security/robustness test (malformed input) is included.

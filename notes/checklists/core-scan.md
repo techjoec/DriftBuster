@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Core detector scan checklist
 
 Use this log when validating the sampling guardrails and error instrumentation.

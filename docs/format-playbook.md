@@ -11,9 +11,10 @@ format-specific exception.
 
 ## 1. Prep & Scoping
 
-- Confirm the format appears in `src/driftbuster/catalog.py` (`FORMAT_SURVEY`
-  and `DETECTION_CATALOG`). If it is missing, add metadata first.
-- Check `CLOUDTASKS.md` for an area covering the work; update it with
+- Confirm the format appears in the catalog
+  (`gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`). If it is
+  missing, add metadata first.
+- Check the issue tracker for an entry covering the work; update it with
   subtasks/checklists if needed.
 - Gather representative fixtures (realistic, anonymised where required) and
   store them locally for manual validation. Do not add them to the repo unless
@@ -111,12 +112,12 @@ format-specific exception.
 
 ## 2. Implementation Standards
 
-- Place new detectors under `src/driftbuster/formats/<format>/plugin.py`.
-- Keep registration side-effects limited to module import (use
-  `formats/__init__.py` for eager registration).
-- Call `register(Plugin())` exactly once during module import; `_ensure_unique`
-  raises a `ValueError` if a different object with the same `plugin.name`
-  sneaks through.
+- Place new detectors in `gui/DriftBuster.Backend/Detection/Plugins/<Name>Plugin.cs`
+  implementing `IFormatPlugin`.
+- Register built-ins in one place: `DefaultPlugins.CreateBuiltIns()`, in
+  priority order.
+- `FormatRegistry.Register` rejects a different plugin with an already
+  registered `Name`, so collisions surface immediately.
 - Prefer lightweight heuristics: filename hints, signatures, sampling-based
   content checks. Avoid full parsing or external dependencies unless agreed.
 - Populate detection metadata with catalog-aligned keys (`format_name`,
@@ -143,21 +144,21 @@ format-specific exception.
   tests pinned to these tolerances so updates do not loosen the guardrails.
 - Any change to whitespace heuristics requires updating the structured-text
   section of this playbook, the addition guide, and related tests under
-  `tests/formats/` to keep policy, documentation, and behaviour aligned.
+  `gui/DriftBuster.Backend.Tests/Detection/Plugins/` to keep policy, documentation,
+  and behaviour aligned.
 
 ### Shared reporting metadata contract
 
-- Emit detection metadata through :func:`driftbuster.core.types.summarise_metadata`
-  and feed the resulting payloads into
-  :func:`driftbuster.reporting._metadata.iter_detection_payloads`.
+- Detection payloads for reports come from the reporting layer
+  (`gui/DriftBuster.Backend/Reporting/DetectionPayloads.cs`), which reads
+  detector metadata without mutating it.
 - Every payload must include the keys `plugin`, `format`, `variant`,
   `confidence`, `reasons`, and `metadata` (a JSON-safe mapping). Keep optional
   metadata values JSON serialisable so downstream adapters can persist them
   without schema juggling.
-- Adapters may provide `extra_metadata` (e.g., `scan_id`, `report_version`,
-  `source_path`) when calling ``iter_detection_payloads``. The helper merges the
-  run-level metadata into each detection map without mutating the original
-  detector output, so repeated iterations stay deterministic.
+- Adapters may add run-level metadata (e.g., `scan_id`, `report_version`,
+  `source_path`) to each detection map without mutating the original detector
+  output, so repeated renders stay deterministic.
 - When detectors attach catalog context (severity, remediation, references),
   avoid overriding those keys in `extra_metadata`. Downstream reporting expects
   detector-provided values to win if conflicts occur.
@@ -172,12 +173,12 @@ format-specific exception.
   - Practical guidance on interpreting metadata/confidence.
   - Known limitations or ambiguous cases.
 - Mention any registry ordering requirements when documenting the detector.
-- Capture the current plugin ordering with `driftbuster.registry_summary()` and
-  archive the JSON output in `notes/checklists/registry.md` for the review
+- Capture the current plugin ordering with `FormatRegistry.RegistrySummary()`
+  (name, priority, version per plugin) and archive the output in `notes/checklists/registry.md` for the review
   cycle.
 - Refresh `README.md` if public usage instructions change (e.g., sample code or
   metadata descriptions).
-- Adjust `CLOUDTASKS.md` acceptance gates if the new work shifts future
+- Adjust acceptance gates in the issue tracker if the new work shifts future
   dependencies.
 - Cross-link supporting docs: diff/hunt workflows belong in
   `docs/format-playbook.md`, sample sourcing stays under
@@ -193,19 +194,18 @@ deterministic and highlights which docs to touch:
    `docs/testing-strategy.md`.
 2. Run the detector against both baseline and drift samples, storing the
    metadata/hunt output locally (never in-repo).
-3. Call `diff_summary_snapshots` from `ProfileStore` helpers if profiles are in
+3. Run `driftbuster detection-profile summary` and `diff` if profiles are in
    play. Note the results in `notes/checklists/profile-summary.md`.
-   When comparing more than one before/after pair, run
-   `driftbuster.reporting.diff.summarise_diff_results` so reviewers receive a
-   single metadata bundle for every comparison.
+   When comparing more than one before/after pair, pass every comparison to one
+   `driftbuster diff <baseline> <comparisons>...` run so reviewers get them together.
 4. Record dynamic token decisions in `notes/checklists/hunt-profile-review.md`.
 5. Update the relevant doc sections (`docs/configuration-profiles.md`,
-   `docs/hunt-mode.md`, `CLOUDTASKS.md` (areas A10-A12)) if reviewers need new
+   `docs/hunt-mode.md`) if reviewers need new
    context to interpret the diff.
 
 ### JSON detector checklist
 
-- Run `PYTHONPATH=src python -m driftbuster.cli fixtures/config/appsettings.json`
+- Run `driftbuster scan fixtures/config/appsettings.json`
   and archive the output in `notes/snippets/json-cli-run.md`.
 - Confirm the reasons mention JSON structure, key/value detection, and the
   `structured-settings-json` variant when the sample contains
@@ -220,10 +220,10 @@ deterministic and highlights which docs to touch:
 ## 4. Validation & Gates
 
 - Manual-only verification (guardrail):
-  - Run the detector against a mixed fixture set (`python -m driftbuster` or a
-    short script) and record observed matches, including confidence/reasons.
+  - Run the detector against a mixed fixture set (`driftbuster scan <dir> --json`)
+    and record observed matches, including confidence/reasons.
   - Capture the command(s) and observations in repo notes (update the relevant
-    `CLOUDTASKS.md` checklist item).
+    checklist under `notes/checklists/`).
 - When applicable, note whether the detector captures format drift cues so the
   reporting adapters can produce diff/patch output.
 - Identify settings that vary per deployment (hostnames, thumbprints, etc.) and
@@ -232,22 +232,18 @@ deterministic and highlights which docs to touch:
   raising exceptions.
 - Confirm error handling remains friendly (no raw stack traces for expected
   scenarios such as unreadable files).
-- Cross-check the manual lint/test commands in
-  `docs/testing-strategy.md#detector-manual-lint--test-checklist` and log the
-  output in the matching checklist entry.
+- Run the test, coverage and lint commands in `docs/testing-strategy.md` and log
+  the output in the matching checklist entry.
 
 ## 5. Finishing Checklist
 
-- ✅ Code lives under `src/driftbuster/formats/<format>/` with registration in
-  `src/driftbuster/formats/__init__.py`.
-- ✅ Catalog metadata updated (and any new metadata keys reflected in
-  `core/types.py` if needed).
+- ✅ Code lives in `gui/DriftBuster.Backend/Detection/Plugins/` with registration in
+  `DefaultPlugins.CreateBuiltIns()`.
+- ✅ Catalog metadata updated (`DetectionCatalogData.cs`).
 - ✅ Docs refreshed (`docs/detection-types.md`, optionally `README.md`).
-- ✅ Manual verification log added; acceptance gates in `CLOUDTASKS.md` ticked.
-- ✅ Follow-up tasks for downstream formats captured in `CLOUDTASKS.md` or
-  `CLOUDTASKS.md` if gaps remain.
-- 🚧 Deferred automation items recorded in `docs/testing-strategy.md` under the
-  "Deferred automation" block (typing + fuzz harnesses).
+- ✅ Manual verification log added under `notes/checklists/`.
+- ✅ Follow-up tasks for downstream formats captured in the issue tracker if gaps
+  remain.
 
 Stick to these standards so each detector lands consistently and the upcoming
 format work remains predictable.

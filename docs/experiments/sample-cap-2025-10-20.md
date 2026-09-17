@@ -1,17 +1,17 @@
 # Sample Cap Evaluation: 128 KiB vs 256 KiB
 
-Scope: Blind scan of a representative configuration corpus using the Python CLI. Objective was to see if increasing the sampling cap from the default 128 KiB to 256 KiB materially improves detection coverage or confidence.
+Scope: Blind scan of a representative configuration corpus. Objective was to see if increasing the sampling cap from the default 128 KiB to 256 KiB materially improves detection coverage or confidence.
 
 Dataset
 - Files: ~200 (mixed configs; some large files present)
 
-Commands Used
+Commands (reproduce with the console tool)
 ```bash
 # Baseline (default 128 KiB)
-python -m driftbuster.cli <DATASET_DIR> --json > driftbuster_blind_scan.jsonl
+driftbuster scan <DATASET_DIR> --json > driftbuster_blind_scan.jsonl
 
 # Increased sample cap (256 KiB)
-python -m driftbuster.cli <DATASET_DIR> --json --sample-size 262144 > driftbuster_blind_scan_256k.jsonl
+driftbuster scan <DATASET_DIR> --json --sample-size 262144 > driftbuster_blind_scan_256k.jsonl
 ```
 
 Key Metrics

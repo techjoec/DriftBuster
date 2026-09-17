@@ -1,78 +1,80 @@
 # Profile Usage Quick Start
 
-Profiles describe the configuration files you expect to see. Use this guide to
-get started quickly; refer to `docs/configuration-profiles.md` for the full
-reference.
+DriftBuster has two kinds of profile:
 
-## 1. Define a Profile
+- **Run profiles** say what to collect (sources, baseline, options, secret
+  scanner settings). The GUI Profiles tab, `driftbuster profile` and the
+  PowerShell run profile cmdlets manage them, and the offline runner consumes
+  them.
+- **Detection profiles** describe the configuration files you expect to see and
+  activate by tags. `driftbuster detection-profile` summarises, diffs and
+  bridges them with hunt output. See `docs/configuration-profiles.md` for the
+  data model.
 
-```python
-from driftbuster import ConfigurationProfile, ProfileConfig, ProfileStore
+## 1. Save and run a run profile
 
-store = ProfileStore([
-    ConfigurationProfile(
-        name="prod-web",
-        tags={"env:prod", "tier:web"},
-        configs=(
-            ProfileConfig(
-                identifier="web-config",
-                path="web/web.config",
-                expected_format="structured-config-xml",
-            ),
-            ProfileConfig(
-                identifier="appsettings",
-                path="app/appsettings.json",
-                expected_format="json",
-            ),
-        ),
-    )
-])
+```sh
+driftbuster profile create --name prod-web \
+  --source deployments/prod-web-01 --source deployments/prod-web-02 \
+  --baseline deployments/prod-web-01
+driftbuster profile list
+driftbuster profile show prod-web
+driftbuster profile run --name prod-web
 ```
 
-- Use `identifier` for stable diffs.
+- Profiles are stored as `Profiles/<name>/profile.json` under `--base-dir`
+  (the current directory by default).
+- `--option key=value` adds custom options; `--secret-ignore-rule` and
+  `--secret-ignore-pattern` tune the secret scanner.
+- `profile run --profile <file.json> --save` runs a profile file and stores it.
+
+## 2. Define a detection profile store
+
+Detection profile stores are JSON:
+
+```json
+{
+  "profiles": [
+    {
+      "name": "prod-web",
+      "tags": ["env:prod", "tier:web"],
+      "configs": [
+        {"id": "web-config", "path": "web/web.config", "expected_format": "structured-config-xml"},
+        {"id": "appsettings", "path": "app/appsettings.json", "expected_format": "json"}
+      ]
+    }
+  ]
+}
+```
+
+- Use `id` for stable diffs.
 - Store additional tags in `tags` or helper fields such as `application`.
 
-## 2. Run a Profile-Aware Scan
+## 3. Summarise and diff
 
-```python
-from driftbuster import Detector
-
-detector = Detector()
-results = detector.scan_with_profiles(
-    "./deployments/prod-web-01",
-    profile_store=store,
-    tags=["env:prod", "tier:web", "application:inventory"],
-)
-
-for hit in results:
-    print(hit.path, hit.detection and hit.detection.format_name)
-    for prof in hit.profiles:
-        print("  matched profile:", prof.profile.name, "->", prof.config.identifier)
+```sh
+driftbuster detection-profile summary profiles.json --output baseline-summary.json
+# ... edit the store ...
+driftbuster detection-profile summary profiles.json --output current-summary.json
+driftbuster detection-profile diff baseline-summary.json current-summary.json
 ```
 
-- `scan_with_profiles` returns detections plus the profiles that apply to the
-  supplied tag set.
-- Use `ProfileStore.matching_configs(...)` when you only need profile entries
-  for a path/tag combination.
+The summary lists profile and config counts plus config IDs per profile; the
+diff reports `added_profiles`, `removed_profiles` and `changed_profiles` with
+added and removed config IDs.
 
-## 3. Persist and Diff
+## 4. Bridge hunts with profiles
 
-```python
-summary = store.summary()
-updated = store.update_profile("prod-web", lambda prof: prof)
-
-baseline = store.summary()
-current = updated.summary()
-from driftbuster.core.profiles import diff_summary_snapshots
-diff = diff_summary_snapshots(baseline, current)
+```sh
+driftbuster hunt deployments/prod-web-01 > hunt-results.json
+driftbuster detection-profile hunt-bridge profiles.json hunt-results.json \
+  --tag env:prod --tag tier:web --root deployments/prod-web-01
 ```
 
-- `ProfileStore.to_dict()` / `from_dict()` help load and store JSON fixtures.
-- Use `python -m driftbuster.profile_cli summary profiles.json` to generate a
-  snapshot from the command line, or `profile_cli diff` to compare summaries.
+Each hunt hit is listed with the profile configs that apply to its path.
 
 ## Next Steps
 
 - Represent dynamic values alongside profiles with hunt metadata (see
   `docs/hunt-mode.md`).
-- Explore the entire API surface in `docs/configuration-profiles.md`.
+- Explore the data model in `docs/configuration-profiles.md`.

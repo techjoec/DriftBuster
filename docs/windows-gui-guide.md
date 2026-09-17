@@ -10,13 +10,12 @@ This guide explains the capabilities, layout, and operational details of the Ava
 ## 2. Prerequisites
 | Dependency | Notes |
 |------------|-------|
-| .NET SDK 10.0.x | Required to restore, run, and publish the GUI. |
+| .NET SDK 10.0.x | Required to build, run, and publish the GUI from source. Released builds are self-contained and need nothing installed. |
 | DriftBuster repo checkout | Required for fixtures and sample data referenced by the UI. |
 | Optional editor tooling | JetBrains Rider, VS Code + Avalonia extension, or equivalent for XAML previews. |
-| Microsoft Edge WebView2 Evergreen Runtime | Bundle the offline installer alongside portable/self-contained builds; confirm version recorded in `artifacts/gui-packaging/`. |
 
 ## 3. Launching the GUI
-1. Ensure prerequisites are installed (`dotnet --list-sdks`, `python --version`).
+1. Ensure the SDK is installed (`dotnet --list-sdks`).
 2. Restore + build: `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` then `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 4. The “DrB DriftBuster” window opens with Diff view selected by default. The compact header presents the DrB badge, navigation summary, a live backend health dot with **Check core**, and a **Theme** selector (Dark+/Light+). A pillbox banner beneath the header shows the current view context and shortcuts.
@@ -37,7 +36,7 @@ This guide explains the capabilities, layout, and operational details of the Ava
 2. Scroll past the options list to find the schedule cards. Each card requires a **Name**, **Profile** reference (typically the profile name), and an **Every** interval (shorthand like `15m`, `24h`, or ISO 8601). The **Profile** field is now an editable dropdown that lists every saved profile plus the in-progress draft name so you can reuse definitions without retyping. Optional **Start at**, **Window start/end/timezone**, **Tags**, and metadata rows capture quiet hours, labels, and notification contacts.
 3. Renaming the active profile updates any blank schedule rows automatically so cadence entries continue targeting the right definition; schedule cards with custom profile overrides keep their values intact.
 4. Click **Save profile** to persist both the `profile.json` definition and the consolidated `Profiles/schedules.json` manifest. The GUI normalises tag lists and metadata keys before writing to disk.
-5. Use the Python CLI parity commands when automating: `python -m driftbuster.run_profiles_cli schedule list` to inspect schedules, `due` to surface pending runs, `mark-complete` to advance cadence after a run, and `skip-until` to defer execution. The GUI and CLI share the manifest and `scheduler-state.json` files so state remains aligned.
+5. Use the console tool when automating: `driftbuster schedule list` to inspect schedules, `due` to surface pending runs, `mark-complete` to advance cadence after a run, and `skip-until` to defer execution. The GUI and console tool share the manifest and `scheduler-state.json` files so state remains aligned.
 
 ## Themes
 
@@ -69,7 +68,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 - Errors (e.g., missing files, permission issues) bubble into the red message banner.
 
 ### JSON payload schema
-- The **Raw JSON** expander mirrors the backend response returned by `DriftbusterBackend.BuildDiffPlanAsync`. The payload is a
+- The **Raw JSON** expander mirrors the backend response returned by `DriftbusterBackend.DiffAsync`. The payload is a
   single object with the following shape:
   - `versions`: ordered list of absolute or relative file paths exactly as submitted to the backend.
   - `comparisons`: array of comparisons, each containing:
@@ -114,7 +113,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 
 ### Run profiles secret scanner workflow
 - Switch to **Run profiles** and open **Secret scanner settings** to review ignore lists. The dialog (`SecretScannerSettingsViewModel`) clones the active profile configuration, so cancelling leaves the persisted options untouched.
-- Saving applies the ignore rules/patterns plus optional inline ruleset JSON to the profile and updates the summary string beneath the button. The view model emits the same payload consumed by `run_profiles.execute_profile`, guaranteeing the GUI and Python runners stay aligned.
+- Saving applies the ignore rules/patterns plus optional inline ruleset JSON to the profile and updates the summary string beneath the button. The view model emits the same payload the backend run profile executor consumes for `driftbuster profile run`, so the GUI and console runs stay aligned.
 - When a run executes, the backend writes redaction messages (for example, `secret candidate redacted (PasswordAssignment) …`) into the activity timeline and into `metadata.json → secrets.messages`. Rows associated with scrubbed files surface a **Secrets** pill, mirroring the `HasSecrets` flag in the results view models.
 - Sanitised copies persist under the profile output directory alongside `metadata.json`. The manifest exposes rule version, ignored lists, findings, and the logged messages so auditors can reconcile GUI output with stored evidence. Pair these manifests with `artifacts/secret-scanning/realtime-validation-20251025T065645Z.log` when capturing validation proof for A13.3.
 
@@ -145,10 +144,10 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 
 
 ### Remote capture orchestration
-- Use the PowerShell module when coordinating multi-host captures without launching the GUI: `Invoke-DriftBusterRemoteScan -ComputerName branch-01 -RemotePath "ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json` mounts the admin share and runs `scripts/capture.py` locally against the UNC path.
-- For environments where SMB access is blocked, flip to WinRM with `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath "C:\\ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -RemoteWorkingDirectory "$env:ProgramData\\DriftBusterRemote"`. The cmdlet stages the capture helper remotely, runs it, and copies manifests back into `<output>/<host>/` alongside GUI evidence.
-- Generate offline runner snippets with `python -m driftbuster.registry_cli emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` so the multi-server view and manifests can display the requested hive list next to each host.
-- After pulling results back, run `scripts/capture.py run --registry-scan <output>/<host>/registry_scan.json ...` to embed the registry summary alongside filesystem detections before importing evidence into the GUI session archive.
+- Use the PowerShell module when coordinating multi-host captures without launching the GUI: `Invoke-DriftBusterRemoteScan -ComputerName branch-01 -RemotePath "ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -MaskToken <token>` mounts the admin share and runs the capture in process against the UNC path.
+- For environments where SMB access is blocked, flip to WinRM with `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath "C:\\ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -AllowUnmasked -RemoteWorkingDirectory "$env:ProgramData\\DriftBusterRemote"`. The cmdlet stages the module and backend on the remote host (PowerShell 7.6 required there), runs the capture, and copies the snapshot and manifest back into `<output>/<host>/` alongside GUI evidence.
+- Generate offline runner snippets with `driftbuster registry-scan emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` so the multi-server view and manifests can display the requested hive list next to each host.
+- After pulling results back, run `driftbuster capture run --registry-scan <output>/<host>/registry_scan.json ...` to embed the registry summary alongside filesystem detections before importing evidence into the GUI session archive.
 
 #### Persistence walkthrough
 1. Click **Save session** after a successful multi-server run. The awaitable `SessionCacheService` writes the snapshot to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or the `$XDG_DATA_HOME` equivalent) while recording migration counters.
@@ -182,41 +181,38 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 
 ## Performance
 
-- Run `python scripts/perf_diagnostics.py` to capture the lightweight perf-smoke suite (`Category=PerfSmoke`) and export a JSON baseline to `artifacts/perf/baseline.json`.
-- The export records the executed `dotnet test` command, outcomes, and durations for each perf case. Successful runs keep both checks under **60 ms** (environment override in ~2 ms, toast burst harness in ~50 ms) so dispatcher batching remains intact.
-- The JSON payload also includes a virtualization projection table. Counts below the default **400** threshold stay on the simpler list layout, while synthetic scenarios at **400+** flip to virtualisation; precomputed matrices for `force=true` / `force=false` demonstrate how overrides change that behaviour.
-- Multi-server fixture statistics (10 hosts / 37 config files in the bundled sample) live alongside the perf data, helping you estimate whether upcoming runs will trip the virtualization threshold.
-- Re-run the script after tweaking thresholds or toast batching logic and compare the resulting `captured_at_utc` stamps plus projections to confirm behavioural drift before shipping changes.
+- Run `scripts/verify_coverage.sh --perf-smoke` to add the perf-smoke suite (`Category=PerfSmoke`); the run log lands in `artifacts/perf/perf-smoke-<timestamp>.log`.
+- Counts below the default **400** virtualization threshold stay on the simpler list layout; at **400+** the views virtualise. The environment overrides above change that behaviour.
+- Re-run the suite after tweaking thresholds or toast batching logic and compare the logs to confirm behavioural drift before shipping changes.
 
 ## 8. Backend Bridge
 - `DriftbusterService` instantiates the shared `DriftbusterBackend` class and executes diff, hunt, and run-profile operations in-process.
 - Diff calls load file contents, build the same JSON payload exposed to the UI, and reuse the shared models for plan metadata.
 - Hunt scans walk the filesystem locally, apply the default rule set, and surface filtered hits to the view models.
 - Run profile actions persist JSON definitions, copy snapshot files, and emit metadata using the shared library helpers.
-- Multi-server orchestration shells out to `python -m driftbuster.multi_server`, streams per-host progress back into toasts and the activity timeline, and persists cached diffs under the DriftBuster data root (e.g. `%LOCALAPPDATA%/DriftBuster/cache/diffs/`, `$XDG_DATA_HOME/DriftBuster/cache/diffs/`).
+- Multi-server orchestration runs in process through the backend multi-server runner, streams per-host progress back into toasts and the activity timeline, and persists cached diffs under the DriftBuster data root (e.g. `%LOCALAPPDATA%/DriftBuster/cache/diffs/`, `$XDG_DATA_HOME/DriftBuster/cache/diffs/`).
 - All work runs asynchronously on background tasks so the UI stays responsive; errors surface through the existing status banners.
 
 ## 9. Packaging Options
 - Default release builds produce an installer:
-  - `python scripts/release_build.py --release-notes notes/releases/<semver>.md --installer-rid win-x64`
-  - Installer artifacts: `artifacts/velopack/releases/<rid>`.
+  - `dotnet run --project cli/DriftBuster.Cli -- release --runtime win-x64 --release-notes notes/releases/<semver>.md --installer-rid win-x64` (from the repository root)
+  - Self-contained publishes: `build/artifacts/{cli,gui}/<rid>`; installer artifacts: `artifacts/velopack/releases/<rid>`.
 - Direct Velopack usage:
   - `dotnet tool restore`
   - `scripts/build_velopack_release.sh --version <semver> --release-notes notes/releases/<semver>.md [--rid win-x64]`
   - Use `--channel` (prereleases) and `--pack-id` (bundle id) as needed.
 - Manual portable publish (for quick local runs):
   - `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true`
-- Before packaging, sync versions: `python scripts/sync_versions.py`.
+- Before packaging, sync versions: `dotnet run --project cli/DriftBuster.Cli -- version`.
 
 ### Packaging prerequisites checklist
 
 | Step | Purpose |
 |------|---------|
-| Capture current commit hash (`git rev-parse HEAD > artifacts/gui-packaging/commit.txt`). | Tie installer evidence back to source. |
-| Stage WebView2 offline installer next to publish output. | Satisfy Evergreen redistribution requirements for offline installs. |
-| Generate SHA256 manifest for every staged file. | Enable downstream integrity verification without internet access; mirror outputs listed in `docs/windows-gui-notes.md#evidence-index-a196`. |
+| Capture current commit hash (`git rev-parse HEAD`) with the bundle. | Tie installer evidence back to source. |
+| Generate SHA256 manifest for every staged file. | Enable downstream integrity verification without internet access; see `docs/windows-gui-notes.md#evidence`. |
 | Copy updated `NOTICE` directory into the bundle. | Keep licence obligations intact across packaging flavours. |
-| Log install/uninstall transcript to `artifacts/gui-packaging/publish-<flavour>.log` (or a dedicated logs folder) and archive alongside hashes. | Provide reproducible evidence for legal and security reviews. |
+| Log the publish transcript (`artifacts/gui-packaging/README.md` has the commands) and archive it alongside hashes. | Provide reproducible evidence for legal and security reviews. |
 
 ## 10. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.
@@ -226,12 +222,11 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 ## 11. Automated & Headless Tests
 - UI automation lives in `gui/DriftBuster.Gui.Tests/Ui` and complementary view-model suites under `gui/DriftBuster.Gui.Tests/ViewModels`. Headless UI tests are attributed with `[AvaloniaFact]`, ensuring each case runs on the Avalonia dispatcher (navigation, drilldown exports, hunt flows, converters, session cache, and theme toggles).
 - The test assembly bootstraps Avalonia once through `gui/DriftBuster.Gui.Tests/TestAppBuilder.cs` (`[assembly: AvaloniaTestApplication]`), which reuses `Program.BuildAvaloniaApp()` (real `App`, Fluent theme, embedded Inter font) with `.UseHeadless(...)`. `HeadlessBootstrapTests` proves the styles load and a window with a `ToggleSwitch` shows headless; `AutomationPropertiesTests` proves every interactive control carries an automation ID and a resolvable name.
-- Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'cd /github/repos/DriftBuster && dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
+- Run targeted suites via tmux: `tmux new -d -s codexcli-ui 'dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~DiffViewTests"'`.
 - Full coverage expectations:
   - Debug collect: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
   - Release collect: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
   - XAML compilation gate: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:EnableAvaloniaXamlCompilation=true`
-- Diagnostic harness: set `AVALONIA_INSPECT=1` and run `--filter FullyQualifiedName=DriftBuster.Gui.Tests.Ui.AvaloniaSetupInspection.LogSetupState` to capture resource/style registration in `artifacts/codexcli-inspect.log`.
 
 ## 12. Troubleshooting
 | Symptom | Suggested Checks |
@@ -240,7 +235,6 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 | Validation won’t clear | Confirm file/directory exists and is accessible; refresh the path using Browse. |
 | Empty hunt results | Check filter string, increase rule coverage, or drop filter to view raw hits. |
 | Clipboard not working | Ensure the app is running in a desktop session (clipboard APIs require a real user session). Use the activity timeline’s copy buttons to verify clipboard access quickly. |
-| Packaged build fails to launch WebView2 | Confirm the offline Evergreen installer ran successfully and the recorded runtime version matches the hash manifest; reinstall using `/silent /install` and capture the updated log. |
 | Hash verification mismatch | Recompute SHA256 hashes for the staged bundle and confirm the manifest includes every file distributed to operators; regenerate the manifest before retrying install. |
 | MSIX refuses to install (certificate error) | Verify the signing certificate thumbprint matches the value logged in `notes/checklists/legal-review.md`; import the certificate into `Trusted People` on the VM before rerunning the install. |
 

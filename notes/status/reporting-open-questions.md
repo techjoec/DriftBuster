@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Reporting open question register
 
 This register captures the remaining decisions, guardrails, and follow-up

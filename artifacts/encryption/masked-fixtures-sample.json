@@ -1,6 +1,6 @@
 {
   "schema": "https://driftbuster.dev/offline-runner/evidence/masking/v1",
-  "generated_from": "tests/offline/test_offline_runner_masking_integration.py::test_execute_config_masks_secret_samples",
+  "generated_from": "offline runner secret masking run over fixtures/secret_samples/auth_secrets.txt",
   "generated_at_utc": "2025-10-25T07:00:00Z",
   "fixtures": [
     {

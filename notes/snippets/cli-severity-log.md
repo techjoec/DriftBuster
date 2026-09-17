@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # CLI severity hint validation log
 
 - Timestamp: 2025-10-24T20:20:30Z (UTC)

@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Configsample fuzz plan
 
 - **Entry point:** `python -m scripts.score_configsamples --fuzz-output <dir> --fuzz-count 3`.

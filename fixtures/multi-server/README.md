@@ -1,7 +1,9 @@
 ## Multi-Server Test Fixtures
 
-Ten simulated servers under varied configuration states used by
-`tests/multi_server/test_multi_server.py`.
+Ten simulated servers under varied configuration states used by the
+multi-server tests in `gui/DriftBuster.Backend.Tests/MultiServer/` and
+`cli/DriftBuster.Cli.Tests/`, and bundled with the GUI as
+`Samples/MultiServer/`.
 
 Layout
 - `fixtures/multi-server/server01` … `server10`

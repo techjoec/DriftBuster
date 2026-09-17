@@ -21,14 +21,15 @@ The automated tests build a simple `accounts` table with the following columns:
 
 ## Anonymisation recipe
 
-1. Mask the `secret` column with a placeholder (`[MASK]` by default) so tokens
+1. Mask the `secret` column with a placeholder (`[REDACTED]` by default) so tokens
    never leave the source environment.
 2. Hash the `email` column using the deterministic SHA-256 routine exposed by
-   `driftbuster.sql.snapshots`. Operators can supply a custom salt to widen the
-   anonymisation boundary when exporting production data.
+   the SQL snapshot export (`gui/DriftBuster.Backend/Sql/`). Operators can
+   supply a custom salt to widen the anonymisation boundary when exporting production data.
 3. Leave numeric columns such as `balance` untouched so downstream tooling can
    validate metric drift without rehydrating secrets.
 
 The same approach applies to larger databases. Provide additional
-`table.column` pairs to the capture script or offline runner configuration to
-mask or hash other fields as required.
+`table.column` pairs to `driftbuster sql-export`, `driftbuster capture
+export-sql` or the offline runner configuration to mask or hash other fields as
+required.

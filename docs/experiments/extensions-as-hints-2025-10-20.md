@@ -6,13 +6,13 @@ Dataset
 - Clean set: a representative configuration corpus (≈200 files)
 - Messy set: same files with random wrong extensions appended
 
-Commands
+Commands (reproduce with the console tool)
 ```bash
 # Clean (256 KiB)
-python -m driftbuster.cli <CLEAN_DIR> --json --sample-size 262144 > driftbuster_clean_rescan_256k.jsonl
+driftbuster scan <CLEAN_DIR> --json --sample-size 262144 > driftbuster_clean_rescan_256k.jsonl
 
 # Messy (256 KiB)
-python -m driftbuster.cli <MESSY_DIR> --json --sample-size 262144 > driftbuster_exts_mess_scan_256k.jsonl
+driftbuster scan <MESSY_DIR> --json --sample-size 262144 > driftbuster_exts_mess_scan_256k.jsonl
 ```
 
 Initial Observation (before hardening)

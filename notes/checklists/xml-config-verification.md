@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # XML Config Verification Checklist
 
 Track manual runs that validate the XML detector plus hunt token coverage.

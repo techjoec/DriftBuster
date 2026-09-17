@@ -2,157 +2,135 @@
 
 Hunt mode supplements format detection by looking for dynamic values that vary
 per server, environment, or installation (hostnames, certificate thumbprints,
-version numbers, paths, etc.). Use it to audit drift-prone settings and to
-prepare data for future config generation.
+version numbers, paths, connection strings, endpoints, feature flags). Use it to
+audit drift-prone settings and to prepare data for config templating.
 
 ## Quick Start
 
-```python
-from driftbuster import default_rules, hunt_path
-
-results = hunt_path(
-    "./deployments/prod-web-01",
-    rules=default_rules(),
-    exclude_patterns=("**/logs/*", "**/*.bak"),
-)
-
-for hit in results:
-    print(f"{hit.path}:{hit.line_number} [{hit.rule.name}] {hit.excerpt}")
+```sh
+driftbuster hunt ./deployments/prod-web-01 \
+  --exclude "**/logs/*" --exclude "**/*.bak" > hunt-results.json
 ```
 
-- `default_rules()` returns baseline heuristics for server names, certificate
-  thumbprints, version numbers, and installation paths. Each rule now exposes a
-  ``token_name`` that you can store inside configuration profile metadata.
-- Skip noisy paths by passing `exclude_patterns`. Patterns apply to the
-  filesystem path and the scan-relative path.
-- Each `HuntHit` includes the rule that fired, the file path, and a snippet to
-  review manually.
+- The default rules cover server names, certificate thumbprints, version
+  numbers, installation paths, connection strings, service endpoints and
+  feature flags (`gui/DriftBuster.Backend/Hunt/HuntRules.cs`). Each rule exposes
+  a `token_name` that you can store inside configuration profile metadata.
+- `--exclude` patterns apply to the file path and the scan-relative path;
+  `--glob` narrows the walk (default `**/*`).
+- The GUI Hunt tab and `Invoke-DriftBusterHunt` run the same engine.
 
-### Structured output for notebooks and approvals
+### Structured output
 
-```python
-from driftbuster import default_rules, hunt_path
+Each hit is a JSON object:
 
-payload = hunt_path(
-    "./deployments/prod-web-01",
-    rules=default_rules(),
-    return_json=True,
-)
-
-for entry in payload:
-    token = entry["rule"]["token_name"] or entry["rule"]["name"]
-    print(entry["relative_path"], token, entry["excerpt"])
+```json
+{
+  "excerpt": "\"Version\": \"1.0.0\",",
+  "line_number": 3,
+  "metadata": {
+    "plan_transform": {
+      "placeholder": "{{ version }}",
+      "rule_name": "version-number",
+      "token_name": "version",
+      "value": "1.0.0"
+    }
+  },
+  "path": "deployments/prod-web-01/app/appsettings.json",
+  "relative_path": "app/appsettings.json",
+  "rule": {
+    "description": "Version identifiers (semver style)",
+    "keywords": ["version"],
+    "name": "version-number",
+    "patterns": ["\\b\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?\\b"],
+    "token_name": "version"
+  }
+}
 ```
 
-- `return_json=True` produces dictionaries ready for logging or serialisation.
-- The structured payload retains rule metadata, excerpts, and relative paths so
-  you can cross-link output with manual checklists without re-reading files.
-- Feed the `token_name` column into configuration profile metadata (see
+- The payload retains rule metadata, excerpts, and relative paths so you can
+  cross-link output with manual checklists without re-reading files.
+- Feed the `token_name` values into configuration profile metadata (see
   `docs/configuration-profiles.md`) so drift reviews know which values are
   expected.
-- When a rule exposes a `token_name`, the entry includes
-  `metadata.plan_transform` containing the detected value and templated
-  placeholder (defaults to `{{ token_name }}`) for diff plans or approval logs.
+- When a rule has a `token_name`, `metadata.plan_transform` carries the detected
+  value and a templated placeholder (`{{ token_name }}` by default).
 
 ### Plan transforms & placeholders
 
-```python
-from driftbuster import build_plan_transforms, default_rules, hunt_path
+- `--placeholder-template` changes the placeholder style. The template uses
+  `{token_name}` for the name and doubled braces for literal braces; the default
+  `{{{{ {token_name} }}}}` renders `{{ version }}`, and `<<{token_name}>>`
+  renders `<<version>>`.
+- In code, `HuntEngine.BuildPlanTransforms(hits, placeholderTemplate)`
+  deduplicates hits per file and line and pairs each `token_name` with the
+  matched value.
+- Feed the resulting placeholders into diff masking (`driftbuster diff
+  --mask-token <value>`) or token catalogs without re-parsing hunt excerpts.
 
-hits = hunt_path("./deployments/prod-web-01", rules=default_rules())
-transforms = build_plan_transforms(hits)
+## Realtime secret scanner
 
-for transform in transforms:
-    print(transform.token_name, "=>", transform.placeholder, transform.value)
+Run profile captures run the secret scrubber on each source file before it is
+copied. Key behaviours to keep in mind:
 
-# Custom placeholder style
-transforms = build_plan_transforms(
-    hits,
-    placeholder_template="<<{token_name}>>",
-)
-```
-
-- `build_plan_transforms` deduplicates hits per file/line and pairs each
-  `token_name` with the matched value.
-- Feed the resulting placeholders into diff plans
-  (`driftbuster.core.diffing.build_diff_plan(mask_tokens=[...])`) or token
-  catalog scripts without re-parsing hunt excerpts.
-- Override `placeholder_template` to match your templating engine (e.g.,
-  `<<token>>`, `%TOKEN%`).
-
-## Realtime secret scanner telemetry
-
-Run profile captures now mirror the offline encryption pipeline by running the
-secret scrubber in-place before copying any source file. The flow is wired
-through `run_profiles.execute_profile`, which hydrates a
-`SecretDetectionContext` and streams log messages into the metadata payload
-written alongside every run. Key behaviours to keep in mind:
-
-- Each copied file is passed through `secret_scanning.copy_with_secret_filter`
-  when textual data is detected. Matching rules replace the sensitive span with
-  `[SECRET]`, append a `SecretFinding` entry, and emit messages such as
-  `secret candidate redacted (PasswordAssignment) from ...` for audit trails.
-  These logs persist in `metadata.json → secrets.messages` and are surfaced via
-  the `ProfileRunResult.secrets` dictionary returned to callers.
+- Each textual file is copied through the secret filter
+  (`gui/DriftBuster.Backend/Secrets/`). Matching rules replace the sensitive
+  span with `[SECRET]`, record a finding, and log messages such as
+  `secret candidate redacted (PasswordAssignment) from ...`. These messages
+  persist in `metadata.json → secrets.messages`.
 - Ignore lists are honoured at two layers: profile options may specify
-  `secret_ignore_rules` / `secret_ignore_patterns`, while the GUI and future CLI
-  feed structured `secret_scanner` overrides. Both paths normalise values into
-  sorted lists before the scan begins so deterministic manifests and hashes are
-  produced.
+  `secret_ignore_rules` / `secret_ignore_patterns`, while the GUI and
+  `driftbuster profile run --secret-ignore-rule/--secret-ignore-pattern` feed
+  structured `secret_scanner` overrides. Both paths normalise values into
+  sorted lists before the scan begins so manifests and hashes are
+  deterministic.
 - When no matches trigger, files are copied byte-for-byte and `rules_loaded`
-  stays `True`, proving the ruleset executed without falling back to a noop.
-  Binary files skip redaction automatically based on the lightweight
-  `looks_binary` probe documented in `secret_scanning.py`.
+  stays `true`, proving the ruleset executed. Binary files skip redaction.
 - The resulting manifest enumerates rule version, ignored entries, and every
   finding (path, rule name, line, snippet). Use this metadata as the single
-  source of truth when curating approvals or verifying realtime scrubber runs
-  inside automated pipelines.
+  source of truth when curating approvals or verifying scrubber runs.
 
 ## Bridging hunts with profiles
 
-Use the profile CLI to line up hunt hits with the configuration expectations
-stored in your `ProfileStore` payload.
+Line up hunt hits with the configuration expectations stored in a detection
+profile store:
 
-```bash
-python -m driftbuster.profile_cli hunt-bridge profiles.json hunt-results.json \
+```sh
+driftbuster detection-profile hunt-bridge profiles.json hunt-results.json \
   --tag env:prod --tag tier:web --root deployments/prod-web-01 \
   --output hunt-profile-bridge.json
 ```
 
-- `profiles.json` mirrors the payload accepted by `ProfileStore.from_dict`.
-- `hunt-results.json` is the JSON array returned by `hunt_path(...,
-  return_json=True)`.
+- `profiles.json` is a detection profile store (`{"profiles": [...]}`).
+- `hunt-results.json` is the JSON array printed by `driftbuster hunt`.
 - Repeat `--tag` for every activation tag required by the relevant profile.
-- Use `--root` when hunt output recorded absolute paths; the CLI converts them
-  into POSIX-style relatives before querying `ProfileStore.matching_configs`.
+- Use `--root` when hunt output recorded paths outside the profile layout; the
+  command converts them into POSIX-style relatives before matching configs.
 - The resulting JSON (`items`) lists each hunt hit, the resolved relative path,
-  and any matching `(profile, config)` pairs plus expected format/variant hints.
-- See `notes/snippets/profile-hunt-bridge.py` for a reusable script that wraps
-  the same logic inside Python while HOLD keeps automation on pause.
+  and any matching profile/config pairs plus expected format/variant hints.
 
 ## Custom Rules
 
-```python
-from driftbuster import HuntRule
+Custom rules are available through the backend library:
 
-db_rule = HuntRule(
-    name="database-connection",
-    description="Connection strings referencing SQL hosts",
-    token_name="database_server",
-    keywords=("connection", "server"),
-    patterns=(r"Server=([^;]+)",),
-)
+```csharp
+using DriftBuster.Backend.Hunt;
 
-results = hunt_path(
-    "./deployments",
-    rules=(db_rule,),
-    glob="**/*.config",
-)
+var dbRule = new HuntRule(
+    name: "database-connection",
+    description: "Connection strings referencing SQL hosts",
+    tokenName: "database_server",
+    keywords: ["connection", "server"],
+    patterns: [@"Server=([^;]+)"]);
+
+var result = HuntEngine.HuntPath("./deployments", [dbRule], glob: "**/*.config");
+var json = HuntEngine.ToJson(result);
 ```
 
 - `keywords` provide cheap filters (case-insensitive substring matches).
-- `patterns` are regexes (compiled automatically) used to flag lines for review.
-- `token_name` keeps downstream metadata predictable. Reuse the same token names
+- `patterns` are regexes compiled case-insensitive and multiline, used to flag
+  lines for review.
+- `tokenName` keeps downstream metadata predictable. Reuse the same token names
   inside configuration profile metadata and checklists.
 
 ## Workflow Suggestions
@@ -163,52 +141,31 @@ results = hunt_path(
    `token_name`. Keep the authoritative mapping in source control.
 4. Capture approvals in `notes/checklists/hunt-profile-review.md`, recording the
    reviewer, date, excerpts, and masking decisions.
-5. When capturing snapshots/diffs, store hunt results alongside detection output
-   so future comparisons can highlight changes without re-running the scans.
+5. When capturing snapshots (`driftbuster capture run`), keep hunt results
+   alongside detection output so later comparisons (`driftbuster capture
+   compare`) highlight changes without re-running the scans.
 
-### Reporting metadata bridge
+### Reporting metadata
 
-- Pair hunt output with detection matches before emitting reports. Build a
-  ``DetectionMatch`` per format run, then iterate through
-  :func:`driftbuster.reporting._metadata.iter_detection_payloads` to keep
-  reporting payloads uniform across JSON, HTML, and diff adapters.
-- Ensure every detection map exposes the canonical keys (`plugin`, `format`,
-  `variant`, `confidence`, `reasons`, `metadata`). Populate hunt-derived fields
-  inside the nested `metadata` map (for example, `hunts.approved_tokens` or
-  `hunts.pending_reviews`) so downstream tooling can merge them with detector
-  metadata without schema drift.
-- Use ``extra_metadata`` when invoking ``iter_detection_payloads`` to append
-  run-level context such as the hunt manifest hash, operator ID, or approval log
-  reference. The helper returns new dictionaries, keeping the cached hunt
-  payload intact for repeat renders and follow-up audits.
-
-## Transformation Roadmap
-
-- Integrate hunt findings into future diff/patch adapters so drift reports can
-  separate "expected dynamic" vs. "unexpected" changes. The structured payload
-  already exposes the rule `token_name`, so diff tooling can line up approvals
-  without reverse-engineering regex strings.
-- Feed confirmed dynamic values into config generation templates (e.g., token
-  replacement) once automation pipelines are in place. Track approvals using the
-  hunt/profile checklist so placeholders stay in sync.
-- Expand the default rule set as new formats land (JSON appsettings, YAML
-  manifests, PowerShell scripts). Always define a `token_name` for new rules so
-  metadata consumers stay consistent.
-- Track accepted dynamic values (e.g., approved certificate thumbprints) in a
-  profile metadata map so future tooling can substitute them automatically. Use
-  the JSON hunt output to populate those maps without copying raw excerpts.
+- `driftbuster report` renders detections and hunt hits together as HTML or
+  JSON lines; `--mask-token` redacts values in both.
+- Every detection payload exposes the canonical keys (`plugin`, `format`,
+  `variant`, `confidence`, `reasons`, `metadata`). Keep hunt-derived fields
+  inside the nested `metadata` map (for example, `hunts.approved_tokens`) so
+  downstream tooling can merge them with detector metadata without schema
+  drift.
 
 ## Token Mapping & Approval Flow
 
 Link hunt rules to placeholder names before any token substitution work. The
-default catalogue already exposes `token_name` for core rules; record the
-mapping explicitly so profiles, diffs, and future templating agree on wording.
+default rules already expose `token_name`; record the mapping explicitly so
+profiles, diffs, and templates agree on wording.
 
-| Hunt rule | Suggested token | Notes |
+| Hunt rule | Token | Notes |
 | --- | --- | --- |
-| `database-connection` | `database_server` | Matches hostname extracted from connection strings. |
-| `tls-thumbprint` | `certificate_thumbprint` | Preserve uppercase formatting for approval diffs. |
-| `service-endpoint` | `service_url` | Normalise scheme + host only; ignore query parameters. |
+| `connection-string` | `connection_string` | Connection string attribute assignments. |
+| `certificate-thumbprint` | `certificate_thumbprint` | Preserve uppercase formatting for approval diffs. |
+| `service-endpoint` | `service_endpoint` | Normalise scheme + host only; ignore query parameters. |
 
 ### Before/after example
 
@@ -228,14 +185,10 @@ connectionString=Server={{ database_server }};Database=main
 
 ### Manual review steps
 
-1. Run hunt mode with `return_json=True` to capture candidate values.
+1. Run `driftbuster hunt` to capture candidate values as JSON.
 2. Compare each hit against the relevant configuration profile entry and record
    the decision in `notes/checklists/hunt-profile-review.md`.
-3. Use `notes/snippets/token-catalog.py --hunts hunt-results.json` to build a
-   hashed catalog skeleton before editing any config files. Record the catalog
-   variant (`structured-settings-json`, etc.) and the hashed JSON sample
-   reference when applicable.
-4. Replace the raw value with the placeholder in your working copy, then rerun
+3. Replace the raw value with the placeholder in your working copy, then rerun
    the detector and hunt scans to confirm no new hits appear.
-5. Archive the structured hunt output alongside the approval log so future
+4. Archive the structured hunt output alongside the approval log so future
    reviews can confirm the placeholder still matches the rule definition.

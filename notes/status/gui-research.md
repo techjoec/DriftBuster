@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Windows GUI Research Status
 
 ## Decisions & Findings

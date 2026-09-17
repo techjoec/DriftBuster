@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Manual sample checklist
 
 Use this log to coordinate sample retrieval, mutation runs, and hunt/profile

@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Python CLI Readiness Plan (Hold)
 
 The CLI entry points remain paused while GUI-first work continues. This plan keeps

@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # HOLD Check-ins
 
 > **Gate:** Do not begin Areas A8 and beyond until this log records explicit user approval lifting HOLD.

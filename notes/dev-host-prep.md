@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Dev Host Prep Log (Avalonia GUI)
 
 ## Toolchain Verification

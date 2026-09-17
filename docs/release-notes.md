@@ -66,18 +66,22 @@ sync.
 
 | Component  | Source                                  | Version Source                  |
 |------------|-----------------------------------------|---------------------------------|
-| Core       | Python package & `DriftBuster.Backend`  | `Directory.Build.props` / `versions.json` (`core`) |
+| Core       | `DriftBuster.Backend` + `driftbuster` CLI | `Directory.Build.props` / `versions.json` (`core`) |
 | GUI        | Avalonia desktop app                    | `gui/GuiVersion.props` / `versions.json` (`gui`)   |
 | PowerShell | `cli/DriftBuster.PowerShell` module     | `DriftBuster.psd1` / `versions.json` (`powershell`) |
 
 When cutting a release:
 
-1. Update `versions.json` and run `python scripts/sync_versions.py`.
-2. Rebuild the backend so the PowerShell module packages the matching DLL.
+1. Update `versions.json` and run `dotnet run --project cli/DriftBuster.Cli -- version`.
+2. Publish the backend (`dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Release -o gui/DriftBuster.Backend/bin/Release/published`)
+   so the PowerShell module packages the matching DLL.
 3. Mention the backend/core dependency version in GUI release notes and module
    documentation if it changes.
 
 ## Using the Script
+
+`driftbuster release --release-notes notes/releases/<version>.md` calls the
+script for the installer step. To run it directly:
 
 ```
 dotnet tool restore

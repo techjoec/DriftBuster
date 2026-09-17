@@ -1,21 +1,27 @@
 # Testing Strategy
 
-Automated coverage now backs the detector, format plugins, hunt helpers, the
-PowerShell/GUI backend library, and Avalonia viewmodels. Manual validation
-continues to play a role for vendor fixtures and pre-HOLD reporting flows.
+Automated tests back the detection engine, format plugins, diff, hunt and
+secret scanning, profiles and scheduling, registry and SQL export, reporting,
+the console tool, the PowerShell module, the offline runner, and the Avalonia
+view models. Manual validation continues to play a role for vendor fixtures and
+reporting flows.
 
-Policy: Maintain ≥ 90% line coverage across Python source (under `src/`) and
-≥ 83% total line coverage across the .NET GUI + Backend assemblies. Treat this
-as a hard baseline for new and modified components.
+Policy: maintain ≥ 83% total line coverage over the merged Backend, CLI and GUI
+test report. Treat this as a hard baseline for new and modified components.
 
 ## Automated test suite
 
-- `pytest -q` — exercises detector metadata, profile helpers, diff planning,
-  hunt rules, registry utilities, JSON/XML plugins, and CLI helpers. The suite
-  injects the `src/` tree via `tests/conftest.py`.
-- `pytest tests/multi_server -q` — validates the multi-server orchestration
-  bridge, ensuring cache reuse, catalog aggregation, and drilldown payloads
-  stay deterministic across runs.
+- `scripts/verify_coverage.sh` — runs the three .NET test projects with
+  coverlet, merges their reports into `build/coverage/merged/` and fails below
+  the threshold (`DOTNET_THRESHOLD`, default 83). When `pwsh` is on `PATH` it
+  also runs the Pester suites. `--perf-smoke` adds the `Category=PerfSmoke`
+  GUI suite and logs it under `artifacts/perf/`.
+- `dotnet test gui/DriftBuster.Backend.Tests/DriftBuster.Backend.Tests.csproj`
+  — detection, catalog and plugins, diff, hunt, secrets, multi-server,
+  profiles, scheduling (including DST), registry, SQL export, reporting and
+  capture. Windows registry backend tests skip on other platforms.
+- `dotnet test cli/DriftBuster.Cli.Tests/DriftBuster.Cli.Tests.csproj` — the
+  `driftbuster` commands, including `version` and `release`.
 - `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` — runs
   the Avalonia headless suite (`[AvaloniaFact]`) covering MainWindow
   navigation, drilldown export/rescan, hunt mode flows, profile interactions,
@@ -27,57 +33,28 @@ as a hard baseline for new and modified components.
   drives the end-to-end multi-server journey (catalog + drilldown + hunt +
   profiles) against the fake backend and should pass before claiming GUI
   parity with multi-host plans.
-- `dotnet test gui/DriftBuster.Gui.Tests/Services/ToastServiceTests.cs --filter Overflow_moves_extra_toasts`
+- `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter Overflow_moves_extra_toasts`
   verifies toast overflow behaviour and should run after modifying toast capacity or overflow UI.
-- `dotnet build` now runs with the latest built-in analyzers and style
+- Pester: `cli/DriftBuster.PowerShell.Tests/DriftBuster.PowerShell.Tests.ps1`
+  (module) and `scripts/DriftBusterOfflineRunner.Tests.ps1` (offline runner).
+- `scripts/lint_all.sh` — `dotnet format DriftBuster.sln --verify-no-changes`
+  plus `scripts/lint_powershell.ps1` (PSScriptAnalyzer over `cli/` and
+  `scripts/`, failing on any warning or error).
+- `dotnet build` runs the Meziantou and built-in analyzers with code style
   enforcement (see `Directory.Build.props`). Address any analyzer warnings
-  surfaced during builds before committing.
-- `pwsh scripts/lint_powershell.ps1` — runs PSScriptAnalyzer across the
-  PowerShell module and fails if any warnings or errors are detected.
-- `python -m compileall src` — sanity compiles the entire Python tree.
-- `ruff check src tests scripts` — lints all Python trees (rules and 140-character limit in `pyproject.toml`).
-- `pyright` — type-checks the same trees in standard mode.
-- `dotnet format gui/DriftBuster.Backend/DriftBuster.Backend.csproj --verify-no-changes`
-  — validates the backend library formatting against analyzer defaults.
-- `dotnet format gui/DriftBuster.Gui/DriftBuster.Gui.csproj --verify-no-changes`
-  — enforces GUI project code style expectations.
-- `dotnet format gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --verify-no-changes`
-  — keeps test harness formatting aligned with the production projects.
-
-Run both commands before landing changes that touch the Python core or the
-Avalonia/PowerShell surfaces. Use `-q`/`--no-build` switches if you need to
-minimise output or skip rebuilds during local iteration.
-
-### Coverage measurement (quick commands)
-
-- Python (engine/detectors/reporting)
-  - `coverage run --source=src/driftbuster -m pytest -q`
-  - `coverage report --fail-under=90` and/or `coverage json -o coverage.json`
-  - Optional HTML: `coverage html` → open `htmlcov/index.html`
-- .NET GUI (xUnit + coverlet collector)
-  - `tmux new -s codexcli-<pid>-coverage 'dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect="XPlat Code Coverage" --results-directory artifacts/coverage-dotnet'`
-  - Inspect `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml` for
-    per-viewmodel coverage and ensure the heavy UI surfaces (catalog,
-    drilldown, multi-server orchestration) do not regress.
+  before committing.
 
 ### Review flags and profile ignores
 - Plugins may mark oddities with `metadata.needs_review` and `review_reasons`.
 - Profiles can suppress review flags per config via
   `metadata.ignore_review_flags = true`.
-- Tests should cover: flag emission and profile‑based suppression.
-- Review-flag coverage lives in `tests/formats/test_json_flags.py`, `test_xml_wellformed_flag.py`,
-  `test_yaml_flags_and_gating.py`, `test_toml_flags.py`, `test_ini_flags.py`, `test_text_flags.py`,
-  and `tests/core/test_detector_profile_review_ignore.py`.
-- New detector heuristics bump the plugin `version` attribute and update `docs/format-support.md`
-  and `docs/detection-types.md`; every variant and metadata field needs a matching test under `tests/formats/`.
-
-Local guardrails:
-
-- Python threshold: `coverage report --fail-under=90`
-- .NET coverage collection: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect="XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
-- .NET threshold enforcement: `dotnet test -p:CollectCoverage=true -p:Threshold=83 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
-
-Shortcut: run `scripts/verify_coverage.sh` to execute both suites with thresholds.
+- Tests cover flag emission and profile‑based suppression: the `*FlagsTests`,
+  `XmlWellformedFlagTests` and `YamlFlagsAndGatingTests` under
+  `gui/DriftBuster.Backend.Tests/Detection/Plugins/`, and
+  `gui/DriftBuster.Backend.Tests/Profiles/Detection/DetectorProfileReviewIgnoreTests.cs`.
+- New detector heuristics bump the plugin `Version` and update `docs/format-support.md`
+  and `docs/detection-types.md`; every variant and metadata field needs a matching test under
+  `gui/DriftBuster.Backend.Tests/Detection/Plugins/`.
 
 ## Vendor Sample Acquisition
 
@@ -149,8 +126,7 @@ grounded in reproducible fixtures.
   configuration profile name or identifier.
 - For each entry, document the token placeholders you expect to approve (e.g.,
   `server_name`, `certificate_thumbprint`) and confirm the redaction method.
-- Capture the `build_plan_transforms` output (or the
-  `metadata.plan_transform` block from JSON hunts) alongside approvals so future
+- Capture the `metadata.plan_transform` blocks from `driftbuster hunt` output alongside approvals so future
   diff plans inherit the same masking tokens without manual re-entry.
 - Keep approval snapshots outside the repository; reference the location in
   `notes/checklists/hunt-profile-review.md`.
@@ -170,8 +146,8 @@ grounded in reproducible fixtures.
 
 - Keep a short README in the private mirror describing how to pull the good and
   drift inventories, including any authentication requirements.
-- When preparing a manual review, fetch the sanitized sample, run `hunt_path`
-  with the relevant `exclude_patterns`, and capture approvals in the checklist
+- When preparing a manual review, fetch the sanitized sample, run `driftbuster hunt`
+  with the relevant `--exclude` patterns, and capture approvals in the checklist
   template.
 - Note which placeholders require manual masking before storing the hunt output
   log. The log should live outside the repository but be linked from the
@@ -186,7 +162,7 @@ grounded in reproducible fixtures.
 - Document how to reproduce fuzz runs manually; no automated fuzzing yet.
 - Track dynamic token samples (hostnames, thumbprints, versions) so hunt-mode
   rules can be verified against real-world data.
-- Record the resulting placeholders from `build_plan_transforms` next to the
+- Record the resulting `plan_transform` placeholders from `driftbuster hunt` next to the
   fuzzed sample so masking expectations remain reproducible.
 
 ### Format-Specific Fuzz Heuristics
@@ -201,97 +177,57 @@ grounded in reproducible fixtures.
   within metadata headers, and prepend/append null-byte padding. Validate that
   truncation signalling remains consistent with `metadata['sample_truncated']`.
 
+
 ### Manual Fuzz Workflow
 
 1. Check out the linked sample reference and copy it into a disposable working
    directory outside the repository.
-2. Apply deterministic mutations using `python - <<'PY'` snippets stored in the
-   local notes folder; capture command output in `notes/checklists/manual-tests.md`.
-3. Run the detector manually (`python -m driftbuster.scan --path <file>` or
-   equivalent helper) and log metadata deltas.
+2. Apply deterministic mutations with scripts kept in the local notes folder;
+   capture command output in `notes/checklists/manual-tests.md`.
+3. Run the detector manually (`driftbuster scan <file> --json`) and log
+   metadata deltas.
 4. Record any parsing or sampling issues alongside remediation ideas. If a
-   mutation reveals a bug, file a TODO in `CLOUDTASKS.md` referencing the sample
+   mutation reveals a bug, file it in the issue tracker referencing the sample
    row.
-5. Automation backlog: document prospective fuzz scripts but do not add them to
-   CI yet. Track these placeholders under the "Future automation" block in the
-   checklist file.
+5. Keep prospective fuzz scripts documented in the checklist file rather than
+   wiring them into automation.
 
 ## Validation Workflow
 
 - When adding a detector, update this plan with new sample sources and fuzz
   strategies.
-- Record manual execution steps (commands, expected outcomes) alongside
-  detector checklists in `CLOUDTASKS.md`.
+- Record manual execution steps (commands, expected outcomes) alongside the
+  detector checklists under `notes/checklists/`.
 - Before shipping major releases, run through the curated sample set and note
   anomalies for follow-up.
 
-## HOLD Exit Checklist Hooks
+## Capture manifests
 
-- Cross-reference the decision summary in `notes/status/hold-log.md#decision-ready-summary` before expanding reporting coverage.
-- Confirm the sample inventory rows cited here still follow the vendor-neutral guardrails in `docs/legal-safeguards.md#hold-exit-briefing`.
-- Keep running the manual compile/lint block from `notes/checklists/core-scan.md`; log the results next to the HOLD exit review entry once approvals land.
-- 2025-10-24 validation: Confirmed `scripts/capture.py` defaults (`root='.'`, glob `**/*`, output dir `captures`, placeholder `[REDACTED]`) match this readiness packet; update this note if defaults change.
-- Document any capture manifest tweaks alongside the roadmap entry so `scripts/capture.py` defaults stay aligned with the readiness packet.
-- Capture manifests (schema version `1.0`) require explicit `--environment` and
-  `--reason` flags plus an operator identifier. The helper will abort if those
-  fields are omitted, so rehearsals must provide them or set
-  `DRIFTBUSTER_CAPTURE_OPERATOR` in the environment before execution.
+- `driftbuster capture run` defaults: root `.`, glob `**/*`, output directory
+  `captures`, placeholder `[REDACTED]`.
+- Capture manifests (schema version `1.0`) require `--environment` and
+  `--reason` plus an operator (`--operator`, or `DRIFTBUSTER_CAPTURE_OPERATOR`
+  / `USER` in the environment). The command stops with an error when those are
+  missing, so rehearsals must provide them.
+- A capture refuses to run without mask tokens unless `--allow-unmasked` is
+  passed.
 
 ## Metadata Validation Routine
 
-- Generate detection outputs against the fixture set and pipe each
-  ``DetectionMatch`` through ``validate_detection_metadata``; capture the
-  resulting dictionaries in `notes/checklists/metadata-mapping.md`.
+- Generate detection outputs against the fixture set (`driftbuster scan
+  fixtures --json`); every match carries the catalog keys that
+  `DetectionMetadata.ValidateDetectionMetadata` adds. Capture the resulting
+  payloads in `notes/checklists/metadata-mapping.md`.
 - Flag failures immediately in the checklist and attach the offending metadata
   payload so regressions are visible without re-running the scan.
-- Use ``python - <<'PY'`` snippets to batch-validate outputs while keeping the
-  process manual (automation still deferred).
 
 ### Pre-release checklist
 
-- Re-run the validator across XML, .config, and binary fixtures.
-- Confirm `catalog_version` and `catalog_format` align with
-  `driftbuster.catalog.DETECTION_CATALOG`.
+- Re-run the scan across XML, .config, and binary fixtures.
+- Confirm `catalog_version` and `catalog_format` align with the catalog in
+  `gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`.
 - Review diff logs to ensure no unexpected metadata keys vanished between
   releases.
-
-### Future lint rule (deferred)
-
-- Plan a lightweight static rule that checks for missing ``catalog_*`` keys in
-  test fixtures once automation is allowed. Document this backlog item in
-  `CLOUDTASKS.md` and revisit when CI guardrails open up.
-
-## Detector manual lint & test checklist
-
-- Run the automated suite plus the targeted lint block before checking in detector/profile work:
-
-  ```sh
-  pytest -q
-  dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj
-  python -m compileall src
-  ruff check src/driftbuster/core
-  ruff check src/driftbuster/formats/registry_live
-  ruff check src/driftbuster/registry
-  ```
-
-- `pytest` and `dotnet test` confirm behaviour across detector, plugins, hunt,
-  CLI, API, and GUI layers.
-- `python -m compileall src` — confirms helper modules (e.g.,
-  `_validate_sample_size`) remain syntax safe across Python versions.
-- `ruff check src/driftbuster/core` — spot-checks detector style
-  before pushing shared guardrails wider.
-- `ruff check src/driftbuster/formats/registry_live` — confirms the
-  registry-live plugin follows the same conventions as the detector module.
-- `ruff check src/driftbuster/registry` — confirms runtime registry
-  helpers follow the same conventions.
-- Capture results in `notes/checklists/core-scan.md` along with fixture
-  metadata so the troubleshooting table in `README.md` stays trustworthy.
-
-### Deferred automation backlog
-
-- `mypy src/driftbuster/core` to lock down callback typing.
-- `mypy src/driftbuster/formats/registry_live` for registry-live type invariants.
-- `mypy src/driftbuster/registry` for registry scan backend invariants.
 
 ## Open Items
 

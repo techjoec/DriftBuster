@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # XML Config Diff Snippets
 
 Use this file to track sanitised before/after metadata snapshots for XML config

@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Metadata Mapping Checklist
 
 Track detector outputs against catalog identifiers to ensure metadata stays

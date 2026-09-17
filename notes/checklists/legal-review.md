@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # Legal review checklist
 
 Use this log to document compliance passes for reporting artefacts and to track

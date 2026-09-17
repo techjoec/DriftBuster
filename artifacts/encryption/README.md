@@ -20,7 +20,7 @@ before using them.
 }
 ```
 
-Generate replacements with `os.urandom(32)` (see `docs/encryption.md`). Store
+Generate replacements from a cryptographic random source (see `docs/encryption.md`). Store
 the file with ACLs restricting access to the operator account.
 
 ## DPAPI-wrapped AES key example
@@ -69,6 +69,6 @@ be shared without leaking key material.
 
 - `masked-fixtures-sample.json` records the sanitized hashes and rules observed
   when running the offline runner against `fixtures/secret_samples/auth_secrets.txt`
-  with encryption enabled (see
-  `tests/offline/test_offline_runner_masking_integration.py`). Use the recorded
+  with encryption enabled (the `secret masking` block in
+  `scripts/DriftBusterOfflineRunner.Tests.ps1` runs the same scenario). Use the recorded
   SHA256 to confirm scrubbed outputs without redistributing raw payloads.

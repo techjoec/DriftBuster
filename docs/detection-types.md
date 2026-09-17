@@ -1,9 +1,10 @@
 # Detection Types Reference
 
-`driftbuster.catalog` exposes the canonical detection metadata consumed by the
-core detector (`DETECTION_CATALOG`) alongside usage-oriented estimates
-(`FORMAT_SURVEY`). Detection runs in ascending priority order; the first
-positive match wins. The tables below blend the shipped class definitions from
+The detection catalog (`DETECTION_CATALOG` below: `DetectionCatalog.Default`,
+built in `gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`)
+holds the canonical detection metadata consumed by the core detector; the usage
+percentages are survey estimates kept in this document. Detection runs in
+ascending priority order; the first positive match wins. The tables below blend the shipped class definitions from
 `DETECTION_CATALOG` (v0.0.3) with the usage insights from the format survey data
 (v0.0.3).
 
@@ -26,13 +27,13 @@ positive match wins. The tables below blend the shipped class definitions from
 | 120      | GenericBinaryDat       | binary-dat            | low              | —                                       | `.dat`, `.bin`                       | 3       | entropy threshold             |
 | 1000     | UnknownTextOrBinary    | unknown-text-or-binary | info            | fallback                                 | _fallback_                           | —       | —                             |
 
-Default severity labels mirror the canonical values embedded in
-`driftbuster.catalog.DETECTION_CATALOG` so CLI and registry summaries share a
-single source of truth.
+Default severity labels mirror the canonical values embedded in the catalog
+(`DetectionCatalogData.cs`) so console and registry summaries share a single
+source of truth.
 
 ## Severity and Remediation Hints
 
-`validate_detection_metadata` now injects catalog-provided severity hints and
+`DetectionMetadata.ValidateDetectionMetadata` injects catalog-provided severity hints and
 remediation stubs for every detection class. Use these entries to brief
 reviewers and to script downstream workflows without hard-coding guidance.
 
@@ -274,17 +275,17 @@ sectioned coverage.
   increased sample sizes for confident matches.
 - When multiple detectors might claim a file, adjust priorities so the most
   specific rule executes first.
-- Inject experimental plugins via ``driftbuster.register`` +
-  ``driftbuster.get_plugins(readonly=True)`` and disable ``sort_plugins`` if the
-  registry order should stay untouched during manual testing.
-- Registry names must stay unique—re-registering a different implementation
-  with the same ``plugin.name`` raises ``ValueError`` so collisions surface
+- Inject experimental plugins by passing an explicit plugin list to ``Detector``
+  and set ``sortPlugins: false`` if the order should stay untouched during manual
+  testing.
+- Registry names must stay unique—registering a different implementation
+  with the same ``Name`` throws ``ArgumentException`` so collisions surface
   immediately.
 
 ### Detection Metadata
 
 Detections now ship with a normalised metadata dictionary that the
-``validate_detection_metadata`` helper keeps aligned with the catalog. Keys are
+``DetectionMetadata.ValidateDetectionMetadata`` helper keeps aligned with the catalog. Keys are
 lowercase slugs to remain JSON friendly and arrive pre-sanitised for adapters.
 
 | Key               | Description                                                   | Example Value |
@@ -307,5 +308,5 @@ Sample metadata payload::
         "sample_truncated": false
     }
 
-Keep this document synchronised with `driftbuster/catalog.py` and the format
+Keep this document synchronised with `DetectionCatalogData.cs` and the format
 survey data whenever priorities, variants, or usage assumptions change.

@@ -35,8 +35,8 @@ iterations have a concrete baseline.
   when preparing release notes so reviewers can trace how diff planner persistence behaves in a
   multi-server session.
 - Sanitized payloads only: raw backend responses are rejected and a telemetry record (`payload_kind`
-  `raw`) is logged before the GUI drops the entry. Refer to the structured events in
-  `artifacts/logs/diff-planner-mru-telemetry.json` when auditing the guardrail.
+  `raw`) is logged before the GUI drops the entry. Refer to the structured events the GUI
+  writes to `artifacts/logs/diff-planner-telemetry.json` when auditing the guardrail.
 - Screenshot capture checklist lives alongside the GUI guide:
   1. Load sanitized fixtures from `artifacts/samples/diff-planner/` and toggle **Sanitized JSON**.
   2. Verify the footer banner shows **Sanitized summary** and that digests (not raw text) appear in
@@ -54,7 +54,7 @@ iterations have a concrete baseline.
   command. Ensure `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj` stays green
   after any UX iteration.
 - Future work: capture 1280/1440/1920 px snapshots under `artifacts/ux/` once the automated
-  screenshot harness lands. Track this follow-up in CLOUDTASKS.md (area A4) when the tooling is ready.
+  screenshot harness lands. Track this follow-up in the issue tracker.
 
 Last updated: 2025-03-12 — regenerate after any notable UX change or when the multi-server manual
 run notes receive new evidence.

@@ -102,24 +102,17 @@ Each PR **must** include a short provenance note, e.g.:
 
 ## 7.1 Coverage Baseline
 
-Keep line coverage at 90% or higher for Python under `src/driftbuster` (including any new format plugin) and total .NET line coverage at 83% or higher across `gui/`.
+Keep total .NET line coverage at 83% or higher over the merged Backend, CLI and GUI test report.
 
-Enforce locally (no CI hooks). Suggested commands:
+Enforce locally (no CI hooks):
 
-- Python
-  - `coverage run --source=src/driftbuster -m pytest -q`
-  - `coverage report --fail-under=90`
-  - Optional: `coverage json -o coverage.json` and `coverage html`
-- .NET
-  - `dotnet test -p:CollectCoverage=true -p:Threshold=83 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
-
-Shortcut: run `./scripts/verify_coverage.sh` to execute both suites with thresholds.
+- `./scripts/verify_coverage.sh` runs the three test projects with coverlet, merges the reports and fails below the threshold (`DOTNET_THRESHOLD`, default 83). When `pwsh` is on `PATH` it also runs the Pester suites for the PowerShell module and the offline runner.
+- `./scripts/lint_all.sh` runs `dotnet format DriftBuster.sln --verify-no-changes` and PSScriptAnalyzer.
 
 When adding a new format:
 
-- Add `tests/formats/test_<format>_plugin.py` mirroring existing detectors.
-- Cover primary variant(s), negative cases, and edge heuristics to keep the
-  plugin at ≥90% coverage.
+- Add `gui/DriftBuster.Backend.Tests/Detection/Plugins/<Name>PluginTests.cs` mirroring existing detectors.
+- Cover primary variant(s), negative cases, and edge heuristics.
 - Follow `docs/plugin-test-checklist.md` to ensure consistent coverage and cases.
 - Update docs in `docs/detection-types.md` and `docs/format-support.md` as needed.
 

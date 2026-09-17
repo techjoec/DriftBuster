@@ -2,182 +2,150 @@
 
 ## Project Overview
 
-DriftBuster detects and explains configuration drift across file trees with format-aware diffing, profiles, and hunt tooling. The project consists of:
+DriftBuster detects and explains configuration drift across file trees with format-aware diffing, profiles, and hunt tooling. Everything runs on .NET 10:
 
-- **Python 3.12+ engine** (`src/driftbuster/`) - Core detection, CLI, offline runner, multi-server orchestration
-- **.NET 10 Avalonia GUI** (`gui/`) - Cross-platform desktop interface using shared backend
-- **PowerShell module** (`cli/DriftBuster.PowerShell/`) - Windows automation layer
+- **Backend library** (`gui/DriftBuster.Backend/`) - Detection engine and catalog, diff, hunt and secret scanning, multi-server orchestration, profiles, scheduling, registry scan, SQL export, reporting and capture
+- **Avalonia GUI** (`gui/DriftBuster.Gui/`) - Cross-platform desktop interface over the backend
+- **Console tool** (`cli/DriftBuster.Cli/`) - The `driftbuster` executable; also the tool the build scripts call (`version`, `release`, `maint`)
+- **PowerShell module** (`cli/DriftBuster.PowerShell/`) - pwsh 7.6 wrapper over the backend
+- **Offline runner** (`scripts/driftbuster-offline-runner.ps1`) - Standalone collector for Windows PowerShell 5.1 with nothing to install
 
 All automation checks remain **local-only** - never add GitHub Actions/workflows.
 
 ## Essential Commands
 
-### Development Setup
-```bash
-# Install editable package (required: tests, scripts and the CLI import the installed package)
-python -m pip install -e .
+`dotnet` sits behind the login profile on this host: `unset __JOE_PROFILE_ENV && bash --login -c 'dotnet ...'`. Set `AVALONIA_TELEMETRY_OPTOUT=1` for anything that builds or runs Avalonia.
 
-# Install optional compliance tooling
-python -m pip install pip-licenses
-# Secrets scanning (gitleaks binary, see https://github.com/gitleaks/gitleaks)
-# Install via: brew install gitleaks  OR  download from GitHub releases
+### Build
+```bash
+dotnet build DriftBuster.sln
 ```
 
 ### Testing & Coverage
 ```bash
-# Python tests with 90% coverage gate (required)
-coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90
-
-# .NET GUI/backend tests with 83% total line threshold (required; coverlet.msbuild enforces it, CollectCoverage must be on)
-dotnet test -p:CollectCoverage=true -p:Threshold=83 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj
-
-# Combined coverage verification (all-in-one)
+# Backend, CLI and GUI tests with merged coverage and the 83% total line gate, plus Pester when pwsh is on PATH
 ./scripts/verify_coverage.sh
 
-# Generate coverage reports
-coverage json -o coverage.json
-coverage html  # open htmlcov/index.html
+# Single projects
+dotnet test gui/DriftBuster.Backend.Tests/DriftBuster.Backend.Tests.csproj
+dotnet test cli/DriftBuster.Cli.Tests/DriftBuster.Cli.Tests.csproj
+dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj
+dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --filter "FullyQualifiedName~Handles"
 ```
+
+`verify_coverage.sh` writes the merged report to `build/coverage/merged/` and reads the threshold from `DOTNET_THRESHOLD` (default 83).
 
 ### Linting & Formatting
 ```bash
-# Python lint (ruff: E/W/F/I/B/UP/SIM/RUF, 140-character limit) and type check (pyright, standard mode)
-ruff check src tests scripts
-pyright
+# dotnet format over the solution plus PSScriptAnalyzer over cli/ and scripts/
+./scripts/lint_all.sh
 
-# .NET formatting validation (run for all three projects)
-dotnet format gui/DriftBuster.Backend/DriftBuster.Backend.csproj --verify-no-changes
-dotnet format gui/DriftBuster.Gui/DriftBuster.Gui.csproj --verify-no-changes
-dotnet format gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --verify-no-changes
-
-# PowerShell linting
-pwsh scripts/lint_powershell.ps1
-
-# Syntax compilation check
-python -m compileall src
+# The two halves on their own
+dotnet format DriftBuster.sln --verify-no-changes
+pwsh -NoProfile -File scripts/lint_powershell.ps1
 ```
+
+Analyzers (Meziantou plus the built-in rules, `EnforceCodeStyleInBuild`) are configured in `Directory.Build.props`; builds are expected to finish with zero warnings.
 
 ### Running the Application
 ```bash
-# CLI scan
-python -m driftbuster.cli fixtures/config --glob "*.config"
-python -m driftbuster.cli <path> --json  # machine-readable output
-
-# Multi-server orchestration (CLI)
-python -m driftbuster.multi_server <<'JSON'
-{
-  "plans": [
-    {"host_id": "server01", "label": "Baseline", "roots": ["path/to/server01"]},
-    {"host_id": "server02", "label": "Drift", "roots": ["path/to/server02"]}
-  ]
-}
-JSON
-
-# SQL export with masking/hashing
-driftbuster-export-sql fixtures/sqlite/sample.sqlite \
-  --mask-column accounts.secret \
-  --hash-column accounts.email \
-  --output-dir exports
-
 # Desktop GUI
 dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj
 
-# Offline runner
-python -m driftbuster.offline_runner --input snapshot.json
+# Console tool (a published build runs as `driftbuster <command>`)
+dotnet run --project cli/DriftBuster.Cli -- --help
+dotnet run --project cli/DriftBuster.Cli -- scan fixtures/config --glob "*.config"
+dotnet run --project cli/DriftBuster.Cli -- scan fixtures/config --json
+dotnet run --project cli/DriftBuster.Cli -- diff fixtures/config/web.config fixtures/config/web.Release.config
+dotnet run --project cli/DriftBuster.Cli -- hunt fixtures/config
+dotnet run --project cli/DriftBuster.Cli -- sql-export fixtures/sql/sample.sqlite \
+  --mask-column accounts.secret --hash-column accounts.email --output-dir exports
+
+# Multi-server orchestration: request on stdin, newline-delimited JSON progress and result on stdout
+dotnet run --project cli/DriftBuster.Cli -- multi-server <<'JSON'
+{
+  "plans": [
+    {"host_id": "server01", "label": "Baseline", "roots": ["fixtures/multi-server/server01"]},
+    {"host_id": "server02", "label": "Drift", "roots": ["fixtures/multi-server/server02"]}
+  ]
+}
+JSON
 ```
+
+Commands: `scan`, `diff`, `hunt`, `multi-server`, `profile`, `detection-profile`, `schedule`, `registry-scan` (Windows only), `sql-export`, `report`, `capture`, `version`, `release`, `maint`. `--help` on any command lists its options.
 
 ### PowerShell Module
 ```powershell
-# Build backend first
-dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj
+# The module loads DriftBuster.Backend.dll from beside the psm1 or from gui/DriftBuster.Backend/bin
+dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published
 
-# Import and use module
 Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1
 Invoke-DriftBusterDiff -Versions 'file1.json','file2.json'
-Export-DriftBusterSqlSnapshot -Database sample.sqlite -MaskColumn accounts.secret
+Export-DriftBusterSqlSnapshot -Database fixtures/sql/sample.sqlite -MaskColumn accounts.secret
 
-# Package for distribution
-dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Release
+# Package for distribution (needs the Release publish folder)
+dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Release -o gui/DriftBuster.Backend/bin/Release/published
 pwsh ./scripts/package_powershell_module.ps1 -Configuration Release -SkipAnalyzer
+```
+
+### Offline Runner
+```powershell
+# Windows PowerShell 5.1 or pwsh; no module, runtime or package needed beside the script
+.\scripts\driftbuster-offline-runner.ps1 -ConfigPath .\samples\offline_runner\configs\windows_offline.config.json
 ```
 
 ### Release Build
 ```bash
-# Full build with installer (Windows)
-python scripts/release_build.py --release-notes notes/releases/<semver>.md --installer-rid win-x64
+# From the repository root: tests, self-contained CLI and GUI publish for the runtime, Velopack installer
+dotnet run --project cli/DriftBuster.Cli -- release --runtime win-x64 --release-notes notes/releases/<semver>.md --installer-rid win-x64
 
-# Portable GUI only (no installer)
-python scripts/release_build.py --no-installer
+# Publish only, no installer
+dotnet run --project cli/DriftBuster.Cli -- release --runtime win-x64 --no-installer
 ```
+
+Publishes land in `build/artifacts/{cli,gui}/<rid>`; installers in `artifacts/velopack/releases/<rid>`. A publish with a runtime identifier is self-contained unless `--framework-dependent` is passed.
 
 ### Security & Compliance
 ```bash
 # Secrets scanning (before commits)
 gitleaks dir . -v
-
-# License audit
-pip-licenses
 ```
 
 ## Architecture
 
-### Python Core (`src/driftbuster/`)
+### Backend (`gui/DriftBuster.Backend/`)
 
-**Catalog System** (`catalog.py`):
-- `DETECTION_CATALOG`: Central registry of format capabilities, sampling rules, metadata schemas
-- `FORMAT_SURVEY`: Format extension mappings, usage context, variant definitions
-- Dataclasses: `DetectionCatalog`, `FormatClass`, `ContentSignature`, `RemediationHint`
+`DriftbusterBackend` implements `IDriftbusterBackend` (the surface the GUI and the PowerShell module bind to) and delegates to services in these folders:
 
-**Detection Flow**:
-1. **Sampling** - Bounded file reads (default 128 KiB window) to handle large trees
-2. **Plugin matching** - Format plugins run in priority order, accumulating confidence signals
-3. **Metadata enrichment** - Each hit includes format, variant, confidence, review flags
-4. **Profile application** - YAML-defined expectations filter/annotate results
+- `Detection/` - `Detector` (bounded sampling, 128 KiB per file by default, aggregate budget), `FormatRegistry`, `DefaultPlugins`, `Catalog/` (`DetectionCatalogData.cs` holds the catalog and its version)
+- `Detection/Plugins/` - Format plugins implementing `IFormatPlugin`: registry-live, XML, Dockerfile, conf, HCL, YAML, TOML, INI, JSON, binary-hybrid, text
+- `Diff/` - Canonicaliser, sequence matcher, unified diff, redaction filter
+- `Hunt/`, `Secrets/` - Hunt rules and engine; secret scanner with the embedded `Resources/secret_rules.json`
+- `MultiServer/` - Multi-host runner, config identity, diff cache
+- `Profiles/Run/`, `Profiles/Detection/` - Run profiles and offline collector configs; detection profile store with summary and diff
+- `Scheduling/`, `Registry/`, `Sql/`, `Reporting/`, `Remote/` - Schedules, registry live scan, SQLite snapshot export, HTML/JSON lines reports, capture runner
+- `Infrastructure/` - Repository root lookup, path and text helpers, file I/O
 
-**Core Modules** (`core/`):
-- `detector.py` - Orchestration, plugin matching, bounded sampling
-- `profiles.py` - YAML-defined expectations that filter/annotate results
-- `diffing.py` - Diff logic for comparing configurations
-- `run_profiles.py` - Profile execution and scheduling
-- `types.py` - Core type definitions
+**Detection flow**:
+1. **Sampling** - Bounded file reads so large trees stay cheap
+2. **Plugin matching** - Plugins run in priority order; the first match wins
+3. **Metadata enrichment** - Each hit carries format, variant, confidence, catalog keys and review flags
+4. **Profile application** - Detection profiles filter and annotate results
 
-**Format Plugins** (`formats/`):
-- Pluggable format detectors (JSON, XML, YAML, TOML, INI, HCL, Conf, Dockerfile, text, binary, Registry)
-- Each plugin: `formats/<slug>/plugin.py` implementing `FormatPlugin` protocol
-- `format_registry.py` - Central plugin registration and lookup
-- Register via `driftbuster.formats.register()` at import time
-- Each returns `DetectionMatch` or `None` with confidence scoring (0.5 start, 0.95 cap)
-
-**Additional Modules**:
-- `reporting/` - JSON/text/HTML output adapters
-- `hunt.py` - Secret/identifier scanning with regex rules
-- `secret_scanning.py` - Secret detection engine (loads `secret_rules.json`)
-- `offline_runner.py` - Process pre-captured snapshots
-- `multi_server.py` - Multi-host orchestration with dataclass-based plan definitions
-- `profile_cli.py`, `run_profiles_cli.py` - Profile generation, diff, scheduling
-- `registry_cli.py`, `registry/` - Windows Registry live scan support
-- `sql/` - SQLite export with column masking/hashing
-- `notifications/` - Slack, Teams, SMTP alerting
-- `scheduler.py` - Profile scheduling engine
-
-**Data Root** (OS-specific):
+**Data Root** (OS-specific, resolved by `DriftbusterPaths`):
 - Windows: `%LOCALAPPDATA%/DriftBuster`
 - Linux/Mac: `$XDG_DATA_HOME/DriftBuster`
 - Override: `DRIFTBUSTER_DATA_ROOT` environment variable
-- Contains: cached diffs, session state, schedules
-- Helper: `DriftbusterPaths` in Backend resolves paths with legacy migration support
+- Contains: cached diffs, session state, the PowerShell module's backend cache
 
-### .NET GUI & Backend (`gui/`)
+### Console tool (`cli/DriftBuster.Cli/`)
 
-**Backend Library** (`DriftBuster.Backend/`):
-- Shared C# bridge used by both GUI and PowerShell module
-- Provides diff, hunt, profile, and multi-server orchestration APIs
-- Must be published/built before PowerShell import works
-- Contains `DriftbusterPaths` helper for OS-specific data directory resolution
+System.CommandLine commands under `Commands/`, one file per command. A parse error prints each error on stderr and exits 2. `version` and `release` locate the checkout by walking up to `DriftBuster.sln`.
 
-**Avalonia GUI** (`DriftBuster.Gui/`):
-- Target: .NET 10, nullable + implicit usings enabled
-- **ViewModels** (all implement `IDisposable` for proper cleanup; `ls gui/DriftBuster.Gui/ViewModels/` for full list):
+### Avalonia GUI (`gui/DriftBuster.Gui/`)
+
+- Target: .NET 10, nullable + implicit usings enabled; compiled bindings by default
+- **ViewModels** (all implement `IDisposable` for proper cleanup; `ls gui/DriftBuster.Gui/ViewModels/` for the full list):
   - `MainWindowViewModel` - Top-level shell, tab navigation
   - `ServerSelectionViewModel` - Multi-server orchestration, drag/drop server management
   - `ConfigDrilldownViewModel` - Configuration detail exploration
@@ -185,54 +153,52 @@ pip-licenses
   - `HuntViewModel` / `SecretScannerSettingsViewModel` - Secret scanning
   - `RunProfilesViewModel` - Profile management and scheduling
   - `ResultsCatalogViewModel` - Catalog browsing with sort/filter
-- **Tabs**: Catalog, Drilldown, Hunt, Profiles, Multi-server
-- **Multi-server orchestration**:
+- **Multi-server orchestration** runs in process through the backend:
   - Drag-to-reorder host cards
-  - Session caching: `sessions/multi-server.json` under data root
+  - Session caching: `sessions/multi-server.json` under the data root
   - Exports to `artifacts/exports/<config>-<timestamp>.{html,json}`
 - **Theming**: Dark/Light toggle with accessibility support
 - **State persistence**: Schedule cards persist to `Profiles/schedules.json`
 
-**Tests** (`DriftBuster.Gui.Tests/`):
-- Headless xUnit tests with `[AvaloniaFact]` attributes
-- User journey tests: `MainWindowUserJourneyTests` (run before claiming GUI parity)
-- Coverage requirement: ≥83% total line coverage (GUI + Backend)
-- Test helpers: `InMemorySessionCacheService`, `FakeDriftbusterService`
-- Run in tmux for long tests: `tmux new -s codexcli-<pid>-tests 'dotnet test ...'`
+### Tests
+
+- `gui/DriftBuster.Backend.Tests/` - Backend tests, one folder per backend area; `RepoPaths` resolves fixture paths from `DriftBuster.sln`
+- `cli/DriftBuster.Cli.Tests/` - Console command tests
+- `gui/DriftBuster.Gui.Tests/` - Headless xUnit tests with `[AvaloniaFact]`; `MainWindowUserJourneyTests` runs before claiming GUI parity; helpers `InMemorySessionCacheService` and `FakeDriftbusterService`
+- `cli/DriftBuster.PowerShell.Tests/` and `scripts/DriftBusterOfflineRunner.Tests.ps1` - Pester suites for the module and the offline runner
+- Coverage requirement: ≥83% total line coverage over the merged Backend, CLI and GUI report
+- Run long tests in tmux: `tmux new -s codexcli-<pid>-tests 'dotnet test ...'`
 
 ### Format Plugin Development
 
 **Adding a New Format**:
-1. Update `catalog.py` with format metadata (`DETECTION_CATALOG`, `FORMAT_SURVEY`)
-2. Create `src/driftbuster/formats/<slug>/plugin.py` implementing `FormatPlugin` protocol
-3. Register in `src/driftbuster/formats/__init__.py`: `register(MyPlugin())`
-4. Add tests in `tests/formats/test_<format>_plugin.py` (≥90% coverage required)
-5. Follow checklist in `docs/plugin-test-checklist.md`
+1. Add the format to the catalog in `gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`
+2. Create `gui/DriftBuster.Backend/Detection/Plugins/<Name>Plugin.cs` implementing `IFormatPlugin`
+3. Add it to `DefaultPlugins.CreateBuiltIns()` in priority order
+4. Add tests in `gui/DriftBuster.Backend.Tests/Detection/Plugins/<Name>PluginTests.cs`
+5. Follow the checklist in `docs/plugin-test-checklist.md`
 6. Update `docs/format-support.md` and `docs/format-addition-guide.md`
 
 **Plugin Contract**:
-- Accept `(path, sample, text)` tuple
-- Return `DetectionMatch` or `None`
-- Use bounded analysis (e.g., 200 KiB limit for JSON plugin)
-- Combine filename/extension + structural signals
+- `Detect(path, sample, text)` where `text` is null when the sample did not decode as text
+- Return `DetectionMatch` or `null`
+- Use bounded analysis (e.g., the JSON plugin analyses at most 200,000 characters)
+- Combine filename/extension hints with structural signals; extensions never gate detection alone
 - Start confidence at ~0.5, cap at 0.95
 - Populate metadata with catalog-aligned keys (variant, type hints)
-- Never raise on expected errors (truncated sample, decode failures)
+- Never throw on expected conditions (truncated sample, decode failures)
 
 ## Coding Standards
 
-### Python
-- Style: `ruff` over `src`, `tests`, `scripts` with **140-character line limit** (rules E/W/F/I/B/UP/SIM/RUF, config in `pyproject.toml`)
-- Types: `pyright` in standard mode over the same three trees (config in `pyproject.toml`); zero errors expected
-- Coverage: **≥90% line coverage** for all touched modules (enforced locally)
-- Functional blocks prioritized, sparse commenting for non-obvious logic
-- Follow existing plugin patterns for consistency
-
 ### .NET
 - Target: net10.0, nullable enabled, implicit usings
-- Formatting: `dotnet format --verify-no-changes` for Backend, GUI, Tests
-- Coverage: **≥83% total line coverage** (enforced via `-p:CollectCoverage=true -p:Threshold=83`; the headless font shim under `gui/DriftBuster.Gui/Headless/` counts toward the total)
+- Formatting: `dotnet format DriftBuster.sln --verify-no-changes`
+- Coverage: **≥83% total line coverage** over the merged report (`scripts/verify_coverage.sh`)
 - Analyzer warnings must be resolved before commit
+
+### PowerShell
+- Zero PSScriptAnalyzer warnings (`scripts/lint_powershell.ps1`)
+- The offline runner stays compatible with Windows PowerShell 5.1: its embedded C# compiles with the .NET Framework compiler that ships with Windows
 
 ### Provenance & Licensing
 - All contributions: Apache 2.0 only
@@ -252,32 +218,15 @@ pip-licenses
 ## Testing Strategy
 
 **Coverage Policy** (HARD REQUIREMENT):
-- Python: ≥90% for all modules under `src/driftbuster/`
-- .NET: ≥83% total line coverage for GUI + Backend
-- PowerShell: Tests skipped when pwsh runtime < .NET 10; zero PSScriptAnalyzer warnings
-- New format plugins: ≥90% per-file coverage with focused tests
-
-**Test Organization**:
-- Python: `tests/` mirrors `src/driftbuster/` structure (`ls tests/` for current subdirectories)
-- .NET: `gui/DriftBuster.Gui.Tests/` with headless Avalonia tests
+- .NET: ≥83% total line coverage over Backend, CLI and GUI
+- PowerShell: Pester suites pass; zero PSScriptAnalyzer warnings
+- New format plugins: focused tests for the primary variant, negative cases and sampling limits
 
 **Running Tests**:
 ```bash
-# All tests with coverage verification
-./scripts/verify_coverage.sh
-
-# Python
-pytest -q                                    # Quick run
-pytest tests/formats/ -v                     # Specific directory
-pytest tests/formats/test_json_plugin.py::test_name -v  # Single test
-
-# .NET
-dotnet test --verbosity minimal              # All tests
-dotnet test --filter MainWindowUserJourneyTests    # Test class
-dotnet test --filter "FullyQualifiedName~Handles"  # Pattern match
-
-# PowerShell
-unset __JOE_PROFILE_ENV && bash --login -c 'python -m pytest tests/powershell/ -v'
+./scripts/verify_coverage.sh                        # Everything, with the coverage gate
+dotnet test --filter MainWindowUserJourneyTests      # Test class
+dotnet test --filter "FullyQualifiedName~Handles"    # Pattern match
 ```
 
 **Test Stability** (Prevention strategies):
@@ -294,14 +243,16 @@ unset __JOE_PROFILE_ENV && bash --login -c 'python -m pytest tests/powershell/ -
 
 ## Key Documentation
 
-- `README.md` - Quick start, requirements, installation
+- `README.md` - Quick start, requirements, commands
 - `docs/testing-strategy.md` - Coverage policy, vendor sample acquisition
 - `docs/format-support.md` - Current detector coverage
 - `docs/format-addition-guide.md` - New plugin development standard
 - `docs/plugin-test-checklist.md` - Plugin test requirements
 - `docs/configuration-profiles.md`, `docs/profile-usage.md` - Profile system
-- `docs/customization.md` - Config flags, sampling tweaks
-- `docs/registry.md` - Windows Registry live scan API
+- `docs/customization.md` - Sampling and plugin ordering
+- `docs/registry.md` - Windows Registry live scan
+- `docs/encryption.md` - Offline runner package encryption
+- `docs/versioning.md`, `docs/release-notes.md` - Versions and release notes
 - `docs/legal-safeguards.md` - IP/provenance controls
 - `CONTRIBUTING.md` - Contribution workflow, legal requirements
 
@@ -311,8 +262,8 @@ unset __JOE_PROFILE_ENV && bash --login -c 'python -m pytest tests/powershell/ -
 - `__JOE_PROFILE_ENV` guard variable blocks `.profile` in child shells
 - Fix: `unset __JOE_PROFILE_ENV && bash --login -c 'dotnet --version'`
 
-**Resource Loading in Editable Installs**
-- `secret_scanning.py` loads `secret_rules.json` via `importlib.resources` and falls back to a filesystem path when the resources API cannot open it
+**PowerShell module reports `DriftBusterBackendMissing`**
+- Publish the backend (`dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published`) and re-import; the newest `DriftBuster.Backend.dll` under `gui/DriftBuster.Backend/bin` wins
 
 **Test Passes Standalone, Fails with Coverage**
 - Race condition: async operations slower under coverage instrumentation
@@ -342,4 +293,4 @@ unset __JOE_PROFILE_ENV && bash --login -c 'python -m pytest tests/powershell/ -
 1. **No CI/CD**: All checks are local-only. Never add `.github/workflows/` or automation hooks.
 2. **No telemetry**: No analytics without explicit user opt-in.
 3. **Secrets scanning**: Run `gitleaks dir . -v` before commits.
-4. **Version sync**: Update `versions.json` and run `python scripts/sync_versions.py` when bumping component versions.
+4. **Version sync**: Update `versions.json` and run `dotnet run --project cli/DriftBuster.Cli -- version` when bumping component versions.

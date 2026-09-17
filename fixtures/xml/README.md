@@ -16,10 +16,8 @@ provenance logging added to the XML detector.
 - The detector records each declaration with a short SHA-1 hash of the
   `xmlns` attribute.  To reproduce the preview hash for the default namespace:
 
-  ```python
-  import hashlib
-
-  hashlib.sha1("xmlns|urn:example:driftbuster:manifest".encode("utf-8")).hexdigest()[:12]
+  ```bash
+  printf %s "xmlns|urn:example:driftbuster:manifest" | sha1sum | cut -c1-12
   ```
 
 - The manifest fixture matches the legal guardrails in

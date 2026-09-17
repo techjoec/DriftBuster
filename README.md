@@ -4,9 +4,9 @@ DriftBuster inspects configuration trees, recognises familiar formats, and
 describes the differences so you can rein in infrastructure drift before it
 becomes an outage.
 
-Note: The primary experience is a .NET 10 Windows GUI backed by a shared
-backend. The Python engine provides the detection core, offline runner, and
-developer tooling used by the GUI and PowerShell module.
+DriftBuster is a .NET 10 product: a desktop GUI, a `driftbuster` console tool
+and a PowerShell module, all built on the shared `DriftBuster.Backend` library,
+plus a standalone offline collector script for Windows hosts.
 
 ## Highlights
 
@@ -15,53 +15,82 @@ developer tooling used by the GUI and PowerShell module.
 - **Explainable results** – each hit includes format, variant, and the reason
   the detector fired so you can audit decisions instead of trusting a black box.
 - **Profiles and hunt mode** – codify expectations, ignore volatile values, and
-  alert when a snapshot slips outside your guardrails.
-- **First-class diff reporting** – the `driftbuster.reporting` helpers produce
-  JSON/text/HTML ready for hand-off or automation, with optional redaction.
-- **Cross-platform UI** – the Avalonia desktop front-end ships alongside the
-  Python engine for quick triage.
- - **Windows Registry live scans** – enumerate apps, suggest likely registry
-   roots, and search values by keyword/regex (see `docs/registry.md`).
+  flag snapshots that slip outside your guardrails.
+- **Diff reporting** – unified diffs, HTML and JSON lines reports with optional
+  redaction.
+- **Multi-server comparison** – scan several hosts at once and drill into the
+  configurations that drifted.
+- **Windows Registry live scans** – enumerate apps, suggest likely registry
+  roots, and search values by keyword/regex (see `docs/registry.md`).
+- **Self-contained releases** – published builds carry the .NET runtime, so
+  nothing has to be installed on the target machine.
 
 ## Requirements
 
-- Python 3.12 or newer
-- `dotnet` 10.0 SDK (only for the GUI or .NET build pipeline)
+| Use | Needs |
+| --- | --- |
+| Released GUI or console tool | Nothing; the publish is self-contained |
+| Building from source | .NET 10 SDK |
+| PowerShell module | PowerShell 7.6 or newer |
+| Offline runner | Windows PowerShell 5.1 (or PowerShell 7); nothing to install |
+| PowerShell lint and Pester suites | `PSScriptAnalyzer`, `Pester` 5 |
 
-## Installation
+## Quick Start
 
-Clone the repository and install the Python package in editable mode:
+Clone and build:
 
 ```sh
 git clone https://github.com/techjoec/DriftBuster.git
 cd DriftBuster
-python -m pip install -e .
+dotnet build DriftBuster.sln
 ```
 
-Install optional tooling used by the compliance workflow:
-
-```sh
-python -m pip install pip-licenses
-# Secrets scanning (gitleaks binary, see https://github.com/gitleaks/gitleaks)
-# Install via: brew install gitleaks  OR  download from GitHub releases
-```
-
-## Quick Start
+Examples below run the console tool from source with
+`dotnet run --project cli/DriftBuster.Cli -- <command>`. A published build runs
+the same commands as `driftbuster <command>`; `--help` on any command lists its
+options.
 
 ### Scan a directory
 
 ```sh
-python -m driftbuster.cli fixtures/config --glob "*.config"
+dotnet run --project cli/DriftBuster.Cli -- scan fixtures/config --glob "*.config"
 ```
 
-- Add `--json` to capture machine-readable results.
-- Use `--max-sample` to override the default 128 KiB sampling window.
-- Pass `--profile <path>` to apply a configuration profile while scanning.
+- Add `--json` for JSON lines instead of the table.
+- Use `--sample-size <bytes>` to override the default 128 KiB sampling window.
+
+### Diff configuration snapshots
+
+```sh
+dotnet run --project cli/DriftBuster.Cli -- diff fixtures/config/web.config fixtures/config/web.Release.config \
+  --mask-token Primary --context-lines 2
+```
+
+- `--content-type auto|text|xml` picks the canonicalisation (default `auto`).
+- `--output-dir <dir>` writes one `.patch` per comparison.
+
+### Hunt for dynamic values
+
+```sh
+dotnet run --project cli/DriftBuster.Cli -- hunt fixtures/multi-server/server01
+```
+
+Hits print as a JSON array with rule, path, line, excerpt and a
+`plan_transform` placeholder. See `docs/hunt-mode.md`.
+
+### Render a report
+
+```sh
+dotnet run --project cli/DriftBuster.Cli -- report fixtures/config --format html --output report.html
+```
+
+`--format jsonl` emits JSON lines; `--skip-hunt` leaves hunt hits out;
+`--mask-token` redacts values.
 
 ### Export SQL snapshots
 
 ```sh
-python -m driftbuster.cli export-sql fixtures/sqlite/sample.sqlite \
+dotnet run --project cli/DriftBuster.Cli -- sql-export fixtures/sql/sample.sqlite \
   --mask-column accounts.secret \
   --hash-column accounts.email \
   --placeholder "[MASK]" \
@@ -71,51 +100,36 @@ python -m driftbuster.cli export-sql fixtures/sqlite/sample.sqlite \
 - Multiple database paths are supported; each export is listed in `sql-manifest.json` with table counts and masking metadata.
 - Use `--output-dir` to control the destination directory (defaults to `sql-exports/`).
 
-### Use the library
-
-```python
-from driftbuster import scan_path, registry_summary
-
-summary = registry_summary()
-results = scan_path("fixtures/config")
-```
-
-`results` yields `ProfiledDetection` objects ready for further filtering,
-diffing, or reporting.
-
-### Launch the desktop preview
+### Launch the desktop GUI
 
 ```sh
 dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj
 ```
 
-The GUI uses the shared .NET backend library to show hunts, diffs, and profile
-mismatches interactively.
-
 Tips:
 - Use the header theme toggle to switch Dark/Light.
 - Click “Check core” to verify backend health (status dot shows green/red).
-- Primary actions are accent-filled; secondary are outline for quick scanning.
-- The Profiles view now includes schedule cards. Add a schedule name, profile reference, and interval (e.g. `24h`, `PT1H30M`) to persist cadence metadata alongside `Profiles/schedules.json`. Optional window start/end/timezone fields narrow execution windows, while metadata rows capture contacts or ticket IDs for notification runs.
+- The Profiles view includes schedule cards. Add a schedule name, profile reference, and interval (e.g. `24h`, `PT1H30M`) to persist cadence metadata alongside `Profiles/schedules.json`. Optional window start/end/timezone fields narrow execution windows, while metadata rows capture contacts or ticket IDs.
+
+See `docs/windows-gui-guide.md` for the full walkthrough.
 
 ### Schedule recurring runs
 
 - Build or load a profile, then add schedule entries in the GUI to define cadence, window, tags, and metadata. Saving the profile writes both `profile.json` and the consolidated `Profiles/schedules.json` manifest.
-- Use the editable **Profile** dropdown on each schedule card to pick an existing profile name quickly. The view keeps the current draft name pinned to the top of the list and updates any blank schedule profiles automatically when you rename the active profile, so cadence entries always point at the right run definition.
-- Inspect or act on the same schedules from the shell with `python -m driftbuster.run_profiles_cli schedule list`, `due`, `mark-complete`, or `skip-until`. CLI commands share the GUI’s manifest and `scheduler-state.json`, keeping automation hooks in sync.
+- Use the editable **Profile** dropdown on each schedule card to pick an existing profile name quickly.
+- Inspect or act on the same schedules from the shell with `driftbuster schedule list`, `due`, `mark-complete --name <schedule>`, or `skip-until --name <schedule> --resume-at <iso8601>`. The console tool shares the GUI’s manifest and `scheduler-state.json`.
 
 ### Multi-server quickstart
 
-- Start the GUI from the repo root: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-- Switch to the Multi-server tab, enable the host slots you need, and add roots or pick scope chips. Drag host cards to reorder execution priority and turn on the session cache toggle if you want to reuse labels, filters, and layout next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
+- Start the GUI and switch to the Multi-server tab. Enable the host slots you need, and add roots or pick scope chips. Drag host cards to reorder execution priority and turn on the session cache toggle to reuse labels, filters, and layout next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
 - Click **Run all** to queue every active host. Use **Run missing only** for retries; toasts and the activity timeline record progress, warnings, and exports.
-- Review the catalog filters, open drilldown diffs (including the inline **View drilldown** shortcut from the host summary), and export HTML/JSON snapshots (they land in `artifacts/exports/<config>-<timestamp>.{html,json}`).
-- Cross-check the Dark+/Light+ reference captures in `docs/assets/themes/` and the walkthrough at `artifacts/manual-runs/2025-10-24-multi-server-notes.md` to confirm diff planner MRU entries and timeline exports match the expected release baseline.
+- Review the catalog filters, open drilldown diffs, and export HTML/JSON snapshots (they land in `artifacts/exports/<config>-<timestamp>.{html,json}`).
 
-Run the same plan from the shell:
+Run the same plan from the shell; the request is read from stdin and progress
+plus the final result are written as JSON lines:
 
 ```sh
-python -m driftbuster.multi_server <<'JSON'
+dotnet run --project cli/DriftBuster.Cli -- multi-server <<'JSON'
 {
   "plans": [
     {
@@ -133,67 +147,48 @@ python -m driftbuster.multi_server <<'JSON'
 JSON
 ```
 
-`driftbuster.multi_server` ships with the Python package; ensure you have installed the repo in editable mode (`python -m pip install -e .`). The CLI and GUI share an OS-specific data root (e.g. `%LOCALAPPDATA%/DriftBuster`, `$XDG_DATA_HOME/DriftBuster`); set `DRIFTBUSTER_DATA_ROOT` to override where cached diffs live.
+The console tool and GUI share an OS-specific data root (`%LOCALAPPDATA%/DriftBuster`, `$XDG_DATA_HOME/DriftBuster`); set `DRIFTBUSTER_DATA_ROOT` to override where cached diffs live.
 
-### Python CLI stub (on hold)
+### Console commands
 
-The lightweight CLI stub remains paused. Packaging prerequisites and manual
-validation drills live in `notes/status/cli-plan.md`; use that plan when the
-CLI workstream resumes. Until then you can rehearse the entry points locally by
-installing the project in editable mode and invoking the console scripts:
-
-```sh
-python -m pip install -e .
-driftbuster samples/config
-driftbuster-export-sql fixtures/sqlite/sample.sqlite --output-dir exports
-```
-
-Current argument surface (captured in `artifacts/cli-plan/README.md` alongside
-expected outputs):
-
-| Command | Arguments | Purpose |
-| --- | --- | --- |
-| `driftbuster` | `PATH` | Scan a file or directory using detector defaults. |
-| | `--glob PATTERN` | Restrict directory recursion (default `**/*`). |
-| | `--sample-size BYTES` | Override detector sampling window. |
-| | `--json` | Emit JSON lines instead of a table. |
-| | `--min-confidence VALUE` *(planned)* | Filter matches below the configured confidence floor. |
-| `driftbuster export-sql` | `DATABASE [DATABASE…]` | Export anonymised SQLite snapshots. |
-| | `--output-dir PATH` | Destination for snapshots and manifest. |
-| | `--table NAME` / `--exclude-table NAME` | Include/exclude specific tables. |
-| | `--mask-column TABLE.COLUMN` | Replace sensitive values with placeholders. |
-| | `--hash-column TABLE.COLUMN` | Deterministically hash column values. |
-| | `--placeholder TEXT` | Placeholder text when masking columns. |
-| | `--hash-salt TEXT` | Salt applied to hashed values. |
-| | `--limit COUNT` | Cap exported rows per table. |
-| | `--prefix TEXT` | Prefix generated snapshot filenames. |
-| | `--manifest-name NAME` | Override manifest filename. |
-| | `--no-progress` *(planned)* | Suppress progress indicators once implemented. |
-
-### Release Build
-
-- Python + .NET installer (default):
-  - `python scripts/release_build.py --release-notes notes/releases/<semver>.md --installer-rid win-x64`
-  - Installer artifacts: `artifacts/velopack/releases/<rid>`
-- Portable GUI publish only: `python scripts/release_build.py --no-installer`
+| Command | Purpose |
+| --- | --- |
+| `scan <path>` | Detect formats in a file or tree (`--glob`, `--sample-size`, `--json`). |
+| `diff <baseline> <comparisons>...` | Unified diffs with canonicalisation and masking. |
+| `hunt <path>` | Dynamic value hunt as JSON (`--glob`, `--exclude`, `--placeholder-template`). |
+| `multi-server` | Multi-host scan request on stdin, JSON lines on stdout. |
+| `profile create\|list\|show\|run` | Manage and execute run profiles under `<base-dir>/Profiles` (`--base-dir` defaults to the current directory). |
+| `detection-profile summary\|diff\|hunt-bridge` | Summarise and diff detection profile stores; attach profiles to hunt hits. |
+| `schedule list\|due\|mark-complete\|skip-until` | Inspect and advance run profile schedules. |
+| `registry-scan list-apps\|suggest-roots\|search\|emit-config` | Windows Registry live scan helpers (Windows only). |
+| `sql-export <database>...` | Anonymised SQLite snapshots with masking and hashing. |
+| `report [<root>]` | HTML or JSON lines report of detections and hunt hits. |
+| `capture run\|compare\|export-sql` | Redacted capture snapshots with manifests, and their comparison. |
+| `version` | Propagate `versions.json` into the build files (see `docs/versioning.md`). |
+| `release` | Tests, self-contained publishes and the Velopack installer. |
+| `maint selfcheck-multi-server-paths\|purge-reporting-retention` | Maintenance checks and retention purges. |
 
 ### Windows PowerShell module
 
+The module needs PowerShell 7.6. It loads `DriftBuster.Backend.dll` from beside
+`DriftBuster.psm1` or, in a checkout, from `gui/DriftBuster.Backend/bin`:
+
 ```powershell
-dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj
-pwsh scripts/lint_powershell.ps1
+dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published
 Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1
-Invoke-DriftBusterDiff -Versions 'fixtures/config/appsettings.json','fixtures/config/web.config'
-Export-DriftBusterSqlSnapshot -Database fixtures/sqlite/sample.sqlite -MaskColumn accounts.secret -HashColumn accounts.email
+Test-DriftBusterPing
+Invoke-DriftBusterDiff -Versions 'fixtures/config/web.config','fixtures/config/web.Release.config'
+Export-DriftBusterSqlSnapshot -Database fixtures/sql/sample.sqlite -MaskColumn accounts.secret -HashColumn accounts.email
 ```
 
-The PowerShell module uses the shared `DriftBuster.Backend` library, giving the
-CLI and GUI identical diff, hunt, and run-profile behaviour.
+Exported cmdlets cover diff, hunt, run profiles, schedules, SQL export and
+remote capture (`Invoke-DriftBusterRemoteScan`); see `Get-Command -Module DriftBuster`.
 
-To publish a redistributable archive, run:
+To publish a redistributable archive, publish the backend for the configuration
+and run the packaging script:
 
 ```powershell
-dotnet build gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Release
+dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Release -o gui/DriftBuster.Backend/bin/Release/published
 pwsh ./scripts/package_powershell_module.ps1 -Configuration Release -SkipAnalyzer
 Get-Content artifacts/powershell/releases/DriftBuster.PowerShell-<version>.zip.sha256
 ```
@@ -201,97 +196,104 @@ Get-Content artifacts/powershell/releases/DriftBuster.PowerShell-<version>.zip.s
 The script emits `DriftBuster.PowerShell-<version>.zip` and an accompanying `.sha256` file under `artifacts/powershell/releases/`; verify the checksum before distributing the module.
 
 If importing the module reports `DriftBusterBackendMissing`, publish the backend
-assembly and re-import:
+as above and re-import with `Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1 -Force`.
+
+### Offline runner
+
+`scripts/driftbuster-offline-runner.ps1` collects files, registry scans and
+SQLite snapshots on a host with no network access and nothing installed. It runs
+on Windows PowerShell 5.1 (and PowerShell 7), scrubs secret candidates, writes a
+manifest and log, zips the result and can encrypt it (`docs/encryption.md`).
 
 ```powershell
-dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published
-Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1 -Force
+.\driftbuster-offline-runner.ps1 -ConfigPath .\config.json -OutputDirectory C:\Collections
 ```
 
-Copying the resulting `DriftBuster.Backend.dll` next to `DriftBuster.psm1` also
-unblocks import when working from a published module archive.
+Sample configs live in `samples/offline_runner/`.
+
+### Release build
+
+Run from the repository root:
+
+```sh
+dotnet run --project cli/DriftBuster.Cli -- release --runtime win-x64 \
+  --release-notes notes/releases/<semver>.md --installer-rid win-x64
+```
+
+- Runs the test projects (skip with `--skip-tests`), publishes the console tool
+  and GUI to `build/artifacts/{cli,gui}/<rid>`, and builds the Velopack
+  installer into `artifacts/velopack/releases/<rid>`.
+- A publish with `--runtime` is self-contained; `--framework-dependent` drops the runtime.
+- `--no-installer` skips the installer and the release notes requirement.
+
+Release notes follow `docs/release-notes.md`; versions follow `docs/versioning.md`.
 
 ## Key Concepts
 
-- **Catalog (`src/driftbuster/catalog.py`)** – central listing of detection
-  capabilities, metadata, and sampling rules.
-- **Plugins (`src/driftbuster/formats/`)** – individual format detectors.
-  Register new plugins with `driftbuster.formats.register`.
-- **Profiles (`docs/configuration-profiles.md`)** – YAML definitions of expected
-  values; use `driftbuster.profile_cli` to generate, diff, and apply them.
-- **Hunt rules (`src/driftbuster/hunt.py`)** – skim snapshots for high-priority
-  strings such as secrets or machine identifiers.
+- **Catalog (`gui/DriftBuster.Backend/Detection/Catalog/`)** – central listing
+  of detection capabilities, metadata, and sampling rules.
+- **Plugins (`gui/DriftBuster.Backend/Detection/Plugins/`)** – individual
+  format detectors, registered through `DefaultPlugins`.
+- **Profiles (`docs/configuration-profiles.md`)** – run profiles describe what
+  to collect; detection profiles describe the configuration files you expect.
+- **Hunt rules (`gui/DriftBuster.Backend/Hunt/`)** – skim snapshots for
+  dynamic values such as hostnames, thumbprints, and connection strings.
 
 Check `docs/` for deeper dives:
 
 - `docs/profile-usage.md` – practical walkthrough of profiles and hunts.
 - `docs/format-support.md` – current detector coverage.
-- `docs/customization.md` – configuration flags, sampling tweaks, and plugin
-  lifecycles.
-- `docs/testing-strategy.md` – how we validate detectors and reporting.
-- `docs/versioning.md` – component version workflow and sync tooling.
-- `docs/registry.md` – Windows Registry live scan overview and API usage.
+- `docs/customization.md` – sampling and plugin ordering.
+- `docs/testing-strategy.md` – how detectors and reporting are validated.
+- `docs/versioning.md` – component version workflow.
+- `docs/registry.md` – Windows Registry live scan overview.
 
 ## Running Tests
 
 ```sh
-dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --configuration Release --no-build
-python -m pytest
+./scripts/verify_coverage.sh
 ```
 
-Optional local checks:
-- Secret scanning: `gitleaks dir . -v`
-- License audit: `pip-licenses`
+The script runs the Backend, CLI and GUI test projects with coverlet, merges
+their reports and fails below 83% total line coverage (override with
+`DOTNET_THRESHOLD`). When `pwsh` is on `PATH` it also runs the Pester suites
+for the PowerShell module and the offline runner.
 
-### Coverage Policy
+Lint and format checks:
 
-- Maintain ≥ 90% line coverage for Python sources under `src/` and ≥ 83% total
-  line coverage for the .NET surface (GUI + backend). Enforce locally with:
-  - Python: `coverage run --source=src/driftbuster -m pytest -q && coverage report --fail-under=90`
-  - .NET: `dotnet test -p:CollectCoverage=true -p:Threshold=83 -p:ThresholdType=line -p:ThresholdStat=total gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj`
+```sh
+./scripts/lint_all.sh
+```
 
-### Coverage Enforcement
+This runs `dotnet format DriftBuster.sln --verify-no-changes` and
+`scripts/lint_powershell.ps1` (PSScriptAnalyzer).
 
-- Quick all-in-one: `./scripts/verify_coverage.sh`
-  - Runs Python tests with `coverage report --fail-under=90`
-  - Runs .NET tests with `-p:CollectCoverage=true -p:Threshold=$DOTNET_THRESHOLD` (default 83)
-
-### Test Coverage
-
-Two coverage surfaces exist: Python (engine, detectors, reporting) and .NET (GUI + backend).
-
-- Python
-  - Quick: `coverage run --source=src/driftbuster -m pytest -q && coverage report -m`
-  - JSON: `coverage json -o coverage.json`
-  - HTML (optional): `coverage html` → open `htmlcov/index.html`
-- .NET GUI
-  - Cobertura XML: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
-  - The XML lands under `artifacts/coverage-dotnet/<run-id>/coverage.cobertura.xml`.
+Optional local check: secret scanning with `gitleaks dir . -v`.
 
 ### New Format Plugins
 
-- Follow the checklist in `docs/plugin-test-checklist.md`.
-- Add plugin tests under `tests/formats/` and keep the plugin module’s per-file coverage ≥ 90%.
+- Follow `docs/format-addition-guide.md` and the checklist in `docs/plugin-test-checklist.md`.
+- Add plugin tests under `gui/DriftBuster.Backend.Tests/Detection/Plugins/`.
 
 ## Project Layout
 
 ```
-src/driftbuster/
-├─ core/            # Detector orchestration, profiles, and diffing
-├─ formats/         # Built-in format plugins
-├─ reporting/       # Emit JSON/text/HTML reports
-└─ …                # CLI entrypoints and hunt utilities
-
-gui/                # Avalonia desktop app (C# / .NET 10)
-tests/              # Python unit tests covering detectors and CLI
-docs/               # Developer guides, roadmaps, and playbooks
-scripts/            # Release helpers and capture tooling
+gui/DriftBuster.Backend/        # Engine: detection, diff, hunt, profiles, scheduling, registry, SQL, reporting
+gui/DriftBuster.Gui/            # Avalonia desktop app
+gui/DriftBuster.Backend.Tests/  # Backend tests
+gui/DriftBuster.Gui.Tests/      # Headless GUI tests
+cli/DriftBuster.Cli/            # driftbuster console tool
+cli/DriftBuster.Cli.Tests/      # Console tool tests
+cli/DriftBuster.PowerShell/     # PowerShell module (+ Pester tests in DriftBuster.PowerShell.Tests)
+scripts/                        # Offline runner, coverage, lint and packaging scripts
+fixtures/, samples/             # Sanitised test fixtures and sample configs
+docs/                           # Guides and references
 ```
 
 ## Contributing
 
 1. Fork and branch from `main`.
-2. Run the Python and .NET test suites before opening a pull request.
+2. Run `./scripts/verify_coverage.sh` and `./scripts/lint_all.sh` before opening a pull request.
 3. Document provenance in the PR template and update relevant guides.
 
 See `CONTRIBUTING.md`, `docs/legal-safeguards.md`, and

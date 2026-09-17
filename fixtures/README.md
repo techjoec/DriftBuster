@@ -5,7 +5,7 @@ and vendor sample rehearsals can reference sanitisation steps quickly.
 
 | Directory | Contents snapshot | Source reference | Sanitisation highlights |
 | --------- | ----------------- | ---------------- | ----------------------- |
-| `binary/` | SQLite preferences + binary plist pairs | Generated via local scripts documented in `fixtures/binary/README.md` | Contains only placeholder keys and values; hashes recorded in MANIFEST.json |
+| `binary/` | SQLite preferences + binary plist pairs | Synthetic files described in `fixtures/binary/README.md` | Contains only placeholder keys and values; hashes recorded in MANIFEST.json |
 | `config/` | Mixed `.config`, `appsettings.json`, and `.env` templates | Derived from default framework templates and open-source samples | Vendor names replaced with neutral identifiers; secrets converted to environment variables |
 | `sql/` | Schema excerpts and redacted exports | Built from synthetic database definitions documented in `fixtures/sql/README.md` | Table/column names generic; sample rows replaced with hashed placeholders |
 | `xml/` | Namespace provenance manifest | Authored specifically for namespace testing (`fixtures/xml/README.md`) | Uses `urn:example:driftbuster:*` URNs and synthetic IDs |

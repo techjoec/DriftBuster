@@ -6,8 +6,6 @@ This bundle captures the release collateral gathered while closing out **A6. Qua
 
 | Evidence | Location | Notes |
 | --- | --- | --- |
-| Coverage summary (Python/.NET) | `../../coverage/final/coverage_summary.txt` | Confirms Python coverage at ≥98% with .NET coverage tracked via Cobertura export when available.
-| Python HTML coverage report | `../../coverage/final/html/index.html` | Open locally to review per-module heatmaps verifying ≥90% coverage.
 | Headless smoke telemetry | `../../logs/headless-font-health.json` | Aggregates GUI smoke counters after Avalonia 11.2 migration.
 | Packaged multi-server storage smoke log | `../../logs/multi-server-storage/2025-10-24-smoke.log` | Captures cold/hot cache behaviour referenced in the GUI research notes for A6.2.1/A6.2.2.
 | Perf baseline snapshot | `../../perf/baseline.json` | Provides performance baselines used during sweep sign-off.

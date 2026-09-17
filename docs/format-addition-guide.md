@@ -1,113 +1,105 @@
 # Format Addition Standard
 
 This guide keeps new format detectors consistent with the JSON, XML, and INI
-plugins already shipping in `driftbuster.formats`. Treat it as the baseline
-checklist whenever you introduce a new format or refresh an existing one.
+plugins already shipping in `gui/DriftBuster.Backend/Detection/Plugins/`. Treat
+it as the baseline checklist whenever you introduce a new format or refresh an
+existing one.
 
 ## 1. Inventory Snapshot
 
-Current registry order example (`driftbuster.formats.registry_summary()`; actual order may change as plugins evolve):
+Built-in plugins in registration order (`DefaultPlugins.CreateBuiltIns()`);
+each class declares its `Name`, `Priority` and `Version`:
 
-| Order | Plugin         | Module                                                        | Priority | Version |
-|-------|----------------|---------------------------------------------------------------|----------|---------|
-| 0     | `registry-live`| `driftbuster.formats.registry_live.plugin.RegistryLivePlugin`| 30       | 0.0.1   |
-| 1     | `xml`          | `driftbuster.formats.xml.plugin.XmlPlugin`                    | 100      | 0.0.4   |
-| 2     | `dockerfile`   | `driftbuster.formats.dockerfile.plugin.DockerfilePlugin`      | 120      | 0.0.1   |
-| 3     | `conf`         | `driftbuster.formats.conf.plugin.ConfPlugin`                  | 150      | 0.0.1   |
-| 4     | `hcl`          | `driftbuster.formats.hcl.plugin.HclPlugin`                    | 158      | 0.0.1   |
-| 5     | `yaml`         | `driftbuster.formats.yaml.plugin.YamlPlugin`                  | 160      | 0.0.3   |
-| 6     | `toml`         | `driftbuster.formats.toml.plugin.TomlPlugin`                  | 165      | 0.0.3   |
-| 7     | `ini`          | `driftbuster.formats.ini.plugin.IniPlugin`                    | 170      | 0.0.2   |
-| 8     | `json`         | `driftbuster.formats.json.plugin.JsonPlugin`                  | 200      | 0.0.3   |
-| 9     | `text`         | `driftbuster.formats.text.plugin.TextPlugin`                  | 1000     | 0.0.1   |
+| Order | Plugin          | Class                  | Priority |
+|-------|-----------------|------------------------|----------|
+| 0     | `registry-live` | `RegistryLivePlugin`   | 30       |
+| 1     | `xml`           | `XmlPlugin`            | 100      |
+| 2     | `dockerfile`    | `DockerfilePlugin`     | 120      |
+| 3     | `conf`          | `ConfPlugin`           | 150      |
+| 4     | `hcl`           | `HclPlugin`            | 158      |
+| 5     | `yaml`          | `YamlPlugin`           | 160      |
+| 6     | `toml`          | `TomlPlugin`           | 165      |
+| 7     | `ini`           | `IniPlugin`            | 170      |
+| 8     | `json`          | `JsonPlugin`           | 200      |
+| 9     | `binary-hybrid` | `BinaryHybridPlugin`   | 210      |
+| 10    | `text`          | `TextPlugin`           | 1000     |
 
-Use the same structure for new plugins so the registry report stays predictable.
-When you update or add a plugin, bump only its entry in `versions.json` and run
-`python scripts/sync_versions.py` so the version string propagates to the docs
-and manifests automatically.
+`FormatRegistry.RegistrySummary()` reports the live order, priority and version.
+When you update or add a plugin, bump its `Version` property and the matrix in
+`docs/format-support.md`.
 
 ## 2. Prep Work
 
-1. **Catalog review** – Confirm the format exists in
-   `src/driftbuster/catalog.py` (`DETECTION_CATALOG` and `FORMAT_SURVEY`). Update
-   the dataclasses before writing detector code so priorities, extensions, and
+1. **Catalog review** – Confirm the format exists in the catalog
+   (`gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`). Update
+   the catalog before writing detector code so priorities, extensions, and
    variant names match the shipped metadata.
 2. **Sample collection** – Gather anonymised fixtures locally. Do not commit
-   them unless the roadmap explicitly calls for new repo fixtures.
-3. **Task tracking** – If the work stems from a `CLOUDTASKS.md` item, mirror the
-   subtasks you plan to complete and log any follow-up gates there.
+   them unless the change explicitly calls for new repo fixtures.
+3. **Task tracking** – If the work stems from an issue, mirror the subtasks you
+   plan to complete and log any follow-up gates there.
 
-## 3. Package Layout
+## 3. Code Layout
 
-Follow the XML module as the template:
+Follow the existing plugins as the template:
 
 ```
-src/driftbuster/formats/
-    <format_slug>/
-        __init__.py
-        plugin.py
+gui/DriftBuster.Backend/Detection/Plugins/
+    <Name>Plugin.cs            # add partial files (<Name>Plugin.<Part>.cs) when it grows
 ```
 
-* `__init__.py` should import and re-export the plugin class (`from .plugin
-  import <PluginClass>`).
-* `plugin.py` must expose a dataclass (or simple class) implementing the
-  `FormatPlugin` protocol defined in `src/driftbuster/formats/format_registry.py`.
-* Keep module-level helpers private to the format package. Shared helpers belong
-  in `registry.py` so other detectors can reuse them.
+* The class implements `IFormatPlugin` (`Name`, `Version`, `Priority`,
+  `Detect(path, sample, text)`).
+* Keep helpers private to the plugin class. Shared helpers belong in
+  `FormatRegistry` or `Infrastructure/` so other detectors can reuse them.
 
-Once the package exists, import it in `src/driftbuster/formats/__init__.py` so
-registration happens on module import alongside the built-ins.
+Add the plugin to `DefaultPlugins.CreateBuiltIns()` at its priority position so
+the default registry and `Detector` pick it up.
 
 ## 4. Detector Implementation Rules
 
-1. **Registration** – Call `register(<PluginClass>())` exactly once at import
-   time (`register(Plugin())`). Use a unique `name`, monotonic `priority`, and a
-   semantic `version` string.
+1. **Registration** – Use a unique `Name`, a priority that places the plugin
+   before any broader detector it must win against, and a semantic `Version`
+   string. `FormatRegistry.Register` rejects a second plugin with the same name.
 2. **Sampling discipline** – Accept `(path, sample, text)` like the existing
-   detectors. Derive `text` via `decode_text` only when you need it; the caller
-   already performs best-effort decoding for you. Clamp expensive heuristics to
-   a bounded analysis window (the JSON plugin stops at 200 kB) so vendor-sized
-   payloads do not blow past the detector sampling budgets.
+   detectors. `text` is already decoded when the sample looks like text and null
+   otherwise. Clamp expensive heuristics to a bounded analysis window (the JSON
+   plugin stops at 200,000 characters) so vendor-sized payloads do not blow past
+   the detector sampling budgets.
 3. **Signals** – Combine filename/extension cues with bounded structural checks.
-   The JSON plugin demonstrates how to accumulate multiple weak signals before
-   returning a positive match.
-4. **Metadata** – Populate `DetectionMatch.metadata` with catalog-aligned keys
+   Extensions are hints, never gates. The JSON plugin demonstrates how to
+   accumulate multiple weak signals before returning a positive match.
+4. **Metadata** – Populate `DetectionMatch.Metadata` with catalog-aligned keys
    (e.g., `variant`, `top_level_type`). Reuse existing key names when extending a
    family to keep downstream tooling stable. When you introduce new
-   severity/remediation hints, update `driftbuster.reporting.summary` so
-   `summarise_detections()` surfaces the additional fields and extend
-   `tests/reporting/test_summary.py` accordingly. This keeps CLI/HTML adapters in
-   sync with catalog metadata.
+   severity/remediation hints, update the catalog and `Reporting/DetectionSummary`
+   so reports surface the additional fields.
 5. **Confidence** – Start with a conservative baseline (≈0.5) and add small
    increments per independent signal. Clamp the final value at `0.95`.
-6. **Error handling** – Return `None` on uncertainty. Never raise for expected
+6. **Error handling** – Return `null` on uncertainty. Never throw for expected
    conditions (truncated sample, undecodable bytes, missing markers). When
    stripping comments or other auxiliary content for metadata extraction,
    always fall back to the original sample if sanitisation fails.
 7. **Whitespace tolerances** – Structured text detectors (YAML/TOML) must emit
    indentation/spacing metadata outlining the tolerated ranges so review tools
    can flag drift. When heuristics change, update `docs/format-playbook.md` and
-   regression tests to lock in the revised tolerances.
+   the plugin tests to lock in the revised tolerances.
 
 Review the shipped JSON and INI detectors to keep heuristics consistent with the
 existing style.
 
 ## 5. Tests
 
-1. Create `tests/formats/test_<format>_plugin.py` mirroring the JSON test
-   layout. Include at least:
+1. Create `gui/DriftBuster.Backend.Tests/Detection/Plugins/<Name>PluginTests.cs`
+   mirroring the JSON test layout. Include at least:
    * One positive test covering the primary variant.
    * One variant-specific test (if applicable).
    * One negative test proving the detector declines unrelated content.
 2. Use small inline payloads when possible. Larger fixtures should live under
-   `fixtures/<area>/` and be loaded during the test.
-3. Maintain a minimal coverage baseline of 90%+ for the new plugin file(s).
-   - Quick check:
-     - `coverage run --source=src/driftbuster -m pytest -q tests/formats/test_<format>_plugin.py`
-     - `coverage report --fail-under=90`
-   - Add edge-case tests (negative samples, variant boundaries) until the
-     detector stays above the threshold.
-4. Run `pytest tests/formats/test_<format>_plugin.py` before sending the patch.
+   `fixtures/<area>/` and be loaded through `RepoPaths`.
+3. Keep `scripts/verify_coverage.sh` green (merged total line coverage ≥ 83%).
+4. Run the plugin tests before sending the patch:
+   `dotnet test gui/DriftBuster.Backend.Tests/DriftBuster.Backend.Tests.csproj --filter "FullyQualifiedName~<Name>Plugin"`.
 
 ## 6. Documentation and Notes
 
@@ -124,13 +116,13 @@ existing style.
 
 Before marking the work complete:
 
-- [ ] `registry_summary()` shows the new plugin with correct order, priority,
-      and version.
+- [ ] `FormatRegistry.RegistrySummary()` shows the new plugin with correct order,
+      priority, and version.
 - [ ] Tests covering the detector pass locally.
 - [ ] Catalog entries and docs reference the same variant names as the plugin.
 - [ ] Manual verification commands are noted in the relevant checklist files.
-- [ ] Follow-up tasks (automation, extended fixtures) are captured in
-      `CLOUDTASKS.md` (see relevant area) if they fall outside the current change.
+- [ ] Follow-up tasks (automation, extended fixtures) are captured in the issue
+      tracker if they fall outside the current change.
 
 Keeping each format change aligned with this guide will make detector expansion
 predictable for reviewers and downstream tooling.

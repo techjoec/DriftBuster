@@ -19,7 +19,7 @@ These guardrails cover every feature, note, and capture helper.
 
 ## Catalog severity language
 
-- Severity hints embedded in `driftbuster.catalog` stay neutral: they describe
+- Severity hints embedded in the detection catalog stay neutral: they describe
   risk categories without naming vendors or proprietary products.
 - Remediation stubs reference internal documentation only (`docs/*` and
   scrub guides) so downstream operators do not treat them as legal mandates for
@@ -43,8 +43,8 @@ These guardrails cover every feature, note, and capture helper.
 
 - Store generated SQLite, binary plist, and markdown front matter samples under
   `fixtures/binary/` with hashes recorded in `MANIFEST.json`.
-- Regenerate the fixtures via `scripts/fixtures/binary/generate_samples.py` so
-  the provenance script doubles as documentation.
+- When a fixture changes, update its SHA-256 and size in `MANIFEST.json` in the
+  same change so the manifest stays the provenance record.
 - Keep placeholder values generic (environment labels, feature flags) and avoid
   importing third-party binaries or leaked production data.
 - Reference the manifest entry when logging legal review updates so reviewers
@@ -59,38 +59,33 @@ These guardrails cover every feature, note, and capture helper.
 - When staging remote captures, keep the WinRM working directory under a
   restricted path (`$env:ProgramData\DriftBusterRemote`) and purge the staging
   folder once manifests and `registry_scan.json` outputs are archived.
-- Run `scripts/capture.py run --registry-scan ...` on secured workstations so
+- Run `driftbuster capture run --registry-scan ...` on secured workstations so
   registry summaries join filesystem manifests without copying raw hive exports.
 
-## GUI frameworks
+## Bundled dependencies
 
-- **WinUI 3 / Windows App SDK**
-  - Include the Windows App SDK and WinUI acknowledgements plus the WebView2 Evergreen redistribution notice in the packaged NOTICE file.
-  - Distribute the Microsoft WebView2 installer alongside offline bundles so operators can install the runtime without network calls.
-  - Record redistribution package hashes in `artifacts/gui-packaging/` when preparing MSIX or portable bundles.
-- **Tkinter**
-  - Bundle the Python PSF licence text and Tcl/Tk copyright notice when shipping CPython runtimes.
-  - Document any embedded CPython version inside the NOTICE manifest so security reviews can map CVE coverage quickly.
-- **PySimpleGUI (Tk flavour)**
-  - Provide the LGPLv3 licence text and a written offer (README reference) for source access if distributing modified wheels.
-  - Track which PySimpleGUI artefact (official wheel vs patched build) ships so the notice stays accurate across releases.
-- **Electron**
-  - Maintain an enumerated list of bundled npm dependencies with licence identifiers in NOTICE; refresh it every release build.
-  - Store checksum + SBOM outputs for the packaged Node modules alongside the release artefacts for audit.
+- The GUI is Avalonia with the Fluent theme and the embedded Inter font, plus
+  CommunityToolkit.Mvvm and Velopack; the backend uses Microsoft.Data.Sqlite.
+  Keep their acknowledgements in `NOTICE` and refresh it whenever package
+  references change (versions live in the `.csproj` files).
+- Self-contained publishes ship the .NET runtime; keep its third-party notices
+  with the bundle.
+- Record redistribution package hashes in `artifacts/gui-packaging/` when
+  preparing MSIX or portable bundles.
 
 ## Windows packaging guardrails
 
 - **MSIX builds**
   - Bundle the generated MSIX with a matching `.appinstaller` manifest and SHA256 hash file so security teams can validate sideloaded packages.
   - Keep the signing certificate chain (issuer, thumbprint, expiry) recorded in `notes/checklists/legal-review.md` alongside each release entry.
-  - Include the Windows App SDK, WinUI, and WebView2 redistribution notices inside the packaged `NOTICE` directory; update the file whenever dependencies change.
+  - Include the redistribution notices of every bundled dependency inside the packaged `NOTICE` directory; update the file whenever dependencies change.
 - **Portable/self-contained bundles**
-  - Stage the WebView2 Evergreen offline installer (`MicrosoftEdgeWebView2RuntimeInstallerX64.exe`) and the .NET Desktop Runtime when shipping portable bundles so offline operators are not prompted to download components.
-  - Publish hash manifests for every staged file (`*.exe`, `NOTICE`, `README`, dependency installers) into `artifacts/gui-packaging/publish-*.sha256` (or a sibling hashes file) and copy the manifest into the hand-off folder.
-  - Document minimum OS requirements (Windows 10 1809+, x64) and disk footprint inside the operator hand-off notes to satisfy WebView2 redistribution terms.
+  - Ship self-contained bundles, or stage the .NET 10 Desktop Runtime installer beside a framework-dependent bundle, so offline operators are not prompted to download components.
+  - Publish hash manifests for every staged file (`*.exe`, `NOTICE`, `README`, dependency installers) into a hashes file beside the bundle and copy the manifest into the hand-off folder.
+  - Document minimum OS requirements (Windows 10 1809+, x64) and disk footprint inside the operator hand-off notes.
 - **Security evidence**
-  - Store install/uninstall transcripts for each packaging flavour under `artifacts/gui-packaging/` (e.g., `publish-framework-dependent.log`, `publish-self-contained.log`) and reference them from the legal review log so auditors can trace environment parity.
-  - Record any third-party dependency updates (e.g., WebView2 runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh the NOTICE file before release builds.
+  - Keep the publish transcript for each packaging flavour with the release bundle (commands in `artifacts/gui-packaging/README.md`) and reference it from the legal review log.
+  - Record any third-party dependency updates (e.g., .NET runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh the NOTICE file before release builds.
   - Confirm that all redistributables shipped with the bundle allow offline redistribution and include their licence text within the package.
 
 ## Realtime secret scanning safeguards
@@ -112,7 +107,7 @@ These guardrails cover every feature, note, and capture helper.
 - Persist only sanitized summaries. MRU entries must never include raw file contents, secrets, or unmasked configuration values; the GUI enforces this by rejecting payloads where `payload_kind` resolves to `raw`.
 - Store cache files under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/` (or the XDG data root). Operators may relocate the directory, but any alternate path must inherit the same restricted ACLs as the default location.
 - Sanitized entries should cap at ten records and rotate automatically. Manual exports must mask timestamps, hostnames, and operator identifiers before sharing outside the local workstation.
-- Record MRU telemetry samples (see `artifacts/logs/diff-planner-mru-telemetry.json`) when auditing sanitization behaviour and capture retention outcomes in `notes/checklists/legal-review.md`.
+- Record MRU telemetry samples (the GUI writes `artifacts/logs/diff-planner-telemetry.json` at runtime) when auditing sanitization behaviour and capture retention outcomes in `notes/checklists/legal-review.md`.
 
 ## SQL snapshot safeguards
 
@@ -137,8 +132,8 @@ These guardrails cover every feature, note, and capture helper.
   **30 days** unless a documented investigation requires an extension.
   Extensions must include a new expiry date, responsible owner, and the reason
   for holding the artefact.
-- Run `python scripts/purge_reporting_retention.py captures/ artifacts/reporting/`
-  every review cycle to list purge candidates. Re-run with `--confirm` only
+- Run `driftbuster maint purge-reporting-retention captures/ artifacts/reporting/`
+  every review cycle to list purge candidates (`--retention-days` defaults to 30). Re-run with `--confirm` only
   after updating `notes/checklists/legal-review.md` with the planned deletions
   and the operator initials approving the purge.
 - During manual audits, spot-check JSON/HTML/diff outputs for the `[REDACTED]`
