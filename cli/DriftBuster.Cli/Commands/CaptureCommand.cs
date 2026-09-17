@@ -6,8 +6,8 @@ using DriftBuster.Backend.Remote;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster capture run|compare|export-sql</c>: <c>scripts/capture.py</c> over <see cref="CaptureRunner"/>, which writes the
-/// commands' stdout and stderr text itself.
+/// <c>driftbuster capture run|compare|export-sql</c> over <see cref="CaptureRunner"/>, which writes the commands' stdout and stderr text
+/// itself.
 /// </summary>
 internal static class CaptureCommand
 {
@@ -23,22 +23,22 @@ internal static class CaptureCommand
     private static Command BuildRun()
     {
         var root = new Argument<string>("root") { Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => ".", Description = "Directory to scan." };
-        var profiles = PythonArguments.OptionalText("--profiles", "Path to ProfileStore JSON payload.");
-        var profileTag = PythonArguments.Append("--profile-tag", "Optional profile tags to activate.");
-        var glob = PythonArguments.Text("--glob", "**/*", "Glob used for scanning (defaults to **/*).");
-        var huntGlob = PythonArguments.Text("--hunt-glob", "**/*", "Glob pattern for hunt traversal.");
-        var huntExclude = PythonArguments.Append("--hunt-exclude", "Glob patterns to skip during hunt traversal.");
-        var skipHunt = PythonArguments.Flag("--skip-hunt", "Skip hunt scan step.");
-        var sampleSize = PythonArguments.Int("--sample-size", 128 * 1024, "Sample size in bytes for detection and hunt scans.");
-        var outputDir = PythonArguments.Text("--output-dir", "captures", "Directory to store snapshot + manifest.");
-        var captureId = PythonArguments.OptionalText("--capture-id", "Optional capture identifier (defaults to UTC timestamp).");
-        var @operator = PythonArguments.OptionalText("--operator", "Operator name recorded in manifest.");
-        var environment = PythonArguments.OptionalText("--environment", "Environment label (prod/test/etc).");
-        var reason = PythonArguments.OptionalText("--reason", "Reason for this capture run.");
-        var maskToken = PythonArguments.Append("--mask-token", "Sensitive token to redact (repeatable).");
-        var placeholder = PythonArguments.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
-        var allowUnmasked = PythonArguments.Flag("--allow-unmasked", "Skip the redaction guard when no mask tokens are required.");
-        var registryScan = PythonArguments.Append("--registry-scan", "Path to registry_scan.json outputs to embed in the manifest (repeatable).");
+        var profiles = EngineArguments.OptionalText("--profiles", "Path to ProfileStore JSON payload.");
+        var profileTag = EngineArguments.Append("--profile-tag", "Optional profile tags to activate.");
+        var glob = EngineArguments.Text("--glob", "**/*", "Glob used for scanning (defaults to **/*).");
+        var huntGlob = EngineArguments.Text("--hunt-glob", "**/*", "Glob pattern for hunt traversal.");
+        var huntExclude = EngineArguments.Append("--hunt-exclude", "Glob patterns to skip during hunt traversal.");
+        var skipHunt = EngineArguments.Flag("--skip-hunt", "Skip hunt scan step.");
+        var sampleSize = EngineArguments.Int("--sample-size", 128 * 1024, "Sample size in bytes for detection and hunt scans.");
+        var outputDir = EngineArguments.Text("--output-dir", "captures", "Directory to store snapshot + manifest.");
+        var captureId = EngineArguments.OptionalText("--capture-id", "Optional capture identifier (defaults to UTC timestamp).");
+        var @operator = EngineArguments.OptionalText("--operator", "Operator name recorded in manifest.");
+        var environment = EngineArguments.OptionalText("--environment", "Environment label (prod/test/etc).");
+        var reason = EngineArguments.OptionalText("--reason", "Reason for this capture run.");
+        var maskToken = EngineArguments.Append("--mask-token", "Sensitive token to redact (repeatable).");
+        var placeholder = EngineArguments.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
+        var allowUnmasked = EngineArguments.Flag("--allow-unmasked", "Skip the redaction guard when no mask tokens are required.");
+        var registryScan = EngineArguments.Append("--registry-scan", "Path to registry_scan.json outputs to embed in the manifest (repeatable).");
         var command = new Command("run", "Capture a snapshot and manifest.")
         {
             root, profiles, profileTag, glob, huntGlob, huntExclude, skipHunt, sampleSize, outputDir, captureId, @operator, environment, reason,
@@ -72,8 +72,8 @@ internal static class CaptureCommand
 
     private static Command BuildCompare()
     {
-        var baseline = PythonArguments.Positional("baseline", "Baseline snapshot JSON path.");
-        var current = PythonArguments.Positional("current", "Current snapshot JSON path.");
+        var baseline = EngineArguments.Positional("baseline", "Baseline snapshot JSON path.");
+        var current = EngineArguments.Positional("current", "Current snapshot JSON path.");
         var command = new Command("compare", "Compare two capture snapshots.") { baseline, current };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => CaptureRunner.CompareSnapshots(
             new CaptureCompareOptions(parseResult.GetValue(baseline)!, parseResult.GetValue(current)!), stdout, stderr).ExitCode));

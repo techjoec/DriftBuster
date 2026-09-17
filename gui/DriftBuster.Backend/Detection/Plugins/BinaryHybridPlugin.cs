@@ -54,14 +54,14 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
 
     /// <summary>
     /// The number of tables in the real database file, opened read-only through a connection string (never a
-    /// file URI, plan decision 7, so a name holding <c>%XX</c>, <c>?</c> or <c>#</c> opens that file); null when the
-    /// file is missing or SQLite rejects it, as Python returns None on any sqlite3.Error. Pooling is off so disposing
-    /// the connection closes the file, as Python's <c>connection.close()</c> does, instead of holding every scanned
+    /// file URI, so a name holding <c>%XX</c>, <c>?</c> or <c>#</c> opens that file); null when the
+    /// file is missing or SQLite rejects it. Pooling is off so disposing
+    /// the connection closes the file, instead of holding every scanned
     /// database open until the process exits.
     /// </summary>
     internal static int? CountSqliteTables(string path)
     {
-        path = PythonPath.KernelPath(path);
+        path = EnginePath.KernelPath(path);
         if (!File.Exists(path))
         {
             return null;
@@ -109,7 +109,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
         {
             metadata["decode_error"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["type"] = exc.PythonType,
+                ["type"] = exc.EngineType,
                 ["message"] = exc.Message,
             };
             reasons.Add("Binary plist payload could not be decoded; recorded error metadata");
@@ -139,7 +139,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
             return null;
         }
 
-        var block = PythonText.Strip(workingText[blockStart..blockEnd]);
+        var block = EngineText.Strip(workingText[blockStart..blockEnd]);
         // sorted({key for key in key_candidates if key}): a set, then code-point order.
         var keySet = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in TextLines.SplitLines(block))
@@ -150,7 +150,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
                 continue;
             }
 
-            var key = PythonText.Strip(line[..colon]);
+            var key = EngineText.Strip(line[..colon]);
             if (key.Length > 0)
             {
                 keySet.Add(key);
@@ -162,7 +162,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
         var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
         {
             ["front_matter_keys"] = keys,
-            ["has_body"] = PythonText.Strip(workingText[matchEnd..]).Length > 0,
+            ["has_body"] = EngineText.Strip(workingText[matchEnd..]).Length > 0,
         };
         var reasons = new List<string> { "Detected YAML front matter fenced with '---' markers" };
         if (keys.Count > 0)
@@ -175,7 +175,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
 
     /// <summary>
     /// <c>re.match(r"^---\s*\n(?P&lt;block&gt;.*?\n)---\s*\n", text, re.DOTALL)</c> without backtracking, where <c>\s</c>
-    /// is <see cref="PythonText.IsSpace"/>. The regex tries the opening <c>\s*</c> longest first, so its <c>\n</c> is the
+    /// is <see cref="EngineText.IsSpace"/>. The regex tries the opening <c>\s*</c> longest first, so its <c>\n</c> is the
     /// last newline p of the space run after the opening dashes for which some closer exists, then the lazy block ends
     /// at the first closer q past it: q follows a newline at q - 1 &gt;= p + 1, starts <c>---</c>, and the space run
     /// after those dashes holds a newline, the last of which ends the match (the closing <c>\s*</c> is greedy too).
@@ -240,7 +240,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
 
     private static int SpaceRunEnd(string text, int offset)
     {
-        while (offset < text.Length && PythonText.IsSpace(text[offset]))
+        while (offset < text.Length && EngineText.IsSpace(text[offset]))
         {
             offset++;
         }

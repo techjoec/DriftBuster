@@ -1,1 +1,0 @@
-{"profiles": [{"name": "app", "tags": ["prod"], "configs": [{"id": "a", "path": "app/appsettings.json"}]}, {"name": "u", "configs": [{"id": "n", "path_glob": "notes/*.txt"}]}]}

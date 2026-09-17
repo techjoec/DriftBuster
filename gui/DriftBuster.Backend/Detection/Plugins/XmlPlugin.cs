@@ -39,7 +39,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
 
     public string Version => "0.0.6";
 
-    /// <summary>Length cap (in code points) for the tree parse and the well-formedness probe; a test seam mirroring the Python class attribute.</summary>
+    /// <summary>Length cap (in code points) for the tree parse and the well-formedness probe; a test seam.</summary>
     internal int MaxSafeParseChars { get; set; } = 512 * 1024;
 
     public DetectionMatch? Detect(string path, byte[] sample, string? text)
@@ -78,7 +78,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         }
         else if (metadata.TryGetValue("root_local_name", out var rootLocal)
             && rootLocal is string local
-            && string.Equals(PythonText.Lower(local), "configuration", StringComparison.Ordinal))
+            && string.Equals(EngineText.Lower(local), "configuration", StringComparison.Ordinal))
         {
             reasons.Add("Root element indicates framework configuration layout");
             configRoot = true;
@@ -246,7 +246,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         return MsbuildBonus(metadata, bonus);
     }
 
-    /// <summary>Adds each MSBuild increment to the running <paramref name="bonus"/> in Python order; doubles are not associative.</summary>
+    /// <summary>Adds each MSBuild increment to the running <paramref name="bonus"/> in a fixed order; doubles are not associative.</summary>
     private static double MsbuildBonus(OrderedDictionary<string, object?> metadata, double bonus)
     {
         if (!IsTruthy(metadata, "msbuild_detected"))

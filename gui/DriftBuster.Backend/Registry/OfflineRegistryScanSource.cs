@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Numerics;
 
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Registry;
@@ -11,11 +11,11 @@ namespace DriftBuster.Backend.Registry;
 /// <summary>
 /// <c>offline_runner.OfflineRegistryScanSource</c>: a <c>registry_scan</c> source of an offline runner profile. The token, keywords
 /// and patterns (pattern text, compiled when the scan runs), the search limits, the manifest alias, the remote target and batch,
-/// and explicit roots that replace the suggested ones. Values are in the <see cref="PythonJson"/> domain.
+/// and explicit roots that replace the suggested ones. Values are in the <see cref="EngineJson"/> domain.
 /// </summary>
 public sealed record OfflineRegistryScanSource(string Token)
 {
-    private static readonly PythonPattern SequenceSplit = PythonPattern.Compile(@"[\s,;]+");
+    private static readonly EnginePattern SequenceSplit = EnginePattern.Compile(@"[\s,;]+");
     private static readonly string[] BatchKeys = ["remote_batch", "remoteTargets", "remote_targets", "batch"];
 
     public IReadOnlyList<string> Keywords { get; init; } = [];
@@ -44,39 +44,39 @@ public sealed record OfflineRegistryScanSource(string Token)
     /// <see cref="RemoteRegistryTarget.FromPayload"/> (a mapping is one target, a list each entry, anything else one target);
     /// <c>int(max_depth)</c>, <c>int(max_hits)</c>, <c>float(time_budget_s)</c>; and <c>roots</c> through <see cref="NormaliseRoots"/>.
     /// </summary>
-    /// <exception cref="PythonValueException">Python's <c>ValueError</c> text for each refusal.</exception>
+    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
     public static OfflineRegistryScanSource FromDict(IReadOnlyDictionary<string, object?> payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
         if (payload.GetValueOrDefault("registry_scan") is not IReadOnlyDictionary<string, object?> spec)
         {
-            throw new PythonValueException("registry_scan source requires an object payload", nameof(payload));
+            throw new EngineValueException("registry_scan source requires an object payload", nameof(payload));
         }
 
         var tokenRaw = spec.GetValueOrDefault("token");
-        if (!PythonBuiltins.IsTruthy(tokenRaw) || PythonText.Strip(PythonRepr.Str(tokenRaw)).Length == 0)
+        if (!EngineBuiltins.IsTruthy(tokenRaw) || EngineText.Strip(EngineRepr.Str(tokenRaw)).Length == 0)
         {
-            throw new PythonValueException("registry_scan requires non-empty 'token'.", nameof(payload));
+            throw new EngineValueException("registry_scan requires non-empty 'token'.", nameof(payload));
         }
 
         var alias = payload.GetValueOrDefault("alias");
-        if (alias is not null && PythonText.Strip(PythonRepr.Str(alias)).Length == 0)
+        if (alias is not null && EngineText.Strip(EngineRepr.Str(alias)).Length == 0)
         {
             alias = null;
         }
 
         var remoteSpec = spec.GetValueOrDefault("remote");
         var remote = remoteSpec is not null ? RemoteRegistryTarget.FromPayload(remoteSpec) : null;
-        var batch = ReadBatch(BatchKeys.Select(key => spec.GetValueOrDefault(key)).FirstOrDefault(PythonBuiltins.IsTruthy, spec.GetValueOrDefault("batch")));
+        var batch = ReadBatch(BatchKeys.Select(key => spec.GetValueOrDefault(key)).FirstOrDefault(EngineBuiltins.IsTruthy, spec.GetValueOrDefault("batch")));
 
-        return new OfflineRegistryScanSource(PythonText.Strip(PythonRepr.Str(tokenRaw)))
+        return new OfflineRegistryScanSource(EngineText.Strip(EngineRepr.Str(tokenRaw)))
         {
             Keywords = NormaliseSequence(spec.GetValueOrDefault("keywords")),
             Patterns = NormaliseSequence(spec.GetValueOrDefault("patterns")),
-            MaxDepth = PythonBuiltins.Int(spec.TryGetValue("max_depth", out var depth) ? depth : 12),
-            MaxHits = PythonBuiltins.Int(spec.TryGetValue("max_hits", out var hits) ? hits : 200),
-            TimeBudgetS = PythonBuiltins.Float(spec.TryGetValue("time_budget_s", out var budget) ? budget : 10.0),
-            Alias = PythonBuiltins.IsTruthy(alias) ? PythonRepr.Str(alias) : null,
+            MaxDepth = EngineBuiltins.Int(spec.TryGetValue("max_depth", out var depth) ? depth : 12),
+            MaxHits = EngineBuiltins.Int(spec.TryGetValue("max_hits", out var hits) ? hits : 200),
+            TimeBudgetS = EngineBuiltins.Float(spec.TryGetValue("time_budget_s", out var budget) ? budget : 10.0),
+            Alias = EngineBuiltins.IsTruthy(alias) ? EngineRepr.Str(alias) : null,
             Remote = remote,
             RemoteBatch = batch,
             Roots = NormaliseRoots(spec.GetValueOrDefault("roots")),
@@ -106,14 +106,14 @@ public sealed record OfflineRegistryScanSource(string Token)
     // _norm_seq(value)
     private static List<string> NormaliseSequence(object? value)
     {
-        if (!PythonBuiltins.IsTruthy(value))
+        if (!EngineBuiltins.IsTruthy(value))
         {
             return [];
         }
 
         if (value is string text)
         {
-            return RegistryPython.Split(SequenceSplit, text).Where(part => part.Length > 0).ToList();
+            return RegistryText.Split(SequenceSplit, text).Where(part => part.Length > 0).ToList();
         }
 
         if (value is IReadOnlyDictionary<string, object?> || value is not IList list)
@@ -121,7 +121,7 @@ public sealed record OfflineRegistryScanSource(string Token)
             return [];
         }
 
-        return list.Cast<object?>().Select(PythonRepr.Str).Where(item => PythonText.Strip(item).Length > 0).Select(PythonText.Strip).ToList();
+        return list.Cast<object?>().Select(EngineRepr.Str).Where(item => EngineText.Strip(item).Length > 0).Select(EngineText.Strip).ToList();
     }
 
     /// <summary>
@@ -129,10 +129,10 @@ public sealed record OfflineRegistryScanSource(string Token)
     /// entry is <see cref="RegistryRoot.Parse"/>; a mapping needs non-blank <c>str(hive)</c> and <c>str(path)</c> (stripped, the hive
     /// upper-cased) and reads a non-blank <c>view</c> as 32, 64 or auto; anything else is refused.
     /// </summary>
-    /// <exception cref="PythonValueException">Python's <c>ValueError</c> text for each refusal.</exception>
+    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
     public static IReadOnlyList<RegistryRoot> NormaliseRoots(object? value)
     {
-        if (!PythonBuiltins.IsTruthy(value))
+        if (!EngineBuiltins.IsTruthy(value))
         {
             return [];
         }
@@ -147,7 +147,7 @@ public sealed record OfflineRegistryScanSource(string Token)
                 RegistryRoot root => root,
                 string text => RegistryRoot.Parse(text),
                 IReadOnlyDictionary<string, object?> mapping => RootFromMapping(mapping),
-                _ => throw new PythonValueException("registry_scan roots entries must be strings or mappings", nameof(value)),
+                _ => throw new EngineValueException("registry_scan roots entries must be strings or mappings", nameof(value)),
             });
         }
 
@@ -156,27 +156,27 @@ public sealed record OfflineRegistryScanSource(string Token)
 
     private static RegistryRoot RootFromMapping(IReadOnlyDictionary<string, object?> mapping)
     {
-        var hive = PythonText.Strip(PythonRepr.Str(mapping.TryGetValue("hive", out var hiveValue) ? hiveValue : string.Empty));
-        var path = PythonText.Strip(PythonRepr.Str(mapping.TryGetValue("path", out var pathValue) ? pathValue : string.Empty));
+        var hive = EngineText.Strip(EngineRepr.Str(mapping.TryGetValue("hive", out var hiveValue) ? hiveValue : string.Empty));
+        var path = EngineText.Strip(EngineRepr.Str(mapping.TryGetValue("path", out var pathValue) ? pathValue : string.Empty));
         if (hive.Length == 0 || path.Length == 0)
         {
-            throw new PythonValueException("registry_scan roots entries require 'hive' and 'path'", nameof(mapping));
+            throw new EngineValueException("registry_scan roots entries require 'hive' and 'path'", nameof(mapping));
         }
 
         var viewRaw = mapping.GetValueOrDefault("view");
         string? view = null;
-        if (viewRaw is not null && PythonText.Strip(PythonRepr.Str(viewRaw)).Length > 0)
+        if (viewRaw is not null && EngineText.Strip(EngineRepr.Str(viewRaw)).Length > 0)
         {
-            view = RegistryPython.Upper(PythonText.Strip(PythonRepr.Str(viewRaw))) switch
+            view = RegistryText.Upper(EngineText.Strip(EngineRepr.Str(viewRaw))) switch
             {
                 "AUTO" => null,
                 "32" => "32",
                 "64" => "64",
-                _ => throw new PythonValueException("registry_scan root view must be 32, 64, or auto", nameof(mapping)),
+                _ => throw new EngineValueException("registry_scan root view must be 32, 64, or auto", nameof(mapping)),
             };
         }
 
-        return new RegistryRoot(RegistryPython.Upper(hive), path, view);
+        return new RegistryRoot(RegistryText.Upper(hive), path, view);
     }
 
     /// <summary>

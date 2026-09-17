@@ -1,5 +1,0 @@
-{
- "database": {
-  "script": "text-sql-invalid-utf8.sql"
- }
-}

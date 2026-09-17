@@ -1,6 +1,0 @@
-{
-  "name": "nobase",
-  "sources": [
-    "absent-dir/*.log"
-  ]
-}

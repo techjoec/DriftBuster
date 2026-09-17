@@ -1,2 +1,0 @@
-server host
-alpha.corp.localbeta.lan servergamma.net host delta.internal serverend host

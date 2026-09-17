@@ -8,8 +8,7 @@ using DriftBuster.Backend.Reporting;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster detection-profile summary|diff|hunt-bridge</c>: <c>python -m driftbuster.profile_cli</c> over
-/// <see cref="DetectionProfileCommands"/>. Every command writes its payload with <c>_write_json</c>; an exception from the command is
+/// <c>driftbuster detection-profile summary|diff|hunt-bridge</c> over <see cref="DetectionProfileCommands"/>. Every command writes its payload with <c>_write_json</c>; an exception from the command is
 /// written as <c>error: {exc}</c> on stderr with exit code 1.
 /// </summary>
 internal static class DetectionProfileCommand
@@ -28,9 +27,9 @@ internal static class DetectionProfileCommand
 
     private static (Option<BigInteger> Indent, Option<bool> SortKeys, Option<string?> Output) OutputOptionsFor(Command command)
     {
-        var indent = PythonArguments.Int("--indent", 2, "JSON indentation level (0 for compact output).");
-        var sortKeys = PythonArguments.Flag("--sort-keys", "Sort keys before writing JSON output.");
-        var output = PythonArguments.OptionalText("--output", "Optional file to write results to (defaults to stdout).");
+        var indent = EngineArguments.Int("--indent", 2, "JSON indentation level (0 for compact output).");
+        var sortKeys = EngineArguments.Flag("--sort-keys", "Sort keys before writing JSON output.");
+        var output = EngineArguments.OptionalText("--output", "Optional file to write results to (defaults to stdout).");
         command.Options.Add(indent);
         command.Options.Add(sortKeys);
         command.Options.Add(output);
@@ -42,22 +41,22 @@ internal static class DetectionProfileCommand
 
     private static Command BuildSummary()
     {
-        var store = PythonArguments.Positional("store", "Path to JSON payload compatible with ProfileStore.from_dict().");
+        var store = EngineArguments.Positional("store", "Path to a detection profile store JSON file.");
         var command = new Command("summary", "Generate a profile summary from a ProfileStore payload.") { store };
         var options = OutputOptionsFor(command);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
-            () => DetectionProfileCommands.Summary(PythonPurePath.Str(parseResult.GetValue(store)!)), Read(parseResult, options), stdout, stderr)));
+            () => DetectionProfileCommands.Summary(EnginePurePath.Str(parseResult.GetValue(store)!)), Read(parseResult, options), stdout, stderr)));
         return command;
     }
 
     private static Command BuildDiff()
     {
-        var baseline = PythonArguments.Positional("baseline", "Baseline summary JSON file.");
-        var current = PythonArguments.Positional("current", "Current summary JSON file.");
+        var baseline = EngineArguments.Positional("baseline", "Baseline summary JSON file.");
+        var current = EngineArguments.Positional("current", "Current summary JSON file.");
         var command = new Command("diff", "Diff two stored profile summary JSON payloads.") { baseline, current };
         var options = OutputOptionsFor(command);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
-            () => DetectionProfileCommands.Diff(PythonPurePath.Str(parseResult.GetValue(baseline)!), PythonPurePath.Str(parseResult.GetValue(current)!)),
+            () => DetectionProfileCommands.Diff(EnginePurePath.Str(parseResult.GetValue(baseline)!), EnginePurePath.Str(parseResult.GetValue(current)!)),
             Read(parseResult, options),
             stdout,
             stderr)));
@@ -66,18 +65,18 @@ internal static class DetectionProfileCommand
 
     private static Command BuildHuntBridge()
     {
-        var store = PythonArguments.Positional("store", "ProfileStore JSON payload (same format as the summary command).");
-        var hunt = PythonArguments.Positional("hunt", "JSON array produced by driftbuster hunt (hunt_path(..., return_json=True)).");
-        var tags = PythonArguments.Append("--tag", "Activation tag applied when matching profile configs (repeatable).");
-        var root = PythonArguments.OptionalText("--root", "Base path used to resolve hunt absolute paths into profile-relative paths.");
+        var store = EngineArguments.Positional("store", "ProfileStore JSON payload (same format as the summary command).");
+        var hunt = EngineArguments.Positional("hunt", "JSON array printed by driftbuster hunt.");
+        var tags = EngineArguments.Append("--tag", "Activation tag applied when matching profile configs (repeatable).");
+        var root = EngineArguments.OptionalText("--root", "Base path used to resolve hunt absolute paths into profile-relative paths.");
         var command = new Command("hunt-bridge", "Attach profile metadata to hunt hits for manual review.") { store, hunt, tags, root };
         var options = OutputOptionsFor(command);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
             () => DetectionProfileCommands.HuntBridge(
-                PythonPurePath.Str(parseResult.GetValue(store)!),
-                PythonPurePath.Str(parseResult.GetValue(hunt)!),
+                EnginePurePath.Str(parseResult.GetValue(store)!),
+                EnginePurePath.Str(parseResult.GetValue(hunt)!),
                 parseResult.GetValue(tags)!,
-                parseResult.GetValue(root) is { } rootText ? PythonPurePath.Str(rootText) : null),
+                parseResult.GetValue(root) is { } rootText ? EnginePurePath.Str(rootText) : null),
             Read(parseResult, options),
             stdout,
             stderr)));
@@ -114,7 +113,7 @@ internal static class DetectionProfileCommand
         }
         else
         {
-            PythonTextFile.WriteText(PythonPurePath.Str(options.Output), ReportValues.TextModeNewLines(text));
+            EngineTextFile.WriteText(EnginePurePath.Str(options.Output), ReportValues.TextModeNewLines(text));
         }
     }
 }

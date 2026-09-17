@@ -1,2 +1,0 @@
-user=secret RED
-password=secretsecret

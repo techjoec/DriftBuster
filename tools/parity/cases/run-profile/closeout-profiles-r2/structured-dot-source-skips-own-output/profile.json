@@ -1,1 +1,0 @@
-{"name": "dot", "sources": [{"path": ".", "alias": "all"}, {"path": "sub/../top.txt", "alias": "t"}]}

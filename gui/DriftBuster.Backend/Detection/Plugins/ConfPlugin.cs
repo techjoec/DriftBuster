@@ -11,7 +11,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// .conf files (Splunk and friends) keep going to the INI plugin.
 /// </summary>
 /// <remarks>
-/// The block pattern is the Python regex <c>^\s*(input|filter|output)\s*\{</c> (MULTILINE) with <c>\s</c> spelled
+/// The block pattern is the regex <c>^\s*(input|filter|output)\s*\{</c> (MULTILINE) with <c>\s</c> spelled
 /// <c>[\s\x1c-\x1f]</c>, <c>^</c> spelled <c>\G</c> and driven from every line start by <see cref="LineStartMatcher"/>
 /// (linear over blank-line runs); every other construct is ASCII, so match positions, captures and the
 /// non-overlapping count are identical to <c>finditer</c>. The nested-stanza
@@ -20,10 +20,10 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// </remarks>
 public sealed class ConfPlugin : IFormatPlugin
 {
-    private const string PythonSpace = @"[\s\x1c-\x1f]";
+    private const string EngineSpace = @"[\s\x1c-\x1f]";
 
     internal static readonly Regex LogstashBlockPattern = new(
-        @"\G" + PythonSpace + "*(?<block>input|filter|output)" + PythonSpace + @"*\{",
+        @"\G" + EngineSpace + "*(?<block>input|filter|output)" + EngineSpace + @"*\{",
         RegexOptions.Multiline | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 
@@ -35,7 +35,7 @@ public sealed class ConfPlugin : IFormatPlugin
 
     private static int SkipSpaces(string text, int offset)
     {
-        while (offset < text.Length && PythonText.IsSpace(text[offset]))
+        while (offset < text.Length && EngineText.IsSpace(text[offset]))
         {
             offset++;
         }
@@ -55,7 +55,7 @@ public sealed class ConfPlugin : IFormatPlugin
         while (offset < text.Length)
         {
             Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out var consumed);
-            if (rune.Value == '-' || PythonText.IsWordRune(rune))
+            if (rune.Value == '-' || EngineText.IsWordRune(rune))
             {
                 offset += consumed;
                 continue;

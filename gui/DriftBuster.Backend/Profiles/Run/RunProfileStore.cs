@@ -18,7 +18,7 @@ public static class RunProfileStore
     public static string ExpandPath(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        return PythonOsPath.AbsPath(PythonOsPath.ExpandVars(PythonOsPath.ExpandUser(text)));
+        return EngineOsPath.AbsPath(EngineOsPath.ExpandVars(EngineOsPath.ExpandUser(text)));
     }
 
     /// <summary><c>_has_magic(pattern)</c>: the text holds <c>*</c>, <c>?</c>, <c>[</c> or <c>]</c>.</summary>
@@ -35,7 +35,7 @@ public static class RunProfileStore
         var builder = new StringBuilder(text.Length);
         foreach (var rune in text.EnumerateRunes())
         {
-            if (PythonText.IsAlnum(rune) || rune.Value is '-' or '_')
+            if (EngineText.IsAlnum(rune) || rune.Value is '-' or '_')
             {
                 builder.Append(rune.ToString());
             }
@@ -55,19 +55,19 @@ public static class RunProfileStore
     public static string GlobBaseDirectory(string pattern)
     {
         ArgumentNullException.ThrowIfNull(pattern);
-        var baseParts = PythonPurePath.Parts(pattern).TakeWhile(part => !HasMagic(part)).ToList();
+        var baseParts = EnginePurePath.Parts(pattern).TakeWhile(part => !HasMagic(part)).ToList();
         if (baseParts.Count == 0)
         {
             return Directory.GetCurrentDirectory();
         }
 
-        var joined = PythonPurePath.Str(baseParts[0]);
+        var joined = EnginePurePath.Str(baseParts[0]);
         foreach (var part in baseParts.Skip(1))
         {
-            joined = PythonPurePath.Join(joined, part);
+            joined = EnginePurePath.Join(joined, part);
         }
 
-        return PythonPurePath.IsAbsolute(joined) ? joined : PythonPurePath.Join(Directory.GetCurrentDirectory(), joined);
+        return EnginePurePath.IsAbsolute(joined) ? joined : EnginePurePath.Join(Directory.GetCurrentDirectory(), joined);
     }
 
     /// <summary>
@@ -80,29 +80,29 @@ public static class RunProfileStore
     /// with the path as written); a glob that matches nothing raises the same error when the run collects it; and the baseline need not
     /// exist (an optional baseline source may be missing).
     /// </remarks>
-    /// <exception cref="PythonValueException">No sources, a blank source path, or a baseline that is not a source path.</exception>
+    /// <exception cref="EngineValueException">No sources, a blank source path, or a baseline that is not a source path.</exception>
     /// <exception cref="FileNotFoundException">A required source path, a glob base directory or the baseline path is missing.</exception>
     public static void ValidateProfile(RunProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
         if (profile.Sources.Count == 0)
         {
-            throw new PythonValueException("At least one source must be provided.", nameof(profile));
+            throw new EngineValueException("At least one source must be provided.", nameof(profile));
         }
 
         var structured = profile.IsStructured;
         foreach (var source in profile.Sources)
         {
-            if (PythonText.Strip(source.Path).Length == 0)
+            if (EngineText.Strip(source.Path).Length == 0)
             {
-                throw new PythonValueException("Source paths must not be empty.", nameof(profile));
+                throw new EngineValueException("Source paths must not be empty.", nameof(profile));
             }
 
             if (!structured)
             {
                 RequireExisting(ExpandPath(source.Path), "Path does not exist: ");
             }
-            else if (!source.Optional && !HasMagic(source.Path) && !Exists(PythonPurePath.Str(RunProfileExecutor.ExpandStructuredPath(source.Path))))
+            else if (!source.Optional && !HasMagic(source.Path) && !Exists(EnginePurePath.Str(RunProfileExecutor.ExpandStructuredPath(source.Path))))
             {
                 throw RunProfileExecutor.MissingSource(source.Path);
             }
@@ -112,7 +112,7 @@ public static class RunProfileStore
         {
             if (!profile.Sources.Any(source => string.Equals(source.Path, profile.Baseline, StringComparison.Ordinal)))
             {
-                throw new PythonValueException("Baseline must be one of the sources.", nameof(profile));
+                throw new EngineValueException("Baseline must be one of the sources.", nameof(profile));
             }
 
             if (!structured)
@@ -142,8 +142,8 @@ public static class RunProfileStore
     /// <summary><c>profiles_root(base_dir)</c>: <c>(base_dir or cwd) / "Profiles"</c>, created with its parents.</summary>
     public static string ProfilesRoot(string? baseDir = null)
     {
-        var root = PythonPurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
-        PythonPath.MakeDirectories(root);
+        var root = EnginePurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
+        EnginePath.MakeDirectories(root);
         return root;
     }
 
@@ -174,14 +174,14 @@ public static class RunProfileStore
     internal static RunProfile? TryLoadStoredProfile(string profileName, string? baseDir)
     {
         ArgumentNullException.ThrowIfNull(profileName);
-        var root = PythonPurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
+        var root = EnginePurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
         var configPath = JoinName(JoinName(root, SafeName(profileName)), "profile.json");
         try
         {
-            return PythonPath.IsFile(configPath) ? RunProfile.FromDict(ReadJson(configPath)) : null;
+            return EnginePath.IsFile(configPath) ? RunProfile.FromDict(ReadJson(configPath)) : null;
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException or ArgumentException or KeyNotFoundException
-            or InvalidOperationException or PythonAttributeException or PythonUnicodeDecodeException)
+            or InvalidOperationException or EngineAttributeException or EngineUnicodeDecodeException)
         {
             return null;
         }
@@ -192,7 +192,7 @@ public static class RunProfileStore
     {
         ValidateProfile(profile);
         var profileDirectory = ProfileDirectory(profile.Name, baseDir);
-        PythonPath.MakeDirectories(profileDirectory);
+        EnginePath.MakeDirectories(profileDirectory);
         WriteJson(JoinName(profileDirectory, "profile.json"), profile.ToDict());
         return profileDirectory;
     }
@@ -201,7 +201,7 @@ public static class RunProfileStore
     public static IReadOnlyList<RunProfile> ListProfiles(string? baseDir = null, CancellationToken cancellationToken = default)
     {
         var profiles = new List<RunProfile>();
-        foreach (var entry in PythonPath.SortedGlob(ProfilesRoot(baseDir), "*/profile.json", cancellationToken))
+        foreach (var entry in EnginePath.SortedGlob(ProfilesRoot(baseDir), "*/profile.json", cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             profiles.Add(RunProfile.FromDict(ReadJson(entry)));
@@ -212,13 +212,13 @@ public static class RunProfileStore
 
     /// <summary>
     /// <c>Path.exists()</c>: a <c>stat</c> that follows links succeeds; on Linux a lookup error other than <c>ENOENT</c>, <c>ENOTDIR</c>,
-    /// <c>EBADF</c> or <c>ELOOP</c> raises. Elsewhere the runtime's existence checks answer and never raise (on Windows Python raises for
-    /// an access-denied lookup; recorded in <c>tools/parity/expected_divergences.md</c>). A path holding an unpaired surrogate or a NUL does
-    /// not exist: the runtime would look the former up under its U+FFFD spelling, a different entry (phase 5 decision R).
+    /// <c>EBADF</c> or <c>ELOOP</c> raises. Elsewhere the runtime's existence checks answer and never raise, including for an access-denied
+    /// lookup on Windows. A path holding an unpaired surrogate or a NUL does not exist: the runtime would look the former up under its U+FFFD
+    /// spelling, a different entry.
     /// </summary>
     internal static bool Exists(string path)
     {
-        if (PythonUtf8.HasUnpairedSurrogate(path))
+        if (EngineUtf8.HasUnpairedSurrogate(path))
         {
             return false;
         }
@@ -228,7 +228,7 @@ public static class RunProfileStore
             return kind != UnixFileType.Kind.Missing;
         }
 
-        var kernel = PythonPath.KernelPath(path);
+        var kernel = EnginePath.KernelPath(path);
         return File.Exists(kernel) || Directory.Exists(kernel);
     }
 
@@ -238,7 +238,7 @@ public static class RunProfileStore
     /// </summary>
     internal static bool IsDirectory(string path)
     {
-        if (PythonUtf8.HasUnpairedSurrogate(path))
+        if (EngineUtf8.HasUnpairedSurrogate(path))
         {
             return false;
         }
@@ -248,11 +248,11 @@ public static class RunProfileStore
             return kind == UnixFileType.Kind.Directory;
         }
 
-        return Directory.Exists(PythonPath.KernelPath(path));
+        return Directory.Exists(EnginePath.KernelPath(path));
     }
 
     /// <summary><c>path / name</c> for a single name.</summary>
-    internal static string JoinName(string path, string name) => PythonPurePath.Join(path, name);
+    internal static string JoinName(string path, string name) => EnginePurePath.Join(path, name);
 
     /// <summary>
     /// <c>path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")</c>: ASCII-escaped JSON, each line
@@ -266,21 +266,21 @@ public static class RunProfileStore
             text = text.Replace("\n", Environment.NewLine, StringComparison.Ordinal);
         }
 
-        File.WriteAllText(PythonPath.KernelPath(path), text, Utf8);
+        File.WriteAllText(EnginePath.KernelPath(path), text, Utf8);
     }
 
     /// <summary><c>json.loads(path.read_text(encoding="utf-8"))</c>.</summary>
-    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="PythonOSError.DirectoryOpenErrno"/>), or
+    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="EngineOSError.DirectoryOpenErrno"/>), or
     /// cannot be opened or read (Python's <c>OSError</c> text, naming the path as <c>str(Path)</c> spells it when <c>open()</c> raised).</exception>
-    /// <exception cref="PythonUnicodeDecodeException">The bytes are not UTF-8 (<c>UnicodeDecodeError</c>).</exception>
-    /// <exception cref="PythonValueException">The text is not a JSON document (<c>JSONDecodeError</c>), or holds an integer past the decoder's
+    /// <exception cref="EngineUnicodeDecodeException">The bytes are not UTF-8 (<c>UnicodeDecodeError</c>).</exception>
+    /// <exception cref="EngineValueException">The text is not a JSON document (<c>JSONDecodeError</c>), or holds an integer past the decoder's
     /// digit limit (<c>ValueError</c>, Python's text).</exception>
-    /// <exception cref="PythonRecursionException">Containers nested past the decoder's limit (<c>RecursionError</c>).</exception>
+    /// <exception cref="EngineRecursionException">Containers nested past the decoder's limit (<c>RecursionError</c>).</exception>
     internal static object? ReadJson(string path)
     {
-        var text = PythonUtf8.Decode(PythonTextFile.ReadBytes(path, PythonPurePath.Str(path)));
-        return PythonJson.TryLoadsOrRaiseLimits(text, out var value)
+        var text = EngineUtf8.Decode(EngineTextFile.ReadBytes(path, EnginePurePath.Str(path)));
+        return EngineJson.TryLoadsOrRaiseLimits(text, out var value)
             ? value
-            : throw new PythonValueException($"Invalid JSON document: {path}", nameof(path));
+            : throw new EngineValueException($"Invalid JSON document: {path}", nameof(path));
     }
 }

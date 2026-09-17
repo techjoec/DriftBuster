@@ -1,7 +1,0 @@
-list
-due --at 2025-03-30T03:00:00Z
-mark-complete --name spring
-list
-due --at 2025-10-26T02:00:00Z
-mark-complete --name autumn
-list

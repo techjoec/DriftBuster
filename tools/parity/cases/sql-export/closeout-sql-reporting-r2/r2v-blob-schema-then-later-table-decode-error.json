@@ -1,5 +1,0 @@
-{
- "database": {
-  "script": "r2v-blob-then-decode.sql"
- }
-}

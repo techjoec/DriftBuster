@@ -65,20 +65,20 @@ internal sealed class ReleaseSteps(string root, TextWriter stdout, Func<IReadOnl
     {
         if (!TextModeFile.Exists(releaseNotes))
         {
-            throw new CommandExitException($"Release notes not found: {PythonPurePath.Str(releaseNotes)}");
+            throw new CommandExitException($"Release notes not found: {EnginePurePath.Str(releaseNotes)}");
         }
 
         var versions = RunProfileStore.ReadJson(Path.Combine(root, "versions.json"));
         var guiVersion = versions is IReadOnlyDictionary<string, object?> mapping && mapping.TryGetValue("gui", out var gui)
-            ? PythonRepr.Str(gui)
-            : PythonRepr.Str(PythonBuiltins.Get(versions, "gui") ?? "0.0.0");
+            ? EngineRepr.Str(gui)
+            : EngineRepr.Str(EngineBuiltins.Get(versions, "gui") ?? "0.0.0");
         var script = Path.Combine(root, "scripts", "build_velopack_release.sh");
         if (!TextModeFile.Exists(script))
         {
             throw new CommandExitException($"Installer script not found: {script}");
         }
 
-        List<string> command = ["bash", script, "--version", guiVersion, "--rid", rid, "--release-notes", PythonPurePath.Str(releaseNotes)];
+        List<string> command = ["bash", script, "--version", guiVersion, "--rid", rid, "--release-notes", EnginePurePath.Str(releaseNotes)];
         if (!string.IsNullOrEmpty(channel))
         {
             command.AddRange(["--channel", channel]);

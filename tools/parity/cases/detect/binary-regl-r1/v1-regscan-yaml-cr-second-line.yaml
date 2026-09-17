@@ -1,5 +1,0 @@
-foo
-registry_scan:
-token: a
-  keywords: [a, b]
-  patterns: [x]

@@ -9,7 +9,7 @@ internal static partial class SelfcheckMultiServerPaths
     private static OrderedDictionary<string, object?> Map() => new(StringComparer.Ordinal);
 
     private static object? LastEvent(List<object?> events, string eventType)
-        => Enumerable.Reverse(events).FirstOrDefault(item => PythonBuiltins.Get(item, "type") is string type && string.Equals(type, eventType, StringComparison.Ordinal));
+        => Enumerable.Reverse(events).FirstOrDefault(item => EngineBuiltins.Get(item, "type") is string type && string.Equals(type, eventType, StringComparison.Ordinal));
 
     /// <summary><c>evaluate_response(name, returncode, events, stderr)</c>.</summary>
     public static OrderedDictionary<string, object?> EvaluateResponse(string name, int returnCode, List<object?> events, string stderr)
@@ -30,13 +30,13 @@ internal static partial class SelfcheckMultiServerPaths
             ["returncode"] = (long)returnCode,
             ["event_count"] = (long)events.Count,
             ["has_result"] = resultEvent is not null,
-            ["error_message"] = errorEvent is IReadOnlyDictionary<string, object?> ? PythonBuiltins.Get(errorEvent, "message") : null,
+            ["error_message"] = errorEvent is IReadOnlyDictionary<string, object?> ? EngineBuiltins.Get(errorEvent, "message") : null,
             ["stderr"] = stderr,
             ["hosts"] = ListLength(results),
             ["catalog"] = ListLength(catalog),
             ["drilldown"] = ListLength(drilldown),
-            ["failed_hosts"] = CountEntries(results, entry => PythonBuiltins.Get(entry, "status") is "failed"),
-            ["drift_entries"] = CountEntries(catalog, entry => PythonBuiltins.Int(DriftCount(entry)) > BigInteger.Zero),
+            ["failed_hosts"] = CountEntries(results, entry => EngineBuiltins.Get(entry, "status") is "failed"),
+            ["drift_entries"] = CountEntries(catalog, entry => EngineBuiltins.Int(DriftCount(entry)) > BigInteger.Zero),
             ["payload"] = payload,
         };
     }
@@ -55,7 +55,7 @@ internal static partial class SelfcheckMultiServerPaths
             ["host_id"] = hostId,
             ["label"] = label,
             ["scope"] = scope,
-            ["roots"] = new List<object?> { PythonPurePath.Str(root) },
+            ["roots"] = new List<object?> { EnginePurePath.Str(root) },
             ["baseline"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["is_preferred"] = preferred, ["priority"] = priority },
         };
 

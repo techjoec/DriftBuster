@@ -8,11 +8,11 @@ namespace DriftBuster.Backend.Profiles.Detection;
 public sealed partial class DetectionProfileStore
 {
     /// <summary>
-    /// <c>ProfileStore.from_dict(payload)</c> over a <see cref="PythonJson"/> value: <c>profiles</c> (default empty) holds entries
+    /// <c>ProfileStore.from_dict(payload)</c> over a <see cref="EngineJson"/> value: <c>profiles</c> (default empty) holds entries
     /// with <c>name</c>, <c>description</c>, <c>tags</c>, <c>configs</c> and <c>metadata</c>; each config has <c>id</c>,
     /// <c>path</c>, <c>path_glob</c>, <c>application</c>, <c>version</c>, <c>branch</c>, <c>tags</c>, <c>expected_format</c>,
     /// <c>expected_variant</c> and <c>metadata</c>. Python's errors are raised for a payload or entry that is not a dict
-    /// (<c>AttributeError</c>, <see cref="PythonAttributeException"/>), a config that cannot be subscripted (<c>TypeError</c>), a
+    /// (<c>AttributeError</c>, <see cref="EngineAttributeException"/>), a config that cannot be subscripted (<c>TypeError</c>), a
     /// missing <c>id</c> or <c>name</c> (<c>KeyError</c>), a <c>path</c> or <c>path_glob</c> that is not a str, tags and metadata
     /// Python cannot convert, and the store's duplicate checks.
     /// </summary>
@@ -24,20 +24,20 @@ public sealed partial class DetectionProfileStore
     public static DetectionProfileStore FromDict(object? payload)
     {
         var profiles = new List<DetectionProfile>();
-        var unhashable = new Dictionary<object, PythonTypeException>(ReferenceEqualityComparer.Instance);
-        foreach (var entry in PythonBuiltins.Iterate(GetOrDefault(payload, "profiles", EmptyList)))
+        var unhashable = new Dictionary<object, EngineTypeException>(ReferenceEqualityComparer.Instance);
+        foreach (var entry in EngineBuiltins.Iterate(GetOrDefault(payload, "profiles", EmptyList)))
         {
             var configs = new List<DetectionProfileConfig>();
-            foreach (var cfg in PythonBuiltins.Iterate(GetOrDefault(entry, "configs", EmptyList)))
+            foreach (var cfg in EngineBuiltins.Iterate(GetOrDefault(entry, "configs", EmptyList)))
             {
                 var identifierValue = Subscript(cfg, "id");
-                var config = ConfigFromDict(cfg, PythonRepr.Str(identifierValue));
+                var config = ConfigFromDict(cfg, EngineRepr.Str(identifierValue));
                 NoteUnhashable(unhashable, config, identifierValue);
                 configs.Add(config);
             }
 
             var nameValue = Subscript(entry, "name");
-            var profile = ProfileFromDict(entry, PythonRepr.Str(nameValue), configs);
+            var profile = ProfileFromDict(entry, EngineRepr.Str(nameValue), configs);
             NoteUnhashable(unhashable, profile, nameValue);
             profiles.Add(profile);
         }
@@ -53,11 +53,11 @@ public sealed partial class DetectionProfileStore
     }
 
     // A list or dict name or id is kept as its str() text and raises TypeError where registration first hashes it.
-    private static void NoteUnhashable(Dictionary<object, PythonTypeException> unhashable, object owner, object? value)
+    private static void NoteUnhashable(Dictionary<object, EngineTypeException> unhashable, object owner, object? value)
     {
         if (value is IList or IReadOnlyDictionary<string, object?>)
         {
-            unhashable[owner] = new PythonTypeException($"unhashable type: '{PythonBuiltins.TypeName(value)}'", nameof(value));
+            unhashable[owner] = new EngineTypeException($"unhashable type: '{EngineBuiltins.TypeName(value)}'", nameof(value));
         }
     }
 
@@ -69,8 +69,8 @@ public sealed partial class DetectionProfileStore
     /// </summary>
     internal static DetectionProfile ProfileFromDict(object? entry, string name, IEnumerable<DetectionProfileConfig> configs)
     {
-        var description = OptionalText(PythonBuiltins.Get(entry, "description"));
-        var tagsValue = PythonBuiltins.Get(entry, "tags");
+        var description = OptionalText(EngineBuiltins.Get(entry, "description"));
+        var tagsValue = EngineBuiltins.Get(entry, "tags");
         var metadataValue = GetOrDefault(entry, "metadata", null);
         return new DetectionProfile(
             name,
@@ -86,14 +86,14 @@ public sealed partial class DetectionProfileStore
     /// </summary>
     internal static DetectionProfileConfig ConfigFromDict(object? cfg, string identifier)
     {
-        var path = PythonBuiltins.Get(cfg, "path");
-        var pathGlob = PythonBuiltins.Get(cfg, "path_glob");
-        var application = OptionalText(PythonBuiltins.Get(cfg, "application"));
-        var version = OptionalText(PythonBuiltins.Get(cfg, "version"));
-        var branch = OptionalText(PythonBuiltins.Get(cfg, "branch"));
-        var tagsValue = PythonBuiltins.Get(cfg, "tags");
-        var expectedFormat = OptionalText(PythonBuiltins.Get(cfg, "expected_format"));
-        var expectedVariant = OptionalText(PythonBuiltins.Get(cfg, "expected_variant"));
+        var path = EngineBuiltins.Get(cfg, "path");
+        var pathGlob = EngineBuiltins.Get(cfg, "path_glob");
+        var application = OptionalText(EngineBuiltins.Get(cfg, "application"));
+        var version = OptionalText(EngineBuiltins.Get(cfg, "version"));
+        var branch = OptionalText(EngineBuiltins.Get(cfg, "branch"));
+        var tagsValue = EngineBuiltins.Get(cfg, "tags");
+        var expectedFormat = OptionalText(EngineBuiltins.Get(cfg, "expected_format"));
+        var expectedVariant = OptionalText(EngineBuiltins.Get(cfg, "expected_variant"));
         var metadataValue = GetOrDefault(cfg, "metadata", null);
 
         var tags = ProfileTags.NormalizeValue(tagsValue);
@@ -114,7 +114,7 @@ public sealed partial class DetectionProfileStore
     /// <summary><c>mapping.get(key, default)</c>: <c>AttributeError</c> when <paramref name="value"/> is not a dict.</summary>
     internal static object? GetOrDefault(object? value, string key, object? fallback)
     {
-        _ = PythonBuiltins.Get(value, key);
+        _ = EngineBuiltins.Get(value, key);
         return ((IReadOnlyDictionary<string, object?>)value!).TryGetValue(key, out var item) ? item : fallback;
     }
 
@@ -125,22 +125,22 @@ public sealed partial class DetectionProfileStore
         {
             IReadOnlyDictionary<string, object?> mapping => mapping.TryGetValue(key, out var item)
                 ? item
-                : throw new KeyNotFoundException(PythonRepr.StrRepr(key)),
-            string => throw new PythonTypeException("string indices must be integers, not 'str'", nameof(value)),
-            IList => throw new PythonTypeException("list indices must be integers or slices, not str", nameof(value)),
-            _ => throw new PythonTypeException($"'{PythonBuiltins.TypeName(value)}' object is not subscriptable", nameof(value)),
+                : throw new KeyNotFoundException(EngineRepr.StrRepr(key)),
+            string => throw new EngineTypeException("string indices must be integers, not 'str'", nameof(value)),
+            IList => throw new EngineTypeException("list indices must be integers or slices, not str", nameof(value)),
+            _ => throw new EngineTypeException($"'{EngineBuiltins.TypeName(value)}' object is not subscriptable", nameof(value)),
         };
     }
 
-    internal static string? OptionalText(object? value) => value is null ? null : PythonRepr.Str(value);
+    internal static string? OptionalText(object? value) => value is null ? null : EngineRepr.Str(value);
 
     // PurePosixPath(value) accepts only str (or None, which the dataclass never normalises).
     internal static string? PurePosixPathText(object? value) => value switch
     {
         null => null,
         string text => text,
-        _ => throw new PythonTypeException(
-            $"argument should be a str or an os.PathLike object where __fspath__ returns a str, not '{PythonBuiltins.TypeName(value)}'",
+        _ => throw new EngineTypeException(
+            $"expected a path string, not '{EngineBuiltins.TypeName(value)}'",
             nameof(value)),
     };
 

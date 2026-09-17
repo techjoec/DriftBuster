@@ -13,7 +13,7 @@ public static class DetectionProfileCommands
 {
     /// <summary>
     /// The <c>ProfileStore.from_dict</c> lookup <see cref="StoreFromPayload"/> makes (<c>getattr(ProfileStore, "from_dict", None)</c>);
-    /// tests swap it as Python monkeypatches the class attribute, and null stands for the attribute being absent.
+    /// tests swap it, and null stands for the attribute being absent.
     /// </summary>
     internal static Func<object?, DetectionProfileStore>? FromDict { get; set; } = DetectionProfileStore.FromDict;
 
@@ -21,26 +21,26 @@ public static class DetectionProfileCommands
     /// <c>_load_json(path)</c>: the JSON value stored at <paramref name="path"/>, decoded as UTF-8. A read failure raises
     /// <c>ValueError("Unable to read JSON payload from {path}: {exc}")</c> with the <c>OSError</c> text, invalid JSON
     /// <c>ValueError("Failed to parse JSON from {path}: ...")</c>; bytes that are not UTF-8 raise the <c>UnicodeDecodeError</c>
-    /// (<see cref="PythonUnicodeDecodeException"/>, as <see cref="PythonUtf8.Decode"/> raises it) and the decoder's interpreter limits
-    /// (<see cref="PythonJson.TryLoadsOrRaiseLimits"/>) unwrapped.
+    /// (<see cref="EngineUnicodeDecodeException"/>, as <see cref="EngineUtf8.Decode"/> raises it) and the decoder's interpreter limits
+    /// (<see cref="EngineJson.TryLoadsOrRaiseLimits"/>) unwrapped.
     /// </summary>
     public static object? LoadJson(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        var shown = PythonPurePath.Str(path);
+        var shown = EnginePurePath.Str(path);
         byte[] raw;
         try
         {
-            raw = PythonTextFile.ReadBytes(shown, shown);
+            raw = EngineTextFile.ReadBytes(shown, shown);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw new PythonValueException($"Unable to read JSON payload from {shown}: {exc.Message}", nameof(path), exc);
+            throw new EngineValueException($"Unable to read JSON payload from {shown}: {exc.Message}", nameof(path), exc);
         }
 
-        return PythonJson.TryLoadsOrRaiseLimits(PythonUtf8.Decode(raw), out var value)
+        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.Decode(raw), out var value)
             ? value
-            : throw new PythonValueException($"Failed to parse JSON from {shown}: invalid JSON document", nameof(path));
+            : throw new EngineValueException($"Failed to parse JSON from {shown}: invalid JSON document", nameof(path));
     }
 
     /// <summary>
@@ -57,12 +57,12 @@ public static class DetectionProfileCommands
             }
             catch (Exception exc) when (exc is not OutOfMemoryException)
             {
-                // Fall back to the manual build, as Python does for any exception.
+                // Fall back to the manual build for any exception.
             }
         }
 
         var profiles = new List<DetectionProfile>();
-        foreach (var entry in PythonBuiltins.Iterate(DetectionProfileStore.GetOrDefault(payload, "profiles", new List<object?>())))
+        foreach (var entry in EngineBuiltins.Iterate(DetectionProfileStore.GetOrDefault(payload, "profiles", new List<object?>())))
         {
             if (entry is not IReadOnlyDictionary<string, object?>)
             {
@@ -70,15 +70,15 @@ public static class DetectionProfileCommands
             }
 
             var configs = new List<DetectionProfileConfig>();
-            foreach (var cfg in PythonBuiltins.Iterate(DetectionProfileStore.GetOrDefault(entry, "configs", new List<object?>())))
+            foreach (var cfg in EngineBuiltins.Iterate(DetectionProfileStore.GetOrDefault(entry, "configs", new List<object?>())))
             {
                 if (cfg is IReadOnlyDictionary<string, object?>)
                 {
-                    configs.Add(DetectionProfileStore.ConfigFromDict(cfg, PythonRepr.Str(DetectionProfileStore.Subscript(cfg, "id"))));
+                    configs.Add(DetectionProfileStore.ConfigFromDict(cfg, EngineRepr.Str(DetectionProfileStore.Subscript(cfg, "id"))));
                 }
             }
 
-            var name = PythonRepr.Str(DetectionProfileStore.Subscript(entry, "name"));
+            var name = EngineRepr.Str(DetectionProfileStore.Subscript(entry, "name"));
             profiles.Add(DetectionProfileStore.ProfileFromDict(entry, name, configs));
         }
 
@@ -109,11 +109,11 @@ public static class DetectionProfileCommands
         // isinstance(payload, Sequence): a list or a str; a dict (which OrderedDictionary also exposes as IList) is not one.
         if (huntsPayload is IReadOnlyDictionary<string, object?> or not (IList or string))
         {
-            throw new PythonValueException("Hunt payload must be a JSON array of hunt hits.", nameof(huntPath));
+            throw new EngineValueException("Hunt payload must be a JSON array of hunt hits.", nameof(huntPath));
         }
 
         var store = StoreFromPayload(storePayload);
-        var hunts = PythonBuiltins.Iterate(huntsPayload).OfType<IReadOnlyDictionary<string, object?>>();
+        var hunts = EngineBuiltins.Iterate(huntsPayload).OfType<IReadOnlyDictionary<string, object?>>();
         return BuildBridgePayload(store, hunts, tags?.ToList(), root);
     }
 
@@ -139,7 +139,7 @@ public static class DetectionProfileCommands
             return PathText.Name(pathText);
         }
 
-        return PythonPurePath.RelativeTo(pathText, root) ?? PathText.Name(pathText);
+        return EnginePurePath.RelativeTo(pathText, root) ?? PathText.Name(pathText);
     }
 
     /// <summary>

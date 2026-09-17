@@ -1,8 +1,0 @@
-{
- "database": {
-  "script": "adv-blob-name-after-plain.sql"
- },
- "options": {
-  "limit": NaN
- }
-}

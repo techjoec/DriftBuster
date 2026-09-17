@@ -1,1 +1,0 @@
-{"detections": [{"relative_path": "it's \"q\" \u2028\ud83d\ude00\u0007", "detection": {"format": "t\u00e9", "variant": 1e+16}}], "hunt_hits": [{"rule": {"token_name": 2}}, {"rule": {"token_name": 2.0}}, {"rule": {}}, {}]}

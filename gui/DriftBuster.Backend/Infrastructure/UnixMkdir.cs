@@ -27,7 +27,7 @@ internal static partial class UnixMkdir
     internal static unsafe int? MakeDirectory(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        if (_unavailable || path.Contains('\0', StringComparison.Ordinal) || PythonUtf8.HasUnpairedSurrogate(path))
+        if (_unavailable || path.Contains('\0', StringComparison.Ordinal) || EngineUtf8.HasUnpairedSurrogate(path))
         {
             return null;
         }

@@ -1,1 +1,0 @@
-{"options": {"secret_ignore_patterns": ""}, "secret_scanner": {"ruleset": {"version": "m", "rules": {"name": "A", "pattern": "b"}}}}

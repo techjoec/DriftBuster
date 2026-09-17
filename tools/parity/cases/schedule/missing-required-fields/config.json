@@ -1,8 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "no-every",
-      "profile": "p"
-    }
-  ]
-}

@@ -3,9 +3,9 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster release</c>, <c>python scripts/release_build.py</c> without Python: from the repository root, clears <c>build/</c>, runs the
-/// .NET test projects (unless <c>--skip-tests</c>), publishes the console tool to <c>build/artifacts/cli/&lt;rid|framework&gt;</c> where the
-/// Python package was built, publishes the GUI to <c>build/artifacts/gui/&lt;rid|framework&gt;</c>, builds the Velopack installer unless
+/// <c>driftbuster release</c>: from the repository root, clears <c>build/</c>, runs the .NET test projects (unless <c>--skip-tests</c>),
+/// publishes the console tool to <c>build/artifacts/cli/&lt;rid|framework&gt;</c>, publishes the GUI to
+/// <c>build/artifacts/gui/&lt;rid|framework&gt;</c>, builds the Velopack installer unless
 /// <c>--no-installer</c>, and for no runtime or a <c>win-</c> runtime stages the portable debug bundle in
 /// <see cref="StagePortable.DefaultStageDir"/>.
 /// </summary>

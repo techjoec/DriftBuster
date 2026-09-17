@@ -1,2 +1,0 @@
-CREATE TABLE t (v);
-INSERT INTO t VALUES (1);

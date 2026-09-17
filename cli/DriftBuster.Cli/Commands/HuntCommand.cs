@@ -6,20 +6,19 @@ using DriftBuster.Backend.Hunt;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster hunt PATH</c>: <c>hunt_path(PATH, rules=default_rules(), glob=..., sample_size=..., exclude_patterns=...,
-/// return_json=True)</c> printed as one JSON array, <c>json.dumps(hits, ensure_ascii=False, sort_keys=True)</c>: the serialisation the
-/// reporting JSON lines adapter gives each record. The array is the hunt file <c>detection-profile hunt-bridge</c> reads. Python has no
-/// command for it. A file the hunt could not read is skipped (plan fix b) and named on stderr as <c>warning: unreadable file: {path}</c>.
+/// <c>driftbuster hunt PATH</c>: the hits for the default rules printed as one JSON array, <c>json.dumps(hits, ensure_ascii=False, sort_keys=True)</c>: the serialisation the
+/// reporting JSON lines adapter gives each record. The array is the hunt file <c>detection-profile hunt-bridge</c> reads. A file the hunt
+/// could not read is skipped and named on stderr as <c>warning: unreadable file: {path}</c>.
 /// </summary>
 internal static class HuntCommand
 {
     public static Command Build()
     {
-        var path = PythonArguments.Positional("path", "File or directory to hunt.");
-        var glob = PythonArguments.Text("--glob", "**/*", "Glob used when walking directories (default: **/*).");
-        var sampleSize = PythonArguments.Int("--sample-size", HuntEngine.DefaultSampleSize, "Maximum bytes read from each file (default: 131072).");
-        var exclude = PythonArguments.Append("--exclude", "Glob pattern matched against absolute and relative paths to skip (repeatable).");
-        var template = PythonArguments.Text(
+        var path = EngineArguments.Positional("path", "File or directory to hunt.");
+        var glob = EngineArguments.Text("--glob", "**/*", "Glob used when walking directories (default: **/*).");
+        var sampleSize = EngineArguments.Int("--sample-size", HuntEngine.DefaultSampleSize, "Maximum bytes read from each file (default: 131072).");
+        var exclude = EngineArguments.Append("--exclude", "Glob pattern matched against absolute and relative paths to skip (repeatable).");
+        var template = EngineArguments.Text(
             "--placeholder-template", HuntEngine.DefaultPlaceholderTemplate, "Plan transform placeholder template (default: {{{{ {token_name} }}}}).");
         var command = new Command("hunt", "Hunt a file or directory for dynamic configuration values and print the hits as JSON.")
         {

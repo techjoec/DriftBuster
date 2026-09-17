@@ -1,11 +1,11 @@
 namespace DriftBuster.Backend.Hunt;
 
-/// <summary><c>driftbuster.hunt.default_rules()</c>.</summary>
+/// <summary>The default hunt rules.</summary>
 public static class HuntRules
 {
     private static readonly Lazy<IReadOnlyList<HuntRule>> DefaultRules = new(Build);
 
-    /// <summary>The baseline rules for common dynamic settings, in Python's order.</summary>
+    /// <summary>The baseline rules for common dynamic settings, in reporting order.</summary>
     public static IReadOnlyList<HuntRule> Default => DefaultRules.Value;
 
     private static IReadOnlyList<HuntRule> Build() =>
@@ -28,8 +28,7 @@ public static class HuntRules
             "version",
             ["version"],
             [@"\b\d+\.\d+\.\d+(?:\.\d+)?\b"]),
-        // Fix e: Python spells the drive pattern r"[A-Za-z]:\\\\[\\w\\-\\.\\s]+" (escaped twice inside a raw string), which
-        // needs two literal backslashes after the colon and so never matches a Windows path; this is the pattern it meant.
+        // A Windows path is a drive letter, a colon and one backslash followed by path characters.
         new HuntRule(
             "install-path",
             "Suspicious installation or directory paths",

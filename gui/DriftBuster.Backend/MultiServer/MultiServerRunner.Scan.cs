@@ -16,7 +16,7 @@ public sealed partial class MultiServerRunner
     /// <summary>
     /// <c>_collect_secret_hits</c>: the absolute paths of every file the default hunt rules hit under each root. A root that
     /// does not exist is skipped; one that cannot be looked up or listed raises <see cref="DetectorIOException"/> for the root.
-    /// Unreadable files are skipped by the hunt itself (fix b).
+    /// Unreadable files are skipped by the hunt itself.
     /// </summary>
     internal static IReadOnlySet<string> CollectSecretHits(IReadOnlyList<string> roots, CancellationToken cancellationToken)
     {
@@ -114,7 +114,7 @@ public sealed partial class MultiServerRunner
         return new PlanScan(configs, totalEntries > 0 && cachedEntries == totalEntries, budgetReached, skipped);
     }
 
-    // The zero-based position of each scanned root in plan.Roots (fix a's "@root{index}"): the scanned roots are the plan's roots
+    // The zero-based position of each scanned root in plan.Roots (the config id's "@root{index}"): the scanned roots are the plan's roots
     // that exist, in plan order, so each is matched to the next plan root spelled the same way. A root the plan does not hold (a
     // test seam passing its own roots) keeps its position among the scanned roots.
     private static int[] PlanRootPositions(MultiServerPlan plan, IReadOnlyList<string> roots)
@@ -126,7 +126,7 @@ public sealed partial class MultiServerRunner
             var found = -1;
             for (var candidate = next; candidate < plan.Roots.Count; candidate++)
             {
-                if (string.Equals(PythonPurePath.Str(plan.Roots[candidate]), roots[index], StringComparison.Ordinal))
+                if (string.Equals(EnginePurePath.Str(plan.Roots[candidate]), roots[index], StringComparison.Ordinal))
                 {
                     found = candidate;
                     break;
@@ -163,11 +163,11 @@ public sealed partial class MultiServerRunner
         OrderedDictionary<string, ConfigRecord> configs,
         CancellationToken cancellationToken)
     {
-        var relative = PythonPurePath.RelativeTo(PythonPath.Absolute(path), PythonPath.Absolute(root)) ?? PathText.Name(path);
+        var relative = EnginePurePath.RelativeTo(EnginePath.Absolute(path), EnginePath.Absolute(root)) ?? PathText.Name(path);
         var metadata = match.Metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal);
         var catalogFormat = metadata.TryGetValue("catalog_format", out var format) ? format : null;
         var formatId = ConfigIdentity.IsTruthy(catalogFormat)
-            ? PythonRepr.Str(catalogFormat)
+            ? EngineRepr.Str(catalogFormat)
             : string.IsNullOrEmpty(match.FormatName) ? "unknown" : match.FormatName;
         var contentType = ContentTypeResolver.FromCatalogFormat(catalogFormat as string);
         var configId = ConfigIdentity.Disambiguate(ConfigIdentity.NormaliseConfigId(match, relative), rootPosition, configs.ContainsKey);
@@ -187,7 +187,7 @@ public sealed partial class MultiServerRunner
         string canonical;
         if (cached is not null && cached.Count > 0)
         {
-            canonical = cached.TryGetValue("canonical", out var stored) && ConfigIdentity.IsTruthy(stored) ? PythonRepr.Str(stored) : string.Empty;
+            canonical = cached.TryGetValue("canonical", out var stored) && ConfigIdentity.IsTruthy(stored) ? EngineRepr.Str(stored) : string.Empty;
         }
         else
         {
@@ -222,12 +222,12 @@ public sealed partial class MultiServerRunner
         return (record, cached is not null && cached.Count > 0);
     }
 
-    // path.is_file(), where a lookup error means the file cannot be read (fix b) rather than failing the host.
+    // path.is_file(), where a lookup error means the file cannot be read rather than failing the host.
     private static bool IsRegularFile(string path)
     {
         try
         {
-            return PythonPath.IsFile(path);
+            return EnginePath.IsFile(path);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
@@ -241,7 +241,7 @@ public sealed partial class MultiServerRunner
     /// </summary>
     internal static string RootFingerprint(IReadOnlyList<string> roots)
     {
-        var resolved = roots.Select(root => PythonPath.ResolvePhysicalPath(PythonPath.Absolute(root)) ?? Path.GetFullPath(root)).ToList();
+        var resolved = roots.Select(root => EnginePath.ResolvePhysicalPath(EnginePath.Absolute(root)) ?? Path.GetFullPath(root)).ToList();
         resolved.Sort(PathText.CompareCodePoints);
         return MultiServerPlan.Sha1Hex(string.Join('|', resolved));
     }
@@ -249,11 +249,11 @@ public sealed partial class MultiServerRunner
     /// <summary>
     /// <c>path.read_text(encoding="utf-8", errors="replace")</c>: the whole file, universal newlines. A file longer than
     /// <paramref name="maxBytes"/> raises <see cref="IOException"/> without being read: past <see cref="DefaultMaxTextBytes"/> its
-    /// text may not fit a runtime string, where Python reads it whole.
+    /// text may not fit a runtime string.
     /// </summary>
     internal static string ReadText(string path, long maxBytes = DefaultMaxTextBytes)
     {
-        using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         if (stream.Length > maxBytes)
         {
             throw new IOException($"File is larger than the {maxBytes} bytes the scan reads whole: '{path}'");

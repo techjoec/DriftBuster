@@ -5,7 +5,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster version</c>: <c>python scripts/sync_versions.py</c> for the checkout above the tool (<see cref="RepositoryRoot.Require"/>).
+/// <c>driftbuster version</c>: <see cref="VersionSync"/> for the checkout above the tool (<see cref="RepositoryRoot.Require"/>).
 /// Exits 0 once every file is updated; a failed replacement or a <c>versions.json</c> without an expected key prints the reason on stderr
 /// and exits 1.
 /// </summary>

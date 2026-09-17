@@ -14,7 +14,7 @@ public static partial class HtmlReport
     internal static string FormatMetadata(IReadOnlyDictionary<string, object?> metadata)
     {
         var keys = metadata.Keys.ToList();
-        PythonSort<string>.Sort(keys, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
+        EngineSort<string>.Sort(keys, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
         return string.Join('\n', keys.Select(key => $"<tr><th>{ReportValues.Escape(key)}</th><td>{ReportValues.Escape(ReportValues.Str(metadata[key]))}</td></tr>"));
     }
 
@@ -59,7 +59,7 @@ public static partial class HtmlReport
         }
 
         var keys = aggregates.Keys.ToList();
-        PythonSort<(string Format, string Variant)>.Sort(keys, static (left, right) =>
+        EngineSort<(string Format, string Variant)>.Sort(keys, static (left, right) =>
         {
             var byFormat = PathText.CompareCodePoints(left.Format, right.Format);
             return byFormat != 0 ? byFormat < 0 : PathText.CompareCodePoints(left.Variant, right.Variant) < 0;
@@ -81,7 +81,7 @@ public static partial class HtmlReport
 
     /// <summary>
     /// <c>_serialise_diff</c>: a <see cref="DiffArtifact"/> gives its label (or <c>Diff</c>), diff, stats and, when present, safety limits;
-    /// anything else is <c>dict(diff)</c> (<see cref="PythonBuiltins.Dict"/>): a mapping copied, a sequence read as key/value pairs, with
+    /// anything else is <c>dict(diff)</c> (<see cref="EngineBuiltins.Dict"/>): a mapping copied, a sequence read as key/value pairs, with
     /// Python's errors.
     /// </summary>
     internal static OrderedDictionary<string, object?> SerialiseDiff(object diff)
@@ -107,7 +107,7 @@ public static partial class HtmlReport
             return payload;
         }
 
-        return ReportValues.IsMapping(diff, out var mapping) ? ReportValues.Copy(mapping) : PythonBuiltins.Dict(diff, "diff");
+        return ReportValues.IsMapping(diff, out var mapping) ? ReportValues.Copy(mapping) : EngineBuiltins.Dict(diff, "diff");
     }
 
     /// <summary><c>_render_diff_section</c>: an article per diff with its label, non-empty stats, safety notice and escaped diff text.</summary>
@@ -202,7 +202,7 @@ public static partial class HtmlReport
         return "<section class=\"hunt-section\"><h2>Hunt Highlights</h2><ul>" + items + "</ul></section>";
     }
 
-    /// <summary><c>_render_profile_summary</c>: the totals present, then one row per mapping profile (its config count unescaped, as Python writes it).</summary>
+    /// <summary><c>_render_profile_summary</c>: the totals present, then one row per mapping profile (its config count unescaped).</summary>
     internal static string RenderProfileSummary(IReadOnlyDictionary<string, object?> summary)
     {
         if (summary.Count == 0)

@@ -1,6 +1,0 @@
-{"description": "absolute roots with two leading slashes (kept by pathlib and abspath, dropped by realpath) and three (collapsed), a backslash-separated root, and secret hits matched through them", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": "two", "label": "Two", "scope": "custom_roots", "roots": ["/$PARITY_MULTI_SERVER_WORK/r1/secrets/real"], "baseline": {"is_preferred": true}},
-  {"host_id": "three", "label": "Three", "scope": "custom_roots", "roots": ["//$PARITY_MULTI_SERVER_WORK/r1/secrets/link/"]},
-  {"host_id": "backslash", "label": "Backslash", "scope": "custom_roots", "roots": ["fixtures\\multi-server\\server01"]}
- ]}

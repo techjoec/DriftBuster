@@ -1,5 +1,0 @@
-list
-due --at 2025-01-02T00:00:00Z
-mark-complete --name equal
-mark-complete --name spaces
-list

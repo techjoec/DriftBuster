@@ -4,14 +4,14 @@ namespace DriftBuster.Cli.Commands;
 
 internal static partial class SelfcheckMultiServerPaths
 {
-    /// <summary><c>run_scenarios(samples_root, pythonpath, report_dir)</c>: every scenario in order, caches under <c>&lt;report dir&gt;/cache</c>.</summary>
+    /// <summary>Every scenario in order, caches under <c>&lt;report dir&gt;/cache</c>.</summary>
     public static IReadOnlyList<ScenarioResult> RunScenarios(string samplesRoot, string reportDir)
     {
         var scenarios = new List<ScenarioResult>();
-        var cacheDir = PythonPurePath.Join(reportDir, "cache");
+        var cacheDir = EnginePurePath.Join(reportDir, "cache");
         Directory.CreateDirectory(cacheDir);
-        string Cache(string name) => PythonPurePath.Join(cacheDir, name);
-        string Sample(string name) => PythonPurePath.Join(samplesRoot, name);
+        string Cache(string name) => EnginePurePath.Join(cacheDir, name);
+        string Sample(string name) => EnginePurePath.Join(samplesRoot, name);
         var server01 = MakePlan("host-01", "server01", Sample("server01"), preferred: true, priority: 10);
         var server02 = MakePlan("host-02", "server02", Sample("server02"), preferred: false, priority: 5);
 
@@ -36,9 +36,9 @@ internal static partial class SelfcheckMultiServerPaths
             d => Number(d, "returncode") == 0 && Is(d, "has_result") && Number(d, "hosts") == 1 && Number(d, "catalog") > 0);
         Execute("cache_reuse_hot_run", Request(Cache("hot-run"), server01, server02), d => Number(d, "returncode") == 0);
         Execute("cache_reuse_hot_run_repeat", Request(Cache("hot-run"), server01, server02), d => Number(d, "returncode") == 0 && Is(d, "has_result")
-            && PythonBuiltins.Iterate(PythonBuiltins.Get(d["payload"], "results") ?? new List<object?>())
-                .Where(entry => PythonBuiltins.Get(entry, "availability") is "found")
-                .All(entry => PythonBuiltins.IsTruthy(PythonBuiltins.Get(entry, "used_cache"))));
+            && EngineBuiltins.Iterate(EngineBuiltins.Get(d["payload"], "results") ?? new List<object?>())
+                .Where(entry => EngineBuiltins.Get(entry, "availability") is "found")
+                .All(entry => EngineBuiltins.IsTruthy(EngineBuiltins.Get(entry, "used_cache"))));
 
         var temp = Directory.CreateTempSubdirectory("driftbuster-selfcheck-");
         try
@@ -70,8 +70,8 @@ internal static partial class SelfcheckMultiServerPaths
         }
 
         var message = details["error_message"];
-        return !PythonBuiltins.IsTruthy(message)
+        return !EngineBuiltins.IsTruthy(message)
             ? message
-            : PythonText.Contains(PythonRepr.Str(message), "Unsupported schema version");
+            : EngineText.Contains(EngineRepr.Str(message), "Unsupported schema version");
     }
 }

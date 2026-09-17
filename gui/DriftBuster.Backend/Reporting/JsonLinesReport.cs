@@ -5,7 +5,7 @@ using DriftBuster.Backend.Hunt;
 namespace DriftBuster.Backend.Reporting;
 
 /// <summary>
-/// <c>driftbuster.reporting.json_lines</c>: newline-delimited JSON records (<c>detection</c>, <c>profile_summary</c>, <c>hunt_hit</c>)
+/// Newline-delimited JSON records (<c>detection</c>, <c>profile_summary</c>, <c>hunt_hit</c>)
 /// with optional token redaction. Hunt hits are <see cref="HuntFinding"/> values or string-keyed mappings.
 /// </summary>
 public static class JsonLinesReport
@@ -49,7 +49,7 @@ public static class JsonLinesReport
     }
 
     internal static HuntFinding AsFinding(object? hit) => hit as HuntFinding
-        ?? throw new Infrastructure.PythonAttributeException($"'{Infrastructure.PythonBuiltins.TypeName(hit)}' object has no attribute 'rule'");
+        ?? throw new Infrastructure.EngineAttributeException($"expected a hunt hit, not '{Infrastructure.EngineBuiltins.TypeName(hit)}'");
 
     /// <summary>
     /// <c>iter_json_records</c>: a detection record per match (metadata updated with <paramref name="extraMetadata"/>), then a

@@ -10,7 +10,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// CMD, EXPOSE, USER, VOLUME) appear at a line start.
 /// </summary>
 /// <remarks>
-/// The Python plugin uses <c>^\s*FROM\s+\S+</c> (IGNORECASE, searched on the first non-comment line) and
+/// The plugin applies <c>^\s*FROM\s+\S+</c> (IGNORECASE, searched on the first non-comment line) and
 /// <c>^\s*(RUN|COPY|...)\b</c> (IGNORECASE, MULTILINE, searched on the whole text). Both are matched by hand on code
 /// points: Python's <c>\s</c> includes U+001C-U+001F, its <c>\b</c> derives from <c>\w</c> = [L N _], and its
 /// IGNORECASE folds each ASCII letter to the set enumerated from the interpreter in <see cref="FoldsTo"/>
@@ -67,7 +67,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
 
     private static int SkipSpaces(string text, int offset)
     {
-        while (offset < text.Length && PythonText.IsSpace(text[offset]))
+        while (offset < text.Length && EngineText.IsSpace(text[offset]))
         {
             offset++;
         }
@@ -84,7 +84,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
         }
 
         Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out _);
-        return !PythonText.IsWordRune(rune);
+        return !EngineText.IsWordRune(rune);
     }
 
     // ^\s*FROM\s+\S+ (IGNORECASE, no MULTILINE) searched on one line: anchored at the start of the string.
@@ -129,7 +129,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
         var lines = TextLines.SplitLines(text);
         var index = 0;
         while (index < lines.Count
-            && (PythonText.Strip(lines[index]).Length == 0 || PythonText.StripStart(lines[index]).StartsWith('#')))
+            && (EngineText.Strip(lines[index]).Length == 0 || EngineText.StripStart(lines[index]).StartsWith('#')))
         {
             index++;
         }
@@ -195,7 +195,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
             reasons.Add("Dockerfile heuristics matched");
         }
 
-        // The Python plugin never populates its metadata dict, so "metadata or None" is always None.
+        // The plugin records no metadata.
         return new DetectionMatch(Name, "dockerfile", "generic", confidence, reasons, metadata: null);
     }
 }

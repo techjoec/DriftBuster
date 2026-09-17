@@ -1,8 +1,0 @@
-{
- "database": {
-  "script": "accounts.sql"
- },
- "options": {
-  "limit": 9223372036854775808
- }
-}

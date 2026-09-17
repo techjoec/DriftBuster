@@ -518,7 +518,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         {
             Name = _loadedProfileName is not null && string.Equals(ProfileName, _loadedProfileName, StringComparison.Ordinal)
                 ? _loadedProfileName
-                : PythonText.Strip(ProfileName),
+                : EngineText.Strip(ProfileName),
             Description = string.Equals(ProfileDescription, _loadedDescription, StringComparison.Ordinal)
                 ? _loadedDescription
                 : string.IsNullOrWhiteSpace(ProfileDescription) ? null : ProfileDescription.Trim(),
@@ -535,7 +535,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         foreach (var option in Options)
         {
             var unedited = option.LoadedKey is not null && string.Equals(option.Key, option.LoadedKey, StringComparison.Ordinal);
-            var key = unedited ? option.LoadedKey! : PythonText.Strip(option.Key ?? string.Empty);
+            var key = unedited ? option.LoadedKey! : EngineText.Strip(option.Key ?? string.Empty);
             if (!unedited && key.Length == 0)
             {
                 continue;
@@ -1083,7 +1083,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
         // The loaded path while unedited; an edited path stripped as Python's str.strip strips it.
         private string SavedPath()
-            => _loadedPath is not null && string.Equals(Path, _loadedPath, StringComparison.Ordinal) ? _loadedPath : PythonText.Strip(Path ?? string.Empty);
+            => _loadedPath is not null && string.Equals(Path, _loadedPath, StringComparison.Ordinal) ? _loadedPath : EngineText.Strip(Path ?? string.Empty);
 
         // The loaded alias while unedited; an edited alias stripped as Python's str.strip strips it, none when that leaves it empty (the
         // backend drops an alias str.strip empties).
@@ -1094,7 +1094,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
                 return _loadedAlias;
             }
 
-            var alias = PythonText.Strip(Alias ?? string.Empty);
+            var alias = EngineText.Strip(Alias ?? string.Empty);
             return alias.Length == 0 ? null : alias;
         }
 

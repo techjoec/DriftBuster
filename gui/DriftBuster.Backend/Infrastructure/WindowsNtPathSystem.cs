@@ -27,7 +27,7 @@ internal sealed partial class WindowsNtPathSystem : INtPathSystem
     {
         if (path.Contains('\0', StringComparison.Ordinal))
         {
-            throw new PythonValueException("embedded null character", nameof(path));
+            throw new EngineValueException("embedded null character", nameof(path));
         }
 
         using var handle = CreateFile(path, 0, ShareAll, nint.Zero, OpenExisting, BackupSemantics, nint.Zero);
@@ -86,7 +86,7 @@ internal sealed partial class WindowsNtPathSystem : INtPathSystem
 
     public string FindFirstFile(string path)
     {
-        var (head, tail) = PythonNtPath.Split(path);
+        var (head, tail) = EngineNtPath.Split(path);
         try
         {
             var match = Directory.EnumerateFileSystemEntries(head.Length == 0 ? "." : head, tail).FirstOrDefault();

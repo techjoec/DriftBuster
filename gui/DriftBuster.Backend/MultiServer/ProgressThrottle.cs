@@ -3,7 +3,7 @@ using DriftBuster.Backend.Models;
 namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>
-/// <c>emit_progress</c>'s duplicate suppression, owned by one run (Python keeps the state process-wide): an update is dropped
+/// <c>emit_progress</c>'s duplicate suppression, owned by one run: an update is dropped
 /// when the host's previous update had the same status and message and was emitted less than
 /// <see cref="IntervalSeconds"/> earlier.
 /// </summary>
@@ -36,7 +36,7 @@ public sealed class ProgressThrottle
 
     /// <summary>
     /// Reports the update to <paramref name="progress"/> on the calling thread when <see cref="ShouldEmit"/> allows it; the
-    /// throttle state is updated even without a consumer, as in Python.
+    /// throttle state is updated even without a consumer.
     /// </summary>
     public void Report(IProgress<ScanProgress>? progress, string hostId, ServerScanStatus status, string message, double now, DateTimeOffset timestamp)
     {

@@ -1,9 +1,0 @@
-{
-  "description": "a root '${\\ud800}/x' beside a valid root: Python's os.path.expandvars looks the name up in os.environ, whose key encode raises UnicodeEncodeError out of _build_plans before hostC's only root '${HO\\ud800ME}' is reached; decision S says the port keeps working, leaves both roots out and answers hostC not_found",
-  "fixes": [], "args": [], "requires": [], "divergences": ["python-surrogate-encode"],
-  "plans": [
-    {"host_id": "hostA", "label": "hostA", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostA"], "baseline": {"is_preferred": true}},
-    {"host_id": "hostB", "label": "hostB", "scope": "custom_roots", "roots": ["${\ud800}/x", "tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostB"]},
-    {"host_id": "hostC", "label": "hostC", "scope": "custom_roots", "roots": ["${HO\ud800ME}"]}
-  ]
-}

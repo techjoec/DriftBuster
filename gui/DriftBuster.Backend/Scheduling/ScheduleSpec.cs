@@ -7,7 +7,7 @@ namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
 /// <c>scheduler.ScheduleSpec</c>: a named schedule running a profile every <see cref="Interval"/>, from an optional start, inside an
-/// optional daily window, with tags and metadata (values in the <see cref="PythonJson"/> domain) and an optional profile loader.
+/// optional daily window, with tags and metadata (values in the <see cref="EngineJson"/> domain) and an optional profile loader.
 /// </summary>
 public sealed class ScheduleSpec
 {
@@ -15,8 +15,8 @@ public sealed class ScheduleSpec
     public ScheduleSpec(
         string name,
         string profile,
-        PythonTimeDelta interval,
-        PythonDateTime? startAt = null,
+        EngineTimeDelta interval,
+        EngineDateTime? startAt = null,
         ScheduleWindow? window = null,
         IReadOnlyList<string>? tags = null,
         IReadOnlyDictionary<string, object?>? metadata = null,
@@ -29,12 +29,12 @@ public sealed class ScheduleSpec
             throw new ScheduleException("Interval must be positive.");
         }
 
-        if (PythonText.Strip(name).Length == 0)
+        if (EngineText.Strip(name).Length == 0)
         {
             throw new ScheduleException("Schedule name must not be empty.");
         }
 
-        if (PythonText.Strip(profile).Length == 0)
+        if (EngineText.Strip(profile).Length == 0)
         {
             throw new ScheduleException("Profile reference must not be empty.");
         }
@@ -53,9 +53,9 @@ public sealed class ScheduleSpec
 
     public string Profile { get; }
 
-    public PythonTimeDelta Interval { get; }
+    public EngineTimeDelta Interval { get; }
 
-    public PythonDateTime? StartAt { get; }
+    public EngineDateTime? StartAt { get; }
 
     public ScheduleWindow? Window { get; }
 
@@ -80,8 +80,8 @@ public sealed class ScheduleSpec
         }
 
         var startAtRaw = payload.GetValueOrDefault("start_at");
-        var startAt = PythonBuiltins.IsTruthy(startAtRaw)
-            ? ScheduleParsing.EnsureAware(PythonDateTime.FromIsoFormat(PythonRepr.Str(startAtRaw)))
+        var startAt = EngineBuiltins.IsTruthy(startAtRaw)
+            ? ScheduleParsing.EnsureAware(EngineDateTime.FromIsoFormat(EngineRepr.Str(startAtRaw)))
             : null;
         var window = payload.GetValueOrDefault("window") is IReadOnlyDictionary<string, object?> windowPayload
             ? ScheduleWindow.FromDict(windowPayload)
@@ -94,21 +94,21 @@ public sealed class ScheduleSpec
         }
 
         var interval = ScheduleParsing.ParseInterval(every);
-        return new ScheduleSpec(PythonRepr.Str(name), PythonRepr.Str(profile), interval, startAt, window, tags, metadata, profileLoader);
+        return new ScheduleSpec(EngineRepr.Str(name), EngineRepr.Str(profile), interval, startAt, window, tags, metadata, profileLoader);
     }
 
     /// <summary><c>spec.align_to(reference)</c>: the reference in UTC, aligned to the window when there is one.</summary>
-    public PythonDateTime AlignTo(PythonDateTime reference)
+    public EngineDateTime AlignTo(EngineDateTime reference)
     {
         var candidate = ScheduleParsing.EnsureAware(reference);
         return Window is null ? candidate : Window.Align(candidate);
     }
 
     /// <summary><c>spec.initial_run(reference)</c>: the start, else the reference, else <c>datetime.now(UTC)</c>, aligned.</summary>
-    public PythonDateTime InitialRun(PythonDateTime? reference = null) => AlignTo(StartAt ?? reference ?? PythonDateTime.UtcNow());
+    public EngineDateTime InitialRun(EngineDateTime? reference = null) => AlignTo(StartAt ?? reference ?? EngineDateTime.UtcNow());
 
     /// <summary><c>spec.next_after(moment)</c>: the moment in UTC plus the interval, aligned.</summary>
-    public PythonDateTime NextAfter(PythonDateTime moment) => AlignTo(ScheduleParsing.EnsureAware(moment).Add(Interval));
+    public EngineDateTime NextAfter(EngineDateTime moment) => AlignTo(ScheduleParsing.EnsureAware(moment).Add(Interval));
 
     /// <summary><c>spec.load_profile()</c>.</summary>
     public RunProfile LoadProfile()
@@ -118,11 +118,11 @@ public sealed class ScheduleSpec
     {
         if (raw is List<object?> items)
         {
-            var tags = items.Select(tag => PythonText.Strip(PythonRepr.Str(tag))).Where(tag => tag.Length > 0).ToList();
+            var tags = items.Select(tag => EngineText.Strip(EngineRepr.Str(tag))).Where(tag => tag.Length > 0).ToList();
             tags.Sort(PathText.CompareCodePoints);
             return tags;
         }
 
-        return PythonBuiltins.IsTruthy(raw) ? [PythonText.Strip(PythonRepr.Str(raw))] : [];
+        return EngineBuiltins.IsTruthy(raw) ? [EngineText.Strip(EngineRepr.Str(raw))] : [];
     }
 }

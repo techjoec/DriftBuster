@@ -1,1 +1,0 @@
-{"schedules": [{"name": "m", "profile": "p", "every": "1h", "start_at": "2025-03-01T00:00:00Z", "metadata": {"b": 1, "a": 2, "b": 3, "c": {"z": 1, "y": 2, "z": [3]}}, "metadata": {"q": 1, "p": 2, "q": 0}}]}

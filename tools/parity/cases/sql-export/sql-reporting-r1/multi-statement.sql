@@ -1,3 +1,0 @@
-CREATE TABLE b (x);
-INSERT INTO b VALUES ('b-row');
-CREATE TABLE "b); SELECT (1" (y);

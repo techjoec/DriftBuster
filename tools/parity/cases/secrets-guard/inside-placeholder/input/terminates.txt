@@ -1,7 +1,0 @@
-xpw
-xpw ypw
-[SECRET]z pw
-pwz
-plain
-[pw]z
-x[pw

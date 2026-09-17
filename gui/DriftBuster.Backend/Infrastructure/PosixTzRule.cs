@@ -131,10 +131,10 @@ internal sealed class PosixTzRule
 
     private static char At(string text, int position) => position < text.Length ? text[position] : '\0';
 
-    private static PythonValueException Invalid(string message) => new(message, nameof(message));
+    private static EngineValueException Invalid(string message) => new(message, nameof(message));
 
     // repr() of the footer bytes object (ASCII in every real TZif footer).
-    private static string Repr(string text) => "b" + PythonRepr.StrRepr(text);
+    private static string Repr(string text) => "b" + EngineRepr.StrRepr(text);
 
     // parse_abbr: "<" alphanumerics, "+" and "-" ">", or one or more ASCII letters.
     private static bool ParseAbbreviation(string text, ref int position)

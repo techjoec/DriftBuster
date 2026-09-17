@@ -1,9 +1,0 @@
-{"profiles": [{"name": "g", "configs": [
-  {"id": "star-crosses-slash", "path_glob": "conf*json"},
-  {"id": "class-slash", "path_glob": "conf[/]x.json"},
-  {"id": "upper", "path_glob": "CONF/*"},
-  {"id": "double-star", "path_glob": "**/x.json"},
-  {"id": "dot-glob", "path_glob": "./conf/*.json"},
-  {"id": "trailing", "path_glob": "conf/x.json/"},
-  {"id": "negclass-slash", "path_glob": "conf[!a]x.json"},
-  {"id": "qmark", "path_glob": "conf?x.json"}]}]}

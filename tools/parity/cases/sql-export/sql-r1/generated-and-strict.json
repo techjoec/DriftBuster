@@ -1,5 +1,0 @@
-{
- "database": {
-  "script": "generated-strict.sql"
- }
-}

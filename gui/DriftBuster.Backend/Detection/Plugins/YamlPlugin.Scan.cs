@@ -5,15 +5,15 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Hand-matched equivalents of the Python YAML regexes. "Anchor" means a MULTILINE <c>^</c> position: offset 0 or
+/// Hand-matched equivalents of the YAML rule regexes. "Anchor" means a MULTILINE <c>^</c> position: offset 0 or
 /// the position after a <c>\n</c> (never after <c>\r</c> or any other line break). <c>\s</c> runs are walked with
-/// <see cref="PythonText.IsSpace"/> and may cross line breaks, exactly as the Python patterns allow.
+/// <see cref="EngineText.IsSpace"/> and may cross line breaks, exactly as the patterns allow.
 /// </summary>
 public sealed partial class YamlPlugin
 {
     private static int SkipSpace(string s, int offset)
     {
-        while (offset < s.Length && PythonText.IsSpace(s[offset]))
+        while (offset < s.Length && EngineText.IsSpace(s[offset]))
         {
             offset++;
         }
@@ -59,7 +59,7 @@ public sealed partial class YamlPlugin
         while (end < s.Length)
         {
             Rune.DecodeFromUtf16(s.AsSpan(end), out var rune, out var consumed);
-            if (rune.Value is '.' or '-' || PythonText.IsWordRune(rune))
+            if (rune.Value is '.' or '-' || EngineText.IsWordRune(rune))
             {
                 end += consumed;
                 continue;
@@ -112,7 +112,7 @@ public sealed partial class YamlPlugin
             if (s.AsSpan(q).StartsWith(marker, StringComparison.Ordinal))
             {
                 var r = q + marker.Length;
-                while (r < s.Length && PythonText.IsSpace(s[r]))
+                while (r < s.Length && EngineText.IsSpace(s[r]))
                 {
                     if (s[r] == '\n')
                     {

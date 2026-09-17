@@ -1,7 +1,0 @@
-{
-  "name": "db",
-  "sources": [
-    "src/db/*.conf"
-  ],
-  "baseline": "src/db/*.conf"
-}

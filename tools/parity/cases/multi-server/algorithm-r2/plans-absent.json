@@ -1,1 +1,0 @@
-{"description": "a request without a plans key: _build_plans yields no plans", "fixes": [], "args": [], "requires": [], "divergences": ["empty-response-mappings"]}

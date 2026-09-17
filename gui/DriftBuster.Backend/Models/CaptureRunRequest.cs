@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
 {
-    /// <summary>The arguments of a capture run (<c>capture.py run</c>).</summary>
+    /// <summary>The arguments of a capture run (<c>driftbuster capture run</c>).</summary>
     public sealed class CaptureRunRequest
     {
         /// <summary>The file or directory to scan.</summary>

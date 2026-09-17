@@ -5,7 +5,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Reporting;
 
 /// <summary>
-/// <c>driftbuster.reporting.html</c>: a static HTML report with embedded redaction warnings, byte for byte as Python renders it.
+/// A static HTML report with embedded redaction warnings.
 /// Diffs are <see cref="DiffArtifact"/> values or string-keyed mappings; hunt hits are <see cref="Hunt.HuntFinding"/> values or mappings.
 /// </summary>
 public static partial class HtmlReport
@@ -13,7 +13,7 @@ public static partial class HtmlReport
     private const string DefaultTitle = "DriftBuster Report";
 
     /// <summary><c>datetime.now(UTC)</c>, swapped by tests that pin the "Generated at" line.</summary>
-    internal static Func<PythonDateTime> UtcNow { get; set; } = PythonDateTime.UtcNow;
+    internal static Func<EngineDateTime> UtcNow { get; set; } = EngineDateTime.UtcNow;
 
     /// <summary>
     /// <c>render_html_report</c>: every payload (detections with the extra metadata, diffs, hunt hits and the profile summary with the
@@ -104,7 +104,7 @@ public static partial class HtmlReport
     {
         ArgumentNullException.ThrowIfNull(destination);
         var html = Render(matches, title, diffs, profileSummary, huntHits, redactor, maskTokens, placeholder, extraMetadata, warnings, legalNotice);
-        PythonTextFile.WriteText(destination, ReportValues.TextModeNewLines(html));
+        EngineTextFile.WriteText(destination, ReportValues.TextModeNewLines(html));
     }
 
     private static OrderedDictionary<string, object?> Redact(OrderedDictionary<string, object?> payload, RedactionFilter? redactor)
@@ -131,7 +131,7 @@ public static partial class HtmlReport
     }
 
     // The warning block: the caller's warnings, the derived-data notice and, with a redactor, the placeholder notice (whose placeholder
-    // is escaped twice, as Python escapes it inside the message and then the message) and the raw "Redaction active" badge. A message
+    // is escaped twice: once inside the message and again with the message) and the raw "Redaction active" badge. A message
     // starting "<span" is kept raw.
     private static string RenderWarnings(IEnumerable<string>? warnings, RedactionFilter? redactor)
     {
@@ -188,7 +188,7 @@ public static partial class HtmlReport
             lines.Add("<ul>");
             var stats = redactor.Stats();
             var tokens = stats.Keys.ToList();
-            PythonSort<string>.Sort(tokens, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
+            EngineSort<string>.Sort(tokens, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
             foreach (var token in tokens)
             {
                 lines.Add(string.Create(

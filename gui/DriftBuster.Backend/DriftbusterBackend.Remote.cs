@@ -119,7 +119,7 @@ public sealed partial class DriftbusterBackend
                 var spec = new SearchSpec
                 {
                     Keywords = request.Keywords.ToList(),
-                    Patterns = request.Patterns.Select(RegistryPython.Compile).ToList(),
+                    Patterns = request.Patterns.Select(RegistryText.Compile).ToList(),
                     MaxDepth = request.MaxDepth,
                     MaxHits = request.MaxHits,
                     TimeBudgetS = request.TimeBudgetSeconds,
@@ -177,7 +177,7 @@ public sealed partial class DriftbusterBackend
         var content = writer.ToString();
         if (!string.IsNullOrWhiteSpace(request.OutputPath))
         {
-            PythonTextFile.WriteBytes(request.OutputPath, ReportEncoding.GetBytes(ReportValues.TextModeNewLines(content)));
+            EngineTextFile.WriteBytes(request.OutputPath, ReportEncoding.GetBytes(ReportValues.TextModeNewLines(content)));
         }
 
         return new ReportResult

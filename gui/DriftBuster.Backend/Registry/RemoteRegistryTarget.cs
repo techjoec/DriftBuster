@@ -6,7 +6,7 @@ namespace DriftBuster.Backend.Registry;
 
 /// <summary>
 /// <c>offline_runner.RemoteRegistryTarget</c>: a remote host a registry scan runs against, with its transport (default
-/// <c>winrm</c>), port, SSL flag and the credential references (never a password). Values are in the <see cref="PythonJson"/>
+/// <c>winrm</c>), port, SSL flag and the credential references (never a password). Values are in the <see cref="EngineJson"/>
 /// domain.
 /// </summary>
 public sealed record RemoteRegistryTarget(
@@ -33,7 +33,7 @@ public sealed record RemoteRegistryTarget(
             return flag;
         }
 
-        var text = PythonText.Lower(PythonText.Strip(PythonRepr.Str(value)));
+        var text = EngineText.Lower(EngineText.Strip(EngineRepr.Str(value)));
         if (TrueWords.Contains(text, StringComparer.Ordinal))
         {
             return true;
@@ -41,7 +41,7 @@ public sealed record RemoteRegistryTarget(
 
         return FalseWords.Contains(text, StringComparer.Ordinal)
             ? false
-            : throw new PythonValueException($"Unsupported boolean value '{PythonRepr.Str(value)}' for remote target", nameof(value));
+            : throw new EngineValueException($"Unsupported boolean value '{EngineRepr.Str(value)}' for remote target", nameof(value));
     }
 
     /// <summary>
@@ -51,50 +51,50 @@ public sealed record RemoteRegistryTarget(
     /// <c>int(port)</c>, <c>use_ssl</c>/<c>use-ssl</c> through <see cref="CoerceBool"/> and <c>alias</c>, each text stripped and
     /// dropped when blank.
     /// </summary>
-    /// <exception cref="PythonValueException">Python's <c>ValueError</c> text for each refusal, or from <c>int()</c>.</exception>
+    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal, or from <c>int()</c>.</exception>
     public static RemoteRegistryTarget FromPayload(object? payload)
     {
         if (payload is string hostText)
         {
-            var host = PythonText.Strip(hostText);
+            var host = EngineText.Strip(hostText);
             return host.Length == 0
-                ? throw new PythonValueException("remote target host must be non-empty", nameof(payload))
+                ? throw new EngineValueException("remote target host must be non-empty", nameof(payload))
                 : new RemoteRegistryTarget(host);
         }
 
         if (payload is not IReadOnlyDictionary<string, object?> mapping)
         {
-            throw new PythonValueException("remote target must be a string host or mapping", nameof(payload));
+            throw new EngineValueException("remote target must be a string host or mapping", nameof(payload));
         }
 
         var hostValue = Or(mapping, "host", "hostname");
-        if (!PythonBuiltins.IsTruthy(hostValue) || PythonText.Strip(PythonRepr.Str(hostValue)).Length == 0)
+        if (!EngineBuiltins.IsTruthy(hostValue) || EngineText.Strip(EngineRepr.Str(hostValue)).Length == 0)
         {
-            throw new PythonValueException("remote target requires 'host'", nameof(payload));
+            throw new EngineValueException("remote target requires 'host'", nameof(payload));
         }
 
         if (mapping.ContainsKey("password"))
         {
-            throw new PythonValueException("remote target must not embed raw passwords; use password_env", nameof(payload));
+            throw new EngineValueException("remote target must not embed raw passwords; use password_env", nameof(payload));
         }
 
         var passwordEnv = FirstPresent(mapping, "password_env", "password-env");
-        if (passwordEnv is not null && PythonText.Strip(PythonRepr.Str(passwordEnv)).Length == 0)
+        if (passwordEnv is not null && EngineText.Strip(EngineRepr.Str(passwordEnv)).Length == 0)
         {
-            throw new PythonValueException("remote target password_env must be non-empty when provided", nameof(payload));
+            throw new EngineValueException("remote target password_env must be non-empty when provided", nameof(payload));
         }
 
         var username = Or(mapping, "username", "user");
         var credentialProfile = FirstPresent(mapping, "credential_profile", "credential-profile");
         var transportValue = mapping.TryGetValue("transport", out var transportRaw) ? transportRaw : "winrm";
-        var transport = PythonBuiltins.IsTruthy(transportValue) ? PythonText.Lower(PythonText.Strip(PythonRepr.Str(transportValue))) : "winrm";
+        var transport = EngineBuiltins.IsTruthy(transportValue) ? EngineText.Lower(EngineText.Strip(EngineRepr.Str(transportValue))) : "winrm";
         var aliasValue = mapping.GetValueOrDefault("alias");
         var port = ReadPort(mapping.GetValueOrDefault("port"));
         var useSslValue = FirstPresent(mapping, "use_ssl", "use-ssl");
         bool? useSsl = useSslValue is not null ? CoerceBool(useSslValue) : null;
 
         return new RemoteRegistryTarget(
-            PythonText.Strip(PythonRepr.Str(hostValue)),
+            EngineText.Strip(EngineRepr.Str(hostValue)),
             transport,
             port,
             useSsl,
@@ -108,7 +108,7 @@ public sealed record RemoteRegistryTarget(
     private static object? Or(IReadOnlyDictionary<string, object?> mapping, string first, string second)
     {
         var value = mapping.GetValueOrDefault(first);
-        return PythonBuiltins.IsTruthy(value) ? value : mapping.GetValueOrDefault(second);
+        return EngineBuiltins.IsTruthy(value) ? value : mapping.GetValueOrDefault(second);
     }
 
     // payload[first] if first in payload, else payload[second] if second in payload, else None.
@@ -118,12 +118,12 @@ public sealed record RemoteRegistryTarget(
     // str(value).strip() if value and str(value).strip() else None.
     private static string? OptionalText(object? value)
     {
-        if (!PythonBuiltins.IsTruthy(value))
+        if (!EngineBuiltins.IsTruthy(value))
         {
             return null;
         }
 
-        var text = PythonText.Strip(PythonRepr.Str(value));
+        var text = EngineText.Strip(EngineRepr.Str(value));
         return text.Length > 0 ? text : null;
     }
 
@@ -134,7 +134,7 @@ public sealed record RemoteRegistryTarget(
             return null;
         }
 
-        var port = PythonBuiltins.Int(value);
-        return port <= 0 ? throw new PythonValueException("remote target port must be positive", nameof(value)) : port;
+        var port = EngineBuiltins.Int(value);
+        return port <= 0 ? throw new EngineValueException("remote target port must be positive", nameof(value)) : port;
     }
 }

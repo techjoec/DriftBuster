@@ -1,17 +1,17 @@
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
 /// <c>driftbuster version</c>: propagates the component versions declared in <c>versions.json</c> into the build configuration,
-/// manifests, the C# detection engine, docs and tests. A replacement that matches nothing stops the run with <c>No replacements made in {path} for pattern
+/// manifests, the detection catalog, docs and tests. A replacement that matches nothing stops the run with <c>No replacements made in {path} for pattern
 /// {pattern!r}</c> (exit code 1); the files updated before it stay updated.
 /// </summary>
 internal static partial class VersionSync
 {
-    private static readonly string[] ExpectedKeys = ["core", "catalog", "gui", "powershell", "formats"];
+    private static readonly string[] ExpectedKeys = ["core", "catalog", "gui", "powershell"];
 
     /// <summary><c>load_versions()</c>: <c>versions.json</c> under <paramref name="root"/>, which must hold every expected key.</summary>
     public static IReadOnlyDictionary<string, object?> LoadVersions(string root)
@@ -19,12 +19,12 @@ internal static partial class VersionSync
         var data = RunProfileStore.ReadJson(Path.Combine(root, "versions.json"));
         if (data is not IReadOnlyDictionary<string, object?> mapping)
         {
-            throw new PythonAttributeException($"'{PythonBuiltins.TypeName(data)}' object has no attribute 'keys'");
+            throw new EngineAttributeException($"versions.json must hold a JSON object, not '{EngineBuiltins.TypeName(data)}'");
         }
 
         var missing = ExpectedKeys.Where(key => !mapping.ContainsKey(key)).Order(StringComparer.Ordinal).Cast<object?>().ToList();
         return missing.Count > 0
-            ? throw new CommandExitException($"versions.json is missing keys: {PythonRepr.Repr(missing)}")
+            ? throw new CommandExitException($"versions.json is missing keys: {EngineRepr.Repr(missing)}")
             : mapping;
     }
 
@@ -32,7 +32,7 @@ internal static partial class VersionSync
     public static void UpdateFile(string path, string pattern, string replacement, int count = 0)
     {
         var original = TextModeFile.ReadText(path);
-        var matches = PythonPattern.Compile(pattern).FindIter(original);
+        var matches = EnginePattern.Compile(pattern).FindIter(original);
         if (count > 0)
         {
             matches = matches.Take(count);
@@ -50,7 +50,7 @@ internal static partial class VersionSync
 
         if (applied == 0)
         {
-            throw new CommandExitException($"No replacements made in {PythonPurePath.Str(path)} for pattern {PythonRepr.StrRepr(pattern)}");
+            throw new CommandExitException($"No replacements made in {EnginePurePath.Str(path)} for pattern {EngineRepr.StrRepr(pattern)}");
         }
 
         TextModeFile.WriteText(path, builder.Append(original, position, original.Length - position).ToString());
@@ -65,7 +65,7 @@ internal static partial class VersionSync
         }
     }
 
-    private static string Str(object? value) => PythonRepr.Str(value);
+    private static string Str(object? value) => EngineRepr.Str(value);
 
     private static string At(string root, params string[] parts) => Path.Combine([root, .. parts]);
 }

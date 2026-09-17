@@ -12,7 +12,7 @@ namespace DriftBuster.Backend.Scheduling;
 /// range), as <c>run_profiles_cli</c> requires when it loads the manifest.
 /// </summary>
 /// <remarks>
-/// The manifest is read as <c>_load_schedule_payload</c> reads it (<see cref="LoadSchedulePayload"/>, over <see cref="PythonJson"/>), so every
+/// The manifest is read as <c>_load_schedule_payload</c> reads it (<see cref="LoadSchedulePayload"/>, over <see cref="EngineJson"/>), so every
 /// manifest the scheduler reads loads as cards, whatever its nesting, floats or unpaired surrogates, and it is written as
 /// <c>json.dumps(payload, indent=2)</c> writes it (a container nested 64 levels deep or more on one line, as without indent), which
 /// <c>json.loads</c> reads back to the same values. A card shows each field as the text
@@ -20,8 +20,7 @@ namespace DriftBuster.Backend.Scheduling;
 /// keeps its entry (<see cref="ScheduleDefinition.ManifestEntry"/>): every field whose card text still shows what the entry held is written
 /// back as the entry held it (JSON value and type, surrounding whitespace, untrimmed metadata keys), and keys the card does not show are
 /// kept, so a load and save leaves the scheduler reading what it read before. The exception is a manifest that is a bare top-level
-/// array: it is written in the object form, one container deeper, so a bare array nested to the decoder's limit is refused after the save
-/// (recorded in <c>tools/parity/expected_divergences.md</c>, "GUI-only behaviour").
+/// array: it is written in the object form, one container deeper, so a bare array nested to the decoder's limit is refused after the save.
 /// </remarks>
 public static partial class ScheduleStore
 {
@@ -38,8 +37,8 @@ public static partial class ScheduleStore
     /// <c>schedules</c>, or the document itself; a missing file, a falsy value and a string are no schedules.
     /// </summary>
     /// <exception cref="CommandExitException">Text that is not JSON, or a truthy value that is neither an array nor a string (Python's messages).</exception>
-    /// <exception cref="PythonValueException">An integer past the decoder's digit limit, which the scheduler cannot read either.</exception>
-    /// <exception cref="PythonRecursionException">Containers nested past the decoder's limit, which the scheduler cannot read either.</exception>
+    /// <exception cref="EngineValueException">An integer past the decoder's digit limit, which the scheduler cannot read either.</exception>
+    /// <exception cref="EngineRecursionException">Containers nested past the decoder's limit, which the scheduler cannot read either.</exception>
     public static ScheduleListResult ListSchedules(string? baseDir, CancellationToken cancellationToken = default)
     {
         var path = ScheduleManifestPath(baseDir);
@@ -65,7 +64,7 @@ public static partial class ScheduleStore
     /// <summary>Writes the cards to the manifest in their order, creating the profiles directory.</summary>
     /// <exception cref="InvalidOperationException">A card without a name, profile or interval.</exception>
     /// <exception cref="ScheduleException">An entry <see cref="ScheduleSpec.FromDict"/> refuses, or a name used twice.</exception>
-    /// <exception cref="PythonValueException">A start time or window time <c>fromisoformat</c> or <c>int()</c> refuses, or a window time out of range.</exception>
+    /// <exception cref="EngineValueException">A start time or window time <c>fromisoformat</c> or <c>int()</c> refuses, or a window time out of range.</exception>
     /// <exception cref="OverflowException">An interval, window time or start time out of Python's range, or a first run past it.</exception>
     public static void SaveSchedules(IEnumerable<ScheduleDefinition> schedules, string? baseDir, CancellationToken cancellationToken = default)
     {
@@ -167,7 +166,7 @@ public static partial class ScheduleStore
     }
 
     // str(value) of the decoded JSON value, the text from_dict reads.
-    private static string PythonText(object? value) => PythonRepr.Str(value);
+    private static string EngineText(object? value) => EngineRepr.Str(value);
 
     // The text a card shows for a metadata value: a str as it is, null as nothing, a bool as True or False, anything else as its JSON text.
     private static string MetadataText(object? value) => value switch
@@ -188,9 +187,9 @@ public static partial class ScheduleStore
             return false;
         }
 
-        var name = PythonText(nameValue).Trim();
-        var profile = PythonText(profileValue).Trim();
-        var every = PythonText(everyValue).Trim();
+        var name = EngineText(nameValue).Trim();
+        var profile = EngineText(profileValue).Trim();
+        var every = EngineText(everyValue).Trim();
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(profile) || string.IsNullOrWhiteSpace(every))
         {
             return false;
@@ -200,8 +199,8 @@ public static partial class ScheduleStore
         schedule.Profile = profile;
         schedule.Every = every;
         schedule.EveryValue = everyValue is string ? null : everyValue;
-        schedule.StartAt = element.TryGetValue("start_at", out var startAt) && PythonBuiltins.IsTruthy(startAt)
-            ? CardStartAt(PythonText(startAt))
+        schedule.StartAt = element.TryGetValue("start_at", out var startAt) && EngineBuiltins.IsTruthy(startAt)
+            ? CardStartAt(EngineText(startAt))
             : null;
         schedule.Window = ParseScheduleWindow(element);
         ParseScheduleMetadata(element, schedule);
@@ -218,9 +217,9 @@ public static partial class ScheduleStore
 
         return NormaliseWindow(new ScheduleWindowDefinition
         {
-            Start = window.TryGetValue("start", out var start) ? PythonText(start).Trim() : null,
-            End = window.TryGetValue("end", out var end) ? PythonText(end).Trim() : null,
-            Timezone = window.TryGetValue("timezone", out var timezone) ? PythonText(timezone).Trim() : null,
+            Start = window.TryGetValue("start", out var start) ? EngineText(start).Trim() : null,
+            End = window.TryGetValue("end", out var end) ? EngineText(end).Trim() : null,
+            Timezone = window.TryGetValue("timezone", out var timezone) ? EngineText(timezone).Trim() : null,
         });
     }
 
@@ -347,7 +346,7 @@ public static partial class ScheduleStore
 
     // The interval read from the manifest while the card still shows its str() text, so a number keeps its JSON type; otherwise the card text.
     private static object CardEvery(ScheduleDefinition schedule)
-        => schedule.EveryValue is { } value && string.Equals(PythonText(value).Trim(), schedule.Every, StringComparison.Ordinal)
+        => schedule.EveryValue is { } value && string.Equals(EngineText(value).Trim(), schedule.Every, StringComparison.Ordinal)
             ? value
             : schedule.Every;
 
@@ -455,10 +454,10 @@ public static partial class ScheduleStore
     {
         if (tags is List<object?> items)
         {
-            return CleanTags(items.Select(PythonText));
+            return CleanTags(items.Select(EngineText));
         }
 
-        return PythonBuiltins.IsTruthy(tags) ? CleanTags([PythonText(tags)]) : [];
+        return EngineBuiltins.IsTruthy(tags) ? CleanTags([EngineText(tags)]) : [];
     }
 
     private static string ScheduleManifestPath(string? baseDir)

@@ -12,15 +12,15 @@ internal static class ReleaseCommand
 {
     public static Command Build()
     {
-        var skipTests = PythonArguments.Flag("--skip-tests", "Skip running dotnet test before building artifacts.");
-        var runtime = PythonArguments.OptionalText("--runtime", "Optional runtime identifier for dotnet publish (e.g., win-x64).");
-        var frameworkDependent = PythonArguments.Flag(
+        var skipTests = EngineArguments.Flag("--skip-tests", "Skip running dotnet test before building artifacts.");
+        var runtime = EngineArguments.OptionalText("--runtime", "Optional runtime identifier for dotnet publish (e.g., win-x64).");
+        var frameworkDependent = EngineArguments.Flag(
             "--framework-dependent", "Publish without the .NET runtime when a runtime is specified (default: self-contained).");
-        var noInstaller = PythonArguments.Flag("--no-installer", "Do not build a Velopack installer (default builds installer).");
-        var installerRid = PythonArguments.Text("--installer-rid", "win-x64", "RID for installer packaging (default: win-x64).");
-        var releaseNotes = PythonArguments.OptionalText("--release-notes", "Path to release notes markdown (required for installer packaging).");
-        var channel = PythonArguments.OptionalText("--channel", "Optional installer update channel label.");
-        var packId = PythonArguments.OptionalText("--pack-id", "Override installer pack id (defaults to com.driftbuster.gui).");
+        var noInstaller = EngineArguments.Flag("--no-installer", "Do not build a Velopack installer (default builds installer).");
+        var installerRid = EngineArguments.Text("--installer-rid", "win-x64", "RID for installer packaging (default: win-x64).");
+        var releaseNotes = EngineArguments.OptionalText("--release-notes", "Path to release notes markdown (required for installer packaging).");
+        var channel = EngineArguments.OptionalText("--channel", "Optional installer update channel label.");
+        var packId = EngineArguments.OptionalText("--pack-id", "Override installer pack id (defaults to com.driftbuster.gui).");
         var command = new Command("release", "Prepare DriftBuster release artifacts.")
         {
             skipTests, runtime, frameworkDependent, noInstaller, installerRid, releaseNotes, channel, packId, BuildStagePortable(),
@@ -46,11 +46,11 @@ internal static class ReleaseCommand
 
     private static Command BuildStagePortable()
     {
-        var stageDir = PythonArguments.Text("--stage-dir", StagePortable.DefaultStageDir, $"Local stage directory (default: {StagePortable.DefaultStageDir}).");
-        var rid = PythonArguments.Text("--rid", "win-x64", "dotnet publish runtime identifier (default: win-x64).");
-        var configuration = PythonArguments.Text("--configuration", "Release", "dotnet publish configuration (default: Release).");
-        var timestamp = PythonArguments.OptionalText("--timestamp", "Optional UTC timestamp override (format: YYYYMMDD-HHMMSSZ).");
-        var command = new Command("stage-portable", "Build a portable debug bundle and stage it for local Win11 testing.")
+        var stageDir = EngineArguments.Text("--stage-dir", StagePortable.DefaultStageDir, $"Local stage directory (default: {StagePortable.DefaultStageDir}).");
+        var rid = EngineArguments.Text("--rid", "win-x64", "dotnet publish runtime identifier (default: win-x64).");
+        var configuration = EngineArguments.Text("--configuration", "Release", "dotnet publish configuration (default: Release).");
+        var timestamp = EngineArguments.OptionalText("--timestamp", "Optional UTC timestamp override (format: YYYYMMDD-HHMMSSZ).");
+        var command = new Command("stage-portable", "Build a portable debug bundle and stage it for a Windows test run.")
         {
             stageDir, rid, configuration, timestamp,
         };

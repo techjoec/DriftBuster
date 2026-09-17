@@ -6,7 +6,7 @@ namespace DriftBuster.Backend.Infrastructure;
 public sealed class NtPathException : IOException
 {
     public NtPathException(int winError, string function, string path)
-        : base(string.Create(CultureInfo.InvariantCulture, $"[WinError {winError}] {function}: {PythonRepr.StrRepr(path)}"))
+        : base(string.Create(CultureInfo.InvariantCulture, $"[WinError {winError}] {function}: {EngineRepr.StrRepr(path)}"))
     {
         WinError = winError;
         Function = function;

@@ -1,9 +1,0 @@
-{
- "version": "lookbehind-50",
- "rules": [
-  {
-   "name": "Nest",
-   "pattern": "(?<!\\[{50})SEC"
-  }
- ]
-}

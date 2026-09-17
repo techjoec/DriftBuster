@@ -3,8 +3,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Diff;
 
 /// <summary>
-/// <c>canonicalise_text</c>, <c>canonicalise_json</c> and <c>canonicalise_xml</c> from
-/// <c>driftbuster.reporting.diff</c>: payloads normalised before diffing so formatting noise does not show up as drift.
+/// Text, JSON and XML canonicalisation: payloads normalised before diffing so formatting noise does not show up as drift.
 /// </summary>
 public static partial class Canonicaliser
 {
@@ -18,7 +17,7 @@ public static partial class Canonicaliser
 
     /// <summary>
     /// The normaliser for <paramref name="contentType"/> applied to <paramref name="payload"/>; an unknown type raises
-    /// <see cref="PythonValueException"/> (Python's <c>ValueError("Unsupported content_type: ...")</c>).
+    /// <see cref="EngineValueException"/> (Python's <c>ValueError("Unsupported content_type: ...")</c>).
     /// </summary>
     public static string Canonicalise(string payload, string contentType)
     {
@@ -32,7 +31,7 @@ public static partial class Canonicaliser
         };
     }
 
-    internal static PythonValueException UnsupportedContentType(string contentType) => new($"Unsupported content_type: {contentType}", nameof(contentType));
+    internal static EngineValueException UnsupportedContentType(string contentType) => new($"Unsupported content_type: {contentType}", nameof(contentType));
 
     /// <summary>
     /// <c>canonicalise_text</c>: every leading U+FEFF removed; U+2028, U+2029 and U+0085 become LF; CRLF then CR become
@@ -53,7 +52,7 @@ public static partial class Canonicaliser
         var lines = normalised.Split('\n');
         for (var index = 0; index < lines.Length; index++)
         {
-            lines[index] = PythonText.StripEnd(lines[index]);
+            lines[index] = EngineText.StripEnd(lines[index]);
         }
 
         return string.Join("\n", lines);

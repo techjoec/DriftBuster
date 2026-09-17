@@ -10,7 +10,7 @@ public sealed record ProfileRunResult(
     IReadOnlyList<ProfileFile> Files,
     OrderedDictionary<string, object?>? Secrets = null)
 {
-    /// <summary>The fix g guards the run's secret filter fired (<see cref="SecretDetectionContext.RedactionGuards"/>); not part of <c>to_dict</c>.</summary>
+    /// <summary>The redaction guards the run's secret filter fired (<see cref="SecretDetectionContext.RedactionGuards"/>); not part of <c>to_dict</c>.</summary>
     internal IReadOnlyList<SecretRedactionGuard> RedactionGuards { get; init; } = [];
 
     /// <summary>One summary per source in the order the run collected them (the baseline first); not part of <c>to_dict</c>.</summary>

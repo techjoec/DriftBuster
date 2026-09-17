@@ -1,3 +1,0 @@
-# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
-a = 
-server {

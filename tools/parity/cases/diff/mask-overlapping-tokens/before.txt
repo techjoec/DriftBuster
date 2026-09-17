@@ -1,3 +1,0 @@
-user=admin secretvalue=secret
-password=secret-secretvalue
-plain line

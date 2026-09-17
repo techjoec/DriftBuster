@@ -31,7 +31,7 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("unified_diff")]
         public string UnifiedDiff { get; set; } = string.Empty;
 
-        /// <summary>The selected diff's <c>diff_summary_to_payload</c> mapping, keys in Python's order; null when no host holds a diff.</summary>
+        /// <summary>The selected diff's <c>diff_summary_to_payload</c> mapping, keys in a fixed order; null when no host holds a diff.</summary>
         [JsonPropertyName("diff_summary")]
         public JsonElement? DiffSummary { get; set; }
 

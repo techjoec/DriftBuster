@@ -43,19 +43,19 @@ internal static class ReportValues
     }
 
     /// <summary>
-    /// <c>str(value)</c> (and <c>format(value, "")</c>, which equals it for the built-in types): <see cref="PythonRepr.Str"/>, with a
+    /// <c>str(value)</c> (and <c>format(value, "")</c>, which equals it for the built-in types): <see cref="EngineRepr.Str"/>, with a
     /// top-level tuple spelled <c>(a, b)</c> or <c>(a,)</c>.
     /// </summary>
-    public static string Str(object? value) => value is object[] tuple ? TupleRepr(tuple) : PythonRepr.Str(ReprDomain(value));
+    public static string Str(object? value) => value is object[] tuple ? TupleRepr(tuple) : EngineRepr.Str(ReprDomain(value));
 
     private static string TupleRepr(object[] tuple)
     {
-        var items = string.Join(", ", tuple.Select(item => item is object[] inner ? TupleRepr(inner) : PythonRepr.Repr(ReprDomain(item))));
+        var items = string.Join(", ", tuple.Select(item => item is object[] inner ? TupleRepr(inner) : EngineRepr.Repr(ReprDomain(item))));
         return tuple.Length == 1 ? "(" + items + ",)" : "(" + items + ")";
     }
 
-    // The list and dict shapes PythonRepr spells: any other string-keyed mapping becomes an ordered dictionary and any other list a
-    // list of objects, recursively. A tuple nested inside a list or dict is outside what PythonRepr spells and raises there.
+    // The list and dict shapes EngineRepr spells: any other string-keyed mapping becomes an ordered dictionary and any other list a
+    // list of objects, recursively. A tuple nested inside a list or dict is outside what EngineRepr spells and raises there.
     private static object? ReprDomain(object? value) => value switch
     {
         null or string or object[] or byte[] => value,
@@ -89,7 +89,7 @@ internal static class ReportValues
                 var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
                 foreach (DictionaryEntry entry in dictionary)
                 {
-                    copy[PythonRepr.Str(entry.Key)] = entry.Value;
+                    copy[EngineRepr.Str(entry.Key)] = entry.Value;
                 }
 
                 return copy;
@@ -141,15 +141,15 @@ internal static class ReportValues
 
                 return;
             default:
-                throw new PythonAttributeException($"'{TypeName(existing)}' object has no attribute 'update'");
+                throw new EngineAttributeException($"expected a JSON object, not '{TypeName(existing)}'");
         }
     }
 
     /// <summary><c>for item in value</c> over a str, list, tuple or mapping; anything else raises <c>TypeError</c>.</summary>
-    public static IEnumerable<object?> Iterate(object? value) => PythonBuiltins.Iterate(value);
+    public static IEnumerable<object?> Iterate(object? value) => EngineBuiltins.Iterate(value);
 
     /// <summary><c>bool(value)</c>.</summary>
-    public static bool Truthy(object? value) => PythonBuiltins.IsTruthy(value);
+    public static bool Truthy(object? value) => EngineBuiltins.IsTruthy(value);
 
     /// <summary><c>max(current, candidate)</c> for two floats: the candidate only when it compares greater (a NaN never does).</summary>
     public static double Max(double current, double candidate) => candidate > current ? candidate : current;
@@ -161,13 +161,13 @@ internal static class ReportValues
     {
         try
         {
-            return PythonBuiltins.Float(Truthy(value) ? value : 0.0);
+            return EngineBuiltins.Float(Truthy(value) ? value : 0.0);
         }
-        catch (PythonTypeException)
+        catch (EngineTypeException)
         {
             return 0.0;
         }
-        catch (PythonValueException)
+        catch (EngineValueException)
         {
             return 0.0;
         }
@@ -237,7 +237,7 @@ internal static class ReportValues
                 return copy;
             }),
         IList list and not byte[] => list.Cast<object?>().Select(ToJsonValue).ToList(),
-        _ => throw new PythonTypeException($"Object of type {TypeName(value)} is not JSON serializable", nameof(value)),
+        _ => throw new EngineTypeException($"Object of type {TypeName(value)} is not JSON serializable", nameof(value)),
     };
 
     /// <summary>
@@ -288,6 +288,6 @@ internal static class ReportValues
     {
         object[] => "tuple",
         IEnumerable and not string when value.GetType().GetInterfaces().Any(contract => contract.IsGenericType && contract.GetGenericTypeDefinition() == typeof(ISet<>)) => "set",
-        _ => PythonBuiltins.TypeName(value),
+        _ => EngineBuiltins.TypeName(value),
     };
 }

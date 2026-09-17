@@ -24,7 +24,7 @@ internal sealed class CalledProcessException : Exception
     public CalledProcessException(IReadOnlyList<string> command, int exitCode)
         : base(string.Create(
             CultureInfo.InvariantCulture,
-            $"Command '{PythonRepr.Repr(command.Cast<object?>().ToList())}' returned non-zero exit status {exitCode}."))
+            $"Command '{EngineRepr.Repr(command.Cast<object?>().ToList())}' returned non-zero exit status {exitCode}."))
     {
     }
 }

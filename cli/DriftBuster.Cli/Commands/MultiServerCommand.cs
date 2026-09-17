@@ -13,7 +13,7 @@ using DriftBuster.Backend.MultiServer;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster multi-server</c>: <c>python -m driftbuster.multi_server</c>. Reads the request JSON from stdin, runs
+/// <c>driftbuster multi-server</c>: reads the request JSON from stdin, runs
 /// <see cref="MultiServerRunner"/> and writes newline-delimited JSON (<c>json.dumps(record, ensure_ascii=True)</c>): a
 /// <c>{"type": "progress", "payload": {...}}</c> line per progress update, then <c>{"type": "result", "payload": response}</c> with exit
 /// code 0, or <c>{"type": "error", "message": ...}</c> with exit code 1.
@@ -97,19 +97,19 @@ internal static class MultiServerCommand
 
     private static ServerScanResponse Run(string raw, TextWriter stdout)
     {
-        if (!PythonJson.TryLoadsOrRaiseLimits(raw, out var request))
+        if (!EngineJson.TryLoadsOrRaiseLimits(raw, out var request))
         {
             throw new CommandExitException("Invalid JSON payload: invalid JSON document");
         }
 
-        var schema = PythonBuiltins.Get(request, "schema_version");
-        var schemaVersion = PythonBuiltins.IsTruthy(schema) ? PythonRepr.Str(schema) : MultiServerSchema.Version;
+        var schema = EngineBuiltins.Get(request, "schema_version");
+        var schemaVersion = EngineBuiltins.IsTruthy(schema) ? EngineRepr.Str(schema) : MultiServerSchema.Version;
         if (!string.Equals(schemaVersion, MultiServerSchema.Version, StringComparison.Ordinal))
         {
             throw new CommandExitException($"Unsupported schema version: {schemaVersion}");
         }
 
-        var cacheDir = DiffCache.ResolveCacheDirectory(CacheDirText(PythonBuiltins.Get(request, "cache_dir")), Environment.CurrentDirectory);
+        var cacheDir = DiffCache.ResolveCacheDirectory(CacheDirText(EngineBuiltins.Get(request, "cache_dir")), Environment.CurrentDirectory);
         var plans = MultiServerPlan.BuildPlans(request);
         return new MultiServerRunner(cacheDir).Run(plans, new LineProgress(stdout));
     }
@@ -117,10 +117,10 @@ internal static class MultiServerCommand
     // `if cache_dir: Path(cache_dir)`: a truthy value that is not a str raises Path's TypeError.
     private static string? CacheDirText(object? value) => value switch
     {
-        _ when !PythonBuiltins.IsTruthy(value) => null,
+        _ when !EngineBuiltins.IsTruthy(value) => null,
         string text => text,
-        _ => throw new PythonTypeException(
-            $"argument should be a str or an os.PathLike object where __fspath__ returns a str, not '{PythonBuiltins.TypeName(value)}'", nameof(value)),
+        _ => throw new EngineTypeException(
+            $"cache_dir must be a path string, not '{EngineBuiltins.TypeName(value)}'", nameof(value)),
     };
 
     private static void EmitError(TextWriter stdout, string message)
@@ -137,7 +137,7 @@ internal static class MultiServerCommand
     internal static object? ResponsePayload(ServerScanResponse response)
     {
         var text = JsonSerializer.Serialize(response, ModelJson);
-        return PythonJson.TryLoads(text, out var parsed)
+        return EngineJson.TryLoads(text, out var parsed)
             ? Unescape(parsed)
             : throw new InvalidOperationException("The multi-server response did not serialise to JSON.");
     }

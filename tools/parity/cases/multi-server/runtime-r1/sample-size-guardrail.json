@@ -1,8 +1,0 @@
-{
-  "description": "a per-file sample size beyond the detector guardrail is clamped",
-  "fixes": [], "args": ["--sample-size", "999999999", "--runs", "2"], "requires": [],
-  "plans": [
-    {"host_id": "server01", "label": "server01", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "large", "label": "Large", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/large/hostA"]}
-  ]
-}

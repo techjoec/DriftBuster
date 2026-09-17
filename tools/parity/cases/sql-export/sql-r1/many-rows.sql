@@ -1,2 +1,0 @@
-CREATE TABLE big (n INTEGER, label TEXT);
-WITH RECURSIVE seq(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM seq WHERE x < 500) INSERT INTO big SELECT x, 'row-' || x FROM seq;

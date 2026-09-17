@@ -46,13 +46,13 @@ namespace DriftBuster.Backend
             IProgress<ScanProgress>? progress = null,
             CancellationToken cancellationToken = default);
 
-        /// <summary>Exports anonymised SQLite snapshots and their <c>sql-manifest.json</c> (<c>capture.py export-sql</c>).</summary>
+        /// <summary>Exports anonymised SQLite snapshots and their <c>sql-manifest.json</c> (<c>driftbuster capture export-sql</c>).</summary>
         Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportRequest request, CancellationToken cancellationToken = default);
 
-        /// <summary>Captures a redacted detection and hunt snapshot with its manifest (<c>capture.py run</c>).</summary>
+        /// <summary>Captures a redacted detection and hunt snapshot with its manifest (<c>driftbuster capture run</c>).</summary>
         Task<CaptureRunResult> RunCaptureAsync(CaptureRunRequest request, CancellationToken cancellationToken = default);
 
-        /// <summary>Compares a baseline capture snapshot with a current one (<c>capture.py compare</c>).</summary>
+        /// <summary>Compares a baseline capture snapshot with a current one (<c>driftbuster capture compare</c>).</summary>
         Task<CaptureCompareResult> CompareCapturesAsync(string baselinePath, string currentPath, CancellationToken cancellationToken = default);
 
         /// <summary>The installed applications the registry's Uninstall keys list. Windows only.</summary>

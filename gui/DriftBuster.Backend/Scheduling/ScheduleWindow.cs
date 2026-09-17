@@ -8,18 +8,18 @@ namespace DriftBuster.Backend.Scheduling;
 /// </summary>
 public sealed class ScheduleWindow
 {
-    public ScheduleWindow(PythonTime start, PythonTime end, PythonTzInfo? timezone = null)
+    public ScheduleWindow(EngineTime start, EngineTime end, EngineTzInfo? timezone = null)
     {
         Start = start;
         End = end;
-        Timezone = timezone ?? PythonFixedOffset.Utc;
+        Timezone = timezone ?? EngineFixedOffset.Utc;
     }
 
-    public PythonTime Start { get; }
+    public EngineTime Start { get; }
 
-    public PythonTime End { get; }
+    public EngineTime End { get; }
 
-    public PythonTzInfo Timezone { get; }
+    public EngineTzInfo Timezone { get; }
 
     /// <summary>
     /// <c>ScheduleWindow.from_dict(payload)</c>: <c>str()</c> of <c>start</c> and <c>end</c> (both required), the time zone built from
@@ -33,14 +33,14 @@ public sealed class ScheduleWindow
             throw new ScheduleException("Window requires start and end fields");
         }
 
-        var startText = PythonRepr.Str(start);
-        var endText = PythonRepr.Str(end);
-        var timezone = ScheduleParsing.BuildTimezone(PythonRepr.Str(payload.TryGetValue("timezone", out var name) ? name : "UTC"));
+        var startText = EngineRepr.Str(start);
+        var endText = EngineRepr.Str(end);
+        var timezone = ScheduleParsing.BuildTimezone(EngineRepr.Str(payload.TryGetValue("timezone", out var name) ? name : "UTC"));
         return new ScheduleWindow(ScheduleParsing.ParseTime(startText), ScheduleParsing.ParseTime(endText), timezone);
     }
 
     /// <summary><c>window.contains(moment)</c> for an aware moment: its wall-clock time in the window's zone lies inside the window.</summary>
-    public bool Contains(PythonDateTime moment)
+    public bool Contains(EngineDateTime moment)
     {
         ArgumentNullException.ThrowIfNull(moment);
         var current = moment.AsTimeZone(Timezone).TimeOfDay();
@@ -52,7 +52,7 @@ public sealed class ScheduleWindow
     /// when it is before a daytime window or inside an overnight window's closed hours, or to the start the next day when it is after
     /// a daytime window, then converted to UTC. Moving within the day keeps the fold; moving to the next day resets it.
     /// </summary>
-    public PythonDateTime Align(PythonDateTime candidate)
+    public EngineDateTime Align(EngineDateTime candidate)
     {
         ArgumentNullException.ThrowIfNull(candidate);
         var baseline = candidate.AsTimeZone(Timezone).Replace(microsecond: 0);
@@ -65,7 +65,7 @@ public sealed class ScheduleWindow
             }
             else if (current > End)
             {
-                baseline = AtStart(baseline.Add(PythonTimeDelta.FromMicroseconds(86_400_000_000)));
+                baseline = AtStart(baseline.Add(EngineTimeDelta.FromMicroseconds(86_400_000_000)));
             }
         }
         else if (current > End && current < Start)
@@ -73,8 +73,8 @@ public sealed class ScheduleWindow
             baseline = AtStart(baseline);
         }
 
-        return baseline.AsTimeZone(PythonFixedOffset.Utc);
+        return baseline.AsTimeZone(EngineFixedOffset.Utc);
     }
 
-    private PythonDateTime AtStart(PythonDateTime moment) => moment.Replace(Start.Hour, Start.Minute, Start.Second);
+    private EngineDateTime AtStart(EngineDateTime moment) => moment.Replace(Start.Hour, Start.Minute, Start.Second);
 }

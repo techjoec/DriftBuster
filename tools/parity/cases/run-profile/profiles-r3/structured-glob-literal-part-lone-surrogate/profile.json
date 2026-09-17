@@ -1,9 +1,0 @@
-{
- "name": "gsur",
- "sources": [
-  {
-   "path": "d\udcff/*.txt",
-   "alias": "g"
-  }
- ]
-}

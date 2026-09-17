@@ -18,11 +18,11 @@ public static partial class ScheduleStore
 
     /// <summary><c>_default_schedule_config_path(base_dir, override)</c>: the override as given, else <c>profiles_root(base_dir) / "schedules.json"</c> (creating the root).</summary>
     public static string DefaultConfigPath(string? baseDir, string? overridePath)
-        => overridePath is not null ? PythonPurePath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "schedules.json");
+        => overridePath is not null ? EnginePurePath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "schedules.json");
 
     /// <summary><c>_default_schedule_state_path(base_dir, override)</c>: the override as given, else <c>profiles_root(base_dir) / "scheduler-state.json"</c>.</summary>
     public static string DefaultStatePath(string? baseDir, string? overridePath)
-        => overridePath is not null ? PythonPurePath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "scheduler-state.json");
+        => overridePath is not null ? EnginePurePath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "scheduler-state.json");
 
     /// <summary>
     /// <c>_load_schedule_payload(path)</c>: the mapping entries of the manifest's <c>schedules</c> (or of a bare array). A missing file, text
@@ -40,7 +40,7 @@ public static partial class ScheduleStore
         var entries = payload.Value is IReadOnlyDictionary<string, object?> mapping
             ? mapping.TryGetValue("schedules", out var schedules) ? schedules : new List<object?>()
             : payload.Value;
-        if (!PythonBuiltins.IsTruthy(entries))
+        if (!EngineBuiltins.IsTruthy(entries))
         {
             return [];
         }
@@ -113,17 +113,17 @@ public static partial class ScheduleStore
 
     /// <summary>
     /// <c>_write_schedule_state(scheduler, path)</c>: the snapshot as sorted, indented, ASCII-escaped JSON with a trailing new line, parents
-    /// created. A state path Python cannot write raises its <c>OSError</c> text (<see cref="PythonOSError"/>): the parent directory's
-    /// (<see cref="PythonPath.MakeDirectories"/>), or the file's, <c>open()</c>'s error for a directory (<see cref="PythonOSError.DirectoryOpenErrno"/>).
+    /// created. A state path Python cannot write raises its <c>OSError</c> text (<see cref="EngineOSError"/>): the parent directory's
+    /// (<see cref="EnginePath.MakeDirectories"/>), or the file's, <c>open()</c>'s error for a directory (<see cref="EngineOSError.DirectoryOpenErrno"/>).
     /// </summary>
     public static void WriteScheduleState(ProfileScheduler scheduler, string path)
     {
         ArgumentNullException.ThrowIfNull(scheduler);
         ArgumentNullException.ThrowIfNull(path);
-        var parent = PythonOsPath.Split(path).Head;
+        var parent = EngineOsPath.Split(path).Head;
         if (parent.Length > 0)
         {
-            PythonPath.MakeDirectories(parent);
+            EnginePath.MakeDirectories(parent);
         }
 
         var text = Canonicaliser.DumpsSorted(scheduler.SnapshotState(), indent: true, ensureAscii: true) + "\n";
@@ -136,14 +136,14 @@ public static partial class ScheduleStore
     }
 
     // path.write_text(text, encoding="utf-8"): open() names the path as str(Path) spells it in its OSError.
-    private static void WriteText(string path, string text) => PythonTextFile.WriteText(path, text);
+    private static void WriteText(string path, string text) => EngineTextFile.WriteText(path, text);
 
     // json.loads(path.read_text(encoding="utf-8")): null when the text is not JSON; a directory raises open()'s error for one (EISDIR on
     // Unix, EACCES on Windows), bytes that are not UTF-8 raise UnicodeDecodeError and the decoder's interpreter limits raise ValueError /
-    // RecursionError, all unwrapped as in Python (the loaders catch only JSONDecodeError).
+    // RecursionError, all unwrapped (the loaders catch only JSONDecodeError).
     private static JsonValue? ReadJson(string path)
     {
-        return PythonJson.TryLoadsOrRaiseLimits(PythonUtf8.Decode(PythonTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;
+        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.Decode(EngineTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;
     }
 
     private sealed record JsonValue(object? Value);

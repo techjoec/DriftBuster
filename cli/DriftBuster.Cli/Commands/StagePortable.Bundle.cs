@@ -35,7 +35,7 @@ internal static partial class StagePortable
     {
         if (TextModeFile.Exists(destination))
         {
-            throw PythonOSError.Create(PythonOSError.FileExists, destination);
+            throw EngineOSError.Create(EngineOSError.FileExists, destination);
         }
 
         Directory.CreateDirectory(destination);
@@ -119,7 +119,7 @@ internal static partial class StagePortable
             }
         }
 
-        Directory.CreateDirectory(PythonPurePath.Parent(stageDir));
+        Directory.CreateDirectory(EnginePurePath.Parent(stageDir));
         CopyTree(bundleDir, stageDir);
     }
 
@@ -156,5 +156,5 @@ internal static partial class StagePortable
 
     // PermissionError: EACCES or EPERM (a Windows sharing violation maps to EACCES).
     private static bool IsPermissionError(Exception exc)
-        => exc is UnauthorizedAccessException || (exc is IOException && PythonOSError.Errno(exc) is PythonOSError.PermissionDenied or PythonOSError.OperationNotPermitted);
+        => exc is UnauthorizedAccessException || (exc is IOException && EngineOSError.Errno(exc) is EngineOSError.PermissionDenied or EngineOSError.OperationNotPermitted);
 }

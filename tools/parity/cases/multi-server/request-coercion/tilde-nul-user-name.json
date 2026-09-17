@@ -1,6 +1,0 @@
-{"description": "a root '~a\\u0000b/x': os.path.expanduser hands the name to pwd.getpwnam, which raises ValueError (embedded null byte) out of _build_plans",
- "aborts": "embedded null byte", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"]},
-  {"host_id": "s2", "label": "S2", "roots": ["fixtures/multi-server/server02", "~a\u0000b/x"]}
- ]}

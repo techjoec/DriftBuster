@@ -28,8 +28,7 @@ public static partial class SqliteSnapshots
     /// <c>Infinity</c>), and bytes are dumped as the JSON string of their <c>repr</c> (<c>"b'...'"</c>).
     /// </summary>
     /// <remarks>
-    /// An unpaired surrogate in <paramref name="salt"/> is encoded as U+FFFD, where Python's strict encode raises (the operator decision
-    /// recorded for hashes in "Python raises on unpaired surrogates"); table and column names read from SQLite never hold one.
+    /// An unpaired surrogate in <paramref name="salt"/> is encoded as U+FFFD, where a strict encode would raise; table and column names read from SQLite never hold one.
     /// </remarks>
     internal static string HashText(object? value, string salt)
     {

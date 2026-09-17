@@ -1,9 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "bad",
-      "profile": "bad-profile",
-      "every": "10m5x"
-    }
-  ]
-}

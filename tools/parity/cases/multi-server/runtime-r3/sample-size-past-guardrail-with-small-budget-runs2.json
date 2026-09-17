@@ -1,9 +1,0 @@
-{
-  "description": "a sample size past the 512 KiB guardrail (clamped) with a 150 KiB budget smaller than one sample, over the UTF-16 file past 128 KiB and the hunt-sample trees, second run against the first run's cache",
-  "fixes": [], "args": ["--sample-size", "9999999", "--sample-budget", "153600", "--runs", "2"], "requires": [],
-  "plans": [
-    {"host_id": "wide", "label": "Wide", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/wide/hostA"], "baseline": {"is_preferred": true, "priority": 1, "role": "auto"}},
-    {"host_id": "hunt", "label": "Hunt", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/hunt-sample/hostA", "$PARITY_MULTI_SERVER_WORK/r3/hunt-sample/hostB"]},
-    {"host_id": "wide2", "label": "Wide2", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/wide/hostB"]}
-  ]
-}

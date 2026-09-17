@@ -6,8 +6,7 @@ using DriftBuster.Backend.Scheduling;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster schedule list|due|mark-complete|skip-until</c>: <c>python -m driftbuster.run_profiles_cli schedule</c> over
-/// <see cref="ScheduleCommands"/>, each payload printed as <c>json.dumps(payload, indent=2, sort_keys=True)</c> and a new line.
+/// <c>driftbuster schedule list|due|mark-complete|skip-until</c> over <see cref="ScheduleCommands"/>, each payload printed as <c>json.dumps(payload, indent=2, sort_keys=True)</c> and a new line.
 /// </summary>
 internal static class ScheduleCommand
 {
@@ -24,15 +23,15 @@ internal static class ScheduleCommand
 
     private static (Option<string?> Config, Option<string?> State) Common(Command command)
     {
-        var config = PythonArguments.OptionalText("--config", "Path to the schedules manifest (defaults to Profiles/schedules.json).");
-        var state = PythonArguments.OptionalText("--state", "Path to persist scheduler state (defaults to Profiles/scheduler-state.json).");
+        var config = EngineArguments.OptionalText("--config", "Path to the schedules manifest (defaults to Profiles/schedules.json).");
+        var state = EngineArguments.OptionalText("--state", "Path to persist scheduler state (defaults to Profiles/scheduler-state.json).");
         command.Options.Add(config);
         command.Options.Add(state);
         return (config, state);
     }
 
     private static string? PathValue(ParseResult parseResult, Option<string?> option)
-        => parseResult.GetValue(option) is { } text ? PythonPurePath.Str(text) : null;
+        => parseResult.GetValue(option) is { } text ? EnginePurePath.Str(text) : null;
 
     private static void PrintJson(TextWriter stdout, object? payload)
     {
@@ -56,7 +55,7 @@ internal static class ScheduleCommand
     {
         var command = new Command("due", "Return runs that are due as of the supplied timestamp.");
         var (config, state) = Common(command);
-        var at = PythonArguments.OptionalText("--at", "Reference timestamp in ISO 8601 format (defaults to current UTC time).");
+        var at = EngineArguments.OptionalText("--at", "Reference timestamp in ISO 8601 format (defaults to current UTC time).");
         command.Options.Add(at);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
@@ -72,7 +71,7 @@ internal static class ScheduleCommand
         var command = new Command("mark-complete", "Mark a pending run complete and advance its schedule.");
         var (config, state) = Common(command);
         var name = new Option<string>("--name") { Required = true, Description = "Schedule name to mark complete." };
-        var completedAt = PythonArguments.OptionalText("--completed-at", "Completion timestamp in ISO 8601 format (defaults to the pending time).");
+        var completedAt = EngineArguments.OptionalText("--completed-at", "Completion timestamp in ISO 8601 format (defaults to the pending time).");
         command.Options.Add(name);
         command.Options.Add(completedAt);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>

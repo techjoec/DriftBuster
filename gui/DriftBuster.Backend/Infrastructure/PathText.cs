@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary>Path text helpers with Python <c>pathlib</c> semantics; ported code never calls <see cref="Path.GetExtension"/>.</summary>
+/// <summary>Path text helpers with Python <c>pathlib</c> semantics; engine code never calls <see cref="Path.GetExtension"/>.</summary>
 public static class PathText
 {
     private static readonly bool Windows = OperatingSystem.IsWindows();
@@ -14,12 +14,12 @@ public static class PathText
 
     internal static string Name(string path, bool windows)
     {
-        var parsed = PythonPurePath.Parse(path, windows);
+        var parsed = EnginePurePath.Parse(path, windows);
         return parsed.Tail.Count > 0 ? parsed.Tail[^1] : string.Empty;
     }
 
     /// <summary><see cref="Name"/> lowered with the invariant culture, matching <c>path.name.lower()</c>.</summary>
-    public static string NameLower(string path) => PythonText.Lower(Name(path));
+    public static string NameLower(string path) => EngineText.Lower(Name(path));
 
     /// <summary>
     /// The final suffix as <c>PurePath.suffix</c> returns it: the last dot must be neither the first nor the last
@@ -33,7 +33,7 @@ public static class PathText
     }
 
     /// <summary><see cref="Suffix"/> lowered with the invariant culture, matching <c>path.suffix.lower()</c>.</summary>
-    public static string SuffixLower(string path) => PythonText.Lower(Suffix(path));
+    public static string SuffixLower(string path) => EngineText.Lower(Suffix(path));
 
     /// <summary>Replaces the platform directory separator with "/", matching <c>PurePath.as_posix()</c>.</summary>
     public static string ToPosix(string path)

@@ -36,12 +36,12 @@ internal sealed class RegistryUsageCounters
         return new OrderedDictionary<string, object?>(StringComparer.Ordinal)
         {
             ["operation"] = name,
-            ["calls"] = PythonValues.Narrow(Calls),
-            ["successes"] = PythonValues.Narrow(Successes),
-            ["errors"] = PythonValues.Narrow(Errors),
-            ["total_duration_ms"] = IniPlugin.PythonRound(TotalDuration * 1000, 3),
-            ["avg_duration_ms"] = IniPlugin.PythonRound(average * 1000, 3),
-            ["last_duration_ms"] = IniPlugin.PythonRound((LastDuration ?? 0.0) * 1000, 3),
+            ["calls"] = EngineValues.Narrow(Calls),
+            ["successes"] = EngineValues.Narrow(Successes),
+            ["errors"] = EngineValues.Narrow(Errors),
+            ["total_duration_ms"] = IniPlugin.EngineRound(TotalDuration * 1000, 3),
+            ["avg_duration_ms"] = IniPlugin.EngineRound(average * 1000, 3),
+            ["last_duration_ms"] = IniPlugin.EngineRound((LastDuration ?? 0.0) * 1000, 3),
             ["first_invocation"] = RegistryOperations.FormatTimestamp(FirstInvocation),
             ["last_invocation"] = RegistryOperations.FormatTimestamp(LastInvocation),
             ["last_error"] = LastError,

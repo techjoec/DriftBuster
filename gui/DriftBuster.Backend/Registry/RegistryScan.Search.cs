@@ -24,7 +24,7 @@ public static partial class RegistryScan
         ArgumentNullException.ThrowIfNull(roots);
         ArgumentNullException.ThrowIfNull(spec);
         backend ??= DefaultBackend();
-        var keywords = spec.Keywords.Select(PythonText.Lower).ToList();
+        var keywords = spec.Keywords.Select(EngineText.Lower).ToList();
         // max(0, int(spec.max_depth)) and max(1, int(spec.max_hits)); the depth and hit counts they are compared with never leave the
         // long range, so a larger int behaves as long.MaxValue.
         var maxDepth = ClampToLong(System.Numerics.BigInteger.Max(0, spec.MaxDepth));
@@ -91,8 +91,8 @@ public static partial class RegistryScan
             return null;
         }
 
-        var combined = $"{PythonText.Lower(name)} {PythonText.Lower(text)}";
-        if (keywords.Count > 0 && !keywords.All(keyword => PythonText.Contains(combined, keyword)))
+        var combined = $"{EngineText.Lower(name)} {EngineText.Lower(text)}";
+        if (keywords.Count > 0 && !keywords.All(keyword => EngineText.Contains(combined, keyword)))
         {
             return null;
         }
@@ -116,16 +116,16 @@ public static partial class RegistryScan
             case byte[] bytes:
                 return ReplacingUtf8.GetString(bytes);
             case bool or int or long or System.Numerics.BigInteger or double:
-                return PythonRepr.Str(value);
-            case var list when RegistryPython.IsList(list):
+                return EngineRepr.Str(value);
+            case var list when RegistryText.IsList(list):
                 try
                 {
                     // ", ".join(str(x) for x in val): bytes items spelled b'...', nested containers by their repr.
-                    return string.Join(", ", ((System.Collections.IList)list!).Cast<object?>().Select(PythonRepr.Str));
+                    return string.Join(", ", ((System.Collections.IList)list!).Cast<object?>().Select(EngineRepr.Str));
                 }
                 catch (ArgumentException)
                 {
-                    // except Exception: text = None (a value the port has no str() for).
+                    // except Exception: text = None (a value with no str() spelling).
                     return null;
                 }
 

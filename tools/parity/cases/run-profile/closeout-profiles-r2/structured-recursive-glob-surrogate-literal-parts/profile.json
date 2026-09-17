@@ -1,1 +1,0 @@
-{"name": "g", "sources": [{"path": "in.txt", "alias": "i"}, {"path": "**/\ud800", "alias": "s", "optional": true}, {"path": "**/x\udcff.txt", "alias": "t"}]}

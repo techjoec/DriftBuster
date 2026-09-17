@@ -1,5 +1,5 @@
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -13,7 +13,7 @@ public static partial class RegistryScan
     internal const string UninstallPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
     internal const string UninstallPathWow64 = @"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall";
 
-    private static readonly PythonPattern VendorSplit = PythonPattern.Compile(@"[\s_-]+");
+    private static readonly EnginePattern VendorSplit = EnginePattern.Compile(@"[\s_-]+");
 
     private static readonly (string Hive, string Base, string? View)[] UninstallProbes =
     [
@@ -23,7 +23,7 @@ public static partial class RegistryScan
     ];
 
     /// <summary>
-    /// <c>scan.is_windows</c> as <see cref="DefaultBackend"/> looks it up; tests swap it as Python monkeypatches the module attribute.
+    /// <c>scan.is_windows</c> as <see cref="DefaultBackend"/> looks it up; tests swap it.
     /// </summary>
     internal static Func<bool> IsWindowsProbe { get; set; } = PlatformIsWindows;
 
@@ -64,7 +64,7 @@ public static partial class RegistryScan
                     values[name] = data;
                 }
 
-                var displayName = PythonText.Strip(TruthyText(values, "DisplayName") ?? string.Empty);
+                var displayName = EngineText.Strip(TruthyText(values, "DisplayName") ?? string.Empty);
                 if (displayName.Length == 0)
                 {
                     continue;
@@ -84,18 +84,18 @@ public static partial class RegistryScan
 
         var seen = new HashSet<(string, string)>();
         var unique = apps.Where(app => seen.Add((app.Hive, app.KeyPath))).ToList();
-        PythonSort<RegistryApp>.Sort(unique, AppLessThan);
+        EngineSort<RegistryApp>.Sort(unique, AppLessThan);
         return unique.AsReadOnly();
     }
 
     // str(values.get(name)) when the value is truthy, else None.
     private static string? TruthyText(Dictionary<string, object?> values, string name)
-        => values.TryGetValue(name, out var value) && PythonBuiltins.IsTruthy(value) ? PythonRepr.Str(value) : null;
+        => values.TryGetValue(name, out var value) && EngineBuiltins.IsTruthy(value) ? EngineRepr.Str(value) : null;
 
     // (a.display_name.lower(), a.hive) < (b.display_name.lower(), b.hive)
     private static bool AppLessThan(RegistryApp left, RegistryApp right)
     {
-        var byName = PathText.CompareCodePoints(PythonText.Lower(left.DisplayName), PythonText.Lower(right.DisplayName));
+        var byName = PathText.CompareCodePoints(EngineText.Lower(left.DisplayName), EngineText.Lower(right.DisplayName));
         return byName != 0 ? byName < 0 : PathText.CompareCodePoints(left.Hive, right.Hive) < 0;
     }
 
@@ -105,7 +105,7 @@ public static partial class RegistryScan
     /// </summary>
     internal static IReadOnlyList<(string Vendor, string Product)> CandidateVendorAppPairs(string appName)
     {
-        var parts = RegistryPython.Split(VendorSplit, appName).Where(part => part.Length > 0).ToList();
+        var parts = RegistryText.Split(VendorSplit, appName).Where(part => part.Length > 0).ToList();
         var pairs = new List<(string, string)>();
         if (parts.Count >= 2)
         {
@@ -125,12 +125,12 @@ public static partial class RegistryScan
     public static IReadOnlyList<RegistryRoot> FindAppRegistryRoots(string appToken, IReadOnlyList<RegistryApp>? installed = null)
     {
         ArgumentNullException.ThrowIfNull(appToken);
-        var token = PythonText.Lower(PythonText.Strip(appToken));
+        var token = EngineText.Lower(EngineText.Strip(appToken));
         var candidates = new List<RegistryRoot>();
         foreach (var app in installed ?? [])
         {
-            if (!PythonText.Contains(PythonText.Lower(app.DisplayName), token)
-                && !(!string.IsNullOrEmpty(app.Publisher) && PythonText.Contains(PythonText.Lower(app.Publisher), token)))
+            if (!EngineText.Contains(EngineText.Lower(app.DisplayName), token)
+                && !(!string.IsNullOrEmpty(app.Publisher) && EngineText.Contains(EngineText.Lower(app.Publisher), token)))
             {
                 continue;
             }
@@ -138,7 +138,7 @@ public static partial class RegistryScan
             var appView = app.View is "32" or "64" ? app.View : null;
             foreach (var (vendor, product) in CandidateVendorAppPairs(app.DisplayName))
             {
-                var suffix = string.Join('\\', new[] { PythonText.Strip(vendor), PythonText.Strip(product) }.Where(segment => segment.Length > 0));
+                var suffix = string.Join('\\', new[] { EngineText.Strip(vendor), EngineText.Strip(product) }.Where(segment => segment.Length > 0));
                 if (suffix.Length > 0)
                 {
                     candidates.Add(new RegistryRoot("HKCU", $"Software\\{suffix}"));
@@ -150,7 +150,7 @@ public static partial class RegistryScan
             candidates.Add(new RegistryRoot(app.Hive, app.KeyPath, appView));
         }
 
-        var baseSuffix = PythonText.Strip(appToken);
+        var baseSuffix = EngineText.Strip(appToken);
         if (baseSuffix.Length > 0)
         {
             candidates.Add(new RegistryRoot("HKCU", $"Software\\{baseSuffix}"));

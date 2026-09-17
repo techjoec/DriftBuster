@@ -31,8 +31,8 @@ public static partial class Canonicaliser
     /// </summary>
     /// <remarks>
     /// <c>json.loads</c> also raises <c>ValueError</c> past 4300 integer digits and <c>RecursionError</c> past the
-    /// nesting limit; neither is a <c>JSONDecodeError</c>, so Python's diff aborts there. <see cref="PythonJson"/> refuses
-    /// both, and the port falls back to text like any other undecodable payload.
+    /// nesting limit; neither is a <c>JSONDecodeError</c>. <see cref="EngineJson"/> refuses
+    /// both, and the canonicaliser falls back to text like any other undecodable payload.
     /// </remarks>
     public static string CanonicaliseJson(string payload)
     {
@@ -42,13 +42,13 @@ public static partial class Canonicaliser
             return string.Empty;
         }
 
-        var stripped = PythonText.Strip(payload);
+        var stripped = EngineText.Strip(payload);
         if (stripped.Length == 0)
         {
             return string.Empty;
         }
 
-        return PythonJson.TryLoads(stripped, out var parsed) ? DumpsSorted(parsed) : CanonicaliseText(payload);
+        return EngineJson.TryLoads(stripped, out var parsed) ? DumpsSorted(parsed) : CanonicaliseText(payload);
     }
 
     /// <summary>
@@ -170,8 +170,8 @@ public static partial class Canonicaliser
         double number when double.IsNaN(number) => "NaN",
         double number when double.IsPositiveInfinity(number) => "Infinity",
         double number when double.IsNegativeInfinity(number) => "-Infinity",
-        double number => PythonRepr.Float(number),
-        byte[] => throw new PythonTypeException("Object of type bytes is not JSON serializable", nameof(value)),
+        double number => EngineRepr.Float(number),
+        byte[] => throw new EngineTypeException("Object of type bytes is not JSON serializable", nameof(value)),
         _ => throw new ArgumentException($"Unsupported JSON value type {value.GetType()}", nameof(value)),
     };
 

@@ -9,7 +9,7 @@ using DriftBuster.Backend.Reporting;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster scan PATH</c>: <c>python -m driftbuster.cli PATH</c>. Detects a file or every file under a directory and prints a
+/// <c>driftbuster scan PATH</c>: detects a file or every file under a directory and prints a
 /// table (<c>_emit_table</c>) or one JSON object per file (<c>--json</c>, <c>_emit_json</c>).
 /// </summary>
 internal static class ScanCommand
@@ -23,10 +23,10 @@ internal static class ScanCommand
 
     public static Command Build()
     {
-        var path = PythonArguments.Positional("path", "File or directory to scan.");
-        var glob = PythonArguments.Text("--glob", "**/*", "Glob used when scanning directories (default: **/*).");
-        var sampleSize = PythonArguments.OptionalInt("--sample-size", "Bytes to sample from each file (defaults to detector setting).");
-        var json = PythonArguments.Flag("--json", "Emit JSON lines instead of a table.");
+        var path = EngineArguments.Positional("path", "File or directory to scan.");
+        var glob = EngineArguments.Text("--glob", "**/*", "Glob used when scanning directories (default: **/*).");
+        var sampleSize = EngineArguments.OptionalInt("--sample-size", "Bytes to sample from each file (defaults to detector setting).");
+        var json = EngineArguments.Flag("--json", "Emit JSON lines instead of a table.");
         var command = new Command("scan", "Scan files for DriftBuster formats.") { path, glob, sampleSize, json };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Execute(
             parseResult.GetValue(path)!,
@@ -41,10 +41,10 @@ internal static class ScanCommand
     /// <summary><c>main(argv)</c> after parsing: exit code 2 with <c>Path does not exist: {path}</c> for a missing path.</summary>
     internal static int Execute(string path, string glob, BigInteger? sampleSize, bool json, TextWriter stdout, TextWriter stderr)
     {
-        var root = PythonPurePath.Str(path);
+        var root = EnginePurePath.Str(path);
         IReadOnlyList<(string Path, DetectionMatch? Match)> results;
         var detector = new Detector(sampleSize: ConsoleText.DetectorSampleSize(sampleSize, Warn), onWarning: Warn);
-        if (PythonPath.IsFile(root))
+        if (EnginePath.IsFile(root))
         {
             results = [(root, detector.ScanFile(root))];
         }
@@ -73,12 +73,12 @@ internal static class ScanCommand
 
     /// <summary>
     /// <c>_relative_path(root, path)</c>: <c>path.relative_to(root).as_posix()</c>, or <c>path.as_posix()</c> outside the root. The walk
-    /// reports absolute paths where Python joins them to the root as given, so a relative root is also tried in its absolute form.
+    /// reports absolute paths, so a relative root is also tried in its absolute form.
     /// </summary>
     internal static string RelativePath(string root, string path)
-        => PythonPurePath.RelativeTo(path, root)
-            ?? (PythonPurePath.IsAbsolute(path) && !PythonPurePath.IsAbsolute(root) ? PythonPurePath.RelativeTo(path, PythonPath.Absolute(root)) : null)
-            ?? PathText.ToPosix(PythonPurePath.Str(path));
+        => EnginePurePath.RelativeTo(path, root)
+            ?? (EnginePurePath.IsAbsolute(path) && !EnginePurePath.IsAbsolute(root) ? EnginePurePath.RelativeTo(path, EnginePath.Absolute(root)) : null)
+            ?? PathText.ToPosix(EnginePurePath.Str(path));
 
     /// <summary><c>_ellipsize(value, limit)</c> over code points.</summary>
     internal static string Ellipsize(string value, int limit)
@@ -142,7 +142,7 @@ internal static class ScanCommand
     }
 
     // str(value or "—")
-    private static string TextOrMissing(object? value) => PythonBuiltins.IsTruthy(value) ? PythonRepr.Str(value) : Missing;
+    private static string TextOrMissing(object? value) => EngineBuiltins.IsTruthy(value) ? EngineRepr.Str(value) : Missing;
 
     private static void EmitJson(string root, IReadOnlyList<(string Path, DetectionMatch? Match)> results, TextWriter stdout)
     {

@@ -1,5 +1,0 @@
-# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
-# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
-FROM alpine
-RUN₂ x
-ENV₂ y

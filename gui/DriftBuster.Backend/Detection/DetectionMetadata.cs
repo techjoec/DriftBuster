@@ -87,7 +87,7 @@ public static partial class DetectionMetadata
     {
         null or string or bool or byte or sbyte or short or ushort or int or uint or long or ulong or BigInteger or float or double or decimal => value,
         byte[] bytes => Encoding.UTF8.GetString(bytes),
-        _ => PythonStr(value),
+        _ => EngineStr(value),
     };
 
     // Strings and byte arrays are scalars; any other dictionary or enumerable is a container.
@@ -173,25 +173,25 @@ public static partial class DetectionMetadata
         }
     }
 
-    private static string KeyText(object? key) => key is string text ? text : PythonStr(key);
+    private static string KeyText(object? key) => key is string text ? text : EngineStr(key);
 
     /// <summary>
     /// Python <c>str()</c> for the values plugins store: <c>None</c>, <c>True</c>/<c>False</c>, integers, floats as
     /// <c>repr</c>, a <see cref="DateTime"/> as <c>YYYY-MM-DD HH:MM:SS</c> with <c>.ffffff</c> only when there are
     /// microseconds, and any other object through its own <see cref="object.ToString"/>.
     /// </summary>
-    internal static string PythonStr(object? value) => value switch
+    internal static string EngineStr(object? value) => value switch
     {
         null => "None",
         string text => text,
         bool flag => flag ? "True" : "False",
-        double number => PythonRepr.Float(number),
-        float number => PythonRepr.Float(number),
-        DateTime date => PythonDateTime(date),
+        double number => EngineRepr.Float(number),
+        float number => EngineRepr.Float(number),
+        DateTime date => EngineDateTime(date),
         _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
     };
 
-    private static string PythonDateTime(DateTime date)
+    private static string EngineDateTime(DateTime date)
     {
         var seconds = date.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         var microseconds = date.Ticks % TimeSpan.TicksPerSecond / 10;

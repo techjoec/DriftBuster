@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
 {
-    /// <summary>The arguments of an anonymised SQL snapshot export (<c>capture.py export-sql</c>).</summary>
+    /// <summary>The arguments of an anonymised SQL snapshot export (<c>driftbuster capture export-sql</c>).</summary>
     public sealed class SqlExportRequest
     {
         /// <summary>SQLite database paths, exported in order.</summary>

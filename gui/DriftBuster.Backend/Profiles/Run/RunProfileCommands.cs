@@ -20,10 +20,10 @@ public static class RunProfileCommands
             var separator = item.IndexOf('=', StringComparison.Ordinal);
             if (separator < 0)
             {
-                throw new CommandExitException($"Invalid option format: {PythonRepr.StrRepr(item)}. Use key=value.");
+                throw new CommandExitException($"Invalid option format: {EngineRepr.StrRepr(item)}. Use key=value.");
             }
 
-            options[PythonText.Strip(item[..separator])] = PythonText.Strip(item[(separator + 1)..]);
+            options[EngineText.Strip(item[..separator])] = EngineText.Strip(item[(separator + 1)..]);
         }
 
         return options;
@@ -42,7 +42,7 @@ public static class RunProfileCommands
                 continue;
             }
 
-            var text = PythonText.Strip(value);
+            var text = EngineText.Strip(value);
             if (text.Length > 0 && !cleaned.Contains(text, StringComparer.Ordinal))
             {
                 cleaned.Add(text);
@@ -136,7 +136,7 @@ public static class RunProfileCommands
         var profiles = RunProfileStore.ListProfiles(baseDir, cancellationToken);
         return profiles.Count == 0
             ? ["No profiles found."]
-            : profiles.Select(profile => PythonText.StripEnd($"- {profile.Name} {profile.Description ?? string.Empty}")).ToList();
+            : profiles.Select(profile => EngineText.StripEnd($"- {profile.Name} {profile.Description ?? string.Empty}")).ToList();
     }
 
     /// <summary><c>_show(args)</c>: the saved profile's dict.</summary>

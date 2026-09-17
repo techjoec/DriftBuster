@@ -1,7 +1,7 @@
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// A Python command's <c>raise SystemExit(message)</c>: the command stops, the console tool prints the message and exits with status 1.
+/// A command's exit with a message: the command stops, the console tool prints the message and exits with status 1.
 /// </summary>
 public sealed class CommandExitException : Exception
 {

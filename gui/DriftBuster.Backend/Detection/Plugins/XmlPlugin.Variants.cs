@@ -173,7 +173,7 @@ public sealed partial class XmlPlugin
 
         if (metadata.TryGetValue("root_local_name", out var rootLocal)
             && rootLocal is string local
-            && PythonText.Lower(local) is "stylesheet" or "transform")
+            && EngineText.Lower(local) is "stylesheet" or "transform")
         {
             AddReason(reasons, $"Root element <{local}> indicates an XSLT stylesheet");
         }
@@ -190,7 +190,7 @@ public sealed partial class XmlPlugin
     {
         if (metadata.TryGetValue("root_local_name", out var rootLocalObject) && rootLocalObject is string rootLocal)
         {
-            var lowered = PythonText.Lower(rootLocal);
+            var lowered = EngineText.Lower(rootLocal);
             if (string.Equals(lowered, "configuration", StringComparison.Ordinal))
             {
                 AddReason(reasons, "Root element indicates framework configuration layout");
@@ -221,7 +221,7 @@ public sealed partial class XmlPlugin
 
     private static bool LooksLikeMsbuild(string extension, OrderedDictionary<string, object?> metadata)
     {
-        var loweredExtension = PythonText.Lower(extension);
+        var loweredExtension = EngineText.Lower(extension);
         if (MsbuildExtensions.Contains(loweredExtension))
         {
             return true;
@@ -229,7 +229,7 @@ public sealed partial class XmlPlugin
 
         if (!metadata.TryGetValue("root_local_name", out var rootLocal)
             || rootLocal is not string local
-            || !string.Equals(PythonText.Lower(local), "project", StringComparison.Ordinal))
+            || !string.Equals(EngineText.Lower(local), "project", StringComparison.Ordinal))
         {
             return false;
         }
@@ -252,7 +252,7 @@ public sealed partial class XmlPlugin
         {
             foreach (var name in attributeMap.Keys)
             {
-                if (PythonText.Lower(name) is "defaulttargets" or "toolsversion" or "sdk")
+                if (EngineText.Lower(name) is "defaulttargets" or "toolsversion" or "sdk")
                 {
                     return true;
                 }
@@ -264,7 +264,7 @@ public sealed partial class XmlPlugin
 
     private static string ClassifyMsbuildKind(string extension)
     {
-        var loweredExtension = PythonText.Lower(extension);
+        var loweredExtension = EngineText.Lower(extension);
         return loweredExtension switch
         {
             ".targets" => "targets",

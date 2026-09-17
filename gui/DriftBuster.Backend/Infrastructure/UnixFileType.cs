@@ -114,9 +114,9 @@ internal static partial class UnixFileType
                 return Kind.Missing;
             }
 
-            // The errno travels as HResult (on the inner exception of an UnauthorizedAccessException), where PythonOSError.Errno and the
+            // The errno travels as HResult (on the inner exception of an UnauthorizedAccessException), where EngineOSError.Errno and the
             // error name mappers read it.
-            var raised = PythonOSError.Create(failed, display);
+            var raised = EngineOSError.Create(failed, display);
             throw failed == PermissionDenied ? new UnauthorizedAccessException(raised.Message, raised) : raised;
         }
 

@@ -1,9 +1,0 @@
-{
-  "name": "contained",
-  "sources": [
-    {
-      "path": "tree/**/s*",
-      "alias": "t"
-    }
-  ]
-}

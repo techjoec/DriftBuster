@@ -1,8 +1,0 @@
-{
-  "description": "registry manifests copy NaN, -Infinity, -0.0, 1e16, 5e-324, a 30-digit integer and keys U+FFFF / U+1F600 / U+00E9 into metadata; the cache JSON (sort_keys by code point, ensure_ascii False) is compared by digest, then reused",
-  "fixes": [], "args": ["--runs", "2"], "requires": [],
-  "plans": [
-    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/regmeta/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/regmeta/hostB"]}
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "description": "a 12000-line ini past the 256 KiB canonical clamp and the 600-line diff clamp, drifting every 50 lines and at both ends",
-  "fixes": [], "args": [], "requires": [],
-  "plans": [
-    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/clamp/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/clamp/hostB"]}
-  ]
-}

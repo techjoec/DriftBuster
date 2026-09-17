@@ -10,7 +10,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <c>registry_scan:</c> key read by line heuristics without a YAML parser.
 /// </summary>
 /// <remarks>
-/// Every Python <c>^\s*...</c> MULTILINE pattern is spelled with <c>\G</c> and driven from each line start by
+/// Every <c>^\s*...</c> MULTILINE pattern is spelled with <c>\G</c> and driven from each line start by
 /// <see cref="LineStartMatcher"/>; <c>\s</c> becomes <c>[\s\x1c-\x1f]</c>, <c>.</c> without DOTALL becomes
 /// <c>[^\n]</c>, and <c>$</c> under <see cref="RegexOptions.Multiline"/> matches before every <c>\n</c> and at the
 /// end on both sides. IGNORECASE on <c>registry_scan</c> is spelled out per letter: a str-pattern letter matches
@@ -19,29 +19,29 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// </remarks>
 public sealed partial class RegistryLivePlugin : IFormatPlugin
 {
-    private const string PythonSpace = @"[\s\x1c-\x1f]";
+    private const string EngineSpace = @"[\s\x1c-\x1f]";
 
     // ^\s*registry_scan\s*:\s*$ (IGNORECASE | MULTILINE)
     internal static readonly Regex YamlKeyPattern = new(
-        @"\G" + PythonSpace + "*[rR][eE][gG][iIİı][sSſ][tT][rR][yY]_[sSſ][cC][aA][nN]" + PythonSpace + "*:" + PythonSpace + "*$",
+        @"\G" + EngineSpace + "*[rR][eE][gG][iIİı][sSſ][tT][rR][yY]_[sSſ][cC][aA][nN]" + EngineSpace + "*:" + EngineSpace + "*$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     // ^\s*token\s*:\s*(?P<val>.+)$ (MULTILINE)
     internal static readonly Regex YamlTokenPattern = new(
-        @"\G" + PythonSpace + "*token" + PythonSpace + "*:" + PythonSpace + @"*(?<val>[^\n]+)$",
+        @"\G" + EngineSpace + "*token" + EngineSpace + "*:" + EngineSpace + @"*(?<val>[^\n]+)$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     // ^\s*keywords\s*:\s*\[.+\]$ (MULTILINE)
     internal static readonly Regex YamlKeywordsPattern = new(
-        @"\G" + PythonSpace + "*keywords" + PythonSpace + "*:" + PythonSpace + @"*\[[^\n]+\]$",
+        @"\G" + EngineSpace + "*keywords" + EngineSpace + "*:" + EngineSpace + @"*\[[^\n]+\]$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     // ^\s*patterns\s*:\s*(\[|-)\s* (MULTILINE)
     internal static readonly Regex YamlPatternsPattern = new(
-        @"\G" + PythonSpace + "*patterns" + PythonSpace + "*:" + PythonSpace + @"*(?:\[|-)" + PythonSpace + "*",
+        @"\G" + EngineSpace + "*patterns" + EngineSpace + "*:" + EngineSpace + @"*(?:\[|-)" + EngineSpace + "*",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
@@ -66,7 +66,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
         var reasons = new List<string>();
         var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
 
-        // Quick filename/extension hints ("registry" contains "reg", so the Python tuple reduces to reg or scan).
+        // Quick filename/extension hints ("registry" contains "reg", so the hint list reduces to reg or scan).
         if (lower.EndsWith(".regscan.json", StringComparison.Ordinal) || lower.EndsWith(".registry.json", StringComparison.Ordinal))
         {
             reasons.Add("Filename suggests a registry scan JSON manifest");
@@ -86,7 +86,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
                 reasons.Add("Found 'registry_scan' top-level key in JSON payload");
             }
 
-            if (!PythonJson.TryLoads(text, out parsedJson))
+            if (!EngineJson.TryLoads(text, out parsedJson))
             {
                 parsedJson = null;
             }
@@ -110,15 +110,15 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
 
     private DetectionMatch BuildJsonMatch(OrderedDictionary<string, object?> spec, List<string> reasons, OrderedDictionary<string, object?> metadata)
     {
-        if (spec.TryGetValue("token", out var token) && token is string tokenText && PythonText.Strip(tokenText).Length > 0)
+        if (spec.TryGetValue("token", out var token) && token is string tokenText && EngineText.Strip(tokenText).Length > 0)
         {
-            metadata["token"] = PythonText.Strip(tokenText);
-            reasons.Add($"Token provided: {PythonText.Strip(tokenText)}");
+            metadata["token"] = EngineText.Strip(tokenText);
+            reasons.Add($"Token provided: {EngineText.Strip(tokenText)}");
         }
 
         if (spec.TryGetValue("keywords", out var keywords) && keywords is List<object?> keywordItems)
         {
-            var kw = keywordItems.Select(PythonRepr.Str).Where(item => PythonText.Strip(item).Length > 0).ToList();
+            var kw = keywordItems.Select(EngineRepr.Str).Where(item => EngineText.Strip(item).Length > 0).ToList();
             if (kw.Count > 0)
             {
                 metadata["keywords"] = kw;
@@ -128,7 +128,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
 
         if (spec.TryGetValue("patterns", out var patterns) && patterns is List<object?> patternItems)
         {
-            var pt = patternItems.Select(PythonRepr.Str).Where(item => PythonText.Strip(item).Length > 0).ToList();
+            var pt = patternItems.Select(EngineRepr.Str).Where(item => EngineText.Strip(item).Length > 0).ToList();
             if (pt.Count > 0)
             {
                 metadata["patterns"] = pt;
@@ -144,7 +144,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             }
         }
 
-        // Python sums 0.65 + 0.05 * flag + ... left to right; the same operations give the same double.
+        // Sums 0.65 + 0.05 * flag + ... left to right; the order fixes the resulting double.
         var confidence = 0.65
             + (0.05 * (metadata.ContainsKey("token") ? 1 : 0))
             + (0.05 * (metadata.ContainsKey("keywords") ? 1 : 0))
@@ -168,7 +168,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
         var tokenMatch = LineStartMatcher.Matches(YamlTokenPattern, text).FirstOrDefault();
         if (tokenMatch is not null)
         {
-            var token = PythonText.Strip(tokenMatch.Groups["val"].Value).Trim('"', '\'');
+            var token = EngineText.Strip(tokenMatch.Groups["val"].Value).Trim('"', '\'');
             if (token.Length > 0)
             {
                 metadata["token"] = token;

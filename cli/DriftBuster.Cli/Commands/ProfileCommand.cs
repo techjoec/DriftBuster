@@ -6,15 +6,14 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster profile create|list|show|run</c>: the run profile commands of <c>python -m driftbuster.run_profiles_cli</c> (and
-/// <c>python -m driftbuster.cli run-profile</c>) over <see cref="RunProfileCommands"/>. <c>--base-dir</c> is accepted before or after the
-/// subcommand.
+/// <c>driftbuster profile create|list|show|run</c>: the run profile commands over <see cref="RunProfileCommands"/>. <c>--base-dir</c> is
+/// accepted before or after the subcommand.
 /// </summary>
 internal static class ProfileCommand
 {
     /// <summary><c>--base-dir</c>, shared by the profile and schedule commands.</summary>
     public static Option<string?> BaseDirOption()
-        => new("--base-dir") { Description = "Override the profiles root directory (defaults to ./Profiles).", Recursive = true };
+        => new("--base-dir") { Description = "Directory holding the Profiles folder (defaults to the current directory).", Recursive = true };
 
     public static Command Build()
     {
@@ -28,17 +27,17 @@ internal static class ProfileCommand
     }
 
     internal static string? BaseDir(ParseResult parseResult, Option<string?> option)
-        => parseResult.GetValue(option) is { } text ? PythonPurePath.Str(text) : null;
+        => parseResult.GetValue(option) is { } text ? EnginePurePath.Str(text) : null;
 
     private static Command BuildCreate(Option<string?> baseDir)
     {
         var name = new Option<string>("--name") { Required = true };
-        var description = PythonArguments.OptionalText("--description", "Profile description.");
-        var source = PythonArguments.Append("--source", "File, directory, or glob to include (repeatable).");
-        var baseline = PythonArguments.OptionalText("--baseline", "Source path that should act as the baseline (defaults to first source).");
-        var option = PythonArguments.Append("--option", "Custom option in key=value format (repeatable).");
-        var ignoreRule = PythonArguments.Append("--secret-ignore-rule", "Secret scanner rule names to ignore (repeatable).");
-        var ignorePattern = PythonArguments.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings (repeatable).");
+        var description = EngineArguments.OptionalText("--description", "Profile description.");
+        var source = EngineArguments.Append("--source", "File, directory, or glob to include (repeatable).");
+        var baseline = EngineArguments.OptionalText("--baseline", "Source path that should act as the baseline (defaults to first source).");
+        var option = EngineArguments.Append("--option", "Custom option in key=value format (repeatable).");
+        var ignoreRule = EngineArguments.Append("--secret-ignore-rule", "Secret scanner rule names to ignore (repeatable).");
+        var ignorePattern = EngineArguments.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings (repeatable).");
         var command = new Command("create", "Create or update a run profile.") { name, description, source, baseline, option, ignoreRule, ignorePattern };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
@@ -74,7 +73,7 @@ internal static class ProfileCommand
 
     private static Command BuildShow(Option<string?> baseDir)
     {
-        var name = PythonArguments.Positional("name", "Profile name.");
+        var name = EngineArguments.Positional("name", "Profile name.");
         var command = new Command("show", "Show profile configuration.") { name };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
@@ -87,12 +86,12 @@ internal static class ProfileCommand
 
     private static Command BuildRun(Option<string?> baseDir)
     {
-        var name = PythonArguments.OptionalText("--name", "Name of a saved profile.");
-        var profile = PythonArguments.OptionalText("--profile", "Path to a profile JSON file.");
-        var timestamp = PythonArguments.OptionalText("--timestamp", "Override run timestamp (UTC).");
-        var save = PythonArguments.Flag("--save", "Persist the supplied profile before running.");
-        var ignoreRule = PythonArguments.Append("--secret-ignore-rule", "Secret scanner rule names to ignore for this run (repeatable).");
-        var ignorePattern = PythonArguments.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings for this run (repeatable).");
+        var name = EngineArguments.OptionalText("--name", "Name of a saved profile.");
+        var profile = EngineArguments.OptionalText("--profile", "Path to a profile JSON file.");
+        var timestamp = EngineArguments.OptionalText("--timestamp", "Override run timestamp (UTC).");
+        var save = EngineArguments.Flag("--save", "Persist the supplied profile before running.");
+        var ignoreRule = EngineArguments.Append("--secret-ignore-rule", "Secret scanner rule names to ignore for this run (repeatable).");
+        var ignorePattern = EngineArguments.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings for this run (repeatable).");
         var command = new Command("run", "Execute a profile run.") { name, profile, timestamp, save, ignoreRule, ignorePattern };
         // add_mutually_exclusive_group(required=True): exactly one of --name and --profile.
         command.Validators.Add(result =>

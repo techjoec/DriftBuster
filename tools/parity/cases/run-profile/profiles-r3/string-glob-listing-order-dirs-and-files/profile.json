@@ -1,8 +1,0 @@
-{
- "name": "order",
- "sources": [
-  "*.cfg",
-  "**/*.cfg",
-  "x.cfg"
- ]
-}

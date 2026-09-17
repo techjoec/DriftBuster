@@ -261,8 +261,8 @@ namespace DriftBuster.Backend
             => MultiServerSchema.ValidateResponse(response);
 
         // The data root's diff cache, after copying the entries a checkout's legacy <repo>/artifacts/cache/diffs holds that the
-        // cache lacks (best effort, before every scan, as the facade always did), resolved as _resolve_cache_dir resolves the
-        // cache_dir the Python bridge was sent: user home expanded, created, and every symlink and ".." followed physically.
+        // cache lacks (best effort, before every scan), resolved as the scan's
+        // cache_dir is: user home expanded, created, and every symlink and ".." followed physically.
         internal static string PrepareMultiServerCacheDirectory(string? repositoryRoot)
         {
             var cacheDirectory = DriftbusterPaths.GetCacheDirectory("diffs");
@@ -429,9 +429,9 @@ namespace DriftBuster.Backend
 
         private static string EnsureFile(string path, bool isBaseline)
         {
-            if (File.Exists(path) && !PythonPath.IsFile(path))
+            if (File.Exists(path) && !EnginePath.IsFile(path))
             {
-                // A FIFO, socket or device: reading it could block forever (PythonPath.IsFile never opens it).
+                // A FIFO, socket or device: reading it could block forever (EnginePath.IsFile never opens it).
                 throw new InvalidOperationException(isBaseline
                     ? $"Baseline path is not a regular file: {path}"
                     : $"Comparison path is not a regular file: {path}");

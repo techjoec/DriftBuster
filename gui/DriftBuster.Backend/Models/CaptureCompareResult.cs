@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
 {
-    /// <summary>The outcome of comparing two capture snapshots (<c>capture.py compare</c>).</summary>
+    /// <summary>The outcome of comparing two capture snapshots (<c>driftbuster capture compare</c>).</summary>
     public sealed class CaptureCompareResult
     {
         /// <summary>0 for a comparison or a missing baseline, 1 when the current snapshot is missing or unreadable.</summary>

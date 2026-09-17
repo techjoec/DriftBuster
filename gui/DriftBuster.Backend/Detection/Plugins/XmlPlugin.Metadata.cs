@@ -15,18 +15,18 @@ public sealed partial class XmlPlugin
     private static readonly string[] ConfigSectionKeywords = ["appsettings", "runtime", "system.web"];
 
     /// <summary>Orders (key, value) pairs by <c>(key.lower(), key)</c> with Python string comparison; used with a stable sort.</summary>
-    private sealed class PythonKeyOrder : IComparer<(string Key, string Value)>
+    private sealed class EngineKeyOrder : IComparer<(string Key, string Value)>
     {
-        public static PythonKeyOrder Instance { get; } = new();
+        public static EngineKeyOrder Instance { get; } = new();
 
         public int Compare((string Key, string Value) x, (string Key, string Value) y)
         {
-            var result = PathText.CompareCodePoints(PythonText.Lower(x.Key), PythonText.Lower(y.Key));
+            var result = PathText.CompareCodePoints(EngineText.Lower(x.Key), EngineText.Lower(y.Key));
             return result != 0 ? result : PathText.CompareCodePoints(x.Key, y.Key);
         }
     }
 
-    /// <summary>Mirror of <c>_collect_metadata</c>; internal so the parse-cap test can call it directly.</summary>
+    /// <summary>Collects the metadata; internal so the parse-cap test can call it directly.</summary>
     internal OrderedDictionary<string, object?> CollectMetadata(string text, string extension)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -73,7 +73,7 @@ public sealed partial class XmlPlugin
         var declAttrs = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
         foreach (var (name, value) in AttributeMatches(attrsSegment))
         {
-            declAttrs[PythonText.Lower(name)] = value;
+            declAttrs[EngineText.Lower(name)] = value;
         }
 
         metadata["xml_declaration"] = declAttrs;
@@ -130,7 +130,7 @@ public sealed partial class XmlPlugin
         foreach (var match in XmlnsMatches(snippet))
         {
             var prefix = match.Prefix ?? "default";
-            var uri = PythonText.Strip(match.Uri);
+            var uri = EngineText.Strip(match.Uri);
             pairs.Add((prefix, uri));
             provenance.Add(ProvenanceEntry(snippet, match, uri));
         }
@@ -141,7 +141,7 @@ public sealed partial class XmlPlugin
         }
 
         var namespaces = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var (prefix, uri) in pairs.OrderBy(pair => pair, PythonKeyOrder.Instance))
+        foreach (var (prefix, uri) in pairs.OrderBy(pair => pair, EngineKeyOrder.Instance))
         {
             namespaces[prefix] = uri;
         }
@@ -226,7 +226,7 @@ public sealed partial class XmlPlugin
             segment.Append(ch);
         }
 
-        var rawSegment = PythonText.Strip(segment.ToString());
+        var rawSegment = EngineText.Strip(segment.ToString());
         if (rawSegment.Length == 0)
         {
             return result;
@@ -234,11 +234,11 @@ public sealed partial class XmlPlugin
 
         if (rawSegment.EndsWith('/'))
         {
-            rawSegment = PythonText.Strip(rawSegment[..^1]);
+            rawSegment = EngineText.Strip(rawSegment[..^1]);
         }
 
-        var items = AttributeMatches(rawSegment).Select(pair => (pair.Name, PythonText.Strip(pair.Value))).ToList();
-        foreach (var (name, value) in items.OrderBy(pair => pair, PythonKeyOrder.Instance))
+        var items = AttributeMatches(rawSegment).Select(pair => (pair.Name, EngineText.Strip(pair.Value))).ToList();
+        foreach (var (name, value) in items.OrderBy(pair => pair, EngineKeyOrder.Instance))
         {
             result[name] = value;
         }
@@ -265,7 +265,7 @@ public sealed partial class XmlPlugin
 
             var colon = attrName.IndexOf(':', StringComparison.Ordinal);
             var localName = colon < 0 ? attrName : attrName[(colon + 1)..];
-            var tokens = PythonText.Split(rawText);
+            var tokens = EngineText.Split(rawText);
             if (tokens.Count == 0)
             {
                 continue;

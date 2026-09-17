@@ -1,2 +1,0 @@
-<!DOCTYPE config [<!ENTITY name "value">]>
-<config>&name;</config>

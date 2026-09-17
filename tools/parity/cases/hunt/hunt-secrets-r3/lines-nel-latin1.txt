@@ -1,1 +1,0 @@
-server a.local…host b.local …version 1.2.3path /opt/été

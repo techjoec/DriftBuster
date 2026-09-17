@@ -12,7 +12,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <remarks>
 /// The block pattern <c>^\s*(job|server|seal|listener|datacenter|client)\b[^\n{]*\{</c> (MULTILINE) is matched by
 /// hand because Python's <c>\b</c> derives from <c>\w</c> = [L N _] on code points and .NET's from [L Mn Nd Pc] on
-/// UTF-16 units. The assignment pattern <c>^\s*[A-Za-z0-9_.\-]+\s*=\s*\S+</c> (MULTILINE) is the Python regex with
+/// UTF-16 units. The assignment pattern <c>^\s*[A-Za-z0-9_.\-]+\s*=\s*\S+</c> (MULTILINE) is the regex with
 /// <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>, <c>\S</c> as its complement and <c>^</c> spelled <c>\G</c>, driven from
 /// every line start by <see cref="LineStartMatcher"/> (linear over blank-line runs); every other construct is
 /// ASCII, and only match existence is consumed.
@@ -21,12 +21,12 @@ public sealed class HclPlugin : IFormatPlugin
 {
     private const string Extension = ".hcl";
     private const int BlocksPreviewLimit = 5;
-    private const string PythonSpace = @"[\s\x1c-\x1f]";
+    private const string EngineSpace = @"[\s\x1c-\x1f]";
 
     private static readonly string[] BlockKeywords = ["job", "server", "seal", "listener", "datacenter", "client"];
 
     internal static readonly Regex KeyValuePattern = new(
-        @"\G" + PythonSpace + @"*[A-Za-z0-9_.\-]+" + PythonSpace + "*=" + PythonSpace + @"*[^\s\x1c-\x1f]+",
+        @"\G" + EngineSpace + @"*[A-Za-z0-9_.\-]+" + EngineSpace + "*=" + EngineSpace + @"*[^\s\x1c-\x1f]+",
         RegexOptions.Multiline | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 
@@ -38,7 +38,7 @@ public sealed class HclPlugin : IFormatPlugin
 
     private static int SkipSpaces(string text, int offset)
     {
-        while (offset < text.Length && PythonText.IsSpace(text[offset]))
+        while (offset < text.Length && EngineText.IsSpace(text[offset]))
         {
             offset++;
         }
@@ -55,7 +55,7 @@ public sealed class HclPlugin : IFormatPlugin
         }
 
         Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out _);
-        return !PythonText.IsWordRune(rune);
+        return !EngineText.IsWordRune(rune);
     }
 
     // "[^\n{]*\{" from offset: the first "{" before the next "\n" ends the match; returns -1 when there is none.
@@ -118,7 +118,7 @@ public sealed class HclPlugin : IFormatPlugin
 
     private static string ChooseVariant(List<string> blocks)
     {
-        var lowered = blocks.Select(PythonText.Lower).ToList();
+        var lowered = blocks.Select(EngineText.Lower).ToList();
         if (lowered.Contains("job", StringComparer.Ordinal))
         {
             return "hashicorp-nomad";

@@ -8,13 +8,13 @@ namespace DriftBuster.Backend.Detection.Plugins;
 internal static partial class BinaryPlist
 {
     /// <summary>
-    /// <c>sorted(payload.keys()) if isinstance(payload, dict) else []</c>, sorted by <see cref="PythonSort{T}"/> with
+    /// <c>sorted(payload.keys()) if isinstance(payload, dict) else []</c>, sorted by <see cref="EngineSort{T}"/> with
     /// Python's <c>&lt;</c>, so NaN keys land where CPython's sort leaves them. A key of <c>None</c> comes back as null.
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The <c>TypeError</c> Python raises at the first comparison of two keys with no <c>&lt;</c> between them (str
-    /// against a number, any UID or None), naming that comparison's operand types. The Python plugin does not catch
-    /// it, so it escapes <c>detect</c> there too.
+    /// against a number, any UID or None), naming that comparison's operand types. The plugin does not catch
+    /// it, so it escapes <c>detect</c>.
     /// </exception>
     public static List<object?> SortedKeys(object? payload)
     {
@@ -24,7 +24,7 @@ internal static partial class BinaryPlist
         }
 
         var keys = dict.Keys.Select(key => ReferenceEquals(key, NoneKey) ? null : key).ToList();
-        PythonSort<object?>.Sort(keys, LessThan);
+        EngineSort<object?>.Sort(keys, LessThan);
         return keys;
     }
 
@@ -35,7 +35,7 @@ internal static partial class BinaryPlist
         if (category == Category.Unordered || CategoryOf(right) != category)
         {
             throw new InvalidOperationException(
-                $"'<' not supported between instances of '{PythonTypeName(left)}' and '{PythonTypeName(right)}'");
+                $"'<' not supported between instances of '{ValueTypeName(left)}' and '{ValueTypeName(right)}'");
         }
 
         return category switch
@@ -86,7 +86,7 @@ internal static partial class BinaryPlist
         _ => Category.Unordered,
     };
 
-    private static string PythonTypeName(object? key) => key switch
+    private static string ValueTypeName(object? key) => key switch
     {
         null => "NoneType",
         string => "str",

@@ -1,1 +1,0 @@
-{"name": "optional baseline", "baseline": "gone.txt", "sources": [{"path": "gone.txt", "optional": true}, {"path": "here.txt", "alias": "h"}]}

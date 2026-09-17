@@ -1,8 +1,0 @@
-{
-  "name": "baseline glob",
-  "sources": [
-    "logs/*.log",
-    "app.json"
-  ],
-  "baseline": "logs/*.log"
-}

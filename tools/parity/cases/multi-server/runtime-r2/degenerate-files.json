@@ -1,8 +1,0 @@
-{
-  "description": "empty json, BOM-only xml, a lone CR, a NUL inside an ini-like conf and a BOM-prefixed CRLF json",
-  "fixes": [], "args": ["--runs", "2"], "requires": [],
-  "plans": [
-    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/degenerate/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/degenerate/hostB"]}
-  ]
-}

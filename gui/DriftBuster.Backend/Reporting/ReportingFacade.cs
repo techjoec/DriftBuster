@@ -5,7 +5,7 @@ using DriftBuster.Backend.Models;
 namespace DriftBuster.Backend.Reporting;
 
 /// <summary>
-/// <c>driftbuster.reporting</c>'s <c>__all__</c>: the diff, redaction, JSON lines, HTML, snapshot and summary helpers under one name.
+/// The diff, redaction, JSON lines, HTML, snapshot and summary helpers under one name.
 /// <c>DiffResult</c> is <see cref="DiffArtifact"/>, <c>DiffResultSummary</c> is <see cref="DiffResultSummary"/> and
 /// <c>RedactionFilter</c> is <see cref="Diff.RedactionFilter"/>.
 /// </summary>

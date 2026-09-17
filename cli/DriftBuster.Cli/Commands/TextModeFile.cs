@@ -9,12 +9,12 @@ namespace DriftBuster.Cli.Commands;
 internal static class TextModeFile
 {
     public static string ReadText(string path)
-        => PythonTextFile.ReadUtf8Text(path).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        => EngineTextFile.ReadUtf8Text(path).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 
     public static void WriteText(string path, string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        PythonTextFile.WriteText(path, OperatingSystem.IsWindows() ? text.Replace("\n", "\r\n", StringComparison.Ordinal) : text);
+        EngineTextFile.WriteText(path, OperatingSystem.IsWindows() ? text.Replace("\n", "\r\n", StringComparison.Ordinal) : text);
     }
 
     /// <summary><c>path.exists()</c>: the entry, followed through links, is a file or a directory.</summary>
@@ -23,7 +23,7 @@ internal static class TextModeFile
     /// <summary><c>Path.cwd() != root</c> as <c>Path</c> equality compares them (case-insensitively on Windows).</summary>
     public static bool SamePath(string left, string right)
         => string.Equals(
-            PythonPurePath.Str(left),
-            PythonPurePath.Str(right),
+            EnginePurePath.Str(left),
+            EnginePurePath.Str(right),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 }

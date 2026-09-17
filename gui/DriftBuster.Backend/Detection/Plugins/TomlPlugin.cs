@@ -9,7 +9,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <c>[table]</c> headers, <c>key = value</c> pairs, quoted, array and inline-table values.
 /// </summary>
 /// <remarks>
-/// Regexes here are the Python patterns with <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>: .NET's <c>\s</c> is
+/// Regexes here are the rule patterns with <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>: .NET's <c>\s</c> is
 /// <c>[\f\n\r\t\v\x85\p{Z}]</c>, which is Python's <c>str.isspace</c> set minus U+001C-U+001F. The three
 /// <c>^\s*</c> MULTILINE patterns are spelled with <c>\G</c> and driven from every line start by
 /// <see cref="LineStartMatcher"/> (linear over blank-line runs). Every other construct
@@ -24,40 +24,40 @@ public sealed partial class TomlPlugin : IFormatPlugin
     private const string Extension = ".toml";
     private const int BareKeyLineWindow = 500;
     private const int BareKeyThreshold = 3;
-    private const string PythonSpace = @"[\s\x1c-\x1f]";
+    private const string EngineSpace = @"[\s\x1c-\x1f]";
 
     internal static readonly Regex TableHeaderPattern = new(
-        @"\G" + PythonSpace + @"*\[[A-Za-z0-9_.\-]+\]" + PythonSpace + "*$",
+        @"\G" + EngineSpace + @"*\[[A-Za-z0-9_.\-]+\]" + EngineSpace + "*$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     internal static readonly Regex ArrayOfTablesPattern = new(
-        @"\G" + PythonSpace + @"*\[\[[A-Za-z0-9_.\-]+\]\]" + PythonSpace + "*$",
+        @"\G" + EngineSpace + @"*\[\[[A-Za-z0-9_.\-]+\]\]" + EngineSpace + "*$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     internal static readonly Regex KeyEqualsPattern = new(
-        @"\G" + PythonSpace + @"*[A-Za-z0-9_.\-]+" + PythonSpace + "*=" + PythonSpace + "*.+$",
+        @"\G" + EngineSpace + @"*[A-Za-z0-9_.\-]+" + EngineSpace + "*=" + EngineSpace + "*.+$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex QuotedValuePattern = new(
-        "=" + PythonSpace + @"*(?:""[^""]*""|'[^']*')",
+        "=" + EngineSpace + @"*(?:""[^""]*""|'[^']*')",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex ArrayValuePattern = new(
-        "=" + PythonSpace + @"*\[.*?\]",
+        "=" + EngineSpace + @"*\[.*?\]",
         RegexOptions.Singleline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex InlineTablePattern = new(
-        "=" + PythonSpace + @"*\{.*?\}",
+        "=" + EngineSpace + @"*\{.*?\}",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex TrailingCommaPattern = new(
-        "," + PythonSpace + @"*\]",
+        "," + EngineSpace + @"*\]",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
@@ -236,8 +236,8 @@ public sealed partial class TomlPlugin : IFormatPlugin
         var count = 0;
         foreach (var line in lines.Take(BareKeyLineWindow))
         {
-            var stripped = PythonText.StripStart(line);
-            if (PythonText.Strip(line).Length == 0
+            var stripped = EngineText.StripStart(line);
+            if (EngineText.Strip(line).Length == 0
                 || stripped[0] is '#' or ';' or '['
                 || line.Contains('=', StringComparison.Ordinal)
                 || line.Contains(':', StringComparison.Ordinal))

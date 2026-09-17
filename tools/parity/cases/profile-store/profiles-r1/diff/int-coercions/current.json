@@ -1,5 +1,0 @@
-{"total_profiles": -0.0, "total_configs": null, "profiles": [
- {"name": "a", "config_ids": ["x", "y"], "config_count": "-2"},
- {"name": "b", "config_ids": ["x", "y", "z"], "config_count": 1e20},
- {"name": "c", "config_ids": ["k"], "config_count": false},
- {"name": "d", "config_ids": [], "config_count": "1_000_000_000_000_000_000_000"}]}

@@ -1,9 +1,0 @@
-{
- "version": "invalid-utf8",
- "rules": [
-  {
-   "name": "Loop",
-   "pattern": "SEC\ufffd?"
-  }
- ]
-}

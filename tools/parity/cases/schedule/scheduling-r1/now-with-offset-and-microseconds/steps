@@ -1,4 +1,0 @@
-list --now 2025-06-30T23:59:59.999999-09:30
-due --now 2025-07-01T09:40:00+00:00
-mark-complete --name nostart --completed-at 2025-07-01T09:29:59.5+00:00
-list

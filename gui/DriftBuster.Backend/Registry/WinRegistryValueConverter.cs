@@ -5,7 +5,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// <c>Reg2Py</c> from CPython 3.13's <c>PC/winreg.c</c>: the Python value <c>winreg.EnumValue</c> returns for a value's raw data and
+/// <c>RegToValue</c> from CPython 3.13's <c>PC/winreg.c</c>: the Python value <c>winreg.EnumValue</c> returns for a value's raw data and
 /// type, following that file (PSF License) branch for branch.
 /// </summary>
 /// <remarks>
@@ -18,7 +18,7 @@ namespace DriftBuster.Backend.Registry;
 /// <item>Every other type (<c>REG_BINARY</c>, <c>REG_NONE</c>, <c>REG_DWORD_BIG_ENDIAN</c>, <c>REG_LINK</c>, ...): the bytes, or
 /// null for no data.</item>
 /// </list>
-/// Integers are narrowed as <see cref="PythonValues.Narrow"/> narrows them, lists are <see cref="List{T}"/> of <see cref="object"/>
+/// Integers are narrowed as <see cref="EngineValues.Narrow"/> narrows them, lists are <see cref="List{T}"/> of <see cref="object"/>
 /// and bytes are <see cref="byte"/> arrays.
 /// </remarks>
 public static class WinRegistryValueConverter
@@ -37,8 +37,8 @@ public static class WinRegistryValueConverter
     public static object? Convert(ReadOnlySpan<byte> data, int type)
         => type switch
         {
-            RegDword => PythonValues.Narrow(ReadUnsigned(data, 4)),
-            RegQword => PythonValues.Narrow(ReadUnsigned(data, 8)),
+            RegDword => EngineValues.Narrow(ReadUnsigned(data, 4)),
+            RegQword => EngineValues.Narrow(ReadUnsigned(data, 8)),
             RegSz or RegExpandSz => UnitsUntilNul(Units(data), 0, data.Length / 2),
             RegMultiSz => MultiString(data),
             _ => data.Length == 0 ? null : data.ToArray(),
@@ -74,7 +74,7 @@ public static class WinRegistryValueConverter
         return new string(units, start, end - start);
     }
 
-    // countStrings, fixupMultiSZ and the REG_MULTI_SZ loop of Reg2Py.
+    // countStrings, fixupMultiSZ and the REG_MULTI_SZ loop of RegToValue.
     private static List<object?> MultiString(ReadOnlySpan<byte> data)
     {
         var result = new List<object?>();

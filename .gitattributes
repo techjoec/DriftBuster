@@ -1,3 +1,2 @@
-# Parity case corpus must round-trip byte for byte; never normalise line endings.
-tools/parity/cases/** -text
+# Fixtures must round-trip byte for byte; never normalise line endings.
 fixtures/** -text

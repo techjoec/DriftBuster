@@ -1,2 +1,0 @@
-pw [SECRET] pw
-[SECRET] already

@@ -1,8 +1,0 @@
-{
-  "description": "a root spelled '~daemon/../..' before an absolute path: os.path.expanduser looks the named user up with pwd.getpwnam and joins their home (/usr/sbin on Debian and Ubuntu), and the port reads the same entry through getpwnam_r (PythonOsPath.ExpandUser), so both sides scan the tree",
-  "fixes": ["a"], "args": [], "requires": [],
-  "plans": [
-    {"host_id": "base", "label": "base", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostA"], "baseline": {"is_preferred": true}},
-    {"host_id": "tilde", "label": "tilde", "scope": "custom_roots", "roots": ["~daemon/../..$PARITY_MULTI_SERVER_WORK/r3/plain/hostB"]}
-  ]
-}

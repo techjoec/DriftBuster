@@ -1,1 +1,0 @@
-CREATE TABLE t (x TEXT);

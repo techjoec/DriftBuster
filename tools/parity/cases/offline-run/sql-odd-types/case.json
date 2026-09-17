@@ -1,6 +1,0 @@
-{
-  "databases": {
-    "odd.sqlite": "odd.sql",
-    "empty.sqlite": "empty.sql"
-  }
-}

@@ -79,7 +79,7 @@ public class Detector
     {
         if (sampleSize <= 0)
         {
-            throw new PythonValueException("sample_size must be a positive integer", nameof(sampleSize));
+            throw new EngineValueException("sample_size must be a positive integer", nameof(sampleSize));
         }
 
         if (sampleSize > MaxSampleSize)
@@ -104,7 +104,7 @@ public class Detector
 
         if (value <= 0)
         {
-            throw new PythonValueException("max_total_sample_bytes must be a positive integer", nameof(value));
+            throw new EngineValueException("max_total_sample_bytes must be a positive integer", nameof(value));
         }
 
         return value;
@@ -133,20 +133,20 @@ public class Detector
     }
 
     /// <summary>Opens the file whose first bytes are sampled; overridable for fault injection.</summary>
-    protected internal virtual Stream OpenFile(string path) => new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+    protected internal virtual Stream OpenFile(string path) => new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
 
-    /// <summary><see cref="PythonPath.IsFile"/>; overridable for fault injection.</summary>
-    protected internal virtual bool IsFile(string path) => PythonPath.IsFile(path);
+    /// <summary><see cref="EnginePath.IsFile"/>; overridable for fault injection.</summary>
+    protected internal virtual bool IsFile(string path) => EnginePath.IsFile(path);
 
-    /// <summary><see cref="PythonPath.ResolvePhysicalPath"/>.</summary>
-    internal static string? ResolvePhysicalPath(string fullPath) => PythonPath.ResolvePhysicalPath(fullPath);
+    /// <summary><see cref="EnginePath.ResolvePhysicalPath"/>.</summary>
+    internal static string? ResolvePhysicalPath(string fullPath) => EnginePath.ResolvePhysicalPath(fullPath);
 
     /// <summary>
-    /// The absolute paths (<see cref="PythonPath.Absolute"/>, ".." parts kept) of <c>sorted(root.glob(glob))</c>
-    /// (<see cref="PythonPath.SortedGlob"/>); overridable for fault injection.
+    /// The absolute paths (<see cref="EnginePath.Absolute"/>, ".." parts kept) of <c>sorted(root.glob(glob))</c>
+    /// (<see cref="EnginePath.SortedGlob"/>); overridable for fault injection.
     /// </summary>
     protected internal virtual IReadOnlyList<string> EnumerateFiles(string root, string glob)
-        => PythonPath.SortedGlob(root, glob).Select(PythonPath.Absolute).ToList();
+        => EnginePath.SortedGlob(root, glob).Select(EnginePath.Absolute).ToList();
 
     private byte[] ReadSample(string path, int readSize)
     {
@@ -220,8 +220,8 @@ public class Detector
     }
 
     // First plugin match in registry order. A pattern that gives up on this sample must not abort the scan of every
-    // other file, so a match timeout is reported the way an unreadable file is; Python has no match timeouts, and
-    // this never fires on a sample the port matches in bounded time.
+    // other file, so a match timeout is reported the way an unreadable file is; this never
+    // fires on a sample the engine matches in bounded time.
     private DetectionMatch? FirstMatch(string path, byte[] sample, string? text)
     {
         foreach (var plugin in _plugins)
@@ -288,7 +288,7 @@ public class Detector
 
     /// <summary>
     /// Scans a file or directory while enforcing the aggregate sampling budget. The root is spelled as <c>Path(root)</c>
-    /// spells it (<see cref="PythonPurePath.Str"/>). Only regular files are scanned (<see cref="PythonPath.IsFile"/>); an entry
+    /// spells it (<see cref="EnginePurePath.Str"/>). Only regular files are scanned (<see cref="EnginePath.IsFile"/>); an entry
     /// whose name the runtime cannot decode is reported through <see cref="HandleError"/>. A file root yields a single entry;
     /// a missing root raises <see cref="DetectorIOException"/> through <see cref="HandleError"/>; a directory walk
     /// stops after the first file that exhausts the budget.
@@ -298,7 +298,7 @@ public class Detector
     {
         ArgumentNullException.ThrowIfNull(root);
         // root = Path(root): a trailing separator, "//" and "." parts are dropped, so "x.config/" names the file.
-        root = PythonPurePath.Str(root);
+        root = EnginePurePath.Str(root);
         var results = new List<(string Path, DetectionMatch? Match)>();
         try
         {
@@ -313,7 +313,7 @@ public class Detector
                 return results;
             }
 
-            if (!Directory.Exists(PythonPath.KernelPath(root)))
+            if (!Directory.Exists(EnginePath.KernelPath(root)))
             {
                 throw new FileNotFoundException($"Path does not exist: {root}", root);
             }
@@ -353,9 +353,9 @@ public class Detector
             {
                 if (!IsFile(path))
                 {
-                    if (PythonPath.IsUndecodableName(path))
+                    if (EnginePath.IsUndecodableName(path))
                     {
-                        // Python opens the name through surrogateescape; the port cannot name the file, so it reports the entry.
+                        // The runtime cannot name the file, so the entry is reported.
                         HandleError(path, new DetectorIOException(path, "File name is not valid UTF-8; the entry cannot be opened"));
                     }
 
@@ -392,31 +392,31 @@ public class Detector
         ArgumentNullException.ThrowIfNull(root);
         if (profileStore is null)
         {
-            throw new PythonValueException("profile_store must be provided", nameof(profileStore));
+            throw new EngineValueException("profile_store must be provided", nameof(profileStore));
         }
 
         var normalizedTags = ProfileTags.Normalize(tags);
         var scanResults = ScanPath(root, glob);
         var profiled = new List<ProfiledDetection>();
-        var rootIsDir = Directory.Exists(PythonPath.KernelPath(root));
+        var rootIsDir = Directory.Exists(EnginePath.KernelPath(root));
 
         foreach (var (path, detection) in scanResults)
         {
-            var relative = rootIsDir ? PythonPurePath.RelativeTo(path, root) ?? PathText.Name(path) : PathText.Name(path);
+            var relative = rootIsDir ? EnginePurePath.RelativeTo(path, root) ?? PathText.Name(path) : PathText.Name(path);
             var applied = profileStore.MatchingConfigs(normalizedTags, relative);
             if (detection?.Metadata is { Count: > 0 } metadata)
             {
                 bool ignore;
                 try
                 {
-                    ignore = applied.Any(cfg => PythonBuiltins.IsTruthy(cfg.Config.Metadata.TryGetValue("ignore_review_flags", out var flag) ? flag : null));
+                    ignore = applied.Any(cfg => EngineBuiltins.IsTruthy(cfg.Config.Metadata.TryGetValue("ignore_review_flags", out var flag) ? flag : null));
                 }
                 catch (Exception exc) when (exc is not OutOfMemoryException)
                 {
                     ignore = false;
                 }
 
-                if (ignore && metadata.TryGetValue("needs_review", out var needsReview) && PythonBuiltins.IsTruthy(needsReview))
+                if (ignore && metadata.TryGetValue("needs_review", out var needsReview) && EngineBuiltins.IsTruthy(needsReview))
                 {
                     metadata["review_ignored"] = true;
                     metadata["needs_review"] = false;
@@ -429,7 +429,7 @@ public class Detector
         return profiled;
     }
 
-    /// <summary>Convenience wrapper mirroring the module-level <c>scan_file</c>: a fresh detector per call.</summary>
+    /// <summary>Convenience wrapper for a single file: a fresh detector per call.</summary>
     public static DetectionMatch? ScanFileWithDefaults(
         string path,
         int? sampleSize = null,
@@ -441,7 +441,7 @@ public class Detector
         return detector.ScanFile(path);
     }
 
-    /// <summary>Convenience wrapper mirroring the module-level <c>scan_path</c>: a fresh detector per call.</summary>
+    /// <summary>Convenience wrapper for a tree: a fresh detector per call.</summary>
     public static IReadOnlyList<(string Path, DetectionMatch? Match)> ScanPathWithDefaults(
         string root,
         string glob = "**/*",
@@ -465,9 +465,9 @@ public class Detector
         var offset = 0;
         foreach (var rune in component.EnumerateRunes())
         {
-            if (PythonUnicode.IsAlpha(rune.Value))
+            if (EngineUnicode.IsAlpha(rune.Value))
             {
-                return string.Concat(component.AsSpan(0, offset), PythonText.Upper(rune), component.AsSpan(offset + rune.Utf16SequenceLength));
+                return string.Concat(component.AsSpan(0, offset), EngineText.Upper(rune), component.AsSpan(offset + rune.Utf16SequenceLength));
             }
 
             offset += rune.Utf16SequenceLength;
@@ -503,13 +503,13 @@ public class Detector
         var normalised = new List<string>();
         foreach (var raw in reasons)
         {
-            var text = PythonText.Strip(raw ?? string.Empty);
+            var text = EngineText.Strip(raw ?? string.Empty);
             if (text.Length == 0)
             {
                 continue;
             }
 
-            var words = PythonText.Split(text);
+            var words = EngineText.Split(text);
             var formatted = string.Join(' ', words.Select(NormaliseReasonToken));
             if (seen.Add(formatted))
             {

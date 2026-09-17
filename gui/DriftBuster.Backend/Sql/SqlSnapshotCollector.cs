@@ -31,10 +31,10 @@ public static class SqlSnapshotCollector
         ArgumentNullException.ThrowIfNull(alias);
         log ??= _ => { };
 
-        var candidateRaw = PythonPurePath.Str(PythonOsPath.ExpandUser(PythonOsPath.ExpandVars(source.Path)));
-        var candidate = baseDir is null || PythonPurePath.IsAbsolute(candidateRaw)
+        var candidateRaw = EnginePurePath.Str(EngineOsPath.ExpandUser(EngineOsPath.ExpandVars(source.Path)));
+        var candidate = baseDir is null || EnginePurePath.IsAbsolute(candidateRaw)
             ? candidateRaw
-            : PythonOsPath.ExpandUser(PythonPurePath.Join(baseDir, candidateRaw));
+            : EngineOsPath.ExpandUser(EnginePurePath.Join(baseDir, candidateRaw));
         if (!RunProfileStore.Exists(candidate) && RunProfileStore.Exists(candidateRaw))
         {
             candidate = candidateRaw;
@@ -72,8 +72,8 @@ public static class SqlSnapshotCollector
             source.Placeholder,
             source.HashSalt);
         var encoded = SqliteSnapshots.Utf8.GetBytes(Canonicaliser.DumpsSorted(snapshot.ToDict(), indent: true, ensureAscii: true));
-        var snapshotPath = PythonPurePath.Join(destinationRoot, ResultFileName);
-        PythonTextFile.WriteBytes(snapshotPath, encoded);
+        var snapshotPath = EnginePurePath.Join(destinationRoot, ResultFileName);
+        EngineTextFile.WriteBytes(snapshotPath, encoded);
         log($"sql snapshot exported with {snapshot.Tables.Count} table(s)");
         return new SqlSnapshotCollection(
             Describe(source, snapshot, alias, metadata: false),

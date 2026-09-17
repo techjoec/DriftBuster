@@ -84,9 +84,9 @@ public static partial class CaptureRunner
             ["capture"] = ManifestCapture(capture, snapshotPath, manifestPath),
             ["durations"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["detection_seconds"] = IniPlugin.PythonRound(detectionDuration, 3),
-                ["hunt_seconds"] = IniPlugin.PythonRound(huntDuration, 3),
-                ["total_seconds"] = IniPlugin.PythonRound(totalDuration, 3),
+                ["detection_seconds"] = IniPlugin.EngineRound(detectionDuration, 3),
+                ["hunt_seconds"] = IniPlugin.EngineRound(huntDuration, 3),
+                ["total_seconds"] = IniPlugin.EngineRound(totalDuration, 3),
             },
             ["counts"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {
@@ -155,8 +155,8 @@ public static partial class CaptureRunner
     }
 
     // path.write_text(text, encoding="utf-8") for text already laid out with the platform's line breaks.
-    private static void WriteText(string path, string text) => PythonTextFile.WriteText(path, text);
+    private static void WriteText(string path, string text) => EngineTextFile.WriteText(path, text);
 
-    /// <summary><see cref="PythonTextFile.ReadUtf8Text"/>: <c>path.read_text(encoding="utf-8")</c>.</summary>
-    internal static string ReadUtf8Text(string path) => PythonTextFile.ReadUtf8Text(path);
+    /// <summary><see cref="EngineTextFile.ReadUtf8Text"/>: <c>path.read_text(encoding="utf-8")</c>.</summary>
+    internal static string ReadUtf8Text(string path) => EngineTextFile.ReadUtf8Text(path);
 }

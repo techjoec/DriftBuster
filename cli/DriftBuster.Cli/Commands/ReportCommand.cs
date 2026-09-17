@@ -9,21 +9,21 @@ namespace DriftBuster.Cli.Commands;
 /// <c>driftbuster report [ROOT]</c>: the detections of a file or directory, with the default hunt rules' hits unless <c>--skip-hunt</c>,
 /// rendered through <see cref="IDriftbusterBackend.BuildReportAsync"/> as an HTML page (<c>write_html_report</c>) or JSON lines
 /// (<c>--format jsonl</c>, <c>write_json_lines</c>). Without <c>--output</c> the report is written to stdout; with it the file is written
-/// in text mode and <c>Report written to {path}</c> is printed. Python has no command for it.
+/// in text mode and <c>Report written to {path}</c> is printed.
 /// </summary>
 internal static class ReportCommand
 {
     public static Command Build()
     {
         var root = new Argument<string>("root") { Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => ".", Description = "File or directory to scan." };
-        var format = PythonArguments.Text("--format", "html", "Report format: html or jsonl (default: html).");
+        var format = EngineArguments.Text("--format", "html", "Report format: html or jsonl (default: html).");
         format.AcceptOnlyFromAmong("html", "jsonl");
-        var glob = PythonArguments.Text("--glob", "**/*", "Glob used when scanning and hunting directories (default: **/*).");
-        var skipHunt = PythonArguments.Flag("--skip-hunt", "Leave hunt hits out of the report.");
-        var title = PythonArguments.Text("--title", "DriftBuster Report", "HTML report title.");
-        var maskToken = PythonArguments.Append("--mask-token", "Sensitive token to redact (repeatable).");
-        var placeholder = PythonArguments.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
-        var output = PythonArguments.OptionalText("--output", "File the report is written to (defaults to stdout).");
+        var glob = EngineArguments.Text("--glob", "**/*", "Glob used when scanning and hunting directories (default: **/*).");
+        var skipHunt = EngineArguments.Flag("--skip-hunt", "Leave hunt hits out of the report.");
+        var title = EngineArguments.Text("--title", "DriftBuster Report", "HTML report title.");
+        var maskToken = EngineArguments.Append("--mask-token", "Sensitive token to redact (repeatable).");
+        var placeholder = EngineArguments.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
+        var output = EngineArguments.OptionalText("--output", "File the report is written to (defaults to stdout).");
         var command = new Command("report", "Render an HTML or JSON lines report of a scanned tree.")
         {
             root, format, glob, skipHunt, title, maskToken, placeholder, output,

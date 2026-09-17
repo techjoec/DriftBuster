@@ -1,9 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "dots",
-      "profile": "dots-profile",
-      "every": "1.m"
-    }
-  ]
-}

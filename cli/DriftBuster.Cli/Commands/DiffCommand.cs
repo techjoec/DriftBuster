@@ -10,9 +10,9 @@ using DriftBuster.Backend.Reporting;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster diff BASELINE COMPARISON...</c>: <c>python -m driftbuster.cli diff</c>. Each comparison is diffed against the baseline
+/// <c>driftbuster diff BASELINE COMPARISON...</c>: each comparison is diffed against the baseline
 /// with <see cref="DiffBuilder.BuildUnifiedDiff"/> and printed, or written to <c>{baseline stem}--{comparison stem}.patch</c> under
-/// <c>--output-dir</c>, followed by its summary line. The <c>auto</c> content type comes from detection (plan fix f), not the file extension.
+/// <c>--output-dir</c>, followed by its summary line. The <c>auto</c> content type comes from detection, not the file extension.
 /// </summary>
 internal static class DiffCommand
 {
@@ -33,14 +33,14 @@ internal static class DiffCommand
 
     public static Command Build()
     {
-        var baseline = PythonArguments.Positional("baseline", "Baseline file to diff against.");
+        var baseline = EngineArguments.Positional("baseline", "Baseline file to diff against.");
         var comparisons = new Argument<string[]>("comparisons") { Arity = ArgumentArity.OneOrMore, Description = "One or more files to compare with the baseline." };
-        var contentType = PythonArguments.Text("--content-type", "auto", "Canonicalisation strategy applied before diffing (default: auto).");
+        var contentType = EngineArguments.Text("--content-type", "auto", "Canonicalisation strategy applied before diffing (default: auto).");
         contentType.AcceptOnlyFromAmong("auto", "text", "xml");
-        var contextLines = PythonArguments.Int("--context-lines", 3, "Context lines to include around each diff hunk (default: 3).");
-        var maskTokens = PythonArguments.Append("--mask-token", "Token to redact before diffing (repeatable).");
-        var placeholder = PythonArguments.Text("--placeholder", RedactionFilter.DefaultPlaceholder, "Placeholder shown for masked tokens (default: [REDACTED]).");
-        var outputDir = PythonArguments.OptionalText("--output-dir", "Directory where unified diff patches will be written.");
+        var contextLines = EngineArguments.Int("--context-lines", 3, "Context lines to include around each diff hunk (default: 3).");
+        var maskTokens = EngineArguments.Append("--mask-token", "Token to redact before diffing (repeatable).");
+        var placeholder = EngineArguments.Text("--placeholder", RedactionFilter.DefaultPlaceholder, "Placeholder shown for masked tokens (default: [REDACTED]).");
+        var outputDir = EngineArguments.OptionalText("--output-dir", "Directory where unified diff patches will be written.");
         var command = new Command("diff", "Generate unified diffs for configuration snapshots.")
         {
             baseline, comparisons, contentType, contextLines, maskTokens, placeholder, outputDir,
@@ -96,8 +96,8 @@ internal static class DiffCommand
         string? outputDir = null;
         if (args.OutputDir is not null)
         {
-            outputDir = PythonPath.Resolve(PythonPath.ExpandUser(args.OutputDir));
-            PythonPath.MakeDirectories(outputDir);
+            outputDir = EnginePath.Resolve(EnginePath.ExpandUser(args.OutputDir));
+            EnginePath.MakeDirectories(outputDir);
         }
 
         var exitCode = 0;
@@ -137,9 +137,9 @@ internal static class DiffCommand
             contextLines: (int)BigInteger.Min(args.ContextLines, int.MaxValue));
         if (outputDir is not null)
         {
-            var destination = PythonPurePath.Join(outputDir, PatchName(baselinePath, candidatePath));
+            var destination = EnginePurePath.Join(outputDir, PatchName(baselinePath, candidatePath));
             var text = result.Diff.EndsWith('\n') ? result.Diff : result.Diff + "\n";
-            PythonTextFile.WriteText(destination, ReportValues.TextModeNewLines(text));
+            EngineTextFile.WriteText(destination, ReportValues.TextModeNewLines(text));
             ConsoleText.Write(stdout, $"Wrote diff for {PathText.Name(candidatePath)} to {destination}\n");
         }
         else
@@ -155,10 +155,10 @@ internal static class DiffCommand
     // _ensure_file: path.expanduser().resolve(), which must exist and be a file.
     private static string EnsureFile(string path, string role, out string? refusal)
     {
-        var resolved = PythonPath.Resolve(PythonPath.ExpandUser(path));
+        var resolved = EnginePath.Resolve(EnginePath.ExpandUser(path));
         refusal = !RunProfileStore.Exists(resolved)
             ? $"{role} does not exist: {resolved}"
-            : !PythonPath.IsFile(resolved) ? $"{role} must be a file: {resolved}" : null;
+            : !EnginePath.IsFile(resolved) ? $"{role} must be a file: {resolved}" : null;
         return resolved;
     }
 
@@ -171,11 +171,11 @@ internal static class DiffCommand
         byte[] raw;
         try
         {
-            raw = PythonTextFile.ReadBytes(path, PythonPurePath.Str(path));
+            raw = EngineTextFile.ReadBytes(path, EnginePurePath.Str(path));
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw new FileNotFoundException($"Unable to read {PythonPurePath.Str(path)}: {exc.Message}", path, exc);
+            throw new FileNotFoundException($"Unable to read {EnginePurePath.Str(path)}: {exc.Message}", path, exc);
         }
 
         return Utf8Ignore.GetString(raw).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');

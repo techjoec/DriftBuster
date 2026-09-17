@@ -1,5 +1,0 @@
-{"description": "invalid UTF-8 sequences (overlong, surrogate, truncated, out of range, stray continuation) and CR/CRLF mixes past the 128 KiB sample: raw_text is the whole file decoded with replacement", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": "hostA", "label": "A", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r2/trees/badutf8/hostA"]},
-  {"host_id": "hostB", "label": "B", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r2/trees/badutf8/hostB"]}
- ]}

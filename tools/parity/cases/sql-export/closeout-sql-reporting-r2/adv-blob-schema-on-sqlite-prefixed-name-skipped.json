@@ -1,5 +1,0 @@
-{
- "database": {
-  "script": "adv-blob-schema-sqlite-prefixed.sql"
- }
-}

@@ -3,13 +3,13 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Profiles.Detection;
 
 /// <summary>
-/// Registry for detection profiles (the port of <c>ProfileStore</c>). Duplicate profile names and config identifiers are
+/// Registry for detection profiles. Duplicate profile names and config identifiers are
 /// rejected at registration, <see cref="UpdateProfile"/> replaces a profile copy-on-write, <see cref="RemoveConfig"/> removes
 /// one config, <see cref="FindConfig"/> locates the profile owning an identifier and <see cref="Summary"/> gives an overview.
 /// </summary>
 /// <remarks>
-/// Python's errors map to: <c>ValueError</c> <see cref="PythonValueException"/>, <c>TypeError</c>
-/// <see cref="PythonTypeException"/>, <c>KeyError</c> <see cref="KeyNotFoundException"/> whose message is <c>str()</c> of the
+/// Python's errors map to: <c>ValueError</c> <see cref="EngineValueException"/>, <c>TypeError</c>
+/// <see cref="EngineTypeException"/>, <c>KeyError</c> <see cref="KeyNotFoundException"/> whose message is <c>str()</c> of the
 /// <c>KeyError</c> (the repr of its argument). Profiles keep dict insertion order: a profile replaced by
 /// <see cref="UpdateProfile"/>, or restored after a failed update, moves to the end.
 /// </remarks>
@@ -19,7 +19,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
     private readonly Dictionary<string, AppliedProfileConfig> _configIndex = new(StringComparer.Ordinal);
 
     // FromDict only: profiles and configs whose JSON name or id is a list or dict, with the TypeError hashing it raises.
-    private Dictionary<object, PythonTypeException>? _unhashable;
+    private Dictionary<object, EngineTypeException>? _unhashable;
 
     public DetectionProfileStore(IEnumerable<DetectionProfile>? profiles = null)
     {
@@ -38,7 +38,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
 
         if (_profiles.ContainsKey(profile.Name))
         {
-            throw new PythonValueException($"Profile {PythonRepr.StrRepr(profile.Name)} is already registered", nameof(profile));
+            throw new EngineValueException($"Profile {EngineRepr.StrRepr(profile.Name)} is already registered", nameof(profile));
         }
 
         var seenLocal = new HashSet<string>(StringComparer.Ordinal);
@@ -52,15 +52,15 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
             var identifier = config.Identifier;
             if (!seenLocal.Add(identifier))
             {
-                throw new PythonValueException(
-                    $"Duplicate config identifier {PythonRepr.StrRepr(identifier)} within profile {PythonRepr.StrRepr(profile.Name)}",
+                throw new EngineValueException(
+                    $"Duplicate config identifier {EngineRepr.StrRepr(identifier)} within profile {EngineRepr.StrRepr(profile.Name)}",
                     nameof(profile));
             }
 
             if (_configIndex.TryGetValue(identifier, out var existing))
             {
-                throw new PythonValueException(
-                    $"Config identifier {PythonRepr.StrRepr(identifier)} already registered under profile {PythonRepr.StrRepr(existing.Profile.Name)}",
+                throw new EngineValueException(
+                    $"Config identifier {EngineRepr.StrRepr(identifier)} already registered under profile {EngineRepr.StrRepr(existing.Profile.Name)}",
                     nameof(profile));
             }
         }
@@ -100,20 +100,20 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
         ArgumentNullException.ThrowIfNull(name);
         if (mutator is null)
         {
-            throw new PythonTypeException("mutator must be callable", nameof(mutator));
+            throw new EngineTypeException("mutator must be callable", nameof(mutator));
         }
 
         if (!_profiles.TryGetValue(name, out var original))
         {
-            throw new KeyNotFoundException(PythonRepr.StrRepr($"Profile {PythonRepr.StrRepr(name)} is not registered"));
+            throw new KeyNotFoundException(EngineRepr.StrRepr($"Profile {EngineRepr.StrRepr(name)} is not registered"));
         }
 
         var candidate = mutator(original with { })
-            ?? throw new PythonTypeException("mutator must return a ConfigurationProfile instance", nameof(mutator));
+            ?? throw new EngineTypeException("mutator must return a ConfigurationProfile instance", nameof(mutator));
 
         if (!string.Equals(candidate.Name, original.Name, StringComparison.Ordinal) && _profiles.ContainsKey(candidate.Name))
         {
-            throw new PythonValueException($"Profile {PythonRepr.StrRepr(candidate.Name)} is already registered", nameof(mutator));
+            throw new EngineValueException($"Profile {EngineRepr.StrRepr(candidate.Name)} is already registered", nameof(mutator));
         }
 
         DropProfileIndex(original);
@@ -123,7 +123,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
         {
             ValidateProfile(candidate);
         }
-        catch (PythonValueException)
+        catch (EngineValueException)
         {
             _profiles[original.Name] = original;
             IndexProfile(original);
@@ -141,7 +141,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
         ArgumentNullException.ThrowIfNull(name);
         if (!_profiles.Remove(name, out var profile))
         {
-            throw new KeyNotFoundException(PythonRepr.StrRepr(name));
+            throw new KeyNotFoundException(EngineRepr.StrRepr(name));
         }
 
         DropProfileIndex(profile);
@@ -161,8 +161,8 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
             var remaining = profile.Configs.Where(config => !string.Equals(config.Identifier, configId, StringComparison.Ordinal)).ToArray();
             if (remaining.Length == profile.Configs.Count)
             {
-                throw new PythonValueException(
-                    $"Config identifier {PythonRepr.StrRepr(configId)} is not registered under profile {PythonRepr.StrRepr(profile.Name)}",
+                throw new EngineValueException(
+                    $"Config identifier {EngineRepr.StrRepr(configId)} is not registered under profile {EngineRepr.StrRepr(profile.Name)}",
                     nameof(configId));
             }
 
@@ -175,7 +175,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
         }
         catch (KeyNotFoundException exc)
         {
-            throw new KeyNotFoundException(PythonRepr.StrRepr($"Profile {PythonRepr.StrRepr(profileName)} is not registered"), exc);
+            throw new KeyNotFoundException(EngineRepr.StrRepr($"Profile {EngineRepr.StrRepr(profileName)} is not registered"), exc);
         }
     }
 
@@ -183,7 +183,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
     public DetectionProfile GetProfile(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
-        return _profiles.TryGetValue(name, out var profile) ? profile : throw new KeyNotFoundException(PythonRepr.StrRepr(name));
+        return _profiles.TryGetValue(name, out var profile) ? profile : throw new KeyNotFoundException(EngineRepr.StrRepr(name));
     }
 
     /// <summary><c>profiles</c>: every registered profile in registration order.</summary>

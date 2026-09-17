@@ -5,7 +5,7 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Reporting;
 
-/// <summary><c>driftbuster.reporting.summary</c>: detections grouped by format and variant with severity and remediation indexes.</summary>
+/// <summary>Detections grouped by format and variant with severity and remediation indexes.</summary>
 public static partial class DetectionSummary
 {
     private const string NoVariant = "\u2014";
@@ -144,7 +144,7 @@ public static partial class DetectionSummary
     private static List<string> SortedStrings(IEnumerable<string> items)
     {
         var list = items.ToList();
-        PythonSort<string>.Sort(list, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
+        EngineSort<string>.Sort(list, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
         return list;
     }
 

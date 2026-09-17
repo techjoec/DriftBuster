@@ -1,2 +1,0 @@
-pw=hunter2 and pw=abc
-plain pw=zz

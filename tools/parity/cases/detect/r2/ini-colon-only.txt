@@ -1,3 +1,0 @@
-alpha: 1
-beta: two
-gamma: 3

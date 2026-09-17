@@ -2,7 +2,7 @@ using DriftBuster.Backend.Detection;
 
 namespace DriftBuster.Backend.Reporting;
 
-/// <summary><c>driftbuster.reporting._metadata</c>: normalised detection payloads shared by the reporting adapters.</summary>
+/// <summary>Normalised detection payloads shared by the reporting adapters.</summary>
 public static class DetectionPayloads
 {
     /// <summary>

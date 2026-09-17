@@ -1,2 +1,0 @@
-From alpine
-uſer root

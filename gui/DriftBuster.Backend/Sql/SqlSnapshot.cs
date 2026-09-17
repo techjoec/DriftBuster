@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Sql;
 
-/// <summary><c>driftbuster.sql.snapshots.SqlSnapshot</c>: a whole database export.</summary>
+/// <summary>A whole database export.</summary>
 /// <param name="Database">The database file's name (<c>Path.name</c>).</param>
 /// <param name="Dialect">Always <c>sqlite</c>.</param>
 /// <param name="CapturedAt">The UTC capture time, <c>datetime.isoformat()</c>.</param>

@@ -1,1 +1,0 @@
-{"options": {"secret_ignore_patterns": [true, false, null, 0, 1, "1", [1], {"a": 1}, [], ""]}, "secret_scanner": {"ruleset": {"version": "junk", "rules": "name"}, "ignore_rules": [0, 0.0, "", " ", "\u180e", "\u200b"]}}

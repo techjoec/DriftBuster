@@ -1,1 +1,0 @@
-{"profiles": [{"name": "p", "configs": [{"id": "app-false", "application": false}, {"id": "ver-zero", "version": 0}, {"id": "branch-list", "branch": []}, {"id": "branch-float", "branch": 1.50}, {"id": "app-big", "application": 12345678901234567890123}]}]}

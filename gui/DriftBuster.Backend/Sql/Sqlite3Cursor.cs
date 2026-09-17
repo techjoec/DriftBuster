@@ -27,7 +27,7 @@ internal static class Sqlite3Cursor
     /// <exception cref="Sqlite3Exception">SQLite refuses the statement or a step (the class <c>sqlite3</c> maps its result code to), the
     /// text holds a NUL (<c>ProgrammingError</c>), more than one statement (<c>ProgrammingError</c>), is longer than the library allows
     /// (<c>DataError</c>), or a TEXT value is not UTF-8 (<c>OperationalError</c>).</exception>
-    /// <exception cref="PythonUnicodeDecodeException">A column name or error message is not UTF-8.</exception>
+    /// <exception cref="EngineUnicodeDecodeException">A column name or error message is not UTF-8.</exception>
     internal static Sqlite3Rows FetchAll(sqlite3 db, string sql)
     {
         var bytes = Encoding.UTF8.GetBytes(sql);
@@ -70,11 +70,11 @@ internal static class Sqlite3Cursor
         {
             if (NamesMatch(result.Description[index], key))
             {
-                return index < row.Length ? row[index] : throw new PythonIndexException(nameof(row), "tuple index out of range");
+                return index < row.Length ? row[index] : throw new EngineIndexException(nameof(row), "tuple index out of range");
             }
         }
 
-        throw new PythonIndexException(nameof(key), "No item with that key");
+        throw new EngineIndexException(nameof(key), "No item with that key");
     }
 
     private static bool NamesMatch(string left, string right)
@@ -118,7 +118,7 @@ internal static class Sqlite3Cursor
         var count = raw.sqlite3_column_count(statement);
         for (var index = 0; index < count; index++)
         {
-            names.Add(PythonUtf8.Decode(NullTerminated(raw.sqlite3_column_name(statement, index))));
+            names.Add(EngineUtf8.Decode(NullTerminated(raw.sqlite3_column_name(statement, index))));
         }
 
         return names;
@@ -149,9 +149,9 @@ internal static class Sqlite3Cursor
         var bytes = Copy(text, raw.sqlite3_column_bytes(statement, index));
         try
         {
-            return PythonUtf8.Decode(bytes);
+            return EngineUtf8.Decode(bytes);
         }
-        catch (PythonUnicodeDecodeException)
+        catch (EngineUnicodeDecodeException)
         {
             var message = new List<byte>();
             message.AddRange("Could not decode to UTF-8 column '"u8.ToArray());
@@ -196,7 +196,7 @@ internal static class Sqlite3Cursor
             return new InsufficientMemoryException();
         }
 
-        var message = PythonUtf8.Decode(NullTerminated(raw.sqlite3_errmsg(db)));
+        var message = EngineUtf8.Decode(NullTerminated(raw.sqlite3_errmsg(db)));
         return new Sqlite3Exception(ErrorClass(code), message, raw.sqlite3_extended_errcode(db));
     }
 

@@ -1,3 +1,0 @@
-<?XmL version="1.0" standalone="yes"?>
-<!DOCTYPE r [<!ATTLIST p:a q CDATA "d">]>
-<r xmlns:p="urn:p" xmlns="urn:d"><p:a v="1"/><b xmlns=""><p:c p:z="1"/></b></r>

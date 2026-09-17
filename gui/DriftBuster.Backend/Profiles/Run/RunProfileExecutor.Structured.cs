@@ -14,7 +14,7 @@ public static partial class RunProfileExecutor
     internal static string ExpandStructuredPath(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        return PythonOsPath.ExpandUser(PythonOsPath.ExpandVars(text));
+        return EngineOsPath.ExpandUser(EngineOsPath.ExpandVars(text));
     }
 
     /// <summary>
@@ -33,15 +33,15 @@ public static partial class RunProfileExecutor
         IEnumerable<string> found;
         if (!RunProfileStore.HasMagic(pathText))
         {
-            var candidate = PythonPurePath.Str(expanded);
+            var candidate = EnginePurePath.Str(expanded);
             found = RunProfileStore.Exists(candidate) ? [candidate] : [];
         }
         else
         {
-            found = PythonModuleGlob.Glob(expanded, recursive: true, cancellationToken)
+            found = EngineModuleGlob.Glob(expanded, recursive: true, cancellationToken)
                 .Order(CodePointOrder)
                 .Distinct(StringComparer.Ordinal)
-                .Select(PythonPurePath.Str);
+                .Select(EnginePurePath.Str);
         }
 
         var matches = found.Where(match => isOwnOutput is null || !isOwnOutput(match)).ToList();
@@ -53,7 +53,7 @@ public static partial class RunProfileExecutor
     // One source of a structured profile, as execute_config collects an OfflineCollectionSource: an optional source that is missing or
     // matches nothing is skipped; the matches in posix order, each symlink skipped and each match inside a directory collected before
     // skipped; a directory's files (rglob("*"), is_file()) copied in posix order under their path relative to it, a file under its name,
-    // and any of them matching an exclude pattern left out. Plan decision: nothing inside the run's own profile directory (its profile.json
+    // and any of them matching an exclude pattern left out. Nothing inside the run's own profile directory (its profile.json
     // and raw/ tree, which the offline runner writes elsewhere) is collected, whether a match names it or lies above it.
     private static ProfileRunSource CollectStructuredSource(
         RunProfileSource source,
@@ -93,7 +93,7 @@ public static partial class RunProfileExecutor
             {
                 processedDirectories.Add(resolved);
                 var files = WalkFiles(match, cancellationToken)
-                    .Where(file => PythonPath.IsFile(file) && !target.IsOwnOutput(PhysicalPath(file)))
+                    .Where(file => EnginePath.IsFile(file) && !target.IsOwnOutput(PhysicalPath(file)))
                     .OrderBy(PathText.ToPosix, CodePointOrder)
                     .ToList();
                 foreach (var file in files)
@@ -101,9 +101,9 @@ public static partial class RunProfileExecutor
                     CopyUnlessExcluded(source, file, match, destinationRoot, target, matched, cancellationToken);
                 }
             }
-            else if (PythonPath.IsFile(match))
+            else if (EnginePath.IsFile(match))
             {
-                CopyUnlessExcluded(source, match, PythonPurePath.Parent(match), destinationRoot, target, matched, cancellationToken);
+                CopyUnlessExcluded(source, match, EnginePurePath.Parent(match), destinationRoot, target, matched, cancellationToken);
             }
         }
 
@@ -111,14 +111,14 @@ public static partial class RunProfileExecutor
     }
 
     // The path is the directory or lies below it (both physical paths).
-    private static bool IsInside(string path, string directory) => PythonPurePath.RelativeTo(path, directory) is not null;
+    private static bool IsInside(string path, string directory) => EnginePurePath.RelativeTo(path, directory) is not null;
 
     // Path.is_symlink(): an lstat that reports a link; a path that cannot be looked up is not one.
     private static bool IsSymlink(string path)
     {
         try
         {
-            return new FileInfo(PythonPath.KernelPath(path)).LinkTarget is not null;
+            return new FileInfo(EnginePath.KernelPath(path)).LinkTarget is not null;
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException or ArgumentException)
         {

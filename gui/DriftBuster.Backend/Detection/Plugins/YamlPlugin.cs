@@ -8,7 +8,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// surfaced when both <c>apiVersion:</c> and <c>kind:</c> keys are present.
 /// </summary>
 /// <remarks>
-/// The Python plugin is regex driven with MULTILINE patterns whose <c>\s*</c> runs may cross line breaks and whose
+/// The plugin's rules are MULTILINE regexes whose <c>\s*</c> runs may cross line breaks and whose
 /// <c>(\S|$)</c> tails consume the first character of the following line, so a non-overlapping <c>findall</c> skips a
 /// key that directly follows a valueless key. Every pattern is matched here by hand on code points (see
 /// <c>YamlPlugin.Scan.cs</c>) so that <c>\s</c> (Python includes U+001C-U+001F), <c>\w</c> ([L N _] on code points)
@@ -93,13 +93,13 @@ public sealed partial class YamlPlugin : IFormatPlugin
     }
 
     // Skip leading blank/comment lines within the sampled text; the join normalises line breaks to \n only when
-    // something was skipped, exactly like the Python "\n".join(lines[start:]) if start else text.
+    // something was skipped.
     private static string ScanText(string text, IReadOnlyList<string> lines)
     {
         var start = 0;
         while (start < lines.Count)
         {
-            var stripped = PythonText.StripStart(lines[start]);
+            var stripped = EngineText.StripStart(lines[start]);
             if (stripped.Length == 0 || stripped[0] == '#')
             {
                 start++;
@@ -112,7 +112,7 @@ public sealed partial class YamlPlugin : IFormatPlugin
         return start > 0 ? string.Join("\n", lines.Skip(start)) : text;
     }
 
-    // The tab oddity is judged on the full text; the indentation profile is stored before gating, as in Python.
+    // The tab oddity is judged on the full text; the indentation profile is stored before gating.
     private static List<string> ReviewIndentation(string text, IReadOnlyList<string> lines, OrderedDictionary<string, object?> metadata)
     {
         var reviewReasons = new List<string>();
@@ -267,7 +267,7 @@ public sealed partial class YamlPlugin : IFormatPlugin
         return Math.Min(0.95, confidence);
     }
 
-    // Distinct keys in match order; the cap is checked after every match, including repeats, like the Python loop.
+    // Distinct keys in match order; the cap is checked after every match, including repeats.
     private static List<string> TopLevelKeyPreview(List<string> keys)
     {
         var tops = new List<string>();

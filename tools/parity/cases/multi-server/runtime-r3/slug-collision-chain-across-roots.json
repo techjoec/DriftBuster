@@ -1,8 +1,0 @@
-{
-  "description": "three names that slug alike under two roots with a missing root between them: ids take @root0, @root0.2, then @root2, @root2.2 and @root2.3 by plan position (fix a)",
-  "fixes": ["a"], "args": [], "requires": [],
-  "plans": [
-    {"host_id": "one", "label": "One", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/slugs/r0", "$PARITY_MULTI_SERVER_WORK/r3/slugs/r1", "$PARITY_MULTI_SERVER_WORK/r3/slugs/r2"], "baseline": {"is_preferred": true, "priority": 1, "role": "auto"}},
-    {"host_id": "two", "label": "Two", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/slugs/r2"]}
-  ]
-}

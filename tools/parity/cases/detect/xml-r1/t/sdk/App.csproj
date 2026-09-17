@@ -1,9 +1,0 @@
-
-    <Project Sdk="Microsoft.NET.Sdk">
-      <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-      </PropertyGroup>
-      <Import Sdk="Microsoft.Build.NoTargets/1.0.0" />
-      <Target Name="Pack" />
-    </Project>
-    

@@ -89,7 +89,7 @@ public static partial class Canonicaliser
     private static string WrittenName(XObject node) => node.Annotation<XmlWrittenName>()!.QualifiedName;
 
     // Only values that are entirely Python white space collapse; any other value keeps its padding.
-    private static string CollapseWhitespace(string value) => PythonText.Strip(value).Length == 0 ? string.Empty : value;
+    private static string CollapseWhitespace(string value) => EngineText.Strip(value).Length == 0 ? string.Empty : value;
 
     // The tail: the character data between this node and the next non-text sibling.
     private static void AppendTail(StringBuilder builder, XNode node)

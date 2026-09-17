@@ -1,8 +1,0 @@
-{
-  "description": "a one-byte sampling budget over two roots: exhausted on the first sampled file",
-  "fixes": [], "args": ["--sample-budget", "1"], "requires": [],
-  "plans": [
-    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/budget/root0", "$PARITY_MULTI_SERVER_WORK/r1/budget/root1"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/budget/root1"]}
-  ]
-}

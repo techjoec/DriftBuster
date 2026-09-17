@@ -11,10 +11,10 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Remote;
 
 /// <summary>
-/// <c>scripts/capture.py</c> as library calls: <c>run</c> (<see cref="RunCapture"/>), <c>export-sql</c> (<see cref="RunSqlExport"/>) and
-/// <c>compare</c> (<see cref="CompareSnapshots"/>). Each takes the command's arguments as an options record and writes what the script
-/// writes to <c>sys.stdout</c> and <c>sys.stderr</c> to the writers it is given; an exception the script lets escape escapes here too.
-/// The clock, the monotonic timer, the host name and the environment are settable seams read exactly where the script reads them.
+/// <c>driftbuster capture</c> as library calls: <c>run</c> (<see cref="RunCapture"/>), <c>export-sql</c> (<see cref="RunSqlExport"/>) and
+/// <c>compare</c> (<see cref="CompareSnapshots"/>). Each takes the command's arguments as an options record and writes the command's
+/// stdout and stderr text to the writers it is given; an exception the command lets escape escapes here too. The clock, the monotonic
+/// timer, the host name and the environment are settable seams.
 /// </summary>
 public static partial class CaptureRunner
 {
@@ -22,7 +22,7 @@ public static partial class CaptureRunner
     public const string CaptureManifestSchemaVersion = "1.0";
 
     /// <summary><c>datetime.now(UTC)</c>.</summary>
-    internal static Func<PythonDateTime> UtcNow { get; set; } = PythonDateTime.UtcNow;
+    internal static Func<EngineDateTime> UtcNow { get; set; } = EngineDateTime.UtcNow;
 
     /// <summary><c>time.monotonic()</c> in seconds.</summary>
     internal static Func<double> Monotonic { get; set; } = () => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -41,9 +41,9 @@ public static partial class CaptureRunner
     /// under the output directory, reports both paths on <paramref name="stdout"/> and warns when a redaction filter replaced nothing.
     /// </summary>
     /// <remarks>
-    /// Detector guardrail warnings go to <paramref name="stderr"/> as Python's last-resort logging handler writes them. Fix b: a file the
-    /// hunt cannot read is skipped where Python's hunt aborts the capture. Directory creation and file writes raise Python's
-    /// <c>OSError</c> text (<see cref="PythonOSError"/>).
+    /// Detector guardrail warnings go to <paramref name="stderr"/> as a last-resort logging handler writes them. A file the
+    /// hunt cannot read is skipped. Directory creation and file writes raise the
+    /// <c>OSError</c> text (<see cref="EngineOSError"/>).
     /// </remarks>
     public static CaptureRunOutcome RunCapture(CaptureRunOptions options, TextWriter stdout, TextWriter stderr)
     {
@@ -102,7 +102,7 @@ public static partial class CaptureRunner
     // The checks run_capture makes before anything is loaded or created, in its order; the first refusal is written to stderr.
     private static bool TryValidateRun(CaptureRunOptions options, TextWriter stderr, out string root, out CaptureIdentity identity)
     {
-        root = PythonPath.Resolve(options.Root);
+        root = EnginePath.Resolve(options.Root);
         identity = new CaptureIdentity(string.Empty, root, string.Empty, string.Empty, string.Empty);
         var refusal = FirstRefusal(options, root, out var @operator, out var environment, out var reason);
         if (refusal is not null)
@@ -134,13 +134,13 @@ public static partial class CaptureRunner
         }
 
         @operator = resolved;
-        environment = PythonText.Strip(options.Environment ?? string.Empty);
+        environment = EngineText.Strip(options.Environment ?? string.Empty);
         if (environment.Length == 0)
         {
             return "error: --environment is required for capture manifests";
         }
 
-        reason = PythonText.Strip(options.Reason ?? string.Empty);
+        reason = EngineText.Strip(options.Reason ?? string.Empty);
         return reason.Length == 0 ? "error: --reason is required for capture manifests" : null;
     }
 
@@ -203,7 +203,7 @@ public static partial class CaptureRunner
         var redactedSnapshot = redactor is null ? snapshotPayload : (OrderedDictionary<string, object?>)RedactionFilter.RedactData(snapshotPayload, redactor)!;
         WriteJsonText(paths.Snapshot, redactedSnapshot);
 
-        var profileMatchCount = scan.Detections.Sum(entry => PythonBuiltins.Len(entry.GetValueOrDefault("profiles")));
+        var profileMatchCount = scan.Detections.Sum(entry => EngineBuiltins.Len(entry.GetValueOrDefault("profiles")));
         var totalRedactions = redactor?.Stats().Values.Sum(count => (long)count) ?? 0;
         var manifestPayload = BuildManifestPayload(
             (IReadOnlyDictionary<string, object?>)redactedSnapshot["capture"]!,
@@ -244,14 +244,14 @@ public static partial class CaptureRunner
             GetEnvironmentVariable("USER"),
             GetEnvironmentVariable("USERNAME"),
         ];
-        return candidates.Select(candidate => PythonText.Strip(candidate ?? string.Empty)).FirstOrDefault(candidate => candidate.Length > 0);
+        return candidates.Select(candidate => EngineText.Strip(candidate ?? string.Empty)).FirstOrDefault(candidate => candidate.Length > 0);
     }
 
     /// <summary>
     /// <c>datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")</c> for a capture identifier. <c>%Y</c> is the year as glibc's <c>strftime</c>
     /// writes it, without padding (year 999 is <c>999</c>), on every platform; a clock never reads below the year 1000.
     /// </summary>
-    internal static string CaptureTimestamp(PythonDateTime now)
+    internal static string CaptureTimestamp(EngineDateTime now)
         => string.Create(CultureInfo.InvariantCulture, $"{now.Year}{now.Month:D2}{now.Day:D2}T{now.Hour:D2}{now.Minute:D2}{now.Second:D2}Z");
 
     /// <summary>
@@ -262,7 +262,7 @@ public static partial class CaptureRunner
     {
         ArgumentNullException.ThrowIfNull(directory);
         ArgumentNullException.ThrowIfNull(captureId);
-        PythonPath.MakeDirectories(directory);
-        return (PythonPurePath.Join(directory, $"{captureId}-snapshot.json"), PythonPurePath.Join(directory, $"{captureId}-manifest.json"));
+        EnginePath.MakeDirectories(directory);
+        return (EnginePurePath.Join(directory, $"{captureId}-snapshot.json"), EnginePurePath.Join(directory, $"{captureId}-manifest.json"));
     }
 }

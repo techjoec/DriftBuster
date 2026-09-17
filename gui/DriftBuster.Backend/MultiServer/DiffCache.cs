@@ -6,20 +6,20 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>
-/// <c>driftbuster.multi_server.DiffCache</c>: one JSON file per host and config, <c>&lt;root&gt;/&lt;sha1("{host}:{config}")&gt;.json</c>,
+/// The multi-server diff cache: one JSON file per host and config, <c>&lt;root&gt;/&lt;sha1("{host}:{config}")&gt;.json</c>,
 /// holding the canonical payload, content type, detection metadata, file hash and signature.
 /// </summary>
 /// <remarks>
-/// Writes are atomic where Python's in-place <c>write_text</c> would succeed: the entry is written to a temporary file beside the
+/// Writes are atomic where an in-place <c>write_text</c> would succeed: the entry is written to a temporary file beside the
 /// file the entry path leads to (through a symlink, as <c>write_text</c> follows it) and renamed over that file, so a cancelled or
-/// failed write never leaves a partial entry. The outcome stays Python's in the two cases a rename changes it: an existing entry
+/// failed write never leaves a partial entry. The outcome stays that of an in-place write in the two cases a rename changes it: an existing entry
 /// that cannot be opened for writing fails as <c>open(path, "w")</c> fails, even though a rename could replace it, and when the
-/// directory refuses the temporary file the entry is written in place, as Python writes it (an existing writable entry in a
-/// directory that refuses new names is truncated and rewritten; a missing one fails with Python's error). That in-place write is
-/// the only one a crash can leave partial; cancellation is checked before it starts. Every other outcome is Python's too: a
+/// directory refuses the temporary file the entry is written in place (an existing writable entry in a
+/// directory that refuses new names is truncated and rewritten; a missing one fails with the <c>OSError</c> text). That in-place write is
+/// the only one a crash can leave partial; cancellation is checked before it starts. Every other outcome: a
 /// missing entry (a dangling link included) loads as null; a file that is not UTF-8, or whose JSON is not an object, raises with
 /// the <c>UnicodeDecodeError</c> or <c>AttributeError</c> text; an I/O failure raises with the <c>OSError</c> text naming the
-/// entry path (<see cref="PythonOSError"/>). A raise fails the host as offline in <see cref="MultiServerRunner"/>.
+/// entry path (<see cref="EngineOSError"/>). A raise fails the host as offline in <see cref="MultiServerRunner"/>.
 /// </remarks>
 public sealed class DiffCache
 {
@@ -30,7 +30,7 @@ public sealed class DiffCache
     {
         ArgumentNullException.ThrowIfNull(root);
         Root = root;
-        PythonPath.MakeDirectories(root);
+        EnginePath.MakeDirectories(root);
     }
 
     public string Root { get; }
@@ -50,26 +50,26 @@ public sealed class DiffCache
     {
         var path = EntryPath(hostId, configId);
         var kind = UnixFileType.Stat(path, followSymlinks: true);
-        if (kind is null ? !File.Exists(PythonPath.KernelPath(path)) && !Directory.Exists(PythonPath.KernelPath(path)) : kind == UnixFileType.Kind.Missing)
+        if (kind is null ? !File.Exists(EnginePath.KernelPath(path)) && !Directory.Exists(EnginePath.KernelPath(path)) : kind == UnixFileType.Kind.Missing)
         {
             return null;
         }
 
-        if (kind == UnixFileType.Kind.Directory || (kind is null && Directory.Exists(PythonPath.KernelPath(path))))
+        if (kind == UnixFileType.Kind.Directory || (kind is null && Directory.Exists(EnginePath.KernelPath(path))))
         {
-            throw PythonOSError.Create(PythonOSError.DirectoryOpenErrno, path);
+            throw EngineOSError.Create(EngineOSError.DirectoryOpenErrno, path);
         }
 
-        var raw = PythonTextFile.ReadBytes(path, path);
+        var raw = EngineTextFile.ReadBytes(path, path);
 
-        if (!PythonJson.TryLoads(PythonUtf8.Decode(raw), out var parsed))
+        if (!EngineJson.TryLoads(EngineUtf8.Decode(raw), out var parsed))
         {
             return null;
         }
 
         if (parsed is not OrderedDictionary<string, object?> payload)
         {
-            throw new PythonAttributeException($"'{PythonBuiltins.TypeName(parsed)}' object has no attribute 'get'");
+            throw new EngineAttributeException($"expected a JSON object, not '{EngineBuiltins.TypeName(parsed)}'");
         }
 
         return payload.TryGetValue("signature", out var stored) && stored is string storedText && string.Equals(storedText, signature, StringComparison.Ordinal)
@@ -99,7 +99,7 @@ public sealed class DiffCache
             if (!nameable || !TryWriteTemporary(temporary, bytes))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                PythonTextFile.WriteBytes(target, bytes, path);
+                EngineTextFile.WriteBytes(target, bytes, path);
                 return;
             }
 
@@ -109,9 +109,9 @@ public sealed class DiffCache
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || PythonOSError.Errno(exc, path) is not { } errno
+            throw exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || EngineOSError.Errno(exc, path) is not { } errno
                 ? exc
-                : PythonOSError.Create(errno, path, exc);
+                : EngineOSError.Create(errno, path, exc);
         }
         finally
         {
@@ -135,7 +135,7 @@ public sealed class DiffCache
     }
 
     // False when the directory refuses the temporary file (its partial bytes are removed by the caller); the entry is then written
-    // in place, as Python writes it, and fails or succeeds as that write does.
+    // in place, and fails or succeeds as that write does.
     private static bool TryWriteTemporary(string temporary, byte[] bytes)
     {
         try
@@ -154,11 +154,11 @@ public sealed class DiffCache
     // entry is then written in place through the link (not nameable), as open() writes it, instead of beside a guessed name.
     private static (string Target, bool Nameable) WriteTarget(string path)
     {
-        var target = PythonPath.KernelPath(path);
+        var target = EnginePath.KernelPath(path);
         if (UnixFileType.Stat(path, followSymlinks: false) == UnixFileType.Kind.Other)
         {
-            var physical = PythonPath.ResolvePhysicalPath(Path.GetFullPath(target), out var nameable)
-                ?? throw PythonOSError.Create(PythonOSError.TooManyLinks, path);
+            var physical = EnginePath.ResolvePhysicalPath(Path.GetFullPath(target), out var nameable)
+                ?? throw EngineOSError.Create(EngineOSError.TooManyLinks, path);
             if (!nameable)
             {
                 RequireNotDirectory(path, target);
@@ -176,7 +176,7 @@ public sealed class DiffCache
     {
         if (UnixFileType.Stat(target, followSymlinks: true) == UnixFileType.Kind.Directory || (!OperatingSystem.IsLinux() && Directory.Exists(target)))
         {
-            throw PythonOSError.Create(PythonOSError.DirectoryOpenErrno, path);
+            throw EngineOSError.Create(EngineOSError.DirectoryOpenErrno, path);
         }
     }
 
@@ -184,19 +184,18 @@ public sealed class DiffCache
     /// <c>_resolve_cache_dir(cache_dir)</c>: an explicit directory is created and resolved; otherwise the <c>cache/diffs</c>
     /// directory under the data root (<see cref="DriftbusterPaths.GetDataRoot"/>, resolved through symlinks) is used, after <c>_migrate_legacy_cache</c>:
     /// when <c>&lt;repositoryRoot&gt;/artifacts/cache/diffs</c> exists and the destination is empty, every legacy file the
-    /// destination does not hold is copied. Python reads the legacy entries relative to the working directory; the port takes the
-    /// directory that working directory would be.
+    /// destination does not hold is copied. The legacy directory is taken relative to the repository root.
     /// </summary>
     public static string ResolveCacheDirectory(string? cacheDir, string? repositoryRoot)
     {
         if (!string.IsNullOrEmpty(cacheDir))
         {
-            return CreateAndResolve(PythonOsPath.ExpandUser(cacheDir));
+            return CreateAndResolve(EngineOsPath.ExpandUser(cacheDir));
         }
 
         // _resolve_data_root() returns the data root resolved through symlinks; cache/diffs is appended as written.
         var destination = Path.Combine(CreateAndResolve(DriftbusterPaths.GetDataRoot()), "cache", "diffs");
-        PythonPath.MakeDirectories(destination);
+        EnginePath.MakeDirectories(destination);
         if (!string.IsNullOrEmpty(repositoryRoot) && !DestinationHasEntries(destination))
         {
             MigrateLegacyDiffCache(repositoryRoot, destination);
@@ -208,14 +207,14 @@ public sealed class DiffCache
     // path.mkdir(parents=True, exist_ok=True) then path.resolve(): both as the kernel walks the path, so a ".." after a symlink
     // steps to the parent of the link's target (the runtime would remove it lexically first).
     // A directory whose physical path holds a name that is not UTF-8 keeps the kernel's spelling of it instead, which reaches the
-    // same directory through its links (Python's resolve() gives the surrogateescape name, which its file calls accept).
+    // same directory through its links.
     private static string CreateAndResolve(string path)
     {
-        PythonPath.MakeDirectories(path);
-        return PythonPath.Resolve(path);
+        EnginePath.MakeDirectories(path);
+        return EnginePath.Resolve(path);
     }
 
-    // any(destination.iterdir()); an error counts as entries present, which ends the best-effort migration as Python's does.
+    // any(destination.iterdir()); an error counts as entries present, which ends the best-effort migration.
     private static bool DestinationHasEntries(string destination)
     {
         try
@@ -249,7 +248,7 @@ public sealed class DiffCache
             }
 
             // The directory the kernel reaches, which is the one the resolved cache directory names.
-            var destination = PythonPath.KernelPath(cacheDirectory);
+            var destination = EnginePath.KernelPath(cacheDirectory);
             Directory.CreateDirectory(destination);
             foreach (var file in Directory.EnumerateFiles(legacyRoot, "*", SearchOption.TopDirectoryOnly))
             {

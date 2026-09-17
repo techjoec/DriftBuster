@@ -1,9 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "huger",
-      "profile": "huger-profile",
-      "every": "1000000000d"
-    }
-  ]
-}

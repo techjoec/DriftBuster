@@ -1,4 +1,0 @@
-CREATE VIRTUAL TABLE rt USING rtree(id, x0, x1);
-INSERT INTO rt VALUES (1, 0.5, 1.5);
-CREATE VIRTUAL TABLE f USING fts5(x);
-INSERT INTO f VALUES ('hello world');

@@ -4,8 +4,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>
-/// The multi-server detector (plan fix b): a file that cannot be read or looked up is recorded in <see cref="SkippedFiles"/>
-/// and the walk continues, where Python's detector raises and fails the whole host. An error on the root being scanned (it
+/// The multi-server detector: a file that cannot be read or looked up is recorded in <see cref="SkippedFiles"/>
+/// and the walk continues. An error on the root being scanned (it
 /// cannot be looked up, read or listed) still raises. <see cref="CancellationToken"/> is checked before every entry is
 /// looked up and while the tree is walked.
 /// </summary>
@@ -21,7 +21,7 @@ internal sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes
     public override IReadOnlyList<(string Path, DetectionMatch? Match)> ScanPath(string root, string glob = "**/*", bool resetBudget = true)
     {
         ArgumentNullException.ThrowIfNull(root);
-        _root = PythonPurePath.Str(root);
+        _root = EnginePurePath.Str(root);
         try
         {
             return base.ScanPath(root, glob, resetBudget);
@@ -34,7 +34,7 @@ internal sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes
 
     protected internal override void HandleError(string path, DetectorIOException error)
     {
-        if (_root is null || string.Equals(PythonPurePath.Str(path), _root, StringComparison.Ordinal))
+        if (_root is null || string.Equals(EnginePurePath.Str(path), _root, StringComparison.Ordinal))
         {
             base.HandleError(path, error);
         }
@@ -49,5 +49,5 @@ internal sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes
     }
 
     protected internal override IReadOnlyList<string> EnumerateFiles(string root, string glob)
-        => PythonPath.SortedGlob(root, glob, CancellationToken).Select(PythonPath.Absolute).ToList();
+        => EnginePath.SortedGlob(root, glob, CancellationToken).Select(EnginePath.Absolute).ToList();
 }

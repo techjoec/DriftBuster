@@ -1,5 +1,0 @@
-{"description": "throttle 9223372036 s is below the time_t limit, but CLOCK_MONOTONIC plus it passes 2**63 ns: clock_nanosleep fails with EINVAL",
- "aborts": "[Errno 22] Invalid argument", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"], "throttle_seconds": 9223372036.0}
- ]}

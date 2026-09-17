@@ -1,5 +1,0 @@
-# Case inputs are data the harness reads as they are: the repository's log, temp and env-file patterns must not drop them.
-!*.log
-!*.tmp
-!.env
-!.env.*

@@ -1,9 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "spaced",
-      "profile": "spaced-profile",
-      "every": "1h 30m"
-    }
-  ]
-}

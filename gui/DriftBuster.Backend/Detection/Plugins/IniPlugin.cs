@@ -9,7 +9,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// env files, directive-style Unix conf (Apache, nginx) and INI/JSON hybrids.
 /// </summary>
 /// <remarks>
-/// Regexes here are the Python patterns with <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>: .NET's <c>\s</c> is
+/// Regexes here are the rule patterns with <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>: .NET's <c>\s</c> is
 /// <c>[\f\n\r\t\v\x85\p{Z}]</c>, which is Python's <c>str.isspace</c> set minus U+001C-U+001F. Every other construct
 /// used (<c>^</c>/<c>$</c> under Multiline, <c>.</c>, negated classes, lazy quantifiers) has the same meaning in both
 /// engines for every input; astral characters occupy two UTF-16 units but match the same negated classes as one code
@@ -26,7 +26,7 @@ public sealed partial class IniPlugin : IFormatPlugin
     private const int ReviewLineWindow = 1000;
     private const int DirectiveCountCap = 10;
     private const int BlockLookahead = 20;
-    private const string PythonSpace = @"[\s\x1c-\x1f]";
+    private const string EngineSpace = @"[\s\x1c-\x1f]";
 
     private static readonly string[] DefaultIniExtensions = [".ini", ".cfg", ".cnf", ".conf", ".properties", ".env"];
 
@@ -47,38 +47,38 @@ public sealed partial class IniPlugin : IFormatPlugin
     // Both line-anchored patterns are spelled with \G instead of ^ and driven from every line start by
     // LineStartMatcher, which is what keeps them linear.
     internal static readonly Regex SectionPattern = new(
-        @"\G" + PythonSpace + @"*\[(?<name>[^\]\n]+)\]" + PythonSpace + "*$",
+        @"\G" + EngineSpace + @"*\[(?<name>[^\]\n]+)\]" + EngineSpace + "*$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     internal static readonly Regex KeyValuePattern = new(
-        @"\G" + PythonSpace + "*(?<export>export" + PythonSpace + @"+)?(?<key>[A-Za-z0-9_.\-]+)" + PythonSpace
-        + "*(?<separator>=|:)" + PythonSpace + @"*(?<value>.*?)(?<continued>\\" + PythonSpace + "*)?$",
+        @"\G" + EngineSpace + "*(?<export>export" + EngineSpace + @"+)?(?<key>[A-Za-z0-9_.\-]+)" + EngineSpace
+        + "*(?<separator>=|:)" + EngineSpace + @"*(?<value>.*?)(?<continued>\\" + EngineSpace + "*)?$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex InlineCommentPattern = new(
-        PythonSpace + "(?<marker>[;#!])",
+        EngineSpace + "(?<marker>[;#!])",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex JsonLikeBracePattern = new(
-        @"\{" + PythonSpace + @"*""[^""]+""" + PythonSpace + "*:",
+        @"\{" + EngineSpace + @"*""[^""]+""" + EngineSpace + "*:",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex InlineJsonAssignmentPattern = new(
-        "=" + PythonSpace + @"*\{[^{}]*""[^""]+""" + PythonSpace + "*:",
+        "=" + EngineSpace + @"*\{[^{}]*""[^""]+""" + EngineSpace + "*:",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex AssignOpenBracePattern = new(
-        "=" + PythonSpace + @"*\{",
+        "=" + EngineSpace + @"*\{",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static readonly Regex QuotedKeyColonPattern = new(
-        @"""[^""\n]+""" + PythonSpace + "*:",
+        @"""[^""\n]+""" + EngineSpace + "*:",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
@@ -88,7 +88,7 @@ public sealed partial class IniPlugin : IFormatPlugin
 
     public string Version => "0.0.2";
 
-    /// <summary>Extensions that count as an INI hint; a test seam mirroring the Python module-level set.</summary>
+    /// <summary>Extensions that count as an INI hint; a test seam.</summary>
     internal HashSet<string> IniExtensions { get; set; } = new(DefaultIniExtensions, StringComparer.Ordinal);
 
     public DetectionMatch? Detect(string path, byte[] sample, string? text)
@@ -117,7 +117,7 @@ public sealed partial class IniPlugin : IFormatPlugin
 
         var effectiveLines = Math.Max(scan.NonEmptyLines.Count - scan.CommentLines.Count, 1);
         scan.KeyDensity = (double)scan.KeyPairCount / effectiveLines;
-        metadata["key_density"] = PythonRound(scan.KeyDensity, 3);
+        metadata["key_density"] = EngineRound(scan.KeyDensity, 3);
 
         if (!PassesGates(scan))
         {
@@ -156,7 +156,7 @@ public sealed partial class IniPlugin : IFormatPlugin
         var commentedPairs = 0;
         foreach (var line in scan.Lines.Take(ReviewLineWindow))
         {
-            var s = PythonText.StripStart(line);
+            var s = EngineText.StripStart(line);
             if (s.StartsWith('#') || s.StartsWith(';'))
             {
                 if (s.Contains('=', StringComparison.Ordinal) || s.Contains(':', StringComparison.Ordinal))

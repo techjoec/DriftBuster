@@ -67,7 +67,7 @@ public sealed partial class TomlPlugin
                 continue;
             }
 
-            var stripped = PythonText.StripStart(raw);
+            var stripped = EngineText.StripStart(raw);
             if (stripped.Length == 0 || stripped[0] is '#' or ';' or '[')
             {
                 continue;

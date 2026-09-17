@@ -1,5 +1,0 @@
-name = "demo"
-[owner]
-name = "Tom"
-tags = ["a", "b",]
-limits = { cpu = 2, mem = "4G" }

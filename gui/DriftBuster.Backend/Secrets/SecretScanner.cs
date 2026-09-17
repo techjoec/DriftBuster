@@ -3,13 +3,13 @@ using System.Numerics;
 using System.Reflection;
 
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Secrets;
 
 /// <summary>
-/// <c>driftbuster.secret_scanning</c>: secret rule compilation and loading, ignore lists, and the redacting copy.
-/// Mappings and values are Python-shaped, as <see cref="PythonJson"/> produces them.
+/// Secret rule compilation and loading, ignore lists, and the redacting copy.
+/// Mappings and values are Python-shaped, as <see cref="EngineJson"/> produces them.
 /// </summary>
 public static partial class SecretScanner
 {
@@ -72,32 +72,32 @@ public static partial class SecretScanner
             return null;
         }
 
-        return new SecretRuleset(compiled, PythonRepr.Str(OrElse(Get(mapping, "version"), string.Empty)));
+        return new SecretRuleset(compiled, EngineRepr.Str(OrElse(Get(mapping, "version"), string.Empty)));
     }
 
     private static SecretDetectionRule? CompileRule(IReadOnlyDictionary<string, object?> entry)
     {
-        var name = PythonText.Strip(PythonRepr.Str(OrElse(Get(entry, "name"), string.Empty)));
+        var name = EngineText.Strip(EngineRepr.Str(OrElse(Get(entry, "name"), string.Empty)));
         var patternText = Get(entry, "pattern");
         if (name.Length == 0 || !IsTruthy(patternText))
         {
             return null;
         }
 
-        var flagsText = PythonText.Lower(PythonRepr.Str(OrElse(Get(entry, "flags"), string.Empty)));
-        var flags = flagsText.Contains('i', StringComparison.Ordinal) ? PythonReFlags.IgnoreCase : PythonReFlags.None;
-        PythonPattern pattern;
+        var flagsText = EngineText.Lower(EngineRepr.Str(OrElse(Get(entry, "flags"), string.Empty)));
+        var flags = flagsText.Contains('i', StringComparison.Ordinal) ? EngineReFlags.IgnoreCase : EngineReFlags.None;
+        EnginePattern pattern;
         try
         {
-            pattern = PythonPattern.Compile(PythonRepr.Str(patternText), flags);
+            pattern = EnginePattern.Compile(EngineRepr.Str(patternText), flags);
         }
-        catch (PythonReException)
+        catch (EngineReException)
         {
             return null;
         }
 
         var description = Get(entry, "description");
-        return new SecretDetectionRule(name, pattern, IsTruthy(description) ? PythonRepr.Str(description) : null);
+        return new SecretDetectionRule(name, pattern, IsTruthy(description) ? EngineRepr.Str(description) : null);
     }
 
     /// <summary>
@@ -117,7 +117,7 @@ public static partial class SecretScanner
 
             var text = ResourceReader();
             object? payload = null;
-            if (text is not null && !PythonJson.TryLoads(text, out payload))
+            if (text is not null && !EngineJson.TryLoads(text, out payload))
             {
                 throw new InvalidDataException("secret rules resource is not valid JSON");
             }
@@ -128,12 +128,12 @@ public static partial class SecretScanner
             }
             else if (CompileRulesetFromMapping(payload) is { } compiled)
             {
-                var version = compiled.Version.Length > 0 ? compiled.Version : PythonRepr.Str(PayloadVersion(payload));
+                var version = compiled.Version.Length > 0 ? compiled.Version : EngineRepr.Str(PayloadVersion(payload));
                 (RuleCache, RuleVersion, RuleLoaded) = (compiled.Rules, version, true);
             }
             else
             {
-                (RuleCache, RuleVersion, RuleLoaded) = ([], PythonRepr.Str(PayloadVersion(payload)), true);
+                (RuleCache, RuleVersion, RuleLoaded) = ([], EngineRepr.Str(PayloadVersion(payload)), true);
             }
 
             return (RuleCache, RuleVersion, RuleLoaded.Value);
@@ -175,7 +175,7 @@ public static partial class SecretScanner
 
         return SequenceItems(value!)
             .Where(item => item is not null)
-            .Select(item => PythonText.Strip(PythonRepr.Str(item)))
+            .Select(item => EngineText.Strip(EngineRepr.Str(item)))
             .Where(item => item.Length > 0)
             .ToList();
     }
@@ -187,12 +187,12 @@ public static partial class SecretScanner
         var start = 0;
         for (var index = 0; index <= text.Length; index++)
         {
-            if (index < text.Length && !PythonText.IsSpace(text[index]) && text[index] is not (',' or ';'))
+            if (index < text.Length && !EngineText.IsSpace(text[index]) && text[index] is not (',' or ';'))
             {
                 continue;
             }
 
-            var part = PythonText.Strip(text[start..index]);
+            var part = EngineText.Strip(text[start..index]);
             if (part.Length > 0)
             {
                 parts.Add(part);
@@ -243,7 +243,7 @@ public static partial class SecretScanner
             int or long or BigInteger => "int",
             _ => "list",
         };
-        throw new InvalidOperationException($"'{typeName}' object has no attribute 'get'");
+        throw new InvalidOperationException($"expected a JSON object, not '{typeName}'");
     }
 
     // Python's "value or fallback".

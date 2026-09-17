@@ -26,7 +26,7 @@ public sealed partial class YamlPlugin
         {
             var raw = lines[index];
             var lineNumber = index + 1;
-            var stripped = PythonText.StripStart(raw);
+            var stripped = EngineText.StripStart(raw);
             if (stripped.Length == 0 || stripped[0] == '#')
             {
                 continue;

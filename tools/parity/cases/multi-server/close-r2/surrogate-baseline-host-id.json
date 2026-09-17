@@ -1,9 +1,0 @@
-{
-  "description": "the preferred baseline's host id holds a lone surrogate: Python's signature encode takes the baseline offline, so every entry falls back to another host; the port scans it and diffs against it",
-  "fixes": [], "args": [], "requires": [], "divergences": ["python-surrogate-encode"],
-  "plans": [
-    {"host_id": "host\ud800A", "label": "hostA", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostA"], "baseline": {"is_preferred": true}},
-    {"host_id": "hostB", "label": "hostB", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostB"]},
-    {"host_id": "hostC", "label": "hostC", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r3/trees/surrogate-plans/hostC"]}
-  ]
-}

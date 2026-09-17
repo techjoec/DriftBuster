@@ -1,4 +1,0 @@
-REGISTRY_SCAN:
-  keywords:
-    - a
-  patterns: [b]

@@ -1,8 +1,0 @@
-{
- "database": {
-  "script": "base.sql"
- },
- "options": {
-  "limit": false
- }
-}

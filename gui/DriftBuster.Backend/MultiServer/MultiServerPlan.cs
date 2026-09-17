@@ -7,14 +7,14 @@ using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.MultiServer;
 
-/// <summary><c>driftbuster.multi_server.Plan</c>: one host to scan, its roots and its baseline preference.</summary>
+/// <summary>One host to scan, its roots and its baseline preference.</summary>
 public sealed record MultiServerPlan
 {
     public required string HostId { get; init; }
 
     public required string Label { get; init; }
 
-    /// <summary>The roots as given; the runner spells each as <c>Path(root)</c> does (<see cref="PythonPurePath.Str"/>).</summary>
+    /// <summary>The roots as given; the runner spells each as <c>Path(root)</c> does (<see cref="EnginePurePath.Str"/>).</summary>
     public IReadOnlyList<string> Roots { get; init; } = [];
 
     public bool IsPreferred { get; init; }
@@ -43,7 +43,7 @@ public sealed record MultiServerPlan
     }
 
     /// <summary>
-    /// <c>multi_server._build_plans(request)</c> over a decoded JSON request (<see cref="PythonJson"/> values): <c>request.get("plans")
+    /// <c>multi_server._build_plans(request)</c> over a decoded JSON request (<see cref="EngineJson"/> values): <c>request.get("plans")
     /// or []</c> must be a list or a str (a str yields no plans), entries that are not mappings are skipped, and each mapping goes
     /// through <see cref="FromMapping"/>. Python's errors are raised with Python's text: a request that is not a mapping
     /// (<c>AttributeError</c>), a <c>plans</c> value of any other type (<c>SystemExit: 'plans' must be an array</c>, as
@@ -51,8 +51,8 @@ public sealed record MultiServerPlan
     /// </summary>
     public static IReadOnlyList<MultiServerPlan> BuildPlans(object? request)
     {
-        var payload = PythonBuiltins.Get(request, "plans");
-        if (!PythonBuiltins.IsTruthy(payload))
+        var payload = EngineBuiltins.Get(request, "plans");
+        if (!EngineBuiltins.IsTruthy(payload))
         {
             return [];
         }
@@ -62,7 +62,7 @@ public sealed record MultiServerPlan
             throw new InvalidDataException("'plans' must be an array");
         }
 
-        return PythonBuiltins.Iterate(payload)
+        return EngineBuiltins.Iterate(payload)
             .OfType<OrderedDictionary<string, object?>>()
             .Select(FromMapping)
             .ToList();
@@ -70,7 +70,7 @@ public sealed record MultiServerPlan
 
     /// <summary>
     /// <c>Plan.from_mapping(payload)</c> with Python's coercions: <c>str(host_id or "")</c> and <c>str(label or host_id)</c>
-    /// (<see cref="PythonRepr.Str"/>), <c>for entry in roots or []</c> with <c>str(entry or "")</c>, <c>bool(is_preferred)</c>,
+    /// (<see cref="EngineRepr.Str"/>), <c>for entry in roots or []</c> with <c>str(entry or "")</c>, <c>bool(is_preferred)</c>,
     /// <c>int(priority)</c>, <c>float(throttle_seconds)</c> (null when that raises <c>TypeError</c> or <c>ValueError</c>) and a
     /// truthy <c>baseline</c> or <c>export</c> that must be a mapping. <c>scope</c>, <c>role</c>, the export flags and
     /// <c>cached_at</c> are read by Python but never used by the runner, and none of their coercions can raise.
@@ -78,35 +78,35 @@ public sealed record MultiServerPlan
     public static MultiServerPlan FromMapping(OrderedDictionary<string, object?> payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
-        var hostId = PythonBuiltins.Get(payload, "host_id");
-        var label = PythonBuiltins.Get(payload, "label");
-        var rawRoots = PythonBuiltins.Get(payload, "roots");
-        var roots = PythonBuiltins.IsTruthy(rawRoots)
-            ? PythonBuiltins.Iterate(rawRoots).Select(entry => PythonBuiltins.IsTruthy(entry) ? PythonRepr.Str(entry) : string.Empty).ToList()
+        var hostId = EngineBuiltins.Get(payload, "host_id");
+        var label = EngineBuiltins.Get(payload, "label");
+        var rawRoots = EngineBuiltins.Get(payload, "roots");
+        var roots = EngineBuiltins.IsTruthy(rawRoots)
+            ? EngineBuiltins.Iterate(rawRoots).Select(entry => EngineBuiltins.IsTruthy(entry) ? EngineRepr.Str(entry) : string.Empty).ToList()
             : [];
-        var baseline = PythonBuiltins.Get(payload, "baseline");
+        var baseline = EngineBuiltins.Get(payload, "baseline");
         var isPreferred = false;
         var priority = BigInteger.Zero;
-        if (PythonBuiltins.IsTruthy(baseline))
+        if (EngineBuiltins.IsTruthy(baseline))
         {
-            isPreferred = PythonBuiltins.IsTruthy(PythonBuiltins.Get(baseline, "is_preferred"));
+            isPreferred = EngineBuiltins.IsTruthy(EngineBuiltins.Get(baseline, "is_preferred"));
             var mapping = (IReadOnlyDictionary<string, object?>)baseline!;
-            priority = PythonBuiltins.Int(mapping.TryGetValue("priority", out var given) ? given : 0);
+            priority = EngineBuiltins.Int(mapping.TryGetValue("priority", out var given) ? given : 0);
         }
 
-        var export = PythonBuiltins.Get(payload, "export");
-        if (PythonBuiltins.IsTruthy(export))
+        var export = EngineBuiltins.Get(payload, "export");
+        if (EngineBuiltins.IsTruthy(export))
         {
-            PythonBuiltins.Get(export, "include_catalog");
+            EngineBuiltins.Get(export, "include_catalog");
         }
 
         return Create(
-            PythonBuiltins.IsTruthy(hostId) ? PythonRepr.Str(hostId) : string.Empty,
-            PythonBuiltins.IsTruthy(label) ? PythonRepr.Str(label) : null,
+            EngineBuiltins.IsTruthy(hostId) ? EngineRepr.Str(hostId) : string.Empty,
+            EngineBuiltins.IsTruthy(label) ? EngineRepr.Str(label) : null,
             roots,
             isPreferred,
             priority,
-            Throttle(PythonBuiltins.Get(payload, "throttle_seconds")));
+            Throttle(EngineBuiltins.Get(payload, "throttle_seconds")));
     }
 
     // float(throttle_value), None when it raises TypeError or ValueError; OverflowError propagates.
@@ -119,9 +119,9 @@ public sealed record MultiServerPlan
 
         try
         {
-            return PythonBuiltins.Float(value);
+            return EngineBuiltins.Float(value);
         }
-        catch (Exception exc) when (exc is PythonTypeException or PythonValueException)
+        catch (Exception exc) when (exc is EngineTypeException or EngineValueException)
         {
             return null;
         }
@@ -129,13 +129,13 @@ public sealed record MultiServerPlan
 
     private static MultiServerPlan Create(string? rawHostId, string? rawLabel, IEnumerable<string> rawRoots, bool isPreferred, BigInteger priority, double? throttle)
     {
-        var hostId = PythonText.Strip(rawHostId ?? string.Empty);
+        var hostId = EngineText.Strip(rawHostId ?? string.Empty);
         if (hostId.Length == 0)
         {
             hostId = Convert.ToHexStringLower(SHA1.HashData(RandomNumberGenerator.GetBytes(16)));
         }
 
-        var label = PythonText.Strip(string.IsNullOrEmpty(rawLabel) ? hostId : rawLabel);
+        var label = EngineText.Strip(string.IsNullOrEmpty(rawLabel) ? hostId : rawLabel);
         if (label.Length == 0)
         {
             label = hostId;
@@ -144,10 +144,10 @@ public sealed record MultiServerPlan
         var roots = new List<string>();
         foreach (var entry in rawRoots)
         {
-            var text = PythonText.Strip(entry);
+            var text = EngineText.Strip(entry);
             if (text.Length > 0)
             {
-                roots.Add(PythonOsPath.ExpandUser(PythonOsPath.ExpandVars(text)));
+                roots.Add(EngineOsPath.ExpandUser(EngineOsPath.ExpandVars(text)));
             }
         }
 

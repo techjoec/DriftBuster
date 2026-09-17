@@ -4,7 +4,7 @@ using DriftBuster.Backend.Sql;
 
 namespace DriftBuster.Backend.Remote;
 
-/// <summary><c>capture.py export-sql</c>.</summary>
+/// <summary><c>driftbuster capture export-sql</c> and <c>driftbuster sql-export</c>.</summary>
 public static partial class CaptureRunner
 {
     /// <summary>
@@ -16,16 +16,16 @@ public static partial class CaptureRunner
     /// </summary>
     /// <remarks>
     /// A table whose schema SQLite stores as a BLOB builds (<see cref="SnapshotTable.SchemaBytes"/>), and <c>json.dumps</c> of the snapshot
-    /// then raises <c>TypeError</c> (<see cref="PythonTypeException"/>) outside the export's error handling, after the destination is chosen
-    /// and before it is written, ending the command without a manifest, as in Python.
+    /// then raises <c>TypeError</c> (<see cref="EngineTypeException"/>) outside the export's error handling, after the destination is chosen
+    /// and before it is written, ending the command without a manifest.
     /// </remarks>
     public static SqlExportOutcome RunSqlExport(SqlExportOptions options, TextWriter stdout, TextWriter stderr)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
-        var outputDir = PythonPath.Resolve(PythonPath.ExpandUser(options.OutputDir));
-        PythonPath.MakeDirectories(outputDir);
+        var outputDir = EnginePath.Resolve(EnginePath.ExpandUser(options.OutputDir));
+        EnginePath.MakeDirectories(outputDir);
 
         var maskMap = ParseColumnArguments(options.MaskColumn);
         var hashMap = ParseColumnArguments(options.HashColumn);
@@ -38,7 +38,7 @@ public static partial class CaptureRunner
         var exitCode = 0;
         foreach (var database in options.Database)
         {
-            var dbPath = PythonPath.Resolve(PythonPath.ExpandUser(database));
+            var dbPath = EnginePath.Resolve(EnginePath.ExpandUser(database));
             if (!RunProfileStore.Exists(dbPath))
             {
                 stderr.Write($"error: database not found: {dbPath}\n");
@@ -71,7 +71,7 @@ public static partial class CaptureRunner
             stdout.Write($"Exported SQL snapshot to {destination}\n");
         }
 
-        var manifestPath = PythonPurePath.Join(outputDir, options.ManifestName);
+        var manifestPath = EnginePurePath.Join(outputDir, options.ManifestName);
         var manifest = SqlManifest(exports, tables, excludeTables, maskMap, hashMap, options, hashSalt);
         WriteJsonText(manifestPath, manifest);
         if (options.ReportManifestPath)
@@ -82,7 +82,7 @@ public static partial class CaptureRunner
         return new SqlExportOutcome(exitCode, manifestPath, manifest, written);
     }
 
-    // cli.py export-sql: `if limit is not None and limit <= 0` after the database is found and before it is exported.
+    // driftbuster sql-export refuses a limit of zero or less after the database is found and before it is exported.
     private static bool LimitRefused(SqlExportOptions options, TextWriter stderr)
     {
         if (!options.LimitMustBePositive || options.Limit is not { } limit || limit > 0)
@@ -101,10 +101,10 @@ public static partial class CaptureRunner
     public static string DetermineSnapshotPath(string outputDir, string stem)
     {
         ArgumentNullException.ThrowIfNull(outputDir);
-        var candidate = PythonPurePath.Join(outputDir, $"{stem}-sql-snapshot.json");
+        var candidate = EnginePurePath.Join(outputDir, $"{stem}-sql-snapshot.json");
         for (var counter = 1; RunProfileStore.Exists(candidate); counter++)
         {
-            candidate = PythonPurePath.Join(outputDir, $"{stem}-sql-snapshot-{counter}.json");
+            candidate = EnginePurePath.Join(outputDir, $"{stem}-sql-snapshot-{counter}.json");
         }
 
         return candidate;
@@ -125,8 +125,8 @@ public static partial class CaptureRunner
                 continue;
             }
 
-            var table = PythonText.Strip(entry![..dot]);
-            var column = PythonText.Strip(entry[(dot + 1)..]);
+            var table = EngineText.Strip(entry![..dot]);
+            var column = EngineText.Strip(entry[(dot + 1)..]);
             if (table.Length == 0 || column.Length == 0)
             {
                 continue;
@@ -205,7 +205,7 @@ public static partial class CaptureRunner
                 ["exclude_tables"] = excludeTables.Cast<object?>().ToList(),
                 ["masked_columns"] = ColumnMapPayload(maskMap),
                 ["hashed_columns"] = ColumnMapPayload(hashMap),
-                ["limit"] = options.Limit is { } limit ? PythonValues.Narrow(limit) : null,
+                ["limit"] = options.Limit is { } limit ? EngineValues.Narrow(limit) : null,
                 ["placeholder"] = options.Placeholder,
                 ["hash_salt"] = hashSalt,
             },

@@ -17,7 +17,7 @@ public static partial class SecretScanner
     {
         try
         {
-            using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var buffer = new byte[1024];
             var total = 0;
             int read;
@@ -37,7 +37,7 @@ public static partial class SecretScanner
     /// <summary><c>hash_file(path)</c>: the SHA-256 of the file as lowercase hex.</summary>
     public static string HashFile(string path)
     {
-        using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.Read);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
@@ -53,8 +53,8 @@ public static partial class SecretScanner
     /// redacted text is written as UTF-8 with platform newlines and the source's metadata copied best effort.
     /// Returns the destination size and SHA-256.
     /// <para>
-    /// Fix g: Python repeats forever on a line where rules keep matching inside the <c>[SECRET]</c> text they inserted
-    /// (<c>secret</c> with flag <c>i</c>, say, or two rules taking turns). The port replaces exactly as Python does until a line
+    /// Rules can keep matching inside the <c>[SECRET]</c> text they inserted on a line
+    /// (<c>secret</c> with flag <c>i</c>, say, or two rules taking turns). Replacement proceeds until a line
     /// has taken more than <see cref="GuardBudget"/> non-shrinking replacements wholly inside inserted text since its last
     /// replacement that consumed source text. It then restores the line (and its findings and log lines) to that last
     /// replacement, stops every rule that replaced inside inserted text since then on that line (each recorded in
@@ -99,7 +99,7 @@ public static partial class SecretScanner
     }
 
     // The redacted lines, or null when no line matched; and the number of redactions. Lines read before the first match are
-    // kept (Python's buffered_lines) and become the start of the sanitised list.
+    // kept and become the start of the sanitised list.
     private static (List<string>? Lines, int Matches) Sanitise(
         IEnumerable<string> lines,
         string displayPath,
@@ -121,7 +121,7 @@ public static partial class SecretScanner
                 var (start, end) = (match!.Start, match.End);
                 if (redaction.ExceedsGuardBudget(rule, start, end))
                 {
-                    // Fix g: Python would keep replacing inside inserted text and never leave this line.
+                    // Replacing would continue inside inserted text and never leave this line.
                     stopped ??= new HashSet<SecretDetectionRule>(ReferenceEqualityComparer.Instance);
                     foreach (var looping in redaction.RollBack(context.Findings))
                     {
@@ -157,14 +157,14 @@ public static partial class SecretScanner
     }
 
     /// <summary>
-    /// Fix g: the number of non-shrinking replacements lying wholly inside inserted <c>[SECRET]</c> text that one line may take
-    /// since its last replacement that consumed source text. Python never returns from a line that goes past it.
+    /// The number of non-shrinking replacements lying wholly inside inserted <c>[SECRET]</c> text that one line may take
+    /// since its last replacement that consumed source text.
     /// </summary>
     internal const int GuardBudget = 1024;
 
-    // One line's redaction state for fix g. Every character of the working line is either source text or inserted text (part of a
+    // One line's redaction state for the guard. Every character of the working line is either source text or inserted text (part of a
     // [SECRET] this loop wrote). A replacement whose match holds a source character consumes source text, which can happen only
-    // finitely often; so a line Python never leaves is one that, from some point on, replaces only inside inserted text, and
+    // finitely often; so a line that would never be left is one that, from some point on, replaces only inside inserted text, and
     // (the line length being bounded otherwise) does so without shrinking the line infinitely often. The state after the last
     // replacement that consumed source text is kept as a checkpoint; the rules that replaced inside inserted text since then are
     // the looping rules.
@@ -202,7 +202,7 @@ public static partial class SecretScanner
             return false;
         }
 
-        // Python's replacement of [start, end) with [SECRET].
+        // Replaces [start, end) with [SECRET].
         public string Replace(int start, int end)
         {
             _consumedSource = _inserted.GetRange(start, end - start).Contains(false);
@@ -245,7 +245,7 @@ public static partial class SecretScanner
         }
     }
 
-    private static (SecretDetectionRule? Rule, Infrastructure.PythonRe.PythonMatch? Match) FirstTriggeredRule(
+    private static (SecretDetectionRule? Rule, Infrastructure.EngineRe.EngineMatch? Match) FirstTriggeredRule(
         SecretDetectionContext context,
         string working,
         string original,
@@ -275,7 +275,7 @@ public static partial class SecretScanner
     // one read waits for the next), each line keeping its \n.
     private static IEnumerable<string> ReadUniversalLines(string path)
     {
-        using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new StreamReader(stream, ReplacingUtf8, detectEncodingFromByteOrderMarks: false, bufferSize: 1 << 16);
         var buffer = new char[1 << 16];
         var line = new StringBuilder();
@@ -334,7 +334,7 @@ public static partial class SecretScanner
     /// <summary><c>shutil.copy2(source, destination)</c> followed by the destination's size and SHA-256.</summary>
     internal static (long Size, string Sha256) CopyVerbatim(string source, string destination)
     {
-        File.Copy(PythonPath.KernelPath(source), destination, overwrite: true);
+        File.Copy(EnginePath.KernelPath(source), destination, overwrite: true);
         CopyStat(source, destination);
         return (new FileInfo(destination).Length, HashFile(destination));
     }
@@ -346,11 +346,11 @@ public static partial class SecretScanner
         {
             if (!OperatingSystem.IsWindows())
             {
-                File.SetUnixFileMode(destination, File.GetUnixFileMode(PythonPath.KernelPath(source)));
+                File.SetUnixFileMode(destination, File.GetUnixFileMode(EnginePath.KernelPath(source)));
             }
 
-            File.SetLastAccessTimeUtc(destination, File.GetLastAccessTimeUtc(PythonPath.KernelPath(source)));
-            File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(PythonPath.KernelPath(source)));
+            File.SetLastAccessTimeUtc(destination, File.GetLastAccessTimeUtc(EnginePath.KernelPath(source)));
+            File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(EnginePath.KernelPath(source)));
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {

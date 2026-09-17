@@ -1,2 +1,0 @@
-pw=two
-host=a

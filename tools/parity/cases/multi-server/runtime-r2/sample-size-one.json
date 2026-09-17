@@ -1,8 +1,0 @@
-{
-  "description": "a one-byte sample over the multi-server fixtures and the wide encodings: every sample truncated, raw texts read whole",
-  "fixes": [], "args": ["--sample-size", "1"], "requires": [],
-  "plans": [
-    {"host_id": "server01", "label": "server01", "scope": "custom_roots", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "wide", "label": "Wide", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/wide/hostA"]}
-  ]
-}

@@ -6,7 +6,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Hand-matched equivalents of the Python module regexes. Each matcher carries the Python pattern verbatim and the
+/// Hand-matched equivalents of the XML rule regexes. Each matcher carries the pattern verbatim and the
 /// argument for why the code-point walk yields the same match set on every input.
 /// </summary>
 /// <remarks>
@@ -16,24 +16,24 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// U+212A (to 'k'). <see cref="MatchesKeywordIgnoreCase"/> spells exactly that rule. A class such as
 /// <c>[A-Za-z_]</c> under IGNORECASE matches a code point whose lowercase or whose lowercase's uppercase falls in the
 /// range: the ASCII letters plus U+0130, U+0131, U+017F and U+212A (<see cref="IsAsciiLetterIgnoreCase"/>).
-/// <c>\w</c> is Python's [L N _] on code points (<see cref="PythonText.IsWordRune"/>), <c>\s</c> is
-/// <see cref="PythonText.IsSpace"/>, and <c>.</c> without DOTALL is any code point except '\n'.
+/// <c>\w</c> is Python's [L N _] on code points (<see cref="EngineText.IsWordRune"/>), <c>\s</c> is
+/// <see cref="EngineText.IsSpace"/>, and <c>.</c> without DOTALL is any code point except '\n'.
 /// </remarks>
 public sealed partial class XmlPlugin
 {
-    private const string PythonSpace = @"[\s\x1c-\x1f]";
+    private const string EngineSpace = @"[\s\x1c-\x1f]";
 
     // _XDT_TRANSFORM_ATTR = xdt:Transform\s*=\s*(?:['"][^'"]+['"])  (case-sensitive). Every construct has the same
     // meaning in .NET once \s is spelled as the Python set; [^'"]+ matches surrogate halves one unit at a time but
     // the set of matched strings is identical because the quantifier is unbounded.
     private static readonly Regex XdtTransformAttrPattern = new(
-        "xdt:Transform" + PythonSpace + "*=" + PythonSpace + @"*(?:['""][^'""]+['""])",
+        "xdt:Transform" + EngineSpace + "*=" + EngineSpace + @"*(?:['""][^'""]+['""])",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
     private static int SkipSpaces(string s, int offset)
     {
-        while (offset < s.Length && PythonText.IsSpace(s[offset]))
+        while (offset < s.Length && EngineText.IsSpace(s[offset]))
         {
             offset++;
         }
@@ -100,7 +100,7 @@ public sealed partial class XmlPlugin
         => rune.Value is '_' or 0x0130 or 0x0131 or 0x017F or 0x212A || (rune.IsAscii && char.IsAsciiLetter((char)rune.Value));
 
     // [\w:.-] on a code point.
-    private static bool IsNameRune(Rune rune) => rune.Value is ':' or '.' or '-' || PythonText.IsWordRune(rune);
+    private static bool IsNameRune(Rune rune) => rune.Value is ':' or '.' or '-' || EngineText.IsWordRune(rune);
 
     // End of the [\w:.-]* run starting at offset.
     private static int SkipNameRunes(string s, int offset)
@@ -115,7 +115,7 @@ public sealed partial class XmlPlugin
 
     // (\s|>) at offset.
     private static bool IsSpaceOrGreaterThan(string s, int offset)
-        => offset < s.Length && (s[offset] == '>' || PythonText.IsSpace(s[offset]));
+        => offset < s.Length && (s[offset] == '>' || EngineText.IsSpace(s[offset]));
 
     /// <summary><c>pattern.search(text)</c> truthiness for an IGNORECASE literal pattern (no metacharacters).</summary>
     private static bool ContainsIgnoreCase(string s, string keywordLower) => IndexOfIgnoreCase(s, keywordLower, 0) >= 0;
@@ -215,7 +215,7 @@ public sealed partial class XmlPlugin
             return false;
         }
 
-        if (afterName < s.Length && PythonText.IsWordRune(RuneAt(s, afterName)))
+        if (afterName < s.Length && EngineText.IsWordRune(RuneAt(s, afterName)))
         {
             return false;
         }
@@ -471,8 +471,8 @@ public sealed partial class XmlPlugin
         while (position >= minimum)
         {
             Rune.DecodeLastFromUtf16(s.AsSpan(0, position), out var before, out var consumed);
-            var afterIsWord = position < s.Length && PythonText.IsWordRune(RuneAt(s, position));
-            if (PythonText.IsWordRune(before) != afterIsWord)
+            var afterIsWord = position < s.Length && EngineText.IsWordRune(RuneAt(s, position));
+            if (EngineText.IsWordRune(before) != afterIsWord)
             {
                 return position;
             }
@@ -526,7 +526,7 @@ public sealed partial class XmlPlugin
         while (offset < s.Length)
         {
             var rune = RuneAt(s, offset);
-            if (rune.Value is '.' or '-' || PythonText.IsWordRune(rune))
+            if (rune.Value is '.' or '-' || EngineText.IsWordRune(rune))
             {
                 offset += RuneLength(s, offset);
                 continue;

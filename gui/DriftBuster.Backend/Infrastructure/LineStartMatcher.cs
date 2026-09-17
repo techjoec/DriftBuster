@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Linear-time driver for the Python <c>^\s*...</c> MULTILINE patterns. A .NET regex searched with <c>^</c> under
+/// Linear-time driver for the <c>^\s*...</c> MULTILINE patterns. A .NET regex searched with <c>^</c> under
 /// <see cref="RegexOptions.Multiline"/> re-scans and backtracks a run of blank lines from every line start inside
 /// it (quadratic, and past the match timeout well inside one sample), so the plugins spell those patterns with
 /// <c>\G</c> and drive them from here.
@@ -63,7 +63,7 @@ public static class LineStartMatcher
     public static int SkipSpaces(string text, int offset)
     {
         ArgumentNullException.ThrowIfNull(text);
-        while (offset < text.Length && PythonText.IsSpace(text[offset]))
+        while (offset < text.Length && EngineText.IsSpace(text[offset]))
         {
             offset++;
         }

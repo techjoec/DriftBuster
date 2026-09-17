@@ -2,7 +2,7 @@ namespace DriftBuster.Backend.Registry;
 
 /// <summary>
 /// <c>registry.scan._Backend</c>: read-only enumeration of a key's subkey names and its values. A key that cannot be opened lists
-/// nothing. A value's data is in the <see cref="Infrastructure.PythonJson"/> domain plus <see cref="byte"/> arrays for <c>bytes</c>,
+/// nothing. A value's data is in the <see cref="Infrastructure.EngineJson"/> domain plus <see cref="byte"/> arrays for <c>bytes</c>,
 /// as <see cref="WinRegistryValueConverter"/> produces it.
 /// </summary>
 public interface IRegistryBackend

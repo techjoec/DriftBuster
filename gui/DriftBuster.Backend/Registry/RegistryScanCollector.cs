@@ -3,15 +3,14 @@ using System.Text;
 
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
 /// The <c>registry_scan</c> branch of <c>offline_runner.execute_config</c>: runs one <see cref="OfflineRegistryScanSource"/> into
 /// its destination directory and returns the manifest source summary with the file it wrote. The registry calls are looked up
-/// through settable seams, as the branch looks them up on the <c>driftbuster.registry</c> package at call time; tests swap them as
-/// Python monkeypatches the package attributes.
+/// through settable seams at call time, so tests can swap them.
 /// </summary>
 public static class RegistryScanCollector
 {
@@ -36,7 +35,7 @@ public static class RegistryScanCollector
     /// <paramref name="destinationRoot"/> as <c>json.dumps(payload, indent=2)</c> in text mode; and returns the summary with the
     /// file's size and SHA-256.
     /// </summary>
-    /// <exception cref="PythonReException">A pattern does not compile (<c>re.error</c>).</exception>
+    /// <exception cref="EngineReException">A pattern does not compile (<c>re.error</c>).</exception>
     public static RegistryScanCollection Collect(OfflineRegistryScanSource source, string destinationRoot, Action<string>? log = null)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -56,14 +55,14 @@ public static class RegistryScanCollector
         var spec = new SearchSpec
         {
             Keywords = source.Keywords,
-            Patterns = source.Patterns.Select(RegistryPython.Compile).ToList(),
+            Patterns = source.Patterns.Select(RegistryText.Compile).ToList(),
             MaxDepth = source.MaxDepth,
             MaxHits = source.MaxHits,
             TimeBudgetS = source.TimeBudgetS,
         };
         var hits = SearchRegistry(roots, spec);
 
-        var resultPath = PythonPurePath.Join(destinationRoot, ResultFileName);
+        var resultPath = EnginePurePath.Join(destinationRoot, ResultFileName);
         var text = Canonicaliser.Dumps(ResultPayload(source, roots, hits), indent: true, ensureAscii: true, sortKeys: false);
         if (!string.Equals(Environment.NewLine, "\n", StringComparison.Ordinal))
         {
@@ -71,7 +70,7 @@ public static class RegistryScanCollector
         }
 
         var bytes = Utf8.GetBytes(text);
-        PythonTextFile.WriteBytes(resultPath, bytes);
+        EngineTextFile.WriteBytes(resultPath, bytes);
 
         var summary = Summary(source);
         summary["roots"] = roots.Select(root => (object?)$"{root.Hive} \\ {root.Path}").ToList();

@@ -10,7 +10,7 @@ namespace DriftBuster.Backend.Sql;
 /// <summary>
 /// <c>offline_runner.OfflineSqlSnapshotSource</c>: a <c>sql_snapshot</c> source of an offline runner profile. The database path, the
 /// manifest alias, whether a missing database is skipped, the table filters, the mask and hash column maps, the row limit, the
-/// placeholder, the salt and the dialect (only <c>sqlite</c>). Values are in the <see cref="PythonJson"/> domain.
+/// placeholder, the salt and the dialect (only <c>sqlite</c>). Values are in the <see cref="EngineJson"/> domain.
 /// </summary>
 public sealed record OfflineSqlSnapshotSource(string Path)
 {
@@ -44,47 +44,47 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     /// <see cref="NormaliseSnapshotColumns"/>; <c>int(limit)</c> when not null, which must be positive; the placeholder and salt the first
     /// truthy of the spec's and the payload's as <c>str()</c>; <c>str(dialect).lower()</c>, which must be <c>sqlite</c>.
     /// </summary>
-    /// <exception cref="PythonValueException">Python's <c>ValueError</c> text for each refusal.</exception>
+    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
     public static OfflineSqlSnapshotSource FromDict(IReadOnlyDictionary<string, object?> payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
         if (payload.GetValueOrDefault("sql_snapshot") is not IReadOnlyDictionary<string, object?> spec)
         {
-            throw new PythonValueException("sql_snapshot source requires an object payload", nameof(payload));
+            throw new EngineValueException("sql_snapshot source requires an object payload", nameof(payload));
         }
 
         var pathValue = FirstTruthy(spec.GetValueOrDefault("path"), payload.GetValueOrDefault("path"));
-        if (!PythonBuiltins.IsTruthy(pathValue) || PythonText.Strip(PythonRepr.Str(pathValue)).Length == 0)
+        if (!EngineBuiltins.IsTruthy(pathValue) || EngineText.Strip(EngineRepr.Str(pathValue)).Length == 0)
         {
-            throw new PythonValueException("sql_snapshot requires a 'path'.", nameof(payload));
+            throw new EngineValueException("sql_snapshot requires a 'path'.", nameof(payload));
         }
 
         var aliasValue = FirstTruthy(payload.GetValueOrDefault("alias"), spec.GetValueOrDefault("alias"));
-        var alias = PythonBuiltins.IsTruthy(aliasValue) && PythonText.Strip(PythonRepr.Str(aliasValue)).Length > 0
-            ? PythonText.Strip(PythonRepr.Str(aliasValue))
+        var alias = EngineBuiltins.IsTruthy(aliasValue) && EngineText.Strip(EngineRepr.Str(aliasValue)).Length > 0
+            ? EngineText.Strip(EngineRepr.Str(aliasValue))
             : null;
-        var optional = PythonBuiltins.IsTruthy(payload.TryGetValue("optional", out var optionalValue) ? optionalValue : spec.GetValueOrDefault("optional", false));
+        var optional = EngineBuiltins.IsTruthy(payload.TryGetValue("optional", out var optionalValue) ? optionalValue : spec.GetValueOrDefault("optional", false));
 
         BigInteger? limit = null;
         if (spec.GetValueOrDefault("limit") is { } limitValue)
         {
-            limit = PythonBuiltins.Int(limitValue);
+            limit = EngineBuiltins.Int(limitValue);
             if (limit.Value.Sign <= 0)
             {
-                throw new PythonValueException("sql_snapshot limit must be positive if provided", nameof(payload));
+                throw new EngineValueException("sql_snapshot limit must be positive if provided", nameof(payload));
             }
         }
 
         // str(spec.get(key) or payload.get(key) or default): a falsy payload value falls through to the default too.
-        var placeholder = PythonRepr.Str(FirstTruthy(FirstTruthy(spec.GetValueOrDefault("placeholder"), payload.GetValueOrDefault("placeholder")), DefaultPlaceholder));
-        var hashSalt = PythonRepr.Str(FirstTruthy(FirstTruthy(spec.GetValueOrDefault("hash_salt"), payload.GetValueOrDefault("hash_salt")), string.Empty));
-        var dialect = PythonText.Lower(PythonRepr.Str(FirstTruthy(spec.GetValueOrDefault("dialect"), "sqlite")));
+        var placeholder = EngineRepr.Str(FirstTruthy(FirstTruthy(spec.GetValueOrDefault("placeholder"), payload.GetValueOrDefault("placeholder")), DefaultPlaceholder));
+        var hashSalt = EngineRepr.Str(FirstTruthy(FirstTruthy(spec.GetValueOrDefault("hash_salt"), payload.GetValueOrDefault("hash_salt")), string.Empty));
+        var dialect = EngineText.Lower(EngineRepr.Str(FirstTruthy(spec.GetValueOrDefault("dialect"), "sqlite")));
         if (!string.Equals(dialect, "sqlite", StringComparison.Ordinal))
         {
-            throw new PythonValueException("sql_snapshot currently supports only the 'sqlite' dialect", nameof(payload));
+            throw new EngineValueException("sql_snapshot currently supports only the 'sqlite' dialect", nameof(payload));
         }
 
-        return new OfflineSqlSnapshotSource(PythonRepr.Str(pathValue))
+        return new OfflineSqlSnapshotSource(EngineRepr.Str(pathValue))
         {
             Alias = alias,
             Optional = optional,
@@ -100,12 +100,12 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     }
 
     // a or b: the first truthy operand, else the last.
-    private static object? FirstTruthy(object? first, object? second) => PythonBuiltins.IsTruthy(first) ? first : second;
+    private static object? FirstTruthy(object? first, object? second) => EngineBuiltins.IsTruthy(first) ? first : second;
 
     // _string_tuple(key): () for a falsy value, (raw,) for a str, else the non-blank stripped str() of each item.
     private static List<string> StringTuple(object? raw)
     {
-        if (!PythonBuiltins.IsTruthy(raw))
+        if (!EngineBuiltins.IsTruthy(raw))
         {
             return [];
         }
@@ -115,7 +115,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
             return [text];
         }
 
-        return PythonBuiltins.Iterate(raw).Select(PythonRepr.Str).Select(PythonText.Strip).Where(item => item.Length > 0).ToList();
+        return EngineBuiltins.Iterate(raw).Select(EngineRepr.Str).Select(EngineText.Strip).Where(item => item.Length > 0).ToList();
     }
 
     /// <summary>
@@ -128,7 +128,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     public static OrderedDictionary<string, IReadOnlyList<string>> NormaliseSnapshotColumns(object? value)
     {
         var normalised = new OrderedDictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        if (!PythonBuiltins.IsTruthy(value))
+        if (!EngineBuiltins.IsTruthy(value))
         {
             return normalised;
         }
@@ -137,14 +137,14 @@ public sealed record OfflineSqlSnapshotSource(string Path)
         {
             foreach (var (table, columns) in mapping)
             {
-                if (!PythonBuiltins.IsTruthy(table))
+                if (!EngineBuiltins.IsTruthy(table))
                 {
                     continue;
                 }
 
                 var entries = IsSequence(columns)
-                    ? PythonBuiltins.Iterate(columns).Select(PythonRepr.Str).Select(PythonText.Strip).Where(column => column.Length > 0).ToList()
-                    : [PythonText.Strip(PythonRepr.Str(columns))];
+                    ? EngineBuiltins.Iterate(columns).Select(EngineRepr.Str).Select(EngineText.Strip).Where(column => column.Length > 0).ToList()
+                    : [EngineText.Strip(EngineRepr.Str(columns))];
                 if (entries.Count > 0)
                 {
                     normalised[table] = entries;
@@ -169,22 +169,22 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     private static OrderedDictionary<string, List<string>> GroupDottedColumns(object? value)
     {
         var grouped = new OrderedDictionary<string, List<string>>(StringComparer.Ordinal);
-        foreach (var entry in PythonBuiltins.Iterate(value))
+        foreach (var entry in EngineBuiltins.Iterate(value))
         {
-            if (!PythonBuiltins.IsTruthy(entry))
+            if (!EngineBuiltins.IsTruthy(entry))
             {
                 continue;
             }
 
-            var text = PythonText.Strip(PythonRepr.Str(entry));
+            var text = EngineText.Strip(EngineRepr.Str(entry));
             var dot = text.IndexOf('.', StringComparison.Ordinal);
             if (text.Length == 0 || dot < 0)
             {
                 continue;
             }
 
-            var table = PythonText.Strip(text[..dot]);
-            var column = PythonText.Strip(text[(dot + 1)..]);
+            var table = EngineText.Strip(text[..dot]);
+            var column = EngineText.Strip(text[(dot + 1)..]);
             if (table.Length == 0 || column.Length == 0)
             {
                 continue;
@@ -232,8 +232,8 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     private static string Stem(string path)
     {
         // PurePath.name: the last of the parts after the anchor, or "".
-        var parts = PythonPurePath.Parts(path);
-        var name = parts.Count > (PythonPurePath.Anchor(path).Length > 0 ? 1 : 0) ? parts[^1] : string.Empty;
+        var parts = EnginePurePath.Parts(path);
+        var name = parts.Count > (EnginePurePath.Anchor(path).Length > 0 ? 1 : 0) ? parts[^1] : string.Empty;
         var dot = name.LastIndexOf('.');
         return dot > 0 && dot < name.Length - 1 ? name[..dot] : name;
     }
@@ -248,7 +248,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
         ["exclude_tables"] = ExcludeTables.Count > 0 ? ExcludeTables.Cast<object?>().ToList() : null,
         ["mask_columns"] = ColumnMap(MaskColumns),
         ["hash_columns"] = ColumnMap(HashColumns),
-        ["limit"] = Limit is { } limit ? PythonValues.Narrow(limit) : null,
+        ["limit"] = Limit is { } limit ? EngineValues.Narrow(limit) : null,
         ["placeholder"] = Placeholder,
         ["hash_salt"] = HashSalt,
     };

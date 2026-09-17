@@ -9,14 +9,14 @@ using DriftBuster.Backend.Models;
 namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>
-/// <c>driftbuster.multi_server.MultiServerRunner</c>: scans every host's roots in plan order, strictly one after another, and
+/// Scans every host's roots in plan order, strictly one after another, and
 /// builds the <c>multi-server.v1</c> response (host results, catalog, drilldown and summary).
 /// </summary>
 /// <remarks>
 /// Progress is reported on the calling thread through <see cref="IProgress{T}.Report"/>, throttled per run
 /// (<see cref="ProgressThrottle"/>). <see cref="CancellationToken"/> is honoured per plan, per root, per file in the secret hunt
 /// and the detector walk, per config and per host diff in the catalog, and during the throttle delay; cancellation surfaces as
-/// <see cref="OperationCanceledException"/> and is never reported as a failed host. Plan fix b: an unreadable file is skipped
+/// <see cref="OperationCanceledException"/> and is never reported as a failed host. An unreadable file is skipped
 /// and the host still succeeds; only a root that cannot be looked up, read or listed fails the host with
 /// <c>permission_denied</c>.
 /// </remarks>
@@ -30,8 +30,7 @@ public sealed partial class MultiServerRunner
     /// characters). The text read always fits one string, and so, for ordinary text, do its canonical form and the cache entry's
     /// JSON; they are not bounded, though: indented canonical JSON grows with nesting and <c>json.dumps</c> escapes a control
     /// character as six characters, so a text near the limit can still pass the longest string, and the runtime's
-    /// <see cref="OutOfMemoryException"/> then ends the run. A detected file past the limit is skipped as unreadable (fix b);
-    /// Python reads a text of any size.
+    /// <see cref="OutOfMemoryException"/> then ends the run. A detected file past the limit is skipped as unreadable.
     /// </summary>
     internal const long DefaultMaxTextBytes = 0x3FFFFFDF / 6;
 
@@ -119,7 +118,7 @@ public sealed partial class MultiServerRunner
         void Emit(ServerScanStatus status, string message) => throttle.Report(progress, plan.HostId, status, message, Monotonic(), Now());
 
         Emit(ServerScanStatus.Running, $"Scanning {plan.Label}");
-        var roots = plan.Roots.Select(PythonPurePath.Str).ToList();
+        var roots = plan.Roots.Select(EnginePurePath.Str).ToList();
         var existingRoots = roots.Where(RootExists).ToList();
         if (existingRoots.Count == 0)
         {
@@ -164,8 +163,8 @@ public sealed partial class MultiServerRunner
     private static OrderedDictionary<string, ConfigRecord> Empty() => new(StringComparer.Ordinal);
 
     /// <summary>
-    /// <c>time.sleep(seconds)</c>'s argument checks for a positive <paramref name="seconds"/>, which raise out of <c>run()</c> as
-    /// they do in Python (the sleep follows the host's <c>try</c>): the timeout in nanoseconds, rounded up, must be below
+    /// <c>time.sleep(seconds)</c>'s argument checks for a positive <paramref name="seconds"/>, which raise out of <c>run()</c>
+    /// (the sleep follows the host's <c>try</c>): the timeout in nanoseconds, rounded up, must be below
     /// 2<sup>63</sup> (<c>OverflowError: timestamp out of range for platform time_t</c>, as <see cref="OverflowException"/>), and
     /// off Windows the absolute deadline, CLOCK_MONOTONIC (<paramref name="monotonicSeconds"/>) plus the timeout, must be below
     /// 2<sup>63</sup> nanoseconds as well (<c>clock_nanosleep</c> fails with <c>OSError: [Errno 22] Invalid argument</c>).
@@ -181,19 +180,18 @@ public sealed partial class MultiServerRunner
         var timeout = (long)nanoseconds;
         if (!OperatingSystem.IsWindows() && (long)(monotonicSeconds * 1e9) > long.MaxValue - timeout)
         {
-            throw PythonOSError.Create(PythonOSError.InvalidArgument);
+            throw EngineOSError.Create(EngineOSError.InvalidArgument);
         }
 
         return TimeSpan.FromTicks((timeout + 99) / 100);
     }
 
     // Path.exists(): a stat that follows links succeeds. A root whose lookup is refused counts as existing, so the scan reports
-    // it as permission_denied (Python raises out of run() there). A root holding an unpaired surrogate names nothing the port can
-    // open: the runtime would encode it with U+FFFD and look up a different entry, so it is not found (Python finds no '\ud800'
-    // either, and a '\udcff' root names a byte-0xFF entry whose scan then goes offline on the fingerprint encode).
+    // it as permission_denied. A root holding an unpaired surrogate names nothing the runtime can
+    // open: it would encode it with U+FFFD and look up a different entry, so it is not found.
     private static bool RootExists(string root)
     {
-        if (PythonUtf8.HasUnpairedSurrogate(root))
+        if (EngineUtf8.HasUnpairedSurrogate(root))
         {
             return false;
         }
@@ -205,7 +203,7 @@ public sealed partial class MultiServerRunner
                 return kind != UnixFileType.Kind.Missing;
             }
 
-            return File.Exists(PythonPath.KernelPath(root)) || Directory.Exists(PythonPath.KernelPath(root));
+            return File.Exists(EnginePath.KernelPath(root)) || Directory.Exists(EnginePath.KernelPath(root));
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {

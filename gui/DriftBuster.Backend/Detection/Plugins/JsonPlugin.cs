@@ -208,7 +208,7 @@ public sealed partial class JsonPlugin : IFormatPlugin
 
         // Allow minimal detection for known JSON extensions even if content signals are weak, to align with
         // real-world appsettings-style files that may be tiny or truncated in samples. (The stripped text is
-        // never empty here, so Python's "is_json_extension and stripped" reduces to the extension flag.)
+        // never empty here, so the check reduces to the extension flag.)
         if (contentSignals < 2 && !signals.IsJsonExtension)
         {
             return false;

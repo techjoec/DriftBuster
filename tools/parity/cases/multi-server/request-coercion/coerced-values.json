@@ -1,8 +1,0 @@
-{"description": "values Plan.from_mapping coerces without raising: str() of numbers, lists and mappings as host ids, labels and roots; roots as a string (its characters) and as a mapping (its keys); int() of padded, underscored and non-ASCII digit strings; bool() of strings and empty containers; float() of padded and special strings", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": 1.5e16, "label": ["a", {"b": null}], "roots": {"fixtures/multi-server/server01": 1, "  ": 2}, "baseline": {"is_preferred": [], "priority": " 4_2 "}, "throttle_seconds": " nan "},
-  {"host_id": ["h", 2], "label": false, "roots": ["fixtures/multi-server/server02", 0, null, [], "   "], "baseline": {"is_preferred": "0", "priority": "\u0664\u0662"}, "throttle_seconds": "-inf", "scope": 7, "cached_at": [1]},
-  {"host_id": true, "label": "  ", "roots": "ab", "baseline": {"is_preferred": "false", "priority": 42.9}, "throttle_seconds": " 1_0e-4 ", "export": {}},
-  {"host_id": "s4", "label": 0, "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": {"x": 1}, "priority": true}, "throttle_seconds": [0.5]},
-  {"host_id": "s5", "roots": ["fixtures/multi-server/server02"], "baseline": 0, "export": [], "throttle_seconds": "1e-3"}
- ]}

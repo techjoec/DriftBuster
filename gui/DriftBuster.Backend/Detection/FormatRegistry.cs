@@ -45,7 +45,7 @@ public sealed class FormatRegistry
     {
         lock (_gate)
         {
-            // readOnly exists for parity with the Python signature; both paths return a fresh snapshot.
+            // Both paths return a fresh snapshot; readOnly only picks the collection type.
             return readOnly ? _plugins.ToArray() : _plugins.ToList();
         }
     }
@@ -220,7 +220,7 @@ public sealed class FormatRegistry
     /// <summary>
     /// Decodes <paramref name="sample"/> trying, in order, the codec announced by a byte order mark, then strict
     /// utf-8, utf-16-le and utf-16-be, and finally latin-1; leading U+FEFF characters are stripped. Returns the text
-    /// and the Python codec name that succeeded.
+    /// and the name of the codec that succeeded.
     /// </summary>
     public static (string Text, string Encoding) DecodeText(ReadOnlyMemory<byte> sample) => DecodeText(sample, Decode);
 

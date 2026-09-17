@@ -1,4 +1,0 @@
-server and host are mentioned
-thumbprint certificate unknown
-version is latest
-install path is default

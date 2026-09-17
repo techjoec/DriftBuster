@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Detection.Plugins;
 
-/// <summary>Reason strings derived from collected metadata, deduplicated in Python emission order.</summary>
+/// <summary>Reason strings derived from collected metadata, deduplicated in emission order.</summary>
 public sealed partial class XmlPlugin
 {
     private static void AppendDeclarationReasons(OrderedDictionary<string, object?> metadata, List<string> reasons)

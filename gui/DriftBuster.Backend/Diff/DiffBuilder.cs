@@ -6,8 +6,7 @@ using DriftBuster.Backend.Models;
 namespace DriftBuster.Backend.Diff;
 
 /// <summary>
-/// <c>build_unified_diff</c>, <c>build_binary_diff</c>, <c>render_unified_diff</c>, <c>summarise_diff_result</c>,
-/// <c>summarise_diff_results</c> and <c>diff_summary_to_payload</c> from <c>driftbuster.reporting.diff</c>.
+/// Unified and binary diffs, their rendering, and the per-result and aggregate summaries and payloads.
 /// </summary>
 public static class DiffBuilder
 {
@@ -176,17 +175,17 @@ public static class DiffBuilder
         ArgumentNullException.ThrowIfNull(results);
         if (results.Count == 0)
         {
-            throw new PythonValueException("results must not be empty", nameof(results));
+            throw new EngineValueException("results must not be empty", nameof(results));
         }
 
         if (baselineNames is not null && baselineNames.Count != results.Count)
         {
-            throw new PythonValueException("baseline_names length must match results", nameof(baselineNames));
+            throw new EngineValueException("baseline_names length must match results", nameof(baselineNames));
         }
 
         if (comparisonNames is not null && comparisonNames.Count != results.Count)
         {
-            throw new PythonValueException("comparison_names length must match results", nameof(comparisonNames));
+            throw new EngineValueException("comparison_names length must match results", nameof(comparisonNames));
         }
 
         var comparisons = results
@@ -256,7 +255,7 @@ public static class DiffBuilder
         };
     }
 
-    /// <summary><c>diff_summary_to_payload</c>: the JSON-ready mapping, keys in Python's order.</summary>
+    /// <summary><c>diff_summary_to_payload</c>: the JSON-ready mapping, keys in a fixed order.</summary>
     public static OrderedDictionary<string, object?> DiffSummaryToPayload(DiffResultSummary summary)
     {
         ArgumentNullException.ThrowIfNull(summary);

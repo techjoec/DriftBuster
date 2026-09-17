@@ -1,8 +1,0 @@
-{
-  "description": "a root spelled link/../hostA where link is a symlink: the OS resolves the dotdot physically (deep/hostA), a lexical collapse names another directory (hostA)",
-  "fixes": [], "args": [], "requires": [],
-  "plans": [
-    {"host_id": "plain", "label": "Plain", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/dotdot/plain"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "dotdot", "label": "Dotdot", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/dotdot/link/../hostA"]}
-  ]
-}

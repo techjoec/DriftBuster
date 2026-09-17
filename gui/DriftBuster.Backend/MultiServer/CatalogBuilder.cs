@@ -201,7 +201,7 @@ public static class CatalogBuilder
     }
 
     // The single diff pane: the baseline host's diff (its self-diff when it holds the config), else the first present host's,
-    // else the first diff recorded; null stands for Python's empty pane over the baseline's raw text.
+    // else the first diff recorded; null stands for an empty pane over the baseline's raw text.
     private static HostDiff? ChooseDiff(ConfigView view, string baselineHostId)
     {
         var chosenHostId = view.UnifiedDiffs.ContainsKey(baselineHostId)

@@ -1,1 +1,0 @@
-{"registry_scan": {"token": " T ", "keywords": ["a", 1, null, 2.5, 1e22, [1], {"k": [true]}], "patterns": [" "], "max_depth": 12345678901234567890123, "max_hits": -0.0, "time_budget_s": 1e-7}}

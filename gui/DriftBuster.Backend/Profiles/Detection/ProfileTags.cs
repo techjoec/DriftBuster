@@ -21,7 +21,7 @@ public static class ProfileTags
                 continue;
             }
 
-            var stripped = PythonText.Strip(tag);
+            var stripped = EngineText.Strip(tag);
             if (stripped.Length > 0)
             {
                 cleaned.Add(stripped);
@@ -34,7 +34,7 @@ public static class ProfileTags
     /// <summary>
     /// <c>normalize_tags</c> over a JSON value: None is empty; a str yields its code points, a list its items and a dict its keys
     /// (anything else raises <c>TypeError: '&lt;type&gt;' object is not iterable</c>); falsy items are skipped and any other item
-    /// that is not a str raises <c>AttributeError</c> (<see cref="PythonAttributeException"/>) on <c>strip</c>.
+    /// that is not a str raises <c>AttributeError</c> (<see cref="EngineAttributeException"/>) on <c>strip</c>.
     /// </summary>
     public static IReadOnlySet<string> NormalizeValue(object? tags)
     {
@@ -44,14 +44,14 @@ public static class ProfileTags
         }
 
         var items = new List<string?>();
-        foreach (var item in PythonBuiltins.Iterate(tags))
+        foreach (var item in EngineBuiltins.Iterate(tags))
         {
-            if (!PythonBuiltins.IsTruthy(item))
+            if (!EngineBuiltins.IsTruthy(item))
             {
                 continue;
             }
 
-            items.Add(item as string ?? throw new PythonAttributeException($"'{PythonBuiltins.TypeName(item)}' object has no attribute 'strip'"));
+            items.Add(item as string ?? throw new EngineAttributeException($"expected a tag string, not '{EngineBuiltins.TypeName(item)}'"));
         }
 
         return Normalize(items);

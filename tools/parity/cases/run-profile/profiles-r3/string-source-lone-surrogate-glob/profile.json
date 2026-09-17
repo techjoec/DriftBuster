@@ -1,7 +1,0 @@
-{
- "name": "surg",
- "sources": [
-  "in.txt",
-  "\ud800*"
- ]
-}

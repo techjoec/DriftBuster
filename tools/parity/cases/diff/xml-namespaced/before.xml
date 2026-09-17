@@ -1,5 +1,0 @@
-<?xml version="1.0"?>
-<root xmlns="urn:example:default" xmlns:ext="urn:example:ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:example:default schema.xsd">
-  <ext:item ext:id="1" name="one">first</ext:item>
-  <item>second</item>
-</root>

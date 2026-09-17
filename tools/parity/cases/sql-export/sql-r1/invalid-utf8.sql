@@ -1,2 +1,0 @@
-CREATE TABLE t (a, v);
-INSERT INTO t VALUES (1, CAST(x'41ff42' AS TEXT));

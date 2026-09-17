@@ -34,6 +34,6 @@ public static class WinRegistryKeys
     {
         "HKLM" => LocalMachine,
         "HKCU" => CurrentUser,
-        _ => throw new KeyNotFoundException(PythonRepr.StrRepr(hive)),
+        _ => throw new KeyNotFoundException(EngineRepr.StrRepr(hive)),
     };
 }

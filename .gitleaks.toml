@@ -12,12 +12,14 @@ useDefault = true
     # Build artifacts (not tracked in git but scanned by `gitleaks dir`)
     '''obj/''',
 
+    # Gitignored local tool configuration in .claude/ subdirectories (never committed)
+    '''(^|/)\.claude/[^/]+/''',
+
     # Intentional dummy secrets used by the hunt/secret-scanning test suite
     '''fixtures/secret_samples/''',
 
-    # The temporary engine-port parity harness: dummy secrets in its cases and argument names its oracles pass
-    '''tools/parity/''',
-    '''gui/DriftBuster\.Backend\.Tests/Infrastructure/Data/python_regex_cases\.json''',
+    # Dummy secrets and argument names in the regex case data
+    '''gui/DriftBuster\.Backend\.Tests/Infrastructure/Data/regex_cases\.json''',
   ]
 
   regexTarget = "match"

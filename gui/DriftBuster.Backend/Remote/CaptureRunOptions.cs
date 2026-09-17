@@ -1,7 +1,7 @@
 namespace DriftBuster.Backend.Remote;
 
 /// <summary>
-/// The <c>capture.py run</c> arguments (<c>argparse.Namespace</c>), each defaulting as the parser defaults it. Paths are used as given:
+/// The <c>driftbuster capture run</c> arguments, each with the command's default. Paths are used as given:
 /// relative ones resolve against the working directory.
 /// </summary>
 public sealed record CaptureRunOptions

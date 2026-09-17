@@ -1,4 +1,0 @@
-CREATE TABLE kept (v);
-BEGIN;
-CREATE TABLE lost (v);
-INSERT INTO kept VALUES (1);

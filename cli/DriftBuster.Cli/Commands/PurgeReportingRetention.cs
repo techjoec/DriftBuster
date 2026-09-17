@@ -6,7 +6,7 @@ using DriftBuster.Backend.Reporting;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster maint purge-reporting-retention PATH...</c>, <c>python scripts/purge_reporting_retention.py</c>: lists the entries of each
+/// <c>driftbuster maint purge-reporting-retention PATH...</c>: lists the entries of each
 /// directory (or the file itself) last modified at or before the retention window, and deletes them only with <c>--confirm</c>.
 /// </summary>
 internal static partial class PurgeReportingRetention
@@ -22,11 +22,11 @@ internal static partial class PurgeReportingRetention
         ArgumentNullException.ThrowIfNull(roots);
         if (retentionDays.Sign < 0)
         {
-            throw new PythonValueException("retention_days must be non-negative", nameof(retentionDays));
+            throw new EngineValueException("retention_days must be non-negative", nameof(retentionDays));
         }
 
         var clock = MicrosecondsOf((now ?? DateTimeOffset.UtcNow).UtcTicks);
-        var threshold = clock - PythonTimeDelta.FromMicroseconds(retentionDays * MicrosecondsPerDay).TotalMicroseconds;
+        var threshold = clock - EngineTimeDelta.FromMicroseconds(retentionDays * MicrosecondsPerDay).TotalMicroseconds;
         if (threshold < MinMicroseconds)
         {
             throw new OverflowException("date value out of range");
@@ -35,20 +35,20 @@ internal static partial class PurgeReportingRetention
         var candidates = new List<PurgeCandidate>();
         foreach (var given in roots)
         {
-            var root = PythonPath.Resolve(PythonPath.ExpandUser(PythonPurePath.Str(given)));
+            var root = EnginePath.Resolve(EnginePath.ExpandUser(EnginePurePath.Str(given)));
             if (!TextModeFile.Exists(root))
             {
                 continue;
             }
 
             var entries = Directory.Exists(root)
-                ? Directory.EnumerateFileSystemEntries(root).Select(entry => PythonPurePath.Join(root, Path.GetFileName(entry)))
+                ? Directory.EnumerateFileSystemEntries(root).Select(entry => EnginePurePath.Join(root, Path.GetFileName(entry)))
                 : [root];
             foreach (var entry in entries)
             {
                 if (ModifiedMicroseconds(entry) is { } modified && modified <= threshold)
                 {
-                    var age = PythonTimeDelta.FromMicroseconds(clock - modified).TotalSeconds() / 86400;
+                    var age = EngineTimeDelta.FromMicroseconds(clock - modified).TotalSeconds() / 86400;
                     candidates.Add(new PurgeCandidate(entry, age));
                 }
             }

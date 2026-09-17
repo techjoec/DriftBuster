@@ -9,10 +9,8 @@ namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>Config ids and display names: <c>_slugify</c>, <c>_normalise_config_id</c> and <c>_display_name</c>.</summary>
 /// <remarks>
-/// Plan fix a: Python chose the id from the first non-blank of <c>config_original_filename</c>, <c>config_role</c>,
-/// <c>msbuild_kind</c> and <c>top_level_type</c> before the relative path, so two applications holding a <c>web.config</c> on
-/// one host shared an id and the later file silently replaced the earlier one. The port always builds the id from the relative
-/// posix path: <c>slug(format)/slug(variant)/slug(relative path)</c>, the variant part only when a variant is present. When two
+/// The id is always built from the relative posix path, so two applications holding a <c>web.config</c> on one host keep separate
+/// ids: <c>slug(format)/slug(variant)/slug(relative path)</c>, the variant part only when a variant is present. When two
 /// records on one host still produce the same id (the same relative path under two roots, or two paths whose slugs coincide),
 /// both are kept: the first keeps the id and a later one gets <see cref="Disambiguate"/>'s <c>@root{index}</c> suffix, where
 /// the index is the zero-based position of its root in the plan's roots (<see cref="MultiServerPlan.Roots"/>, missing roots
@@ -28,7 +26,7 @@ public static class ConfigIdentity
     public static string Slugify(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var text = PythonText.Lower(PythonText.Strip(value));
+        var text = EngineText.Lower(EngineText.Strip(value));
         if (text.Length == 0)
         {
             return string.Empty;
@@ -46,7 +44,7 @@ public static class ConfigIdentity
                 continue;
             }
 
-            if (PythonText.IsAlnum(rune) || rune.Value is '-' or '_' or '/')
+            if (EngineText.IsAlnum(rune) || rune.Value is '-' or '_' or '/')
             {
                 builder.Append(text, offset, consumed);
             }
@@ -62,7 +60,7 @@ public static class ConfigIdentity
     }
 
     /// <summary>
-    /// The config id of <paramref name="match"/> found at <paramref name="relativePosix"/> (fix a): the format is
+    /// The config id of <paramref name="match"/> found at <paramref name="relativePosix"/>: the format is
     /// <c>catalog_format</c>, else the match's format name, else <c>config</c>; the variant is a non-blank string
     /// <c>catalog_variant</c>. When the relative path slugs to nothing the id is <c>slug(format)#sha1(fallback)[:12]</c>.
     /// </summary>
@@ -76,7 +74,7 @@ public static class ConfigIdentity
         if (slug.Length > 0)
         {
             var parts = new List<string> { Slugify(formatId) };
-            if (Get(metadata, "catalog_variant") is string variant && PythonText.Strip(variant).Length > 0)
+            if (Get(metadata, "catalog_variant") is string variant && EngineText.Strip(variant).Length > 0)
             {
                 parts.Add(Slugify(variant));
             }
@@ -96,7 +94,7 @@ public static class ConfigIdentity
         ArgumentNullException.ThrowIfNull(relativePosix);
         if (Get(metadata, "config_original_filename") is string name)
         {
-            var stripped = PythonText.Strip(name);
+            var stripped = EngineText.Strip(name);
             if (stripped.Length > 0)
             {
                 return stripped;
@@ -137,7 +135,7 @@ public static class ConfigIdentity
     {
         if (IsTruthy(first))
         {
-            return PythonRepr.Str(first);
+            return EngineRepr.Str(first);
         }
 
         return string.IsNullOrEmpty(second) ? null : second;

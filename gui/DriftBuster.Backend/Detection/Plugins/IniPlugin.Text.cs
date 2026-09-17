@@ -6,12 +6,12 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
-/// <summary>Hand-matched line tests standing in for the Python regexes whose semantics .NET does not share.</summary>
+/// <summary>Hand-matched line tests standing in for the rule regexes whose semantics .NET does not share.</summary>
 public sealed partial class IniPlugin
 {
     private static int SkipSpaces(string s, int offset)
     {
-        while (offset < s.Length && PythonText.IsSpace(s[offset]))
+        while (offset < s.Length && EngineText.IsSpace(s[offset]))
         {
             offset++;
         }
@@ -73,7 +73,7 @@ public sealed partial class IniPlugin
         }
 
         Rune.DecodeFromUtf16(s.AsSpan(offset), out var rune, out _);
-        return !PythonText.IsWordRune(rune);
+        return !EngineText.IsWordRune(rune);
     }
 
     // ^\s*[;#!] via match() on a line.
@@ -114,7 +114,7 @@ public sealed partial class IniPlugin
     // ^\s*[{}]+\s*$ via match() on a line.
     private static bool IsStandaloneBraceLine(string line)
     {
-        var stripped = PythonText.Strip(line);
+        var stripped = EngineText.Strip(line);
         return stripped.Length > 0 && stripped.All(ch => ch is '{' or '}');
     }
 
@@ -177,7 +177,7 @@ public sealed partial class IniPlugin
     /// rounds the scaled product instead, which differs whenever the multiplication itself rounds onto a midpoint. NaN and the
     /// infinities are returned as they are; a negative value rounds as its magnitude does, keeping its sign (so -0.0004 gives -0.0).
     /// </summary>
-    internal static double PythonRound(double value, int digits)
+    internal static double EngineRound(double value, int digits)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(digits);
         if (!double.IsFinite(value) || value == 0.0)
@@ -187,7 +187,7 @@ public sealed partial class IniPlugin
 
         if (value < 0)
         {
-            return -PythonRound(-value, digits);
+            return -EngineRound(-value, digits);
         }
 
         var bits = BitConverter.DoubleToInt64Bits(value);

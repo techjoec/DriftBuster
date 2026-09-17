@@ -3,21 +3,21 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster maint selfcheck-multi-server-paths</c>, <c>python scripts/selfcheck_multi_server_paths.py</c> without Python: runs the
+/// <c>driftbuster maint selfcheck-multi-server-paths</c>: runs the
 /// multi-server scenarios in process through <see cref="MultiServerCommand.Execute"/> against <c>&lt;portable root&gt;/Samples/MultiServer</c>
 /// or the repository's <c>fixtures/multi-server</c>, writes the JSON report, prints <c>[PASS]</c> or <c>[FAIL]</c> per scenario and exits 0
 /// only when every scenario passed.
 /// </summary>
 internal static partial class SelfcheckMultiServerPaths
 {
-    public const string DefaultPortableRoot = "/lap_temp/DriftBuster-Portabletest";
+    public const string DefaultPortableRoot = "artifacts/gui-packaging/portable/staged";
 
     public static string DefaultOutput(string root) => Path.Combine(root, "artifacts", "selfcheck", "multi_server_paths_report.json");
 
-    /// <summary><c>resolve_samples(portable_root)</c>.</summary>
+    /// <summary>The portable root's <c>Samples/MultiServer</c> when present, else the repository's multi-server fixtures.</summary>
     public static string ResolveSamples(string portableRoot, string root)
     {
-        var portableSamples = PythonPurePath.Join(PythonPurePath.Join(portableRoot, "Samples"), "MultiServer");
+        var portableSamples = EnginePurePath.Join(EnginePurePath.Join(portableRoot, "Samples"), "MultiServer");
         if (TextModeFile.Exists(portableSamples))
         {
             return portableSamples;
@@ -34,17 +34,17 @@ internal static partial class SelfcheckMultiServerPaths
     {
         runScenarios ??= RunScenarios;
         var samplesRoot = ResolveSamples(portableRoot, root);
-        var reportPath = PythonPurePath.Str(output);
-        var reportDir = PythonPurePath.Parent(reportPath);
+        var reportPath = EnginePurePath.Str(output);
+        var reportDir = EnginePurePath.Parent(reportPath);
         Directory.CreateDirectory(reportDir);
 
         var scenarios = runScenarios(samplesRoot, reportDir);
-        var passed = scenarios.LongCount(scenario => PythonBuiltins.IsTruthy(scenario.Passed));
+        var passed = scenarios.LongCount(scenario => EngineBuiltins.IsTruthy(scenario.Passed));
         var total = (long)scenarios.Count;
         var report = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["generated_at"] = PythonDateTime.UtcNow().IsoFormat(),
-            ["samples_root"] = PythonPurePath.Str(samplesRoot),
+            ["generated_at"] = EngineDateTime.UtcNow().IsoFormat(),
+            ["samples_root"] = EnginePurePath.Str(samplesRoot),
             ["passed"] = passed,
             ["total"] = total,
             ["success"] = passed == total,
@@ -59,7 +59,7 @@ internal static partial class SelfcheckMultiServerPaths
 
         foreach (var scenario in scenarios)
         {
-            ConsoleText.Print(stdout, $"[{(PythonBuiltins.IsTruthy(scenario.Passed) ? "PASS" : "FAIL")}] {scenario.Name}");
+            ConsoleText.Print(stdout, $"[{(EngineBuiltins.IsTruthy(scenario.Passed) ? "PASS" : "FAIL")}] {scenario.Name}");
         }
 
         ConsoleText.Print(stdout, $"\nSelf-check summary: {passed}/{total} passed");
@@ -79,13 +79,13 @@ internal static partial class SelfcheckMultiServerPaths
         var events = new List<object?>();
         foreach (var raw in TextLines.SplitLines(stdout.ToString()))
         {
-            var line = PythonText.Strip(raw);
+            var line = EngineText.Strip(raw);
             if (line.Length == 0)
             {
                 continue;
             }
 
-            events.Add(PythonJson.TryLoads(line, out var parsed)
+            events.Add(EngineJson.TryLoads(line, out var parsed)
                 ? parsed
                 : new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["type"] = "decode-error", ["line"] = line });
         }

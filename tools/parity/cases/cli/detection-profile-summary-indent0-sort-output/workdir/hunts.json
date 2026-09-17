@@ -1,1 +1,0 @@
-[{"rule": {"name": "server-name", "description": "", "token_name": "server"}, "relative_path": "configs/appsettings.json", "path": "dummy", "line_number": 1, "excerpt": "server: dev"}, {"rule": {"name": "server-name", "description": "", "token_name": "server"}, "path": "/srv/root/configs/web.config", "line_number": 3, "excerpt": "host"}]

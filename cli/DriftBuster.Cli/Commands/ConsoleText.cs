@@ -9,7 +9,7 @@ using DriftBuster.Backend.Reporting;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// Python's writes as the commands make them: <c>sys.stdout.write</c> and <c>print</c>, and <c>json.dumps</c> spelling values with its separators, <c>indent</c>, <c>sort_keys</c> and <c>ensure_ascii</c>.
+/// Console writes as the commands make them: <c>sys.stdout.write</c> and <c>print</c>, and <c>json.dumps</c> spelling values with its separators, <c>indent</c>, <c>sort_keys</c> and <c>ensure_ascii</c>.
 /// </summary>
 internal static class ConsoleText
 {
@@ -29,7 +29,7 @@ internal static class ConsoleText
             : Canonicaliser.Dumps(ReportValues.ToJsonValue(value), indent: false, ensureAscii, sortKeys);
 
     /// <summary><c>len(text)</c>: code points.</summary>
-    public static int Len(string text) => PythonBuiltins.Len(text);
+    public static int Len(string text) => EngineBuiltins.Len(text);
 
     /// <summary><c>text[:count]</c> over code points.</summary>
     public static string Head(string text, int count)

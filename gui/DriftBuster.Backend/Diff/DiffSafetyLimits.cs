@@ -12,8 +12,7 @@ namespace DriftBuster.Backend.Diff;
 /// truncated. Sizes are UTF-8 byte counts; digests are taken over the full payload before clamping.
 /// </summary>
 /// <remarks>
-/// Python encodes with the strict UTF-8 codec, which raises on an unpaired surrogate; the port encodes it as U+FFFD
-/// instead of aborting the diff.
+/// An unpaired surrogate is encoded as U+FFFD instead of aborting the diff, which the strict UTF-8 codec would do.
 /// </remarks>
 public sealed class DiffSafetyLimits
 {
@@ -34,7 +33,7 @@ public sealed class DiffSafetyLimits
         EncoderFallback.ReplacementFallback,
         new DecoderReplacementFallback(string.Empty));
 
-    // Seams for the module constants the Python tests monkeypatch.
+    // Test seams for the limits.
     internal static int MaxCanonicalBytes { get; set; } = DefaultMaxCanonicalBytes;
 
     internal static int MaxDiffBytes { get; set; } = DefaultMaxDiffBytes;
@@ -101,7 +100,7 @@ public sealed class DiffSafetyLimits
         public string Digest { get; init; } = string.Empty;
     }
 
-    /// <summary>The mapping as Python builds it, for JSON payloads that must keep its key order.</summary>
+    /// <summary>The mapping in its fixed key order, for JSON payloads.</summary>
     public OrderedDictionary<string, object?> ToPayload()
     {
         var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)

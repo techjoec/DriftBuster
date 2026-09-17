@@ -10,12 +10,12 @@ namespace DriftBuster.Backend.Profiles.Run;
 /// <summary>
 /// <c>run_profiles.RunProfile</c>: a name, a description, the sources, the baseline source path, the options (every value
 /// <c>str()</c>-ed, <c>None</c> as "") and the secret scanner mapping (<c>ignore_rules</c> and <c>ignore_patterns</c> read with
-/// <c>secret_option_values</c>, a <c>ruleset</c> mapping copied, anything else kept). Values are in the <see cref="PythonJson"/>
+/// <c>secret_option_values</c>, a <c>ruleset</c> mapping copied, anything else kept). Values are in the <see cref="EngineJson"/>
 /// domain.
 /// </summary>
 /// <remarks>
-/// Plan decision, structured sources: a source is a <see cref="RunProfileSource"/>. A string entry is a source with only its path and
-/// behaves exactly as Python's string source; an object entry is read as <c>OfflineCollectionSource.from_dict</c> reads it
+/// A source is a <see cref="RunProfileSource"/>. A string entry is a source with only its path and
+/// behaves exactly as a plain string source; an object entry is read as <c>OfflineCollectionSource.from_dict</c> reads it
 /// (<see cref="SourceFromDict"/>), and <see cref="ToDict"/> writes a path-only source back as a string.
 /// </remarks>
 public sealed partial class RunProfile
@@ -72,7 +72,7 @@ public sealed partial class RunProfile
 
     /// <summary>
     /// True when a source sets an alias, optional or exclude patterns: every source of such a profile is collected and validated as the
-    /// offline runner collects it (plan decision, structured sources).
+    /// offline runner collects it.
     /// </summary>
     public bool IsStructured => Sources.Any(source => !source.IsPathOnly);
 
@@ -89,9 +89,9 @@ public sealed partial class RunProfile
             return FromOfflineRunnerDict((IReadOnlyDictionary<string, object?>)payload!);
         }
 
-        var name = PythonRepr.Str(DetectionProfileStore.Subscript(payload, "name"));
+        var name = EngineRepr.Str(DetectionProfileStore.Subscript(payload, "name"));
         var description = DetectionProfileStore.GetOrDefault(payload, "description", null);
-        var sources = PythonBuiltins.Iterate(DetectionProfileStore.GetOrDefault(payload, "sources", new List<object?>())).Select(SourceFromEntry).ToList();
+        var sources = EngineBuiltins.Iterate(DetectionProfileStore.GetOrDefault(payload, "sources", new List<object?>())).Select(SourceFromEntry).ToList();
         var baseline = DetectionProfileStore.GetOrDefault(payload, "baseline", null);
         var options = Mapping(DetectionProfileStore.GetOrDefault(payload, "options", null));
         var secretScanner = Mapping(DetectionProfileStore.GetOrDefault(payload, "secret_scanner", null));
@@ -112,13 +112,13 @@ public sealed partial class RunProfile
     {
         ArgumentNullException.ThrowIfNull(payload);
         var path = payload.GetValueOrDefault("path");
-        if (!PythonBuiltins.IsTruthy(path) || PythonText.Strip(PythonRepr.Str(path)).Length == 0)
+        if (!EngineBuiltins.IsTruthy(path) || EngineText.Strip(EngineRepr.Str(path)).Length == 0)
         {
-            throw new PythonValueException("Source entry requires a non-empty 'path'.", nameof(payload));
+            throw new EngineValueException("Source entry requires a non-empty 'path'.", nameof(payload));
         }
 
         var alias = payload.GetValueOrDefault("alias");
-        if (alias is not null && PythonText.Strip(PythonRepr.Str(alias)).Length == 0)
+        if (alias is not null && EngineText.Strip(EngineRepr.Str(alias)).Length == 0)
         {
             alias = null;
         }
@@ -126,11 +126,11 @@ public sealed partial class RunProfile
         var exclude = payload.TryGetValue("exclude", out var excludePayload) ? excludePayload : new List<object?>();
         string[] patterns = exclude is string single
             ? [single]
-            : PythonBuiltins.IsTruthy(exclude) ? PythonBuiltins.Iterate(exclude).Select(PythonRepr.Str).ToArray() : [];
-        return new RunProfileSource(PythonRepr.Str(path))
+            : EngineBuiltins.IsTruthy(exclude) ? EngineBuiltins.Iterate(exclude).Select(EngineRepr.Str).ToArray() : [];
+        return new RunProfileSource(EngineRepr.Str(path))
         {
-            Alias = PythonBuiltins.IsTruthy(alias) ? PythonRepr.Str(alias) : null,
-            Optional = PythonBuiltins.IsTruthy(payload.GetValueOrDefault("optional", false)),
+            Alias = EngineBuiltins.IsTruthy(alias) ? EngineRepr.Str(alias) : null,
+            Optional = EngineBuiltins.IsTruthy(payload.GetValueOrDefault("optional", false)),
             Exclude = patterns,
         };
     }
@@ -215,7 +215,7 @@ public sealed partial class RunProfile
     };
 
     private string[] IgnoreValues(string key)
-        => SecretScanner.TryGetValue(key, out var values) && values is List<object?> list ? list.Select(PythonRepr.Str).ToArray() : [];
+        => SecretScanner.TryGetValue(key, out var values) && values is List<object?> list ? list.Select(EngineRepr.Str).ToArray() : [];
 
     // A copy of a model source; a blank alias is dropped, as SourceFromDict drops it, so the directory name and profile.json agree with a
     // reload.
@@ -224,7 +224,7 @@ public sealed partial class RunProfile
         ArgumentNullException.ThrowIfNull(source);
         return new RunProfileSource(source.Path)
         {
-            Alias = source.Alias is { } alias && PythonText.Strip(alias).Length > 0 ? alias : null,
+            Alias = source.Alias is { } alias && EngineText.Strip(alias).Length > 0 ? alias : null,
             Optional = source.Optional,
             Exclude = source.Exclude is null ? [] : [.. source.Exclude],
         };
@@ -232,19 +232,19 @@ public sealed partial class RunProfile
 
     // An entry of payload["sources"]: a mapping is a structured source, anything else str()-ed into a path.
     private static RunProfileSource SourceFromEntry(object? entry)
-        => entry is IReadOnlyDictionary<string, object?> mapping ? SourceFromDict(mapping) : new RunProfileSource(PythonRepr.Str(entry));
+        => entry is IReadOnlyDictionary<string, object?> mapping ? SourceFromDict(mapping) : new RunProfileSource(EngineRepr.Str(entry));
 
     // The argument _normalise_options and _normalise_secret_scanner call .items() on: falsy is empty, a dict is itself, anything else
     // raises AttributeError.
     private static IReadOnlyDictionary<string, object?>? Mapping(object? value)
     {
-        if (!PythonBuiltins.IsTruthy(value))
+        if (!EngineBuiltins.IsTruthy(value))
         {
             return null;
         }
 
         return value as IReadOnlyDictionary<string, object?>
-            ?? throw new PythonAttributeException($"'{PythonBuiltins.TypeName(value)}' object has no attribute 'items'");
+            ?? throw new EngineAttributeException($"expected a JSON object, not '{EngineBuiltins.TypeName(value)}'");
     }
 
     // _normalise_options.
@@ -253,7 +253,7 @@ public sealed partial class RunProfile
         var normalised = new OrderedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var (key, value) in options ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal))
         {
-            normalised[key] = value is null ? string.Empty : PythonRepr.Str(value);
+            normalised[key] = value is null ? string.Empty : EngineRepr.Str(value);
         }
 
         return new ReadOnlyDictionary<string, string>(normalised);

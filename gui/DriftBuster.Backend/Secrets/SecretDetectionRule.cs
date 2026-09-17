@@ -1,6 +1,6 @@
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Secrets;
 
-/// <summary><c>driftbuster.secret_scanning.SecretDetectionRule</c>.</summary>
-public sealed record SecretDetectionRule(string Name, PythonPattern Pattern, string? Description = null);
+/// <summary>One named secret detection pattern.</summary>
+public sealed record SecretDetectionRule(string Name, EnginePattern Pattern, string? Description = null);

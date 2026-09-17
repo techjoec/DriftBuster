@@ -28,17 +28,17 @@ public static class ScheduleCommands
     /// <c>_parse_reference_timestamp(value)</c>: <c>fromisoformat</c> (its <c>ValueError</c> becomes <see cref="CommandExitException"/>),
     /// naive as UTC, aware converted to UTC.
     /// </summary>
-    public static PythonDateTime ParseReferenceTimestamp(string value)
+    public static EngineDateTime ParseReferenceTimestamp(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        PythonDateTime candidate;
+        EngineDateTime candidate;
         try
         {
-            candidate = PythonDateTime.FromIsoFormat(value);
+            candidate = EngineDateTime.FromIsoFormat(value);
         }
-        catch (PythonValueException exc)
+        catch (EngineValueException exc)
         {
-            throw new CommandExitException("Unable to parse timestamp: " + PythonRepr.StrRepr(value), exc);
+            throw new CommandExitException("Unable to parse timestamp: " + EngineRepr.StrRepr(value), exc);
         }
 
         return ScheduleParsing.EnsureAware(candidate);

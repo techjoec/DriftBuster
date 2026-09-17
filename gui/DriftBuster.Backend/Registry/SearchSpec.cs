@@ -1,6 +1,6 @@
 using System.Numerics;
 
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -13,7 +13,7 @@ public sealed record SearchSpec
 {
     public IReadOnlyList<string> Keywords { get; init; } = [];
 
-    public IReadOnlyList<PythonPattern> Patterns { get; init; } = [];
+    public IReadOnlyList<EnginePattern> Patterns { get; init; } = [];
 
     public BigInteger MaxDepth { get; init; } = 12;
 

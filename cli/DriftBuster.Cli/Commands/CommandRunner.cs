@@ -2,16 +2,15 @@ using System.CommandLine;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Scheduling;
 using DriftBuster.Backend.Sql;
 
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// Runs a command body with the invocation's stdout and stderr. Python's <c>raise SystemExit(message)</c>
-/// (<see cref="CommandExitException"/>) writes the message on stderr and exits 1; any other exception ends the command as an uncaught
-/// Python exception does, with exit code 1 and the traceback's last line (<c>TypeName: message</c>) on stderr.
+/// Runs a command body with the invocation's stdout and stderr. A <see cref="CommandExitException"/> writes the message on
+/// stderr and exits 1; any other exception ends the command with exit code 1 and <c>TypeName: message</c> on stderr.
 /// </summary>
 internal static class CommandRunner
 {
@@ -42,28 +41,28 @@ internal static class CommandRunner
         return 2;
     }
 
-    /// <summary><c>type(exc).__name__</c> of the Python exception a port exception stands for; any other keeps its runtime name.</summary>
+    /// <summary><c>type(exc).__name__</c> of the error kind an exception stands for; any other keeps its runtime name.</summary>
     public static string ErrorName(Exception exc) => exc switch
     {
         CommandExitException => "SystemExit",
         CalledProcessException => "subprocess.CalledProcessError",
         ScheduleException => "ScheduleError",
         Sqlite3Exception sqlite => sqlite.TypeName,
-        PythonReException => "PatternError",
+        EngineReException => "PatternError",
         DetectorIOException => "DetectorIOError",
         MetadataValidationError => "MetadataValidationError",
-        PythonValueException => "ValueError",
-        PythonRecursionException => "RecursionError",
-        PythonTypeException => "TypeError",
-        PythonIndexException => "IndexError",
-        PythonAttributeException => "AttributeError",
-        PythonUnicodeDecodeException => "UnicodeDecodeError",
-        PythonNotImplementedException => "NotImplementedError",
-        PythonRuntimeException => "RuntimeError",
+        EngineValueException => "ValueError",
+        EngineRecursionException => "RecursionError",
+        EngineTypeException => "TypeError",
+        EngineIndexException => "IndexError",
+        EngineAttributeException => "AttributeError",
+        EngineUnicodeDecodeException => "UnicodeDecodeError",
+        EngineNotImplementedException => "NotImplementedError",
+        EngineRuntimeException => "RuntimeError",
         KeyNotFoundException => "KeyError",
         FileNotFoundException => "FileNotFoundError",
         OverflowException => "OverflowError",
-        IOException { HResult: > 0 and < 4096 } => PythonOSError.TypeName(exc.HResult),
+        IOException { HResult: > 0 and < 4096 } => EngineOSError.TypeName(exc.HResult),
         UnauthorizedAccessException => "PermissionError",
         IOException => "OSError",
         _ => exc.GetType().Name,

@@ -1,6 +1,0 @@
-{
- "database": {
-  "script": "r2v-autoinc.sql"
- },
- "path": "case.sqlite/"
-}

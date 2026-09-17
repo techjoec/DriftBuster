@@ -20,8 +20,8 @@ public sealed class ProfileScheduler
         }
     }
 
-    /// <summary><c>ProfileScheduler._now</c>; tests swap it as Python monkeypatches the static method.</summary>
-    internal static Func<PythonDateTime> Now { get; set; } = PythonDateTime.UtcNow;
+    /// <summary><c>ProfileScheduler._now</c>; tests swap it.</summary>
+    internal static Func<EngineDateTime> Now { get; set; } = EngineDateTime.UtcNow;
 
     /// <summary><c>scheduler.register(spec)</c>: a new name starts at <c>spec.initial_run(_now())</c>.</summary>
     public void Register(ScheduleSpec spec)
@@ -49,7 +49,7 @@ public sealed class ProfileScheduler
     /// <c>scheduler.due(reference)</c>: every pending run at or before the reference, and every schedule whose next run is at or before it
     /// (which becomes pending), ordered by scheduled time (stable, registration order for ties).
     /// </summary>
-    public IReadOnlyList<ScheduledRun> Due(PythonDateTime? reference = null)
+    public IReadOnlyList<ScheduledRun> Due(EngineDateTime? reference = null)
     {
         var now = ScheduleParsing.EnsureAware(reference ?? Now());
         var runs = new List<ScheduledRun>();
@@ -74,19 +74,19 @@ public sealed class ProfileScheduler
         }
 
         var ordered = runs.ToArray();
-        PythonSort<ScheduledRun>.Sort(ordered, static (left, right) => left.ScheduledFor < right.ScheduledFor);
+        EngineSort<ScheduledRun>.Sort(ordered, static (left, right) => left.ScheduledFor < right.ScheduledFor);
         return ordered;
     }
 
     /// <summary><c>scheduler.peek(name)</c>: the pending run, else the next run.</summary>
-    public PythonDateTime Peek(string name)
+    public EngineDateTime Peek(string name)
     {
         var state = State(name);
         return state.Pending ?? state.NextRun;
     }
 
     /// <summary><c>scheduler.mark_complete(name, completed_at)</c>: clears the pending run; the next run follows the completion time (the pending time by default).</summary>
-    public void MarkComplete(string name, PythonDateTime? completedAt = null)
+    public void MarkComplete(string name, EngineDateTime? completedAt = null)
     {
         var state = State(name);
         if (state.Pending is null)
@@ -100,7 +100,7 @@ public sealed class ProfileScheduler
     }
 
     /// <summary><c>scheduler.skip_until(name, resume_at)</c>: clears the pending run and restarts at the resume time, aligned.</summary>
-    public void SkipUntil(string name, PythonDateTime resumeAt)
+    public void SkipUntil(string name, EngineDateTime resumeAt)
     {
         var state = State(name);
         state.Pending = null;
@@ -149,14 +149,14 @@ public sealed class ProfileScheduler
                 continue;
             }
 
-            var nextRun = PythonBuiltins.Get(payload, "next_run");
-            if (PythonBuiltins.IsTruthy(nextRun))
+            var nextRun = EngineBuiltins.Get(payload, "next_run");
+            if (EngineBuiltins.IsTruthy(nextRun))
             {
                 entry.NextRun = ScheduleParsing.ParseTimestamp(nextRun);
             }
 
-            var pending = PythonBuiltins.Get(payload, "pending");
-            entry.Pending = PythonBuiltins.IsTruthy(pending) ? ScheduleParsing.ParseTimestamp(pending) : null;
+            var pending = EngineBuiltins.Get(payload, "pending");
+            entry.Pending = EngineBuiltins.IsTruthy(pending) ? ScheduleParsing.ParseTimestamp(pending) : null;
         }
     }
 

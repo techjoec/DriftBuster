@@ -1,5 +1,5 @@
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -10,7 +10,7 @@ namespace DriftBuster.Backend.Registry;
 /// </summary>
 public sealed record RegistryRoot(string Hive, string Path, string? View = null)
 {
-    private static readonly PythonPattern DescriptorPattern = PythonPattern.Compile(@"^(HKLM|HKCU)\\(.+)$", PythonReFlags.IgnoreCase);
+    private static readonly EnginePattern DescriptorPattern = EnginePattern.Compile(@"^(HKLM|HKCU)\\(.+)$", EngineReFlags.IgnoreCase);
 
     /// <summary><c>root.as_tuple()</c>.</summary>
     public (string Hive, string Path, string? View) AsTuple() => (Hive, Path, View);
@@ -19,29 +19,29 @@ public sealed record RegistryRoot(string Hive, string Path, string? View = null)
     /// <c>parse_registry_root_descriptor(text)</c>: <c>HIVE\path[,view=32|64|auto]</c> with "/" read as "\", the hive matched
     /// case-insensitively and upper-cased, the path stripped, and <c>view=auto</c> read as no view (the last view option wins).
     /// </summary>
-    /// <exception cref="PythonValueException">Python's <c>ValueError</c> text for each refusal.</exception>
-    /// <exception cref="PythonIndexException">A descriptor of only commas and whitespace (Python's <c>IndexError</c>).</exception>
+    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
+    /// <exception cref="EngineIndexException">A descriptor of only commas and whitespace (Python's <c>IndexError</c>).</exception>
     public static RegistryRoot Parse(string? text)
     {
-        var value = PythonText.Strip(text ?? string.Empty);
+        var value = EngineText.Strip(text ?? string.Empty);
         if (value.Length == 0)
         {
-            throw new PythonValueException("Registry root descriptor must be non-empty", nameof(text));
+            throw new EngineValueException("Registry root descriptor must be non-empty", nameof(text));
         }
 
-        var segments = value.Split(',').Select(PythonText.Strip).Where(segment => segment.Length > 0).ToList();
+        var segments = value.Split(',').Select(EngineText.Strip).Where(segment => segment.Length > 0).ToList();
         if (segments.Count == 0)
         {
-            throw new PythonIndexException(nameof(text), "list index out of range");
+            throw new EngineIndexException(nameof(text), "list index out of range");
         }
 
         var match = DescriptorPattern.Match(segments[0].Replace('/', '\\'))
-            ?? throw new PythonValueException("Registry root descriptor must start with HKLM\\ or HKCU\\", nameof(text));
-        var hive = RegistryPython.Upper(match.Group(1)!);
-        var path = PythonText.Strip(match.Group(2)!);
+            ?? throw new EngineValueException("Registry root descriptor must start with HKLM\\ or HKCU\\", nameof(text));
+        var hive = RegistryText.Upper(match.Group(1)!);
+        var path = EngineText.Strip(match.Group(2)!);
         if (path.Length == 0)
         {
-            throw new PythonValueException("Registry root path segment must be non-empty", nameof(text));
+            throw new EngineValueException("Registry root path segment must be non-empty", nameof(text));
         }
 
         string? view = null;
@@ -58,27 +58,27 @@ public sealed record RegistryRoot(string Hive, string Path, string? View = null)
         var separator = option.IndexOf('=', StringComparison.Ordinal);
         if (separator < 0)
         {
-            throw new PythonValueException($"Registry root option '{option}' must be formatted as key=value", nameof(option));
+            throw new EngineValueException($"Registry root option '{option}' must be formatted as key=value", nameof(option));
         }
 
-        var key = PythonText.Lower(PythonText.Strip(option[..separator]));
-        var rawValue = PythonText.Strip(option[(separator + 1)..]);
+        var key = EngineText.Lower(EngineText.Strip(option[..separator]));
+        var rawValue = EngineText.Strip(option[(separator + 1)..]);
         if (!string.Equals(key, "view", StringComparison.Ordinal))
         {
-            throw new PythonValueException($"Unsupported registry root option '{key}'", nameof(option));
+            throw new EngineValueException($"Unsupported registry root option '{key}'", nameof(option));
         }
 
         if (rawValue.Length == 0)
         {
-            throw new PythonValueException("Registry root view must be non-empty when provided", nameof(option));
+            throw new EngineValueException("Registry root view must be non-empty when provided", nameof(option));
         }
 
-        return RegistryPython.Upper(rawValue) switch
+        return RegistryText.Upper(rawValue) switch
         {
             "AUTO" => null,
             "32" => "32",
             "64" => "64",
-            _ => throw new PythonValueException("Registry root view must be 32, 64, or auto", nameof(option)),
+            _ => throw new EngineValueException("Registry root view must be 32, 64, or auto", nameof(option)),
         };
     }
 }

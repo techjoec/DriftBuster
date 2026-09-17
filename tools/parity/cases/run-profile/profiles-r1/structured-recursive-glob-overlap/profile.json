@@ -1,9 +1,0 @@
-{
-  "name": "overlap",
-  "sources": [
-    {
-      "path": "conf/**",
-      "alias": "c"
-    }
-  ]
-}

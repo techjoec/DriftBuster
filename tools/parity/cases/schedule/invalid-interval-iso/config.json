@@ -1,9 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "bad-iso",
-      "profile": "bad-iso-profile",
-      "every": "PTXM"
-    }
-  ]
-}

@@ -1,2 +1,0 @@
-CREATE TABLE "@p" (a TEXT);
-INSERT INTO "@p" VALUES ('1');

@@ -6,7 +6,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Diff;
 
 /// <summary>
-/// <c>driftbuster.reporting.redaction.RedactionFilter</c>: replaces known tokens with a placeholder and counts every
+/// Replaces known tokens with a placeholder and counts every
 /// replacement per token.
 /// </summary>
 /// <remarks>
@@ -85,7 +85,7 @@ public class RedactionFilter
         var hasTokens = maskTokens is { Count: > 0 };
         if (redactor is not null && hasTokens)
         {
-            throw new PythonValueException("Provide either an explicit redactor or mask_tokens, not both.", nameof(maskTokens));
+            throw new EngineValueException("Provide either an explicit redactor or mask_tokens, not both.", nameof(maskTokens));
         }
 
         if (redactor is not null)
@@ -114,7 +114,7 @@ public class RedactionFilter
                 var redacted = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
                 foreach (DictionaryEntry entry in mapping)
                 {
-                    redacted[PythonRepr.Str(entry.Key)] = RedactData(entry.Value, redactor);
+                    redacted[EngineRepr.Str(entry.Key)] = RedactData(entry.Value, redactor);
                 }
 
                 return redacted;

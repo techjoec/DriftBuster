@@ -1,6 +1,0 @@
-{
-  "description": "a zero sampling budget: Detector refuses it (max_total_sample_bytes must be a positive integer) when the runner is built",
-  "aborts": "max_total_sample_bytes must be a positive integer",
-  "fixes": [], "args": ["--sample-budget", "0"], "requires": [],
-  "plans": [{"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r3/plain/hostA"]}]
-}

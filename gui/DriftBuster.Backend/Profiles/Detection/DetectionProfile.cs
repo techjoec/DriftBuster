@@ -3,7 +3,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Profiles.Detection;
 
 /// <summary>
-/// A named set of configuration expectations (the port of <c>ConfigurationProfile</c>). Construction and <c>with</c> apply
+/// A named set of configuration expectations. Construction and <c>with</c> apply
 /// <c>__post_init__</c>: tags normalised, configs copied, metadata frozen. Equality is the dataclass's, field by field.
 /// </summary>
 public sealed record DetectionProfile
@@ -70,7 +70,7 @@ public sealed record DetectionProfile
             && string.Equals(Description, other.Description, StringComparison.Ordinal)
             && Tags.SetEquals(other.Tags)
             && Configs.SequenceEqual(other.Configs)
-            && PythonValues.Equal(Metadata, other.Metadata);
+            && EngineValues.Equal(Metadata, other.Metadata);
 
     public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Name);
 }

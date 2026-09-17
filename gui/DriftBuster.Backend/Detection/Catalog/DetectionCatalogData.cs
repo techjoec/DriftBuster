@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Detection.Catalog;
 
-/// <summary>The catalog classes in priority order; values mirror the Python catalog (version 0.0.3) plus the port's own plist, markdown-config, logstash-pipeline and hcl entries.</summary>
+/// <summary>The catalog classes in priority order; the catalog version is <c>0.0.3</c>.</summary>
 internal static class DetectionCatalogData
 {
     private static readonly FormatClass RegistryExport = new FormatClass(

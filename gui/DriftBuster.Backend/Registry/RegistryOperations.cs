@@ -5,7 +5,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// The <c>driftbuster.registry</c> package surface: <see cref="RegistryScan"/>'s three operations wrapped by <c>_instrument</c>, which
+/// The registry operations surface: <see cref="RegistryScan"/>'s three operations wrapped by <c>_instrument</c>, which
 /// counts every call, success and error with its duration (a failing call records <c>"{type}: {message}"</c> and rethrows, a
 /// succeeding one clears the last error), and <see cref="RegistrySummary"/> over those counters. The counters are process-wide, as
 /// the module-level <c>_USAGE</c> is.
@@ -94,8 +94,8 @@ public static class RegistryOperations
         }
 
         var instant = DateTime.UnixEpoch.AddSeconds(whole);
-        var utc = PythonDateTime.Create(
-            instant.Year, instant.Month, instant.Day, instant.Hour, instant.Minute, instant.Second, (int)fraction, PythonFixedOffset.Utc);
+        var utc = EngineDateTime.Create(
+            instant.Year, instant.Month, instant.Day, instant.Hour, instant.Minute, instant.Second, (int)fraction, EngineFixedOffset.Utc);
         return utc.IsoFormat().Replace("+00:00", "Z", StringComparison.Ordinal);
     }
 
@@ -143,7 +143,7 @@ public static class RegistryOperations
                 counters.Errors++;
                 counters.TotalDuration += duration;
                 counters.LastDuration = duration;
-                counters.LastError = $"{RegistryPython.ErrorName(exc)}: {exc.Message}";
+                counters.LastError = $"{RegistryText.ErrorName(exc)}: {exc.Message}";
             }
 
             throw;

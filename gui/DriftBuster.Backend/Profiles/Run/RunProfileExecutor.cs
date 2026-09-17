@@ -11,8 +11,8 @@ namespace DriftBuster.Backend.Profiles.Run;
 /// <c>&lt;profile&gt;/raw/&lt;timestamp&gt;/&lt;source dir&gt;</c>, and writes <c>metadata.json</c> beside them.
 /// </summary>
 /// <remarks>
-/// A profile whose sources all hold only a path runs exactly as Python's <c>execute_profile</c>. A profile with a structured source
-/// (<see cref="RunProfile.IsStructured"/>) collects every source as <c>offline_runner.execute_config</c> does (plan decision): in declared
+/// A profile whose sources all hold only a path runs as a plain profile. A profile with a structured source
+/// (<see cref="RunProfile.IsStructured"/>) collects every source as <c>offline_runner.execute_config</c> does: in declared
 /// order (the baseline is not moved to the front), with the options as the payload holds them (<see cref="RunProfile.SecretOptions"/>); an
 /// <see cref="RunProfileSource.Alias"/> names the source's directory (<c>_safe_name(alias)</c>) in place of <c>source_NN</c>; an
 /// <see cref="RunProfileSource.Optional"/> source that is missing or matches nothing is skipped; matches are expanded, globbed, sorted
@@ -53,7 +53,7 @@ public static partial class RunProfileExecutor
 
         var runTimestamp = string.IsNullOrEmpty(timestamp) ? Timestamp() : timestamp;
         var runRoot = RunProfileStore.JoinName(RunProfileStore.JoinName(profileDirectory, "raw"), runTimestamp);
-        PythonPath.MakeDirectories(runRoot);
+        EnginePath.MakeDirectories(runRoot);
 
         var secretContext = SecretScanner.BuildContext(profile.SecretOptions, profile.SecretScanner);
         var secretLogs = new List<string>();
@@ -67,7 +67,7 @@ public static partial class RunProfileExecutor
             cancellationToken.ThrowIfCancellationRequested();
             var destinationName = DestinationName(sources[index], index);
             var destinationRoot = RunProfileStore.JoinName(runRoot, destinationName);
-            PythonPath.MakeDirectories(destinationRoot);
+            EnginePath.MakeDirectories(destinationRoot);
             var target = new CopyTarget(files, secretContext, secretLogs.Add, ownOutput);
             summaries.Add(profile.IsStructured
                 ? CollectStructuredSource(sources[index], destinationName, destinationRoot, target, cancellationToken)
@@ -133,11 +133,11 @@ public static partial class RunProfileExecutor
     private static List<string> MissingProfilesAncestors(string? baseDir)
     {
         var missing = new List<string>();
-        var path = PythonPurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
+        var path = EnginePurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
         while (!ExistsOrUnknown(path))
         {
             missing.Add(path);
-            var parent = PythonPurePath.Parent(path);
+            var parent = EnginePurePath.Parent(path);
             if (string.Equals(parent, path, StringComparison.Ordinal))
             {
                 break;
@@ -149,7 +149,7 @@ public static partial class RunProfileExecutor
         return missing;
     }
 
-    // Path.exists(), with a lookup that raises counted as existing (the run then fails creating the directory, as Python's does).
+    // Path.exists(), with a lookup that raises counted as existing (the run then fails creating the directory).
     private static bool ExistsOrUnknown(string path)
     {
         try
@@ -163,7 +163,7 @@ public static partial class RunProfileExecutor
     }
 
     // The absolute path with every symlink the kernel would follow resolved, or the absolute path when it cannot be resolved.
-    private static string PhysicalPath(string path) => PythonPath.ResolvePhysicalPath(PythonPath.Absolute(path)) ?? PythonPath.Absolute(path);
+    private static string PhysicalPath(string path) => EnginePath.ResolvePhysicalPath(EnginePath.Absolute(path)) ?? EnginePath.Absolute(path);
 
     // One source of a profile without structured sources (execute_profile): its matches, each directory walked with rglob("*") and each
     // file copied.
@@ -176,15 +176,15 @@ public static partial class RunProfileExecutor
             {
                 foreach (var file in WalkFiles(match, cancellationToken))
                 {
-                    if (PythonPath.IsFile(file))
+                    if (EnginePath.IsFile(file))
                     {
                         CopyUnlessExcluded(source, file, match, destinationRoot, target, matched, cancellationToken);
                     }
                 }
             }
-            else if (PythonPath.IsFile(match))
+            else if (EnginePath.IsFile(match))
             {
-                CopyUnlessExcluded(source, match, PythonPurePath.Parent(match), destinationRoot, target, matched, cancellationToken);
+                CopyUnlessExcluded(source, match, EnginePurePath.Parent(match), destinationRoot, target, matched, cancellationToken);
             }
         }
 
@@ -197,8 +197,8 @@ public static partial class RunProfileExecutor
     private static IEnumerable<string> WalkFiles(string directory, CancellationToken cancellationToken)
     {
         var replaced = new HashSet<string>(StringComparer.Ordinal);
-        return PythonGlob.Glob(directory, "**/*", cancellationToken)
-            .Where(path => !path.Contains('\uFFFD', StringComparison.Ordinal) || (replaced.Add(path) && !PythonPath.IsUndecodableName(path)));
+        return EngineGlob.Glob(directory, "**/*", cancellationToken)
+            .Where(path => !path.Contains('\uFFFD', StringComparison.Ordinal) || (replaced.Add(path) && !EnginePath.IsUndecodableName(path)));
     }
 
     private static void CopyUnlessExcluded(
@@ -234,7 +234,7 @@ public static partial class RunProfileExecutor
         }
 
         var name = relativePosix[(relativePosix.LastIndexOf('/') + 1)..];
-        return patterns.Any(pattern => PythonFnmatch.Fnmatch(relativePosix, pattern) || PythonFnmatch.Fnmatch(name, pattern));
+        return patterns.Any(pattern => EngineFnmatch.Fnmatch(relativePosix, pattern) || EngineFnmatch.Fnmatch(name, pattern));
     }
 
     /// <summary>
@@ -244,7 +244,7 @@ public static partial class RunProfileExecutor
     internal static IReadOnlyList<string> CollectMatches(string pathText, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(pathText);
-        var candidate = PythonPurePath.Str(pathText);
+        var candidate = EnginePurePath.Str(pathText);
         if (RunProfileStore.Exists(candidate))
         {
             return [candidate];
@@ -252,7 +252,7 @@ public static partial class RunProfileExecutor
 
         if (RunProfileStore.HasMagic(pathText))
         {
-            return PythonModuleGlob.Glob(pathText, recursive: true, cancellationToken).Select(PythonPurePath.Str).ToList();
+            return EngineModuleGlob.Glob(pathText, recursive: true, cancellationToken).Select(EnginePurePath.Str).ToList();
         }
 
         throw new FileNotFoundException($"Path does not exist: {pathText}");
@@ -273,8 +273,8 @@ public static partial class RunProfileExecutor
         CancellationToken cancellationToken = default)
     {
         var relative = RelativePath(file, basePath);
-        var destination = PythonPurePath.Join(destinationRoot, relative);
-        PythonPath.MakeDirectories(PythonPurePath.Parent(destination));
+        var destination = EnginePurePath.Join(destinationRoot, relative);
+        EnginePath.MakeDirectories(EnginePurePath.Parent(destination));
         var (size, digest) = secretContext is not null && secretLog is not null
             ? SecretScanner.CopyWithSecretFilter(file, destination, relative, secretContext, secretLog, cancellationToken: cancellationToken)
             : SecretScanner.CopyVerbatim(file, destination);
@@ -282,5 +282,5 @@ public static partial class RunProfileExecutor
     }
 
     // file.relative_to(base) if file.is_relative_to(base) else Path(file.name), in posix form.
-    private static string RelativePath(string file, string basePath) => PythonPurePath.RelativeTo(file, basePath) ?? PathText.Name(file);
+    private static string RelativePath(string file, string basePath) => EnginePurePath.RelativeTo(file, basePath) ?? PathText.Name(file);
 }

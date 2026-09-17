@@ -1,8 +1,0 @@
-{
-  "description": "raw text decoding: CRLF, lone CR, NEL and U+2028, invalid UTF-8 sequences and a truncated tail, an invalid sequence and a CR straddling 8192 bytes",
-  "fixes": [], "args": [], "requires": [],
-  "plans": [
-    {"host_id": "a", "label": "A", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/enc/hostA"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "b", "label": "B", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r1/enc/hostB"]}
-  ]
-}

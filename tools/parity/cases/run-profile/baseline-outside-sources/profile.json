@@ -1,8 +1,0 @@
-{
-  "name": "baseline-out",
-  "sources": [
-    "a.json",
-    "b.json"
-  ],
-  "baseline": "c.json"
-}

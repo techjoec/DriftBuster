@@ -9,7 +9,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// separators (OpenSSH sshd_config, OpenVPN client.conf). Runs as the low-priority fallback after structured parsers.
 /// </summary>
 /// <remarks>
-/// The Python plugin is regex driven (<c>^\s*[A-Za-z_][\w.-]*(?:\s+.+)?$</c>, <c>^\s*Subsystem\s+sftp\b</c>,
+/// The plugin's rules are regexes (<c>^\s*[A-Za-z_][\w.-]*(?:\s+.+)?$</c>, <c>^\s*Subsystem\s+sftp\b</c>,
 /// <c>^\s*client\s*$</c>, <c>^\s*(dev|remote|proto)\b</c>). Those are matched here by hand on code points because
 /// .NET regexes differ on exactly the inputs that flip the outcome: <c>\s</c> excludes U+001C-U+001F, <c>\w</c> uses
 /// [L Mn Nd Pc] instead of [L N _], and character classes see UTF-16 units so an astral letter ends a token.
@@ -39,7 +39,7 @@ public sealed class TextPlugin : IFormatPlugin
 
     private static LineKind ClassifyLine(string line)
     {
-        var s = PythonText.Strip(line);
+        var s = EngineText.Strip(line);
         if (s.Length == 0)
         {
             return LineKind.Blank;
@@ -76,13 +76,13 @@ public sealed class TextPlugin : IFormatPlugin
         while (offset < s.Length)
         {
             Rune.DecodeFromUtf16(s.AsSpan(offset), out var rune, out var consumed);
-            if (rune.Value is '.' or '-' || PythonText.IsWordRune(rune))
+            if (rune.Value is '.' or '-' || EngineText.IsWordRune(rune))
             {
                 offset += consumed;
                 continue;
             }
 
-            return rune.Value <= char.MaxValue && PythonText.IsSpace((char)rune.Value);
+            return rune.Value <= char.MaxValue && EngineText.IsSpace((char)rune.Value);
         }
 
         return true;
@@ -103,12 +103,12 @@ public sealed class TextPlugin : IFormatPlugin
         }
 
         Rune.DecodeFromUtf16(s.AsSpan(next), out var rune, out _);
-        return !PythonText.IsWordRune(rune);
+        return !EngineText.IsWordRune(rune);
     }
 
     private static int SkipSpaces(string s, int offset)
     {
-        while (offset < s.Length && PythonText.IsSpace(s[offset]))
+        while (offset < s.Length && EngineText.IsSpace(s[offset]))
         {
             offset++;
         }
@@ -160,7 +160,7 @@ public sealed class TextPlugin : IFormatPlugin
     }
 
     // ^\s*client\s*$ with MULTILINE: a line that is "client" once stripped.
-    private static bool IsOpenvpnClientLine(string line) => string.Equals(PythonText.Strip(line), "client", StringComparison.Ordinal);
+    private static bool IsOpenvpnClientLine(string line) => string.Equals(EngineText.Strip(line), "client", StringComparison.Ordinal);
 
     // ^\s*(dev|remote|proto)\b with MULTILINE.
     private static bool IsOpenvpnDirectiveLine(string line)
@@ -238,7 +238,7 @@ public sealed class TextPlugin : IFormatPlugin
 
         // Oddities: obvious nonstandard marker tokens.
         var reviewReasons = new List<string>();
-        if (lines.Take(MarkerWindow).Any(line => PythonText.StripStart(line).StartsWith("<<<", StringComparison.Ordinal)))
+        if (lines.Take(MarkerWindow).Any(line => EngineText.StripStart(line).StartsWith("<<<", StringComparison.Ordinal)))
         {
             reviewReasons.Add("Nonstandard marker tokens present (e.g., '<<<')");
         }

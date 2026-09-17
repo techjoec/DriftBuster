@@ -1,3 +1,0 @@
-list
-due --at 0001-01-02T03:00:00Z
-mark-complete --name chicago-y1 --completed-at 0001-01-01T00:00:00Z

@@ -4,11 +4,11 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Reporting;
 
-/// <summary><c>driftbuster.reporting.snapshot</c>: a detection manifest with the legal block and redaction state embedded.</summary>
+/// <summary>A detection manifest with the legal block and redaction state embedded.</summary>
 public static class SnapshotManifest
 {
     /// <summary><c>datetime.now(UTC)</c>, swapped by tests that pin <c>generated_at</c>.</summary>
-    internal static Func<PythonDateTime> UtcNow { get; set; } = PythonDateTime.UtcNow;
+    internal static Func<EngineDateTime> UtcNow { get; set; } = EngineDateTime.UtcNow;
 
     /// <summary>
     /// <c>build_snapshot_manifest</c>: <c>generated_at</c>, <c>output</c>, <c>operator</c>, <c>legal</c> (the default classification,
@@ -106,8 +106,8 @@ public static class SnapshotManifest
         ArgumentNullException.ThrowIfNull(destination);
         var manifest = Build(matches, outputName, @operator, redactor, maskTokens, placeholder, legalMetadata, extraMetadata);
         var text = ReportValues.DumpsIndented(manifest, indent, ensureAscii: false) + "\n";
-        var parent = PythonPurePath.Parent(destination);
-        PythonPath.MakeDirectories(parent);
-        PythonTextFile.WriteText(destination, ReportValues.TextModeNewLines(text));
+        var parent = EnginePurePath.Parent(destination);
+        EnginePath.MakeDirectories(parent);
+        EngineTextFile.WriteText(destination, ReportValues.TextModeNewLines(text));
     }
 }

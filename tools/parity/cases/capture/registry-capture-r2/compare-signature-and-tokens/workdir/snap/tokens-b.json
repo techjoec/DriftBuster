@@ -1,1 +1,0 @@
-{"detections": [], "hunt_hits": [{"rule": {"token_name": "a"}}, {"rule": {"token_name": "c"}}, {"rule": {"token_name": false}}, {"rule": {"token_name": []}}, {"rule": {"token_name": {}}}, {"rule": {"token_name": "b"}}, {"rule": {"token_name": "b"}}, {"rule": {"token_name": "b"}}, {"rule": {"token_name": "😀"}}], "profile_summary": null}

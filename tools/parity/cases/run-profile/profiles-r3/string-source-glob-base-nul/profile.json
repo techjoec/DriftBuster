@@ -1,7 +1,0 @@
-{
- "name": "nulglob",
- "sources": [
-  "in.txt",
-  "x\u0000/*.txt"
- ]
-}

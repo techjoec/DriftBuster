@@ -1,7 +1,0 @@
-{
- "database": {
-  "script": "cr-mixed.sql"
- },
- "file": "sub/db.sqlite",
- "path": "./sub/../sub/./db.sqlite//"
-}

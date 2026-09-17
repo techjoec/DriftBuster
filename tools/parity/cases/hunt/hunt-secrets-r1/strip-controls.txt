@@ -1,4 +1,0 @@
- server s.local 
-　host h.local　
-​host z.local​
- version 1.2.3 

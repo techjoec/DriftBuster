@@ -1,1 +1,0 @@
-{"options": {"secret_ignore_rules": "\uffff \ud83d\ude00,\ue000;a B", "secret_ignore_patterns": ["\ud83d\ude00", "\uffff", "\ue000", "\uffff", "b", "A"]}, "secret_scanner": {"ignore_rules": ["\ud800\udc00", "\ud7ff"], "ignore_patterns": ["\ud800\udc00", "(", "\ud7ff"]}}

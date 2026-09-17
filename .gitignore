@@ -1,26 +1,7 @@
-# ── Python ────────────────────────────────────────────────────────
-__pycache__/
-*.py[cod]
-*.pyd
-*.so
-*.egg-info/
-*.egg
-*.whl
-.venv/
+# ── .NET ──────────────────────────────────────────────────────────
 dist/
 build/
-.pytest_cache/
-.hypothesis/
-.coverage
 coverage.json
-htmlcov/
-.tox/
-.ruff_cache/
-.mypy_cache/
-.nox/
-pip-log.txt
-
-# ── .NET ──────────────────────────────────────────────────────────
 bin/
 obj/
 publish/

@@ -1,1 +1,0 @@
-{"name": "links", "sources": [{"path": "*/x.txt", "alias": "files"}, {"path": "*", "alias": "dirs"}]}

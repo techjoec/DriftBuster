@@ -1,5 +1,0 @@
-{"description": "a fractional priority truncates through int(): 2.9 ties with 2 and plan order decides", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": "server03", "label": "S3", "scope": "custom_roots", "roots": ["fixtures/multi-server/server03"], "baseline": {"priority": 2}},
-  {"host_id": "server04", "label": "S4", "scope": "custom_roots", "roots": ["fixtures/multi-server/server04"], "baseline": {"priority": 2.9}}
- ]}

@@ -1,8 +1,0 @@
-{
-  "description": "surrogate-metadata-cache with --runs 2: Python's first run leaves an empty entry and the second goes offline again; the port reuses the entry it wrote",
-  "fixes": [], "args": ["--runs", "2"], "requires": [], "divergences": ["python-surrogate-encode"],
-  "plans": [
-    {"host_id": "hostA", "label": "hostA", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r3/trees/surrogate/hostA"], "baseline": {"is_preferred": true}},
-    {"host_id": "hostB", "label": "hostB", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r3/trees/surrogate/hostB"]}
-  ]
-}

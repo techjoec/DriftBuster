@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Hunt;
 
@@ -169,7 +169,7 @@ internal static class StrFormatSpec
         for (; position < spec.Length; position++, digits++)
         {
             var code = spec[position];
-            var digit = (long)PythonUnicode.DecimalValue(code);
+            var digit = (long)EngineUnicode.DecimalValue(code);
             if (digit < 0)
             {
                 break;

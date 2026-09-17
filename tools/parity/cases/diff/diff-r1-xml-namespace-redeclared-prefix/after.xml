@@ -1,2 +1,0 @@
-<?xml version="1.0"?>
-<p:a xmlns:p="urn:one" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><p:b xmlns:p="urn:two" xsi:type="p:U"/><c xml:lang="fr"/></p:a>

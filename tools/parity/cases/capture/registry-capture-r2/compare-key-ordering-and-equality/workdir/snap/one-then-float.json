@@ -1,1 +1,0 @@
-{"detections": [{"relative_path": "a", "path": "/abs/a", "detection": {"format": 1, "variant": null, "tag": "int"}}, {"relative_path": "a", "path": "/abs/a", "detection": {"format": 1.0, "variant": null, "tag": "float"}}], "hunt_hits": [], "profile_summary": null}

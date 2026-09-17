@@ -3,11 +3,9 @@ using DriftBuster.Backend.Detection;
 namespace DriftBuster.Backend.Diff;
 
 /// <summary>
-/// The canonicaliser a file is diffed with, chosen from what detection found in it (plan fix f: the diff planner used a
-/// file-extension allowlist). The rule is <c>driftbuster.multi_server._determine_content_type</c>, the only Python
-/// caller that chooses from detection: <c>xml</c> when the catalog format is <c>structured-config-xml</c> or <c>xml</c>,
-/// otherwise <c>text</c>. JSON is diffed as text: <c>canonicalise_json</c> exists but no Python caller selects it, and
-/// multi-server output (phase 5) must keep Python's canonical payloads.
+/// The canonicaliser a file is diffed with, chosen from what detection found in it rather than from the file extension:
+/// <c>xml</c> when the catalog format is <c>structured-config-xml</c> or <c>xml</c>, otherwise <c>text</c>. JSON is diffed as
+/// text, so multi-server output keeps its canonical payloads.
 /// </summary>
 public static class ContentTypeResolver
 {

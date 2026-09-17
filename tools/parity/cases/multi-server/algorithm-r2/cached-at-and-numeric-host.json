@@ -1,5 +1,0 @@
-{"description": "cached_at that is not a timestamp and a numeric host id and label (str() in Plan.from_mapping)", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": 42, "label": 7, "scope": "custom_roots", "roots": ["fixtures/multi-server/server08"], "cached_at": "yesterday"},
-  {"host_id": "server09", "label": "S9", "scope": "custom_roots", "roots": ["fixtures/multi-server/server09"], "cached_at": 12345}
- ]}

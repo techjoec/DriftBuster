@@ -1,1 +1,0 @@
-{"name": "path only", "sources": [{"path": "conf"}, {"path": "x.txt", "alias": "  ", "exclude": [], "optional": 0}]}

@@ -1,7 +1,0 @@
-{
- "database": {
-  "script": "base.sql"
- },
- "file": "file:q.sqlite?mode=ro",
- "path": "file:q.sqlite?mode=ro"
-}

@@ -1,1 +1,0 @@
-{"profiles": [{"name": "prod", "tags": ["prod"], "configs": [{"id": "a", "path": "app/appsettings.json"}]}]}

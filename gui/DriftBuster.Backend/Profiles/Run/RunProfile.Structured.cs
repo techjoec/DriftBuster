@@ -38,66 +38,66 @@ public sealed partial class RunProfile
         {
             return !SourceFromDict(mapping).IsPathOnly;
         }
-        catch (Exception exc) when (exc is ArgumentException or PythonAttributeException)
+        catch (Exception exc) when (exc is ArgumentException or EngineAttributeException)
         {
             return true;
         }
     }
 
     /// <summary>
-    /// <c>OfflineRunnerProfile.from_dict(payload)</c> for a profile with a structured source (plan decision: structured sources follow the
+    /// <c>OfflineRunnerProfile.from_dict(payload)</c> for a profile with a structured source (structured sources follow the
     /// offline runner): a non-blank <c>name</c>, a non-empty <c>sources</c>, each mapping read with <see cref="SourceFromDict"/> and each
     /// other entry as the path <c>str(entry)</c>, a <c>baseline</c> (when not null) that is one of the source paths, <c>tags</c> iterated,
     /// <c>options</c> a mapping, a truthy <c>secret_scanner</c> a mapping, and <c>description</c> as <c>str()</c>; the values are then held
     /// as <c>run_profiles</c> holds them. A <c>registry_scan</c> or <c>sql_snapshot</c> source is not a run profile source and is refused.
     /// </summary>
-    /// <exception cref="PythonValueException">Python's <c>ValueError</c> for each check, or an unsupported source.</exception>
+    /// <exception cref="EngineValueException">Python's <c>ValueError</c> for each check, or an unsupported source.</exception>
     internal static RunProfile FromOfflineRunnerDict(IReadOnlyDictionary<string, object?> payload)
     {
         var name = payload.GetValueOrDefault("name");
-        if (!PythonBuiltins.IsTruthy(name) || PythonText.Strip(PythonRepr.Str(name)).Length == 0)
+        if (!EngineBuiltins.IsTruthy(name) || EngineText.Strip(EngineRepr.Str(name)).Length == 0)
         {
-            throw new PythonValueException("Profile requires a non-empty 'name'.", nameof(payload));
+            throw new EngineValueException("Profile requires a non-empty 'name'.", nameof(payload));
         }
 
         var rawSources = payload.TryGetValue("sources", out var sourcesValue) ? sourcesValue : new List<object?>();
-        if (!PythonBuiltins.IsTruthy(rawSources))
+        if (!EngineBuiltins.IsTruthy(rawSources))
         {
-            throw new PythonValueException("Profile must define at least one source.", nameof(payload));
+            throw new EngineValueException("Profile must define at least one source.", nameof(payload));
         }
 
-        var sources = PythonBuiltins.Iterate(rawSources).Select(OfflineRunnerSource).ToList();
+        var sources = EngineBuiltins.Iterate(rawSources).Select(OfflineRunnerSource).ToList();
         var baseline = payload.GetValueOrDefault("baseline");
         string? baselineText = null;
         if (baseline is not null)
         {
-            baselineText = PythonRepr.Str(baseline);
+            baselineText = EngineRepr.Str(baseline);
             if (!sources.Any(source => string.Equals(source.Path, baselineText, StringComparison.Ordinal)))
             {
-                throw new PythonValueException("Profile baseline must reference one of the declared sources.", nameof(payload));
+                throw new EngineValueException("Profile baseline must reference one of the declared sources.", nameof(payload));
             }
         }
 
         var tags = payload.GetValueOrDefault("tags");
-        if (tags is not string && PythonBuiltins.IsTruthy(tags))
+        if (tags is not string && EngineBuiltins.IsTruthy(tags))
         {
-            _ = PythonBuiltins.Iterate(tags);
+            _ = EngineBuiltins.Iterate(tags);
         }
 
         var options = payload.TryGetValue("options", out var optionsValue) ? optionsValue : new OrderedDictionary<string, object?>(StringComparer.Ordinal);
         if (options is not IReadOnlyDictionary<string, object?> optionsMapping)
         {
-            throw new PythonValueException("Profile 'options' must be a mapping if provided.", nameof(payload));
+            throw new EngineValueException("Profile 'options' must be a mapping if provided.", nameof(payload));
         }
 
         var secretScanner = payload.GetValueOrDefault("secret_scanner");
-        if (PythonBuiltins.IsTruthy(secretScanner) && secretScanner is not IReadOnlyDictionary<string, object?>)
+        if (EngineBuiltins.IsTruthy(secretScanner) && secretScanner is not IReadOnlyDictionary<string, object?>)
         {
-            throw new PythonValueException("Profile 'secret_scanner' must be a mapping if provided.", nameof(payload));
+            throw new EngineValueException("Profile 'secret_scanner' must be a mapping if provided.", nameof(payload));
         }
 
         return new RunProfile(
-            PythonRepr.Str(name),
+            EngineRepr.Str(name),
             DetectionProfileStore.OptionalText(payload.GetValueOrDefault("description")),
             sources,
             baselineText,
@@ -116,12 +116,12 @@ public sealed partial class RunProfile
         {
             if (UnsupportedSourceKeys.FirstOrDefault(mapping.ContainsKey) is { } key)
             {
-                throw new PythonValueException($"Run profiles do not support '{key}' sources.", nameof(entry));
+                throw new EngineValueException($"Run profiles do not support '{key}' sources.", nameof(entry));
             }
 
             return SourceFromDict(mapping);
         }
 
-        return SourceFromDict(new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["path"] = PythonRepr.Str(entry) });
+        return SourceFromDict(new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["path"] = EngineRepr.Str(entry) });
     }
 }

@@ -3,17 +3,17 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Hunt;
 
-/// <summary><c>driftbuster.hunt</c>: search file trees for dynamic configuration values.</summary>
+/// <summary>Searches file trees for dynamic configuration values.</summary>
 public static partial class HuntEngine
 {
     /// <summary>Bytes read from each file.</summary>
     public const int DefaultSampleSize = 128 * 1024;
 
-    /// <summary>The Python default <c>"{{{{ {token_name} }}}}"</c>, which formats to <c>{{ name }}</c>.</summary>
+    /// <summary>The default <c>"{{{{ {token_name} }}}}"</c>, which formats to <c>{{ name }}</c>.</summary>
     public const string DefaultPlaceholderTemplate = "{{{{ {token_name} }}}}";
 
     /// <summary>Test seam for <c>Path.relative_to</c>: null stands for the <c>ValueError</c> Python raises.</summary>
-    internal static Func<string, string, string?> RelativeTo { get; set; } = PythonPurePath.RelativeTo;
+    internal static Func<string, string, string?> RelativeTo { get; set; } = EnginePurePath.RelativeTo;
 
     /// <summary>
     /// <c>hunt_path(root, rules=..., glob=..., sample_size=..., exclude_patterns=...)</c>. A file root is scanned alone;
@@ -22,13 +22,13 @@ public static partial class HuntEngine
     /// to the root directory.
     /// </summary>
     /// <remarks>
-    /// Fix b: a file that cannot be opened, read or looked up (<c>is_file()</c> raising, as for a file inside a directory that
+    /// A file that cannot be opened, read or looked up (<c>is_file()</c> raising, as for a file inside a directory that
     /// cannot be searched) is skipped and listed in <see cref="HuntScanResult.UnreadableFiles"/>, as is an entry whose file name
-    /// the runtime cannot decode (<see cref="PythonPath.IsUndecodableName"/>). Only regular files are
-    /// read (<see cref="PythonPath.IsFile"/>): a FIFO, socket or device is skipped as Python skips it.
-    /// Pattern searches have no time limit, as in Python; <paramref name="cancellationToken"/> is honoured while the tree is
-    /// walked, between files and inside each pattern search. A root that does not exist yields no hits, as in Python; a directory
-    /// root that cannot be listed raises its I/O error (plan decision 4; Python's glob swallows it). An empty or anchored
+    /// the runtime cannot decode (<see cref="EnginePath.IsUndecodableName"/>). Only regular files are
+    /// read (<see cref="EnginePath.IsFile"/>): a FIFO, socket or device is skipped as Python skips it.
+    /// Pattern searches have no time limit; <paramref name="cancellationToken"/> is honoured while the tree is
+    /// walked, between files and inside each pattern search. A root that does not exist yields no hits; a directory
+    /// root that cannot be listed raises its I/O error. An empty or anchored
     /// <paramref name="glob"/> raises <see cref="ArgumentException"/> or <see cref="NotSupportedException"/>.
     /// </remarks>
     public static HuntScanResult HuntPath(
@@ -42,7 +42,7 @@ public static partial class HuntEngine
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(glob);
-        var (targets, rootDirectory) = Targets(PythonPurePath.Str(root), glob, cancellationToken);
+        var (targets, rootDirectory) = Targets(EnginePurePath.Str(root), glob, cancellationToken);
         var exclusions = excludePatterns ?? [];
         var hits = new List<HuntFinding>();
         var unreadable = new List<string>();
@@ -52,7 +52,7 @@ public static partial class HuntEngine
             if (exclusions.Count > 0)
             {
                 var relative = RelativeTo(candidate, rootDirectory);
-                if (ShouldExclude(pattern => PythonPurePath.Match(candidate, pattern), relative, exclusions))
+                if (ShouldExclude(pattern => EnginePurePath.Match(candidate, pattern), relative, exclusions))
                 {
                     continue;
                 }
@@ -60,9 +60,9 @@ public static partial class HuntEngine
 
             try
             {
-                if (!PythonPath.IsFile(candidate))
+                if (!EnginePath.IsFile(candidate))
                 {
-                    // An entry whose name the runtime cannot decode (Targets keeps it): Python would open it, the port cannot.
+                    // An entry whose name the runtime cannot decode (Targets keeps it): it cannot be opened.
                     unreadable.Add(candidate);
                     continue;
                 }
@@ -79,8 +79,8 @@ public static partial class HuntEngine
                 {
                     if (rule.Keywords.Count > 0)
                     {
-                        lowered ??= PythonText.Lower(text);
-                        if (!rule.Keywords.All(keyword => PythonText.Contains(lowered, keyword)))
+                        lowered ??= EngineText.Lower(text);
+                        if (!rule.Keywords.All(keyword => EngineText.Contains(lowered, keyword)))
                         {
                             continue;
                         }
@@ -102,25 +102,25 @@ public static partial class HuntEngine
 
     // path = Path(root) (the caller passes the spelling PurePath gives it); targets = [path] if path.is_file() else
     // [c for c in path.glob(glob) if c.is_file()]; root_dir = path if path.is_dir() else path.parent. A missing root globs to
-    // nothing, as in Python. Entries whose names the runtime cannot decode are kept, in walk order, so HuntPath reports them.
+    // nothing. Entries whose names the runtime cannot decode are kept, in walk order, so HuntPath reports them.
     private static (IReadOnlyList<string> Targets, string RootDirectory) Targets(string root, string glob, CancellationToken cancellationToken)
     {
-        if (PythonPath.IsFile(root))
+        if (EnginePath.IsFile(root))
         {
-            return ([root], PythonPurePath.Parent(root));
+            return ([root], EnginePurePath.Parent(root));
         }
 
-        var targets = PythonPath.SortedGlob(root, glob, cancellationToken).Where(IsTarget).ToList();
-        return (targets, Directory.Exists(PythonPath.KernelPath(root)) ? PythonPurePath.Str(root) : PythonPurePath.Parent(root));
+        var targets = EnginePath.SortedGlob(root, glob, cancellationToken).Where(IsTarget).ToList();
+        return (targets, Directory.Exists(EnginePath.KernelPath(root)) ? EnginePurePath.Str(root) : EnginePurePath.Parent(root));
     }
 
     // c.is_file(), keeping an entry whose name the runtime cannot decode and one whose stat raises (a file inside a directory
-    // that cannot be searched: Python's is_file() raises and aborts the hunt; fix b lists it as unreadable).
+    // that cannot be searched is listed as unreadable).
     private static bool IsTarget(string candidate)
     {
         try
         {
-            return PythonPath.IsFile(candidate) || PythonPath.IsUndecodableName(candidate);
+            return EnginePath.IsFile(candidate) || EnginePath.IsUndecodableName(candidate);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
@@ -135,7 +135,7 @@ public static partial class HuntEngine
     /// </summary>
     internal static string? ReadText(string path, long sampleSize)
     {
-        using var stream = new FileStream(PythonPath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var sample = new MemoryStream();
         var buffer = new byte[81920];
         var remaining = sampleSize < 0 ? long.MaxValue : sampleSize;
@@ -158,8 +158,8 @@ public static partial class HuntEngine
     /// <summary><c>_matches_keywords</c>: every keyword occurs in the lowered text.</summary>
     internal static bool MatchesKeywords(string text, IReadOnlyList<string> keywords)
     {
-        var lowered = PythonText.Lower(text);
-        return keywords.All(keyword => PythonText.Contains(lowered, keyword));
+        var lowered = EngineText.Lower(text);
+        return keywords.All(keyword => EngineText.Contains(lowered, keyword));
     }
 
     /// <summary><c>_should_exclude</c>: <paramref name="candidateMatches"/> stands for <c>candidate.match</c>.</summary>
@@ -172,7 +172,7 @@ public static partial class HuntEngine
                 return true;
             }
 
-            if (relative is not null && PythonPurePath.Match(relative, pattern))
+            if (relative is not null && EnginePurePath.Match(relative, pattern))
             {
                 return true;
             }
@@ -183,7 +183,7 @@ public static partial class HuntEngine
 
     /// <summary><c>_should_exclude(candidate, relative=..., patterns=...)</c> for a real candidate path.</summary>
     internal static bool ShouldExclude(string candidate, string? relative, IReadOnlyList<string> patterns)
-        => ShouldExclude(pattern => PythonPurePath.Match(candidate, pattern), relative, patterns);
+        => ShouldExclude(pattern => EnginePurePath.Match(candidate, pattern), relative, patterns);
 
     /// <summary><c>_deduplicate_preserving_order</c>: stripped, non-empty, first occurrence kept.</summary>
     private static List<string> Deduplicate(IEnumerable<string> values)
@@ -192,7 +192,7 @@ public static partial class HuntEngine
         var ordered = new List<string>();
         foreach (var value in values)
         {
-            var candidate = PythonText.Strip(value);
+            var candidate = EngineText.Strip(value);
             if (candidate.Length > 0 && seen.Add(candidate))
             {
                 ordered.Add(candidate);
@@ -216,8 +216,8 @@ public static partial class HuntEngine
             var line = lines[index];
             if (rule.Keywords.Count > 0)
             {
-                var lineLower = PythonText.Lower(line);
-                if (!rule.Keywords.Any(keyword => PythonText.Contains(lineLower, keyword)))
+                var lineLower = EngineText.Lower(line);
+                if (!rule.Keywords.Any(keyword => EngineText.Contains(lineLower, keyword)))
                 {
                     continue;
                 }
@@ -226,7 +226,7 @@ public static partial class HuntEngine
             var (matched, values) = MatchLine(rule, line, cancellationToken);
             if (matched)
             {
-                hits.Add(new HuntFinding(rule, path, index + 1, PythonText.Strip(line), Deduplicate(values)));
+                hits.Add(new HuntFinding(rule, path, index + 1, EngineText.Strip(line), Deduplicate(values)));
             }
         }
 
@@ -238,7 +238,7 @@ public static partial class HuntEngine
         var values = new List<string>();
         if (rule.Patterns.Count == 0)
         {
-            values.Add(PythonText.Strip(line));
+            values.Add(EngineText.Strip(line));
             return (true, values);
         }
 
@@ -252,20 +252,20 @@ public static partial class HuntEngine
                 {
                     if (match.Group(group) is { Length: > 0 } value)
                     {
-                        values.Add(PythonText.Strip(value));
+                        values.Add(EngineText.Strip(value));
                     }
                 }
 
                 if (match.Value.Length > 0)
                 {
-                    values.Add(PythonText.Strip(match.Value));
+                    values.Add(EngineText.Strip(match.Value));
                 }
             }
         }
 
         if (matched && values.Count == 0)
         {
-            values.Add(PythonText.Strip(line));
+            values.Add(EngineText.Strip(line));
         }
 
         return (matched, values);
@@ -330,7 +330,7 @@ public static partial class HuntEngine
         }
         catch (KeyNotFoundException exc)
         {
-            throw new PythonValueException("placeholder_template must include {token_name} placeholder", nameof(template), exc);
+            throw new EngineValueException("placeholder_template must include {token_name} placeholder", nameof(template), exc);
         }
     }
 }

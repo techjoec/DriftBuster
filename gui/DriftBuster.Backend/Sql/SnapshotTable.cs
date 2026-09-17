@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Sql;
 
-/// <summary><c>driftbuster.sql.snapshots.SnapshotTable</c>: one exported table.</summary>
+/// <summary>One exported table.</summary>
 /// <param name="Name">The table's name in <c>sqlite_master</c>.</param>
 /// <param name="Schema">Its <c>sql</c> text from <c>sqlite_master</c>, null when there is none or it is stored as a BLOB (<see cref="SchemaBytes"/>).</param>
 /// <param name="Columns">The names <c>PRAGMA table_info</c> lists, in order.</param>
@@ -18,8 +18,8 @@ public sealed record SnapshotTable(
     IReadOnlyList<string> HashedColumns)
 {
     /// <summary>
-    /// The <c>sql</c> value when a writable schema stored it as a BLOB: Python's <c>SnapshotTable.schema</c> is then <c>bytes</c>, which
-    /// <see cref="ToDict"/> carries so that <c>json.dumps</c> of the snapshot raises its <c>TypeError</c> where Python's does.
+    /// The <c>sql</c> value when a writable schema stored it as a BLOB: the schema is then <c>bytes</c>, which
+    /// <see cref="ToDict"/> carries so that <c>json.dumps</c> of the snapshot raises its <c>TypeError</c>.
     /// </summary>
     public byte[]? SchemaBytes { get; init; }
 

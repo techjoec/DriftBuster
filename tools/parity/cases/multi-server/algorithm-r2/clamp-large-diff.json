@@ -1,5 +1,0 @@
-{"description": "canonical text past 256 KiB and a diff past 600 lines (stats before clamps), plus 900 mostly repeated lines (autojunk)", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": "hostA", "label": "A", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r2/trees/clamp/hostA"]},
-  {"host_id": "hostB", "label": "B", "scope": "custom_roots", "roots": ["tools/parity/cases/multi-server/algorithm-r2/trees/clamp/hostB"]}
- ]}

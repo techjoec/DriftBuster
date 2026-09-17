@@ -1,5 +1,0 @@
-Host *
-  ForwardAgent no
-  ServerAliveInterval 60
-  HashKnownHosts yes
-  IdentityFile ~/.ssh/id_ed25519

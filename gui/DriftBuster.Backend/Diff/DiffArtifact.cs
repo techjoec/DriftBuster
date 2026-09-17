@@ -3,7 +3,7 @@ using DriftBuster.Backend.Models;
 namespace DriftBuster.Backend.Diff;
 
 /// <summary>
-/// <c>driftbuster.reporting.diff.DiffResult</c>: the canonical payloads (clamped, never redacted), the unified diff
+/// A diff result: the canonical payloads (clamped, never redacted), the unified diff
 /// (redacted and clamped), its statistics and the plan values that produced it.
 /// </summary>
 public sealed record DiffArtifact

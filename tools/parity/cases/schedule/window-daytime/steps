@@ -1,6 +1,0 @@
-list
-due --at 2025-03-02T09:00:00Z
-mark-complete --name office
-due --at 2025-03-02T13:00:00Z
-mark-complete --name office
-list

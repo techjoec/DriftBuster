@@ -3,7 +3,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Profiles.Detection;
 
 /// <summary>
-/// A configuration expectation inside a detection profile (the port of <c>ProfileConfig</c>). Construction and <c>with</c>
+/// A configuration expectation inside a detection profile. Construction and <c>with</c>
 /// apply <c>__post_init__</c>: tags normalised (<see cref="ProfileTags.Normalize"/>), metadata frozen as a read-only shallow
 /// copy, and <see cref="Path"/> and <see cref="PathGlob"/> spelled as <c>str(PurePosixPath(value))</c>. Equality is the
 /// dataclass's: every field by value, tags as sets and metadata with Python <c>==</c>.
@@ -49,13 +49,13 @@ public sealed record DetectionProfileConfig
     public string? Path
     {
         get => _path;
-        init => _path = value is null ? null : PythonPurePath.PosixStr(value);
+        init => _path = value is null ? null : EnginePurePath.PosixStr(value);
     }
 
     public string? PathGlob
     {
         get => _pathGlob;
-        init => _pathGlob = value is null ? null : PythonPurePath.PosixStr(value);
+        init => _pathGlob = value is null ? null : EnginePurePath.PosixStr(value);
     }
 
     public string? Application { get; init; }
@@ -111,13 +111,13 @@ public sealed record DetectionProfileConfig
             return false;
         }
 
-        var normalised = PythonPurePath.PosixStr(relativePath);
+        var normalised = EnginePurePath.PosixStr(relativePath);
         if (!string.IsNullOrEmpty(Path) && string.Equals(normalised, Path, StringComparison.Ordinal))
         {
             return true;
         }
 
-        return !string.IsNullOrEmpty(PathGlob) && PythonFnmatch.Fnmatch(normalised, PathGlob);
+        return !string.IsNullOrEmpty(PathGlob) && EngineFnmatch.Fnmatch(normalised, PathGlob);
     }
 
     private static bool HasTag(IReadOnlySet<string> providedTags, string prefix, string? value)
@@ -134,7 +134,7 @@ public sealed record DetectionProfileConfig
             && Tags.SetEquals(other.Tags)
             && string.Equals(ExpectedFormat, other.ExpectedFormat, StringComparison.Ordinal)
             && string.Equals(ExpectedVariant, other.ExpectedVariant, StringComparison.Ordinal)
-            && PythonValues.Equal(Metadata, other.Metadata);
+            && EngineValues.Equal(Metadata, other.Metadata);
 
     public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Identifier);
 }

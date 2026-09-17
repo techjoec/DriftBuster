@@ -1,1 +1,0 @@
-{"options": {"secret_ignore_rules": [{"b": 1, "a": 2, "b": 3}]}, "secret_scanner": {"ruleset": {"version": {"b": "x'", "a": "y\"", "b": "z'\""}, "rules": [{"name": ["a\u0085", "\udb40\udc01", "\u00ad", "\u2028", "tab\t", "\ud800"], "pattern": {"x'": "y\""}}, {"name": "Dup", "pattern": "first", "pattern": "sec(ond)"}, {"name": "Dup", "pattern": "third"}]}, "rules": 5}}

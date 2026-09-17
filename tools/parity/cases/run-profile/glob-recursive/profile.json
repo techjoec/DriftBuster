@@ -1,6 +1,0 @@
-{
-  "name": "recursive glob",
-  "sources": [
-    "conf/**/*.ini"
-  ]
-}

@@ -1,7 +1,0 @@
-{
- "name": "evu",
- "sources": [
-  "in.txt",
-  "${\udcffX}/in.txt"
- ]
-}

@@ -1,1 +1,0 @@
-{"description": "an empty plans array: run() returns the empty response (Python builds catalog and drilldown as mappings)", "fixes": [], "args": [], "requires": [], "divergences": ["empty-response-mappings"], "plans": []}

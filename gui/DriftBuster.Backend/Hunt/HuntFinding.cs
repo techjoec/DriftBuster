@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Hunt;
 
-/// <summary><c>driftbuster.hunt.HuntHit</c>: one line a rule matched.</summary>
+/// <summary>A hunt hit: one line a rule matched.</summary>
 /// <param name="Rule">The rule that matched.</param>
 /// <param name="Path">The file, spelled as the walk produced it (the root joined with the relative path).</param>
 /// <param name="LineNumber">One-based line number within the decoded sample.</param>

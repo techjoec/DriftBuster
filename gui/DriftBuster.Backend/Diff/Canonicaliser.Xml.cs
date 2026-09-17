@@ -18,19 +18,19 @@ public static partial class Canonicaliser
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Namespace prefixes are kept as written (plan fix d). ElementTree serialises every namespaced name with a prefix
+    /// Namespace prefixes are kept as written. ElementTree serialises every namespaced name with a prefix
     /// of its own choosing (<c>ns0</c>, <c>ns1</c>, ... in first-use order, or a well-known prefix such as <c>xsi</c>),
     /// declares every used namespace once on the root sorted by that prefix and drops unused declarations; a QName
-    /// inside an attribute value then points at a prefix that no longer exists. The port writes element and attribute
+    /// inside an attribute value then points at a prefix that no longer exists. The canonicaliser writes element and attribute
     /// names with their original prefixes and keeps each <c>xmlns</c>/<c>xmlns:p</c> declaration on the element that
-    /// made it, sorted by prefix and before the attributes. Attribute order is Python's (by <c>{uri}local</c>), so
+    /// made it, sorted by prefix and before the attributes. Attributes are ordered by <c>{uri}local</c>, so
     /// renaming prefixes and moving the declarations maps one output onto the other.
     /// </para>
     /// <para>
     /// A document whose DOCTYPE reaches the parser (one not at the start, or one the bracket scan could not close) and
     /// declares entities is refused, so it canonicalises as text; ElementTree would expand the entities. Documents
-    /// nested deeper than Python's recursion limit and text holding unpaired surrogates raise in Python
-    /// (<c>RecursionError</c>, <c>UnicodeEncodeError</c>); the port normalises and serialises on an explicit stack and
+    /// nested deeper than a recursion limit and text holding unpaired surrogates would raise
+    /// (<c>RecursionError</c>, <c>UnicodeEncodeError</c>); the canonicaliser normalises and serialises on an explicit stack and
     /// treats a surrogate as a parse failure.
     /// </para>
     /// </remarks>
@@ -45,13 +45,13 @@ public static partial class Canonicaliser
         payload = payload.TrimStart(Bom);
         var xmlDeclaration = string.Empty;
         var doctype = string.Empty;
-        var working = PythonText.StripStart(payload);
+        var working = EngineText.StripStart(payload);
 
         var declarationEnd = MatchXmlDeclaration(working);
         if (declarationEnd > 0)
         {
             xmlDeclaration = working[..declarationEnd];
-            working = PythonText.StripStart(working[declarationEnd..]);
+            working = EngineText.StripStart(working[declarationEnd..]);
         }
 
         if (UpperStartsWithDoctype(working))
@@ -60,7 +60,7 @@ public static partial class Canonicaliser
             if (end > 0)
             {
                 doctype = working[..end];
-                working = PythonText.StripStart(working[end..]);
+                working = EngineText.StripStart(working[end..]);
             }
             else
             {
@@ -108,7 +108,7 @@ public static partial class Canonicaliser
                 continue;
             }
 
-            upper.Append(PythonText.Upper(rune));
+            upper.Append(EngineText.Upper(rune));
             offset += consumed;
         }
 

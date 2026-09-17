@@ -2,7 +2,7 @@ using System.Numerics;
 
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -11,7 +11,7 @@ namespace DriftBuster.Backend.Registry;
 /// <c>--remote-target</c> parsing, and the <c>list-apps</c>, <c>suggest-roots</c>, <c>search</c> and <c>emit-config</c> commands, each
 /// returning the lines or payload the command prints. Every command checks the gate first and, except <c>list-apps</c>, enumerates
 /// the installed applications before anything else, as <c>main</c> does. Argument parsing and exit codes belong to the console tool.
-/// The registry calls are settable seams, as tests monkeypatch the module attributes <c>main</c> reads.
+/// The registry calls are settable seams, so tests can replace them.
 /// </summary>
 public static class RegistryCommands
 {
@@ -64,7 +64,7 @@ public static class RegistryCommands
     /// <c>SystemExit("invalid --root value: ...")</c>) or the roots suggested for the token, searched with the keywords, the patterns
     /// compiled in order and the limits; <c>"{hive} \ {path} :: {value_name} = {data_preview}"</c> per hit.
     /// </summary>
-    /// <exception cref="PythonReException">A pattern does not compile (<c>re.error</c>).</exception>
+    /// <exception cref="EngineReException">A pattern does not compile (<c>re.error</c>).</exception>
     public static IReadOnlyList<string> Search(
         string token,
         IReadOnlyList<string>? keywords = null,
@@ -81,7 +81,7 @@ public static class RegistryCommands
         var spec = new SearchSpec
         {
             Keywords = (keywords ?? []).ToList(),
-            Patterns = (patterns ?? []).Select(RegistryPython.Compile).ToList(),
+            Patterns = (patterns ?? []).Select(RegistryText.Compile).ToList(),
             MaxDepth = maxDepth ?? 12,
             MaxHits = maxHits ?? 200,
             TimeBudgetS = timeBudget,
@@ -99,7 +99,7 @@ public static class RegistryCommands
     /// prints <see cref="EmitConfigJson"/> of it.
     /// </summary>
     /// <exception cref="CommandExitException">A <c>--root</c> value is refused.</exception>
-    /// <exception cref="PythonValueException">A <c>--remote-target</c> value is refused (not converted to <c>SystemExit</c>).</exception>
+    /// <exception cref="EngineValueException">A <c>--remote-target</c> value is refused (not converted to <c>SystemExit</c>).</exception>
     public static OrderedDictionary<string, object?> EmitConfig(
         string token,
         string? alias = null,
@@ -118,8 +118,8 @@ public static class RegistryCommands
             ["token"] = token,
             ["keywords"] = (keywords ?? []).Where(keyword => keyword.Length > 0).Cast<object?>().ToList(),
             ["patterns"] = (patterns ?? []).Where(pattern => pattern.Length > 0).Cast<object?>().ToList(),
-            ["max_depth"] = PythonValues.Narrow(maxDepth ?? 12),
-            ["max_hits"] = PythonValues.Narrow(maxHits ?? 200),
+            ["max_depth"] = EngineValues.Narrow(maxDepth ?? 12),
+            ["max_hits"] = EngineValues.Narrow(maxHits ?? 200),
             ["time_budget_s"] = timeBudget,
         };
         var snippet = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["registry_scan"] = scan };
@@ -146,7 +146,7 @@ public static class RegistryCommands
 
         foreach (var key in new[] { "keywords", "patterns" })
         {
-            if (!PythonBuiltins.IsTruthy(scan[key]))
+            if (!EngineBuiltins.IsTruthy(scan[key]))
             {
                 scan.Remove(key);
             }
@@ -176,7 +176,7 @@ public static class RegistryCommands
         {
             return values.Select(ParseRootArgument).ToList();
         }
-        catch (PythonValueException exc)
+        catch (EngineValueException exc)
         {
             throw new CommandExitException($"invalid --root value: {exc.Message}", exc);
         }
@@ -190,19 +190,19 @@ public static class RegistryCommands
     /// <c>use_ssl</c> (1/true/yes/on or 0/false/no/off), <c>username</c> (also <c>user</c>), <c>password_env</c>,
     /// <c>credential_profile</c>, <c>transport</c> and <c>alias</c>; keys are stripped, lower-cased and read with "-" as "_".
     /// </summary>
-    /// <exception cref="PythonValueException">Python's <c>ValueError</c> text for each refusal, or from <c>int()</c>.</exception>
+    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal, or from <c>int()</c>.</exception>
     public static OrderedDictionary<string, object?> ParseRemoteTargetArg(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var parts = value.Split(',').Select(PythonText.Strip).Where(segment => segment.Length > 0).ToList();
+        var parts = value.Split(',').Select(EngineText.Strip).Where(segment => segment.Length > 0).ToList();
         if (parts.Count == 0)
         {
-            throw new PythonValueException("remote target requires a host segment", nameof(value));
+            throw new EngineValueException("remote target requires a host segment", nameof(value));
         }
 
         if (parts[0].Contains('=', StringComparison.Ordinal))
         {
-            throw new PythonValueException("remote target must start with the host name", nameof(value));
+            throw new EngineValueException("remote target must start with the host name", nameof(value));
         }
 
         var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["host"] = parts[0] };
@@ -219,21 +219,21 @@ public static class RegistryCommands
         var separator = entry.IndexOf('=', StringComparison.Ordinal);
         if (separator < 0)
         {
-            throw new PythonValueException($"Remote target entry '{entry}' must include '='", nameof(entry));
+            throw new EngineValueException($"Remote target entry '{entry}' must include '='", nameof(entry));
         }
 
         var key = entry[..separator];
-        var normalised = PythonText.Lower(PythonText.Strip(key)).Replace('-', '_');
-        var rawValue = PythonText.Strip(entry[(separator + 1)..]);
+        var normalised = EngineText.Lower(EngineText.Strip(key)).Replace('-', '_');
+        var rawValue = EngineText.Strip(entry[(separator + 1)..]);
         if (rawValue.Length == 0)
         {
-            throw new PythonValueException($"Remote target value for '{key}' must be non-empty", nameof(entry));
+            throw new EngineValueException($"Remote target value for '{key}' must be non-empty", nameof(entry));
         }
 
         switch (normalised)
         {
             case "port":
-                payload["port"] = PythonValues.Narrow(PythonBuiltins.Int(rawValue));
+                payload["port"] = EngineValues.Narrow(EngineBuiltins.Int(rawValue));
                 break;
             case "use_ssl":
                 payload["use_ssl"] = ParseSwitch(rawValue);
@@ -245,13 +245,13 @@ public static class RegistryCommands
                 payload[normalised] = rawValue;
                 break;
             default:
-                throw new PythonValueException($"Unsupported remote target key '{key}'", nameof(entry));
+                throw new EngineValueException($"Unsupported remote target key '{key}'", nameof(entry));
         }
     }
 
     private static bool ParseSwitch(string rawValue)
     {
-        var lowered = PythonText.Lower(rawValue);
+        var lowered = EngineText.Lower(rawValue);
         if (TrueWords.Contains(lowered, StringComparer.Ordinal))
         {
             return true;
@@ -259,6 +259,6 @@ public static class RegistryCommands
 
         return FalseWords.Contains(lowered, StringComparer.Ordinal)
             ? false
-            : throw new PythonValueException($"Unsupported boolean value '{rawValue}' for use-ssl", nameof(rawValue));
+            : throw new EngineValueException($"Unsupported boolean value '{rawValue}' for use-ssl", nameof(rawValue));
     }
 }

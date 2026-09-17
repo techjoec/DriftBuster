@@ -1,4 +1,0 @@
---tags
-env:prod,tier:web,tier:db,application:mysql,version:8.0,branch:main
---path
-db/my.ini

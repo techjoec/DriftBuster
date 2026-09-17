@@ -4,7 +4,7 @@ using System.Xml.Linq;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// <c>defusedxml.ElementTree.fromstring(text)</c> as the Python XML plugin runs it: expat in namespace mode (the
+/// <c>defusedxml.ElementTree.fromstring(text)</c> as the XML plugin runs it: expat in namespace mode (the
 /// ElementTree parser's <c>"}"</c> separator) fed the text as UTF-8, with defusedxml's defaults (a DOCTYPE is allowed,
 /// every entity declaration expat processes raises, nothing external is read) and ElementTree's default handler, which
 /// raises on an entity reference expat reports as skipped. <see cref="IsWellFormed"/> is the verdict;
@@ -27,7 +27,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// their namespace names are reserved, a namespace name may not contain <c>}</c>, an attribute may not repeat by
 /// qualified or expanded name, and attribute defaults declared in the internal subset (namespace declarations
 /// included) apply. Every character must be an XML 1.0 character; an unpaired surrogate fails the UTF-8 encoding
-/// Python performs first. Parsing is iterative, so nesting depth is bounded only by the text.
+/// performed first. Parsing is iterative, so nesting depth is bounded only by the text.
 /// </para>
 /// </remarks>
 internal sealed partial class DefusedXmlParser

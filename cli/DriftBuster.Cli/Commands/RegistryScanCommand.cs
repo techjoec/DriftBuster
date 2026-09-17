@@ -6,9 +6,8 @@ using DriftBuster.Backend.Registry;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster registry-scan list-apps|suggest-roots|search|emit-config</c>: <c>python -m driftbuster.registry_cli</c> over
-/// <see cref="RegistryCommands"/>, each line printed as the command returns it. Off Windows every subcommand exits 1 with
-/// <c>Registry scanning requires Windows.</c> (checked once the arguments parse; Python checks before parsing).
+/// <c>driftbuster registry-scan list-apps|suggest-roots|search|emit-config</c> over <see cref="RegistryCommands"/>, each line printed as
+/// the command returns it. Off Windows every subcommand exits 1 with <c>Registry scanning requires Windows.</c> once the arguments parse.
 /// </summary>
 internal static class RegistryScanCommand
 {
@@ -43,7 +42,7 @@ internal static class RegistryScanCommand
 
     private static Command BuildSuggestRoots()
     {
-        var token = PythonArguments.Positional("token", "App token, e.g. part of DisplayName or Publisher");
+        var token = EngineArguments.Positional("token", "App token, e.g. part of DisplayName or Publisher");
         var command = new Command("suggest-roots", "Suggest registry roots for an app token") { token };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) => PrintLines(stdout, RegistryCommands.SuggestRoots(parseResult.GetValue(token)!))));
         return command;
@@ -61,12 +60,12 @@ internal static class RegistryScanCommand
     private static SearchOptions AddSearchOptions(Command command)
     {
         var options = new SearchOptions(
-            PythonArguments.Append("--keyword", "Keyword to require (repeatable)"),
-            PythonArguments.Append("--pattern", "Regex to match (repeatable)"),
-            PythonArguments.Int("--max-depth", 12, "Maximum key depth (default: 12)"),
-            PythonArguments.Int("--max-hits", 200, "Maximum hits (default: 200)"),
-            PythonArguments.Float("--time-budget", 10.0, "Time budget in seconds (default: 10.0)"),
-            PythonArguments.Append("--root", RootHelp));
+            EngineArguments.Append("--keyword", "Keyword to require (repeatable)"),
+            EngineArguments.Append("--pattern", "Regex to match (repeatable)"),
+            EngineArguments.Int("--max-depth", 12, "Maximum key depth (default: 12)"),
+            EngineArguments.Int("--max-hits", 200, "Maximum hits (default: 200)"),
+            EngineArguments.Float("--time-budget", 10.0, "Time budget in seconds (default: 10.0)"),
+            EngineArguments.Append("--root", RootHelp));
         command.Options.Add(options.Keyword);
         command.Options.Add(options.Pattern);
         command.Options.Add(options.MaxDepth);
@@ -77,7 +76,7 @@ internal static class RegistryScanCommand
 
     private static Command BuildSearch()
     {
-        var token = PythonArguments.Positional("token", "App token, e.g. part of DisplayName or Publisher");
+        var token = EngineArguments.Positional("token", "App token, e.g. part of DisplayName or Publisher");
         var command = new Command("search", "Search registry under suggested roots") { token };
         var options = AddSearchOptions(command);
         command.Options.Add(options.Root);
@@ -94,11 +93,11 @@ internal static class RegistryScanCommand
 
     private static Command BuildEmitConfig()
     {
-        var token = PythonArguments.Positional("token", "Token to feed into registry_scan entries");
-        var alias = PythonArguments.OptionalText("--alias", "Optional alias for manifest output");
+        var token = EngineArguments.Positional("token", "Token to feed into registry_scan entries");
+        var alias = EngineArguments.OptionalText("--alias", "Optional alias for manifest output");
         var command = new Command("emit-config", "Render a registry_scan source snippet for remote or local runs") { token, alias };
         var options = AddSearchOptions(command);
-        var remoteTarget = PythonArguments.Append(
+        var remoteTarget = EngineArguments.Append(
             "--remote-target",
             "Remote host descriptor. Repeat to add a batch. Supported keys: username, password-env, credential-profile, transport, port, use-ssl, alias");
         remoteTarget.HelpName = "HOST[,key=value]...";

@@ -15,19 +15,18 @@ namespace DriftBuster.Backend.Detection.Plugins;
 public sealed partial class XmlPlugin
 {
     /// <summary>
-    /// Test seam mirroring the module's <c>DEFUSED_ET</c>: false takes the branch Python runs when defusedxml is not
-    /// installed, where the tree comes from <c>ET.fromstring(text, parser=XMLParser(target=TreeBuilder(insert_comments=True)))</c>.
+    /// Test seam choosing the parser: false takes the fallback branch, where the tree comes from <c>ET.fromstring(text, parser=XMLParser(target=TreeBuilder(insert_comments=True)))</c>.
     /// </summary>
     internal bool DefusedAvailable { get; set; } = true;
 
     /// <summary>
-    /// Test seam mirroring <c>DEFUSED_ET.fromstring</c> on the defusedxml branch: called with the stripped text, it returns
+    /// Test seam for the defused parse: called with the stripped text, it returns
     /// the root element or null where the parse fails.
     /// </summary>
     internal Func<string, XElement?> DefusedFromString { get; set; } = static text => DefusedXmlParser.ParseTree(text);
 
     /// <summary>
-    /// Test seam mirroring <c>ET.fromstring</c> on that fallback branch: called with the text and the parser options (comments
+    /// Test seam for the parse on the fallback branch: called with the text and the parser options (comments
     /// inserted), it returns the root element or null where the parse fails.
     /// </summary>
     internal Func<string, FallbackParserOptions, XElement?> FallbackFromString { get; set; } =
@@ -38,7 +37,7 @@ public sealed partial class XmlPlugin
 
     private XElement? ParseTree(string text)
     {
-        var stripped = PythonText.StripStart(text);
+        var stripped = EngineText.StripStart(text);
         if (stripped.Length == 0 || CodePointCount(stripped) > MaxSafeParseChars)
         {
             return null;
@@ -79,7 +78,7 @@ public sealed partial class XmlPlugin
 
     private static void ExtractResxKeys(XElement root, OrderedDictionary<string, object?> metadata)
     {
-        if (!string.Equals(PythonText.Lower(root.Name.LocalName), "root", StringComparison.Ordinal))
+        if (!string.Equals(EngineText.Lower(root.Name.LocalName), "root", StringComparison.Ordinal))
         {
             return;
         }
@@ -102,7 +101,7 @@ public sealed partial class XmlPlugin
         var resourceKeys = new List<string>();
         foreach (var element in IterTree(root))
         {
-            if (!string.Equals(PythonText.Lower(element.Name.LocalName), "data", StringComparison.Ordinal))
+            if (!string.Equals(EngineText.Lower(element.Name.LocalName), "data", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -152,7 +151,7 @@ public sealed partial class XmlPlugin
             var lookup = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var name in attributes.Keys)
             {
-                lookup[PythonText.Lower(name)] = name;
+                lookup[EngineText.Lower(name)] = name;
             }
 
             return lookup;
@@ -324,7 +323,7 @@ public sealed partial class XmlPlugin
 
     private static void AddAttributeHint(HintBuckets buckets, string category, ElementView view, string attributeName, string value)
     {
-        var cleaned = PythonText.Strip(value);
+        var cleaned = EngineText.Strip(value);
         if (cleaned.Length == 0)
         {
             return;
@@ -333,9 +332,9 @@ public sealed partial class XmlPlugin
         var digest = Sha256Hex(cleaned);
         var dedupeKey = (
             digest,
-            PythonText.Lower(PythonText.Strip(view.KeyValue ?? string.Empty)),
-            PythonText.Lower(attributeName),
-            PythonText.Lower(view.ElementName));
+            EngineText.Lower(EngineText.Strip(view.KeyValue ?? string.Empty)),
+            EngineText.Lower(attributeName),
+            EngineText.Lower(view.ElementName));
         var bucket = buckets.Seen[category];
         if (bucket.Contains(dedupeKey))
         {
@@ -366,13 +365,13 @@ public sealed partial class XmlPlugin
     internal static bool LooksLikeEndpoint(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var cleaned = PythonText.Strip(value);
+        var cleaned = EngineText.Strip(value);
         if (cleaned.Length == 0)
         {
             return false;
         }
 
-        var lowered = PythonText.Lower(cleaned);
+        var lowered = EngineText.Lower(cleaned);
         if (cleaned.Contains("://", StringComparison.Ordinal))
         {
             return true;
@@ -388,7 +387,7 @@ public sealed partial class XmlPlugin
 
     private static bool ContainsFeatureKeyword(string text)
     {
-        var lowered = PythonText.Lower(text);
+        var lowered = EngineText.Lower(text);
         return lowered.Contains("feature", StringComparison.Ordinal)
             || lowered.Contains("flag", StringComparison.Ordinal)
             || lowered.Contains("toggle", StringComparison.Ordinal);
@@ -396,7 +395,7 @@ public sealed partial class XmlPlugin
 
     private static bool ContainsEndpointKeyword(string text)
     {
-        var lowered = PythonText.Lower(text);
+        var lowered = EngineText.Lower(text);
         foreach (var keyword in new[] { "endpoint", "serviceurl", "baseaddress", "callback", "apiurl", "address" })
         {
             if (lowered.Contains(keyword, StringComparison.Ordinal))
@@ -421,16 +420,16 @@ public sealed partial class XmlPlugin
         var attrLookup = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (name, value) in ElementAttributes(root))
         {
-            var cleaned = PythonText.Strip(value);
+            var cleaned = EngineText.Strip(value);
             if (cleaned.Length > 0)
             {
-                attrLookup[PythonText.Lower(name)] = cleaned;
+                attrLookup[EngineText.Lower(name)] = cleaned;
             }
         }
 
         if (attrLookup.TryGetValue("defaulttargets", out var defaultTargets))
         {
-            var targets = defaultTargets.Split(';').Select(PythonText.Strip).Where(token => token.Length > 0).ToList();
+            var targets = defaultTargets.Split(';').Select(EngineText.Strip).Where(token => token.Length > 0).ToList();
             if (targets.Count > 0)
             {
                 metadata["msbuild_default_targets"] = targets;
@@ -474,8 +473,8 @@ public sealed partial class XmlPlugin
                 var name = element.Attribute("Name")?.Value;
                 if (!string.IsNullOrEmpty(name))
                 {
-                    var cleanedName = PythonText.Strip(name);
-                    if (cleanedName.Length > 0 && seenTargetNames.Add(PythonText.Lower(cleanedName)) && targetNames.Count < 10)
+                    var cleanedName = EngineText.Strip(name);
+                    if (cleanedName.Length > 0 && seenTargetNames.Add(EngineText.Lower(cleanedName)) && targetNames.Count < 10)
                     {
                         targetNames.Add(cleanedName);
                     }
@@ -501,14 +500,14 @@ public sealed partial class XmlPlugin
                 continue;
             }
 
-            var cleanedValue = PythonText.Strip(rawValue);
+            var cleanedValue = EngineText.Strip(rawValue);
             if (cleanedValue.Length == 0)
             {
                 continue;
             }
 
             var digest = Sha256Hex(cleanedValue);
-            if (!seenImports.Add((PythonText.Lower(attribute), digest)))
+            if (!seenImports.Add((EngineText.Lower(attribute), digest)))
             {
                 continue;
             }
@@ -522,7 +521,7 @@ public sealed partial class XmlPlugin
             var conditionValue = element.Attribute("Condition")?.Value;
             if (!string.IsNullOrEmpty(conditionValue))
             {
-                var cleanedCondition = PythonText.Strip(conditionValue);
+                var cleanedCondition = EngineText.Strip(conditionValue);
                 if (cleanedCondition.Length > 0)
                 {
                     entry["condition_hash"] = Sha256Hex(cleanedCondition);

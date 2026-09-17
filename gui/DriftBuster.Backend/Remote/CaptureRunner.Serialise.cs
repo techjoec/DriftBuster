@@ -50,20 +50,20 @@ public static partial class CaptureRunner
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(root);
-        return PythonPurePath.RelativeTo(path, root) ?? PathText.Name(path);
+        return EnginePurePath.RelativeTo(path, root) ?? PathText.Name(path);
     }
 
     /// <summary>
     /// <c>_serialise_detection(entry, root)</c>: <see cref="DetectionMetadata.SummariseMetadata"/> of the match plus <c>path</c>,
     /// <c>relative_path</c> and one <see cref="SerialiseProfileConfig"/> entry per applied profile config.
     /// </summary>
-    /// <exception cref="PythonValueException">The entry has no match (<c>Cannot serialise detection for paths without a match.</c>).</exception>
+    /// <exception cref="EngineValueException">The entry has no match (<c>Cannot serialise detection for paths without a match.</c>).</exception>
     public static OrderedDictionary<string, object?> SerialiseDetection(ProfiledDetection entry, string root)
     {
         ArgumentNullException.ThrowIfNull(entry);
         if (entry.Detection is null)
         {
-            throw new PythonValueException("Cannot serialise detection for paths without a match.", nameof(entry));
+            throw new EngineValueException("Cannot serialise detection for paths without a match.", nameof(entry));
         }
 
         var payload = DetectionPayload(entry.Detection);
@@ -134,7 +134,7 @@ public static partial class CaptureRunner
         var entries = dictionary.GetEnumerator();
         while (entries.MoveNext())
         {
-            copy[PythonRepr.Str(entries.Key)] = NormaliseSummary(entries.Value);
+            copy[EngineRepr.Str(entries.Key)] = NormaliseSummary(entries.Value);
         }
 
         return copy;

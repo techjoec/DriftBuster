@@ -7,15 +7,14 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster release stage-portable</c>, <c>python -m scripts.stage_portable_dev</c> without Python: publishes the GUI as a
+/// <c>driftbuster release stage-portable</c>: publishes the GUI as a
 /// framework-dependent single file, copies the publish output to
 /// <c>artifacts/gui-packaging/portable/DriftBuster.Gui-&lt;gui version&gt;-win11-portable-debug-&lt;timestamp&gt;</c> with debug launchers,
-/// zips it with a <c>.sha256</c> beside the zip, and replaces the stage directory with the bundle. The bundle carries no Python sources:
-/// the GUI runs every feature in process.
+/// zips it with a <c>.sha256</c> beside the zip, and replaces the stage directory with the bundle. The GUI runs every feature in process.
 /// </summary>
 internal static partial class StagePortable
 {
-    public const string DefaultStageDir = "/lap_temp/DriftBuster-Portabletest";
+    public const string DefaultStageDir = "artifacts/gui-packaging/portable/staged";
 
     public const string TargetFramework = "net10.0";
 
@@ -48,7 +47,7 @@ internal static partial class StagePortable
         var zipPath = ZipBundle(bundleDir);
         var shaPath = WriteSha256(zipPath);
 
-        var stageDir = PythonPath.ExpandUser(PythonPurePath.Str(options.StageDir));
+        var stageDir = EnginePath.ExpandUser(EnginePurePath.Str(options.StageDir));
         StageBundle(bundleDir, stageDir);
 
         ConsoleText.Print(stdout, "\nPortable debug bundle ready:");
@@ -56,7 +55,7 @@ internal static partial class StagePortable
         ConsoleText.Print(stdout, $" - Zip: {zipPath}");
         ConsoleText.Print(stdout, $" - Zip SHA256: {shaPath}");
         ConsoleText.Print(stdout, $" - Staged run dir: {stageDir}");
-        ConsoleText.Print(stdout, $" - Launch: {PythonPurePath.Join(stageDir, "Run-DriftBuster-Debug.cmd")}");
+        ConsoleText.Print(stdout, $" - Launch: {EnginePurePath.Join(stageDir, "Run-DriftBuster-Debug.cmd")}");
         return 0;
     }
 
@@ -65,7 +64,7 @@ internal static partial class StagePortable
     {
         var versionsPath = Path.Combine(root, "versions.json");
         var data = RunProfileStore.ReadJson(versionsPath);
-        var version = PythonText.Strip(PythonRepr.Str(PythonBuiltins.Get(data, "gui") ?? string.Empty));
+        var version = EngineText.Strip(EngineRepr.Str(EngineBuiltins.Get(data, "gui") ?? string.Empty));
         return version.Length == 0 ? throw new CommandExitException($"Missing GUI version in {versionsPath}") : version;
     }
 

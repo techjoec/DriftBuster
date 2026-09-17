@@ -1,3 +1,0 @@
-{"description": "plans given as a mapping: _build_plans raises SystemExit",
- "aborts": "'plans' must be an array", "fixes": [], "args": [], "requires": [],
- "plans": {"s1": {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"]}}}

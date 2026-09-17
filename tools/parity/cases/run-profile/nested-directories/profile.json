@@ -1,7 +1,0 @@
-{
-  "name": "nested",
-  "sources": [
-    "tree",
-    "tree/a/b/c/leaf.txt"
-  ]
-}

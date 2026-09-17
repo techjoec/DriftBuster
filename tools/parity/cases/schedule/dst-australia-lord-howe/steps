@@ -1,6 +1,0 @@
-list
-due --at 2025-04-06T00:00:00Z
-mark-complete --name half-hour
-list
-skip-until --name half-hour --resume-at 2025-10-04T15:45:00Z
-list

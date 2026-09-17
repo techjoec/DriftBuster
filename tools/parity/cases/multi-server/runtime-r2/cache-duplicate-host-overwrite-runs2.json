@@ -1,9 +1,0 @@
-{
-  "description": "one host id scanned twice over roots holding the same relative paths with different content: the second plan overwrites the first plan's cache entries; the second run reloads them against the first plan's signatures",
-  "fixes": [], "args": ["--runs", "2"], "requires": [],
-  "plans": [
-    {"host_id": "dup", "label": "One", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/dupcache/one"], "baseline": {"is_preferred": true, "priority": 10, "role": "auto"}},
-    {"host_id": "dup", "label": "Two", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/dupcache/two"]},
-    {"host_id": "other", "label": "Other", "scope": "custom_roots", "roots": ["$PARITY_MULTI_SERVER_WORK/r2/dupcache/one"]}
-  ]
-}

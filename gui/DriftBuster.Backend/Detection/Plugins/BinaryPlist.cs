@@ -27,7 +27,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <c>_read_ints</c>, <c>_read</c>, the generator <c>_read_ints</c> uses for odd integer widths, <c>UID.__init__</c>
 /// and <c>InvalidFileException.__init__</c>) pushes a frame, and pushing frame 1001 raises (the default recursion
 /// limit of 1000). The count starts from <see cref="ParseFrame"/>, the depth <c>parse</c> runs at when a script's
-/// <c>main()</c> calls a function that calls <c>Detector.scan_file</c> (the parity dump); another caller's stack
+/// <c>main()</c> calls a function that calls <c>Detector.scan_file</c>; another caller's stack
 /// moves the boundary by its own frame count.
 /// </para>
 /// </remarks>
@@ -37,15 +37,15 @@ internal static partial class BinaryPlist
     internal const int FrameLimit = 1000;
 
     /// <summary>
-    /// Frames on the stack inside <c>_BinaryPlistParser.parse</c> under the parity dump: module, <c>main</c>,
+    /// Frames on the stack inside <c>_BinaryPlistParser.parse</c> under such a script: module, <c>main</c>,
     /// <c>cmd_detect</c>, <c>scan_file</c>, <c>detect</c>, <c>_detect_binary_plist</c>, <c>plistlib.load</c>, <c>parse</c>.
     /// </summary>
     internal const int ParseFrame = 8;
 
     /// <summary>A decode failure carrying the Python exception class name plistlib would raise.</summary>
-    internal sealed class DecodeException(string pythonType, string message) : Exception(message)
+    internal sealed class DecodeException(string valueType, string message) : Exception(message)
     {
-        public string PythonType { get; } = pythonType;
+        public string EngineType { get; } = valueType;
     }
 
     /// <summary><c>plistlib.UID</c>; its string form is the class's <c>repr</c>, <c>UID(7)</c>, which <c>str()</c> falls back to.</summary>

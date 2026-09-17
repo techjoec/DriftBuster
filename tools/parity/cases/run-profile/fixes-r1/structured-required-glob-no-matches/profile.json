@@ -1,1 +1,0 @@
-{"name": "globless", "sources": [{"path": "conf", "alias": "c"}, {"path": "logs/*.log", "alias": "l"}]}

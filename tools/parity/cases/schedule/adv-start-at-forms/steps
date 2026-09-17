@@ -1,3 +1,0 @@
-list
-due --at 2025-01-01T12:00:00+14:00
-mark-complete --name offset-seconds --completed-at 2025-01-01T00:00:00.123456-00:00:01

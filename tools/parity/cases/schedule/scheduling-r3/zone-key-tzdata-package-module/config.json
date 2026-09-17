@@ -1,1 +1,0 @@
-{"schedules": [{"name": "z", "profile": "p", "every": "1h", "start_at": "2025-03-09T07:30:00Z", "window": {"start": "02:30", "end": "03:30", "timezone": "America/__init__.py"}}]}

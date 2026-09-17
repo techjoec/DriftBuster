@@ -65,7 +65,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         var root = WinRegistryKeys.HiveHandle(hive);
         if (path.Contains('\0', StringComparison.Ordinal))
         {
-            throw new PythonValueException("embedded null character", nameof(path));
+            throw new EngineValueException("embedded null character", nameof(path));
         }
 
         var rc = RegOpenKeyEx(root, path, 0, WinRegistryKeys.AccessFor(view), out var handle);

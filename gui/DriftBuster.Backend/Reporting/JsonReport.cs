@@ -3,7 +3,7 @@ using DriftBuster.Backend.Diff;
 
 namespace DriftBuster.Backend.Reporting;
 
-/// <summary><c>driftbuster.reporting.json</c>: the legacy module name, re-exporting the <see cref="JsonLinesReport"/> helpers unchanged.</summary>
+/// <summary>The <see cref="JsonLinesReport"/> helpers under the JSON report name, unchanged.</summary>
 public static class JsonReport
 {
     /// <inheritdoc cref="JsonLinesReport.IterJsonRecords"/>

@@ -1,5 +1,0 @@
-{"description": "an explicit null priority: int(None) raises TypeError",
- "aborts": "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'", "fixes": [], "args": [], "requires": [],
- "plans": [
-  {"host_id": "s1", "label": "S1", "roots": ["fixtures/multi-server/server01"], "baseline": {"is_preferred": true, "priority": null}}
- ]}

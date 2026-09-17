@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Hunt;
 
@@ -198,8 +198,8 @@ internal static class PlaceholderFormatter
         obj = field.Conversion switch
         {
             0 or 's' => obj,
-            'r' => ReTokenizer.CodePoints(PythonRepr.StrRepr(ReTokenizer.Text(obj))),
-            'a' => Ascii(ReTokenizer.CodePoints(PythonRepr.StrRepr(ReTokenizer.Text(obj)))),
+            'r' => ReTokenizer.CodePoints(EngineRepr.StrRepr(ReTokenizer.Text(obj))),
+            'a' => Ascii(ReTokenizer.CodePoints(EngineRepr.StrRepr(ReTokenizer.Text(obj)))),
             > 32 and < 127 => throw new FormatException($"Unknown conversion specifier {(char)field.Conversion}"),
             _ => throw new FormatException($"Unknown conversion specifier \\x{field.Conversion:x}"),
         };
@@ -228,7 +228,7 @@ internal static class PlaceholderFormatter
 
         if (!string.Equals(ReTokenizer.Text(first), "token_name", StringComparison.Ordinal))
         {
-            throw new KeyNotFoundException(PythonRepr.StrRepr(ReTokenizer.Text(first)));
+            throw new KeyNotFoundException(EngineRepr.StrRepr(ReTokenizer.Text(first)));
         }
 
         var obj = value;
@@ -312,7 +312,7 @@ internal static class PlaceholderFormatter
             var attribute = ReTokenizer.Text(key);
             throw StrAttributes.Contains(attribute)
                 ? new NotSupportedException($"placeholder_template attribute access '{attribute}' is not supported")
-                : new MissingMemberException($"'str' object has no attribute {PythonRepr.StrRepr(attribute)}");
+                : new MissingMemberException($"'str' object has no attribute {EngineRepr.StrRepr(attribute)}");
         }
 
         return index switch
@@ -353,12 +353,12 @@ internal static class PlaceholderFormatter
     private static bool DecimalDigit(int code, out int digit)
     {
         digit = -1;
-        if (PythonCharacterData.IsSurrogate(code) || code > 0x10FFFF)
+        if (EngineCharacterData.IsSurrogate(code) || code > 0x10FFFF)
         {
             return false;
         }
 
-        digit = PythonUnicode.DecimalValue(code);
+        digit = EngineUnicode.DecimalValue(code);
         return digit >= 0;
     }
 

@@ -45,7 +45,7 @@ internal static partial class PurgeReportingRetention
     // Path ordering: component by component by code point (case-folded on Windows).
     private static int ComparePaths(string left, string right)
         => OperatingSystem.IsWindows()
-            ? PathText.ComparePosixPaths(PythonText.Lower(left).Replace('\\', '/'), PythonText.Lower(right).Replace('\\', '/'))
+            ? PathText.ComparePosixPaths(EngineText.Lower(left).Replace('\\', '/'), EngineText.Lower(right).Replace('\\', '/'))
             : PathText.ComparePosixPaths(left, right);
 
     // os.walk(path, topdown=False): below each directory, its subdirectories first, then its files unlinked and its subdirectories removed.
@@ -74,7 +74,7 @@ internal static partial class PurgeReportingRetention
     {
         if (new DirectoryInfo(path).LinkTarget is not null)
         {
-            throw PythonOSError.Create(PythonOSError.NotADirectory, path);
+            throw EngineOSError.Create(EngineOSError.NotADirectory, path);
         }
 
         Directory.Delete(path);

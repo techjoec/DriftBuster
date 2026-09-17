@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.MultiServer;
 
-/// <summary><c>driftbuster.multi_server.ConfigRecord</c>: one detected configuration file on one host.</summary>
+/// <summary>One detected configuration file on one host.</summary>
 public sealed record ConfigRecord
 {
     public required string ConfigId { get; init; }

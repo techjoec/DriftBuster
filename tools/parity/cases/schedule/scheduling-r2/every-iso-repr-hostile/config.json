@@ -1,9 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "repr",
-      "profile": "repr-profile",
-      "every": "PT'\"\u200bX\u007f"
-    }
-  ]
-}

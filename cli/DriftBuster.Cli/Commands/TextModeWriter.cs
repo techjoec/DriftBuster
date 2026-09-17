@@ -3,7 +3,7 @@ using System.Text;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// A text-mode stream as Python opens <c>sys.stdout</c> and <c>sys.stderr</c>: every LF written becomes the platform's line break
+/// A text-mode stream for stdout and stderr: every LF written becomes the platform's line break
 /// (unchanged on Linux and macOS, CRLF on Windows); everything else passes through to the inner writer.
 /// </summary>
 internal sealed class TextModeWriter(TextWriter inner) : TextWriter

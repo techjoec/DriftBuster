@@ -30,19 +30,19 @@ public sealed partial class JsonPlugin
             return ParseResult.Failure;
         }
 
-        var parsed = PythonJsonScanner.Parse(snippet);
+        var parsed = EngineJsonScanner.Parse(snippet);
         if (parsed is null)
         {
             return ParseResult.Failure;
         }
 
         var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        if (parsed.Kind == PythonJsonScanner.Kind.Dict)
+        if (parsed.Kind == EngineJsonScanner.Kind.Dict)
         {
             metadata["top_level_type"] = "object";
             metadata["top_level_keys"] = parsed.Keys.Take(TopLevelKeyLimit).ToList();
         }
-        else if (parsed.Kind == PythonJsonScanner.Kind.List)
+        else if (parsed.Kind == EngineJsonScanner.Kind.List)
         {
             metadata["top_level_type"] = "array";
             if (parsed.ItemKinds.Count > 0)

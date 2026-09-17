@@ -1,9 +1,0 @@
-{
-  "name": "dangling",
-  "sources": [
-    {
-      "path": "conf/*.cfg",
-      "alias": "cfg"
-    }
-  ]
-}

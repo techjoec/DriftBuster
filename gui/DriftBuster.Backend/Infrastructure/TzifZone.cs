@@ -27,7 +27,7 @@ internal sealed class TzifZone
         _after = after;
     }
 
-    /// <summary>Builds the zone from the bytes of a TZif file; <see cref="PythonValueException"/> for data zoneinfo refuses.</summary>
+    /// <summary>Builds the zone from the bytes of a TZif file; <see cref="EngineValueException"/> for data zoneinfo refuses.</summary>
     public static TzifZone Load(byte[] data)
     {
         ArgumentNullException.ThrowIfNull(data);
@@ -37,7 +37,7 @@ internal sealed class TzifZone
         var count = file.TransitionsUtc.Length;
         if (file.TypeIndices.Any(index => index >= types))
         {
-            throw new PythonValueException("Invalid transition index found while reading TZif", nameof(data));
+            throw new EngineValueException("Invalid transition index found while reading TZif", nameof(data));
         }
 
         var offsets = file.TypeIndices.Select(index => file.UtcOffsets[index]).ToArray();
@@ -49,7 +49,7 @@ internal sealed class TzifZone
         }
         else if (types == 0)
         {
-            throw new PythonValueException("No time zone information found.", nameof(data));
+            throw new EngineValueException("No time zone information found.", nameof(data));
         }
         else
         {
@@ -241,7 +241,7 @@ internal sealed class TzifZone
                 var end = terminator < 0 ? Math.Max(0, characters.Length - 1) : terminator;
                 if (end > start)
                 {
-                    _ = PythonUtf8.Decode(characters[start..end]);
+                    _ = EngineUtf8.Decode(characters[start..end]);
                 }
             }
         }
@@ -260,7 +260,7 @@ internal sealed class TzifZone
 
         private void Skip(long count) => _position = (int)Math.Min(data.Length, _position + count);
 
-        private static PythonValueException Invalid(string message) => new(message, nameof(message));
+        private static EngineValueException Invalid(string message) => new(message, nameof(message));
     }
 
     private sealed record Header(int IsUtcCount, int IsStdCount, int LeapCount, int TimeCount, int TypeCount, int CharCount);

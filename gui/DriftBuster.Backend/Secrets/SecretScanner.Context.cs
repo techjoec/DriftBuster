@@ -1,5 +1,5 @@
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.PythonRe;
+using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Secrets;
 
@@ -48,15 +48,15 @@ public static partial class SecretScanner
         }
 
         var patternText = new List<string>();
-        var patterns = new List<PythonPattern>();
+        var patterns = new List<EnginePattern>();
         foreach (var source in patternSources.Distinct(StringComparer.Ordinal))
         {
             patternText.Add(source);
             try
             {
-                patterns.Add(PythonPattern.Compile(source));
+                patterns.Add(EnginePattern.Compile(source));
             }
-            catch (PythonReException)
+            catch (EngineReException)
             {
                 // re.error: the text stays listed, the pattern is not applied.
             }

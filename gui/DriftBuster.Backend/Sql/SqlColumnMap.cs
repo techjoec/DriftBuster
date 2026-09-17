@@ -5,8 +5,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Sql;
 
 /// <summary>
-/// <c>driftbuster.sql.snapshots.parse_column_map</c> and its two readers: which columns of which table a snapshot masks or hashes.
-/// Inputs follow the values <see cref="PythonJson"/> produces (dict, list, str, int, float, bool, <c>None</c>); a string array or list
+/// The column map parser and its two readers: which columns of which table a snapshot masks or hashes.
+/// Inputs follow the values <see cref="EngineJson"/> produces (dict, list, str, int, float, bool, <c>None</c>); a string array or list
 /// is a Python list, and a dictionary of string lists is a mapping.
 /// </summary>
 public static class SqlColumnMap
@@ -15,8 +15,8 @@ public static class SqlColumnMap
     /// <c>parse_column_map(values)</c>: a mapping goes through <see cref="NormaliseColumnMap"/>, anything else through
     /// <see cref="ParseColumnList"/>. Tables keep their first-seen order.
     /// </summary>
-    /// <exception cref="PythonAttributeException">A list entry that is truthy and not a str (<c>'int' object has no attribute 'strip'</c>).</exception>
-    /// <exception cref="PythonTypeException">A truthy value that is neither a mapping nor iterable (<c>'int' object is not iterable</c>).</exception>
+    /// <exception cref="EngineAttributeException">A list entry that is truthy and not a str (<c>'int' object has no attribute 'strip'</c>).</exception>
+    /// <exception cref="EngineTypeException">A truthy value that is neither a mapping nor iterable (<c>'int' object is not iterable</c>).</exception>
     public static OrderedDictionary<string, IReadOnlyList<string>> ParseColumnMap(object? values) => values switch
     {
         IReadOnlyDictionary<string, object?> mapping => NormaliseColumnMap(mapping),
@@ -42,8 +42,8 @@ public static class SqlColumnMap
             }
 
             normalised[table] = columns is string or (IList and not IDictionary)
-                ? PythonBuiltins.Iterate(columns).Select(PythonRepr.Str).Where(column => PythonText.Strip(column).Length > 0).ToList()
-                : [PythonRepr.Str(columns)];
+                ? EngineBuiltins.Iterate(columns).Select(EngineRepr.Str).Where(column => EngineText.Strip(column).Length > 0).ToList()
+                : [EngineRepr.Str(columns)];
         }
 
         return normalised;
@@ -57,33 +57,33 @@ public static class SqlColumnMap
     internal static OrderedDictionary<string, IReadOnlyList<string>> ParseColumnList(object? values)
     {
         var grouped = new OrderedDictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        if (!PythonBuiltins.IsTruthy(values))
+        if (!EngineBuiltins.IsTruthy(values))
         {
             return grouped;
         }
 
         var entries = values is IEnumerable<string> sequence and not IList ? sequence.Cast<object?>().ToList() : values;
-        foreach (var entry in PythonBuiltins.Iterate(entries))
+        foreach (var entry in EngineBuiltins.Iterate(entries))
         {
-            if (!PythonBuiltins.IsTruthy(entry))
+            if (!EngineBuiltins.IsTruthy(entry))
             {
                 continue;
             }
 
             if (entry is not string raw)
             {
-                throw new PythonAttributeException($"'{PythonBuiltins.TypeName(entry)}' object has no attribute 'strip'");
+                throw new EngineAttributeException($"expected a column name string, not '{EngineBuiltins.TypeName(entry)}'");
             }
 
-            var text = PythonText.Strip(raw);
+            var text = EngineText.Strip(raw);
             var dot = text.IndexOf('.', StringComparison.Ordinal);
             if (dot < 0)
             {
                 continue;
             }
 
-            var table = PythonText.Strip(text[..dot]);
-            var column = PythonText.Strip(text[(dot + 1)..]);
+            var table = EngineText.Strip(text[..dot]);
+            var column = EngineText.Strip(text[(dot + 1)..]);
             if (table.Length == 0 || column.Length == 0)
             {
                 continue;

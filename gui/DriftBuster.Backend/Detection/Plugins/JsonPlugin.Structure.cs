@@ -145,7 +145,7 @@ public sealed partial class JsonPlugin
             return null;
         }
 
-        var environment = PythonText.Strip(string.Join('.', parts, 1, parts.Length - 2));
+        var environment = EngineText.Strip(string.Join('.', parts, 1, parts.Length - 2));
         return environment.Length == 0 ? null : environment;
     }
 
@@ -211,6 +211,6 @@ public sealed partial class JsonPlugin
             }
         }
 
-        return PythonText.Strip(text[..lastValid]);
+        return EngineText.Strip(text[..lastValid]);
     }
 }

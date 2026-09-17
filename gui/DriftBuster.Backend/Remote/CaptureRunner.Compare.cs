@@ -8,7 +8,7 @@ using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Remote;
 
-/// <summary><c>capture.py compare</c>.</summary>
+/// <summary><c>driftbuster capture compare</c>.</summary>
 public static partial class CaptureRunner
 {
     /// <summary>
@@ -19,7 +19,7 @@ public static partial class CaptureRunner
     /// </summary>
     /// <remarks>
     /// Detections are keyed by <c>(relative_path or path, format, variant)</c> tuples in dicts and sets with Python's equality and hashing
-    /// (<see cref="PythonValues"/>), so <c>1</c>, <c>1.0</c> and <c>true</c> are one key and a list in a key raises <c>TypeError</c>; keys
+    /// (<see cref="EngineValues"/>), so <c>1</c>, <c>1.0</c> and <c>true</c> are one key and a list in a key raises <c>TypeError</c>; keys
     /// sort with Python's tuple ordering. A snapshot that is not a mapping raises <c>AttributeError</c>, as it does in Python, and an error
     /// met while the summary is written (a profile name that is not a str) escapes after the lines already written.
     /// </remarks>
@@ -28,8 +28,8 @@ public static partial class CaptureRunner
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
-        var baselinePath = PythonPurePath.Str(options.Baseline);
-        var currentPath = PythonPurePath.Str(options.Current);
+        var baselinePath = EnginePurePath.Str(options.Baseline);
+        var currentPath = EnginePurePath.Str(options.Current);
         if (!RunProfileStore.Exists(currentPath))
         {
             stderr.Write($"error: current snapshot not found: {currentPath}\n");
@@ -62,15 +62,15 @@ public static partial class CaptureRunner
 
     /// <summary>
     /// <c>_load_snapshot(path)</c>: <c>json.loads(path.read_text())</c>. Text that is not a JSON document raises
-    /// <c>ValueError("Failed to parse snapshot {path}: invalid JSON document")</c> (<see cref="PythonJson"/> reports no decoder reason);
+    /// <c>ValueError("Failed to parse snapshot {path}: invalid JSON document")</c> (<see cref="EngineJson"/> reports no decoder reason);
     /// read, decode and limit errors are raised as they are.
     /// </summary>
     public static object? LoadSnapshot(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        return PythonJson.TryLoadsOrRaiseLimits(ReadUtf8Text(path), out var value)
+        return EngineJson.TryLoadsOrRaiseLimits(ReadUtf8Text(path), out var value)
             ? value
-            : throw new PythonValueException($"Failed to parse snapshot {path}: invalid JSON document", nameof(path));
+            : throw new EngineValueException($"Failed to parse snapshot {path}: invalid JSON document", nameof(path));
     }
 
     /// <summary>
@@ -80,9 +80,9 @@ public static partial class CaptureRunner
     public static object?[] DetectionKey(object? entry)
     {
         var detection = DetectionProfileStore.GetOrDefault(entry, "detection", new OrderedDictionary<string, object?>(StringComparer.Ordinal));
-        var relative = PythonBuiltins.Get(entry, "relative_path");
-        var location = PythonBuiltins.IsTruthy(relative) ? relative : PythonBuiltins.Get(entry, "path");
-        return [location, PythonBuiltins.Get(detection, "format"), PythonBuiltins.Get(detection, "variant")];
+        var relative = EngineBuiltins.Get(entry, "relative_path");
+        var location = EngineBuiltins.IsTruthy(relative) ? relative : EngineBuiltins.Get(entry, "path");
+        return [location, EngineBuiltins.Get(detection, "format"), EngineBuiltins.Get(detection, "variant")];
     }
 
     /// <summary><c>_detection_signature(entry)</c>: <c>json.dumps(detection, sort_keys=True)</c> of the entry's detection.</summary>
@@ -98,14 +98,14 @@ public static partial class CaptureRunner
     /// </summary>
     public static (IReadOnlyList<KeyValuePair<object, long>> Expected, long Unexpected) HuntTokenSummary(object? hits)
     {
-        var counts = new Dictionary<object, long>(PythonValues.HashKeys!);
+        var counts = new Dictionary<object, long>(EngineValues.HashKeys!);
         var order = new List<object>();
         long unexpected = 0;
-        foreach (var hit in PythonBuiltins.Iterate(hits))
+        foreach (var hit in EngineBuiltins.Iterate(hits))
         {
             var rule = DetectionProfileStore.GetOrDefault(hit, "rule", new OrderedDictionary<string, object?>(StringComparer.Ordinal));
-            var token = PythonBuiltins.Get(rule, "token_name");
-            if (!PythonBuiltins.IsTruthy(token))
+            var token = EngineBuiltins.Get(rule, "token_name");
+            if (!EngineBuiltins.IsTruthy(token))
             {
                 unexpected++;
                 continue;
@@ -141,18 +141,18 @@ public static partial class CaptureRunner
         var baselineMap = DetectionMap(DetectionProfileStore.GetOrDefault(baseline, "detections", new List<object?>()));
         var currentMap = DetectionMap(DetectionProfileStore.GetOrDefault(current, "detections", new List<object?>()));
 
-        var added = PythonValues.Sorted(currentMap.Keys.Where(key => !baselineMap.Entries.ContainsKey(key)));
-        var removed = PythonValues.Sorted(baselineMap.Keys.Where(key => !currentMap.Entries.ContainsKey(key)));
+        var added = EngineValues.Sorted(currentMap.Keys.Where(key => !baselineMap.Entries.ContainsKey(key)));
+        var removed = EngineValues.Sorted(baselineMap.Keys.Where(key => !currentMap.Entries.ContainsKey(key)));
         // set(baseline) & set(current) iterates the smaller set (the current one on a tie) and keeps its key objects.
         var (smaller, larger) = currentMap.Keys.Count <= baselineMap.Keys.Count ? (currentMap, baselineMap) : (baselineMap, currentMap);
-        var changed = PythonValues.Sorted(smaller.Keys
+        var changed = EngineValues.Sorted(smaller.Keys
             .Where(key => larger.Entries.ContainsKey(key))
             .Where(key => !string.Equals(DetectionSignature(baselineMap.Entries[key]), DetectionSignature(currentMap.Entries[key]), StringComparison.Ordinal)));
 
-        var baselineSummary = PythonBuiltins.Get(baseline, "profile_summary");
-        var currentSummary = PythonBuiltins.Get(current, "profile_summary");
+        var baselineSummary = EngineBuiltins.Get(baseline, "profile_summary");
+        var currentSummary = EngineBuiltins.Get(current, "profile_summary");
         OrderedDictionary<string, object?>? profileDiff = null;
-        if (PythonBuiltins.IsTruthy(baselineSummary) && PythonBuiltins.IsTruthy(currentSummary))
+        if (EngineBuiltins.IsTruthy(baselineSummary) && EngineBuiltins.IsTruthy(currentSummary))
         {
             profileDiff = DetectionProfileStore.DiffSummarySnapshots(baselineSummary, currentSummary);
         }
@@ -206,20 +206,20 @@ public static partial class CaptureRunner
     // for token, count in sorted(current_expected.items()): each written with its baseline count and the signed delta.
     private static List<object?> WriteExpectedTokens(ComparisonState state, TextWriter stdout)
     {
-        var baselineCounts = new Dictionary<object, long>(PythonValues.HashKeys!);
+        var baselineCounts = new Dictionary<object, long>(EngineValues.HashKeys!);
         foreach (var (token, count) in state.BaselineExpected)
         {
             baselineCounts[token] = count;
         }
 
         var entries = new List<object?>();
-        foreach (var item in PythonValues.Sorted(state.CurrentExpected.Select(object? (pair) => new object?[] { pair.Key, pair.Value })))
+        foreach (var item in EngineValues.Sorted(state.CurrentExpected.Select(object? (pair) => new object?[] { pair.Key, pair.Value })))
         {
             var pair = (object?[])item!;
             var token = pair[0]!;
             var count = (long)pair[1]!;
             var baselineCount = baselineCounts.GetValueOrDefault(token);
-            stdout.Write(string.Create(CultureInfo.InvariantCulture, $"    {PythonRepr.Str(token)}: {baselineCount} -> {count} (delta {Signed(count - baselineCount)})\n"));
+            stdout.Write(string.Create(CultureInfo.InvariantCulture, $"    {EngineRepr.Str(token)}: {baselineCount} -> {count} (delta {Signed(count - baselineCount)})\n"));
             var entry = Delta(baselineCount, count);
             entry.Insert(0, "token", token);
             entries.Add(entry);
@@ -238,7 +238,7 @@ public static partial class CaptureRunner
         stdout.Write($"\n{heading}:\n");
         foreach (var key in keys)
         {
-            stdout.Write($"  {PythonRepr.Repr(key)}\n");
+            stdout.Write($"  {EngineRepr.Repr(key)}\n");
         }
     }
 
@@ -251,8 +251,8 @@ public static partial class CaptureRunner
         {
             if (item is not string text)
             {
-                throw new PythonTypeException(
-                    string.Create(CultureInfo.InvariantCulture, $"sequence item {index}: expected str instance, {PythonBuiltins.TypeName(item)} found"),
+                throw new EngineTypeException(
+                    string.Create(CultureInfo.InvariantCulture, $"sequence item {index}: expected str instance, {EngineBuiltins.TypeName(item)} found"),
                     nameof(items));
             }
 
@@ -286,7 +286,7 @@ public static partial class CaptureRunner
 
     private sealed class DetectionEntries
     {
-        public Dictionary<object, object?> Entries { get; } = new(PythonValues.HashKeys!);
+        public Dictionary<object, object?> Entries { get; } = new(EngineValues.HashKeys!);
 
         public List<object> Keys { get; } = [];
     }
@@ -295,7 +295,7 @@ public static partial class CaptureRunner
     private static DetectionEntries DetectionMap(object? detections)
     {
         var map = new DetectionEntries();
-        foreach (var entry in PythonBuiltins.Iterate(detections))
+        foreach (var entry in EngineBuiltins.Iterate(detections))
         {
             var key = DetectionKey(entry);
             if (!map.Entries.ContainsKey(key))

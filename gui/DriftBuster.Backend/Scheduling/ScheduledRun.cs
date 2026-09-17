@@ -7,7 +7,7 @@ namespace DriftBuster.Backend.Scheduling;
 public sealed record ScheduledRun(
     string Name,
     string Profile,
-    PythonDateTime ScheduledFor,
+    EngineDateTime ScheduledFor,
     IReadOnlyList<string> Tags,
     IReadOnlyDictionary<string, object?> Metadata)
 {

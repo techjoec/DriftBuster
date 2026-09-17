@@ -1,5 +1,0 @@
-{"name": "coerce", "sources": [
-        {"path": true, "alias": "  ", "optional": "false"},
-        {"path": "d", "alias": 0, "exclude": {"*.log": 1}},
-        {"path": "e", "alias": false, "exclude": null},
-        {"path": "missing-dir", "optional": 1, "alias": "m"}]}

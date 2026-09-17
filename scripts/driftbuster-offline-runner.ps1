@@ -43,7 +43,7 @@ function Import-DbOfflineRunnerNative {
     [CmdletBinding()]
     param()
 
-    if ('DriftBusterOfflineRunner.Py' -as [type]) {
+    if ('DriftBusterOfflineRunner.Engine' -as [type]) {
         return
     }
 
@@ -68,24 +68,24 @@ using System.Text.RegularExpressions;
 
 namespace DriftBusterOfflineRunner
 {
-    /// <summary>A Python exception: <see cref="PyType"/> is the Python class name, the message is str(exc).</summary>
-    public sealed class PyException : Exception
+    /// <summary>An engine error: <see cref="ErrorType"/> is the error class name (ValueError, TypeError, ...), the message is str(exc).</summary>
+    public sealed class EngineException : Exception
     {
-        public PyException(string pyType, string message) : base(message)
+        public EngineException(string errorType, string message) : base(message)
         {
-            PyType = pyType;
+            ErrorType = errorType;
         }
 
-        public PyException(string pyType, string message, Exception inner) : base(message, inner)
+        public EngineException(string errorType, string message, Exception inner) : base(message, inner)
         {
-            PyType = pyType;
+            ErrorType = errorType;
         }
 
-        public string PyType { get; private set; }
+        public string ErrorType { get; private set; }
     }
 
     /// <summary>Python builtins over the JSON value domain (null, bool, BigInteger, double, string, IDictionary, IList, byte[]).</summary>
-    public static class Py
+    public static class Engine
     {
         public static object Unwrap(object value)
         {
@@ -252,7 +252,7 @@ namespace DriftBusterOfflineRunner
             var dictionary = Unwrap(mapping) as IDictionary;
             if (dictionary == null)
             {
-                throw new PyException("AttributeError", "'" + TypeName(mapping) + "' object has no attribute 'get'");
+                throw new EngineException("AttributeError", "expected a JSON object, not '" + TypeName(mapping) + "'");
             }
 
             return dictionary.Contains(key) ? dictionary[key] : fallback;
@@ -272,7 +272,7 @@ namespace DriftBusterOfflineRunner
             var text = value as string;
             if (text != null)
             {
-                foreach (var codePoint in PyText.CodePoints(text))
+                foreach (var codePoint in EngineText.CodePoints(text))
                 {
                     result.Add(codePoint);
                 }
@@ -302,7 +302,7 @@ namespace DriftBusterOfflineRunner
                 return result;
             }
 
-            throw new PyException("TypeError", "'" + TypeName(value) + "' object is not iterable");
+            throw new EngineException("TypeError", "'" + TypeName(value) + "' object is not iterable");
         }
 
         public static string Str(object value)
@@ -332,19 +332,19 @@ namespace DriftBusterOfflineRunner
 
             if (IsFloat(value))
             {
-                return PyFloat.Repr(ToDouble(value));
+                return EngineFloat.Repr(ToDouble(value));
             }
 
             var text = value as string;
             if (text != null)
             {
-                return PyText.Repr(text);
+                return EngineText.Repr(text);
             }
 
             var bytes = value as byte[];
             if (bytes != null)
             {
-                return PyText.BytesRepr(bytes);
+                return EngineText.BytesRepr(bytes);
             }
 
             var dictionary = value as IDictionary;
@@ -405,12 +405,12 @@ namespace DriftBusterOfflineRunner
                 var number = ToDouble(value);
                 if (double.IsNaN(number))
                 {
-                    throw new PyException("ValueError", "cannot convert float NaN to integer");
+                    throw new EngineException("ValueError", "cannot convert float NaN to integer");
                 }
 
                 if (double.IsInfinity(number))
                 {
-                    throw new PyException("OverflowError", "cannot convert float infinity to integer");
+                    throw new EngineException("OverflowError", "cannot convert float infinity to integer");
                 }
 
                 return new BigInteger(Math.Truncate(number));
@@ -425,16 +425,16 @@ namespace DriftBusterOfflineRunner
                     return parsed;
                 }
 
-                throw new PyException("ValueError", "invalid literal for int() with base 10: " + PyText.Repr(text));
+                throw new EngineException("ValueError", "invalid literal for int() with base 10: " + EngineText.Repr(text));
             }
 
-            throw new PyException("TypeError", "int() argument must be a string, a bytes-like object or a real number, not '" + TypeName(value) + "'");
+            throw new EngineException("TypeError", "int() argument must be a string, a bytes-like object or a real number, not '" + TypeName(value) + "'");
         }
 
         private static bool TryParseIntText(string text, out BigInteger result)
         {
             result = BigInteger.Zero;
-            var body = PyText.Strip(text);
+            var body = EngineText.Strip(text);
             var index = 0;
             var negative = false;
             if (index < body.Length && (body[index] == '+' || body[index] == '-'))
@@ -498,7 +498,7 @@ namespace DriftBusterOfflineRunner
                 var converted = (double)big;
                 if (double.IsInfinity(converted))
                 {
-                    throw new PyException("OverflowError", "int too large to convert to float");
+                    throw new EngineException("OverflowError", "int too large to convert to float");
                 }
 
                 return converted;
@@ -513,15 +513,15 @@ namespace DriftBusterOfflineRunner
             if (text != null)
             {
                 double parsed;
-                if (PyFloat.TryParse(PyText.Strip(text), out parsed))
+                if (EngineFloat.TryParse(EngineText.Strip(text), out parsed))
                 {
                     return parsed;
                 }
 
-                throw new PyException("ValueError", "could not convert string to float: " + PyText.Repr(text));
+                throw new EngineException("ValueError", "could not convert string to float: " + EngineText.Repr(text));
             }
 
-            throw new PyException("TypeError", "float() argument must be a string or a real number, not '" + TypeName(value) + "'");
+            throw new EngineException("TypeError", "float() argument must be a string or a real number, not '" + TypeName(value) + "'");
         }
 
         /// <summary><c>value &lt;= 0</c> for an int, float or bool; <c>TypeError</c> for anything else.</summary>
@@ -543,12 +543,12 @@ namespace DriftBusterOfflineRunner
                 return ToDouble(value) <= 0.0;
             }
 
-            throw new PyException("TypeError", "'<=' not supported between instances of '" + TypeName(value) + "' and 'int'");
+            throw new EngineException("TypeError", "'<=' not supported between instances of '" + TypeName(value) + "' and 'int'");
         }
     }
 
     /// <summary>float.__repr__ and float() parsing.</summary>
-    public static class PyFloat
+    public static class EngineFloat
     {
         public static string Repr(double value)
         {
@@ -972,7 +972,7 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>str methods and text helpers with Python's character classes.</summary>
-    public static class PyText
+    public static class EngineText
     {
         public static List<string> CodePoints(string text)
         {
@@ -1293,7 +1293,7 @@ namespace DriftBusterOfflineRunner
     /// Python's UTF-8 codec: each maximal ill-formed subpart becomes one U+FFFD under errors="replace" (the .NET Framework decoder merges
     /// some of them), and a stateful form carries an incomplete sequence across chunks until the final one.
     /// </summary>
-    public sealed class PyUtf8Decoder
+    public sealed class EngineUtf8Decoder
     {
         private readonly byte[] _pending = new byte[3];
         private int _pendingCount;
@@ -1308,12 +1308,12 @@ namespace DriftBusterOfflineRunner
         /// <summary>bytes.decode("utf-8") under errors="strict": the text, or the UnicodeDecodeError.</summary>
         public static string DecodeStrict(byte[] bytes)
         {
-            var decoder = new PyUtf8Decoder();
+            var decoder = new EngineUtf8Decoder();
             var builder = new StringBuilder(bytes.Length);
             decoder.Decode(bytes, 0, bytes.Length, true, builder);
             if (decoder.Invalid)
             {
-                throw new PyException("UnicodeDecodeError", decoder.ErrorMessage);
+                throw new EngineException("UnicodeDecodeError", decoder.ErrorMessage);
             }
 
             return builder.ToString();
@@ -1321,7 +1321,7 @@ namespace DriftBusterOfflineRunner
 
         public static string Decode(byte[] bytes, out bool invalid)
         {
-            var decoder = new PyUtf8Decoder();
+            var decoder = new EngineUtf8Decoder();
             var builder = new StringBuilder(bytes.Length);
             decoder.Decode(bytes, 0, bytes.Length, true, builder);
             invalid = decoder.Invalid;
@@ -1471,7 +1471,7 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>json.loads and json.dumps (ensure_ascii, allow_nan).</summary>
-    public static class PyJson
+    public static class EngineJson
     {
         public static object Loads(string text)
         {
@@ -1492,7 +1492,7 @@ namespace DriftBusterOfflineRunner
             return value;
         }
 
-        internal static PyException Error(string message, string text, int position)
+        internal static EngineException Error(string message, string text, int position)
         {
             var line = 1;
             var lastNewline = -1;
@@ -1506,7 +1506,7 @@ namespace DriftBusterOfflineRunner
             }
 
             var column = position - lastNewline;
-            return new PyException(
+            return new EngineException(
                 "JSONDecodeError",
                 string.Format(CultureInfo.InvariantCulture, "{0}: line {1} column {2} (char {3})", message, line, column, position));
         }
@@ -1672,7 +1672,7 @@ namespace DriftBusterOfflineRunner
                 if (isFloat)
                 {
                     double parsed;
-                    PyFloat.ParseDecimal(literal, out parsed);
+                    EngineFloat.ParseDecimal(literal, out parsed);
                     return parsed;
                 }
 
@@ -1823,7 +1823,7 @@ namespace DriftBusterOfflineRunner
             {
                 if (++_depth > MaxDepth)
                 {
-                    throw new PyException("RecursionError", "maximum recursion depth exceeded while decoding a JSON " + kind + " from a unicode string");
+                    throw new EngineException("RecursionError", "maximum recursion depth exceeded while decoding a JSON " + kind + " from a unicode string");
                 }
             }
 
@@ -1952,7 +1952,7 @@ namespace DriftBusterOfflineRunner
 
         private static void Write(StringBuilder builder, object value, int indent, bool sortKeys, bool defaultStr, int level)
         {
-            value = Py.Unwrap(value);
+            value = Engine.Unwrap(value);
             if (value == null)
             {
                 builder.Append("null");
@@ -1965,15 +1965,15 @@ namespace DriftBusterOfflineRunner
                 return;
             }
 
-            if (Py.IsInt(value))
+            if (Engine.IsInt(value))
             {
-                builder.Append(Py.ToBig(value).ToString(CultureInfo.InvariantCulture));
+                builder.Append(Engine.ToBig(value).ToString(CultureInfo.InvariantCulture));
                 return;
             }
 
-            if (Py.IsFloat(value))
+            if (Engine.IsFloat(value))
             {
-                builder.Append(FloatText(Py.ToDouble(value)));
+                builder.Append(FloatText(Engine.ToDouble(value)));
                 return;
             }
 
@@ -1989,10 +1989,10 @@ namespace DriftBusterOfflineRunner
             {
                 if (!defaultStr)
                 {
-                    throw new PyException("TypeError", "Object of type bytes is not JSON serializable");
+                    throw new EngineException("TypeError", "Object of type bytes is not JSON serializable");
                 }
 
-                WriteString(builder, PyText.BytesRepr(bytes));
+                WriteString(builder, EngineText.BytesRepr(bytes));
                 return;
             }
 
@@ -2069,7 +2069,7 @@ namespace DriftBusterOfflineRunner
                 return;
             }
 
-            throw new PyException("TypeError", "Object of type " + value.GetType().Name + " is not JSON serializable");
+            throw new EngineException("TypeError", "Object of type " + value.GetType().Name + " is not JSON serializable");
         }
 
         private static void StableSort(List<KeyValuePair<string, object>> entries)
@@ -2078,7 +2078,7 @@ namespace DriftBusterOfflineRunner
             {
                 var current = entries[index];
                 var position = index - 1;
-                while (position >= 0 && PyText.CompareCodePoints(entries[position].Key, current.Key) > 0)
+                while (position >= 0 && EngineText.CompareCodePoints(entries[position].Key, current.Key) > 0)
                 {
                     entries[position + 1] = entries[position];
                     position--;
@@ -2090,7 +2090,7 @@ namespace DriftBusterOfflineRunner
 
         private static string KeyText(object key)
         {
-            key = Py.Unwrap(key);
+            key = Engine.Unwrap(key);
             var text = key as string;
             if (text != null)
             {
@@ -2107,17 +2107,17 @@ namespace DriftBusterOfflineRunner
                 return (bool)key ? "true" : "false";
             }
 
-            if (Py.IsInt(key))
+            if (Engine.IsInt(key))
             {
-                return Py.ToBig(key).ToString(CultureInfo.InvariantCulture);
+                return Engine.ToBig(key).ToString(CultureInfo.InvariantCulture);
             }
 
-            if (Py.IsFloat(key))
+            if (Engine.IsFloat(key))
             {
-                return FloatText(Py.ToDouble(key));
+                return FloatText(Engine.ToDouble(key));
             }
 
-            throw new PyException("TypeError", "keys must be str, int, float, bool or None, not " + key.GetType().Name);
+            throw new EngineException("TypeError", "keys must be str, int, float, bool or None, not " + key.GetType().Name);
         }
 
         private static void NewLine(StringBuilder builder, int indent, int level)
@@ -2147,7 +2147,7 @@ namespace DriftBusterOfflineRunner
                 return "-Infinity";
             }
 
-            return PyFloat.Repr(value);
+            return EngineFloat.Repr(value);
         }
 
         private static void WriteString(StringBuilder builder, string text)
@@ -2204,7 +2204,7 @@ namespace DriftBusterOfflineRunner
 namespace DriftBusterOfflineRunner
 {
     /// <summary>The process view the path helpers use: the flavour and the working directory relative paths resolve against.</summary>
-    public static class PyOs
+    public static class EngineOs
     {
         private static string _cwd;
 
@@ -2238,7 +2238,7 @@ namespace DriftBusterOfflineRunner
                 string drive;
                 string root;
                 string tail;
-                PyPath.SplitRoot(path, out drive, out root, out tail);
+                EnginePath.SplitRoot(path, out drive, out root, out tail);
                 if (drive.Length > 0 || root.Length > 0)
                 {
                     return path;
@@ -2262,11 +2262,11 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>os.path and pathlib.PurePath over strings.</summary>
-    public static class PyPath
+    public static class EnginePath
     {
         public static void SplitRoot(string path, out string drive, out string root, out string tail)
         {
-            if (!PyOs.Windows)
+            if (!EngineOs.Windows)
             {
                 if (!path.StartsWith("/", StringComparison.Ordinal))
                 {
@@ -2352,8 +2352,8 @@ namespace DriftBusterOfflineRunner
                 return;
             }
 
-            var sep = PyOs.Sep;
-            if (PyOs.Windows)
+            var sep = EngineOs.Sep;
+            if (EngineOs.Windows)
             {
                 path = path.Replace('/', '\\');
             }
@@ -2390,7 +2390,7 @@ namespace DriftBusterOfflineRunner
 
         private static string Format(string drive, string root, List<string> parts)
         {
-            var sep = PyOs.Sep;
+            var sep = EngineOs.Sep;
             if (drive.Length > 0 || root.Length > 0)
             {
                 return drive + root + string.Join(sep, parts.ToArray());
@@ -2401,7 +2401,7 @@ namespace DriftBusterOfflineRunner
                 return ".";
             }
 
-            if (PyOs.Windows && parts[0].Length > 1 && parts[0][1] == ':')
+            if (EngineOs.Windows && parts[0].Length > 1 && parts[0][1] == ':')
             {
                 return "." + sep + string.Join(sep, parts.ToArray());
             }
@@ -2412,7 +2412,7 @@ namespace DriftBusterOfflineRunner
         /// <summary>os.path.join(first, second).</summary>
         public static string OsJoin(string first, string second)
         {
-            if (!PyOs.Windows)
+            if (!EngineOs.Windows)
             {
                 if (second.StartsWith("/", StringComparison.Ordinal))
                 {
@@ -2525,7 +2525,7 @@ namespace DriftBusterOfflineRunner
         /// <summary>Path(path).is_absolute().</summary>
         public static bool IsAbsolute(string path)
         {
-            if (!PyOs.Windows)
+            if (!EngineOs.Windows)
             {
                 return path.StartsWith("/", StringComparison.Ordinal);
             }
@@ -2536,12 +2536,12 @@ namespace DriftBusterOfflineRunner
 
         public static string AsPosix(string path)
         {
-            return PyOs.Windows ? path.Replace('\\', '/') : path;
+            return EngineOs.Windows ? path.Replace('\\', '/') : path;
         }
 
         private static string NormCase(string text)
         {
-            return PyOs.Windows ? text.ToLowerInvariant() : text;
+            return EngineOs.Windows ? text.ToLowerInvariant() : text;
         }
 
         /// <summary>str(Path(path).relative_to(other)), or null where relative_to raises ValueError.</summary>
@@ -2574,11 +2574,11 @@ namespace DriftBusterOfflineRunner
         /// <summary>Path ordering: the case-normalised parts compared code point by code point.</summary>
         public static int CompareParts(string left, string right)
         {
-            var leftParts = NormCase(left).Split(PyOs.Sep[0]);
-            var rightParts = NormCase(right).Split(PyOs.Sep[0]);
+            var leftParts = NormCase(left).Split(EngineOs.Sep[0]);
+            var rightParts = NormCase(right).Split(EngineOs.Sep[0]);
             for (var index = 0; index < leftParts.Length && index < rightParts.Length; index++)
             {
-                var compared = PyText.CompareCodePoints(leftParts[index], rightParts[index]);
+                var compared = EngineText.CompareCodePoints(leftParts[index], rightParts[index]);
                 if (compared != 0)
                 {
                     return compared;
@@ -2595,23 +2595,23 @@ namespace DriftBusterOfflineRunner
 
         public static void SortByText(List<string> paths)
         {
-            paths.Sort(PyText.CompareCodePoints);
+            paths.Sort(EngineText.CompareCodePoints);
         }
 
         /// <summary>Path(path).with_suffix(suffix) as text.</summary>
         public static string WithSuffix(string path, string suffix)
         {
-            var sep = PyOs.Sep;
-            if (suffix.IndexOf(sep, StringComparison.Ordinal) >= 0 || (PyOs.Windows && suffix.IndexOf('/') >= 0)
+            var sep = EngineOs.Sep;
+            if (suffix.IndexOf(sep, StringComparison.Ordinal) >= 0 || (EngineOs.Windows && suffix.IndexOf('/') >= 0)
                 || (suffix.Length > 0 && (!suffix.StartsWith(".", StringComparison.Ordinal) || suffix == ".")))
             {
-                throw new PyException("ValueError", "Invalid suffix " + PyText.Repr(suffix));
+                throw new EngineException("ValueError", "Invalid suffix " + EngineText.Repr(suffix));
             }
 
             var name = Name(path);
             if (name.Length == 0)
             {
-                throw new PyException("ValueError", PyText.Repr(Normalise(path)) + " has an empty name");
+                throw new EngineException("ValueError", EngineText.Repr(Normalise(path)) + " has an empty name");
             }
 
             var stem = Stem(path);
@@ -2621,7 +2621,7 @@ namespace DriftBusterOfflineRunner
         /// <summary>os.path.expandvars(path).</summary>
         public static string ExpandVars(string path)
         {
-            return PyOs.Windows ? ExpandVarsNt(path) : ExpandVarsPosix(path);
+            return EngineOs.Windows ? ExpandVarsNt(path) : ExpandVarsPosix(path);
         }
 
         private static readonly Regex PosixVariable = new Regex(@"\$([A-Za-z0-9_]+|\{[^}]*\})", RegexOptions.CultureInvariant);
@@ -2648,7 +2648,7 @@ namespace DriftBusterOfflineRunner
                     name = name.Substring(1, name.Length - 2);
                 }
 
-                var value = PyOs.Environ(name);
+                var value = EngineOs.Environ(name);
                 if (value == null)
                 {
                     index = match.Index + match.Length;
@@ -2719,7 +2719,7 @@ namespace DriftBusterOfflineRunner
                         {
                             index = close;
                             var name = path.Substring(0, close);
-                            var value = PyOs.Environ(name);
+                            var value = EngineOs.Environ(name);
                             result.Append(value ?? "%" + name + "%");
                         }
                     }
@@ -2745,7 +2745,7 @@ namespace DriftBusterOfflineRunner
                         {
                             index = close;
                             var name = path.Substring(0, close);
-                            var value = PyOs.Environ(name);
+                            var value = EngineOs.Environ(name);
                             result.Append(value ?? "${" + name + "}");
                         }
                     }
@@ -2759,7 +2759,7 @@ namespace DriftBusterOfflineRunner
                             index++;
                         }
 
-                        var value = PyOs.Environ(name.ToString());
+                        var value = EngineOs.Environ(name.ToString());
                         result.Append(value ?? "$" + name);
                         if (index < length)
                         {
@@ -2786,7 +2786,7 @@ namespace DriftBusterOfflineRunner
                 return path;
             }
 
-            if (PyOs.Windows)
+            if (EngineOs.Windows)
             {
                 var end = 1;
                 while (end < path.Length && path[end] != '\\' && path[end] != '/')
@@ -2795,24 +2795,24 @@ namespace DriftBusterOfflineRunner
                 }
 
                 string userHome;
-                var profile = PyOs.Environ("USERPROFILE");
+                var profile = EngineOs.Environ("USERPROFILE");
                 if (profile != null)
                 {
                     userHome = profile;
                 }
-                else if (PyOs.Environ("HOMEPATH") == null)
+                else if (EngineOs.Environ("HOMEPATH") == null)
                 {
                     return path;
                 }
                 else
                 {
-                    userHome = OsJoin(PyOs.Environ("HOMEDRIVE") ?? string.Empty, PyOs.Environ("HOMEPATH"));
+                    userHome = OsJoin(EngineOs.Environ("HOMEDRIVE") ?? string.Empty, EngineOs.Environ("HOMEPATH"));
                 }
 
                 if (end != 1)
                 {
                     var target = path.Substring(1, end - 1);
-                    var current = PyOs.Environ("USERNAME");
+                    var current = EngineOs.Environ("USERNAME");
                     if (target != current)
                     {
                         string headDrive;
@@ -2848,7 +2848,7 @@ namespace DriftBusterOfflineRunner
             string home;
             if (slash == 1)
             {
-                home = PyOs.Environ("HOME") ?? PasswdHome(null);
+                home = EngineOs.Environ("HOME") ?? PasswdHome(null);
                 if (home == null)
                 {
                     return path;
@@ -2908,7 +2908,7 @@ namespace DriftBusterOfflineRunner
             var home = ExpandUser(parts[0]);
             if (home.StartsWith("~", StringComparison.Ordinal))
             {
-                throw new PyException("RuntimeError", "Could not determine home directory.");
+                throw new EngineException("RuntimeError", "Could not determine home directory.");
             }
 
             parts.RemoveAt(0);
@@ -2928,13 +2928,13 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>fnmatch.fnmatch and fnmatch.filter.</summary>
-    public static class PyFnmatch
+    public static class EngineFnmatch
     {
         private static readonly Dictionary<string, Regex> Cache = new Dictionary<string, Regex>(StringComparer.Ordinal);
 
         private static string NormCase(string text)
         {
-            return PyOs.Windows ? text.Replace('/', '\\').ToLowerInvariant() : text;
+            return EngineOs.Windows ? text.Replace('/', '\\').ToLowerInvariant() : text;
         }
 
         public static bool FnMatch(string name, string pattern)
@@ -3120,7 +3120,7 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>File system checks with Python's link semantics.</summary>
-    public static class PyFs
+    public static class EngineFs
     {
         private const uint ReparseTagSymlink = 0xA000000C;
         private const int FileAttributeDirectory = 0x10;
@@ -3193,7 +3193,7 @@ namespace DriftBusterOfflineRunner
         // path does not resolve.
         private static int StatMode(string path)
         {
-            var name = Encoding.UTF8.GetBytes(PyOs.Abs(path) + "\0");
+            var name = Encoding.UTF8.GetBytes(EngineOs.Abs(path) + "\0");
             var buffer = new byte[256];
             if (statx(-100, name, 0, 0x1, buffer) != 0)
             {
@@ -3206,8 +3206,8 @@ namespace DriftBusterOfflineRunner
         /// <summary>Path.is_symlink().</summary>
         public static bool IsSymlink(string path)
         {
-            var target = PyOs.Abs(path);
-            if (PyOs.Windows)
+            var target = EngineOs.Abs(path);
+            if (EngineOs.Windows)
             {
                 var trimmed = target.TrimEnd('\\', '/');
                 if (trimmed.Length == 0 || trimmed.EndsWith(":", StringComparison.Ordinal))
@@ -3259,7 +3259,7 @@ namespace DriftBusterOfflineRunner
         {
             attributes = 0;
             size = 0;
-            var handle = CreateFileW(PyOs.Abs(path), 0x80, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
+            var handle = CreateFileW(EngineOs.Abs(path), 0x80, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
             if (handle == InvalidHandle)
             {
                 return false;
@@ -3286,13 +3286,13 @@ namespace DriftBusterOfflineRunner
         /// <summary>os.path.realpath(path) (strict=False).</summary>
         public static string Realpath(string path)
         {
-            var absolute = PyOs.Abs(path);
-            if (PyOs.Windows)
+            var absolute = EngineOs.Abs(path);
+            if (EngineOs.Windows)
             {
                 var handle = CreateFileW(absolute, 0x80, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
                 if (handle == InvalidHandle)
                 {
-                    return PyPath.Normalise(absolute);
+                    return EnginePath.Normalise(absolute);
                 }
 
                 try
@@ -3307,7 +3307,7 @@ namespace DriftBusterOfflineRunner
 
                     if (length <= 0)
                     {
-                        return PyPath.Normalise(absolute);
+                        return EnginePath.Normalise(absolute);
                     }
 
                     var final = buffer.ToString(0, length);
@@ -3375,18 +3375,18 @@ namespace DriftBusterOfflineRunner
         /// <summary>os.path.lexists(path).</summary>
         public static bool LExists(string path)
         {
-            var target = PyOs.Abs(path);
+            var target = EngineOs.Abs(path);
             return File.Exists(target) || Directory.Exists(target) || IsSymlink(path);
         }
 
         /// <summary>Path.exists(): links followed.</summary>
         public static bool Exists(string path)
         {
-            if (PyOs.Windows)
+            if (EngineOs.Windows)
             {
                 if (!IsSymlink(path))
                 {
-                    var target = PyOs.Abs(path);
+                    var target = EngineOs.Abs(path);
                     return File.Exists(target) || Directory.Exists(target);
                 }
 
@@ -3401,11 +3401,11 @@ namespace DriftBusterOfflineRunner
         /// <summary>Path.is_dir(): links followed.</summary>
         public static bool IsDir(string path)
         {
-            if (PyOs.Windows)
+            if (EngineOs.Windows)
             {
                 if (!IsSymlink(path))
                 {
-                    return Directory.Exists(PyOs.Abs(path));
+                    return Directory.Exists(EngineOs.Abs(path));
                 }
 
                 int attributes;
@@ -3420,11 +3420,11 @@ namespace DriftBusterOfflineRunner
         /// <summary>Path.is_file(): links followed.</summary>
         public static bool IsFile(string path)
         {
-            if (PyOs.Windows)
+            if (EngineOs.Windows)
             {
                 if (!IsSymlink(path))
                 {
-                    return File.Exists(PyOs.Abs(path));
+                    return File.Exists(EngineOs.Abs(path));
                 }
 
                 int attributes;
@@ -3439,19 +3439,19 @@ namespace DriftBusterOfflineRunner
         /// <summary>path.stat().st_size.</summary>
         public static long Size(string path)
         {
-            if (PyOs.Windows && IsSymlink(path))
+            if (EngineOs.Windows && IsSymlink(path))
             {
                 int attributes;
                 long size;
                 if (!WinStat(path, out attributes, out size))
                 {
-                    throw new PyException("FileNotFoundError", "[WinError 2] The system cannot find the file specified: " + PyText.Repr(path));
+                    throw new EngineException("FileNotFoundError", "[WinError 2] The system cannot find the file specified: " + EngineText.Repr(path));
                 }
 
                 return size;
             }
 
-            var real = PyOs.Windows ? PyOs.Abs(path) : Realpath(path);
+            var real = EngineOs.Windows ? EngineOs.Abs(path) : Realpath(path);
             return new FileInfo(real).Length;
         }
 
@@ -3459,13 +3459,13 @@ namespace DriftBusterOfflineRunner
         public static List<string> ListDir(string path, bool directoriesOnly)
         {
             var names = new List<string>();
-            var directory = PyOs.Abs(path.Length == 0 ? "." : path);
+            var directory = EngineOs.Abs(path.Length == 0 ? "." : path);
             try
             {
                 foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
                 {
                     var name = entry.Substring(entry.LastIndexOfAny(new[] { '/', '\\' }) + 1);
-                    if (!directoriesOnly || IsDir(PyPath.OsJoin(path.Length == 0 ? "." : path, name)))
+                    if (!directoriesOnly || IsDir(EnginePath.OsJoin(path.Length == 0 ? "." : path, name)))
                     {
                         names.Add(name);
                     }
@@ -3492,15 +3492,15 @@ namespace DriftBusterOfflineRunner
         {
             var files = new List<string>();
             var pending = new Stack<string>();
-            pending.Push(PyPath.Normalise(path));
+            pending.Push(EnginePath.Normalise(path));
             while (pending.Count > 0)
             {
                 var directory = pending.Pop();
                 foreach (var name in ListDir(directory, false))
                 {
-                    var child = PyPath.Join(directory, name);
+                    var child = EnginePath.Join(directory, name);
                     var symlink = IsSymlink(child);
-                    if (!symlink && Directory.Exists(PyOs.Abs(child)))
+                    if (!symlink && Directory.Exists(EngineOs.Abs(child)))
                     {
                         pending.Push(child);
                         continue;
@@ -3518,7 +3518,7 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>glob.glob(pattern, recursive=True).</summary>
-    public static class PyGlob
+    public static class EngineGlob
     {
         public static List<string> Glob(string pattern)
         {
@@ -3541,7 +3541,7 @@ namespace DriftBusterOfflineRunner
 
         private static void Split(string path, out string head, out string tail)
         {
-            if (!PyOs.Windows)
+            if (!EngineOs.Windows)
             {
                 var cut = path.LastIndexOf('/') + 1;
                 head = path.Substring(0, cut);
@@ -3557,7 +3557,7 @@ namespace DriftBusterOfflineRunner
             string drive;
             string root;
             string rest;
-            PyPath.SplitRoot(path, out drive, out root, out rest);
+            EnginePath.SplitRoot(path, out drive, out root, out rest);
             var index = rest.Length;
             while (index > 0 && rest[index - 1] != '\\' && rest[index - 1] != '/')
             {
@@ -3575,7 +3575,7 @@ namespace DriftBusterOfflineRunner
                 return directory.Length > 0 ? directory : name;
             }
 
-            return PyPath.OsJoin(directory, name);
+            return EnginePath.OsJoin(directory, name);
         }
 
         private static bool IsHidden(string name)
@@ -3588,16 +3588,16 @@ namespace DriftBusterOfflineRunner
             string dirname;
             string basename;
             Split(pathname, out dirname, out basename);
-            if (!PyPath.GlobHasMagic(pathname))
+            if (!EnginePath.GlobHasMagic(pathname))
             {
                 if (basename.Length > 0)
                 {
-                    if (PyFs.LExists(pathname))
+                    if (EngineFs.LExists(pathname))
                     {
                         yield return pathname;
                     }
                 }
-                else if (PyFs.IsDir(dirname))
+                else if (EngineFs.IsDir(dirname))
                 {
                     yield return pathname;
                 }
@@ -3617,7 +3617,7 @@ namespace DriftBusterOfflineRunner
             }
 
             IEnumerable<string> dirs;
-            if (dirname != pathname && PyPath.GlobHasMagic(dirname))
+            if (dirname != pathname && EnginePath.GlobHasMagic(dirname))
             {
                 dirs = IGlob(dirname, true);
             }
@@ -3629,7 +3629,7 @@ namespace DriftBusterOfflineRunner
             foreach (var directory in dirs)
             {
                 IEnumerable<string> names;
-                if (PyPath.GlobHasMagic(basename))
+                if (EnginePath.GlobHasMagic(basename))
                 {
                     names = basename == "**" ? Glob2(directory, basename, directoriesOnly) : Glob1(directory, basename, directoriesOnly);
                 }
@@ -3640,18 +3640,18 @@ namespace DriftBusterOfflineRunner
 
                 foreach (var name in names)
                 {
-                    yield return PyPath.OsJoin(directory, name);
+                    yield return EnginePath.OsJoin(directory, name);
                 }
             }
         }
 
         private static IEnumerable<string> Glob1(string dirname, string pattern, bool directoriesOnly)
         {
-            var names = PyFs.ListDir(dirname, directoriesOnly);
+            var names = EngineFs.ListDir(dirname, directoriesOnly);
             var matches = new List<string>();
             var hiddenPattern = IsHidden(pattern);
-            var windows = PyOs.Windows;
-            var regex = PyFnmatch.Compile(windows ? pattern.Replace('/', '\\').ToLowerInvariant() : pattern);
+            var windows = EngineOs.Windows;
+            var regex = EngineFnmatch.Compile(windows ? pattern.Replace('/', '\\').ToLowerInvariant() : pattern);
             foreach (var name in names)
             {
                 if (!hiddenPattern && IsHidden(name))
@@ -3672,12 +3672,12 @@ namespace DriftBusterOfflineRunner
         {
             if (basename.Length > 0)
             {
-                if (PyFs.LExists(JoinParts(dirname, basename)))
+                if (EngineFs.LExists(JoinParts(dirname, basename)))
                 {
                     return new[] { basename };
                 }
             }
-            else if (PyFs.IsDir(dirname))
+            else if (EngineFs.IsDir(dirname))
             {
                 return new[] { basename };
             }
@@ -3687,7 +3687,7 @@ namespace DriftBusterOfflineRunner
 
         private static IEnumerable<string> Glob2(string dirname, string pattern, bool directoriesOnly)
         {
-            if (dirname.Length == 0 || PyFs.IsDir(dirname))
+            if (dirname.Length == 0 || EngineFs.IsDir(dirname))
             {
                 yield return string.Empty;
             }
@@ -3700,7 +3700,7 @@ namespace DriftBusterOfflineRunner
 
         private static IEnumerable<string> RListDir(string dirname, bool directoriesOnly)
         {
-            foreach (var name in PyFs.ListDir(dirname, directoriesOnly))
+            foreach (var name in EngineFs.ListDir(dirname, directoriesOnly))
             {
                 if (IsHidden(name))
                 {
@@ -3718,8 +3718,8 @@ namespace DriftBusterOfflineRunner
     }
 }
 
-// secret_scanning's rule compilation, detection context and copy_with_secret_filter, with the port's fix g guard for lines Python
-// never leaves. Rules run on .NET regular expressions.
+// Secret rule compilation, detection context and the filtered copy, with a guard for lines where redaction would
+// never finish. Rules run on .NET regular expressions.
 // Derived from publicly documented Python behaviour, not CPython source.
 
 namespace DriftBusterOfflineRunner
@@ -3748,7 +3748,7 @@ namespace DriftBusterOfflineRunner
         public void Save(string path)
         {
             var text = string.Join("\n", _entries.ToArray()) + (_entries.Count > 0 ? "\n" : string.Empty);
-            PyFile.WriteText(path, text);
+            EngineFile.WriteText(path, text);
         }
     }
 
@@ -3787,7 +3787,7 @@ namespace DriftBusterOfflineRunner
         public string Snippet { get; private set; }
     }
 
-    /// <summary>Fix g: a rule stopped on one line because the line went past the guard budget.</summary>
+    /// <summary>A rule stopped on one line because the line went past the guard budget.</summary>
     public sealed class SecretRedactionGuard
     {
         public SecretRedactionGuard(string path, string rule, int line)
@@ -3861,7 +3861,7 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>Text files as pathlib reads and writes them (UTF-8, universal new lines).</summary>
-    public static class PyFile
+    public static class EngineFile
     {
         private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
 
@@ -3871,18 +3871,18 @@ namespace DriftBusterOfflineRunner
             byte[] bytes;
             try
             {
-                bytes = File.ReadAllBytes(PyOs.Abs(path));
+                bytes = File.ReadAllBytes(EngineOs.Abs(path));
             }
             catch (FileNotFoundException)
             {
-                throw new PyException("FileNotFoundError", "[Errno 2] No such file or directory: " + PyText.Repr(path));
+                throw new EngineException("FileNotFoundError", "[Errno 2] No such file or directory: " + EngineText.Repr(path));
             }
             catch (DirectoryNotFoundException)
             {
-                throw new PyException("FileNotFoundError", "[Errno 2] No such file or directory: " + PyText.Repr(path));
+                throw new EngineException("FileNotFoundError", "[Errno 2] No such file or directory: " + EngineText.Repr(path));
             }
 
-            var text = PyUtf8Decoder.DecodeStrict(bytes);
+            var text = EngineUtf8Decoder.DecodeStrict(bytes);
             return text.Replace("\r\n", "\n").Replace('\r', '\n');
         }
 
@@ -3905,21 +3905,21 @@ namespace DriftBusterOfflineRunner
             }
             catch (EncoderFallbackException)
             {
-                throw new PyException("UnicodeEncodeError", "'utf-8' codec can't encode character: surrogates not allowed");
+                throw new EngineException("UnicodeEncodeError", "'utf-8' codec can't encode character: surrogates not allowed");
             }
         }
 
         public static void WriteBytes(string path, byte[] bytes)
         {
-            File.WriteAllBytes(PyOs.Abs(path), bytes);
+            File.WriteAllBytes(EngineOs.Abs(path), bytes);
         }
 
         public static string HashFile(string path)
         {
-            using (var stream = new FileStream(PyOs.Abs(path), FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var stream = new FileStream(EngineOs.Abs(path), FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var sha = SHA256.Create())
             {
-                return PyText.Hex(sha.ComputeHash(stream));
+                return EngineText.Hex(sha.ComputeHash(stream));
             }
         }
 
@@ -3944,9 +3944,9 @@ namespace DriftBusterOfflineRunner
         {
             try
             {
-                var from = PyOs.Abs(source);
-                var to = PyOs.Abs(destination);
-                if (!PyOs.Windows && GetUnixFileMode != null && SetUnixFileMode != null)
+                var from = EngineOs.Abs(source);
+                var to = EngineOs.Abs(destination);
+                if (!EngineOs.Windows && GetUnixFileMode != null && SetUnixFileMode != null)
                 {
                     SetUnixFileMode.Invoke(null, new[] { to, GetUnixFileMode.Invoke(null, new object[] { from }) });
                 }
@@ -3968,9 +3968,9 @@ namespace DriftBusterOfflineRunner
         /// <summary>shutil.copy2(source, destination) followed by the destination's size and SHA-256.</summary>
         public static CopyResult CopyVerbatim(string source, string destination)
         {
-            File.Copy(PyOs.Abs(source), PyOs.Abs(destination), true);
+            File.Copy(EngineOs.Abs(source), EngineOs.Abs(destination), true);
             CopyStat(source, destination);
-            return new CopyResult(new FileInfo(PyOs.Abs(destination)).Length, HashFile(destination));
+            return new CopyResult(new FileInfo(EngineOs.Abs(destination)).Length, HashFile(destination));
         }
     }
 
@@ -3978,7 +3978,7 @@ namespace DriftBusterOfflineRunner
     {
         private const string Redaction = "[SECRET]";
 
-        /// <summary>Fix g: replacements inside inserted text one line may take since its last replacement that consumed source text.</summary>
+        /// <summary>Replacements inside inserted text one line may take since its last replacement that consumed source text.</summary>
         public const int GuardBudget = 1024;
 
         /// <summary>The packaged ruleset load_secret_rules caches for the session (set by the runner; null before the first load).</summary>
@@ -3987,34 +3987,34 @@ namespace DriftBusterOfflineRunner
         /// <summary>_compile_ruleset_from_mapping(payload): null when nothing compiles.</summary>
         public static CompiledRuleset CompileRuleset(object payload)
         {
-            payload = Py.Unwrap(payload);
-            if (!Py.Truthy(payload) || !Py.IsMapping(payload))
+            payload = Engine.Unwrap(payload);
+            if (!Engine.Truthy(payload) || !Engine.IsMapping(payload))
             {
                 return null;
             }
 
-            var rulesPayload = Py.Get(payload, "rules", null);
-            if (!Py.IsSequence(rulesPayload))
+            var rulesPayload = Engine.Get(payload, "rules", null);
+            if (!Engine.IsSequence(rulesPayload))
             {
                 return null;
             }
 
             var rules = new List<SecretRule>();
-            foreach (var entry in Py.Iterate(rulesPayload))
+            foreach (var entry in Engine.Iterate(rulesPayload))
             {
-                if (!Py.IsMapping(entry))
+                if (!Engine.IsMapping(entry))
                 {
                     continue;
                 }
 
-                var name = PyText.Strip(Py.Str(Py.Or(Py.Get(entry, "name", null), string.Empty)));
-                var patternText = Py.Get(entry, "pattern", null);
-                if (name.Length == 0 || !Py.Truthy(patternText))
+                var name = EngineText.Strip(Engine.Str(Engine.Or(Engine.Get(entry, "name", null), string.Empty)));
+                var patternText = Engine.Get(entry, "pattern", null);
+                if (name.Length == 0 || !Engine.Truthy(patternText))
                 {
                     continue;
                 }
 
-                var flags = PyText.Lower(Py.Str(Py.Or(Py.Get(entry, "flags", null), string.Empty)));
+                var flags = EngineText.Lower(Engine.Str(Engine.Or(Engine.Get(entry, "flags", null), string.Empty)));
                 var options = RegexOptions.CultureInvariant;
                 if (flags.IndexOf('i') >= 0)
                 {
@@ -4024,15 +4024,15 @@ namespace DriftBusterOfflineRunner
                 Regex pattern;
                 try
                 {
-                    pattern = new Regex(Py.Str(patternText), options);
+                    pattern = new Regex(Engine.Str(patternText), options);
                 }
                 catch (ArgumentException)
                 {
                     continue;
                 }
 
-                var description = Py.Get(entry, "description", null);
-                rules.Add(new SecretRule(name, pattern, Py.Truthy(description) ? Py.Str(description) : null));
+                var description = Engine.Get(entry, "description", null);
+                rules.Add(new SecretRule(name, pattern, Engine.Truthy(description) ? Engine.Str(description) : null));
             }
 
             if (rules.Count == 0)
@@ -4040,15 +4040,15 @@ namespace DriftBusterOfflineRunner
                 return null;
             }
 
-            return new CompiledRuleset(rules, Py.Str(Py.Or(Py.Get(payload, "version", null), string.Empty)));
+            return new CompiledRuleset(rules, Engine.Str(Engine.Or(Engine.Get(payload, "version", null), string.Empty)));
         }
 
         /// <summary>secret_option_values(value).</summary>
         public static List<string> OptionValues(object value)
         {
-            value = Py.Unwrap(value);
+            value = Engine.Unwrap(value);
             var result = new List<string>();
-            if (!Py.Truthy(value))
+            if (!Engine.Truthy(value))
             {
                 return result;
             }
@@ -4056,9 +4056,9 @@ namespace DriftBusterOfflineRunner
             var text = value as string;
             if (text != null)
             {
-                foreach (var part in PyText.SplitSpaceCommaSemicolon(text))
+                foreach (var part in EngineText.SplitSpaceCommaSemicolon(text))
                 {
-                    var stripped = PyText.Strip(part);
+                    var stripped = EngineText.Strip(part);
                     if (stripped.Length > 0)
                     {
                         result.Add(stripped);
@@ -4068,16 +4068,16 @@ namespace DriftBusterOfflineRunner
                 return result;
             }
 
-            if (Py.IsList(value))
+            if (Engine.IsList(value))
             {
-                foreach (var item in Py.Iterate(value))
+                foreach (var item in Engine.Iterate(value))
                 {
                     if (item == null)
                     {
                         continue;
                     }
 
-                    var stripped = PyText.Strip(Py.Str(item));
+                    var stripped = EngineText.Strip(Engine.Str(item));
                     if (stripped.Length > 0)
                     {
                         result.Add(stripped);
@@ -4094,31 +4094,31 @@ namespace DriftBusterOfflineRunner
             var context = new SecretContext();
             context.Rules = rules == null ? new List<SecretRule>() : rules.Rules;
             context.Version = rules == null ? string.Empty : rules.Version;
-            if (Py.Truthy(options))
+            if (Engine.Truthy(options))
             {
-                foreach (var value in OptionValues(Py.Get(options, "secret_ignore_rules", null)))
+                foreach (var value in OptionValues(Engine.Get(options, "secret_ignore_rules", null)))
                 {
                     context.IgnoreRules.Add(value);
                 }
             }
 
-            if (Py.Truthy(secretScanner))
+            if (Engine.Truthy(secretScanner))
             {
-                foreach (var value in OptionValues(Py.Get(secretScanner, "ignore_rules", null)))
+                foreach (var value in OptionValues(Engine.Get(secretScanner, "ignore_rules", null)))
                 {
                     context.IgnoreRules.Add(value);
                 }
             }
 
             var sources = new List<string>();
-            if (Py.Truthy(options))
+            if (Engine.Truthy(options))
             {
-                sources.AddRange(OptionValues(Py.Get(options, "secret_ignore_patterns", null)));
+                sources.AddRange(OptionValues(Engine.Get(options, "secret_ignore_patterns", null)));
             }
 
-            if (Py.Truthy(secretScanner))
+            if (Engine.Truthy(secretScanner))
             {
-                sources.AddRange(OptionValues(Py.Get(secretScanner, "ignore_patterns", null)));
+                sources.AddRange(OptionValues(Engine.Get(secretScanner, "ignore_patterns", null)));
             }
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -4148,7 +4148,7 @@ namespace DriftBusterOfflineRunner
         {
             try
             {
-                using (var stream = new FileStream(PyOs.Abs(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var stream = new FileStream(EngineOs.Abs(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
                 {
                     var buffer = new byte[1024];
                     var total = 0;
@@ -4174,7 +4174,7 @@ namespace DriftBusterOfflineRunner
         /// <summary>copy_with_secret_filter(source, destination, display_path=..., context=..., log=...).</summary>
         public static CopyResult CopyWithSecretFilter(string source, string destination, string displayPath, SecretContext context, RunLog log)
         {
-            var parent = Path.GetDirectoryName(PyOs.Abs(destination));
+            var parent = Path.GetDirectoryName(EngineOs.Abs(destination));
             if (!string.IsNullOrEmpty(parent))
             {
                 Directory.CreateDirectory(parent);
@@ -4182,7 +4182,7 @@ namespace DriftBusterOfflineRunner
 
             if (!context.RulesLoaded || context.Rules.Count == 0 || LooksBinary(source))
             {
-                return PyFile.CopyVerbatim(source, destination);
+                return EngineFile.CopyVerbatim(source, destination);
             }
 
             var buffered = new List<string>();
@@ -4224,8 +4224,8 @@ namespace DriftBusterOfflineRunner
                     sanitising = true;
                     var redacted = redaction.Replace(start, end);
                     var preview = redacted.TrimEnd('\n', '\r');
-                    var masked = PyText.CodePointLength(preview) > 120 ? PyText.CodePointPrefix(preview, 117) + "..." : preview;
-                    context.Findings.Add(new SecretFinding(displayPath, rule.Name, lineNumber, PyText.CodePointPrefix(preview, 200)));
+                    var masked = EngineText.CodePointLength(preview) > 120 ? EngineText.CodePointPrefix(preview, 117) + "..." : preview;
+                    context.Findings.Add(new SecretFinding(displayPath, rule.Name, lineNumber, EngineText.CodePointPrefix(preview, 200)));
                     redaction.Record(
                         "secret candidate redacted (" + rule.Name + ") from " + displayPath + ":"
                         + lineNumber.ToString(CultureInfo.InvariantCulture) + " -> " + masked);
@@ -4246,7 +4246,7 @@ namespace DriftBusterOfflineRunner
 
             if (!sanitising)
             {
-                return PyFile.CopyVerbatim(source, destination);
+                return EngineFile.CopyVerbatim(source, destination);
             }
 
             var builder = new StringBuilder();
@@ -4255,10 +4255,10 @@ namespace DriftBusterOfflineRunner
                 builder.Append(line);
             }
 
-            PyFile.WriteText(destination, builder.ToString());
-            PyFile.CopyStat(source, destination);
+            EngineFile.WriteText(destination, builder.ToString());
+            EngineFile.CopyStat(source, destination);
             log.Write("scrubbed " + matches.ToString(CultureInfo.InvariantCulture) + " potential secret line(s) from " + displayPath);
-            return new CopyResult(new FileInfo(PyOs.Abs(destination)).Length, PyFile.HashFile(destination));
+            return new CopyResult(new FileInfo(EngineOs.Abs(destination)).Length, EngineFile.HashFile(destination));
         }
 
         private static bool FirstTriggeredRule(
@@ -4310,9 +4310,9 @@ namespace DriftBusterOfflineRunner
         // open(encoding="utf-8", errors="replace") iterated by line: "\r\n" and "\r" read as "\n", each line keeping its "\n".
         private static IEnumerable<string> ReadUniversalLines(string path)
         {
-            using (var stream = new FileStream(PyOs.Abs(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var stream = new FileStream(EngineOs.Abs(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
             {
-                var decoder = new PyUtf8Decoder();
+                var decoder = new EngineUtf8Decoder();
                 var bytes = new byte[1 << 16];
                 var buffer = new StringBuilder(1 << 16);
                 var line = new StringBuilder();
@@ -4460,7 +4460,7 @@ namespace DriftBusterOfflineRunner
     /// (RegistryKey returns null for REG_LINK, REG_RESOURCE_LIST, REG_FULL_RESOURCE_DESCRIPTOR, REG_RESOURCE_REQUIREMENTS_LIST and
     /// non-standard type numbers, all of which winreg returns as bytes).
     /// </summary>
-    public static class PyWinreg
+    public static class EngineWinreg
     {
         private const int MoreData = 234;
 
@@ -4614,7 +4614,7 @@ namespace DriftBusterOfflineRunner
                 }
             }
 
-            throw new PyException("IndexError", "No item with that key");
+            throw new EngineException("IndexError", "No item with that key");
         }
 
         private static bool EqualIgnoreAsciiCase(string left, string right)
@@ -4667,7 +4667,7 @@ namespace DriftBusterOfflineRunner
 
         private static bool Linux
         {
-            get { return !PyOs.Windows; }
+            get { return !EngineOs.Windows; }
         }
 
         /// <summary>The library name used on this platform.</summary>
@@ -4679,7 +4679,7 @@ namespace DriftBusterOfflineRunner
         public static SqliteDatabase Open(string path, int flags)
         {
             IntPtr db;
-            var name = Nul(Encoding.UTF8.GetBytes(PyOs.Abs(path)));
+            var name = Nul(Encoding.UTF8.GetBytes(EngineOs.Abs(path)));
             var rc = Linux ? LibSqlite3.sqlite3_open_v2(name, out db, flags, IntPtr.Zero) : WinSqlite3.sqlite3_open_v2(name, out db, flags, IntPtr.Zero);
             if (rc != 0)
             {
@@ -4689,7 +4689,7 @@ namespace DriftBusterOfflineRunner
                     Close(db);
                 }
 
-                throw new PyException(ErrorClass(rc & 0xFF), message);
+                throw new EngineException(ErrorClass(rc & 0xFF), message);
             }
 
             return new SqliteDatabase(db);
@@ -4745,7 +4745,7 @@ namespace DriftBusterOfflineRunner
 
             var bytes = new byte[length];
             Marshal.Copy(pointer, bytes, 0, length);
-            return PyUtf8Decoder.Decode(bytes, out invalid);
+            return EngineUtf8Decoder.Decode(bytes, out invalid);
         }
 
         /// <summary>The sqlite3 module's exception class for a primary result code.</summary>
@@ -4797,7 +4797,7 @@ namespace DriftBusterOfflineRunner
                 : WinSqlite3.sqlite3_prepare_v2(_db, bytes, bytes.Length, out statement, IntPtr.Zero);
             if (rc != 0)
             {
-                throw new PyException(ErrorClass(rc & 0xFF), ErrorMessage(_db));
+                throw new EngineException(ErrorClass(rc & 0xFF), ErrorMessage(_db));
             }
 
             var rows = new SqliteRows();
@@ -4825,7 +4825,7 @@ namespace DriftBusterOfflineRunner
 
                     if (rc != Row)
                     {
-                        throw new PyException(ErrorClass(rc & 0xFF), ErrorMessage(_db));
+                        throw new EngineException(ErrorClass(rc & 0xFF), ErrorMessage(_db));
                     }
 
                     var values = new object[count];
@@ -4869,7 +4869,7 @@ namespace DriftBusterOfflineRunner
                     var decoded = Utf8At(text, length, out invalid) ?? string.Empty;
                     if (invalid)
                     {
-                        throw new PyException("OperationalError", "Could not decode to UTF-8 column '" + columnName + "' with text '" + decoded + "'");
+                        throw new EngineException("OperationalError", "Could not decode to UTF-8 column '" + columnName + "' with text '" + decoded + "'");
                     }
 
                     return decoded;
@@ -4908,13 +4908,13 @@ namespace DriftBusterOfflineRunner
         /// <summary>_hash_text(value, salt=salt).</summary>
         public static string HashText(object value, string salt)
         {
-            var text = PyJson.Dumps(value, -1, true, true);
-            var saltBytes = PyFile.EncodeUtf8(salt);
-            var textBytes = PyFile.EncodeUtf8(text);
+            var text = EngineJson.Dumps(value, -1, true, true);
+            var saltBytes = EngineFile.EncodeUtf8(salt);
+            var textBytes = EngineFile.EncodeUtf8(text);
             var combined = new byte[saltBytes.Length + textBytes.Length];
             Buffer.BlockCopy(saltBytes, 0, combined, 0, saltBytes.Length);
             Buffer.BlockCopy(textBytes, 0, combined, saltBytes.Length, textBytes.Length);
-            return "sha256:" + PyText.Sha256Hex(combined);
+            return "sha256:" + EngineText.Sha256Hex(combined);
         }
 
         /// <summary>_normalise_value(value): bytes as {"type": "base64", "value": ...}; everything else as read.</summary>
@@ -4954,9 +4954,9 @@ namespace DriftBusterOfflineRunner
                 return result;
             }
 
-            foreach (var column in Py.Iterate(map[table]))
+            foreach (var column in Engine.Iterate(map[table]))
             {
-                result.Add(Py.Str(column));
+                result.Add(Engine.Str(column));
             }
 
             return result;
@@ -4977,15 +4977,15 @@ namespace DriftBusterOfflineRunner
             string placeholder,
             string hashSalt)
         {
-            limit = Py.Unwrap(limit);
-            if (limit != null && Py.LessOrEqualZero(limit))
+            limit = Engine.Unwrap(limit);
+            if (limit != null && Engine.LessOrEqualZero(limit))
             {
-                throw new PyException("ValueError", "limit must be positive when provided");
+                throw new EngineException("ValueError", "limit must be positive when provided");
             }
 
-            if (!PyFs.Exists(path))
+            if (!EngineFs.Exists(path))
             {
-                throw new PyException("FileNotFoundError", "Database not found: " + path);
+                throw new EngineException("FileNotFoundError", "Database not found: " + path);
             }
 
             var include = new HashSet<string>(StringComparer.Ordinal);
@@ -4993,9 +4993,9 @@ namespace DriftBusterOfflineRunner
             {
                 foreach (var name in tables)
                 {
-                    if (Py.Truthy(name))
+                    if (Engine.Truthy(name))
                     {
-                        include.Add(Py.Str(name));
+                        include.Add(Engine.Str(name));
                     }
                 }
             }
@@ -5005,16 +5005,16 @@ namespace DriftBusterOfflineRunner
             {
                 foreach (var name in excludeTables)
                 {
-                    if (Py.Truthy(name))
+                    if (Engine.Truthy(name))
                     {
-                        excluded.Add(Py.Str(name));
+                        excluded.Add(Engine.Str(name));
                     }
                 }
             }
 
-            if (PyFs.IsDir(path))
+            if (EngineFs.IsDir(path))
             {
-                throw new PyException("OperationalError", "unable to open database file");
+                throw new EngineException("OperationalError", "unable to open database file");
             }
 
             var exported = new List<object>();
@@ -5025,13 +5025,13 @@ namespace DriftBusterOfflineRunner
                 {
                     if (row[0] is byte[])
                     {
-                        throw new PyException("TypeError", "startswith first arg must be bytes or a tuple of bytes, not str");
+                        throw new EngineException("TypeError", "startswith first arg must be bytes or a tuple of bytes, not str");
                     }
 
                     var name = row[0] as string;
                     if (name == null)
                     {
-                        throw new PyException("AttributeError", "'" + Py.TypeName(row[0]) + "' object has no attribute 'startswith'");
+                        throw new EngineException("AttributeError", "expected a table name string, not '" + Engine.TypeName(row[0]) + "'");
                     }
 
                     if (name.StartsWith("sqlite_", StringComparison.Ordinal))
@@ -5049,7 +5049,7 @@ namespace DriftBusterOfflineRunner
             }
 
             var snapshot = new OrderedDictionary(StringComparer.Ordinal);
-            snapshot["database"] = PyPath.Name(path);
+            snapshot["database"] = EnginePath.Name(path);
             snapshot["dialect"] = "sqlite";
             snapshot["captured_at"] = CapturedAt();
             snapshot["path"] = path;
@@ -5074,7 +5074,7 @@ namespace DriftBusterOfflineRunner
                 columns.Add(row[1]);
             }
 
-            var limitClause = limit != null ? " LIMIT " + Py.Int(limit).ToString(CultureInfo.InvariantCulture) : string.Empty;
+            var limitClause = limit != null ? " LIMIT " + Engine.Int(limit).ToString(CultureInfo.InvariantCulture) : string.Empty;
             var fetched = database.FetchAll("SELECT * FROM " + table + limitClause);
             var masked = Columns(maskColumns, table);
             var hashed = Columns(hashColumns, table);
@@ -5084,7 +5084,7 @@ namespace DriftBusterOfflineRunner
                 var payload = new OrderedDictionary(StringComparer.Ordinal);
                 foreach (var columnValue in columns)
                 {
-                    var column = Py.Str(columnValue);
+                    var column = Engine.Str(columnValue);
                     var value = fetched.Lookup(row, column);
                     if (masked.Contains(column))
                     {
@@ -5122,7 +5122,7 @@ namespace DriftBusterOfflineRunner
             {
                 foreach (var statement in statements)
                 {
-                    database.FetchAll(Py.Str(statement));
+                    database.FetchAll(Engine.Str(statement));
                 }
             }
         }
@@ -5138,8 +5138,8 @@ namespace DriftBusterOfflineRunner
     Add-Type @arguments
 }
 
-# The Python exception a failed call raised: the PyException itself or the first one inside the wrapping exceptions.
-function Get-DbPyException {
+# The engine exception a failed call raised: the EngineException itself or the first one inside the wrapping exceptions.
+function Get-DbEngineException {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $ErrorRecord)
 
@@ -5149,7 +5149,7 @@ function Get-DbPyException {
     }
 
     while ($null -ne $exception) {
-        if ($exception -is [DriftBusterOfflineRunner.PyException]) {
+        if ($exception -is [DriftBusterOfflineRunner.EngineException]) {
             return $exception
         }
 
@@ -5159,14 +5159,14 @@ function Get-DbPyException {
     return $null
 }
 
-function Get-DbPyError {
+function Get-DbEngineError {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $Type,
         [Parameter(Mandatory = $true)][AllowEmptyString()][string] $Message
     )
 
-    return [PyException]::new($Type, $Message)
+    return [EngineException]::new($Type, $Message)
 }
 
 # A PowerShell-side list that is never unrolled by the pipeline when returned with the unary comma.
@@ -5185,8 +5185,8 @@ function Get-DbOrderedMap {
 }
 
 # offline_runner's config readers: OfflineRunnerConfig, OfflineRunnerProfile, the three source kinds, RemoteRegistryTarget,
-# OfflineRunnerSettings and OfflineEncryptionSettings. Values stay in Python's JSON domain (PyJson.Loads) so truthiness, str() and
-# int() behave as Python's do.
+# OfflineRunnerSettings and OfflineEncryptionSettings. Values stay in the engine's JSON domain (EngineJson.Loads) so truthiness, str() and
+# int() behave consistently.
 
 function Get-DbTimestamp {
     [CmdletBinding()]
@@ -5201,8 +5201,8 @@ function Get-DbStringTuple {
     param($Value)
 
     $items = [System.Collections.Generic.List[string]]::new()
-    foreach ($item in [Py]::Iterate($Value)) {
-        $items.Add([Py]::Str($item))
+    foreach ($item in [Engine]::Iterate($Value)) {
+        $items.Add([Engine]::Str($item))
     }
 
     return , $items.ToArray()
@@ -5213,29 +5213,29 @@ function Get-DbExpandedPath {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][AllowEmptyString()][string] $Text)
 
-    return [PyPath]::Normalise([PyPath]::ExpandUser([PyPath]::ExpandVars($Text)))
+    return [EnginePath]::Normalise([EnginePath]::ExpandUser([EnginePath]::ExpandVars($Text)))
 }
 
 function ConvertFrom-DbOfflineCollectionSource {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
-    $path = [Py]::Get($Payload, 'path', $null)
-    if (-not [Py]::Truthy($path) -or [PyText]::Strip([Py]::Str($path)).Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' "Source entry requires a non-empty 'path'.")
+    $path = [Engine]::Get($Payload, 'path', $null)
+    if (-not [Engine]::Truthy($path) -or [EngineText]::Strip([Engine]::Str($path)).Length -eq 0) {
+        throw (Get-DbEngineError 'ValueError' "Source entry requires a non-empty 'path'.")
     }
 
-    $alias = [Py]::Get($Payload, 'alias', $null)
-    if ($null -ne $alias -and [PyText]::Strip([Py]::Str($alias)).Length -eq 0) {
+    $alias = [Engine]::Get($Payload, 'alias', $null)
+    if ($null -ne $alias -and [EngineText]::Strip([Engine]::Str($alias)).Length -eq 0) {
         $alias = $null
     }
 
-    $optional = [Py]::Truthy([Py]::Get($Payload, 'optional', $false))
-    $excludePayload = [Py]::Get($Payload, 'exclude', $null)
+    $optional = [Engine]::Truthy([Engine]::Get($Payload, 'optional', $false))
+    $excludePayload = [Engine]::Get($Payload, 'exclude', $null)
     if ($excludePayload -is [string]) {
         $exclude = @([string]$excludePayload)
     }
-    elseif ([Py]::Truthy($excludePayload)) {
+    elseif ([Engine]::Truthy($excludePayload)) {
         $exclude = Get-DbStringTuple $excludePayload
     }
     else {
@@ -5244,8 +5244,8 @@ function ConvertFrom-DbOfflineCollectionSource {
 
     return [pscustomobject]@{
         kind     = 'file'
-        path     = [Py]::Str($path)
-        alias    = $(if ([Py]::Truthy($alias)) { [Py]::Str($alias) } else { $null })
+        path     = [Engine]::Str($path)
+        alias    = $(if ([Engine]::Truthy($alias)) { [Engine]::Str($alias) } else { $null })
         optional = $optional
         exclude  = $exclude
     }
@@ -5256,54 +5256,54 @@ function ConvertFrom-DbRegistryRootDescriptor {
     [CmdletBinding()]
     param([AllowNull()][AllowEmptyString()][string] $Text)
 
-    $value = [PyText]::Strip([string]$Text)
+    $value = [EngineText]::Strip([string]$Text)
     if ($value.Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' 'Registry root descriptor must be non-empty')
+        throw (Get-DbEngineError 'ValueError' 'Registry root descriptor must be non-empty')
     }
 
     $segments = [System.Collections.Generic.List[string]]::new()
     foreach ($segment in $value.Split(',')) {
-        $stripped = [PyText]::Strip($segment)
+        $stripped = [EngineText]::Strip($segment)
         if ($stripped.Length -gt 0) {
             $segments.Add($stripped)
         }
     }
 
     if ($segments.Count -eq 0) {
-        throw (Get-DbPyError 'IndexError' 'list index out of range')
+        throw (Get-DbEngineError 'IndexError' 'list index out of range')
     }
 
     $base = $segments[0].Replace('/', '\')
     $match = [regex]::Match($base, '^(HKLM|HKCU)\\(.+)$', 'IgnoreCase, CultureInvariant')
     if (-not $match.Success) {
-        throw (Get-DbPyError 'ValueError' 'Registry root descriptor must start with HKLM\ or HKCU\')
+        throw (Get-DbEngineError 'ValueError' 'Registry root descriptor must start with HKLM\ or HKCU\')
     }
 
-    $hive = [PyText]::Upper($match.Groups[1].Value)
-    $path = [PyText]::Strip($match.Groups[2].Value)
+    $hive = [EngineText]::Upper($match.Groups[1].Value)
+    $path = [EngineText]::Strip($match.Groups[2].Value)
     if ($path.Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' 'Registry root path segment must be non-empty')
+        throw (Get-DbEngineError 'ValueError' 'Registry root path segment must be non-empty')
     }
 
     $view = $null
     for ($index = 1; $index -lt $segments.Count; $index++) {
         $option = $segments[$index]
         if ($option.IndexOf('=') -lt 0) {
-            throw (Get-DbPyError 'ValueError' "Registry root option '$option' must be formatted as key=value")
+            throw (Get-DbEngineError 'ValueError' "Registry root option '$option' must be formatted as key=value")
         }
 
         $cut = $option.IndexOf('=')
-        $key = [PyText]::Lower([PyText]::Strip($option.Substring(0, $cut)))
-        $rawValue = [PyText]::Strip($option.Substring($cut + 1))
+        $key = [EngineText]::Lower([EngineText]::Strip($option.Substring(0, $cut)))
+        $rawValue = [EngineText]::Strip($option.Substring($cut + 1))
         if ($key -cne 'view') {
-            throw (Get-DbPyError 'ValueError' "Unsupported registry root option '$key'")
+            throw (Get-DbEngineError 'ValueError' "Unsupported registry root option '$key'")
         }
 
         if ($rawValue.Length -eq 0) {
-            throw (Get-DbPyError 'ValueError' 'Registry root view must be non-empty when provided')
+            throw (Get-DbEngineError 'ValueError' 'Registry root view must be non-empty when provided')
         }
 
-        $normalised = [PyText]::Upper($rawValue)
+        $normalised = [EngineText]::Upper($rawValue)
         if ($normalised -ceq 'AUTO') {
             $view = $null
         }
@@ -5311,7 +5311,7 @@ function ConvertFrom-DbRegistryRootDescriptor {
             $view = $normalised
         }
         else {
-            throw (Get-DbPyError 'ValueError' 'Registry root view must be 32, 64, or auto')
+            throw (Get-DbEngineError 'ValueError' 'Registry root view must be 32, 64, or auto')
         }
     }
 
@@ -5324,15 +5324,15 @@ function ConvertTo-DbRegistryRootList {
     param($Value)
 
     $roots = [System.Collections.Generic.List[object]]::new()
-    if (-not [Py]::Truthy($Value)) {
+    if (-not [Engine]::Truthy($Value)) {
         return , $roots.ToArray()
     }
 
-    if ($Value -is [string] -or [Py]::IsMapping($Value) -or -not [Py]::IsList($Value)) {
+    if ($Value -is [string] -or [Engine]::IsMapping($Value) -or -not [Engine]::IsList($Value)) {
         $entries = @(, $Value)
     }
     else {
-        $entries = [Py]::Iterate($Value)
+        $entries = [Engine]::Iterate($Value)
     }
 
     foreach ($entry in $entries) {
@@ -5341,17 +5341,17 @@ function ConvertTo-DbRegistryRootList {
             continue
         }
 
-        if ([Py]::IsMapping($entry)) {
-            $hive = [PyText]::Strip([Py]::Str([Py]::Get($entry, 'hive', '')))
-            $path = [PyText]::Strip([Py]::Str([Py]::Get($entry, 'path', '')))
+        if ([Engine]::IsMapping($entry)) {
+            $hive = [EngineText]::Strip([Engine]::Str([Engine]::Get($entry, 'hive', '')))
+            $path = [EngineText]::Strip([Engine]::Str([Engine]::Get($entry, 'path', '')))
             if ($hive.Length -eq 0 -or $path.Length -eq 0) {
-                throw (Get-DbPyError 'ValueError' "registry_scan roots entries require 'hive' and 'path'")
+                throw (Get-DbEngineError 'ValueError' "registry_scan roots entries require 'hive' and 'path'")
             }
 
-            $viewRaw = [Py]::Get($entry, 'view', $null)
+            $viewRaw = [Engine]::Get($entry, 'view', $null)
             $view = $null
-            if ($null -ne $viewRaw -and [PyText]::Strip([Py]::Str($viewRaw)).Length -gt 0) {
-                $candidate = [PyText]::Upper([PyText]::Strip([Py]::Str($viewRaw)))
+            if ($null -ne $viewRaw -and [EngineText]::Strip([Engine]::Str($viewRaw)).Length -gt 0) {
+                $candidate = [EngineText]::Upper([EngineText]::Strip([Engine]::Str($viewRaw)))
                 if ($candidate -ceq 'AUTO') {
                     $view = $null
                 }
@@ -5359,15 +5359,15 @@ function ConvertTo-DbRegistryRootList {
                     $view = $candidate
                 }
                 else {
-                    throw (Get-DbPyError 'ValueError' 'registry_scan root view must be 32, 64, or auto')
+                    throw (Get-DbEngineError 'ValueError' 'registry_scan root view must be 32, 64, or auto')
                 }
             }
 
-            $roots.Add([pscustomobject]@{ hive = [PyText]::Upper($hive); path = $path; view = $view })
+            $roots.Add([pscustomobject]@{ hive = [EngineText]::Upper($hive); path = $path; view = $view })
             continue
         }
 
-        throw (Get-DbPyError 'ValueError' 'registry_scan roots entries must be strings or mappings')
+        throw (Get-DbEngineError 'ValueError' 'registry_scan roots entries must be strings or mappings')
     }
 
     return , $roots.ToArray()
@@ -5381,7 +5381,7 @@ function ConvertTo-DbRemoteBool {
         return $Value
     }
 
-    $text = [PyText]::Lower([PyText]::Strip([Py]::Str($Value)))
+    $text = [EngineText]::Lower([EngineText]::Strip([Engine]::Str($Value)))
     if (@('1', 'true', 'yes', 'on') -ccontains $text) {
         return $true
     }
@@ -5390,7 +5390,7 @@ function ConvertTo-DbRemoteBool {
         return $false
     }
 
-    throw (Get-DbPyError 'ValueError' "Unsupported boolean value '$([Py]::Str($Value))' for remote target")
+    throw (Get-DbEngineError 'ValueError' "Unsupported boolean value '$([Engine]::Str($Value))' for remote target")
 }
 
 function ConvertFrom-DbRemoteRegistryTarget {
@@ -5399,9 +5399,9 @@ function ConvertFrom-DbRemoteRegistryTarget {
     param($Payload)
 
     if ($Payload -is [string]) {
-        $host_ = [PyText]::Strip($Payload)
+        $host_ = [EngineText]::Strip($Payload)
         if ($host_.Length -eq 0) {
-            throw (Get-DbPyError 'ValueError' 'remote target host must be non-empty')
+            throw (Get-DbEngineError 'ValueError' 'remote target host must be non-empty')
         }
 
         return [pscustomobject]@{
@@ -5410,65 +5410,65 @@ function ConvertFrom-DbRemoteRegistryTarget {
         }
     }
 
-    if (-not [Py]::IsMapping($Payload)) {
-        throw (Get-DbPyError 'ValueError' 'remote target must be a string host or mapping')
+    if (-not [Engine]::IsMapping($Payload)) {
+        throw (Get-DbEngineError 'ValueError' 'remote target must be a string host or mapping')
     }
 
-    $hostValue = [Py]::Or([Py]::Get($Payload, 'host', $null), [Py]::Get($Payload, 'hostname', $null))
-    if (-not [Py]::Truthy($hostValue) -or [PyText]::Strip([Py]::Str($hostValue)).Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' "remote target requires 'host'")
+    $hostValue = [Engine]::Or([Engine]::Get($Payload, 'host', $null), [Engine]::Get($Payload, 'hostname', $null))
+    if (-not [Engine]::Truthy($hostValue) -or [EngineText]::Strip([Engine]::Str($hostValue)).Length -eq 0) {
+        throw (Get-DbEngineError 'ValueError' "remote target requires 'host'")
     }
 
-    if ([Py]::Has($Payload, 'password')) {
-        throw (Get-DbPyError 'ValueError' 'remote target must not embed raw passwords; use password_env')
+    if ([Engine]::Has($Payload, 'password')) {
+        throw (Get-DbEngineError 'ValueError' 'remote target must not embed raw passwords; use password_env')
     }
 
     $passwordEnvValue = $null
-    if ([Py]::Has($Payload, 'password_env')) {
-        $passwordEnvValue = [Py]::Get($Payload, 'password_env', $null)
+    if ([Engine]::Has($Payload, 'password_env')) {
+        $passwordEnvValue = [Engine]::Get($Payload, 'password_env', $null)
     }
-    elseif ([Py]::Has($Payload, 'password-env')) {
-        $passwordEnvValue = [Py]::Get($Payload, 'password-env', $null)
-    }
-
-    if ($null -ne $passwordEnvValue -and [PyText]::Strip([Py]::Str($passwordEnvValue)).Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' 'remote target password_env must be non-empty when provided')
+    elseif ([Engine]::Has($Payload, 'password-env')) {
+        $passwordEnvValue = [Engine]::Get($Payload, 'password-env', $null)
     }
 
-    $usernameValue = [Py]::Or([Py]::Get($Payload, 'username', $null), [Py]::Get($Payload, 'user', $null))
+    if ($null -ne $passwordEnvValue -and [EngineText]::Strip([Engine]::Str($passwordEnvValue)).Length -eq 0) {
+        throw (Get-DbEngineError 'ValueError' 'remote target password_env must be non-empty when provided')
+    }
+
+    $usernameValue = [Engine]::Or([Engine]::Get($Payload, 'username', $null), [Engine]::Get($Payload, 'user', $null))
     $credentialProfile = $null
-    if ([Py]::Has($Payload, 'credential_profile')) {
-        $credentialProfile = [Py]::Get($Payload, 'credential_profile', $null)
+    if ([Engine]::Has($Payload, 'credential_profile')) {
+        $credentialProfile = [Engine]::Get($Payload, 'credential_profile', $null)
     }
-    elseif ([Py]::Has($Payload, 'credential-profile')) {
-        $credentialProfile = [Py]::Get($Payload, 'credential-profile', $null)
+    elseif ([Engine]::Has($Payload, 'credential-profile')) {
+        $credentialProfile = [Engine]::Get($Payload, 'credential-profile', $null)
     }
 
-    $transportValue = [Py]::Get($Payload, 'transport', 'winrm')
-    $transport = $(if ([Py]::Truthy($transportValue)) { [PyText]::Lower([PyText]::Strip([Py]::Str($transportValue))) } else { 'winrm' })
-    $aliasValue = [Py]::Get($Payload, 'alias', $null)
+    $transportValue = [Engine]::Get($Payload, 'transport', 'winrm')
+    $transport = $(if ([Engine]::Truthy($transportValue)) { [EngineText]::Lower([EngineText]::Strip([Engine]::Str($transportValue))) } else { 'winrm' })
+    $aliasValue = [Engine]::Get($Payload, 'alias', $null)
 
-    $portValue = [Py]::Get($Payload, 'port', $null)
+    $portValue = [Engine]::Get($Payload, 'port', $null)
     $port = $null
     if ($null -ne $portValue) {
-        $port = [Py]::Int($portValue)
+        $port = [Engine]::Int($portValue)
         if ($port.Sign -le 0) {
-            throw (Get-DbPyError 'ValueError' 'remote target port must be positive')
+            throw (Get-DbEngineError 'ValueError' 'remote target port must be positive')
         }
     }
 
     $useSslValue = $null
-    if ([Py]::Has($Payload, 'use_ssl')) {
-        $useSslValue = [Py]::Get($Payload, 'use_ssl', $null)
+    if ([Engine]::Has($Payload, 'use_ssl')) {
+        $useSslValue = [Engine]::Get($Payload, 'use_ssl', $null)
     }
-    elseif ([Py]::Has($Payload, 'use-ssl')) {
-        $useSslValue = [Py]::Get($Payload, 'use-ssl', $null)
+    elseif ([Engine]::Has($Payload, 'use-ssl')) {
+        $useSslValue = [Engine]::Get($Payload, 'use-ssl', $null)
     }
 
     $useSsl = $(if ($null -ne $useSslValue) { ConvertTo-DbRemoteBool $useSslValue } else { $null })
 
     return [pscustomobject]@{
-        host               = [PyText]::Strip([Py]::Str($hostValue))
+        host               = [EngineText]::Strip([Engine]::Str($hostValue))
         transport          = $transport
         port               = $port
         use_ssl            = $useSsl
@@ -5484,8 +5484,8 @@ function Get-DbStrippedTruthy {
     [CmdletBinding()]
     param($Value)
 
-    if ([Py]::Truthy($Value)) {
-        $text = [PyText]::Strip([Py]::Str($Value))
+    if ([Engine]::Truthy($Value)) {
+        $text = [EngineText]::Strip([Engine]::Str($Value))
         if ($text.Length -gt 0) {
             return $text
         }
@@ -5500,21 +5500,21 @@ function Get-DbNormalisedSequence {
     param($Value)
 
     $items = [System.Collections.Generic.List[string]]::new()
-    if (-not [Py]::Truthy($Value)) {
+    if (-not [Engine]::Truthy($Value)) {
         return , $items.ToArray()
     }
 
     if ($Value -is [string]) {
-        foreach ($part in [PyText]::SplitSpaceCommaSemicolon($Value)) {
+        foreach ($part in [EngineText]::SplitSpaceCommaSemicolon($Value)) {
             $items.Add($part)
         }
 
         return , $items.ToArray()
     }
 
-    if ([Py]::IsList($Value)) {
-        foreach ($item in [Py]::Iterate($Value)) {
-            $text = [PyText]::Strip([Py]::Str($item))
+    if ([Engine]::IsList($Value)) {
+        foreach ($item in [Engine]::Iterate($Value)) {
+            $text = [EngineText]::Strip([Engine]::Str($item))
             if ($text.Length -gt 0) {
                 $items.Add($text)
             }
@@ -5529,24 +5529,24 @@ function ConvertFrom-DbOfflineRegistryScanSource {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
-    $spec = [Py]::Get($Payload, 'registry_scan', $null)
-    if (-not [Py]::IsMapping($spec)) {
-        throw (Get-DbPyError 'ValueError' 'registry_scan source requires an object payload')
+    $spec = [Engine]::Get($Payload, 'registry_scan', $null)
+    if (-not [Engine]::IsMapping($spec)) {
+        throw (Get-DbEngineError 'ValueError' 'registry_scan source requires an object payload')
     }
 
-    $tokenRaw = [Py]::Get($spec, 'token', $null)
-    if (-not [Py]::Truthy($tokenRaw) -or [PyText]::Strip([Py]::Str($tokenRaw)).Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' "registry_scan requires non-empty 'token'.")
+    $tokenRaw = [Engine]::Get($spec, 'token', $null)
+    if (-not [Engine]::Truthy($tokenRaw) -or [EngineText]::Strip([Engine]::Str($tokenRaw)).Length -eq 0) {
+        throw (Get-DbEngineError 'ValueError' "registry_scan requires non-empty 'token'.")
     }
 
-    $alias = [Py]::Get($Payload, 'alias', $null)
-    if ($null -ne $alias -and [PyText]::Strip([Py]::Str($alias)).Length -eq 0) {
+    $alias = [Engine]::Get($Payload, 'alias', $null)
+    if ($null -ne $alias -and [EngineText]::Strip([Engine]::Str($alias)).Length -eq 0) {
         $alias = $null
     }
 
-    $remoteSpec = [Py]::Get($spec, 'remote', $null)
-    $batchSpec = [Py]::Or([Py]::Or([Py]::Or([Py]::Get($spec, 'remote_batch', $null), [Py]::Get($spec, 'remoteTargets', $null)),
-            [Py]::Get($spec, 'remote_targets', $null)), [Py]::Get($spec, 'batch', $null))
+    $remoteSpec = [Engine]::Get($spec, 'remote', $null)
+    $batchSpec = [Engine]::Or([Engine]::Or([Engine]::Or([Engine]::Get($spec, 'remote_batch', $null), [Engine]::Get($spec, 'remoteTargets', $null)),
+            [Engine]::Get($spec, 'remote_targets', $null)), [Engine]::Get($spec, 'batch', $null))
 
     $remote = $null
     if ($null -ne $remoteSpec) {
@@ -5555,11 +5555,11 @@ function ConvertFrom-DbOfflineRegistryScanSource {
 
     $batch = [System.Collections.Generic.List[object]]::new()
     if ($null -ne $batchSpec) {
-        if ([Py]::IsMapping($batchSpec)) {
+        if ([Engine]::IsMapping($batchSpec)) {
             $batch.Add((ConvertFrom-DbRemoteRegistryTarget $batchSpec))
         }
-        elseif ([Py]::IsList($batchSpec)) {
-            foreach ($entry in [Py]::Iterate($batchSpec)) {
+        elseif ([Engine]::IsList($batchSpec)) {
+            foreach ($entry in [Engine]::Iterate($batchSpec)) {
                 $batch.Add((ConvertFrom-DbRemoteRegistryTarget $entry))
             }
         }
@@ -5568,13 +5568,13 @@ function ConvertFrom-DbOfflineRegistryScanSource {
         }
     }
 
-    $token = [PyText]::Strip([Py]::Str($tokenRaw))
-    $keywords = Get-DbNormalisedSequence ([Py]::Get($spec, 'keywords', $null))
-    $patterns = Get-DbNormalisedSequence ([Py]::Get($spec, 'patterns', $null))
-    $maxDepth = [Py]::Int([Py]::Get($spec, 'max_depth', 12))
-    $maxHits = [Py]::Int([Py]::Get($spec, 'max_hits', 200))
-    $timeBudget = [Py]::Float([Py]::Get($spec, 'time_budget_s', 10.0))
-    $roots = ConvertTo-DbRegistryRootList ([Py]::Get($spec, 'roots', $null))
+    $token = [EngineText]::Strip([Engine]::Str($tokenRaw))
+    $keywords = Get-DbNormalisedSequence ([Engine]::Get($spec, 'keywords', $null))
+    $patterns = Get-DbNormalisedSequence ([Engine]::Get($spec, 'patterns', $null))
+    $maxDepth = [Engine]::Int([Engine]::Get($spec, 'max_depth', 12))
+    $maxHits = [Engine]::Int([Engine]::Get($spec, 'max_hits', 200))
+    $timeBudget = [Engine]::Float([Engine]::Get($spec, 'time_budget_s', 10.0))
+    $roots = ConvertTo-DbRegistryRootList ([Engine]::Get($spec, 'roots', $null))
 
     return [pscustomobject]@{
         kind          = 'registry_scan'
@@ -5584,7 +5584,7 @@ function ConvertFrom-DbOfflineRegistryScanSource {
         max_depth     = $maxDepth
         max_hits      = $maxHits
         time_budget_s = $timeBudget
-        alias         = $(if ([Py]::Truthy($alias)) { [Py]::Str($alias) } else { $null })
+        alias         = $(if ([Engine]::Truthy($alias)) { [Engine]::Str($alias) } else { $null })
         remote        = $remote
         remote_batch  = $batch.ToArray()
         roots         = $roots
@@ -5597,53 +5597,53 @@ function ConvertTo-DbSnapshotColumnMap {
     param($Value)
 
     $normalised = Get-DbOrderedMap
-    if (-not [Py]::Truthy($Value)) {
+    if (-not [Engine]::Truthy($Value)) {
         return , $normalised
     }
 
-    if ([Py]::IsMapping($Value)) {
+    if ([Engine]::IsMapping($Value)) {
         foreach ($table in @($Value.Keys)) {
-            if (-not [Py]::Truthy($table)) {
+            if (-not [Engine]::Truthy($table)) {
                 continue
             }
 
             $columns = $Value[$table]
             $entries = [System.Collections.Generic.List[string]]::new()
-            if ([Py]::IsSequence($columns)) {
-                foreach ($column in [Py]::Iterate($columns)) {
-                    $text = [PyText]::Strip([Py]::Str($column))
+            if ([Engine]::IsSequence($columns)) {
+                foreach ($column in [Engine]::Iterate($columns)) {
+                    $text = [EngineText]::Strip([Engine]::Str($column))
                     if ($text.Length -gt 0) {
                         $entries.Add($text)
                     }
                 }
             }
             else {
-                $entries.Add([PyText]::Strip([Py]::Str($columns)))
+                $entries.Add([EngineText]::Strip([Engine]::Str($columns)))
             }
 
             if ($entries.Count -gt 0) {
-                $normalised[[Py]::Str($table)] = $entries.ToArray()
+                $normalised[[Engine]::Str($table)] = $entries.ToArray()
             }
         }
 
         return , $normalised
     }
 
-    if ([Py]::IsSequence($Value)) {
+    if ([Engine]::IsSequence($Value)) {
         $grouped = Get-DbOrderedMap
-        foreach ($entry in [Py]::Iterate($Value)) {
-            if (-not [Py]::Truthy($entry)) {
+        foreach ($entry in [Engine]::Iterate($Value)) {
+            if (-not [Engine]::Truthy($entry)) {
                 continue
             }
 
-            $text = [PyText]::Strip([Py]::Str($entry))
+            $text = [EngineText]::Strip([Engine]::Str($entry))
             $dot = $text.IndexOf('.')
             if ($text.Length -eq 0 -or $dot -lt 0) {
                 continue
             }
 
-            $table = [PyText]::Strip($text.Substring(0, $dot))
-            $column = [PyText]::Strip($text.Substring($dot + 1))
+            $table = [EngineText]::Strip($text.Substring(0, $dot))
+            $column = [EngineText]::Strip($text.Substring($dot + 1))
             if ($table.Length -eq 0 -or $column.Length -eq 0) {
                 continue
             }
@@ -5668,23 +5668,23 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
-    $spec = [Py]::Get($Payload, 'sql_snapshot', $null)
-    if (-not [Py]::IsMapping($spec)) {
-        throw (Get-DbPyError 'ValueError' 'sql_snapshot source requires an object payload')
+    $spec = [Engine]::Get($Payload, 'sql_snapshot', $null)
+    if (-not [Engine]::IsMapping($spec)) {
+        throw (Get-DbEngineError 'ValueError' 'sql_snapshot source requires an object payload')
     }
 
-    $pathValue = [Py]::Or([Py]::Get($spec, 'path', $null), [Py]::Get($Payload, 'path', $null))
-    if (-not [Py]::Truthy($pathValue) -or [PyText]::Strip([Py]::Str($pathValue)).Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' "sql_snapshot requires a 'path'.")
+    $pathValue = [Engine]::Or([Engine]::Get($spec, 'path', $null), [Engine]::Get($Payload, 'path', $null))
+    if (-not [Engine]::Truthy($pathValue) -or [EngineText]::Strip([Engine]::Str($pathValue)).Length -eq 0) {
+        throw (Get-DbEngineError 'ValueError' "sql_snapshot requires a 'path'.")
     }
 
-    $alias = Get-DbStrippedTruthy ([Py]::Or([Py]::Get($Payload, 'alias', $null), [Py]::Get($spec, 'alias', $null)))
-    $optional = [Py]::Truthy([Py]::Get($Payload, 'optional', [Py]::Get($spec, 'optional', $false)))
+    $alias = Get-DbStrippedTruthy ([Engine]::Or([Engine]::Get($Payload, 'alias', $null), [Engine]::Get($spec, 'alias', $null)))
+    $optional = [Engine]::Truthy([Engine]::Get($Payload, 'optional', [Engine]::Get($spec, 'optional', $false)))
 
     $tuples = @{}
     foreach ($key in @('tables', 'exclude_tables')) {
-        $raw = [Py]::Get($spec, $key, $null)
-        if (-not [Py]::Truthy($raw)) {
+        $raw = [Engine]::Get($spec, $key, $null)
+        if (-not [Engine]::Truthy($raw)) {
             $tuples[$key] = @()
         }
         elseif ($raw -is [string]) {
@@ -5692,8 +5692,8 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
         }
         else {
             $items = [System.Collections.Generic.List[string]]::new()
-            foreach ($item in [Py]::Iterate($raw)) {
-                $text = [PyText]::Strip([Py]::Str($item))
+            foreach ($item in [Engine]::Iterate($raw)) {
+                $text = [EngineText]::Strip([Engine]::Str($item))
                 if ($text.Length -gt 0) {
                     $items.Add($text)
                 }
@@ -5703,28 +5703,28 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
         }
     }
 
-    $maskColumns = ConvertTo-DbSnapshotColumnMap ([Py]::Get($spec, 'mask_columns', $null))
-    $hashColumns = ConvertTo-DbSnapshotColumnMap ([Py]::Get($spec, 'hash_columns', $null))
+    $maskColumns = ConvertTo-DbSnapshotColumnMap ([Engine]::Get($spec, 'mask_columns', $null))
+    $hashColumns = ConvertTo-DbSnapshotColumnMap ([Engine]::Get($spec, 'hash_columns', $null))
 
-    $limitValue = [Py]::Get($spec, 'limit', $null)
+    $limitValue = [Engine]::Get($spec, 'limit', $null)
     $limit = $null
     if ($null -ne $limitValue) {
-        $limit = [Py]::Int($limitValue)
+        $limit = [Engine]::Int($limitValue)
         if ($limit.Sign -le 0) {
-            throw (Get-DbPyError 'ValueError' 'sql_snapshot limit must be positive if provided')
+            throw (Get-DbEngineError 'ValueError' 'sql_snapshot limit must be positive if provided')
         }
     }
 
-    $placeholder = [Py]::Str([Py]::Or([Py]::Or([Py]::Get($spec, 'placeholder', $null), [Py]::Get($Payload, 'placeholder', $null)), '[REDACTED]'))
-    $hashSalt = [Py]::Str([Py]::Or([Py]::Or([Py]::Get($spec, 'hash_salt', $null), [Py]::Get($Payload, 'hash_salt', $null)), ''))
-    $dialect = [PyText]::Lower([Py]::Str([Py]::Or([Py]::Get($spec, 'dialect', $null), 'sqlite')))
+    $placeholder = [Engine]::Str([Engine]::Or([Engine]::Or([Engine]::Get($spec, 'placeholder', $null), [Engine]::Get($Payload, 'placeholder', $null)), '[REDACTED]'))
+    $hashSalt = [Engine]::Str([Engine]::Or([Engine]::Or([Engine]::Get($spec, 'hash_salt', $null), [Engine]::Get($Payload, 'hash_salt', $null)), ''))
+    $dialect = [EngineText]::Lower([Engine]::Str([Engine]::Or([Engine]::Get($spec, 'dialect', $null), 'sqlite')))
     if ($dialect -cne 'sqlite') {
-        throw (Get-DbPyError 'ValueError' "sql_snapshot currently supports only the 'sqlite' dialect")
+        throw (Get-DbEngineError 'ValueError' "sql_snapshot currently supports only the 'sqlite' dialect")
     }
 
     return [pscustomobject]@{
         kind           = 'sql_snapshot'
-        path           = [Py]::Str($pathValue)
+        path           = [Engine]::Str($pathValue)
         alias          = $alias
         optional       = $optional
         tables         = $tuples['tables']
@@ -5748,26 +5748,26 @@ function Get-DbDestinationName {
 
     $index = $(if ($FallbackIndex -ge 0) { $FallbackIndex.ToString('00', [System.Globalization.CultureInfo]::InvariantCulture) } else { [string]$FallbackIndex })
     if ($Source.alias) {
-        return [PyText]::SafeName($Source.alias)
+        return [EngineText]::SafeName($Source.alias)
     }
 
     switch ($Source.kind) {
         'registry_scan' {
             $base = $(if ($Source.token) { $Source.token } else { "registry_$index" })
-            return [PyText]::SafeName("registry_$base")
+            return [EngineText]::SafeName("registry_$base")
         }
         'sql_snapshot' {
-            $stem = [PyPath]::Stem($Source.path)
+            $stem = [EnginePath]::Stem($Source.path)
             if ($stem) {
-                return [PyText]::SafeName($stem)
+                return [EngineText]::SafeName($stem)
             }
 
             return "sql_snapshot_$index"
         }
         default {
-            $name = [PyPath]::Name((Get-DbExpandedPath $Source.path))
+            $name = [EnginePath]::Name((Get-DbExpandedPath $Source.path))
             if ($name) {
-                return [PyText]::SafeName($name)
+                return [EngineText]::SafeName($name)
             }
 
             return "source_$index"
@@ -5796,19 +5796,19 @@ function ConvertFrom-DbOfflineRunnerProfile {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
-    $name = [Py]::Get($Payload, 'name', $null)
-    if (-not [Py]::Truthy($name) -or [PyText]::Strip([Py]::Str($name)).Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' "Profile requires a non-empty 'name'.")
+    $name = [Engine]::Get($Payload, 'name', $null)
+    if (-not [Engine]::Truthy($name) -or [EngineText]::Strip([Engine]::Str($name)).Length -eq 0) {
+        throw (Get-DbEngineError 'ValueError' "Profile requires a non-empty 'name'.")
     }
 
-    $rawSources = [Py]::Get($Payload, 'sources', $null)
-    if (-not [Py]::Truthy($rawSources)) {
-        throw (Get-DbPyError 'ValueError' 'Profile must define at least one source.')
+    $rawSources = [Engine]::Get($Payload, 'sources', $null)
+    if (-not [Engine]::Truthy($rawSources)) {
+        throw (Get-DbEngineError 'ValueError' 'Profile must define at least one source.')
     }
 
     $sources = [System.Collections.Generic.List[object]]::new()
-    foreach ($entry in [Py]::Iterate($rawSources)) {
-        if ([Py]::IsMapping($entry)) {
+    foreach ($entry in [Engine]::Iterate($rawSources)) {
+        if ([Engine]::IsMapping($entry)) {
             if ($entry.Contains('registry_scan')) {
                 $sources.Add((ConvertFrom-DbOfflineRegistryScanSource $entry))
             }
@@ -5821,60 +5821,60 @@ function ConvertFrom-DbOfflineRunnerProfile {
         }
         else {
             $wrapped = Get-DbOrderedMap
-            $wrapped['path'] = [Py]::Str($entry)
+            $wrapped['path'] = [Engine]::Str($entry)
             $sources.Add((ConvertFrom-DbOfflineCollectionSource $wrapped))
         }
     }
 
-    $baseline = [Py]::Get($Payload, 'baseline', $null)
+    $baseline = [Engine]::Get($Payload, 'baseline', $null)
     if ($null -ne $baseline) {
-        $baseline = [Py]::Str($baseline)
+        $baseline = [Engine]::Str($baseline)
         $paths = @($sources | Where-Object { $_.kind -ne 'registry_scan' } | ForEach-Object { $_.path })
         if ($paths -cnotcontains $baseline) {
-            throw (Get-DbPyError 'ValueError' 'Profile baseline must reference one of the declared sources.')
+            throw (Get-DbEngineError 'ValueError' 'Profile baseline must reference one of the declared sources.')
         }
     }
 
-    $tagsPayload = [Py]::Get($Payload, 'tags', $null)
+    $tagsPayload = [Engine]::Get($Payload, 'tags', $null)
     if ($tagsPayload -is [string]) {
         $tags = @([string]$tagsPayload)
     }
-    elseif ([Py]::Truthy($tagsPayload)) {
+    elseif ([Engine]::Truthy($tagsPayload)) {
         $tags = Get-DbStringTuple $tagsPayload
     }
     else {
         $tags = @()
     }
 
-    $optionsPayload = [Py]::Get($Payload, 'options', (Get-DbOrderedMap))
-    if (-not [Py]::IsMapping($optionsPayload)) {
-        throw (Get-DbPyError 'ValueError' "Profile 'options' must be a mapping if provided.")
+    $optionsPayload = [Engine]::Get($Payload, 'options', (Get-DbOrderedMap))
+    if (-not [Engine]::IsMapping($optionsPayload)) {
+        throw (Get-DbEngineError 'ValueError' "Profile 'options' must be a mapping if provided.")
     }
 
     $options = Get-DbOrderedMap
     foreach ($key in @($optionsPayload.Keys)) {
-        $options[[Py]::Str($key)] = $optionsPayload[$key]
+        $options[[Engine]::Str($key)] = $optionsPayload[$key]
     }
 
-    $scannerPayload = [Py]::Get($Payload, 'secret_scanner', (Get-DbOrderedMap))
-    if ([Py]::Truthy($scannerPayload) -and -not [Py]::IsMapping($scannerPayload)) {
-        throw (Get-DbPyError 'ValueError' "Profile 'secret_scanner' must be a mapping if provided.")
+    $scannerPayload = [Engine]::Get($Payload, 'secret_scanner', (Get-DbOrderedMap))
+    if ([Engine]::Truthy($scannerPayload) -and -not [Engine]::IsMapping($scannerPayload)) {
+        throw (Get-DbEngineError 'ValueError' "Profile 'secret_scanner' must be a mapping if provided.")
     }
 
     $scanner = Get-DbOrderedMap
-    if ([Py]::IsMapping($scannerPayload)) {
+    if ([Engine]::IsMapping($scannerPayload)) {
         foreach ($key in @($scannerPayload.Keys)) {
-            $scanner[[Py]::Str($key)] = $scannerPayload[$key]
+            $scanner[[Engine]::Str($key)] = $scannerPayload[$key]
         }
     }
 
-    $description = [Py]::Get($Payload, 'description', $null)
+    $description = [Engine]::Get($Payload, 'description', $null)
     if ($null -ne $description) {
-        $description = [Py]::Str($description)
+        $description = [Engine]::Str($description)
     }
 
     return [pscustomobject]@{
-        name           = [Py]::Str($name)
+        name           = [Engine]::Str($name)
         description    = $description
         sources        = $sources.ToArray()
         baseline       = $baseline
@@ -5889,29 +5889,29 @@ function ConvertFrom-DbOfflineEncryptionSetting {
     [CmdletBinding()]
     param($Payload)
 
-    if (-not [Py]::Truthy($Payload)) {
+    if (-not [Engine]::Truthy($Payload)) {
         return [pscustomobject]@{ enabled = $false; mode = 'dpapi-aes'; keyset_path = $null; output_extension = '.enc'; remove_plaintext = $true }
     }
 
-    if (-not [Py]::IsMapping($Payload)) {
-        throw (Get-DbPyError 'ValueError' "Runner 'encryption' must be a mapping if provided.")
+    if (-not [Engine]::IsMapping($Payload)) {
+        throw (Get-DbEngineError 'ValueError' "Runner 'encryption' must be a mapping if provided.")
     }
 
-    $mode = [Py]::Str([Py]::Get($Payload, 'mode', 'dpapi-aes'))
-    $enabled = [Py]::Truthy([Py]::Get($Payload, 'enabled', $true))
+    $mode = [Engine]::Str([Engine]::Get($Payload, 'mode', 'dpapi-aes'))
+    $enabled = [Engine]::Truthy([Engine]::Get($Payload, 'enabled', $true))
     $keysetPath = $null
-    $keysetValue = [Py]::Or([Py]::Get($Payload, 'keyset_path', $null), [Py]::Get($Payload, 'keyset', $null))
-    if ([Py]::Truthy($keysetValue)) {
-        $keysetPath = Get-DbExpandedPath ([Py]::Str($keysetValue))
+    $keysetValue = [Engine]::Or([Engine]::Get($Payload, 'keyset_path', $null), [Engine]::Get($Payload, 'keyset', $null))
+    if ([Engine]::Truthy($keysetValue)) {
+        $keysetPath = Get-DbExpandedPath ([Engine]::Str($keysetValue))
     }
 
-    $outputExtension = [Py]::Str([Py]::Get($Payload, 'output_extension', '.enc'))
+    $outputExtension = [Engine]::Str([Engine]::Get($Payload, 'output_extension', '.enc'))
     if ($outputExtension.Length -gt 0 -and -not $outputExtension.StartsWith('.', [System.StringComparison]::Ordinal)) {
         $outputExtension = ".$outputExtension"
     }
 
-    $removePlaintext = [Py]::Truthy([Py]::Get($Payload, 'remove_plaintext', $true))
-    $normalisedMode = [PyText]::Lower([PyText]::Strip($mode))
+    $removePlaintext = [Engine]::Truthy([Engine]::Get($Payload, 'remove_plaintext', $true))
+    $normalisedMode = [EngineText]::Lower([EngineText]::Strip($mode))
     $settings = [pscustomobject]@{
         enabled          = $enabled
         mode             = $(if ($normalisedMode.Length -gt 0) { $normalisedMode } else { 'dpapi-aes' })
@@ -5921,7 +5921,7 @@ function ConvertFrom-DbOfflineEncryptionSetting {
     }
 
     if ($settings.enabled -and $null -eq $settings.keyset_path) {
-        throw (Get-DbPyError 'ValueError' "Encryption is enabled but no 'keyset_path' was provided.")
+        throw (Get-DbEngineError 'ValueError' "Encryption is enabled but no 'keyset_path' was provided.")
     }
 
     return $settings
@@ -5948,57 +5948,57 @@ function ConvertFrom-DbOfflineRunnerSetting {
         encryption          = $null
     }
 
-    if (-not [Py]::Truthy($Payload)) {
+    if (-not [Engine]::Truthy($Payload)) {
         return $defaults
     }
 
-    $directory = [Py]::Get($Payload, 'output_directory', $null)
+    $directory = [Engine]::Get($Payload, 'output_directory', $null)
     $outputDirectory = $null
-    if ([Py]::Truthy($directory)) {
+    if ([Engine]::Truthy($directory)) {
         if ($directory -isnot [string]) {
-            throw (Get-DbPyError 'TypeError' "expected str, bytes or os.PathLike object, not $([Py]::TypeName($directory))")
+            throw (Get-DbEngineError 'TypeError' "expected str, bytes or os.PathLike object, not $([Engine]::TypeName($directory))")
         }
 
-        $outputDirectory = [PyPath]::PathExpandUser([PyPath]::Normalise([PyPath]::ExpandVars($directory)))
+        $outputDirectory = [EnginePath]::PathExpandUser([EnginePath]::Normalise([EnginePath]::ExpandVars($directory)))
     }
 
-    $packageName = [Py]::Get($Payload, 'package_name', $null)
-    if ($null -ne $packageName -and [PyText]::Strip([Py]::Str($packageName)).Length -eq 0) {
+    $packageName = [Engine]::Get($Payload, 'package_name', $null)
+    if ($null -ne $packageName -and [EngineText]::Strip([Engine]::Str($packageName)).Length -eq 0) {
         $packageName = $null
     }
 
-    $manifestName = [Py]::Get($Payload, 'manifest_name', 'manifest.json')
-    $logName = [Py]::Get($Payload, 'log_name', 'runner.log')
-    $dataDirectoryName = [Py]::Get($Payload, 'data_directory_name', 'data')
-    $logsDirectoryName = [Py]::Get($Payload, 'logs_directory_name', 'logs')
+    $manifestName = [Engine]::Get($Payload, 'manifest_name', 'manifest.json')
+    $logName = [Engine]::Get($Payload, 'log_name', 'runner.log')
+    $dataDirectoryName = [Engine]::Get($Payload, 'data_directory_name', 'data')
+    $logsDirectoryName = [Engine]::Get($Payload, 'logs_directory_name', 'logs')
 
-    $maxTotalBytes = [Py]::Get($Payload, 'max_total_bytes', $null)
+    $maxTotalBytes = [Engine]::Get($Payload, 'max_total_bytes', $null)
     if ($null -ne $maxTotalBytes) {
-        $maxTotalBytes = [Py]::Int($maxTotalBytes)
+        $maxTotalBytes = [Engine]::Int($maxTotalBytes)
         if ($maxTotalBytes.Sign -le 0) {
-            throw (Get-DbPyError 'ValueError' 'max_total_bytes must be positive if provided.')
+            throw (Get-DbEngineError 'ValueError' 'max_total_bytes must be positive if provided.')
         }
     }
 
-    $encryptionPayload = [Py]::Get($Payload, 'encryption', $null)
+    $encryptionPayload = [Engine]::Get($Payload, 'encryption', $null)
     $encryption = $null
-    if ([Py]::Truthy($encryptionPayload)) {
+    if ([Engine]::Truthy($encryptionPayload)) {
         $encryption = ConvertFrom-DbOfflineEncryptionSetting $encryptionPayload
     }
 
     return [pscustomobject]@{
         output_directory    = $outputDirectory
-        package_name        = $(if ([Py]::Truthy($packageName)) { [Py]::Str($packageName) } else { $null })
-        compress            = [Py]::Truthy([Py]::Get($Payload, 'compress', $true))
-        include_config      = [Py]::Truthy([Py]::Get($Payload, 'include_config', $true))
-        include_logs        = [Py]::Truthy([Py]::Get($Payload, 'include_logs', $true))
-        include_manifest    = [Py]::Truthy([Py]::Get($Payload, 'include_manifest', $true))
-        manifest_name       = [Py]::Str($manifestName)
-        log_name            = [Py]::Str($logName)
-        data_directory_name = [Py]::Str($dataDirectoryName)
-        logs_directory_name = [Py]::Str($logsDirectoryName)
+        package_name        = $(if ([Engine]::Truthy($packageName)) { [Engine]::Str($packageName) } else { $null })
+        compress            = [Engine]::Truthy([Engine]::Get($Payload, 'compress', $true))
+        include_config      = [Engine]::Truthy([Engine]::Get($Payload, 'include_config', $true))
+        include_logs        = [Engine]::Truthy([Engine]::Get($Payload, 'include_logs', $true))
+        include_manifest    = [Engine]::Truthy([Engine]::Get($Payload, 'include_manifest', $true))
+        manifest_name       = [Engine]::Str($manifestName)
+        log_name            = [Engine]::Str($logName)
+        data_directory_name = [Engine]::Str($dataDirectoryName)
+        logs_directory_name = [Engine]::Str($logsDirectoryName)
         max_total_bytes     = $maxTotalBytes
-        cleanup_staging     = [Py]::Truthy([Py]::Get($Payload, 'cleanup_staging', $true))
+        cleanup_staging     = [Engine]::Truthy([Engine]::Get($Payload, 'cleanup_staging', $true))
         encryption          = $encryption
     }
 }
@@ -6008,21 +6008,21 @@ function ConvertFrom-DbOfflineRunnerConfig {
     [CmdletBinding()]
     param($Payload)
 
-    if (-not [Py]::IsMapping($Payload)) {
-        throw (Get-DbPyError 'TypeError' 'Config payload must be a mapping.')
+    if (-not [Engine]::IsMapping($Payload)) {
+        throw (Get-DbEngineError 'TypeError' 'Config payload must be a mapping.')
     }
 
-    $schema = [Py]::Str([Py]::Get($Payload, 'schema', 'https://driftbuster.dev/offline-runner/config/v1'))
-    $version = [Py]::Str([Py]::Get($Payload, 'version', '1'))
-    $profilePayload = [Py]::Get($Payload, 'profile', $null)
-    if (-not [Py]::IsMapping($profilePayload)) {
-        throw (Get-DbPyError 'ValueError' "Config requires a 'profile' object.")
+    $schema = [Engine]::Str([Engine]::Get($Payload, 'schema', 'https://driftbuster.dev/offline-runner/config/v1'))
+    $version = [Engine]::Str([Engine]::Get($Payload, 'version', '1'))
+    $profilePayload = [Engine]::Get($Payload, 'profile', $null)
+    if (-not [Engine]::IsMapping($profilePayload)) {
+        throw (Get-DbEngineError 'ValueError' "Config requires a 'profile' object.")
     }
 
-    $settingsPayload = [Py]::Or([Py]::Get($Payload, 'runner', $null), [Py]::Get($Payload, 'settings', $null))
-    $metadataPayload = [Py]::Get($Payload, 'metadata', (Get-DbOrderedMap))
-    if ([Py]::Truthy($metadataPayload) -and -not [Py]::IsMapping($metadataPayload)) {
-        throw (Get-DbPyError 'ValueError' 'Metadata must be a mapping if provided.')
+    $settingsPayload = [Engine]::Or([Engine]::Get($Payload, 'runner', $null), [Engine]::Get($Payload, 'settings', $null))
+    $metadataPayload = [Engine]::Get($Payload, 'metadata', (Get-DbOrderedMap))
+    if ([Engine]::Truthy($metadataPayload) -and -not [Engine]::IsMapping($metadataPayload)) {
+        throw (Get-DbEngineError 'ValueError' 'Metadata must be a mapping if provided.')
     }
 
     $profileObject = ConvertFrom-DbOfflineRunnerProfile $profilePayload
@@ -6030,13 +6030,13 @@ function ConvertFrom-DbOfflineRunnerConfig {
 
     # dict(metadata_payload): a falsy str or list gives {}, a falsy number, bool or None raises TypeError.
     $metadata = Get-DbOrderedMap
-    if ([Py]::IsMapping($metadataPayload)) {
+    if ([Engine]::IsMapping($metadataPayload)) {
         foreach ($key in @($metadataPayload.Keys)) {
             $metadata[$key] = $metadataPayload[$key]
         }
     }
-    elseif (-not ($metadataPayload -is [string] -or [Py]::IsList($metadataPayload))) {
-        throw (Get-DbPyError 'TypeError' "'$([Py]::TypeName($metadataPayload))' object is not iterable")
+    elseif (-not ($metadataPayload -is [string] -or [Engine]::IsList($metadataPayload))) {
+        throw (Get-DbEngineError 'TypeError' "'$([Engine]::TypeName($metadataPayload))' object is not iterable")
     }
 
     return [pscustomobject]@{
@@ -6058,7 +6058,7 @@ function Get-DbDefaultPackageName {
     )
 
     $stamp = $(if ($Timestamp) { $Timestamp } else { Get-DbTimestamp })
-    return '{0}-{1}' -f [PyText]::SafeName($Config.profile.name), $stamp
+    return '{0}-{1}' -f [EngineText]::SafeName($Config.profile.name), $stamp
 }
 
 function Import-DbOfflineRunnerConfig {
@@ -6066,7 +6066,7 @@ function Import-DbOfflineRunnerConfig {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Path)
 
-    $payload = [PyJson]::Loads([PyFile]::ReadText($Path))
+    $payload = [EngineJson]::Loads([EngineFile]::ReadText($Path))
     return ConvertFrom-DbOfflineRunnerConfig $payload
 }
 
@@ -6112,7 +6112,7 @@ function Get-DbPackagedSecretRule {
     $payload = $null
     foreach ($candidate in Get-DbSecretRuleFile) {
         if ([System.IO.File]::Exists($candidate)) {
-            $payload = [PyJson]::Loads([PyFile]::ReadText($candidate))
+            $payload = [EngineJson]::Loads([EngineFile]::ReadText($candidate))
             break
         }
     }
@@ -6124,11 +6124,11 @@ function Get-DbPackagedSecretRule {
 
     $compiled = [SecretScanner]::CompileRuleset($payload)
     if ($null -eq $compiled) {
-        [SecretScanner]::PackagedRules = [pscustomobject]@{ ruleset = $null; version = [Py]::Str([Py]::Get($payload, 'version', 'unknown')); loaded = $true }
+        [SecretScanner]::PackagedRules = [pscustomobject]@{ ruleset = $null; version = [Engine]::Str([Engine]::Get($payload, 'version', 'unknown')); loaded = $true }
         return [SecretScanner]::PackagedRules
     }
 
-    $version = $(if ($compiled.Version) { $compiled.Version } else { [Py]::Str([Py]::Get($payload, 'version', 'unknown')) })
+    $version = $(if ($compiled.Version) { $compiled.Version } else { [Engine]::Str([Engine]::Get($payload, 'version', 'unknown')) })
     [SecretScanner]::PackagedRules = [pscustomobject]@{ ruleset = $compiled; version = $version; loaded = $true }
     return [SecretScanner]::PackagedRules
 }
@@ -6139,12 +6139,12 @@ function Get-DbSecretContext {
     param($Options, $SecretScanner)
 
     $rulesetPayload = $null
-    if ([Py]::Truthy($SecretScanner) -and [Py]::IsMapping($SecretScanner)) {
-        $rulesetPayload = [Py]::Get($SecretScanner, 'ruleset', $null)
+    if ([Engine]::Truthy($SecretScanner) -and [Engine]::IsMapping($SecretScanner)) {
+        $rulesetPayload = [Engine]::Get($SecretScanner, 'ruleset', $null)
     }
 
     $compiled = $null
-    if ([Py]::IsMapping($rulesetPayload)) {
+    if ([Engine]::IsMapping($rulesetPayload)) {
         $compiled = [SecretScanner]::CompileRuleset($rulesetPayload)
     }
 
@@ -6165,15 +6165,15 @@ function Get-DbManifestSecretScanner {
 
     $ignoreRules = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $ignorePatterns = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    foreach ($value in [SecretScanner]::OptionValues([Py]::Get($Options, 'secret_ignore_rules', $null))) { [void]$ignoreRules.Add($value) }
-    foreach ($value in [SecretScanner]::OptionValues([Py]::Get($SecretScanner, 'ignore_rules', $null))) { [void]$ignoreRules.Add($value) }
-    foreach ($value in [SecretScanner]::OptionValues([Py]::Get($Options, 'secret_ignore_patterns', $null))) { [void]$ignorePatterns.Add($value) }
-    foreach ($value in [SecretScanner]::OptionValues([Py]::Get($SecretScanner, 'ignore_patterns', $null))) { [void]$ignorePatterns.Add($value) }
+    foreach ($value in [SecretScanner]::OptionValues([Engine]::Get($Options, 'secret_ignore_rules', $null))) { [void]$ignoreRules.Add($value) }
+    foreach ($value in [SecretScanner]::OptionValues([Engine]::Get($SecretScanner, 'ignore_rules', $null))) { [void]$ignoreRules.Add($value) }
+    foreach ($value in [SecretScanner]::OptionValues([Engine]::Get($Options, 'secret_ignore_patterns', $null))) { [void]$ignorePatterns.Add($value) }
+    foreach ($value in [SecretScanner]::OptionValues([Engine]::Get($SecretScanner, 'ignore_patterns', $null))) { [void]$ignorePatterns.Add($value) }
 
     $sortedRules = [System.Collections.Generic.List[string]]::new($ignoreRules)
-    $sortedRules.Sort([System.Comparison[string]] { param($left, $right) [PyText]::CompareCodePoints($left, $right) })
+    $sortedRules.Sort([System.Comparison[string]] { param($left, $right) [EngineText]::CompareCodePoints($left, $right) })
     $sortedPatterns = [System.Collections.Generic.List[string]]::new($ignorePatterns)
-    $sortedPatterns.Sort([System.Comparison[string]] { param($left, $right) [PyText]::CompareCodePoints($left, $right) })
+    $sortedPatterns.Sort([System.Comparison[string]] { param($left, $right) [EngineText]::CompareCodePoints($left, $right) })
 
     $manifest = Get-DbOrderedMap
     $manifest['ignore_rules'] = $sortedRules
@@ -6214,10 +6214,10 @@ function Get-DbSourceMatch {
         [AllowNull()][string] $BaseDir
     )
 
-    $expandedText = [PyPath]::ExpandUser([PyPath]::ExpandVars($PathText))
+    $expandedText = [EnginePath]::ExpandUser([EnginePath]::ExpandVars($PathText))
     $patterns = [System.Collections.Generic.List[string]]::new()
-    if ($BaseDir -and -not [PyPath]::IsAbsolute($expandedText)) {
-        $patterns.Add([PyPath]::Join($BaseDir, $expandedText))
+    if ($BaseDir -and -not [EnginePath]::IsAbsolute($expandedText)) {
+        $patterns.Add([EnginePath]::Join($BaseDir, $expandedText))
     }
 
     if (-not $patterns.Contains($expandedText)) {
@@ -6227,30 +6227,30 @@ function Get-DbSourceMatch {
     $found = [System.Collections.Generic.List[string]]::new()
     if (-not (Test-DbPathMagic $PathText)) {
         foreach ($pattern in $patterns) {
-            if ([PyFs]::Exists($pattern)) {
-                $found.Add([PyPath]::Normalise($pattern))
+            if ([EngineFs]::Exists($pattern)) {
+                $found.Add([EnginePath]::Normalise($pattern))
                 return , $found.ToArray()
             }
         }
 
-        throw (Get-DbPyError 'FileNotFoundError' "Path does not exist: $PathText")
+        throw (Get-DbEngineError 'FileNotFoundError' "Path does not exist: $PathText")
     }
 
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $matched = $false
     foreach ($pattern in $patterns) {
-        $globbed = [PyGlob]::Glob($pattern)
-        [PyPath]::SortByText($globbed)
+        $globbed = [EngineGlob]::Glob($pattern)
+        [EnginePath]::SortByText($globbed)
         foreach ($match in $globbed) {
             $matched = $true
             if ($seen.Add($match)) {
-                $found.Add([PyPath]::Normalise($match))
+                $found.Add([EnginePath]::Normalise($match))
             }
         }
     }
 
     if (-not $matched) {
-        throw (Get-DbPyError 'FileNotFoundError' "Path does not exist: $PathText")
+        throw (Get-DbEngineError 'FileNotFoundError' "Path does not exist: $PathText")
     }
 
     return , $found.ToArray()
@@ -6268,10 +6268,10 @@ function Test-DbExcluded {
         return $false
     }
 
-    $text = [PyPath]::AsPosix($Relative)
-    $name = [PyPath]::Name($Relative)
+    $text = [EnginePath]::AsPosix($Relative)
+    $name = [EnginePath]::Name($Relative)
     foreach ($candidate in $Pattern) {
-        if ([PyFnmatch]::FnMatch($text, $candidate) -or [PyFnmatch]::FnMatch($name, $candidate)) {
+        if ([EngineFnmatch]::FnMatch($text, $candidate) -or [EngineFnmatch]::FnMatch($name, $candidate)) {
             return $true
         }
     }
@@ -6299,8 +6299,8 @@ function Invoke-DbFileSource {
         $matches_ = Get-DbSourceMatch -PathText $Source.path -BaseDir $BaseDir
     }
     catch {
-        $pyError = Get-DbPyException $_
-        if ($null -eq $pyError -or $pyError.PyType -cne 'FileNotFoundError') {
+        $engineError = Get-DbEngineException $_
+        if ($null -eq $engineError -or $engineError.ErrorType -cne 'FileNotFoundError') {
             throw
         }
 
@@ -6327,21 +6327,21 @@ function Invoke-DbFileSource {
         $ordered.Add($match)
     }
 
-    $ordered.Sort([System.Comparison[string]] { param($left, $right) [PyText]::CompareCodePoints([PyPath]::AsPosix($left), [PyPath]::AsPosix($right)) })
+    $ordered.Sort([System.Comparison[string]] { param($left, $right) [EngineText]::CompareCodePoints([EnginePath]::AsPosix($left), [EnginePath]::AsPosix($right)) })
 
     $collected = [System.Collections.Generic.List[string]]::new()
     $processed = [System.Collections.Generic.List[string]]::new()
     $running = $TotalBytes
     foreach ($match in $ordered) {
-        if ([PyFs]::IsSymlink($match)) {
+        if ([EngineFs]::IsSymlink($match)) {
             $Log.Write("skipping symlink: $match")
             continue
         }
 
-        $resolved = [PyFs]::Realpath($match)
+        $resolved = [EngineFs]::Realpath($match)
         $within = $false
         foreach ($directory in $processed) {
-            if ($null -ne [PyPath]::RelativeTo($resolved, $directory)) {
+            if ($null -ne [EnginePath]::RelativeTo($resolved, $directory)) {
                 $within = $true
                 break
             }
@@ -6353,21 +6353,21 @@ function Invoke-DbFileSource {
         }
 
         $pairs = [System.Collections.Generic.List[object]]::new()
-        if ([PyFs]::IsDir($match)) {
+        if ([EngineFs]::IsDir($match)) {
             $processed.Add($resolved)
-            $walker = [PyFs]::RglobFiles($match)
-            $walker.Sort([System.Comparison[string]] { param($left, $right) [PyText]::CompareCodePoints([PyPath]::AsPosix($left), [PyPath]::AsPosix($right)) })
+            $walker = [EngineFs]::RglobFiles($match)
+            $walker.Sort([System.Comparison[string]] { param($left, $right) [EngineText]::CompareCodePoints([EnginePath]::AsPosix($left), [EnginePath]::AsPosix($right)) })
             foreach ($file in $walker) {
-                $relative = [PyPath]::RelativeTo($file, $match)
+                $relative = [EnginePath]::RelativeTo($file, $match)
                 if ($null -eq $relative) {
-                    $relative = [PyPath]::Name($file)
+                    $relative = [EnginePath]::Name($file)
                 }
 
                 $pairs.Add(@($file, $relative))
             }
         }
-        elseif ([PyFs]::IsFile($match)) {
-            $pairs.Add(@($match, [PyPath]::Name($match)))
+        elseif ([EngineFs]::IsFile($match)) {
+            $pairs.Add(@($match, [EnginePath]::Name($match)))
         }
 
         foreach ($pair in $pairs) {
@@ -6378,18 +6378,18 @@ function Invoke-DbFileSource {
                 continue
             }
 
-            $originalSize = [PyFs]::Size($file)
+            $originalSize = [EngineFs]::Size($file)
             if ($null -ne $MaxTotalBytes -and ([System.Numerics.BigInteger]::new($running) + $originalSize) -gt $MaxTotalBytes) {
-                throw (Get-DbPyError 'ValueError' 'Collection exceeds configured max_total_bytes limit.')
+                throw (Get-DbEngineError 'ValueError' 'Collection exceeds configured max_total_bytes limit.')
             }
 
-            $destination = [PyPath]::Join($DestinationRoot, $relative)
-            $relativeToData = [PyPath]::RelativeTo($destination, $DataRoot)
+            $destination = [EnginePath]::Join($DestinationRoot, $relative)
+            $relativeToData = [EnginePath]::RelativeTo($destination, $DataRoot)
             if ($null -eq $relativeToData) {
-                $relativeToData = [PyPath]::Name($destination)
+                $relativeToData = [EnginePath]::Name($destination)
             }
 
-            $display = [PyPath]::AsPosix($relativeToData)
+            $display = [EnginePath]::AsPosix($relativeToData)
             $copy = Copy-DbFileWithSecretFilter -Source $file -Destination $destination -DisplayPath $display -Context $SecretContext -Log $Log
             $running += $copy.Size
             $files.Add([pscustomobject]@{
@@ -6400,7 +6400,7 @@ function Invoke-DbFileSource {
                     size          = $copy.Size
                     sha256        = $copy.Sha256
                 })
-            $collected.Add([PyPath]::AsPosix($relative))
+            $collected.Add([EnginePath]::AsPosix($relative))
         }
     }
 
@@ -6442,7 +6442,7 @@ function Get-DbSqliteSnapshot {
     }
     $maskMap = $(if ($MaskColumns -is [System.Collections.IDictionary]) { $MaskColumns } else { ConvertTo-DbSnapshotColumnMap $MaskColumns })
     $hashMap = $(if ($HashColumns -is [System.Collections.IDictionary]) { $HashColumns } else { ConvertTo-DbSnapshotColumnMap $HashColumns })
-    return [SqlSnapshots]::Build([PyPath]::Normalise($Path), $tableList, $excludeList, $maskMap, $hashMap, $Limit, $Placeholder, $HashSalt)
+    return [SqlSnapshots]::Build([EnginePath]::Normalise($Path), $tableList, $excludeList, $maskMap, $hashMap, $Limit, $Placeholder, $HashSalt)
 }
 
 function ConvertTo-DbColumnListMap {
@@ -6474,15 +6474,15 @@ function Invoke-DbSqlSnapshotSource {
 
     $candidateRaw = Get-DbExpandedPath $Source.path
     $candidate = $candidateRaw
-    if ($BaseDir -and -not [PyPath]::IsAbsolute($candidateRaw)) {
-        $candidate = [PyPath]::PathExpandUser([PyPath]::Join($BaseDir, $candidateRaw))
+    if ($BaseDir -and -not [EnginePath]::IsAbsolute($candidateRaw)) {
+        $candidate = [EnginePath]::PathExpandUser([EnginePath]::Join($BaseDir, $candidateRaw))
     }
 
-    if (-not [PyFs]::Exists($candidate) -and [PyFs]::Exists($candidateRaw)) {
+    if (-not [EngineFs]::Exists($candidate) -and [EngineFs]::Exists($candidateRaw)) {
         $candidate = $candidateRaw
     }
 
-    if (-not [PyFs]::Exists($candidate)) {
+    if (-not [EngineFs]::Exists($candidate)) {
         if ($Source.optional) {
             $Log.Write("optional sql snapshot skipped: $($Source.path)")
             $skipped = Get-DbOrderedMap
@@ -6496,7 +6496,7 @@ function Invoke-DbSqlSnapshotSource {
         }
 
         $Log.Write("sql snapshot source missing: $($Source.path)")
-        throw (Get-DbPyError 'FileNotFoundError' "SQL snapshot source not found: $($Source.path)")
+        throw (Get-DbEngineError 'FileNotFoundError' "SQL snapshot source not found: $($Source.path)")
     }
 
     $Log.Write("building sql snapshot from $candidate")
@@ -6504,13 +6504,13 @@ function Invoke-DbSqlSnapshotSource {
     $payload = Get-DbSqliteSnapshot -Path $candidate -Tables $arguments.tables -ExcludeTables $arguments.exclude_tables `
         -MaskColumns $arguments.mask_columns -HashColumns $arguments.hash_columns -Limit $arguments.limit `
         -Placeholder $arguments.placeholder -HashSalt $arguments.hash_salt
-    $encoded = [PyFile]::EncodeUtf8([PyJson]::Dumps($payload, 2, $true))
+    $encoded = [EngineFile]::EncodeUtf8([EngineJson]::Dumps($payload, 2, $true))
     if ($null -ne $MaxTotalBytes -and ([System.Numerics.BigInteger]::new($TotalBytes) + $encoded.Length) -gt $MaxTotalBytes) {
-        throw (Get-DbPyError 'ValueError' 'Collection exceeds configured max_total_bytes limit.')
+        throw (Get-DbEngineError 'ValueError' 'Collection exceeds configured max_total_bytes limit.')
     }
 
-    $snapshotPath = [PyPath]::Join($DestinationRoot, 'sql-snapshot.json')
-    [PyFile]::WriteBytes($snapshotPath, $encoded)
+    $snapshotPath = [EnginePath]::Join($DestinationRoot, 'sql-snapshot.json')
+    [EngineFile]::WriteBytes($snapshotPath, $encoded)
 
     $tableNames = [string[]]@($payload['tables'] | ForEach-Object { $_['name'] })
     $rowCounts = Get-DbOrderedMap
@@ -6547,7 +6547,7 @@ function Invoke-DbSqlSnapshotSource {
         destination   = $snapshotPath
         relative_path = 'sql-snapshot.json'
         size          = [long]$encoded.Length
-        sha256        = [PyFile]::HashFile($snapshotPath)
+        sha256        = [EngineFile]::HashFile($snapshotPath)
     }
 
     return [pscustomobject]@{ Summary = $summary; Metadata = $metadata; File = $file }
@@ -6555,14 +6555,14 @@ function Invoke-DbSqlSnapshotSource {
 
 # registry.scan over Microsoft.Win32.RegistryKey: installed application enumeration, root suggestions for a token and the
 # breadth-first value search, plus the registry_scan branch of execute_config. The two backend functions are the only registry
-# calls, so tests replace them (Python's tests swap the backend the same way).
+# calls, so tests replace them.
 
 function Test-DbWindowsPlatform {
     # registry.is_windows()
     [CmdletBinding()]
     param()
 
-    return [PyOs]::Windows
+    return [EngineOs]::Windows
 }
 
 function Open-DbRegistryKey {
@@ -6573,7 +6573,7 @@ function Open-DbRegistryKey {
     switch -CaseSensitive ($Hive) {
         'HKLM' { $baseHive = [Microsoft.Win32.RegistryHive]::LocalMachine }
         'HKCU' { $baseHive = [Microsoft.Win32.RegistryHive]::CurrentUser }
-        default { throw (Get-DbPyError 'KeyError' ([PyText]::Repr($Hive))) }
+        default { throw (Get-DbEngineError 'KeyError' ([EngineText]::Repr($Hive))) }
     }
 
     $registryView = [Microsoft.Win32.RegistryView]::Default
@@ -6670,7 +6670,7 @@ function Get-DbRegistryValue {
                 if ($kind -eq [Microsoft.Win32.RegistryValueKind]::Unknown -or $kind -eq [Microsoft.Win32.RegistryValueKind]::None) {
                     # REG_NONE, REG_DWORD_BIG_ENDIAN, REG_LINK, the resource lists and non-standard types: winreg returns their bytes.
                     $rawType = 0
-                    $data = [PyWinreg]::QueryRaw($key.Handle, $name, [ref]$rawType)
+                    $data = [EngineWinreg]::QueryRaw($key.Handle, $name, [ref]$rawType)
                     $kind = [Microsoft.Win32.RegistryValueKind]::Binary
                 }
                 else {
@@ -6698,8 +6698,8 @@ function Get-DbRegistryTruthyText {
     [CmdletBinding()]
     param($Values, [string] $Name)
 
-    if ($Values.ContainsKey($Name) -and [Py]::Truthy($Values[$Name])) {
-        return [Py]::Str($Values[$Name])
+    if ($Values.ContainsKey($Name) -and [Engine]::Truthy($Values[$Name])) {
+        return [Engine]::Str($Values[$Name])
     }
 
     return $null
@@ -6730,7 +6730,7 @@ function Get-DbInstalledApp {
                 $values[$pair.Name] = $pair.Data
             }
 
-            $displayName = [PyText]::Strip([string](Get-DbRegistryTruthyText $values 'DisplayName'))
+            $displayName = [EngineText]::Strip([string](Get-DbRegistryTruthyText $values 'DisplayName'))
             if ($displayName.Length -eq 0) {
                 continue
             }
@@ -6761,8 +6761,8 @@ function Get-DbInstalledApp {
         $position = $sorted.Count
         while ($position -gt 0) {
             $previous = $sorted[$position - 1]
-            $byName = [PyText]::CompareCodePoints([PyText]::Lower($previous.display_name), [PyText]::Lower($app.display_name))
-            if ($byName -lt 0 -or ($byName -eq 0 -and [PyText]::CompareCodePoints($previous.hive, $app.hive) -le 0)) {
+            $byName = [EngineText]::CompareCodePoints([EngineText]::Lower($previous.display_name), [EngineText]::Lower($app.display_name))
+            if ($byName -lt 0 -or ($byName -eq 0 -and [EngineText]::CompareCodePoints($previous.hive, $app.hive) -le 0)) {
                 break
             }
 
@@ -6780,15 +6780,15 @@ function Get-DbAppRegistryRoot {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Token, $Installed)
 
-    $needle = [PyText]::Lower([PyText]::Strip($Token))
+    $needle = [EngineText]::Lower([EngineText]::Strip($Token))
     $candidates = [System.Collections.Generic.List[object]]::new()
     foreach ($app in @($Installed)) {
         if ($null -eq $app) {
             continue
         }
 
-        $inName = [PyText]::Lower($app.display_name).Contains($needle)
-        $inPublisher = $app.publisher -and [PyText]::Lower($app.publisher).Contains($needle)
+        $inName = [EngineText]::Lower($app.display_name).Contains($needle)
+        $inPublisher = $app.publisher -and [EngineText]::Lower($app.publisher).Contains($needle)
         if (-not ($inName -or $inPublisher)) {
             continue
         }
@@ -6802,7 +6802,7 @@ function Get-DbAppRegistryRoot {
 
         $pairs.Add(@('', $app.display_name))
         foreach ($pair in $pairs) {
-            $segments = @(@([PyText]::Strip($pair[0]), [PyText]::Strip($pair[1])) | Where-Object { $_.Length -gt 0 })
+            $segments = @(@([EngineText]::Strip($pair[0]), [EngineText]::Strip($pair[1])) | Where-Object { $_.Length -gt 0 })
             $suffix = $segments -join '\'
             if ($suffix.Length -gt 0) {
                 $candidates.Add([pscustomobject]@{ hive = 'HKCU'; path = "Software\$suffix"; view = $null })
@@ -6814,7 +6814,7 @@ function Get-DbAppRegistryRoot {
         $candidates.Add([pscustomobject]@{ hive = $app.hive; path = $app.key_path; view = $appView })
     }
 
-    $baseSuffix = [PyText]::Strip($Token)
+    $baseSuffix = [EngineText]::Strip($Token)
     if ($baseSuffix.Length -gt 0) {
         $candidates.Add([pscustomobject]@{ hive = 'HKCU'; path = "Software\$baseSuffix"; view = $null })
         $candidates.Add([pscustomobject]@{ hive = 'HKLM'; path = "Software\$baseSuffix"; view = $null })
@@ -6824,7 +6824,7 @@ function Get-DbAppRegistryRoot {
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $ordered = [System.Collections.Generic.List[object]]::new()
     foreach ($candidate in $candidates) {
-        if ($seen.Add("$($candidate.hive)`n$($candidate.path)`n$([Py]::Repr($candidate.view))")) {
+        if ($seen.Add("$($candidate.hive)`n$($candidate.path)`n$([Engine]::Repr($candidate.view))")) {
             $ordered.Add($candidate)
         }
     }
@@ -6846,15 +6846,15 @@ function Get-DbRegistryValueText {
     }
 
     if ($Value -is [byte[]]) {
-        return [PyUtf8Decoder]::DecodeReplace($Value)
+        return [EngineUtf8Decoder]::DecodeReplace($Value)
     }
 
-    if ([Py]::IsInt($Value) -or [Py]::IsFloat($Value) -or $Value -is [bool]) {
-        return [Py]::Str($Value)
+    if ([Engine]::IsInt($Value) -or [Engine]::IsFloat($Value) -or $Value -is [bool]) {
+        return [Engine]::Str($Value)
     }
 
-    if ([Py]::IsList($Value)) {
-        return (@([Py]::Iterate($Value) | ForEach-Object { [Py]::Str($_) }) -join ', ')
+    if ([Engine]::IsList($Value)) {
+        return (@([Engine]::Iterate($Value) | ForEach-Object { [Engine]::Str($_) }) -join ', ')
     }
 
     return $null
@@ -6868,13 +6868,13 @@ function Search-DbRegistry {
         [Parameter(Mandatory = $true)] $Spec
     )
 
-    $keywords = @($Spec.keywords | ForEach-Object { [PyText]::Lower([string]$_) })
+    $keywords = @($Spec.keywords | ForEach-Object { [EngineText]::Lower([string]$_) })
     $patterns = @($Spec.patterns)
     # max(0, int(max_depth)) and max(1, int(max_hits)); the counts they are compared with never leave the long range.
     $longMax = [System.Numerics.BigInteger]::new([long]::MaxValue)
-    $maxDepth = [long][System.Numerics.BigInteger]::Min($longMax, [System.Numerics.BigInteger]::Max([System.Numerics.BigInteger]::Zero, [Py]::Int($Spec.max_depth)))
-    $maxHits = [long][System.Numerics.BigInteger]::Min($longMax, [System.Numerics.BigInteger]::Max([System.Numerics.BigInteger]::One, [Py]::Int($Spec.max_hits)))
-    $budget = [Math]::Max(0.1, [Py]::Float($Spec.time_budget_s))
+    $maxDepth = [long][System.Numerics.BigInteger]::Min($longMax, [System.Numerics.BigInteger]::Max([System.Numerics.BigInteger]::Zero, [Engine]::Int($Spec.max_depth)))
+    $maxHits = [long][System.Numerics.BigInteger]::Min($longMax, [System.Numerics.BigInteger]::Max([System.Numerics.BigInteger]::One, [Engine]::Int($Spec.max_hits)))
+    $budget = [Math]::Max(0.1, [Engine]::Float($Spec.time_budget_s))
     $clock = [System.Diagnostics.Stopwatch]::StartNew()
 
     $hits = [System.Collections.Generic.List[object]]::new()
@@ -6886,7 +6886,7 @@ function Search-DbRegistry {
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     while ($queue.Count -gt 0 -and [long]$hits.Count -lt $maxHits -and $clock.Elapsed.TotalSeconds -lt $budget) {
         $key = $queue.Dequeue()
-        if (-not $seen.Add("$($key.hive)`n$($key.path)`n$([Py]::Repr($key.view))")) {
+        if (-not $seen.Add("$($key.hive)`n$($key.path)`n$([Engine]::Repr($key.view))")) {
             continue
         }
 
@@ -6897,7 +6897,7 @@ function Search-DbRegistry {
             }
 
             $name = [string]$pair.Name
-            $combined = '{0} {1}' -f [PyText]::Lower($name), [PyText]::Lower($text)
+            $combined = '{0} {1}' -f [EngineText]::Lower($name), [EngineText]::Lower($text)
             $missing = $false
             foreach ($keyword in $keywords) {
                 if (-not $combined.Contains($keyword)) {
@@ -6937,7 +6937,7 @@ function Search-DbRegistry {
                     path         = $key.path
                     hive         = $key.hive
                     value_name   = $name
-                    data_preview = [PyText]::CodePointPrefix($text, 120)
+                    data_preview = [EngineText]::CodePointPrefix($text, 120)
                     reason       = 'keyword/pattern match'
                 })
             if ([long]$hits.Count -ge $maxHits) {
@@ -6970,7 +6970,7 @@ function ConvertTo-DbRegistryPattern {
         return [regex]::new($Pattern, [System.Text.RegularExpressions.RegexOptions]::CultureInvariant)
     }
     catch [System.ArgumentException] {
-        throw (Get-DbPyError 'PatternError' $_.Exception.Message)
+        throw (Get-DbEngineError 'PatternError' $_.Exception.Message)
     }
 }
 
@@ -7036,12 +7036,12 @@ function Invoke-DbRegistryScanSource {
         $payload['requested_roots'] = [object[]]@($Source.roots | ForEach-Object { & $rootPayload $_ })
     }
 
-    $resultPath = [PyPath]::Join($DestinationRoot, 'registry_scan.json')
-    [PyFile]::WriteText($resultPath, [PyJson]::Dumps($payload, 2, $false))
+    $resultPath = [EnginePath]::Join($DestinationRoot, 'registry_scan.json')
+    [EngineFile]::WriteText($resultPath, [EngineJson]::Dumps($payload, 2, $false))
 
     $summary['roots'] = [string[]]@($roots | ForEach-Object { '{0} \ {1}' -f $_.hive, $_.path })
     $summary['hits'] = $hits.Count
-    $summary['output'] = [PyPath]::AsPosix($resultPath)
+    $summary['output'] = [EnginePath]::AsPosix($resultPath)
     if (@($Source.roots).Count -gt 0) {
         $summary['requested_roots'] = [string[]]@($Source.roots | ForEach-Object {
                 if ($null -eq $_.view) { '{0} \ {1}' -f $_.hive, $_.path } else { '{0} \ {1} (view {2})' -f $_.hive, $_.path, $_.view }
@@ -7053,8 +7053,8 @@ function Invoke-DbRegistryScanSource {
         source        = "registry:$($Source.token)"
         destination   = $resultPath
         relative_path = 'registry_scan.json'
-        size          = [System.IO.FileInfo]::new([PyOs]::Abs($resultPath)).Length
-        sha256        = [PyFile]::HashFile($resultPath)
+        size          = [System.IO.FileInfo]::new([EngineOs]::Abs($resultPath)).Length
+        sha256        = [EngineFile]::HashFile($resultPath)
     }
 
     return [pscustomobject]@{ Summary = $summary; File = $file }
@@ -7071,13 +7071,13 @@ function Unprotect-DbDpapiBlob {
         [Parameter(Mandatory = $true)][AllowEmptyString()][string] $Scope
     )
 
-    if (-not [PyOs]::Windows) {
-        throw (Get-DbPyError 'RuntimeError' 'DPAPI key decryption is only supported on Windows.')
+    if (-not [EngineOs]::Windows) {
+        throw (Get-DbEngineError 'RuntimeError' 'DPAPI key decryption is only supported on Windows.')
     }
 
     Add-Type -AssemblyName System.Security
     $protectionScope = [System.Security.Cryptography.DataProtectionScope]::CurrentUser
-    if (@('machine', 'local_machine', 'machinekey', 'local-machine') -ccontains [PyText]::Lower($Scope)) {
+    if (@('machine', 'local_machine', 'machinekey', 'local-machine') -ccontains [EngineText]::Lower($Scope)) {
         $protectionScope = [System.Security.Cryptography.DataProtectionScope]::LocalMachine
     }
 
@@ -7085,7 +7085,7 @@ function Unprotect-DbDpapiBlob {
         return , [System.Security.Cryptography.ProtectedData]::Unprotect($Blob, $null, $protectionScope)
     }
     catch [System.Security.Cryptography.CryptographicException] {
-        throw (Get-DbPyError 'RuntimeError' 'CryptUnprotectData failed to decrypt the key material.')
+        throw (Get-DbEngineError 'RuntimeError' 'CryptUnprotectData failed to decrypt the key material.')
     }
 }
 
@@ -7097,7 +7097,7 @@ function ConvertFrom-DbBase64Text {
 
     foreach ($ch in $Text.ToCharArray()) {
         if ([int]$ch -gt 127) {
-            throw (Get-DbPyError 'ValueError' 'string argument should contain only ASCII characters')
+            throw (Get-DbEngineError 'ValueError' 'string argument should contain only ASCII characters')
         }
     }
 
@@ -7134,11 +7134,11 @@ function ConvertFrom-DbBase64Text {
 
     if ($quadPos -eq 1) {
         $count = [long]([math]::Floor($bytes.Count / 3)) * 4 + 1
-        throw (Get-DbPyError 'Error' "Invalid base64-encoded string: number of data characters ($count) cannot be 1 more than a multiple of 4")
+        throw (Get-DbEngineError 'Error' "Invalid base64-encoded string: number of data characters ($count) cannot be 1 more than a multiple of 4")
     }
 
     if ($quadPos -ne 0) {
-        throw (Get-DbPyError 'Error' 'Incorrect padding')
+        throw (Get-DbEngineError 'Error' 'Incorrect padding')
     }
 
     return , $bytes.ToArray()
@@ -7160,7 +7160,7 @@ function ConvertFrom-DbHexText {
 
         if ($index + 1 -ge $Text.Length -or -not [Uri]::IsHexDigit($ch) -or -not [Uri]::IsHexDigit($Text[$index + 1])) {
             $position = $(if ([Uri]::IsHexDigit($ch)) { $index + 1 } else { $index })
-            throw (Get-DbPyError 'ValueError' "non-hexadecimal number found in fromhex() arg at position $position")
+            throw (Get-DbEngineError 'ValueError' "non-hexadecimal number found in fromhex() arg at position $position")
         }
 
         $bytes.Add([System.Convert]::ToByte($Text.Substring($index, 2), 16))
@@ -7178,46 +7178,46 @@ function ConvertFrom-DbKeyEntry {
         [Parameter(Mandatory = $true)][string] $Description
     )
 
-    if (-not [Py]::IsMapping($Entry)) {
-        throw (Get-DbPyError 'ValueError' "$Description must be a mapping.")
+    if (-not [Engine]::IsMapping($Entry)) {
+        throw (Get-DbEngineError 'ValueError' "$Description must be a mapping.")
     }
 
-    $data = [Py]::Or([Py]::Or([Py]::Get($Entry, 'data', $null), [Py]::Get($Entry, 'value', $null)), [Py]::Get($Entry, 'key', $null))
-    if ($data -isnot [string] -or [PyText]::Strip($data).Length -eq 0) {
-        throw (Get-DbPyError 'ValueError' "$Description is missing key material.")
+    $data = [Engine]::Or([Engine]::Or([Engine]::Get($Entry, 'data', $null), [Engine]::Get($Entry, 'value', $null)), [Engine]::Get($Entry, 'key', $null))
+    if ($data -isnot [string] -or [EngineText]::Strip($data).Length -eq 0) {
+        throw (Get-DbEngineError 'ValueError' "$Description is missing key material.")
     }
 
-    $encoding = [PyText]::Lower([PyText]::Strip([Py]::Str([Py]::Get($Entry, 'encoding', 'base64'))))
+    $encoding = [EngineText]::Lower([EngineText]::Strip([Engine]::Str([Engine]::Get($Entry, 'encoding', 'base64'))))
     try {
         if ($encoding -ceq 'base64' -or $encoding -ceq 'b64') {
             $keyBytes = ConvertFrom-DbBase64Text $data
         }
         elseif ($encoding -ceq 'hex' -or $encoding -ceq 'hexadecimal') {
-            $keyBytes = ConvertFrom-DbHexText ([PyText]::Strip($data))
+            $keyBytes = ConvertFrom-DbHexText ([EngineText]::Strip($data))
         }
         elseif ($encoding -ceq 'dpapi') {
             $blob = ConvertFrom-DbBase64Text $data
-            $scope = [Py]::Str([Py]::Or([Py]::Get($Entry, 'scope', 'current_user'), 'current_user'))
+            $scope = [Engine]::Str([Engine]::Or([Engine]::Get($Entry, 'scope', 'current_user'), 'current_user'))
             $keyBytes = Unprotect-DbDpapiBlob -Blob $blob -Scope $scope
         }
         else {
-            throw (Get-DbPyError 'ValueError' "Unsupported encoding '$encoding' for $Description.")
+            throw (Get-DbEngineError 'ValueError' "Unsupported encoding '$encoding' for $Description.")
         }
     }
     catch {
-        $pyError = Get-DbPyException $_
-        if ($null -ne $pyError -and ($pyError.PyType -ceq 'ValueError' -or $pyError.PyType -ceq 'Error')) {
-            throw (Get-DbPyError 'ValueError' "Failed to decode ${Description}: $($pyError.Message)")
+        $engineError = Get-DbEngineException $_
+        if ($null -ne $engineError -and ($engineError.ErrorType -ceq 'ValueError' -or $engineError.ErrorType -ceq 'Error')) {
+            throw (Get-DbEngineError 'ValueError' "Failed to decode ${Description}: $($engineError.Message)")
         }
 
         throw
     }
 
-    $minimumLength = [Py]::Or([Py]::Or([Py]::Get($Entry, 'min_length', $null), [Py]::Get($Entry, 'minimum_length', $null)), [Py]::Get($Entry, 'length', $null))
+    $minimumLength = [Engine]::Or([Engine]::Or([Engine]::Get($Entry, 'min_length', $null), [Engine]::Get($Entry, 'minimum_length', $null)), [Engine]::Get($Entry, 'length', $null))
     if ($null -ne $minimumLength) {
-        $minimum = [Py]::Int($minimumLength)
+        $minimum = [Engine]::Int($minimumLength)
         if ([System.Numerics.BigInteger]::new($keyBytes.Length) -lt $minimum) {
-            throw (Get-DbPyError 'ValueError' "$Description must be at least $minimum bytes.")
+            throw (Get-DbEngineError 'ValueError' "$Description must be at least $minimum bytes.")
         }
     }
 
@@ -7229,34 +7229,34 @@ function Import-DbEncryptionKeyset {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Path)
 
-    $payload = [PyJson]::Loads([PyFile]::ReadText($Path))
-    if (-not [Py]::IsMapping($payload)) {
-        throw (Get-DbPyError 'ValueError' 'Encryption keyset must be a JSON object.')
+    $payload = [EngineJson]::Loads([EngineFile]::ReadText($Path))
+    if (-not [Engine]::IsMapping($payload)) {
+        throw (Get-DbEngineError 'ValueError' 'Encryption keyset must be a JSON object.')
     }
 
-    $schema = [Py]::Get($payload, 'schema', $null)
-    if ([Py]::Truthy($schema) -and -not ($schema -is [string] -and $schema -ceq 'https://driftbuster.dev/offline-runner/encryption/keyset/v1')) {
-        throw (Get-DbPyError 'ValueError' 'Unsupported encryption keyset schema.')
+    $schema = [Engine]::Get($payload, 'schema', $null)
+    if ([Engine]::Truthy($schema) -and -not ($schema -is [string] -and $schema -ceq 'https://driftbuster.dev/offline-runner/encryption/keyset/v1')) {
+        throw (Get-DbEngineError 'ValueError' 'Unsupported encryption keyset schema.')
     }
 
-    $aesEntry = [Py]::Or([Py]::Get($payload, 'aes_key', $null), [Py]::Get($payload, 'aes', $null))
-    $hmacEntry = [Py]::Or([Py]::Or([Py]::Get($payload, 'hmac_key', $null), [Py]::Get($payload, 'hmac', $null)), [Py]::Get($payload, 'mac_key', $null))
-    if (-not [Py]::IsMapping($aesEntry) -or -not [Py]::IsMapping($hmacEntry)) {
-        throw (Get-DbPyError 'ValueError' "Encryption keyset must include 'aes_key' and 'hmac_key' mappings.")
+    $aesEntry = [Engine]::Or([Engine]::Get($payload, 'aes_key', $null), [Engine]::Get($payload, 'aes', $null))
+    $hmacEntry = [Engine]::Or([Engine]::Or([Engine]::Get($payload, 'hmac_key', $null), [Engine]::Get($payload, 'hmac', $null)), [Engine]::Get($payload, 'mac_key', $null))
+    if (-not [Engine]::IsMapping($aesEntry) -or -not [Engine]::IsMapping($hmacEntry)) {
+        throw (Get-DbEngineError 'ValueError' "Encryption keyset must include 'aes_key' and 'hmac_key' mappings.")
     }
 
     $aesKey = ConvertFrom-DbKeyEntry -Entry $aesEntry -Description 'aes_key'
     $hmacKey = ConvertFrom-DbKeyEntry -Entry $hmacEntry -Description 'hmac_key'
     if (@(16, 24, 32) -notcontains $aesKey.Length) {
-        throw (Get-DbPyError 'ValueError' 'AES key must be 16, 24, or 32 bytes.')
+        throw (Get-DbEngineError 'ValueError' 'AES key must be 16, 24, or 32 bytes.')
     }
 
     if ($aesKey.Length -ne 32) {
-        throw (Get-DbPyError 'ValueError' 'AES-256 encryption requires a 32-byte AES key.')
+        throw (Get-DbEngineError 'ValueError' 'AES-256 encryption requires a 32-byte AES key.')
     }
 
     if ($hmacKey.Length -lt 32) {
-        throw (Get-DbPyError 'ValueError' 'HMAC key must be at least 32 bytes.')
+        throw (Get-DbEngineError 'ValueError' 'HMAC key must be at least 32 bytes.')
     }
 
     return [pscustomobject]@{ AesKey = $aesKey; HmacKey = $hmacKey }
@@ -7272,7 +7272,7 @@ function Protect-DbPackageFile {
         [Parameter(Mandatory = $true)][byte[]] $HmacKey
     )
 
-    $plaintext = [System.IO.File]::ReadAllBytes([PyOs]::Abs($Source))
+    $plaintext = [System.IO.File]::ReadAllBytes([EngineOs]::Abs($Source))
     $iv = [byte[]]::new(16)
     $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     try {
@@ -7312,7 +7312,7 @@ function Protect-DbPackageFile {
     }
 
     $package = Get-DbOrderedMap
-    $package['original_name'] = [PyPath]::Name($Source)
+    $package['original_name'] = [EnginePath]::Name($Source)
     $package['size'] = [long]$plaintext.Length
     $payload = Get-DbOrderedMap
     $payload['schema'] = 'https://driftbuster.dev/offline-runner/encryption/dpapi-aes/v1'
@@ -7322,7 +7322,7 @@ function Protect-DbPackageFile {
     $payload['mac'] = [System.Convert]::ToBase64String($mac)
     $payload['package'] = $package
 
-    [PyFile]::WriteText($Destination, [PyJson]::Dumps($payload, 2, $false))
+    [EngineFile]::WriteText($Destination, [EngineJson]::Dumps($payload, 2, $false))
     return , $payload
 }
 
@@ -7337,29 +7337,29 @@ function Invoke-DbPackageEncryption {
     )
 
     if ($null -eq $Settings.keyset_path) {
-        throw (Get-DbPyError 'ValueError' 'Encryption is enabled but keyset_path is missing.')
+        throw (Get-DbEngineError 'ValueError' 'Encryption is enabled but keyset_path is missing.')
     }
 
     $resolved = $Settings.keyset_path
-    if (-not [PyPath]::IsAbsolute($resolved) -and $BaseDir) {
-        $resolved = [PyPath]::PathExpandUser([PyPath]::Join($BaseDir, $resolved))
+    if (-not [EnginePath]::IsAbsolute($resolved) -and $BaseDir) {
+        $resolved = [EnginePath]::PathExpandUser([EnginePath]::Join($BaseDir, $resolved))
     }
 
-    $resolved = [PyPath]::PathExpandUser($resolved)
-    if (-not [PyFs]::Exists($resolved)) {
-        throw (Get-DbPyError 'FileNotFoundError' "Encryption keyset not found: $resolved")
+    $resolved = [EnginePath]::PathExpandUser($resolved)
+    if (-not [EngineFs]::Exists($resolved)) {
+        throw (Get-DbEngineError 'FileNotFoundError' "Encryption keyset not found: $resolved")
     }
 
     $keys = Import-DbEncryptionKeyset -Path $resolved
     $Log.Write("loaded encryption keyset from $resolved")
 
-    $encryptedPath = [PyPath]::WithSuffix($PackagePath, [PyPath]::Suffix($PackagePath) + $Settings.output_extension)
+    $encryptedPath = [EnginePath]::WithSuffix($PackagePath, [EnginePath]::Suffix($PackagePath) + $Settings.output_extension)
     $payload = Protect-DbPackageFile -Source $PackagePath -Destination $encryptedPath -AesKey $keys.AesKey -HmacKey $keys.HmacKey
-    $Log.Write("encrypted package -> $([PyPath]::Name($encryptedPath))")
+    $Log.Write("encrypted package -> $([EnginePath]::Name($encryptedPath))")
 
     $removed = $false
     if ($Settings.remove_plaintext) {
-        $target = [PyOs]::Abs($PackagePath)
+        $target = [EngineOs]::Abs($PackagePath)
         if ([System.IO.File]::Exists($target)) {
             [System.IO.File]::Delete($target)
             $removed = $true
@@ -7379,7 +7379,7 @@ function Get-DbHostUser {
     param()
 
     foreach ($name in @('LOGNAME', 'USER', 'LNAME', 'USERNAME')) {
-        $value = [PyOs]::Environ($name)
+        $value = [EngineOs]::Environ($name)
         if ($value) {
             return $value
         }
@@ -7390,11 +7390,11 @@ function Get-DbHostUser {
 
 function Get-DbHostPlatform {
     # platform.platform(). On Windows: "Windows-<release>-<version>-<service pack>" from the operating system's WMI record and
-    # platform.py's release tables. Elsewhere the runtime's operating system description (see expected_divergences.md).
+    # CPython's platform module release tables. Elsewhere the runtime's operating system description.
     [CmdletBinding()]
     param()
 
-    if (-not [PyOs]::Windows) {
+    if (-not [EngineOs]::Windows) {
         return [System.Environment]::OSVersion.VersionString
     }
 
@@ -7445,7 +7445,7 @@ function New-DbDirectory {
     param([Parameter(Mandatory = $true)][string] $Path)
 
     if ($PSCmdlet.ShouldProcess($Path, 'Create directory')) {
-        [void][System.IO.Directory]::CreateDirectory([PyOs]::Abs($Path))
+        [void][System.IO.Directory]::CreateDirectory([EngineOs]::Abs($Path))
     }
 }
 
@@ -7459,40 +7459,40 @@ function Write-DbZipPackage {
 
     Add-Type -AssemblyName System.IO.Compression
     $entries = [System.Collections.Generic.List[string]]::new()
-    foreach ($file in [System.IO.Directory]::EnumerateFiles([PyOs]::Abs($StagingDir), '*', [System.IO.SearchOption]::AllDirectories)) {
-        $relative = [PyPath]::RelativeTo($file, [PyOs]::Abs($StagingDir))
+    foreach ($file in [System.IO.Directory]::EnumerateFiles([EngineOs]::Abs($StagingDir), '*', [System.IO.SearchOption]::AllDirectories)) {
+        $relative = [EnginePath]::RelativeTo($file, [EngineOs]::Abs($StagingDir))
         if ($null -ne $relative) {
             $entries.Add($relative)
         }
     }
 
-    [PyPath]::SortByParts($entries)
-    $stream = [System.IO.FileStream]::new([PyOs]::Abs($PackagePath), [System.IO.FileMode]::Create, [System.IO.FileAccess]::ReadWrite)
+    [EnginePath]::SortByParts($entries)
+    $stream = [System.IO.FileStream]::new([EngineOs]::Abs($PackagePath), [System.IO.FileMode]::Create, [System.IO.FileAccess]::ReadWrite)
     try {
         $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create, $true)
         try {
             foreach ($relative in $entries) {
-                $source = [PyPath]::Join($StagingDir, $relative)
+                $source = [EnginePath]::Join($StagingDir, $relative)
                 # ZipInfo.from_file: time.localtime(st_mtime), which Windows' C runtime refuses before the epoch; a zip header holds
                 # the years 1980 to 2107.
-                $modified = [System.IO.File]::GetLastWriteTime([PyOs]::Abs($source))
-                if ([PyOs]::Windows -and $modified.ToUniversalTime() -lt [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)) {
-                    throw (Get-DbPyError 'OSError' '[Errno 22] Invalid argument')
+                $modified = [System.IO.File]::GetLastWriteTime([EngineOs]::Abs($source))
+                if ([EngineOs]::Windows -and $modified.ToUniversalTime() -lt [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)) {
+                    throw (Get-DbEngineError 'OSError' '[Errno 22] Invalid argument')
                 }
 
                 if ($modified.Year -lt 1980) {
-                    throw (Get-DbPyError 'ValueError' 'ZIP does not support timestamps before 1980')
+                    throw (Get-DbEngineError 'ValueError' 'ZIP does not support timestamps before 1980')
                 }
 
                 if ($modified.Year -gt 2107) {
-                    throw (Get-DbPyError 'error' "'H' format requires 0 <= number <= 65535")
+                    throw (Get-DbEngineError 'error' "'H' format requires 0 <= number <= 65535")
                 }
 
-                $entry = $archive.CreateEntry([PyPath]::AsPosix($relative), [System.IO.Compression.CompressionLevel]::Optimal)
+                $entry = $archive.CreateEntry([EnginePath]::AsPosix($relative), [System.IO.Compression.CompressionLevel]::Optimal)
                 $entry.LastWriteTime = $modified
                 $output = $entry.Open()
                 try {
-                    $reader = [System.IO.File]::OpenRead([PyOs]::Abs($source))
+                    $reader = [System.IO.File]::OpenRead([EngineOs]::Abs($source))
                     try {
                         $reader.CopyTo($output)
                     }
@@ -7529,37 +7529,37 @@ function Invoke-DbOfflineRunner {
     $settings = $Config.settings
 
     if ($ConfigPath) {
-        $ConfigPath = [PyPath]::Normalise($ConfigPath)
+        $ConfigPath = [EnginePath]::Normalise($ConfigPath)
     }
 
     $effectiveBaseDir = $null
     if ($BaseDir) {
-        $effectiveBaseDir = [PyPath]::Normalise($BaseDir)
+        $effectiveBaseDir = [EnginePath]::Normalise($BaseDir)
     }
     elseif ($ConfigPath) {
-        $effectiveBaseDir = [PyPath]::Parent($ConfigPath)
+        $effectiveBaseDir = [EnginePath]::Parent($ConfigPath)
     }
 
     if ($null -ne $settings.output_directory) {
         $outputRoot = $settings.output_directory
-        if ($null -ne $effectiveBaseDir -and -not [PyPath]::IsAbsolute($outputRoot)) {
-            $outputRoot = [PyPath]::Join($effectiveBaseDir, $outputRoot)
+        if ($null -ne $effectiveBaseDir -and -not [EnginePath]::IsAbsolute($outputRoot)) {
+            $outputRoot = [EnginePath]::Join($effectiveBaseDir, $outputRoot)
         }
     }
     elseif ($null -ne $effectiveBaseDir) {
         $outputRoot = $effectiveBaseDir
     }
     else {
-        $outputRoot = [PyOs]::Cwd
+        $outputRoot = [EngineOs]::Cwd
     }
 
-    $outputRoot = [PyPath]::Normalise($outputRoot)
+    $outputRoot = [EnginePath]::Normalise($outputRoot)
     New-DbDirectory $outputRoot
 
-    $safeName = [PyText]::SafeName($Config.profile.name)
-    $stagingDir = [PyPath]::Join($outputRoot, "$safeName-$runTimestamp")
-    $dataRoot = [PyPath]::Join($stagingDir, $settings.data_directory_name)
-    $logsRoot = [PyPath]::Join($stagingDir, $settings.logs_directory_name)
+    $safeName = [EngineText]::SafeName($Config.profile.name)
+    $stagingDir = [EnginePath]::Join($outputRoot, "$safeName-$runTimestamp")
+    $dataRoot = [EnginePath]::Join($stagingDir, $settings.data_directory_name)
+    $logsRoot = [EnginePath]::Join($stagingDir, $settings.logs_directory_name)
     New-DbDirectory $dataRoot
     New-DbDirectory $logsRoot
 
@@ -7589,7 +7589,7 @@ function Invoke-DbOfflineRunner {
     foreach ($source in $Config.profile.sources) {
         $alias = Get-DbDestinationName -Source $source -FallbackIndex $index
         $index++
-        $destinationRoot = [PyPath]::Join($dataRoot, $alias)
+        $destinationRoot = [EnginePath]::Join($dataRoot, $alias)
         New-DbDirectory $destinationRoot
 
         switch ($source.kind) {
@@ -7628,7 +7628,7 @@ function Invoke-DbOfflineRunner {
     $logPath = $null
     if ($settings.include_logs) {
         New-DbDirectory $logsRoot
-        $logPath = [PyPath]::Join($logsRoot, $settings.log_name)
+        $logPath = [EnginePath]::Join($logsRoot, $settings.log_name)
         $log.Save($logPath)
     }
 
@@ -7675,7 +7675,7 @@ function Invoke-DbOfflineRunner {
         }
 
         $ignoredRules = [System.Collections.Generic.List[string]]::new($secretContext.IgnoreRules)
-        $ignoredRules.Sort([System.Comparison[string]] { param($left, $right) [PyText]::CompareCodePoints($left, $right) })
+        $ignoredRules.Sort([System.Comparison[string]] { param($left, $right) [EngineText]::CompareCodePoints($left, $right) })
         $secrets = Get-DbOrderedMap
         $secrets['ruleset_version'] = $secretContext.Version
         $secrets['findings'] = $findings
@@ -7735,21 +7735,21 @@ function Invoke-DbOfflineRunner {
         $manifest['metadata'] = $metadata
         $manifest['package'] = $package
 
-        if ($ConfigPath -and [PyFs]::Exists($ConfigPath)) {
+        if ($ConfigPath -and [EngineFs]::Exists($ConfigPath)) {
             $configInfo = Get-DbOrderedMap
             $configInfo['path'] = $ConfigPath
-            $configInfo['sha256'] = [PyFile]::HashFile($ConfigPath)
+            $configInfo['sha256'] = [EngineFile]::HashFile($ConfigPath)
             $manifest['config'] = $configInfo
         }
 
-        $manifestPath = [PyPath]::Join($stagingDir, $settings.manifest_name)
-        [PyFile]::WriteText($manifestPath, [PyJson]::Dumps($manifest, 2, $true))
+        $manifestPath = [EnginePath]::Join($stagingDir, $settings.manifest_name)
+        [EngineFile]::WriteText($manifestPath, [EngineJson]::Dumps($manifest, 2, $true))
     }
 
-    if ($settings.include_config -and $ConfigPath -and [PyFs]::Exists($ConfigPath)) {
-        $configCopy = [PyPath]::Join($stagingDir, [PyPath]::Name($ConfigPath))
-        [System.IO.File]::Copy([PyOs]::Abs($ConfigPath), [PyOs]::Abs($configCopy), $true)
-        [PyFile]::CopyStat($ConfigPath, $configCopy)
+    if ($settings.include_config -and $ConfigPath -and [EngineFs]::Exists($ConfigPath)) {
+        $configCopy = [EnginePath]::Join($stagingDir, [EnginePath]::Name($ConfigPath))
+        [System.IO.File]::Copy([EngineOs]::Abs($ConfigPath), [EngineOs]::Abs($configCopy), $true)
+        [EngineFile]::CopyStat($ConfigPath, $configCopy)
     }
 
     $packagePath = $null
@@ -7760,7 +7760,7 @@ function Invoke-DbOfflineRunner {
     $manifestOnDisk = $manifestPath
     $logOnDisk = $logPath
     if ($settings.compress) {
-        $packagePath = [PyPath]::Join($outputRoot, $packageFilename)
+        $packagePath = [EnginePath]::Join($outputRoot, $packageFilename)
         Write-DbZipPackage -PackagePath $packagePath -StagingDir $stagingDir
         $unencryptedPackagePath = $packagePath
 
@@ -7772,18 +7772,18 @@ function Invoke-DbOfflineRunner {
             $encryptionPayload = $applied.Payload
 
             if ($null -ne $manifest) {
-                $manifest['package']['encryption']['output_name'] = [PyPath]::Name($applied.EncryptedPath)
-                $manifest['package']['encryption']['sha256'] = [PyFile]::HashFile($applied.EncryptedPath)
+                $manifest['package']['encryption']['output_name'] = [EnginePath]::Name($applied.EncryptedPath)
+                $manifest['package']['encryption']['sha256'] = [EngineFile]::HashFile($applied.EncryptedPath)
                 $manifest['package']['encryption']['removed_plaintext'] = [bool]$applied.RemovedPlaintext
                 if ($manifestPath) {
-                    [PyFile]::WriteText($manifestPath, [PyJson]::Dumps($manifest, 2, $true))
+                    [EngineFile]::WriteText($manifestPath, [EngineJson]::Dumps($manifest, 2, $true))
                 }
             }
         }
 
         if ($settings.cleanup_staging) {
             try {
-                [System.IO.Directory]::Delete([PyOs]::Abs($stagingDir), $true)
+                [System.IO.Directory]::Delete([EngineOs]::Abs($stagingDir), $true)
             }
             catch [System.IO.IOException], [System.UnauthorizedAccessException] {
                 Write-Verbose "staging directory not removed: $($_.Exception.Message)"
@@ -7795,7 +7795,7 @@ function Invoke-DbOfflineRunner {
         }
     }
     elseif ($null -ne $encryption -and $encryption.enabled) {
-        throw (Get-DbPyError 'ValueError' 'Encryption requires compression to be enabled.')
+        throw (Get-DbEngineError 'ValueError' 'Encryption requires compression to be enabled.')
     }
 
     return [pscustomobject]@{
@@ -7838,23 +7838,23 @@ if ($MyInvocation.InvocationName -eq '.') {
 $ErrorActionPreference = 'Stop'
 
 try {
-    [DriftBusterOfflineRunner.PyOs]::Cwd = (Get-Location -PSProvider FileSystem).ProviderPath
+    [DriftBusterOfflineRunner.EngineOs]::Cwd = (Get-Location -PSProvider FileSystem).ProviderPath
     $resolvedConfig = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ConfigPath)
     $config = Import-DbOfflineRunnerConfig -Path $resolvedConfig
     if ($OutputDirectory) {
         $resolvedOutput = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
-        $config.settings.output_directory = [DriftBusterOfflineRunner.PyPath]::Normalise($resolvedOutput)
+        $config.settings.output_directory = [DriftBusterOfflineRunner.EnginePath]::Normalise($resolvedOutput)
     }
 
     $result = Invoke-DbOfflineRunner -Config $config -ConfigPath $resolvedConfig
 }
 catch {
-    $pyError = Get-DbPyException $_
-    if ($null -eq $pyError) {
+    $engineError = Get-DbEngineException $_
+    if ($null -eq $engineError) {
         throw
     }
 
-    throw [System.InvalidOperationException]::new(('{0}: {1}' -f $pyError.PyType, $pyError.Message), $pyError)
+    throw [System.InvalidOperationException]::new(('{0}: {1}' -f $engineError.ErrorType, $engineError.Message), $engineError)
 }
 
 Write-Output ([pscustomobject]@{

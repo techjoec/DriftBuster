@@ -1,9 +1,0 @@
-{
-  "schedules": [
-    {
-      "name": "tiny",
-      "profile": "tiny-profile",
-      "every": "0.0000001s"
-    }
-  ]
-}

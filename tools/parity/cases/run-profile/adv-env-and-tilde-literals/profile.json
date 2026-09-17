@@ -1,7 +1,0 @@
-{
-  "name": "env",
-  "sources": [
-    "$PARITY_SURELY_UNSET_VAR/x.txt",
-    "${PARITY_SURELY_UNSET_VAR}"
-  ]
-}

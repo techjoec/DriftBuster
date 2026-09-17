@@ -1,3 +1,0 @@
-# pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
-FROM alpine
-RUŃ x

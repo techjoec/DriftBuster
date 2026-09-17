@@ -1,9 +1,0 @@
-{
- "database": {
-  "script": "blob-name-after-blob-schema.sql"
- },
- "options": {
-  "tables": ["a"],
-  "exclude_tables": ["z"]
- }
-}

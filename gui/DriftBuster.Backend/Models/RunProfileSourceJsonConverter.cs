@@ -30,7 +30,7 @@ namespace DriftBuster.Backend.Models
             }
 
             using var document = JsonDocument.ParseValue(ref reader);
-            if (!PythonJson.TryLoads(document.RootElement.GetRawText(), out var payload) || payload is not IReadOnlyDictionary<string, object?> mapping)
+            if (!EngineJson.TryLoads(document.RootElement.GetRawText(), out var payload) || payload is not IReadOnlyDictionary<string, object?> mapping)
             {
                 throw new JsonException("A run profile source object could not be read.");
             }
