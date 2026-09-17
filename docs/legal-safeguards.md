@@ -14,6 +14,18 @@ We keep the project lightweight and respect other creators:
 4. **No reverse-engineered IP**
    - Build samples from public information or original work only.
    - Avoid copying configuration fragments that could expose private systems.
+5. **No translated or adapted source**
+   - Never translate, port, transcribe, or adapt another project's source code
+     into this repository, whatever licence it carries: a rewrite in C# still
+     carries the original copyright and its licence obligations.
+   - Implement from public documentation and specifications instead — the .NET
+     API documentation, published standards and algorithm papers, vendor format
+     and protocol documentation.
+   - Prefer .NET built-ins (`System.Text.RegularExpressions`, `TimeZoneInfo`,
+     `DateTimeOffset`, `System.IO.Path`, `System.IO.Enumeration`, LINQ ordering)
+     over a hand-written equivalent.
+   - Record every new dependency in `THIRD-PARTY-NOTICES.txt` with its licence
+     text or SPDX identifier and its copyright line.
 
 These guardrails cover every feature, note, and capture helper.
 
@@ -66,10 +78,17 @@ These guardrails cover every feature, note, and capture helper.
 
 - The GUI is Avalonia with the Fluent theme and the embedded Inter font, plus
   CommunityToolkit.Mvvm and Velopack; the backend uses Microsoft.Data.Sqlite.
-  Keep their acknowledgements in `NOTICE` and refresh it whenever package
-  references change (versions live in the `.csproj` files).
-- Self-contained publishes ship the .NET runtime; keep its third-party notices
-  with the bundle.
+  Every redistributed component, including the Inter font and the native
+  libraries inside SkiaSharp, HarfBuzzSharp and SQLitePCLRaw, is listed in
+  `THIRD-PARTY-NOTICES.txt` with its licence and copyright line; refresh that
+  file whenever package references change (versions live in the `.csproj`
+  files). Licences that require their text to travel with the binaries (OFL for
+  Inter, and the SkiaSharp/HarfBuzzSharp upstream notices covering FreeType,
+  HarfBuzz, libpng and the rest) are reproduced in full in that same file, so a
+  package upgrade means re-copying the upstream notices as well as the version.
+- Self-contained publishes ship the .NET runtime, which the notices file covers.
+- `LICENSE`, `NOTICE` and `THIRD-PARTY-NOTICES.txt` are copied into the GUI and
+  console tool publish output and into the PowerShell module package.
 - Record redistribution package hashes in `artifacts/gui-packaging/` when
   preparing MSIX or portable bundles.
 
@@ -78,14 +97,14 @@ These guardrails cover every feature, note, and capture helper.
 - **MSIX builds**
   - Bundle the generated MSIX with a matching `.appinstaller` manifest and SHA256 hash file so security teams can validate sideloaded packages.
   - Keep the signing certificate chain (issuer, thumbprint, expiry) recorded in `notes/checklists/legal-review.md` alongside each release entry.
-  - Include the redistribution notices of every bundled dependency inside the packaged `NOTICE` directory; update the file whenever dependencies change.
+  - Ship `LICENSE`, `NOTICE` and `THIRD-PARTY-NOTICES.txt` inside the package; update the notices whenever dependencies change.
 - **Portable/self-contained bundles**
   - Ship self-contained bundles, or stage the .NET 10 Desktop Runtime installer beside a framework-dependent bundle, so offline operators are not prompted to download components.
   - Publish hash manifests for every staged file (`*.exe`, `NOTICE`, `README`, dependency installers) into a hashes file beside the bundle and copy the manifest into the hand-off folder.
   - Document minimum OS requirements (Windows 10 1809+, x64) and disk footprint inside the operator hand-off notes.
 - **Security evidence**
   - Keep the publish transcript for each packaging flavour with the release bundle (commands in `artifacts/gui-packaging/README.md`) and reference it from the legal review log.
-  - Record any third-party dependency updates (e.g., .NET runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh the NOTICE file before release builds.
+  - Record any third-party dependency updates (e.g., .NET runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh `THIRD-PARTY-NOTICES.txt` before release builds.
   - Confirm that all redistributables shipped with the bundle allow offline redistribution and include their licence text within the package.
 
 ## Realtime secret scanning safeguards

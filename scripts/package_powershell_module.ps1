@@ -81,6 +81,16 @@ try {
         Copy-Item -Destination $packageRoot -Force
     Copy-Item -LiteralPath (Join-Path $backendPublish 'runtimes') -Destination $packageRoot -Recurse -Force
 
+    # Licence and attribution files travel with the package.
+    foreach ($legalFile in @('LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt')) {
+        $legalPath = Join-Path $root $legalFile
+        if (-not (Test-Path -LiteralPath $legalPath)) {
+            throw "$legalFile not found at $legalPath"
+        }
+
+        Copy-Item -LiteralPath $legalPath -Destination $packageRoot -Force
+    }
+
     if (-not (Test-Path -LiteralPath $OutputDirectory)) {
         New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
     }

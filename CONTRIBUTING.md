@@ -28,14 +28,20 @@ To maintain zero IP creep, all contributors must ensure:
 - Only contribute **original code you authored**, or
 - Code from **third-party permissive sources** (MIT, BSD, Apache 2.0, CC0, MPL 2.0).
 
-### 3.2 Explicitly Forbidden Sources
+### 3.2 Never Translate or Adapt Another Project's Source Code
+- **Never** translate, port, transcribe, or adapt another project's source code into this repository, whatever its licence. A line-by-line C# rewrite of someone else's C or Python carries that project's copyright and its licence obligations with it.
+- Implement from **public documentation and specifications** instead: the .NET API documentation, published standards and algorithm papers, vendor protocol and format documentation.
+- **Prefer .NET built-ins** over hand-written machinery. `System.Text.RegularExpressions`, `TimeZoneInfo`, `DateTimeOffset`, `System.IO.Path`, `System.IO.Enumeration` and `OrderBy` already carry the behaviour we need; a reimplementation is both a maintenance cost and a provenance risk.
+- Record every new dependency in `THIRD-PARTY-NOTICES.txt` with its licence identifier and copyright line before it ships.
+
+### 3.3 Explicitly Forbidden Sources
 Do **not** submit code, snippets, or data from:
 - GPL or AGPL licensed projects (copyleft risk).
 - Closed-source SDKs, decompiled binaries, or reverse-engineered materials.
 - Any vendor, partner, or employer’s internal or proprietary repositories.
 - Any AI-generated code that includes **copied or verbatim excerpts** from copyrighted works (check provenance via tool logs if applicable).
 
-### 3.3 Documentation & Configuration
+### 3.4 Documentation & Configuration
 - When describing vendor formats (e.g., `.ini`, `.xml`, `.config`), base on **publicly observable behavior** only.
 - Do **not** reproduce, quote, or include vendor documentation verbatim.
 - Include a provenance comment such as:
@@ -49,7 +55,7 @@ Do **not** submit code, snippets, or data from:
 
 - The repository’s root `LICENSE` (Apache 2.0) covers all contributions by default.
 - File-level SPDX headers are optional; include them only when you believe it aids clarity.
-- When incorporating permissively licensed material, cite the original source in the file and update `NOTICE` if attribution is required.
+- When redistributing a permissively licensed component, add it to `THIRD-PARTY-NOTICES.txt` with its licence text or SPDX identifier and its copyright line. `NOTICE` points there.
 
 ---
 
@@ -90,13 +96,13 @@ Use `licensecheck .` locally before submitting to catch unexpected copyleft code
 | 1️⃣ | Fork and clone the repo |
 | 2️⃣ | Create a feature branch (`feature/<topic>`) |
 | 3️⃣ | Run `dotnet format`, all unit tests, and coverage checks (`./scripts/verify_coverage.sh`) |
-| 4️⃣ | Review licensing notes and update `NOTICE` if needed |
+| 4️⃣ | Review licensing notes; record any new dependency in `THIRD-PARTY-NOTICES.txt` |
 | 5️⃣ | Submit PR with detailed provenance statement |
 | 6️⃣ | Maintainers review your build output and legal scan notes |
 
 Each PR **must** include a short provenance note, e.g.:
-> “All changes are original or derived from Apache-2.0 sources.  
-> No third-party proprietary material included.”
+> “All changes are original, written from public documentation and specifications.  
+> No source code was translated or adapted from another project, and no third-party proprietary material is included.”
 
 ---
 
@@ -167,4 +173,5 @@ By contributing, you certify:
 See also:
 - [`LICENSE`](./LICENSE)
 - [`NOTICE`](./NOTICE)
+- [`THIRD-PARTY-NOTICES.txt`](./THIRD-PARTY-NOTICES.txt)
 - [`LEGAL_ENFORCEMENT.md`](./LEGAL_ENFORCEMENT.md)

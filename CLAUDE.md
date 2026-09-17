@@ -119,7 +119,7 @@ gitleaks dir . -v
 
 - `Detection/` - `Detector` (bounded sampling, 128 KiB per file by default, aggregate budget), `FormatRegistry`, `DefaultPlugins`, `Catalog/` (`DetectionCatalogData.cs` holds the catalog and its version)
 - `Detection/Plugins/` - Format plugins implementing `IFormatPlugin`: registry-live, XML, Dockerfile, conf, HCL, YAML, TOML, INI, JSON, binary-hybrid, text
-- `Diff/` - Canonicaliser, sequence matcher, unified diff, redaction filter
+- `Diff/` - Canonicaliser, `LineDiff` (Myers line diff), `UnifiedDiffWriter`, redaction filter
 - `Hunt/`, `Secrets/` - Hunt rules and engine; secret scanner with the embedded `Resources/secret_rules.json`
 - `MultiServer/` - Multi-host runner, config identity, diff cache
 - `Profiles/Run/`, `Profiles/Detection/` - Run profiles and offline collector configs; detection profile store with summary and diff
@@ -202,12 +202,14 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 
 ### Provenance & Licensing
 - All contributions: Apache 2.0 only
-- Add provenance comments for code derived from public behavior:
+- **Never translate or adapt another project's source code** — a C# rewrite of someone else's code carries their copyright and licence with it
+- Implement from public documentation and specifications (.NET API docs, published standards and algorithm papers, vendor format/protocol docs), and **prefer .NET built-ins** (`Regex`, `TimeZoneInfo`, `DateTimeOffset`, `System.IO.Path`, `System.IO.Enumeration`, LINQ ordering) over hand-written machinery
+- Add provenance comments for code written from public behavior:
   ```csharp
   // Derived from publicly documented behavior, not vendor source.
   ```
 - Forbidden: GPL/AGPL, decompiled code, proprietary sources, AI-generated verbatim excerpts
-- Update `NOTICE` when incorporating permissively licensed material
+- Record every new dependency in `THIRD-PARTY-NOTICES.txt` with its licence text or SPDX identifier and copyright line; `NOTICE` points there
 - See `CONTRIBUTING.md` and `docs/legal-safeguards.md` for details
 
 ### Review Flags

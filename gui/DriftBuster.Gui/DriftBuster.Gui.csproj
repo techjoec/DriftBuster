@@ -49,4 +49,10 @@
       <Link>Samples\MultiServer\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
+  <!-- LICENSE, NOTICE and the third-party notices travel with every publish. -->
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\NOTICE" Link="NOTICE" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
