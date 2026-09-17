@@ -17,9 +17,6 @@ useDefault = true
 
     # Intentional dummy secrets used by the hunt/secret-scanning test suite
     '''fixtures/secret_samples/''',
-
-    # Dummy secrets and argument names in the regex case data
-    '''gui/DriftBuster\.Backend\.Tests/Infrastructure/Data/regex_cases\.json''',
   ]
 
   regexTarget = "match"

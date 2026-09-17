@@ -126,7 +126,7 @@ public sealed partial class MultiServerRunner
             var found = -1;
             for (var candidate = next; candidate < plan.Roots.Count; candidate++)
             {
-                if (string.Equals(EnginePurePath.Str(plan.Roots[candidate]), roots[index], StringComparison.Ordinal))
+                if (string.Equals(LexicalPath.Str(plan.Roots[candidate]), roots[index], StringComparison.Ordinal))
                 {
                     found = candidate;
                     break;
@@ -163,7 +163,7 @@ public sealed partial class MultiServerRunner
         OrderedDictionary<string, ConfigRecord> configs,
         CancellationToken cancellationToken)
     {
-        var relative = EnginePurePath.RelativeTo(EnginePath.Absolute(path), EnginePath.Absolute(root)) ?? PathText.Name(path);
+        var relative = LexicalPath.RelativeTo(EnginePath.Absolute(path), EnginePath.Absolute(root)) ?? PathText.Name(path);
         var metadata = match.Metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal);
         var catalogFormat = metadata.TryGetValue("catalog_format", out var format) ? format : null;
         var formatId = ConfigIdentity.IsTruthy(catalogFormat)

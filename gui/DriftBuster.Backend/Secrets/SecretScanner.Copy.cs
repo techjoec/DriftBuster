@@ -118,7 +118,7 @@ public static partial class SecretScanner
             HashSet<SecretDetectionRule>? stopped = null;
             while (FirstTriggeredRule(context, redaction.Working, line, stopped, cancellationToken) is var (rule, match) && rule is not null)
             {
-                var (start, end) = (match!.Start, match.End);
+                var (start, end) = (match!.Index, match.Index + match.Length);
                 if (redaction.ExceedsGuardBudget(rule, start, end))
                 {
                     // Replacing would continue inside inserted text and never leave this line.
@@ -245,7 +245,7 @@ public static partial class SecretScanner
         }
     }
 
-    private static (SecretDetectionRule? Rule, Infrastructure.EngineRe.EngineMatch? Match) FirstTriggeredRule(
+    private static (SecretDetectionRule? Rule, System.Text.RegularExpressions.Match? Match) FirstTriggeredRule(
         SecretDetectionContext context,
         string working,
         string original,
@@ -259,8 +259,8 @@ public static partial class SecretScanner
                 continue;
             }
 
-            var match = rule.Pattern.Search(working, cancellationToken);
-            if (match is null || context.IgnorePatterns.Any(pattern => pattern.Search(original, cancellationToken) is not null))
+            var match = PatternRegex.Search(rule.Pattern, working, cancellationToken);
+            if (match is null || context.IgnorePatterns.Any(pattern => PatternRegex.Search(pattern, original, cancellationToken) is not null))
             {
                 continue;
             }

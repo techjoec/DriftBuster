@@ -1,5 +1,6 @@
+using System.Text.RegularExpressions;
+
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Hunt;
 
@@ -7,16 +8,17 @@ namespace DriftBuster.Backend.Hunt;
 public sealed class HuntRule
 {
     /// <summary>
-    /// String patterns compile with <c>re.IGNORECASE | re.MULTILINE</c>; keywords are lowered with <c>str.lower()</c>;
-    /// the token name is stripped and an empty one becomes null.
+    /// String patterns are .NET regular expressions built by <see cref="PatternRegex.Create"/> with
+    /// <see cref="RegexOptions.IgnoreCase"/> and <see cref="RegexOptions.Multiline"/>; keywords are lowered; the token name is
+    /// stripped and an empty one becomes null.
     /// </summary>
     public HuntRule(string name, string description, string? tokenName = null, IEnumerable<string>? keywords = null, IEnumerable<string>? patterns = null)
-        : this(name, description, tokenName, keywords, (patterns ?? []).Select(pattern => EnginePattern.Compile(pattern, EngineReFlags.IgnoreCase | EngineReFlags.Multiline)).ToList())
+        : this(name, description, tokenName, keywords, (patterns ?? []).Select(pattern => PatternRegex.Create(pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline)).ToList())
     {
     }
 
-    /// <summary>A rule over already compiled patterns, which are used as given (Python keeps <c>re.Pattern</c> items).</summary>
-    public HuntRule(string name, string description, string? tokenName, IEnumerable<string>? keywords, IReadOnlyList<EnginePattern> compiledPatterns)
+    /// <summary>A rule over already compiled patterns, which are used as given.</summary>
+    public HuntRule(string name, string description, string? tokenName, IEnumerable<string>? keywords, IReadOnlyList<Regex> compiledPatterns)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(description);
@@ -41,5 +43,5 @@ public sealed class HuntRule
     /// <summary>Lowered keywords; every one must appear in a file and at least one in a line.</summary>
     public IReadOnlyList<string> Keywords { get; }
 
-    public IReadOnlyList<EnginePattern> Patterns { get; }
+    public IReadOnlyList<Regex> Patterns { get; }
 }

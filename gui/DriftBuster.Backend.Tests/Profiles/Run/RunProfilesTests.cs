@@ -78,7 +78,7 @@ public sealed class RunProfilesTests : IDisposable
         var result = RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, cancellationToken: TestContext.Current.CancellationToken);
 
         Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(result.OutputDir))).Should().Be("demo");
-        var copiedFiles = EngineGlob.Glob(result.OutputDir, "**/*", TestContext.Current.CancellationToken);
+        var copiedFiles = FileTreeGlob.Glob(result.OutputDir, "**/*", TestContext.Current.CancellationToken);
         copiedFiles.Should().Contain(path => PathText.Name(path) == "app.json");
         var metadata = ReadMetadata(result);
         ((OrderedDictionary<string, object?>)metadata["profile"]!)["name"].Should().Be("demo");

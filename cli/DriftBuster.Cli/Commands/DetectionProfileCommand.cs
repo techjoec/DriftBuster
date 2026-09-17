@@ -45,7 +45,7 @@ internal static class DetectionProfileCommand
         var command = new Command("summary", "Generate a profile summary from a ProfileStore payload.") { store };
         var options = OutputOptionsFor(command);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
-            () => DetectionProfileCommands.Summary(EnginePurePath.Str(parseResult.GetValue(store)!)), Read(parseResult, options), stdout, stderr)));
+            () => DetectionProfileCommands.Summary(LexicalPath.Str(parseResult.GetValue(store)!)), Read(parseResult, options), stdout, stderr)));
         return command;
     }
 
@@ -56,7 +56,7 @@ internal static class DetectionProfileCommand
         var command = new Command("diff", "Diff two stored profile summary JSON payloads.") { baseline, current };
         var options = OutputOptionsFor(command);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
-            () => DetectionProfileCommands.Diff(EnginePurePath.Str(parseResult.GetValue(baseline)!), EnginePurePath.Str(parseResult.GetValue(current)!)),
+            () => DetectionProfileCommands.Diff(LexicalPath.Str(parseResult.GetValue(baseline)!), LexicalPath.Str(parseResult.GetValue(current)!)),
             Read(parseResult, options),
             stdout,
             stderr)));
@@ -73,10 +73,10 @@ internal static class DetectionProfileCommand
         var options = OutputOptionsFor(command);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
             () => DetectionProfileCommands.HuntBridge(
-                EnginePurePath.Str(parseResult.GetValue(store)!),
-                EnginePurePath.Str(parseResult.GetValue(hunt)!),
+                LexicalPath.Str(parseResult.GetValue(store)!),
+                LexicalPath.Str(parseResult.GetValue(hunt)!),
                 parseResult.GetValue(tags)!,
-                parseResult.GetValue(root) is { } rootText ? EnginePurePath.Str(rootText) : null),
+                parseResult.GetValue(root) is { } rootText ? LexicalPath.Str(rootText) : null),
             Read(parseResult, options),
             stdout,
             stderr)));
@@ -113,7 +113,7 @@ internal static class DetectionProfileCommand
         }
         else
         {
-            EngineTextFile.WriteText(EnginePurePath.Str(options.Output), ReportValues.TextModeNewLines(text));
+            EngineTextFile.WriteText(LexicalPath.Str(options.Output), ReportValues.TextModeNewLines(text));
         }
     }
 }

@@ -18,11 +18,11 @@ public static partial class ScheduleStore
 
     /// <summary><c>_default_schedule_config_path(base_dir, override)</c>: the override as given, else <c>profiles_root(base_dir) / "schedules.json"</c> (creating the root).</summary>
     public static string DefaultConfigPath(string? baseDir, string? overridePath)
-        => overridePath is not null ? EnginePurePath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "schedules.json");
+        => overridePath is not null ? LexicalPath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "schedules.json");
 
     /// <summary><c>_default_schedule_state_path(base_dir, override)</c>: the override as given, else <c>profiles_root(base_dir) / "scheduler-state.json"</c>.</summary>
     public static string DefaultStatePath(string? baseDir, string? overridePath)
-        => overridePath is not null ? EnginePurePath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "scheduler-state.json");
+        => overridePath is not null ? LexicalPath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "scheduler-state.json");
 
     /// <summary>
     /// <c>_load_schedule_payload(path)</c>: the mapping entries of the manifest's <c>schedules</c> (or of a bare array). A missing file, text
@@ -113,8 +113,8 @@ public static partial class ScheduleStore
 
     /// <summary>
     /// <c>_write_schedule_state(scheduler, path)</c>: the snapshot as sorted, indented, ASCII-escaped JSON with a trailing new line, parents
-    /// created. A state path Python cannot write raises its <c>OSError</c> text (<see cref="EngineOSError"/>): the parent directory's
-    /// (<see cref="EnginePath.MakeDirectories"/>), or the file's, <c>open()</c>'s error for a directory (<see cref="EngineOSError.DirectoryOpenErrno"/>).
+    /// created. A state path Python cannot write raises its <c>OSError</c> text (<see cref="OsError"/>): the parent directory's
+    /// (<see cref="EnginePath.MakeDirectories"/>), or the file's, <c>open()</c>'s error for a directory (<see cref="OsError.DirectoryOpenErrno"/>).
     /// </summary>
     public static void WriteScheduleState(ProfileScheduler scheduler, string path)
     {

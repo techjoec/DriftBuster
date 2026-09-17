@@ -28,13 +28,13 @@ internal static class ToolProcess
 
         try
         {
-            using var process = Process.Start(info) ?? throw EngineOSError.Create(EngineOSError.NoSuchFile, command[0]);
+            using var process = Process.Start(info) ?? throw OsError.Create(OsError.NoSuchFile, command[0]);
             process.WaitForExit();
             return process.ExitCode;
         }
         catch (Win32Exception exc)
         {
-            throw EngineOSError.Create(EngineOSError.NoSuchFile, command[0], exc);
+            throw OsError.Create(OsError.NoSuchFile, command[0], exc);
         }
     }
 
@@ -59,7 +59,7 @@ internal static class ToolProcess
             }
         }
 
-        throw EngineOSError.Create(EngineOSError.NoSuchFile, name);
+        throw OsError.Create(OsError.NoSuchFile, name);
     }
 
     public static void Run(IReadOnlyList<string> command, string? cwd, string arrow, TextWriter stdout, Func<IReadOnlyList<string>, string?, int> launcher)

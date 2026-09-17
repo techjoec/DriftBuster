@@ -6,9 +6,9 @@ using System.Runtime.Versioning;
 namespace DriftBuster.Backend.Remote;
 
 /// <summary>
-/// <c>socket.gethostname()</c>. On Windows CPython calls <c>GetComputerNameExW(ComputerNamePhysicalDnsHostname)</c>, a wide-character
-/// call, so a computer name outside ASCII is exact; <see cref="Dns.GetHostName"/> there calls Winsock's ANSI <c>gethostname</c> and
-/// decodes its bytes, which changes such a name. Elsewhere both call the resolver's <c>gethostname</c>.
+/// The host name of the machine being captured. On Windows it comes from <c>GetComputerNameExW(ComputerNamePhysicalDnsHostname)</c>,
+/// a wide-character call, so a computer name outside ASCII is exact; <see cref="Dns.GetHostName"/> there calls Winsock's ANSI
+/// <c>gethostname</c> and decodes its bytes, which changes such a name. Elsewhere <see cref="Dns.GetHostName"/> is used.
 /// </summary>
 internal static partial class CaptureHostName
 {
@@ -16,7 +16,7 @@ internal static partial class CaptureHostName
     private const int ErrorMoreData = 234;
 
     /// <summary>The host name, domain part included where the platform reports it.</summary>
-    /// <exception cref="Win32Exception">Windows refused the name (Python's <c>OSError</c>).</exception>
+    /// <exception cref="Win32Exception">Windows refused the name.</exception>
     public static string Get() => OperatingSystem.IsWindows() ? PhysicalDnsHostName() : Dns.GetHostName();
 
     [SupportedOSPlatform("windows")]

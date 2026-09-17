@@ -17,7 +17,7 @@ internal static partial class SelfcheckMultiServerPaths
     /// <summary>The portable root's <c>Samples/MultiServer</c> when present, else the repository's multi-server fixtures.</summary>
     public static string ResolveSamples(string portableRoot, string root)
     {
-        var portableSamples = EnginePurePath.Join(EnginePurePath.Join(portableRoot, "Samples"), "MultiServer");
+        var portableSamples = LexicalPath.Join(LexicalPath.Join(portableRoot, "Samples"), "MultiServer");
         if (TextModeFile.Exists(portableSamples))
         {
             return portableSamples;
@@ -34,8 +34,8 @@ internal static partial class SelfcheckMultiServerPaths
     {
         runScenarios ??= RunScenarios;
         var samplesRoot = ResolveSamples(portableRoot, root);
-        var reportPath = EnginePurePath.Str(output);
-        var reportDir = EnginePurePath.Parent(reportPath);
+        var reportPath = LexicalPath.Str(output);
+        var reportDir = LexicalPath.Parent(reportPath);
         Directory.CreateDirectory(reportDir);
 
         var scenarios = runScenarios(samplesRoot, reportDir);
@@ -43,8 +43,8 @@ internal static partial class SelfcheckMultiServerPaths
         var total = (long)scenarios.Count;
         var report = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["generated_at"] = EngineDateTime.UtcNow().IsoFormat(),
-            ["samples_root"] = EnginePurePath.Str(samplesRoot),
+            ["generated_at"] = IsoTimestamp.Format(IsoTimestamp.UtcNow()),
+            ["samples_root"] = LexicalPath.Str(samplesRoot),
             ["passed"] = passed,
             ["total"] = total,
             ["success"] = passed == total,

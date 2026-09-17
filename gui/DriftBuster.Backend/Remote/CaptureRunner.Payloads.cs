@@ -32,7 +32,7 @@ public static partial class CaptureRunner
         {
             ["id"] = captureId,
             ["root"] = root,
-            ["captured_at"] = UtcNow().IsoFormat(),
+            ["captured_at"] = IsoTimestamp.Format(UtcNow()),
             ["operator"] = @operator,
             ["environment"] = environment,
             ["reason"] = reason,

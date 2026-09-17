@@ -21,12 +21,8 @@ public static class RunProfileStore
         return EngineOsPath.AbsPath(EngineOsPath.ExpandVars(EngineOsPath.ExpandUser(text)));
     }
 
-    /// <summary><c>_has_magic(pattern)</c>: the text holds <c>*</c>, <c>?</c>, <c>[</c> or <c>]</c>.</summary>
-    public static bool HasMagic(string pattern)
-    {
-        ArgumentNullException.ThrowIfNull(pattern);
-        return pattern.AsSpan().IndexOfAny("*?[]") >= 0;
-    }
+    /// <summary>The text holds a wildcard character, <c>*</c> or <c>?</c> (<see cref="PathWildcard.HasWildcards"/>).</summary>
+    public static bool HasMagic(string pattern) => PathWildcard.HasWildcards(pattern);
 
     /// <summary><c>_safe_name(text)</c>: every code point that is not <c>str.isalnum()</c>, "-" or "_" becomes "-".</summary>
     public static string SafeName(string text)
@@ -49,25 +45,25 @@ public static class RunProfileStore
     }
 
     /// <summary>
-    /// <c>_glob_base_directory(pattern)</c>: the leading parts of <c>Path(pattern).parts</c> that hold no <see cref="HasMagic"/> character,
+    /// The leading parts of <see cref="LexicalPath.Parts"/> that hold no <see cref="HasMagic"/> character,
     /// joined, against the working directory when relative; the working directory when there are none.
     /// </summary>
     public static string GlobBaseDirectory(string pattern)
     {
         ArgumentNullException.ThrowIfNull(pattern);
-        var baseParts = EnginePurePath.Parts(pattern).TakeWhile(part => !HasMagic(part)).ToList();
+        var baseParts = LexicalPath.Parts(pattern).TakeWhile(part => !HasMagic(part)).ToList();
         if (baseParts.Count == 0)
         {
             return Directory.GetCurrentDirectory();
         }
 
-        var joined = EnginePurePath.Str(baseParts[0]);
+        var joined = LexicalPath.Str(baseParts[0]);
         foreach (var part in baseParts.Skip(1))
         {
-            joined = EnginePurePath.Join(joined, part);
+            joined = LexicalPath.Join(joined, part);
         }
 
-        return EnginePurePath.IsAbsolute(joined) ? joined : EnginePurePath.Join(Directory.GetCurrentDirectory(), joined);
+        return LexicalPath.IsAbsolute(joined) ? joined : LexicalPath.Join(Directory.GetCurrentDirectory(), joined);
     }
 
     /// <summary>
@@ -102,7 +98,7 @@ public static class RunProfileStore
             {
                 RequireExisting(ExpandPath(source.Path), "Path does not exist: ");
             }
-            else if (!source.Optional && !HasMagic(source.Path) && !Exists(EnginePurePath.Str(RunProfileExecutor.ExpandStructuredPath(source.Path))))
+            else if (!source.Optional && !HasMagic(source.Path) && !Exists(LexicalPath.Str(RunProfileExecutor.ExpandStructuredPath(source.Path))))
             {
                 throw RunProfileExecutor.MissingSource(source.Path);
             }
@@ -142,7 +138,7 @@ public static class RunProfileStore
     /// <summary><c>profiles_root(base_dir)</c>: <c>(base_dir or cwd) / "Profiles"</c>, created with its parents.</summary>
     public static string ProfilesRoot(string? baseDir = null)
     {
-        var root = EnginePurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
+        var root = LexicalPath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
         EnginePath.MakeDirectories(root);
         return root;
     }
@@ -174,7 +170,7 @@ public static class RunProfileStore
     internal static RunProfile? TryLoadStoredProfile(string profileName, string? baseDir)
     {
         ArgumentNullException.ThrowIfNull(profileName);
-        var root = EnginePurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
+        var root = LexicalPath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
         var configPath = JoinName(JoinName(root, SafeName(profileName)), "profile.json");
         try
         {
@@ -252,7 +248,7 @@ public static class RunProfileStore
     }
 
     /// <summary><c>path / name</c> for a single name.</summary>
-    internal static string JoinName(string path, string name) => EnginePurePath.Join(path, name);
+    internal static string JoinName(string path, string name) => LexicalPath.Join(path, name);
 
     /// <summary>
     /// <c>path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")</c>: ASCII-escaped JSON, each line
@@ -270,7 +266,7 @@ public static class RunProfileStore
     }
 
     /// <summary><c>json.loads(path.read_text(encoding="utf-8"))</c>.</summary>
-    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="EngineOSError.DirectoryOpenErrno"/>), or
+    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="OsError.DirectoryOpenErrno"/>), or
     /// cannot be opened or read (Python's <c>OSError</c> text, naming the path as <c>str(Path)</c> spells it when <c>open()</c> raised).</exception>
     /// <exception cref="EngineUnicodeDecodeException">The bytes are not UTF-8 (<c>UnicodeDecodeError</c>).</exception>
     /// <exception cref="EngineValueException">The text is not a JSON document (<c>JSONDecodeError</c>), or holds an integer past the decoder's
@@ -278,7 +274,7 @@ public static class RunProfileStore
     /// <exception cref="EngineRecursionException">Containers nested past the decoder's limit (<c>RecursionError</c>).</exception>
     internal static object? ReadJson(string path)
     {
-        var text = EngineUtf8.Decode(EngineTextFile.ReadBytes(path, EnginePurePath.Str(path)));
+        var text = EngineUtf8.Decode(EngineTextFile.ReadBytes(path, LexicalPath.Str(path)));
         return EngineJson.TryLoadsOrRaiseLimits(text, out var value)
             ? value
             : throw new EngineValueException($"Invalid JSON document: {path}", nameof(path));

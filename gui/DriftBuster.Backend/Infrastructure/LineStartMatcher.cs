@@ -11,7 +11,7 @@ namespace DriftBuster.Backend.Infrastructure;
 public static class LineStartMatcher
 {
     /// <summary>
-    /// The matches Python's <c>finditer</c> yields for a <c>^\s*&lt;anchor&gt;...</c> MULTILINE pattern, given its
+    /// The successive non-overlapping matches of a <c>^\s*&lt;anchor&gt;...</c> MULTILINE pattern, given its
     /// <c>\G</c>-anchored spelling. <paramref name="pattern"/> must begin with <c>\G[\s\x1c-\x1f]*</c> followed by
     /// something no whitespace code point can start, so a match from a line start is decided entirely at the end of
     /// the whitespace run that begins there: every line start inside a run that failed reaches the same end and

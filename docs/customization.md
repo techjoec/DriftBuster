@@ -10,7 +10,12 @@ tweaks.
 driftbuster scan <path> --glob "**/*.config" --sample-size 262144 --json
 ```
 
-- `--glob` narrows directory scans (default `**/*`).
+- `--glob` narrows directory scans (default `**/*`). Segments split on `/`,
+  `**` is zero or more directory levels, and every other segment is matched
+  against one entry name: within a segment `*` matches any run of characters in
+  that name (never crossing `/`), `?` one character, and every other character —
+  brackets and backslash included — is literal. Matching ignores case on Windows
+  only. Symlinked directories are listed but not descended into.
 - `--sample-size` sets the bytes read per file (default 128 KiB).
 - `--json` streams newline-delimited JSON for pipelines.
 - `driftbuster hunt` and `driftbuster capture run` take the same `--glob` and

@@ -22,8 +22,8 @@ internal static class EngineTextFile
 
     /// <summary>
     /// <c>Path(path).write_text(text, encoding="utf-8")</c> for text already laid out with the platform's line breaks: a directory raises
-    /// <c>open()</c>'s error for one (<see cref="EngineOSError.DirectoryOpenErrno"/>) and any other failure Python's <c>OSError</c> text
-    /// (<see cref="EngineOSError"/>), the path spelled as <c>str(Path)</c> spells it when <c>open()</c> raised, and no path when the write did.
+    /// <c>open()</c>'s error for one (<see cref="OsError.DirectoryOpenErrno"/>) and any other failure Python's <c>OSError</c> text
+    /// (<see cref="OsError"/>), the path spelled as <c>str(Path)</c> spells it when <c>open()</c> raised, and no path when the write did.
     /// </summary>
     /// <exception cref="EngineValueException">The path holds a NUL character (<c>open()</c>'s <c>embedded null byte</c>).</exception>
     public static void WriteText(string path, string text)
@@ -40,11 +40,11 @@ internal static class EngineTextFile
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(bytes);
-        EngineOSError.ThrowIfEmbeddedNull(path);
-        shown ??= EnginePurePath.Str(path);
+        OsError.ThrowIfEmbeddedNull(path);
+        shown ??= LexicalPath.Str(path);
         if (RunProfileStore.IsDirectory(path))
         {
-            throw EngineOSError.Create(EngineOSError.DirectoryOpenErrno, shown);
+            throw OsError.Create(OsError.DirectoryOpenErrno, shown);
         }
 
         var stream = Open(path, shown, FileMode.Create);
@@ -63,7 +63,7 @@ internal static class EngineTextFile
 
     /// <summary>
     /// <c>Path(path).read_text(encoding="utf-8")</c>: the whole file as strict UTF-8. A directory raises <c>open()</c>'s error for one
-    /// (<see cref="EngineOSError.DirectoryOpenErrno"/>), a failed open Python's <c>OSError</c> text naming the path and a failed read the
+    /// (<see cref="OsError.DirectoryOpenErrno"/>), a failed open Python's <c>OSError</c> text naming the path and a failed read the
     /// text without it; bytes that are not UTF-8 raise <see cref="EngineUnicodeDecodeException"/>.
     /// </summary>
     /// <exception cref="EngineValueException">The path holds a NUL character (<c>open()</c>'s <c>embedded null byte</c>).</exception>
@@ -77,12 +77,12 @@ internal static class EngineTextFile
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(shown);
-        EngineOSError.ThrowIfEmbeddedNull(path);
+        OsError.ThrowIfEmbeddedNull(path);
         try
         {
             if (RunProfileStore.IsDirectory(path))
             {
-                throw EngineOSError.Create(EngineOSError.DirectoryOpenErrno, shown);
+                throw OsError.Create(OsError.DirectoryOpenErrno, shown);
             }
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
@@ -125,14 +125,14 @@ internal static class EngineTextFile
 
     // open() failed: Python's OSError text for the path, unless the exception already carries it or no errno is known.
     private static Exception OpenError(Exception exc, string path, string shown)
-        => exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || EngineOSError.Errno(exc, path) is not { } known
+        => exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || OsError.Errno(exc, path) is not { } known
             ? exc
-            : EngineOSError.Create(known, shown, exc);
+            : OsError.Create(known, shown, exc);
 
     // A read or write on the open file failed: Python's OSError text without a file name.
     // The runtime reports EFBIG from a write as ArgumentOutOfRangeException on Unix.
     private static Exception AfterOpenError(Exception exc)
         => exc is ArgumentOutOfRangeException
-            ? EngineOSError.Create(EngineOSError.FileTooLarge, exc)
-            : EngineOSError.Errno(exc) is { } known ? EngineOSError.Create(known, exc) : exc;
+            ? OsError.Create(OsError.FileTooLarge, exc)
+            : OsError.Errno(exc) is { } known ? OsError.Create(known, exc) : exc;
 }

@@ -41,7 +41,7 @@ internal static class ScanCommand
     /// <summary><c>main(argv)</c> after parsing: exit code 2 with <c>Path does not exist: {path}</c> for a missing path.</summary>
     internal static int Execute(string path, string glob, BigInteger? sampleSize, bool json, TextWriter stdout, TextWriter stderr)
     {
-        var root = EnginePurePath.Str(path);
+        var root = LexicalPath.Str(path);
         IReadOnlyList<(string Path, DetectionMatch? Match)> results;
         var detector = new Detector(sampleSize: ConsoleText.DetectorSampleSize(sampleSize, Warn), onWarning: Warn);
         if (EnginePath.IsFile(root))
@@ -76,9 +76,9 @@ internal static class ScanCommand
     /// reports absolute paths, so a relative root is also tried in its absolute form.
     /// </summary>
     internal static string RelativePath(string root, string path)
-        => EnginePurePath.RelativeTo(path, root)
-            ?? (EnginePurePath.IsAbsolute(path) && !EnginePurePath.IsAbsolute(root) ? EnginePurePath.RelativeTo(path, EnginePath.Absolute(root)) : null)
-            ?? PathText.ToPosix(EnginePurePath.Str(path));
+        => LexicalPath.RelativeTo(path, root)
+            ?? (LexicalPath.IsAbsolute(path) && !LexicalPath.IsAbsolute(root) ? LexicalPath.RelativeTo(path, EnginePath.Absolute(root)) : null)
+            ?? PathText.ToPosix(LexicalPath.Str(path));
 
     /// <summary><c>_ellipsize(value, limit)</c> over code points.</summary>
     internal static string Ellipsize(string value, int limit)

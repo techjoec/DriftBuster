@@ -13,8 +13,7 @@ public static partial class HtmlReport
     /// <summary><c>_format_metadata</c>: one table row per item, ordered by key code point.</summary>
     internal static string FormatMetadata(IReadOnlyDictionary<string, object?> metadata)
     {
-        var keys = metadata.Keys.ToList();
-        EngineSort<string>.Sort(keys, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
+        var keys = metadata.Keys.Order(Comparer<string>.Create(PathText.CompareCodePoints)).ToList();
         return string.Join('\n', keys.Select(key => $"<tr><th>{ReportValues.Escape(key)}</th><td>{ReportValues.Escape(ReportValues.Str(metadata[key]))}</td></tr>"));
     }
 
@@ -58,12 +57,8 @@ public static partial class HtmlReport
             aggregates[(format, variant)] = (bucket.Count + 1, ReportValues.Max(bucket.MaxConfidence, confidence));
         }
 
-        var keys = aggregates.Keys.ToList();
-        EngineSort<(string Format, string Variant)>.Sort(keys, static (left, right) =>
-        {
-            var byFormat = PathText.CompareCodePoints(left.Format, right.Format);
-            return byFormat != 0 ? byFormat < 0 : PathText.CompareCodePoints(left.Variant, right.Variant) < 0;
-        });
+        var codePoints = Comparer<string>.Create(PathText.CompareCodePoints);
+        var keys = aggregates.Keys.OrderBy(key => key.Format, codePoints).ThenBy(key => key.Variant, codePoints).ToList();
         var rows = new StringBuilder();
         foreach (var key in keys)
         {
@@ -167,7 +162,7 @@ public static partial class HtmlReport
                 ["description"] = finding.Rule.Description,
                 ["token_name"] = finding.Rule.TokenName,
                 ["keywords"] = finding.Rule.Keywords.Cast<object?>().ToArray(),
-                ["patterns"] = finding.Rule.Patterns.Select(pattern => (object?)pattern.Pattern).ToArray(),
+                ["patterns"] = finding.Rule.Patterns.Select(pattern => (object?)pattern.ToString()).ToArray(),
             },
             ["path"] = finding.Path,
             ["line_number"] = finding.LineNumber,

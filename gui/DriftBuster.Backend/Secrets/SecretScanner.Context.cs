@@ -1,5 +1,6 @@
+using System.Text.RegularExpressions;
+
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Secrets;
 
@@ -48,17 +49,17 @@ public static partial class SecretScanner
         }
 
         var patternText = new List<string>();
-        var patterns = new List<EnginePattern>();
+        var patterns = new List<Regex>();
         foreach (var source in patternSources.Distinct(StringComparer.Ordinal))
         {
             patternText.Add(source);
             try
             {
-                patterns.Add(EnginePattern.Compile(source));
+                patterns.Add(PatternRegex.Create(source));
             }
-            catch (EngineReException)
+            catch (RegexParseException)
             {
-                // re.error: the text stays listed, the pattern is not applied.
+                // Not a valid .NET regular expression: the text stays listed, the pattern is not applied.
             }
         }
 

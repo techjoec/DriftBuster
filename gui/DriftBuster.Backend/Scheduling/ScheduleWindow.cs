@@ -3,27 +3,31 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
-/// <c>scheduler.ScheduleWindow</c>: a daily window between two wall-clock times in a time zone. A start after the end is an overnight
-/// window (22:00 to 02:00). Bounds are inclusive and compared with the microsecond of the moment.
+/// A daily window between two wall-clock times in a time zone. A start after the end is an overnight window (22:00 to 02:00). Bounds
+/// are inclusive. Wall times skipped or repeated by a daylight saving change resolve as <see cref="ZonedWallClock"/> describes.
 /// </summary>
 public sealed class ScheduleWindow
 {
-    public ScheduleWindow(EngineTime start, EngineTime end, EngineTzInfo? timezone = null)
+    public ScheduleWindow(TimeOnly start, TimeOnly end, TimeZoneInfo? timezone = null, string? timezoneName = null)
     {
         Start = start;
         End = end;
-        Timezone = timezone ?? EngineFixedOffset.Utc;
+        Timezone = timezone ?? TimeZoneInfo.Utc;
+        TimezoneName = string.IsNullOrEmpty(timezoneName) ? Timezone.Id : timezoneName;
     }
 
-    public EngineTime Start { get; }
+    public TimeOnly Start { get; }
 
-    public EngineTime End { get; }
+    public TimeOnly End { get; }
 
-    public EngineTzInfo Timezone { get; }
+    public TimeZoneInfo Timezone { get; }
+
+    /// <summary>The zone name as configured (<c>UTC</c> when none was given).</summary>
+    public string TimezoneName { get; }
 
     /// <summary>
-    /// <c>ScheduleWindow.from_dict(payload)</c>: <c>str()</c> of <c>start</c> and <c>end</c> (both required), the time zone built from
-    /// <c>str(payload.get("timezone", "UTC"))</c> before either time is parsed.
+    /// The window from a payload: <c>start</c> and <c>end</c> as text (both required) and <c>timezone</c> (default <c>UTC</c>), the time
+    /// zone resolved before either time is parsed.
     /// </summary>
     public static ScheduleWindow FromDict(IReadOnlyDictionary<string, object?> payload)
     {
@@ -35,46 +39,40 @@ public sealed class ScheduleWindow
 
         var startText = EngineRepr.Str(start);
         var endText = EngineRepr.Str(end);
-        var timezone = ScheduleParsing.BuildTimezone(EngineRepr.Str(payload.TryGetValue("timezone", out var name) ? name : "UTC"));
-        return new ScheduleWindow(ScheduleParsing.ParseTime(startText), ScheduleParsing.ParseTime(endText), timezone);
+        var name = EngineRepr.Str(payload.TryGetValue("timezone", out var zone) ? zone : "UTC");
+        var timezone = ScheduleParsing.BuildTimezone(name);
+        return new ScheduleWindow(ScheduleParsing.ParseTime(startText), ScheduleParsing.ParseTime(endText), timezone, name);
     }
 
-    /// <summary><c>window.contains(moment)</c> for an aware moment: its wall-clock time in the window's zone lies inside the window.</summary>
-    public bool Contains(EngineDateTime moment)
-    {
-        ArgumentNullException.ThrowIfNull(moment);
-        var current = moment.AsTimeZone(Timezone).TimeOfDay();
-        return Start <= End ? Start <= current && current <= End : current >= Start || current <= End;
-    }
+    /// <summary>Whether the instant's wall-clock time of day in the window's zone, at full precision, lies inside the window.</summary>
+    public bool Contains(DateTimeOffset moment) => Covers(WallClock(moment).TimeOfDay);
 
     /// <summary>
-    /// <c>window.align(candidate)</c>: the candidate in the window's zone without microseconds, moved to the window start the same day
-    /// when it is before a daytime window or inside an overnight window's closed hours, or to the start the next day when it is after
-    /// a daytime window, then converted to UTC. Moving within the day keeps the fold; moving to the next day resets it.
+    /// The first run time at or after the candidate that the window allows, in UTC. The candidate is truncated to whole seconds; inside
+    /// the window it is returned as is. Otherwise it moves to the window start: the same local day when it is before a daytime window or
+    /// in an overnight window's closed hours, the next local day when it is after a daytime window. When that start time is repeated
+    /// by a daylight saving change, the earliest occurrence not before the candidate is used; when it is skipped, the offset in force
+    /// before the change applies.
     /// </summary>
-    public EngineDateTime Align(EngineDateTime candidate)
+    public DateTimeOffset Align(DateTimeOffset candidate)
     {
-        ArgumentNullException.ThrowIfNull(candidate);
-        var baseline = candidate.AsTimeZone(Timezone).Replace(microsecond: 0);
-        var current = baseline.TimeOfDay();
-        if (Start <= End)
+        var truncated = candidate.ToUniversalTime();
+        truncated = truncated.AddTicks(-(truncated.Ticks % TimeSpan.TicksPerSecond));
+        var local = WallClock(truncated);
+        if (Covers(local.TimeOfDay))
         {
-            if (current < Start)
-            {
-                baseline = AtStart(baseline);
-            }
-            else if (current > End)
-            {
-                baseline = AtStart(baseline.Add(EngineTimeDelta.FromMicroseconds(86_400_000_000)));
-            }
-        }
-        else if (current > End && current < Start)
-        {
-            baseline = AtStart(baseline);
+            return truncated;
         }
 
-        return baseline.AsTimeZone(EngineFixedOffset.Utc);
+        var day = Start <= End && TimeOnly.FromTimeSpan(local.TimeOfDay) > End ? local.Date.AddDays(1) : local.Date;
+        return ZonedWallClock.ToInstant(day.Add(Start.ToTimeSpan()), Timezone, notBefore: truncated);
     }
 
-    private EngineDateTime AtStart(EngineDateTime moment) => moment.Replace(Start.Hour, Start.Minute, Start.Second);
+    private DateTime WallClock(DateTimeOffset moment) => TimeZoneInfo.ConvertTime(moment, Timezone).DateTime;
+
+    private bool Covers(TimeSpan timeOfDay)
+    {
+        var current = TimeOnly.FromTimeSpan(timeOfDay);
+        return Start <= End ? Start <= current && current <= End : current >= Start || current <= End;
+    }
 }

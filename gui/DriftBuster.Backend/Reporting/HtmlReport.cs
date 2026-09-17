@@ -13,7 +13,7 @@ public static partial class HtmlReport
     private const string DefaultTitle = "DriftBuster Report";
 
     /// <summary><c>datetime.now(UTC)</c>, swapped by tests that pin the "Generated at" line.</summary>
-    internal static Func<EngineDateTime> UtcNow { get; set; } = EngineDateTime.UtcNow;
+    internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
 
     /// <summary>
     /// <c>render_html_report</c>: every payload (detections with the extra metadata, diffs, hunt hits and the profile summary with the
@@ -55,7 +55,7 @@ public static partial class HtmlReport
             preparedSummary = Redact(summaryPayload, activeRedactor);
         }
 
-        var generatedAt = UtcNow().IsoFormat().Replace("+00:00", "Z", StringComparison.Ordinal);
+        var generatedAt = IsoTimestamp.Format(UtcNow()).Replace("+00:00", "Z", StringComparison.Ordinal);
         var parts = new List<string>
         {
             HeaderBeforeTitle + ReportValues.Escape(title) + HeaderAfterTitle,
@@ -187,8 +187,7 @@ public static partial class HtmlReport
         {
             lines.Add("<ul>");
             var stats = redactor.Stats();
-            var tokens = stats.Keys.ToList();
-            EngineSort<string>.Sort(tokens, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
+            var tokens = stats.Keys.Order(Comparer<string>.Create(PathText.CompareCodePoints)).ToList();
             foreach (var token in tokens)
             {
                 lines.Add(string.Create(

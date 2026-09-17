@@ -5,38 +5,36 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// <c>json.loads</c> producing Python-shaped values: a dict becomes an insertion-ordered
-/// <see cref="OrderedDictionary{TKey, TValue}"/> where a duplicate key keeps its first slot with the last value, a
-/// list becomes <see cref="List{T}"/> of <see cref="object"/>, a str a <see cref="string"/>, an int an
-/// <see cref="int"/>, <see cref="long"/> or <see cref="BigInteger"/> (the smallest that holds it), a float a
-/// <see cref="double"/>, true/false a <see cref="bool"/> and null a null reference.
+/// A JSON decode producing plain CLR values: an object becomes an insertion-ordered
+/// <see cref="OrderedDictionary{TKey, TValue}"/> where a duplicate key keeps its first slot with the last value, an
+/// array becomes <see cref="List{T}"/> of <see cref="object"/>, a string a <see cref="string"/>, an integer an
+/// <see cref="int"/>, <see cref="long"/> or <see cref="BigInteger"/> (the smallest that holds it), a fractional or
+/// exponent number a <see cref="double"/>, true/false a <see cref="bool"/> and null a null reference.
 /// </summary>
 /// <remarks>
-/// The grammar is CPython's C scanner in strict mode, as <c>Detection/Plugins/EngineJsonScanner.cs</c> spells it
-/// out: whitespace is space, tab, LF and CR; <c>NaN</c>, <c>Infinity</c> and <c>-Infinity</c> are floats; numbers
-/// use ASCII digits with no leading zeros, a lexeme with a fraction or exponent is a float (correctly rounded, so
-/// an overflowing exponent gives an infinity as <c>float()</c> does); strings reject raw control characters below
-/// U+0020 and keep unpaired surrogate escapes; trailing commas, comments and a leading U+FEFF are rejected;
-/// anything but whitespace after the value is extra data. An integer literal of more than
-/// <see cref="MaxIntDigits"/> digits fails as CPython's <c>int()</c> conversion limit does, and a container nested
-/// deeper than <see cref="MaxNestingDepth"/> fails as the C scanner's <c>RecursionError</c> does. Nesting is kept on
-/// an explicit stack, so neither the decode nor a caller walking the result needs the thread's stack.
+/// The grammar is the one <c>Detection/Plugins/EngineJsonScanner.cs</c> spells out: whitespace is space, tab, LF
+/// and CR; <c>NaN</c>, <c>Infinity</c> and <c>-Infinity</c> are floats; numbers use ASCII digits with no leading
+/// zeros, a lexeme with a fraction or exponent is a float (correctly rounded, so an overflowing exponent gives an
+/// infinity); strings reject raw control characters below U+0020 and keep unpaired surrogate escapes; trailing
+/// commas, comments and a leading U+FEFF are rejected; anything but whitespace after the value is extra data. An
+/// integer literal of more than <see cref="MaxIntDigits"/> digits and a container nested deeper than
+/// <see cref="MaxNestingDepth"/> are rejected, so a hostile document cannot turn a decode into unbounded work.
+/// Nesting is kept on an explicit stack, so neither the decode nor a caller walking the result needs the thread's
+/// stack.
 /// </remarks>
 public static class EngineJson
 {
-    /// <summary><c>sys.get_int_max_str_digits()</c> default: longer integer literals raise <c>ValueError</c>.</summary>
+    /// <summary>The longest integer literal that decodes; a longer one is rejected.</summary>
     public const int MaxIntDigits = 4300;
 
     /// <summary>
-    /// The deepest container nesting <c>json.loads</c> decodes. The C scanner enters one recursion level per array or
-    /// object, including empty ones, against <c>Py_C_RECURSION_LIMIT</c> (10000 on 64-bit Linux CPython 3.13) less the
-    /// levels the interpreter already holds at the call; 9998 nested containers decode and 9999 raise, measured both
-    /// from a top-level script and through <c>Detector.scan_file</c> into the registry-live plugin.
+    /// The deepest container nesting a decode accepts: one level per array or object, including empty ones. A
+    /// document nested deeper is rejected rather than decoded.
     /// </summary>
     public const int MaxNestingDepth = 9998;
 
-    // json.decoder._CONSTANTS: every NaN, Infinity and -Infinity literal any json.loads call decodes is one shared float object, so
-    // EngineValues' identity-first comparison finds a decoded NaN equal to itself wherever it is compared, as CPython's containers do.
+    // Every NaN, Infinity and -Infinity literal decodes to one shared boxed double, so EngineValues' identity-first comparison finds a
+    // decoded NaN equal to itself wherever it is compared.
     private static readonly object NaN = double.NaN;
     private static readonly object PositiveInfinity = double.PositiveInfinity;
     private static readonly object NegativeInfinity = double.NegativeInfinity;

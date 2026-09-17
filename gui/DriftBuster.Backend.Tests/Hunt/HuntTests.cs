@@ -15,7 +15,7 @@ public sealed class HuntTests : IDisposable
 
     public void Dispose()
     {
-        HuntEngine.RelativeTo = EnginePurePath.RelativeTo;
+        HuntEngine.RelativeTo = LexicalPath.RelativeTo;
         _tmp.Delete(recursive: true);
     }
 

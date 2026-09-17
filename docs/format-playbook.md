@@ -98,6 +98,10 @@ format-specific exception.
   HOCON/EDN ➜ library validators, Dhall ➜ type checker.
 - Windows-first baseline: ensure `.reg`, `.ini`, `.inf`, `.admx`/`.adml`, and
   `.psd1` flows are covered early—they represent common enterprise scenarios.
+- Line diffs use a minimal edit script (Myers' O(ND) algorithm, linear-space
+  variant) with ordinal line comparison, and render as standard unified diff
+  hunks: removed lines precede added lines within a change, and changes
+  separated by at most twice the context size share a hunk.
 - Diff renderers clamp canonical payloads to 256 KiB and unified diffs to 128 KiB
   / 600 lines. When those thresholds trigger a safety notice is appended with the
   original digests so reviewers can request full artefacts through secure

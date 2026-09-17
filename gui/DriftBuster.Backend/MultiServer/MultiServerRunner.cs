@@ -118,7 +118,7 @@ public sealed partial class MultiServerRunner
         void Emit(ServerScanStatus status, string message) => throttle.Report(progress, plan.HostId, status, message, Monotonic(), Now());
 
         Emit(ServerScanStatus.Running, $"Scanning {plan.Label}");
-        var roots = plan.Roots.Select(EnginePurePath.Str).ToList();
+        var roots = plan.Roots.Select(LexicalPath.Str).ToList();
         var existingRoots = roots.Where(RootExists).ToList();
         if (existingRoots.Count == 0)
         {
@@ -180,7 +180,7 @@ public sealed partial class MultiServerRunner
         var timeout = (long)nanoseconds;
         if (!OperatingSystem.IsWindows() && (long)(monotonicSeconds * 1e9) > long.MaxValue - timeout)
         {
-            throw EngineOSError.Create(EngineOSError.InvalidArgument);
+            throw OsError.Create(OsError.InvalidArgument);
         }
 
         return TimeSpan.FromTicks((timeout + 99) / 100);

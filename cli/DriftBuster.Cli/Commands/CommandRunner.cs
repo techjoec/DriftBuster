@@ -1,8 +1,8 @@
 using System.CommandLine;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Scheduling;
 using DriftBuster.Backend.Sql;
 
@@ -48,7 +48,7 @@ internal static class CommandRunner
         CalledProcessException => "subprocess.CalledProcessError",
         ScheduleException => "ScheduleError",
         Sqlite3Exception sqlite => sqlite.TypeName,
-        EngineReException => "PatternError",
+        RegexParseException => "PatternError",
         DetectorIOException => "DetectorIOError",
         MetadataValidationError => "MetadataValidationError",
         EngineValueException => "ValueError",
@@ -62,7 +62,7 @@ internal static class CommandRunner
         KeyNotFoundException => "KeyError",
         FileNotFoundException => "FileNotFoundError",
         OverflowException => "OverflowError",
-        IOException { HResult: > 0 and < 4096 } => EngineOSError.TypeName(exc.HResult),
+        IOException { HResult: > 0 and < 4096 } => OsError.TypeName(exc.HResult),
         UnauthorizedAccessException => "PermissionError",
         IOException => "OSError",
         _ => exc.GetType().Name,

@@ -15,8 +15,8 @@ public sealed class ScheduleSpec
     public ScheduleSpec(
         string name,
         string profile,
-        EngineTimeDelta interval,
-        EngineDateTime? startAt = null,
+        TimeSpan interval,
+        DateTimeOffset? startAt = null,
         ScheduleWindow? window = null,
         IReadOnlyList<string>? tags = null,
         IReadOnlyDictionary<string, object?>? metadata = null,
@@ -24,7 +24,7 @@ public sealed class ScheduleSpec
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(profile);
-        if (!interval.IsPositive)
+        if (interval <= TimeSpan.Zero)
         {
             throw new ScheduleException("Interval must be positive.");
         }
@@ -42,7 +42,7 @@ public sealed class ScheduleSpec
         Name = name;
         Profile = profile;
         Interval = interval;
-        StartAt = startAt;
+        StartAt = startAt?.ToUniversalTime();
         Window = window;
         Tags = (tags ?? []).ToList().AsReadOnly();
         Metadata = new ReadOnlyDictionary<string, object?>(new OrderedDictionary<string, object?>(metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal), StringComparer.Ordinal));
@@ -53,9 +53,10 @@ public sealed class ScheduleSpec
 
     public string Profile { get; }
 
-    public EngineTimeDelta Interval { get; }
+    public TimeSpan Interval { get; }
 
-    public EngineDateTime? StartAt { get; }
+    /// <summary>The first-run anchor, in UTC.</summary>
+    public DateTimeOffset? StartAt { get; }
 
     public ScheduleWindow? Window { get; }
 
@@ -67,7 +68,7 @@ public sealed class ScheduleSpec
 
     /// <summary>
     /// <c>ScheduleSpec.from_dict(payload, profile_loader=...)</c>: <c>str()</c> of <c>name</c> and <c>profile</c> and the raw <c>every</c>
-    /// (all required), a truthy <c>start_at</c> through <c>fromisoformat</c> (its <c>ValueError</c> is not wrapped) and UTC, a mapping
+    /// (all required), a truthy <c>start_at</c> through <see cref="ScheduleParsing.ParseIsoTimestamp"/> (UTC), a mapping
     /// <c>window</c>, <c>tags</c> (a list becomes its stripped non-empty <c>str()</c> items sorted by code point, any other truthy value
     /// one stripped item), a mapping <c>metadata</c> (anything else raises), and finally the interval.
     /// </summary>
@@ -80,8 +81,8 @@ public sealed class ScheduleSpec
         }
 
         var startAtRaw = payload.GetValueOrDefault("start_at");
-        var startAt = EngineBuiltins.IsTruthy(startAtRaw)
-            ? ScheduleParsing.EnsureAware(EngineDateTime.FromIsoFormat(EngineRepr.Str(startAtRaw)))
+        DateTimeOffset? startAt = EngineBuiltins.IsTruthy(startAtRaw)
+            ? ScheduleParsing.ParseIsoTimestamp(EngineRepr.Str(startAtRaw))
             : null;
         var window = payload.GetValueOrDefault("window") is IReadOnlyDictionary<string, object?> windowPayload
             ? ScheduleWindow.FromDict(windowPayload)
@@ -97,18 +98,18 @@ public sealed class ScheduleSpec
         return new ScheduleSpec(EngineRepr.Str(name), EngineRepr.Str(profile), interval, startAt, window, tags, metadata, profileLoader);
     }
 
-    /// <summary><c>spec.align_to(reference)</c>: the reference in UTC, aligned to the window when there is one.</summary>
-    public EngineDateTime AlignTo(EngineDateTime reference)
+    /// <summary>The reference in UTC, aligned to the window when there is one.</summary>
+    public DateTimeOffset AlignTo(DateTimeOffset reference)
     {
-        var candidate = ScheduleParsing.EnsureAware(reference);
+        var candidate = reference.ToUniversalTime();
         return Window is null ? candidate : Window.Align(candidate);
     }
 
-    /// <summary><c>spec.initial_run(reference)</c>: the start, else the reference, else <c>datetime.now(UTC)</c>, aligned.</summary>
-    public EngineDateTime InitialRun(EngineDateTime? reference = null) => AlignTo(StartAt ?? reference ?? EngineDateTime.UtcNow());
+    /// <summary>The first run: the start, else the reference, else now, aligned.</summary>
+    public DateTimeOffset InitialRun(DateTimeOffset? reference = null) => AlignTo(StartAt ?? reference ?? IsoTimestamp.UtcNow());
 
-    /// <summary><c>spec.next_after(moment)</c>: the moment in UTC plus the interval, aligned.</summary>
-    public EngineDateTime NextAfter(EngineDateTime moment) => AlignTo(ScheduleParsing.EnsureAware(moment).Add(Interval));
+    /// <summary>The run after <paramref name="moment"/>: the moment in UTC plus the interval, aligned.</summary>
+    public DateTimeOffset NextAfter(DateTimeOffset moment) => AlignTo(moment.ToUniversalTime() + Interval);
 
     /// <summary><c>spec.load_profile()</c>.</summary>
     public RunProfile LoadProfile()

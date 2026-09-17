@@ -4,17 +4,21 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
-/// <summary>Python dict key equality and <c>sorted()</c> ordering for the values a binary plist can hold.</summary>
+/// <summary>Dict key equality and key ordering for the values a binary plist can hold.</summary>
 internal static partial class BinaryPlist
 {
+    // Stands in for "every key shares the first key's kind" while null is itself a key value.
+    private static readonly object NoMismatch = new();
+
     /// <summary>
-    /// <c>sorted(payload.keys()) if isinstance(payload, dict) else []</c>, sorted by <see cref="EngineSort{T}"/> with
-    /// Python's <c>&lt;</c>, so NaN keys land where CPython's sort leaves them. A key of <c>None</c> comes back as null.
+    /// The keys of a dict payload in ascending order (empty for any other payload); a key of <c>None</c> comes back as null.
+    /// Strings order by code point, numbers by value (bool as 0 or 1, NaN first), bytes by content and dates by instant. The
+    /// sort is stable, so keys that compare equal keep their dictionary order.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// The <c>TypeError</c> Python raises at the first comparison of two keys with no <c>&lt;</c> between them (str
-    /// against a number, any UID or None), naming that comparison's operand types. The plugin does not catch
-    /// it, so it escapes <c>detect</c>.
+    /// Two or more keys that are not all strings, all numbers, all bytes or all dates (or that include None or a UID). The
+    /// message names the type of the first key and of the first later key that cannot be ordered against it. The plugin does
+    /// not catch it, so it escapes <c>detect</c>.
     /// </exception>
     public static List<object?> SortedKeys(object? payload)
     {
@@ -24,48 +28,49 @@ internal static partial class BinaryPlist
         }
 
         var keys = dict.Keys.Select(key => ReferenceEquals(key, NoneKey) ? null : key).ToList();
-        EngineSort<object?>.Sort(keys, LessThan);
-        return keys;
-    }
-
-    // Python's left < right for plist key values.
-    private static bool LessThan(object? left, object? right)
-    {
-        var category = CategoryOf(left);
-        if (category == Category.Unordered || CategoryOf(right) != category)
+        if (keys.Count < 2)
         {
-            throw new InvalidOperationException(
-                $"'<' not supported between instances of '{ValueTypeName(left)}' and '{ValueTypeName(right)}'");
+            return keys;
         }
 
-        return category switch
+        var category = CategoryOf(keys[0]);
+        var mismatch = keys.Skip(1).FirstOrDefault(key => category == Category.Unordered || CategoryOf(key) != category, NoMismatch);
+        if (!ReferenceEquals(mismatch, NoMismatch))
         {
-            Category.Str => PathText.CompareCodePoints((string)left!, (string)right!) < 0,
-            Category.Number => NumberLessThan(left!, right!),
-            Category.Bytes => ((byte[])left!).AsSpan().SequenceCompareTo((byte[])right!) < 0,
-            _ => (DateTime)left! < (DateTime)right!,
-        };
+            throw new InvalidOperationException(
+                $"'<' not supported between instances of '{ValueTypeName(keys[0])}' and '{ValueTypeName(mismatch)}'");
+        }
+
+        return keys.Order(Comparer<object?>.Create((left, right) => CompareKeys(category, left!, right!))).ToList();
     }
 
-    // Every ordering against NaN is false; int against float compares exactly, never through a lossy conversion.
-    private static bool NumberLessThan(object left, object right)
+    private static int CompareKeys(Category category, object left, object right) => category switch
+    {
+        Category.Str => PathText.CompareCodePoints((string)left, (string)right),
+        Category.Number => CompareNumbers(left, right),
+        Category.Bytes => ((byte[])left).AsSpan().SequenceCompareTo((byte[])right),
+        _ => ((DateTime)left).CompareTo((DateTime)right),
+    };
+
+    // A total order over numbers: NaN before every other value, integers against reals exactly.
+    private static int CompareNumbers(object left, object right)
     {
         if (left is double a && right is double b)
         {
-            return a < b;
+            return a.CompareTo(b);
         }
 
         if (left is double onlyLeft)
         {
-            return !double.IsNaN(onlyLeft) && CompareIntegerToDouble(ToInteger(right), onlyLeft) > 0;
+            return double.IsNaN(onlyLeft) ? -1 : -CompareIntegerToDouble(ToInteger(right), onlyLeft);
         }
 
         if (right is double onlyRight)
         {
-            return !double.IsNaN(onlyRight) && CompareIntegerToDouble(ToInteger(left), onlyRight) < 0;
+            return double.IsNaN(onlyRight) ? 1 : CompareIntegerToDouble(ToInteger(left), onlyRight);
         }
 
-        return ToInteger(left) < ToInteger(right);
+        return ToInteger(left).CompareTo(ToInteger(right));
     }
 
     private enum Category
@@ -99,7 +104,7 @@ internal static partial class BinaryPlist
         _ => key.GetType().Name,
     };
 
-    // bool is an int subclass.
+    // A boolean counts as the integer 0 or 1, so true and 1 are one key.
     private static BigInteger ToInteger(object value) => value switch
     {
         bool flag => flag ? BigInteger.One : BigInteger.Zero,
@@ -151,7 +156,7 @@ internal static partial class BinaryPlist
         _ => ((double)ToInteger(value)).GetHashCode(),
     };
 
-    /// <summary>Python dict key semantics: identity first, then value equality within compatible types.</summary>
+    /// <summary>Dict key equality: identity first, then value equality within compatible types.</summary>
     private sealed class KeyComparer : IEqualityComparer<object>
     {
         public static KeyComparer Instance { get; } = new();

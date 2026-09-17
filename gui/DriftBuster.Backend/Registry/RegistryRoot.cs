@@ -1,5 +1,6 @@
+using System.Text.RegularExpressions;
+
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -8,9 +9,13 @@ namespace DriftBuster.Backend.Registry;
 /// <c>"64"</c>, or null for the default). It is also the <c>(hive, path, view)</c> tuple <c>find_app_registry_roots</c> returns and
 /// <c>search_registry</c> walks; equality is by all three, ordinal.
 /// </summary>
-public sealed record RegistryRoot(string Hive, string Path, string? View = null)
+public sealed partial record RegistryRoot(string Hive, string Path, string? View = null)
 {
-    private static readonly EnginePattern DescriptorPattern = EnginePattern.Compile(@"^(HKLM|HKCU)\\(.+)$", EngineReFlags.IgnoreCase);
+    [GeneratedRegex(
+        @"\A(?<hive>HKLM|HKCU)\\(?<path>.+)$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial Regex DescriptorPattern();
 
     /// <summary><c>root.as_tuple()</c>.</summary>
     public (string Hive, string Path, string? View) AsTuple() => (Hive, Path, View);
@@ -35,10 +40,14 @@ public sealed record RegistryRoot(string Hive, string Path, string? View = null)
             throw new EngineIndexException(nameof(text), "list index out of range");
         }
 
-        var match = DescriptorPattern.Match(segments[0].Replace('/', '\\'))
-            ?? throw new EngineValueException("Registry root descriptor must start with HKLM\\ or HKCU\\", nameof(text));
-        var hive = RegistryText.Upper(match.Group(1)!);
-        var path = EngineText.Strip(match.Group(2)!);
+        var match = DescriptorPattern().Match(segments[0].Replace('/', '\\'));
+        if (!match.Success)
+        {
+            throw new EngineValueException("Registry root descriptor must start with HKLM\\ or HKCU\\", nameof(text));
+        }
+
+        var hive = RegistryText.Upper(match.Groups["hive"].Value);
+        var path = EngineText.Strip(match.Groups["path"].Value);
         if (path.Length == 0)
         {
             throw new EngineValueException("Registry root path segment must be non-empty", nameof(text));

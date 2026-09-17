@@ -27,7 +27,7 @@ internal static class ProfileCommand
     }
 
     internal static string? BaseDir(ParseResult parseResult, Option<string?> option)
-        => parseResult.GetValue(option) is { } text ? EnginePurePath.Str(text) : null;
+        => parseResult.GetValue(option) is { } text ? LexicalPath.Str(text) : null;
 
     private static Command BuildCreate(Option<string?> baseDir)
     {

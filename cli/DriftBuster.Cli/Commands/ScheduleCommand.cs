@@ -31,7 +31,7 @@ internal static class ScheduleCommand
     }
 
     private static string? PathValue(ParseResult parseResult, Option<string?> option)
-        => parseResult.GetValue(option) is { } text ? EnginePurePath.Str(text) : null;
+        => parseResult.GetValue(option) is { } text ? LexicalPath.Str(text) : null;
 
     private static void PrintJson(TextWriter stdout, object? payload)
     {

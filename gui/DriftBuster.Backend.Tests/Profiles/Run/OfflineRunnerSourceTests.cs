@@ -61,7 +61,7 @@ public sealed class OfflineRunnerSourceTests : IDisposable
 
         var result = RunProfileExecutor.ExecuteProfile(profile, baseDir: Path.Combine(_tmp.FullName, "out"), cancellationToken: TestContext.Current.CancellationToken);
 
-        result.Files.Any(file => EnginePurePath.RelativeTo(file.Destination, Path.Combine(result.OutputDir, "missing")) is not null).Should().BeFalse();
+        result.Files.Any(file => LexicalPath.RelativeTo(file.Destination, Path.Combine(result.OutputDir, "missing")) is not null).Should().BeFalse();
         var summary = result.Sources.Should().ContainSingle(entry => entry.Directory == "missing").Subject;
         summary.Skipped.Should().BeTrue();
         summary.Reason.Should().Be("no-matches");

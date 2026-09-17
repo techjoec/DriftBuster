@@ -49,13 +49,13 @@ public sealed record DetectionProfileConfig
     public string? Path
     {
         get => _path;
-        init => _path = value is null ? null : EnginePurePath.PosixStr(value);
+        init => _path = value is null ? null : LexicalPath.PosixStr(value);
     }
 
     public string? PathGlob
     {
         get => _pathGlob;
-        init => _pathGlob = value is null ? null : EnginePurePath.PosixStr(value);
+        init => _pathGlob = value is null ? null : LexicalPath.PosixStr(value);
     }
 
     public string? Application { get; init; }
@@ -83,8 +83,8 @@ public sealed record DetectionProfileConfig
     /// <summary>
     /// <c>matches</c>: every config tag and each <c>application:</c>, <c>version:</c> and <c>branch:</c> tag the config names
     /// must be provided; a config without <see cref="Path"/> and <see cref="PathGlob"/> then applies everywhere, otherwise the
-    /// posix-normalised <paramref name="relativePath"/> must equal <see cref="Path"/> or match <see cref="PathGlob"/> as
-    /// <c>fnmatch</c> does.
+    /// posix-normalised <paramref name="relativePath"/> must equal <see cref="Path"/> or match <see cref="PathGlob"/>
+    /// (<see cref="PathWildcard"/> syntax, where <c>*</c> also crosses <c>/</c>).
     /// </summary>
     public bool Matches(string? relativePath, IReadOnlySet<string> providedTags)
     {
@@ -111,13 +111,13 @@ public sealed record DetectionProfileConfig
             return false;
         }
 
-        var normalised = EnginePurePath.PosixStr(relativePath);
+        var normalised = LexicalPath.PosixStr(relativePath);
         if (!string.IsNullOrEmpty(Path) && string.Equals(normalised, Path, StringComparison.Ordinal))
         {
             return true;
         }
 
-        return !string.IsNullOrEmpty(PathGlob) && EngineFnmatch.Fnmatch(normalised, PathGlob);
+        return !string.IsNullOrEmpty(PathGlob) && PathWildcard.IsMatch(normalised, PathGlob);
     }
 
     private static bool HasTag(IReadOnlySet<string> providedTags, string prefix, string? value)

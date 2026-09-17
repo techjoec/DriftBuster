@@ -16,8 +16,15 @@ driftbuster hunt ./deployments/prod-web-01 \
   numbers, installation paths, connection strings, service endpoints and
   feature flags (`gui/DriftBuster.Backend/Hunt/HuntRules.cs`). Each rule exposes
   a `token_name` that you can store inside configuration profile metadata.
-- `--exclude` patterns apply to the file path and the scan-relative path;
-  `--glob` narrows the walk (default `**/*`).
+- `--exclude` patterns use `*` (any run of characters, `/` included) and `?`
+  (one character); every other character — brackets and backslash included — is
+  literal. A file is excluded when a pattern
+  matches its scan-relative path, its file name or its full path, so
+  `**/logs/*` excludes everything under any `logs` directory. Matching ignores
+  case on Windows only.
+- `--glob` narrows the walk (default `**/*`): segments split on `/`, `**` is
+  zero or more directory levels, other segments match entry names with the
+  same wildcards. Symlinked directories are listed but not descended into.
 - The GUI Hunt tab and `Invoke-DriftBusterHunt` run the same engine.
 
 ### Structured output
@@ -62,6 +69,12 @@ Each hit is a JSON object:
   `{token_name}` for the name and doubled braces for literal braces; the default
   `{{{{ {token_name} }}}}` renders `{{ version }}`, and `<<{token_name}>>`
   renders `<<version>>`.
+- The template is a .NET composite format string with one field,
+  `token_name`. `{token_name,12}` right-aligns the name in 12 characters and
+  `{token_name,-12}` left-aligns it. Format specifiers (`{token_name:...}`)
+  are rejected, as are unbalanced braces. Any other field (`{name}`, `{0}`,
+  `{}`) fails with "placeholder_template must include {token_name}
+  placeholder".
 - In code, `HuntEngine.BuildPlanTransforms(hits, placeholderTemplate)`
   deduplicates hits per file and line and pairs each `token_name` with the
   matched value.
@@ -128,8 +141,16 @@ var json = HuntEngine.ToJson(result);
 ```
 
 - `keywords` provide cheap filters (case-insensitive substring matches).
-- `patterns` are regexes compiled case-insensitive and multiline, used to flag
-  lines for review.
+- `patterns` are .NET regular expressions (`System.Text.RegularExpressions`
+  syntax), compiled case-insensitive, multiline and culture-invariant, used to
+  flag lines for review. Each pattern runs on the linear-time `NonBacktracking`
+  engine; a pattern that engine cannot run (backreferences, lookarounds, atomic
+  groups, conditionals) falls back to the default backtracking engine, where one
+  match attempt is capped at two seconds: an attempt that passes the cap is
+  abandoned (the file is still readable and other rules still run) and
+  cancellation is therefore observed within that cap.
+  Secret-scanner rules and ignore patterns are built the same way (secret rules
+  are case-insensitive only when their `flags` contain `i`).
 - `tokenName` keeps downstream metadata predictable. Reuse the same token names
   inside configuration profile metadata and checklists.
 

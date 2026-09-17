@@ -8,7 +8,7 @@ namespace DriftBuster.Backend.Reporting;
 public static class SnapshotManifest
 {
     /// <summary><c>datetime.now(UTC)</c>, swapped by tests that pin <c>generated_at</c>.</summary>
-    internal static Func<EngineDateTime> UtcNow { get; set; } = EngineDateTime.UtcNow;
+    internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
 
     /// <summary>
     /// <c>build_snapshot_manifest</c>: <c>generated_at</c>, <c>output</c>, <c>operator</c>, <c>legal</c> (the default classification,
@@ -72,7 +72,7 @@ public static class SnapshotManifest
 
         var manifest = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["generated_at"] = UtcNow().IsoFormat(),
+            ["generated_at"] = IsoTimestamp.Format(UtcNow()),
             ["output"] = outputName,
             ["operator"] = @operator,
             ["legal"] = legalBlock,
@@ -106,7 +106,7 @@ public static class SnapshotManifest
         ArgumentNullException.ThrowIfNull(destination);
         var manifest = Build(matches, outputName, @operator, redactor, maskTokens, placeholder, legalMetadata, extraMetadata);
         var text = ReportValues.DumpsIndented(manifest, indent, ensureAscii: false) + "\n";
-        var parent = EnginePurePath.Parent(destination);
+        var parent = LexicalPath.Parent(destination);
         EnginePath.MakeDirectories(parent);
         EngineTextFile.WriteText(destination, ReportValues.TextModeNewLines(text));
     }

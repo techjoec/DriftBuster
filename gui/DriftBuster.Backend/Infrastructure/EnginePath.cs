@@ -75,76 +75,53 @@ public static class EnginePath
     private const int MaxLinkHops = 40;
 
     /// <summary>
-    /// <c>str(Path(path).absolute())</c>: a relative path joined onto the working directory, with no normalisation, so a <c>..</c>
-    /// part stays where it is (<see cref="Path.GetFullPath(string)"/> would remove it lexically).
+    /// A relative path joined onto the working directory in <see cref="LexicalPath.Str"/> form, with no other normalisation, so a
+    /// <c>..</c> segment stays where it is (<see cref="Path.GetFullPath(string)"/> would remove it). A fully qualified path is returned in
+    /// <see cref="LexicalPath.Str"/> form. On Windows a path with a root but no drive (<c>\x</c>) or a drive but no root (<c>C:x</c>) is
+    /// joined onto the directory <see cref="Path.GetFullPath(string)"/> gives for that root.
     /// </summary>
     public static string Absolute(string path)
-        => Absolute(path, OperatingSystem.IsWindows(), Directory.GetCurrentDirectory(), EngineOsPath.AbsPath);
-
-    /// <summary>
-    /// <c>Path.absolute()</c> in the given flavour over a working directory: an absolute path as it is; a Windows path with a root and
-    /// no drive under the working directory's drive; a Windows path with a drive and no root under that drive's own working
-    /// directory (<paramref name="absPathOfDrive"/>, <c>os.path.abspath(drive)</c>); otherwise under the working directory.
-    /// </summary>
-    internal static string Absolute(string path, bool windows, string cwd, Func<string, string> absPathOfDrive)
     {
-        ArgumentNullException.ThrowIfNull(absPathOfDrive);
-        var parsed = EnginePurePath.Parse(path, windows);
-        if (EnginePurePath.IsAbsolute(path, windows))
+        ArgumentNullException.ThrowIfNull(path);
+        if (LexicalPath.IsAbsolute(path))
         {
-            return EnginePurePath.Str(path, windows);
+            return LexicalPath.Str(path);
         }
 
-        if (parsed.Root.Length > 0)
-        {
-            var cwdDrive = EnginePurePath.SplitRoot(cwd, windows).Drive;
-            return EnginePurePath.Format(cwdDrive, parsed.Root, parsed.Tail, windows);
-        }
-
-        var directory = parsed.Drive.Length > 0 ? absPathOfDrive(parsed.Drive) : cwd;
-        if (parsed.Tail.Count == 0)
-        {
-            return directory;
-        }
-
-        var (drive, root, rest) = EnginePurePath.SplitRoot(directory, windows);
-        var separator = windows ? '\\' : '/';
-        return EnginePurePath.Format(drive, root, rest.Length == 0 ? parsed.Tail : [.. rest.Split(separator), .. parsed.Tail], windows);
+        var (root, segments) = LexicalPath.Split(path);
+        var directory = root.Length == 0 ? Directory.GetCurrentDirectory() : Path.GetFullPath(root);
+        return LexicalPath.Str(Path.Join(directory, string.Join(Path.DirectorySeparatorChar, segments)));
     }
 
     /// <summary>
-    /// <c>str(Path(path).expanduser())</c>: a path with no drive or root whose first name starts with <c>~</c> has that name replaced by
-    /// <c>os.path.expanduser</c> of it (<see cref="EngineOsPath.ExpandUser(string)"/>); any other path is returned as <c>str(Path)</c>.
+    /// A path with no root whose first segment starts with <c>~</c> has that segment replaced by <see cref="EngineOsPath.ExpandUser(string)"/>
+    /// of it; any other path is returned in <see cref="LexicalPath.Str"/> form.
     /// </summary>
-    /// <exception cref="EngineRuntimeException">The first name is still <c>~</c>-prefixed after expansion (an account the password
+    /// <exception cref="EngineRuntimeException">The first segment is still <c>~</c>-prefixed after expansion (an account the password
     /// database does not hold, or no home directory at all): <c>Could not determine home directory.</c></exception>
     /// <exception cref="EngineValueException">A posix <c>~user</c> name holding a NUL character (<c>embedded null byte</c>).</exception>
-    public static string ExpandUser(string path) => ExpandUser(path, OperatingSystem.IsWindows());
-
-    internal static string ExpandUser(string path, bool windows)
+    public static string ExpandUser(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        var parsed = EnginePurePath.Parse(path, windows);
-        if (parsed.Anchor.Length > 0 || parsed.Tail.Count == 0 || !parsed.Tail[0].StartsWith('~'))
+        var (root, segments) = LexicalPath.Split(path);
+        if (root.Length > 0 || segments.Count == 0 || !segments[0].StartsWith('~'))
         {
-            return EnginePurePath.Str(path, windows);
+            return LexicalPath.Str(path);
         }
 
-        var home = EngineOsPath.ExpandUser(parsed.Tail[0], windows);
+        var home = EngineOsPath.ExpandUser(segments[0]);
         if (home.StartsWith('~'))
         {
             throw new EngineRuntimeException("Could not determine home directory.");
         }
 
-        var expanded = EnginePurePath.Parse(home, windows);
-        var text = EnginePurePath.Format(expanded.Drive, expanded.Root, [.. expanded.Tail, .. parsed.Tail.Skip(1)], windows);
-        return text.Length == 0 ? "." : text;
+        return LexicalPath.Str(Path.Join(home, string.Join(Path.DirectorySeparatorChar, segments.Skip(1))));
     }
 
     /// <summary>
-    /// <c>str(Path(path).resolve())</c>. On Windows this is <c>ntpath.realpath</c> (<see cref="EngineNtRealPath"/> over
-    /// <see cref="WindowsNtPathSystem"/>): the entry's stored letter case, 8.3 names expanded, mapped and subst drives replaced by what they
-    /// map, links followed by the OS, and the rest of a path the OS cannot name joined as written. Elsewhere the path is made absolute
+    /// The absolute path with links resolved. On Windows the path is made full (<see cref="Path.GetFullPath(string)"/>) and, when the
+    /// entry or its deepest existing ancestor is a link, that prefix is replaced by the link's final target; segments that do not exist
+    /// are kept as written (letter case and 8.3 names are left as given). Elsewhere the path is made absolute
     /// against the working directory, then every link and <c>..</c> followed physically (<see cref="ResolvePhysicalPath(string, out bool)"/>),
     /// a component that does not exist kept as written. A directory reached only through a name that is not UTF-8 keeps the kernel's
     /// spelling of it (<see cref="KernelPath"/>), which reaches the same entry through its links; a link loop or a link that cannot be read
@@ -157,17 +134,49 @@ public static class EnginePath
         // posixpath.realpath lstats every component, and the first lstat refuses a NUL anywhere in the path.
         if (!OperatingSystem.IsWindows())
         {
-            EngineOSError.ThrowIfEmbeddedNull(path, "lstat");
+            OsError.ThrowIfEmbeddedNull(path, "lstat");
         }
 
         if (OperatingSystem.IsWindows())
         {
-            return EnginePurePath.Str(EngineNtRealPath.RealPath(EnginePurePath.Str(path), WindowsNtPathSystem.Instance));
+            return ResolveWindows(path);
         }
 
         var absolute = Absolute(path);
         var physical = ResolvePhysicalPath(absolute, out var nameable);
         return physical is null ? Path.GetFullPath(absolute) : nameable ? physical : Path.GetFullPath(KernelPath(absolute));
+    }
+
+    private static string ResolveWindows(string path)
+    {
+        var full = Path.GetFullPath(path.Length == 0 ? "." : path);
+        var probe = full;
+        var rest = string.Empty;
+        while (probe is not null)
+        {
+            if (File.Exists(probe) || Directory.Exists(probe))
+            {
+                try
+                {
+                    FileSystemInfo info = Directory.Exists(probe) ? new DirectoryInfo(probe) : new FileInfo(probe);
+                    if (info.LinkTarget is not null && info.ResolveLinkTarget(returnFinalTarget: true) is { } target)
+                    {
+                        probe = target.FullName;
+                    }
+                }
+                catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+                {
+                    // An unreadable link keeps the path as written.
+                }
+
+                return LexicalPath.Str(Path.Join(probe, rest));
+            }
+
+            rest = Path.Join(Path.GetFileName(probe), rest);
+            probe = Path.GetDirectoryName(probe);
+        }
+
+        return LexicalPath.Str(full);
     }
 
     /// <summary>
@@ -235,7 +244,7 @@ public static class EnginePath
     /// </summary>
     /// <remarks>
     /// On Linux this is <c>Path.mkdir</c>'s own algorithm over <c>mkdir(2)</c> (<see cref="UnixMkdir"/>): a failure raises the
-    /// <see cref="IOException"/> <see cref="EngineOSError"/> builds for the call's <c>errno</c> (its <see cref="Exception.HResult"/>)
+    /// <see cref="IOException"/> <see cref="OsError"/> builds for the call's <c>errno</c> (its <see cref="Exception.HResult"/>)
     /// naming the directory whose call failed as <c>str(Path)</c> spells it (<c>[Errno 17] File exists: 'afile'</c>,
     /// <c>[Errno 20] Not a directory: 'afile/x'</c>). Elsewhere, and for a path holding an unpaired surrogate (or with the
     /// <see cref="UnixPathWalk.Disabled"/> seam set), the directories are created through the runtime, whose exceptions carry its own text.
@@ -244,8 +253,8 @@ public static class EnginePath
     public static void MakeDirectories(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        EngineOSError.ThrowIfEmbeddedNull(path, "mkdir");
-        var spelled = EnginePurePath.Str(path);
+        OsError.ThrowIfEmbeddedNull(path, "mkdir");
+        var spelled = LexicalPath.Str(path);
         if (!UnixPathWalk.Disabled && UnixMkdir.MakeDirectory(spelled) is { } error)
         {
             MakeDirectoryChecked(spelled, error, parents: true);
@@ -258,7 +267,7 @@ public static class EnginePath
             return;
         }
 
-        var parent = EnginePurePath.Parent(path);
+        var parent = LexicalPath.Parent(path);
         if (!string.Equals(kernel, path, StringComparison.Ordinal) && !string.Equals(parent, path, StringComparison.Ordinal))
         {
             MakeDirectories(parent);
@@ -277,12 +286,12 @@ public static class EnginePath
             return;
         }
 
-        if (error == EngineOSError.NoSuchFile)
+        if (error == OsError.NoSuchFile)
         {
-            var parent = EnginePurePath.Parent(path);
+            var parent = LexicalPath.Parent(path);
             if (!parents || string.Equals(parent, path, StringComparison.Ordinal))
             {
-                throw EngineOSError.Create(error, path);
+                throw OsError.Create(error, path);
             }
 
             MakeDirectoryChecked(parent, MakeDirectoryNative(parent), parents: true);
@@ -297,12 +306,12 @@ public static class EnginePath
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw EngineOSError.Create(EngineOSError.Errno(exc, path) ?? error, path, exc);
+            throw OsError.Create(OsError.Errno(exc, path) ?? error, path, exc);
         }
 
         if (!isDirectory)
         {
-            throw EngineOSError.Create(error, path);
+            throw OsError.Create(error, path);
         }
     }
 
@@ -420,9 +429,8 @@ public static class EnginePath
     }
 
     /// <summary>
-    /// <c>sorted(Path(root).glob(pattern))</c> as path strings (<see cref="EngineGlob.Glob"/>): component by component, code
-    /// point by code point, the order <c>PurePosixPath</c> sorts in (<see cref="PathText.ComparePosixPaths"/>). The same
-    /// case-sensitive order is used on every platform.
+    /// The <see cref="FileTreeGlob.Glob"/> matches under <paramref name="root"/>, sorted segment by segment and code point by code
+    /// point over their posix form (<see cref="PathText.ComparePosixPaths"/>). The same case-sensitive order is used on every platform.
     /// </summary>
     /// <remarks>
     /// A root directory that exists but cannot be listed raises its I/O error rather than yielding nothing. A missing root
@@ -430,7 +438,7 @@ public static class EnginePath
     /// </remarks>
     public static IReadOnlyList<string> SortedGlob(string root, string pattern, CancellationToken cancellationToken = default)
     {
-        var paths = EngineGlob.Glob(root, pattern, cancellationToken).ToList();
+        var paths = FileTreeGlob.Glob(root, pattern, cancellationToken).ToList();
         var kernelRoot = KernelPath(root);
         if (Directory.Exists(kernelRoot))
         {

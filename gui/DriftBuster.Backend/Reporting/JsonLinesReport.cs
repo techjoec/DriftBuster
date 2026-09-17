@@ -40,7 +40,7 @@ public static class JsonLinesReport
                 ["name"] = finding.Rule.Name,
                 ["description"] = finding.Rule.Description,
                 ["token_name"] = finding.Rule.TokenName,
-                ["keywords"] = finding.Rule.Patterns.Select(pattern => (object?)pattern.Pattern).ToArray(),
+                ["keywords"] = finding.Rule.Patterns.Select(pattern => (object?)pattern.ToString()).ToArray(),
             },
             ["path"] = finding.Path,
             ["line_number"] = finding.LineNumber,

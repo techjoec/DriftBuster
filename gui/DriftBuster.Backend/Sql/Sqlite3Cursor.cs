@@ -8,9 +8,8 @@ using SQLitePCL;
 namespace DriftBuster.Backend.Sql;
 
 /// <summary>
-/// <c>connection.execute(sql).fetchall()</c> as CPython 3.13's <c>_sqlite</c> module runs it on an open database handle, with the
-/// module's own checks, its per-row value conversion and its exception mapping. Derived from the publicly documented behaviour of
-/// CPython's <c>sqlite3</c> module, not its source text.
+/// Runs one statement on an open database handle and returns every row, with the checks, the per-row value conversion and the
+/// exception mapping the SQL export relies on. Written from the publicly documented SQLite C interface.
 /// </summary>
 internal static class Sqlite3Cursor
 {

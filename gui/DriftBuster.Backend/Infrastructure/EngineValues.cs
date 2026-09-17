@@ -4,10 +4,11 @@ using System.Numerics;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Python <c>==</c>, <c>hash()</c> and <c>&lt;</c> over the values <see cref="EngineJson"/> produces: bool, int and float compare
-/// as numbers (<c>True == 1 == 1.0</c>), str by code point, lists and tuples (<see cref="object"/> arrays) element by element and dicts
-/// by their items, each element compared by identity first as CPython's containers do. A list never equals a tuple. Lists and dicts are
-/// unhashable (a tuple hashes when its items do), and <c>&lt;</c> exists only between two strs, two numbers, two lists or two tuples.
+/// Equality, hashing and ordering over the values <see cref="EngineJson"/> produces: bool, integer and floating point compare as
+/// numbers (<c>true == 1 == 1.0</c>), strings by code point, lists and tuples (<see cref="object"/> arrays) element by element and
+/// dictionaries by their items, each element compared by identity first so a contained NaN equals itself. A list never equals a tuple.
+/// Lists and dictionaries are unhashable (a tuple hashes when its items do), and ordering exists only between two strings, two numbers,
+/// two lists or two tuples.
 /// </summary>
 public static class EngineValues
 {
@@ -96,12 +97,74 @@ public static class EngineValues
             nameof(left));
     }
 
-    /// <summary><c>sorted(items)</c> with <see cref="LessThan"/>, in CPython's comparison order.</summary>
+    /// <summary>
+    /// The items in ascending order by a stable sort: strings by code point, numbers by value (NaN first), and lists or tuples
+    /// element by element with the shorter first on a tie. Items with no ordering between them (such as a string and a number)
+    /// raise <see cref="EngineTypeException"/> naming the first item's type and the type of the first later item that cannot be
+    /// ordered against it; the check runs before sorting.
+    /// </summary>
     public static IReadOnlyList<object?> Sorted(IEnumerable<object?> items)
     {
         var list = items.ToList();
-        EngineSort<object?>.Sort(list, LessThan);
-        return list;
+        for (var index = 1; index < list.Count; index++)
+        {
+            _ = CompareOrdered(list[0], list[index]);
+        }
+
+        // Nested elements can still disagree only between two later items; the sort must not throw, so the first such error
+        // is kept and raised once the sort returns.
+        EngineTypeException? failure = null;
+        var comparer = Comparer<object?>.Create((left, right) =>
+        {
+            try
+            {
+                return CompareOrdered(left, right);
+            }
+            catch (EngineTypeException exc)
+            {
+                failure ??= exc;
+                return 0;
+            }
+        });
+        var sorted = list.Order(comparer).ToList();
+        return failure is null ? sorted : throw failure;
+    }
+
+    // A total order within each orderable kind; EngineTypeException between kinds.
+    private static int CompareOrdered(object? left, object? right)
+    {
+        if (left is string a && right is string b)
+        {
+            return PathText.CompareCodePoints(a, b);
+        }
+
+        if (left is not null && right is not null && IsNumber(left) && IsNumber(right))
+        {
+            var leftNaN = left is double leftReal && double.IsNaN(leftReal);
+            var rightNaN = right is double rightReal && double.IsNaN(rightReal);
+            return leftNaN || rightNaN ? rightNaN.CompareTo(leftNaN) : CompareNumbers(left, right);
+        }
+
+        if ((left is object?[] && right is object?[])
+            || (left is IList and not (object?[] or IDictionary) && right is IList and not (object?[] or IDictionary)))
+        {
+            var leftItems = (IList)left!;
+            var rightItems = (IList)right!;
+            var shared = Math.Min(leftItems.Count, rightItems.Count);
+            for (var index = 0; index < shared; index++)
+            {
+                if (!Equal(leftItems[index], rightItems[index]))
+                {
+                    return CompareOrdered(leftItems[index], rightItems[index]);
+                }
+            }
+
+            return leftItems.Count.CompareTo(rightItems.Count);
+        }
+
+        throw new EngineTypeException(
+            $"'<' not supported between instances of '{EngineBuiltins.TypeName(left)}' and '{EngineBuiltins.TypeName(right)}'",
+            nameof(left));
     }
 
     /// <summary>A Python int as the smallest of <see cref="int"/>, <see cref="long"/> and <see cref="BigInteger"/> that holds it.</summary>

@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Numerics;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Secrets;
 
@@ -85,13 +85,13 @@ public static partial class SecretScanner
         }
 
         var flagsText = EngineText.Lower(EngineRepr.Str(OrElse(Get(entry, "flags"), string.Empty)));
-        var flags = flagsText.Contains('i', StringComparison.Ordinal) ? EngineReFlags.IgnoreCase : EngineReFlags.None;
-        EnginePattern pattern;
+        var options = flagsText.Contains('i', StringComparison.Ordinal) ? RegexOptions.IgnoreCase : RegexOptions.None;
+        Regex pattern;
         try
         {
-            pattern = EnginePattern.Compile(EngineRepr.Str(patternText), flags);
+            pattern = PatternRegex.Create(EngineRepr.Str(patternText), options);
         }
-        catch (EngineReException)
+        catch (RegexParseException)
         {
             return null;
         }

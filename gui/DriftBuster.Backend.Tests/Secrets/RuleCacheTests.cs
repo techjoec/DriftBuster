@@ -1,4 +1,4 @@
-using DriftBuster.Backend.Infrastructure.EngineRe;
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
@@ -21,7 +21,7 @@ public sealed class RuleCacheTests : IDisposable
         rules.Should().NotBeEmpty("expected packaged secret rules to be available");
         version.Should().NotBeNullOrEmpty().And.NotBe("none");
 
-        IReadOnlyList<SecretDetectionRule> sentinelRules = [new SecretDetectionRule("sentinel", EnginePattern.Compile("sentinel"))];
+        IReadOnlyList<SecretDetectionRule> sentinelRules = [new SecretDetectionRule("sentinel", PatternRegex.Create("sentinel"))];
         SecretScanner.RuleCache = sentinelRules;
         SecretScanner.RuleVersion = "cache-version";
         SecretScanner.RuleLoaded = true;

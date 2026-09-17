@@ -11,12 +11,12 @@ namespace DriftBuster.Backend.Registry;
 /// <c>KEY_READ</c>, plus <c>KEY_WOW64_64KEY</c> for view "64" or <c>KEY_WOW64_32KEY</c> for view "32"; a key that fails to open lists
 /// nothing. Subkeys are <c>RegEnumKeyExW</c> by index into a 257-unit buffer and values <c>RegQueryInfoKeyW</c> then
 /// <c>RegEnumValueW</c> by index (the data buffer doubled on <c>ERROR_MORE_DATA</c>), each list ending at the first failing call. Value
-/// data is converted by <see cref="WinRegistryValueConverter"/>.
+/// data is converted by <see cref="RegistryValueDecoder"/>.
 /// </summary>
 /// <remarks>
 /// The raw advapi32 calls are used instead of <see cref="Microsoft.Win32.RegistryKey"/>, whose name normalisation (collapsed and
-/// trailing backslashes), name length checks and value conversion (trailing NUL only, empty <c>REG_MULTI_SZ</c> strings dropped)
-/// differ from <c>winreg</c>'s.
+/// trailing backslashes), name length checks and value conversion (signed <c>REG_DWORD</c>, empty <c>REG_MULTI_SZ</c> strings dropped)
+/// would change the names and values the scan reports.
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed partial class WinRegistryBackend : IRegistryBackend
@@ -134,6 +134,6 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
 
         var nameEnd = Array.IndexOf(name, '\0');
         var text = new string(name, 0, nameEnd < 0 ? name.Length : nameEnd);
-        return new KeyValuePair<string, object?>(text, WinRegistryValueConverter.Convert(data.AsSpan(0, Math.Min(dataSize, data.Length)), type));
+        return new KeyValuePair<string, object?>(text, RegistryValueDecoder.Convert(data.AsSpan(0, Math.Min(dataSize, data.Length)), type));
     }
 }

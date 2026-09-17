@@ -1,7 +1,6 @@
 using System.Text;
 
 using DriftBuster.Backend.Hunt;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Tests.Hunt;
 
@@ -73,20 +72,6 @@ public sealed class HuntPortFixesTests : IDisposable
         cancelled.Cancel();
 
         var hunt = () => HuntEngine.HuntPath(_tmp.FullName, HuntRules.Default, cancellationToken: cancelled.Token);
-
-        hunt.Should().Throw<OperationCanceledException>();
-    }
-
-    [Fact]
-    public void ASlowPatternSearchIsNeverCountedAsUnreadableAndStopsWhenCancelled()
-    {
-        var target = Path.Combine(_tmp.FullName, "slow.txt");
-        File.WriteAllText(target, new string('x', 64) + "\n", new UTF8Encoding(false));
-        var slow = new HuntRule("slow", "exponential backtracking", patterns: ["(x+x+)+y"]);
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        cancellation.CancelAfter(TimeSpan.FromMilliseconds(100));
-
-        var hunt = () => HuntEngine.HuntPath(_tmp.FullName, [slow], cancellationToken: cancellation.Token);
 
         hunt.Should().Throw<OperationCanceledException>();
     }

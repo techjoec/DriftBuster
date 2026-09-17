@@ -15,7 +15,7 @@ comply with the Apache 2.0 license while protecting users from liability.
 ## 2. Core Principles
 
 - **Open & Permissive:** Anyone may use, modify, and distribute the code.
-- **Attribution Required:** Every derivative must retain copyright + NOTICE files.
+- **Attribution Required:** Every derivative must retain the copyright, `NOTICE` and `THIRD-PARTY-NOTICES.txt` files.
 - **Patent Grant:** Contributors automatically grant a patent license.
 - **No Warranty:** Distribution is strictly “AS IS”.
 
@@ -24,7 +24,7 @@ comply with the Apache 2.0 license while protecting users from liability.
 ## 3. Contributor Rules
 
 1. All contributions automatically fall under Apache 2.0 via the root `LICENSE`.
-2. Update `NOTICE` when third-party attribution is required.
+2. Record third-party attribution in `THIRD-PARTY-NOTICES.txt`; `NOTICE` points there.
 3. No proprietary or third-party confidential material may be submitted.
 4. Dependencies must use OSI-approved licenses compatible with Apache 2.0
    (MIT, BSD, MPL 2.0, etc.).

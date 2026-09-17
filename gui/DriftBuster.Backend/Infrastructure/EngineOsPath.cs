@@ -4,8 +4,8 @@ using System.Text.RegularExpressions;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// <c>os.path.expandvars</c> and <c>os.path.expanduser</c> for the host platform: <c>posixpath</c> everywhere but Windows,
-/// <c>ntpath</c> there (CPython 3.13).
+/// Environment-variable and home-directory expansion in a path, under the host platform's rules: POSIX shell-style
+/// <c>$VAR</c>/<c>${VAR}</c> and <c>~</c> everywhere but Windows, and <c>%VAR%</c> with <c>~</c> there.
 /// </summary>
 public static partial class EngineOsPath
 {

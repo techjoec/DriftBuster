@@ -25,23 +25,15 @@ public static class ScheduleCommands
     }
 
     /// <summary>
-    /// <c>_parse_reference_timestamp(value)</c>: <c>fromisoformat</c> (its <c>ValueError</c> becomes <see cref="CommandExitException"/>),
-    /// naive as UTC, aware converted to UTC.
+    /// A command-line timestamp through <see cref="IsoTimestamp.TryParse"/>: text without an offset is UTC, the result is UTC, and text
+    /// that does not parse raises <see cref="CommandExitException"/>.
     /// </summary>
-    public static EngineDateTime ParseReferenceTimestamp(string value)
+    public static DateTimeOffset ParseReferenceTimestamp(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        EngineDateTime candidate;
-        try
-        {
-            candidate = EngineDateTime.FromIsoFormat(value);
-        }
-        catch (EngineValueException exc)
-        {
-            throw new CommandExitException("Unable to parse timestamp: " + EngineRepr.StrRepr(value), exc);
-        }
-
-        return ScheduleParsing.EnsureAware(candidate);
+        return IsoTimestamp.TryParse(value, out var instant)
+            ? instant
+            : throw new CommandExitException("Unable to parse timestamp: " + EngineRepr.StrRepr(value));
     }
 
     /// <summary><c>_schedule_list(args)</c>: every schedule by name with its interval in seconds, tags, metadata, start, next run, pending run and window.</summary>
@@ -57,10 +49,10 @@ public static class ScheduleCommands
             {
                 ["name"] = spec.Name,
                 ["profile"] = spec.Profile,
-                ["interval_seconds"] = spec.Interval.TotalSeconds(),
+                ["interval_seconds"] = spec.Interval.TotalSeconds,
                 ["tags"] = spec.Tags.Cast<object?>().ToList(),
                 ["metadata"] = new OrderedDictionary<string, object?>(spec.Metadata, StringComparer.Ordinal),
-                ["start_at"] = spec.StartAt?.IsoFormat(),
+                ["start_at"] = spec.StartAt is { } startAt ? IsoTimestamp.Format(startAt) : null,
                 ["next_run"] = state?.GetValueOrDefault("next_run"),
                 ["pending"] = state?.GetValueOrDefault("pending"),
             };
@@ -68,9 +60,9 @@ public static class ScheduleCommands
             {
                 entry["window"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
                 {
-                    ["start"] = window.Start.IsoFormat(),
-                    ["end"] = window.End.IsoFormat(),
-                    ["timezone"] = window.Timezone.Name,
+                    ["start"] = IsoTimestamp.FormatTimeOfDay(window.Start),
+                    ["end"] = IsoTimestamp.FormatTimeOfDay(window.End),
+                    ["timezone"] = window.TimezoneName,
                 };
             }
 
@@ -87,13 +79,13 @@ public static class ScheduleCommands
     public static IReadOnlyList<object?> Due(string? at, string? baseDir, string? configPath = null, string? statePath = null)
     {
         var (scheduler, state) = BuildScheduler(baseDir, configPath, statePath);
-        var reference = string.IsNullOrEmpty(at) ? null : ParseReferenceTimestamp(at);
+        DateTimeOffset? reference = string.IsNullOrEmpty(at) ? null : ParseReferenceTimestamp(at);
         var payload = scheduler.Due(reference)
             .Select(run => (object?)new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["name"] = run.Name,
                 ["profile"] = run.Profile,
-                ["scheduled_for"] = run.ScheduledFor.IsoFormat(),
+                ["scheduled_for"] = IsoTimestamp.Format(run.ScheduledFor),
                 ["tags"] = run.Tags.Cast<object?>().ToList(),
                 ["metadata"] = new OrderedDictionary<string, object?>(run.Metadata, StringComparer.Ordinal),
             })
@@ -110,7 +102,7 @@ public static class ScheduleCommands
     {
         ArgumentNullException.ThrowIfNull(name);
         var (scheduler, state) = BuildScheduler(baseDir, configPath, statePath);
-        var completed = string.IsNullOrEmpty(completedAt) ? null : ParseReferenceTimestamp(completedAt);
+        DateTimeOffset? completed = string.IsNullOrEmpty(completedAt) ? null : ParseReferenceTimestamp(completedAt);
         try
         {
             scheduler.MarkComplete(name, completed);

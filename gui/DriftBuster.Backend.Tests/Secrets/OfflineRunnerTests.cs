@@ -1,4 +1,5 @@
-using DriftBuster.Backend.Infrastructure.EngineRe;
+using System.Text.RegularExpressions;
+
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
@@ -55,7 +56,7 @@ public sealed class OfflineRunnerTests : IDisposable
             rules: [],
             version: "v1",
             ignoreRules: new HashSet<string>(StringComparer.Ordinal) { "Skip" },
-            ignorePatterns: [EnginePattern.Compile("SKIP")],
+            ignorePatterns: [new Regex("SKIP", RegexOptions.CultureInvariant, Regex.InfiniteMatchTimeout)],
             ignorePatternText: ["SKIP"],
             rulesLoaded: true);
         var manifest = SecretScanner.ManifestSecretScanner(

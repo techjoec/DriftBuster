@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Diff;
 
-/// <summary><c>_calculate_stats</c>: the <c>added_lines</c>, <c>removed_lines</c> and <c>changed_lines</c> mapping.</summary>
+/// <summary>Line counts of a diff (<see cref="LineDiff.CalculateStats(IReadOnlyList{LineChange})"/>), serialised as <c>added_lines</c>, <c>removed_lines</c> and <c>changed_lines</c>.</summary>
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct DiffStats(
     [property: JsonPropertyName("added_lines")] int AddedLines,

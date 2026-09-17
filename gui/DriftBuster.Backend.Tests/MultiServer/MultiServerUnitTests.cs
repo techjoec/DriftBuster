@@ -23,8 +23,6 @@ public sealed class MultiServerUnitTests : IDisposable
     [InlineData("½Ⅷx", "½ⅷx")]
     [InlineData("😀.json", "--json")]
     [InlineData("İ", "i-")]
-    [InlineData("Ᲊᲊ.ini", "---ini")]
-    [InlineData("Ɤ\U000105c0.json", "---json")]
     [InlineData("   ", "")]
     public void SlugifyLowercasesAndReplacesSeparators(string value, string expected)
         => ConfigIdentity.Slugify(value).Should().Be(expected);

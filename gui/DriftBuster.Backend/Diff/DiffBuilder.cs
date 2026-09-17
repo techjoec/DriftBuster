@@ -10,14 +10,14 @@ namespace DriftBuster.Backend.Diff;
 /// </summary>
 public static class DiffBuilder
 {
-    /// <summary>Seam for <c>datetime.now(UTC)</c> in the summaries.</summary>
+    /// <summary>Seam for the UTC clock the summaries stamp themselves with.</summary>
     internal static Func<DateTimeOffset> UtcNow { get; set; } = static () => DateTimeOffset.UtcNow;
 
     /// <summary>
-    /// <c>build_unified_diff</c>: both sides canonicalised for <paramref name="contentType"/> (an unknown type raises
-    /// <see cref="ArgumentException"/>), split with <c>str.splitlines</c>, redacted line by line when a redactor resolves,
-    /// diffed with <c>unified_diff(lineterm="", n=contextLines)</c> joined by LF, counted with the same lines, and
-    /// clamped by <see cref="DiffSafetyLimits"/>.
+    /// Both sides canonicalised for <paramref name="contentType"/> (an unknown type raises
+    /// <see cref="ArgumentException"/>), split into lines, redacted line by line when a redactor resolves,
+    /// diffed with <see cref="LineDiff"/> into a unified diff (<see cref="UnifiedDiffWriter"/>, <paramref name="contextLines"/>
+    /// of context) joined by LF, counted over the same change regions, and clamped by <see cref="DiffSafetyLimits"/>.
     /// </summary>
     public static DiffArtifact BuildUnifiedDiff(
         string before,
@@ -45,8 +45,9 @@ public static class DiffBuilder
         var beforeLines = ApplyRedaction(TextLines.SplitLines(canonicalBefore), activeRedactor);
         var afterLines = ApplyRedaction(TextLines.SplitLines(canonicalAfter), activeRedactor);
         var redactionCounts = activeRedactor?.Stats();
-        var diffText = string.Join("\n", UnifiedDiff.Lines(beforeLines, afterLines, fromLabel, toLabel, lineTerm: string.Empty, n: contextLines));
-        var stats = UnifiedDiff.CalculateStats(beforeLines, afterLines);
+        var changes = LineDiff.Compare(beforeLines, afterLines);
+        var diffText = string.Join("\n", UnifiedDiffWriter.Lines(beforeLines, afterLines, changes, fromLabel, toLabel, contextLines, lineTerm: string.Empty));
+        var stats = LineDiff.CalculateStats(changes);
 
         IReadOnlyList<string>? maskList = null;
         if (activeRedactor is not null)
@@ -326,17 +327,6 @@ public static class DiffBuilder
         ["reason"] = evidence.Reason,
     };
 
-    /// <summary><c>datetime.isoformat()</c> of an aware UTC value: microseconds only when non-zero, then <c>+00:00</c>.</summary>
-    internal static string IsoFormat(DateTimeOffset value)
-    {
-        var utc = value.ToUniversalTime();
-        var text = utc.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture);
-        var microseconds = utc.Ticks % TimeSpan.TicksPerSecond / 10;
-        if (microseconds != 0)
-        {
-            text += "." + microseconds.ToString("D6", CultureInfo.InvariantCulture);
-        }
-
-        return text + "+00:00";
-    }
+    /// <summary>The instant as UTC ISO 8601 text: microseconds only when non-zero, then <c>+00:00</c>.</summary>
+    internal static string IsoFormat(DateTimeOffset value) => IsoTimestamp.Format(value.ToUniversalTime());
 }

@@ -83,12 +83,12 @@ public sealed class BinaryPlistTests
             .Should().Equal(true);
     }
 
-    // The TypeError names the operands of the first comparison the sort makes between incomparable keys.
+    // The error names the first key's type and the type of the first later key that cannot be ordered against it.
     [Theory]
-    [InlineData("62706c6973743030d201020303516110015176080d0f110000000000000101000000000000000400000000000000000000000000000013", "'<' not supported between instances of 'int' and 'str'")]
-    [InlineData("62706c6973743030d201020303333ff800000000000051735176080d1618000000000000010100000000000000040000000000000000000000000000001a", "'<' not supported between instances of 'str' and 'datetime.datetime'")]
-    [InlineData("62706c6973743030d301020304040410020010015176080f1112140000000000000101000000000000000500000000000000000000000000000016", "'<' not supported between instances of 'NoneType' and 'int'")]
-    public void MixedKeyTypesRaiseTheSortTypeError(string hex, string message)
+    [InlineData("62706c6973743030d201020303516110015176080d0f110000000000000101000000000000000400000000000000000000000000000013", "'<' not supported between instances of 'str' and 'int'")]
+    [InlineData("62706c6973743030d201020303333ff800000000000051735176080d1618000000000000010100000000000000040000000000000000000000000000001a", "'<' not supported between instances of 'datetime.datetime' and 'str'")]
+    [InlineData("62706c6973743030d301020304040410020010015176080f1112140000000000000101000000000000000500000000000000000000000000000016", "'<' not supported between instances of 'int' and 'NoneType'")]
+    public void MixedKeyTypesAreRejectedBeforeSorting(string hex, string message)
     {
         var act = () => Keys(hex);
         act.Should().Throw<InvalidOperationException>().WithMessage(message);

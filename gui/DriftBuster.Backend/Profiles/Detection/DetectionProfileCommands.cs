@@ -27,7 +27,7 @@ public static class DetectionProfileCommands
     public static object? LoadJson(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        var shown = EnginePurePath.Str(path);
+        var shown = LexicalPath.Str(path);
         byte[] raw;
         try
         {
@@ -139,7 +139,7 @@ public static class DetectionProfileCommands
             return PathText.Name(pathText);
         }
 
-        return EnginePurePath.RelativeTo(pathText, root) ?? PathText.Name(pathText);
+        return LexicalPath.RelativeTo(pathText, root) ?? PathText.Name(pathText);
     }
 
     /// <summary>

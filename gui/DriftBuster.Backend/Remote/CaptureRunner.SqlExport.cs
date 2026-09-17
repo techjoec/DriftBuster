@@ -71,7 +71,7 @@ public static partial class CaptureRunner
             stdout.Write($"Exported SQL snapshot to {destination}\n");
         }
 
-        var manifestPath = EnginePurePath.Join(outputDir, options.ManifestName);
+        var manifestPath = LexicalPath.Join(outputDir, options.ManifestName);
         var manifest = SqlManifest(exports, tables, excludeTables, maskMap, hashMap, options, hashSalt);
         WriteJsonText(manifestPath, manifest);
         if (options.ReportManifestPath)
@@ -101,10 +101,10 @@ public static partial class CaptureRunner
     public static string DetermineSnapshotPath(string outputDir, string stem)
     {
         ArgumentNullException.ThrowIfNull(outputDir);
-        var candidate = EnginePurePath.Join(outputDir, $"{stem}-sql-snapshot.json");
+        var candidate = LexicalPath.Join(outputDir, $"{stem}-sql-snapshot.json");
         for (var counter = 1; RunProfileStore.Exists(candidate); counter++)
         {
-            candidate = EnginePurePath.Join(outputDir, $"{stem}-sql-snapshot-{counter}.json");
+            candidate = LexicalPath.Join(outputDir, $"{stem}-sql-snapshot-{counter}.json");
         }
 
         return candidate;
@@ -197,7 +197,7 @@ public static partial class CaptureRunner
         string hashSalt)
         => new(StringComparer.Ordinal)
         {
-            ["captured_at"] = UtcNow().IsoFormat(),
+            ["captured_at"] = IsoTimestamp.Format(UtcNow()),
             ["exports"] = exports,
             ["options"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {

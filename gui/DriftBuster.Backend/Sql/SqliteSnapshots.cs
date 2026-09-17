@@ -20,7 +20,7 @@ public static partial class SqliteSnapshots
     internal static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
     /// <summary><c>datetime.now(UTC)</c> for <see cref="SqlSnapshot.CapturedAt"/>, swapped by tests that pin the capture time.</summary>
-    internal static Func<EngineDateTime> UtcNow { get; set; } = EngineDateTime.UtcNow;
+    internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
 
     /// <summary>
     /// <c>build_sqlite_snapshot(path, tables=..., exclude_tables=..., mask_columns=..., hash_columns=..., limit=..., placeholder=...,
@@ -59,7 +59,7 @@ public static partial class SqliteSnapshots
             throw new EngineValueException("limit must be positive when provided", nameof(limit));
         }
 
-        var resolved = EnginePurePath.Str(path);
+        var resolved = LexicalPath.Str(path);
         if (!RunProfileStore.Exists(resolved))
         {
             throw new FileNotFoundException($"Database not found: {resolved}", resolved);
@@ -89,7 +89,7 @@ public static partial class SqliteSnapshots
             }
         }
 
-        var capturedAt = UtcNow().IsoFormat();
+        var capturedAt = IsoTimestamp.Format(UtcNow());
         return new SqlSnapshot(PathText.Name(resolved), "sqlite", capturedAt, resolved, snapshots);
     }
 

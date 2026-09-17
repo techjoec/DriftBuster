@@ -501,7 +501,7 @@ namespace DriftBuster.Backend
                     Description = hit.Rule.Description,
                     TokenName = hit.Rule.TokenName,
                     Keywords = hit.Rule.Keywords.ToArray(),
-                    Patterns = hit.Rule.Patterns.Select(rulePattern => rulePattern.Pattern).ToArray(),
+                    Patterns = hit.Rule.Patterns.Select(rulePattern => rulePattern.ToString()).ToArray(),
                 },
                 Path = hit.Path,
                 RelativePath = HuntEngine.RelativeTo(hit.Path, rootDirectory) ?? PathText.Name(hit.Path),

@@ -3,15 +3,15 @@ using System.Text;
 
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary><c>bytes.decode("utf-8")</c> (strict, final) with CPython 3.13's <c>UnicodeDecodeError</c> text for the first bad sequence.</summary>
-/// <remarks>Derived from the publicly documented behaviour of CPython's UTF-8 codec, not its source text.</remarks>
+/// <summary>A strict UTF-8 decode of a complete byte string, reporting the first bad sequence.</summary>
+/// <remarks>Written from the UTF-8 definition in the Unicode standard (well-formed byte sequences, Table 3-7).</remarks>
 public static class EngineUtf8
 {
     private static readonly UTF8Encoding Strict = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     /// <summary>
-    /// The decoded text; a byte sequence that is not UTF-8 raises <see cref="EngineUnicodeDecodeException"/> whose message is
-    /// <c>str(UnicodeDecodeError)</c>, for example <c>'utf-8' codec can't decode byte 0xff in position 1: invalid start byte</c>.
+    /// The decoded text; a byte sequence that is not UTF-8 raises <see cref="EngineUnicodeDecodeException"/>, whose message names the
+    /// offending byte and its position, for example <c>'utf-8' codec can't decode byte 0xff in position 1: invalid start byte</c>.
     /// </summary>
     public static string Decode(byte[] bytes)
     {
@@ -68,9 +68,9 @@ public static class EngineUtf8
         return null;
     }
 
-    // One sequence at the start of rest: (bytes consumed, error span, error reason or null), following the checks of CPython's
-    // decoder: the lead byte decides the length, the second byte's range is narrowed after E0, ED, F0 and F4, and a sequence cut
-    // short by the end of the data reports every remaining byte unless a byte already present is invalid.
+    // One sequence at the start of rest: (bytes consumed, error span, error reason or null). The lead byte decides the length, the
+    // second byte's range is narrowed after E0, ED, F0 and F4 (Unicode Table 3-7), and a sequence cut short by the end of the data
+    // reports every remaining byte unless a byte already present is invalid.
     private static (int Length, int Span, string? Reason) Sequence(ReadOnlySpan<byte> rest)
     {
         const string InvalidStart = "invalid start byte";

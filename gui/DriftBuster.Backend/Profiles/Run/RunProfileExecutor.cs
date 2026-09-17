@@ -133,11 +133,11 @@ public static partial class RunProfileExecutor
     private static List<string> MissingProfilesAncestors(string? baseDir)
     {
         var missing = new List<string>();
-        var path = EnginePurePath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
+        var path = LexicalPath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
         while (!ExistsOrUnknown(path))
         {
             missing.Add(path);
-            var parent = EnginePurePath.Parent(path);
+            var parent = LexicalPath.Parent(path);
             if (string.Equals(parent, path, StringComparison.Ordinal))
             {
                 break;
@@ -184,20 +184,20 @@ public static partial class RunProfileExecutor
             }
             else if (EnginePath.IsFile(match))
             {
-                CopyUnlessExcluded(source, match, EnginePurePath.Parent(match), destinationRoot, target, matched, cancellationToken);
+                CopyUnlessExcluded(source, match, LexicalPath.Parent(match), destinationRoot, target, matched, cancellationToken);
             }
         }
 
         return new ProfileRunSource(source.Path, destinationName, source.Optional, Skipped: false, Reason: null, matched, source.Exclude ?? []);
     }
 
-    // Every entry below a directory as rglob("*") lists it, less each path whose name the runtime decoded with U+FFFD that names no entry
+    // Every entry below a directory (FileTreeGlob with "**/*"), less each path whose name the runtime decoded with U+FFFD that names no entry
     // (a Linux name that is not UTF-8), and less every repeat of a path holding U+FFFD, so an entry whose name really holds U+FFFD is read
     // once and never in place of an undecodable sibling (platform limit, decision R).
     private static IEnumerable<string> WalkFiles(string directory, CancellationToken cancellationToken)
     {
         var replaced = new HashSet<string>(StringComparer.Ordinal);
-        return EngineGlob.Glob(directory, "**/*", cancellationToken)
+        return FileTreeGlob.Glob(directory, "**/*", cancellationToken)
             .Where(path => !path.Contains('\uFFFD', StringComparison.Ordinal) || (replaced.Add(path) && !EnginePath.IsUndecodableName(path)));
     }
 
@@ -222,8 +222,7 @@ public static partial class RunProfileExecutor
     }
 
     /// <summary>
-    /// <c>offline_runner._should_exclude(relative, patterns)</c>: a pattern matches the relative path (posix form) or its last name
-    /// with <c>fnmatch.fnmatch</c>.
+    /// True when a pattern matches the relative path (posix form) or its last segment (<see cref="PathWildcard"/> syntax).
     /// </summary>
     internal static bool ShouldExclude(string relativePosix, IReadOnlyList<string>? patterns)
     {
@@ -234,17 +233,17 @@ public static partial class RunProfileExecutor
         }
 
         var name = relativePosix[(relativePosix.LastIndexOf('/') + 1)..];
-        return patterns.Any(pattern => EngineFnmatch.Fnmatch(relativePosix, pattern) || EngineFnmatch.Fnmatch(name, pattern));
+        return patterns.Any(pattern => PathWildcard.IsMatch(relativePosix, pattern) || PathWildcard.IsMatch(name, pattern));
     }
 
     /// <summary>
-    /// <c>_collect_matches(path_text)</c>: the path itself when it exists; the <c>glob.glob(path_text, recursive=True)</c> results when
-    /// it holds a glob character; otherwise <c>FileNotFoundError("Path does not exist: ...")</c>.
+    /// The path itself when it exists; the <see cref="FileTreeGlob.GlobPathname"/> matches (sorted by code point over their posix form)
+    /// when it holds a wildcard; otherwise <c>FileNotFoundError("Path does not exist: ...")</c>.
     /// </summary>
     internal static IReadOnlyList<string> CollectMatches(string pathText, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(pathText);
-        var candidate = EnginePurePath.Str(pathText);
+        var candidate = LexicalPath.Str(pathText);
         if (RunProfileStore.Exists(candidate))
         {
             return [candidate];
@@ -252,7 +251,7 @@ public static partial class RunProfileExecutor
 
         if (RunProfileStore.HasMagic(pathText))
         {
-            return EngineModuleGlob.Glob(pathText, recursive: true, cancellationToken).Select(EnginePurePath.Str).ToList();
+            return FileTreeGlob.GlobPathname(pathText, cancellationToken).Select(LexicalPath.Str).ToList();
         }
 
         throw new FileNotFoundException($"Path does not exist: {pathText}");
@@ -273,8 +272,8 @@ public static partial class RunProfileExecutor
         CancellationToken cancellationToken = default)
     {
         var relative = RelativePath(file, basePath);
-        var destination = EnginePurePath.Join(destinationRoot, relative);
-        EnginePath.MakeDirectories(EnginePurePath.Parent(destination));
+        var destination = LexicalPath.Join(destinationRoot, relative);
+        EnginePath.MakeDirectories(LexicalPath.Parent(destination));
         var (size, digest) = secretContext is not null && secretLog is not null
             ? SecretScanner.CopyWithSecretFilter(file, destination, relative, secretContext, secretLog, cancellationToken: cancellationToken)
             : SecretScanner.CopyVerbatim(file, destination);
@@ -282,5 +281,5 @@ public static partial class RunProfileExecutor
     }
 
     // file.relative_to(base) if file.is_relative_to(base) else Path(file.name), in posix form.
-    private static string RelativePath(string file, string basePath) => EnginePurePath.RelativeTo(file, basePath) ?? PathText.Name(file);
+    private static string RelativePath(string file, string basePath) => LexicalPath.RelativeTo(file, basePath) ?? PathText.Name(file);
 }

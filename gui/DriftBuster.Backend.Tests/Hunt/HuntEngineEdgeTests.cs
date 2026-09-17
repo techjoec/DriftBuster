@@ -52,23 +52,15 @@ public sealed class HuntEngineEdgeTests
     [InlineData("<<{token_name}>>", "name", "<<name>>")]
     [InlineData("{{literal}}", "name", "{literal}")]
     [InlineData("plain", "name", "plain")]
-    [InlineData("{token_name:>12}", "tok", "         tok")]
-    [InlineData("{token_name!r}", "tok", "'tok'")]
-    [InlineData("{token_name!a}", "na\u00efve\U0001F600", "'na\\xefve\\U0001f600'")]
-    [InlineData("{token_name[0]}", "\U0001F600x", "\U0001F600")]
-    [InlineData("{token_name:^9}", "na\u00efve\U0001F600", " na\u00efve\U0001F600  ")]
-    [InlineData("{token_name:*^10.2}", "tok", "****to****")]
-    [InlineData("{token_name:010}", "tok", "tok0000000")]
-    [InlineData("{token_name:\u0661\u0662}", "tok", "tok         ")]
-    [InlineData("{token_name!s:>{token_name[1]}}", "t7", "     t7")]
-    [InlineData("{token_name:{{}}}", "tok", null)]
-    public void FormatPlaceholderFollowsStrFormat(string template, string value, string? expected)
+    [InlineData("{token_name,12}", "tok", "         tok")]
+    [InlineData("{token_name:>12}", "tok", null)]
+    public void FormatPlaceholderUsesCompositeFormatting(string template, string value, string? expected)
     {
         var format = () => HuntEngine.FormatPlaceholder(template, value);
 
         if (expected is null)
         {
-            format.Should().Throw<FormatException>().WithMessage("Invalid format specifier '{}' for object of type 'str'");
+            format.Should().Throw<FormatException>();
             return;
         }
 

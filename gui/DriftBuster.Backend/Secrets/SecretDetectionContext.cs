@@ -1,4 +1,4 @@
-using DriftBuster.Backend.Infrastructure.EngineRe;
+using System.Text.RegularExpressions;
 
 namespace DriftBuster.Backend.Secrets;
 
@@ -7,7 +7,7 @@ public sealed class SecretDetectionContext(
     IReadOnlyList<SecretDetectionRule> rules,
     string version,
     IReadOnlySet<string> ignoreRules,
-    IReadOnlyList<EnginePattern> ignorePatterns,
+    IReadOnlyList<Regex> ignorePatterns,
     IReadOnlyList<string> ignorePatternText,
     bool rulesLoaded)
 {
@@ -18,7 +18,7 @@ public sealed class SecretDetectionContext(
     public IReadOnlySet<string> IgnoreRules { get; } = ignoreRules;
 
     /// <summary>Ignore patterns that compiled (no flags); searched against the original line.</summary>
-    public IReadOnlyList<EnginePattern> IgnorePatterns { get; } = ignorePatterns;
+    public IReadOnlyList<Regex> IgnorePatterns { get; } = ignorePatterns;
 
     /// <summary>Every distinct ignore pattern given, compiled or not.</summary>
     public IReadOnlyList<string> IgnorePatternText { get; } = ignorePatternText;

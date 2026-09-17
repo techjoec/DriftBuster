@@ -19,7 +19,7 @@ namespace DriftBuster.Backend.MultiServer;
 /// the only one a crash can leave partial; cancellation is checked before it starts. Every other outcome: a
 /// missing entry (a dangling link included) loads as null; a file that is not UTF-8, or whose JSON is not an object, raises with
 /// the <c>UnicodeDecodeError</c> or <c>AttributeError</c> text; an I/O failure raises with the <c>OSError</c> text naming the
-/// entry path (<see cref="EngineOSError"/>). A raise fails the host as offline in <see cref="MultiServerRunner"/>.
+/// entry path (<see cref="OsError"/>). A raise fails the host as offline in <see cref="MultiServerRunner"/>.
 /// </remarks>
 public sealed class DiffCache
 {
@@ -57,7 +57,7 @@ public sealed class DiffCache
 
         if (kind == UnixFileType.Kind.Directory || (kind is null && Directory.Exists(EnginePath.KernelPath(path))))
         {
-            throw EngineOSError.Create(EngineOSError.DirectoryOpenErrno, path);
+            throw OsError.Create(OsError.DirectoryOpenErrno, path);
         }
 
         var raw = EngineTextFile.ReadBytes(path, path);
@@ -109,9 +109,9 @@ public sealed class DiffCache
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || EngineOSError.Errno(exc, path) is not { } errno
+            throw exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || OsError.Errno(exc, path) is not { } errno
                 ? exc
-                : EngineOSError.Create(errno, path, exc);
+                : OsError.Create(errno, path, exc);
         }
         finally
         {
@@ -158,7 +158,7 @@ public sealed class DiffCache
         if (UnixFileType.Stat(path, followSymlinks: false) == UnixFileType.Kind.Other)
         {
             var physical = EnginePath.ResolvePhysicalPath(Path.GetFullPath(target), out var nameable)
-                ?? throw EngineOSError.Create(EngineOSError.TooManyLinks, path);
+                ?? throw OsError.Create(OsError.TooManyLinks, path);
             if (!nameable)
             {
                 RequireNotDirectory(path, target);
@@ -176,7 +176,7 @@ public sealed class DiffCache
     {
         if (UnixFileType.Stat(target, followSymlinks: true) == UnixFileType.Kind.Directory || (!OperatingSystem.IsLinux() && Directory.Exists(target)))
         {
-            throw EngineOSError.Create(EngineOSError.DirectoryOpenErrno, path);
+            throw OsError.Create(OsError.DirectoryOpenErrno, path);
         }
     }
 

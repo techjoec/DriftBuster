@@ -3,21 +3,19 @@ using System.Text;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// A JSON acceptor with exactly the grammar of CPython's <c>json.loads</c> (the C scanner in <c>Modules/_json.c</c>,
-/// strict mode): whitespace is space, tab, LF and CR only; the literals <c>NaN</c>, <c>Infinity</c> and
-/// <c>-Infinity</c> are accepted; numbers use ASCII digits with no leading zeros; strings reject raw control
-/// characters below U+0020, accept the escapes <c>\" \\ \/ \b \f \n \r \t \uXXXX</c>, and keep unpaired surrogate
-/// escapes; trailing commas, comments and a leading U+FEFF are rejected; anything after the value but whitespace is
-/// "extra data". Nesting is tracked on an explicit stack, so depth is unbounded where Python's recursive decoder
-/// raises <c>RecursionError</c> once the nesting exceeds the interpreter's recursion limit, and integers are never
-/// converted, so Python's digit limit on <c>int()</c> conversion does not apply either.
+/// A JSON acceptor for the dialect DriftBuster reads: RFC 8259 JSON plus the <c>NaN</c>, <c>Infinity</c> and
+/// <c>-Infinity</c> literals. Whitespace is space, tab, LF and CR only; numbers use ASCII digits with no leading
+/// zeros; strings reject raw control characters below U+0020, accept the escapes <c>\" \\ \/ \b \f \n \r \t \uXXXX</c>,
+/// and keep unpaired surrogate escapes; trailing commas, comments and a leading U+FEFF are rejected; anything after
+/// the value but whitespace is "extra data". Nesting is tracked on an explicit stack, so depth is unbounded, and
+/// integer lexemes are never converted, so their length is unbounded too.
 /// </summary>
 /// <remarks>Only what the JSON plugin reports is kept: the top-level kind, object keys in first-occurrence order and
 /// the kinds of the top-level array items. System.Text.Json is not used because it diverges on the NaN/Infinity
 /// literals, on unpaired surrogate escapes and on nesting depth.</remarks>
 internal static class EngineJsonScanner
 {
-    /// <summary>Python types a decoded value can have, in the order of <c>JsonPlugin.TypeNames</c>.</summary>
+    /// <summary>The kinds a decoded value can have, in the order of <c>JsonPlugin.TypeNames</c>.</summary>
     internal enum Kind
     {
         Dict,
@@ -63,7 +61,7 @@ internal static class EngineJsonScanner
         public string? PendingKey { get; set; }
     }
 
-    /// <summary>The top-level description of <paramref name="text"/>, or null when Python's decoder would raise.</summary>
+    /// <summary>The top-level description of <paramref name="text"/>, or null when the text is not one JSON document.</summary>
     public static TopLevel? Parse(string text)
     {
         ArgumentNullException.ThrowIfNull(text);

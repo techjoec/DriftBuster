@@ -28,8 +28,8 @@ public static partial class CaptureRunner
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
-        var baselinePath = EnginePurePath.Str(options.Baseline);
-        var currentPath = EnginePurePath.Str(options.Current);
+        var baselinePath = LexicalPath.Str(options.Baseline);
+        var currentPath = LexicalPath.Str(options.Current);
         if (!RunProfileStore.Exists(currentPath))
         {
             stderr.Write($"error: current snapshot not found: {currentPath}\n");

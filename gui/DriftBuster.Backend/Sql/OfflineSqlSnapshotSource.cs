@@ -232,8 +232,8 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     private static string Stem(string path)
     {
         // PurePath.name: the last of the parts after the anchor, or "".
-        var parts = EnginePurePath.Parts(path);
-        var name = parts.Count > (EnginePurePath.Anchor(path).Length > 0 ? 1 : 0) ? parts[^1] : string.Empty;
+        var parts = LexicalPath.Parts(path);
+        var name = parts.Count > (LexicalPath.Anchor(path).Length > 0 ? 1 : 0) ? parts[^1] : string.Empty;
         var dot = name.LastIndexOf('.');
         return dot > 0 && dot < name.Length - 1 ? name[..dot] : name;
     }

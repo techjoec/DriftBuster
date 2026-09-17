@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Globalization;
 using System.Numerics;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Registry;
@@ -13,9 +13,10 @@ namespace DriftBuster.Backend.Registry;
 /// and patterns (pattern text, compiled when the scan runs), the search limits, the manifest alias, the remote target and batch,
 /// and explicit roots that replace the suggested ones. Values are in the <see cref="EngineJson"/> domain.
 /// </summary>
-public sealed record OfflineRegistryScanSource(string Token)
+public sealed partial record OfflineRegistryScanSource(string Token)
 {
-    private static readonly EnginePattern SequenceSplit = EnginePattern.Compile(@"[\s,;]+");
+    [GeneratedRegex(@"[\s,;]+", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex SequenceSplit();
     private static readonly string[] BatchKeys = ["remote_batch", "remoteTargets", "remote_targets", "batch"];
 
     public IReadOnlyList<string> Keywords { get; init; } = [];
@@ -113,7 +114,7 @@ public sealed record OfflineRegistryScanSource(string Token)
 
         if (value is string text)
         {
-            return RegistryText.Split(SequenceSplit, text).Where(part => part.Length > 0).ToList();
+            return SequenceSplit().Split(text).Where(part => part.Length > 0).ToList();
         }
 
         if (value is IReadOnlyDictionary<string, object?> || value is not IList list)

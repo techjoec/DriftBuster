@@ -2,7 +2,6 @@ using System.Numerics;
 
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -64,7 +63,7 @@ public static class RegistryCommands
     /// <c>SystemExit("invalid --root value: ...")</c>) or the roots suggested for the token, searched with the keywords, the patterns
     /// compiled in order and the limits; <c>"{hive} \ {path} :: {value_name} = {data_preview}"</c> per hit.
     /// </summary>
-    /// <exception cref="EngineReException">A pattern does not compile (<c>re.error</c>).</exception>
+    /// <exception cref="System.Text.RegularExpressions.RegexParseException">A pattern is not a valid .NET regular expression.</exception>
     public static IReadOnlyList<string> Search(
         string token,
         IReadOnlyList<string>? keywords = null,

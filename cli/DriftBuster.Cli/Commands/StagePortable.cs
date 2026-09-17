@@ -47,7 +47,7 @@ internal static partial class StagePortable
         var zipPath = ZipBundle(bundleDir);
         var shaPath = WriteSha256(zipPath);
 
-        var stageDir = EnginePath.ExpandUser(EnginePurePath.Str(options.StageDir));
+        var stageDir = EnginePath.ExpandUser(LexicalPath.Str(options.StageDir));
         StageBundle(bundleDir, stageDir);
 
         ConsoleText.Print(stdout, "\nPortable debug bundle ready:");
@@ -55,7 +55,7 @@ internal static partial class StagePortable
         ConsoleText.Print(stdout, $" - Zip: {zipPath}");
         ConsoleText.Print(stdout, $" - Zip SHA256: {shaPath}");
         ConsoleText.Print(stdout, $" - Staged run dir: {stageDir}");
-        ConsoleText.Print(stdout, $" - Launch: {EnginePurePath.Join(stageDir, "Run-DriftBuster-Debug.cmd")}");
+        ConsoleText.Print(stdout, $" - Launch: {LexicalPath.Join(stageDir, "Run-DriftBuster-Debug.cmd")}");
         return 0;
     }
 

@@ -19,7 +19,7 @@ public static partial class RunProfileExecutor
 
     /// <summary>
     /// <c>_iter_source_matches(path_text)</c> without a base directory: when the unexpanded text holds no glob character, the expanded
-    /// path if it exists; otherwise the distinct <c>glob.glob(expanded, recursive=True)</c> results. Nothing found raises
+    /// path if it exists; otherwise the distinct <see cref="FileTreeGlob.GlobPathname"/> matches. Nothing found raises
     /// <c>FileNotFoundError("Path does not exist: {path_text}")</c>, and so does a path whose every match <paramref name="isOwnOutput"/>
     /// names: the offline runner writes its output elsewhere, so there the run's own output does not exist to be matched.
     /// </summary>
@@ -33,15 +33,15 @@ public static partial class RunProfileExecutor
         IEnumerable<string> found;
         if (!RunProfileStore.HasMagic(pathText))
         {
-            var candidate = EnginePurePath.Str(expanded);
+            var candidate = LexicalPath.Str(expanded);
             found = RunProfileStore.Exists(candidate) ? [candidate] : [];
         }
         else
         {
-            found = EngineModuleGlob.Glob(expanded, recursive: true, cancellationToken)
+            found = FileTreeGlob.GlobPathname(expanded, cancellationToken)
                 .Order(CodePointOrder)
                 .Distinct(StringComparer.Ordinal)
-                .Select(EnginePurePath.Str);
+                .Select(LexicalPath.Str);
         }
 
         var matches = found.Where(match => isOwnOutput is null || !isOwnOutput(match)).ToList();
@@ -103,7 +103,7 @@ public static partial class RunProfileExecutor
             }
             else if (EnginePath.IsFile(match))
             {
-                CopyUnlessExcluded(source, match, EnginePurePath.Parent(match), destinationRoot, target, matched, cancellationToken);
+                CopyUnlessExcluded(source, match, LexicalPath.Parent(match), destinationRoot, target, matched, cancellationToken);
             }
         }
 
@@ -111,7 +111,7 @@ public static partial class RunProfileExecutor
     }
 
     // The path is the directory or lies below it (both physical paths).
-    private static bool IsInside(string path, string directory) => EnginePurePath.RelativeTo(path, directory) is not null;
+    private static bool IsInside(string path, string directory) => LexicalPath.RelativeTo(path, directory) is not null;
 
     // Path.is_symlink(): an lstat that reports a link; a path that cannot be looked up is not one.
     private static bool IsSymlink(string path)

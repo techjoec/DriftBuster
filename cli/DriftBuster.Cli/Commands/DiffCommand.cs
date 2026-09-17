@@ -137,7 +137,7 @@ internal static class DiffCommand
             contextLines: (int)BigInteger.Min(args.ContextLines, int.MaxValue));
         if (outputDir is not null)
         {
-            var destination = EnginePurePath.Join(outputDir, PatchName(baselinePath, candidatePath));
+            var destination = LexicalPath.Join(outputDir, PatchName(baselinePath, candidatePath));
             var text = result.Diff.EndsWith('\n') ? result.Diff : result.Diff + "\n";
             EngineTextFile.WriteText(destination, ReportValues.TextModeNewLines(text));
             ConsoleText.Write(stdout, $"Wrote diff for {PathText.Name(candidatePath)} to {destination}\n");
@@ -171,11 +171,11 @@ internal static class DiffCommand
         byte[] raw;
         try
         {
-            raw = EngineTextFile.ReadBytes(path, EnginePurePath.Str(path));
+            raw = EngineTextFile.ReadBytes(path, LexicalPath.Str(path));
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw new FileNotFoundException($"Unable to read {EnginePurePath.Str(path)}: {exc.Message}", path, exc);
+            throw new FileNotFoundException($"Unable to read {LexicalPath.Str(path)}: {exc.Message}", path, exc);
         }
 
         return Utf8Ignore.GetString(raw).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');

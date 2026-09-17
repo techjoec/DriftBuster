@@ -13,7 +13,7 @@ internal static partial class PurgeReportingRetention
 {
     private const long MicrosecondsPerDay = 86_400_000_000;
 
-    // datetime.min (0001-01-01T00:00:00) in microseconds from the Unix epoch.
+    // DateTime.MinValue (0001-01-01T00:00:00) in microseconds from the Unix epoch.
     private static readonly BigInteger MinMicroseconds = (DateTime.MinValue.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerMicrosecond;
 
     /// <summary><c>discover_candidates(roots, retention_days=..., now=...)</c>, sorted by path.</summary>
@@ -26,7 +26,7 @@ internal static partial class PurgeReportingRetention
         }
 
         var clock = MicrosecondsOf((now ?? DateTimeOffset.UtcNow).UtcTicks);
-        var threshold = clock - EngineTimeDelta.FromMicroseconds(retentionDays * MicrosecondsPerDay).TotalMicroseconds;
+        var threshold = clock - (retentionDays * MicrosecondsPerDay);
         if (threshold < MinMicroseconds)
         {
             throw new OverflowException("date value out of range");
@@ -35,20 +35,20 @@ internal static partial class PurgeReportingRetention
         var candidates = new List<PurgeCandidate>();
         foreach (var given in roots)
         {
-            var root = EnginePath.Resolve(EnginePath.ExpandUser(EnginePurePath.Str(given)));
+            var root = EnginePath.Resolve(EnginePath.ExpandUser(LexicalPath.Str(given)));
             if (!TextModeFile.Exists(root))
             {
                 continue;
             }
 
             var entries = Directory.Exists(root)
-                ? Directory.EnumerateFileSystemEntries(root).Select(entry => EnginePurePath.Join(root, Path.GetFileName(entry)))
+                ? Directory.EnumerateFileSystemEntries(root).Select(entry => LexicalPath.Join(root, Path.GetFileName(entry)))
                 : [root];
             foreach (var entry in entries)
             {
                 if (ModifiedMicroseconds(entry) is { } modified && modified <= threshold)
                 {
-                    var age = EngineTimeDelta.FromMicroseconds(clock - modified).TotalSeconds() / 86400;
+                    var age = (double)(clock - modified) / MicrosecondsPerDay;
                     candidates.Add(new PurgeCandidate(entry, age));
                 }
             }

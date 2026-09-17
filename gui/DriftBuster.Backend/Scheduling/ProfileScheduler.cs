@@ -20,8 +20,8 @@ public sealed class ProfileScheduler
         }
     }
 
-    /// <summary><c>ProfileScheduler._now</c>; tests swap it.</summary>
-    internal static Func<EngineDateTime> Now { get; set; } = EngineDateTime.UtcNow;
+    /// <summary>The clock (UTC, whole microseconds); tests swap it.</summary>
+    internal static Func<DateTimeOffset> Now { get; set; } = IsoTimestamp.UtcNow;
 
     /// <summary><c>scheduler.register(spec)</c>: a new name starts at <c>spec.initial_run(_now())</c>.</summary>
     public void Register(ScheduleSpec spec)
@@ -49,9 +49,9 @@ public sealed class ProfileScheduler
     /// <c>scheduler.due(reference)</c>: every pending run at or before the reference, and every schedule whose next run is at or before it
     /// (which becomes pending), ordered by scheduled time (stable, registration order for ties).
     /// </summary>
-    public IReadOnlyList<ScheduledRun> Due(EngineDateTime? reference = null)
+    public IReadOnlyList<ScheduledRun> Due(DateTimeOffset? reference = null)
     {
-        var now = ScheduleParsing.EnsureAware(reference ?? Now());
+        var now = (reference ?? Now()).ToUniversalTime();
         var runs = new List<ScheduledRun>();
         foreach (var (name, spec) in _specs)
         {
@@ -73,20 +73,20 @@ public sealed class ProfileScheduler
             }
         }
 
-        var ordered = runs.ToArray();
-        EngineSort<ScheduledRun>.Sort(ordered, static (left, right) => left.ScheduledFor < right.ScheduledFor);
-        return ordered;
+        // Stable: runs due at the same time keep registration order.
+        return runs.Order(Comparer<ScheduledRun>.Create(static (left, right) =>
+            left.ScheduledFor < right.ScheduledFor ? -1 : (right.ScheduledFor < left.ScheduledFor ? 1 : 0))).ToArray();
     }
 
     /// <summary><c>scheduler.peek(name)</c>: the pending run, else the next run.</summary>
-    public EngineDateTime Peek(string name)
+    public DateTimeOffset Peek(string name)
     {
         var state = State(name);
         return state.Pending ?? state.NextRun;
     }
 
     /// <summary><c>scheduler.mark_complete(name, completed_at)</c>: clears the pending run; the next run follows the completion time (the pending time by default).</summary>
-    public void MarkComplete(string name, EngineDateTime? completedAt = null)
+    public void MarkComplete(string name, DateTimeOffset? completedAt = null)
     {
         var state = State(name);
         if (state.Pending is null)
@@ -94,17 +94,17 @@ public sealed class ProfileScheduler
             throw new ScheduleException($"Schedule {name} is not pending.");
         }
 
-        var completed = ScheduleParsing.EnsureAware(completedAt ?? state.Pending);
+        var completed = (completedAt ?? state.Pending.Value).ToUniversalTime();
         state.Pending = null;
         state.NextRun = _specs[name].NextAfter(completed);
     }
 
     /// <summary><c>scheduler.skip_until(name, resume_at)</c>: clears the pending run and restarts at the resume time, aligned.</summary>
-    public void SkipUntil(string name, EngineDateTime resumeAt)
+    public void SkipUntil(string name, DateTimeOffset resumeAt)
     {
         var state = State(name);
         state.Pending = null;
-        state.NextRun = _specs[name].AlignTo(ScheduleParsing.EnsureAware(resumeAt));
+        state.NextRun = _specs[name].AlignTo(resumeAt);
     }
 
     /// <summary><c>scheduler.cancel(name)</c>.</summary>
@@ -127,8 +127,8 @@ public sealed class ProfileScheduler
         {
             snapshot[name] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["next_run"] = state.NextRun.IsoFormat(),
-                ["pending"] = state.Pending?.IsoFormat(),
+                ["next_run"] = IsoTimestamp.Format(state.NextRun),
+                ["pending"] = state.Pending is { } pending ? IsoTimestamp.Format(pending) : null,
             };
         }
 

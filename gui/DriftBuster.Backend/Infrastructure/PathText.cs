@@ -1,29 +1,20 @@
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary>Path text helpers with Python <c>pathlib</c> semantics; engine code never calls <see cref="Path.GetExtension"/>.</summary>
+/// <summary>The path text helpers the engine uses, over <see cref="LexicalPath"/>; engine code never calls <see cref="Path.GetExtension"/>.</summary>
 public static class PathText
 {
-    private static readonly bool Windows = OperatingSystem.IsWindows();
-
     /// <summary>
-    /// The final path component as <c>PurePath.name</c> returns it in the host flavour: the last name after the anchor, with empty and
-    /// "." parts dropped (as the path parser drops them), so <c>a/./</c> gives "a", while ".", "/" and an anchor alone (a Windows
-    /// <c>\\server\share</c>) give "".
+    /// The last segment of <see cref="LexicalPath.Str"/> (<see cref="LexicalPath.Name"/>): empty and "." segments are dropped, so
+    /// <c>a/./</c> gives "a", while ".", "/" and a bare root give "".
     /// </summary>
-    public static string Name(string path) => Name(path, Windows);
+    public static string Name(string path) => LexicalPath.Name(path);
 
-    internal static string Name(string path, bool windows)
-    {
-        var parsed = EnginePurePath.Parse(path, windows);
-        return parsed.Tail.Count > 0 ? parsed.Tail[^1] : string.Empty;
-    }
-
-    /// <summary><see cref="Name"/> lowered with the invariant culture, matching <c>path.name.lower()</c>.</summary>
+    /// <summary><see cref="Name"/> lowered with the invariant culture.</summary>
     public static string NameLower(string path) => EngineText.Lower(Name(path));
 
     /// <summary>
-    /// The final suffix as <c>PurePath.suffix</c> returns it: the last dot must be neither the first nor the last
-    /// character of the name, so ".env" and "foo." have no suffix while ".env.local" has ".local".
+    /// The final suffix: the last dot must be neither the first nor the last character of the name, so ".env" and "foo." have no
+    /// suffix while ".env.local" has ".local".
     /// </summary>
     public static string Suffix(string path)
     {
@@ -32,10 +23,10 @@ public static class PathText
         return index > 0 && index < name.Length - 1 ? name[index..] : string.Empty;
     }
 
-    /// <summary><see cref="Suffix"/> lowered with the invariant culture, matching <c>path.suffix.lower()</c>.</summary>
+    /// <summary><see cref="Suffix"/> lowered with the invariant culture.</summary>
     public static string SuffixLower(string path) => EngineText.Lower(Suffix(path));
 
-    /// <summary>Replaces the platform directory separator with "/", matching <c>PurePath.as_posix()</c>.</summary>
+    /// <summary>Replaces the platform directory separator with "/".</summary>
     public static string ToPosix(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -70,8 +61,8 @@ public static class PathText
     }
 
     /// <summary>
-    /// Python <c>str</c> ordering: by code point, so astral characters sort after every BMP character. A surrogate pair is
-    /// one astral code point; an unpaired surrogate is its own code point (U+D800-U+DFFF), below U+E000.
+    /// Ordering by code point, so astral characters sort after every BMP character. A surrogate pair is one astral code point; an
+    /// unpaired surrogate is its own code point (U+D800-U+DFFF), below U+E000.
     /// </summary>
     public static int CompareCodePoints(string left, string right)
     {

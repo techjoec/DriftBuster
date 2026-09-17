@@ -5,7 +5,9 @@ Overview
 --------
 - Enumerates installed applications from the Uninstall registry keys.
 - Guesses likely registry roots for a selected app (HKCU/HKLM software trees and Wow6432Node).
-- Searches registry values under those roots using user‑provided keywords and/or regex patterns.
+- Searches registry values under those roots using user‑provided keywords and/or regex patterns. Patterns use .NET regular
+  expression syntax (culture-invariant, case-sensitive unless the pattern sets `(?i)`); a pattern that does not parse fails with
+  `PatternError` and the .NET parser message.
 
 Notes
 -----

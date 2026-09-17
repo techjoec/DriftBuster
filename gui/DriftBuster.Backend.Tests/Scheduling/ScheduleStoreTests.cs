@@ -76,7 +76,7 @@ public sealed class ScheduleStoreTests : IDisposable
         FluentActions.Invoking(() => scheduler.ApplyState(Payload(("a", Payload(("next_run", 5), ("pending", null))))))
             .Should().Throw<ScheduleException>().WithMessage("Unable to parse timestamp: 5");
         FluentActions.Invoking(() => scheduler.ApplyState(Payload(("a", Payload(("next_run", "0001-01-01T00:00:00+01:00"))))))
-            .Should().Throw<OverflowException>().WithMessage("date value out of range");
+            .Should().Throw<ScheduleException>().WithMessage("Unable to parse timestamp: '0001-01-01T00:00:00+01:00'");
 
         scheduler.ApplyState(Payload(("a", Payload(("next_run", "2025-01-01T05:00:00+05:30"), ("pending", "2025-01-01T00:00:00.5"))), ("unknown", 7)));
         EngineRepr.Repr(scheduler.SnapshotState())
@@ -95,13 +95,13 @@ public sealed class ScheduleStoreTests : IDisposable
         var scheduler = new ProfileScheduler([spec]);
         FluentActions.Invoking(() => scheduler.MarkComplete("a")).Should().Throw<ScheduleException>().WithMessage("Schedule a is not pending.");
         FluentActions.Invoking(() => scheduler.MarkComplete("zz")).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
-        FluentActions.Invoking(() => scheduler.SkipUntil("zz", EngineDateTime.UtcNow())).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
+        FluentActions.Invoking(() => scheduler.SkipUntil("zz", IsoTimestamp.UtcNow())).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
         FluentActions.Invoking(() => scheduler.Peek("zz")).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
         FluentActions.Invoking(() => scheduler.Cancel("zz")).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
         FluentActions.Invoking(() => scheduler.Register(spec)).Should().Throw<ScheduleException>().WithMessage("Schedule already registered: a");
         FluentActions.Invoking(() => spec.LoadProfile()).Should().Throw<ScheduleException>().WithMessage("Profile loader not configured for this schedule");
 
-        var run = scheduler.Due(EngineDateTime.Create(2025, 1, 2, tz: EngineFixedOffset.Utc)).Single();
+        var run = scheduler.Due(new DateTimeOffset(2025, 1, 2, 0, 0, 0, TimeSpan.Zero)).Single();
         FluentActions.Invoking(() => run.LoadProfile()).Should().Throw<ScheduleException>().WithMessage("A profile loader is required to hydrate the run.");
         run.LoadProfile(name => new DriftBuster.Backend.Profiles.Run.RunProfile(name)).Name.Should().Be("p");
 
@@ -199,7 +199,7 @@ public sealed class ScheduleStoreTests : IDisposable
     [Theory]
     [InlineData("bad", null, null, null, null, "Unsupported interval fragment near: bad")]
     [InlineData("0s", null, null, null, null, "Interval must be positive.")]
-    [InlineData("1h", "02:00", null, null, null, "Invalid isoformat string: '02:00'")]
+    [InlineData("1h", "02:00", null, null, null, "Invalid ISO 8601 timestamp: '02:00'")]
     [InlineData("1h", null, "08:00", null, "UTC", "Window requires start and end fields")]
     [InlineData("1h", null, "08:00", "17:00", "Mars/Olympus", "Unknown time zone: Mars/Olympus")]
     [InlineData("1h", "2025-01-01T00:00:00Z", "08:00", "17:00", "America/Chicago", null)]

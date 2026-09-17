@@ -8,10 +8,10 @@ internal static partial class SelfcheckMultiServerPaths
     public static IReadOnlyList<ScenarioResult> RunScenarios(string samplesRoot, string reportDir)
     {
         var scenarios = new List<ScenarioResult>();
-        var cacheDir = EnginePurePath.Join(reportDir, "cache");
+        var cacheDir = LexicalPath.Join(reportDir, "cache");
         Directory.CreateDirectory(cacheDir);
-        string Cache(string name) => EnginePurePath.Join(cacheDir, name);
-        string Sample(string name) => EnginePurePath.Join(samplesRoot, name);
+        string Cache(string name) => LexicalPath.Join(cacheDir, name);
+        string Sample(string name) => LexicalPath.Join(samplesRoot, name);
         var server01 = MakePlan("host-01", "server01", Sample("server01"), preferred: true, priority: 10);
         var server02 = MakePlan("host-02", "server02", Sample("server02"), preferred: false, priority: 5);
 

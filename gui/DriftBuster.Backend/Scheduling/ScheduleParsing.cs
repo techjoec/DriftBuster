@@ -1,43 +1,52 @@
+using System.Globalization;
 using System.Numerics;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
-/// The scheduler's parsing helpers: <c>parse_interval</c>, <c>_parse_time</c>, <c>_build_timezone</c>,
-/// <c>_ensure_aware</c> and <c>_parse_timestamp</c>. Values are in the <see cref="EngineJson"/> domain; <c>ValueError</c> is
-/// <see cref="EngineValueException"/>, <c>OverflowError</c> <see cref="OverflowException"/> and <c>ScheduleError</c>
-/// <see cref="ScheduleException"/>.
+/// The scheduler's parsing helpers for intervals, window times, time zones and timestamps. Payload values are in the
+/// <see cref="EngineJson"/> domain; invalid input raises <see cref="ScheduleException"/>.
 /// </summary>
-public static class ScheduleParsing
+public static partial class ScheduleParsing
 {
-    private static readonly EnginePattern IntervalToken = EnginePattern.Compile(@"(?P<value>\d+(?:\.\d+)?)(?P<unit>[smhd])");
+    private static readonly string[] TimeFormats = ["H':'mm", "H':'mm':'ss"];
 
-    // re.fullmatch of the ISO-8601 time part, spelled as a match anchored at the end.
-    private static readonly EnginePattern IsoDuration =
-        EnginePattern.Compile(@"(?:(?:(?P<h>\d+(?:\.\d+)?)h)?(?:(?P<m>\d+(?:\.\d+)?)m)?(?:(?P<s>\d+(?:\.\d+)?)s)?)\Z");
+    // One compact interval token at the start of the text; ASCII digits only, because the number is parsed with the invariant culture.
+    [GeneratedRegex(
+        @"\A(?<value>[0-9]+(?:\.[0-9]+)?)(?<unit>[smhd])",
+        RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial Regex IntervalToken();
+
+    // The whole ISO-8601 time part after "PT".
+    [GeneratedRegex(
+        @"\A(?:(?<h>[0-9]+(?:\.[0-9]+)?)h)?(?:(?<m>[0-9]+(?:\.[0-9]+)?)m)?(?:(?<s>[0-9]+(?:\.[0-9]+)?)s)?\z",
+        RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial Regex IsoDuration();
 
     /// <summary>
-    /// <c>parse_interval(value)</c>: a <see cref="EngineTimeDelta"/> as itself, an int, bool or float as seconds, anything else
-    /// <c>str()</c>-ed, stripped and lower-cased: <c>PT#H#M#S</c> ISO-8601 time durations, or compact tokens such as <c>15m</c>,
-    /// <c>1h30m</c> and <c>1.5d</c>. Every result must be positive.
+    /// A schedule interval: a <see cref="TimeSpan"/> as itself, an int, bool or float as seconds, anything else as text, stripped and
+    /// lower-cased: <c>PT#H#M#S</c> ISO-8601 time durations, or compact tokens such as <c>15m</c>, <c>1h30m</c> and <c>1.5d</c>. Every
+    /// result must be positive. An interval beyond the <see cref="TimeSpan"/> range raises <see cref="OverflowException"/>.
     /// </summary>
-    public static EngineTimeDelta ParseInterval(object? value)
+    public static TimeSpan ParseInterval(object? value)
     {
         switch (value)
         {
-            case EngineTimeDelta delta:
-                return delta.IsPositive ? delta : throw new ScheduleException("Interval must be positive.");
+            case TimeSpan span:
+                return Positive(span);
             case bool or int or long or BigInteger or double:
                 var seconds = EngineBuiltins.Float(value);
-                if (seconds <= 0)
+                if (!(seconds > 0))
                 {
                     throw new ScheduleException("Interval must be positive.");
                 }
 
-                return EngineTimeDelta.FromFloats(seconds: seconds);
+                return TimeSpan.FromSeconds(seconds);
         }
 
         var text = EngineText.Lower(EngineText.Strip(EngineRepr.Str(value)));
@@ -49,95 +58,102 @@ public static class ScheduleParsing
         return text.StartsWith("pt", StringComparison.Ordinal) ? ParseIsoInterval(value, text) : ParseCompactInterval(text);
     }
 
-    private static EngineTimeDelta ParseIsoInterval(object? value, string text)
+    private static TimeSpan ParseIsoInterval(object? value, string text)
     {
-        var match = IsoDuration.Match(text[2..]);
-        if (match is null || match.Value.Length == 0)
+        var match = IsoDuration().Match(text[2..]);
+        if (!match.Success || match.Length == 0)
         {
             throw new ScheduleException("Unsupported ISO-8601 interval: " + EngineRepr.Repr(value));
         }
 
-        var duration = EngineTimeDelta.FromFloats(
-            hours: GroupFloat(match, "h"),
-            minutes: GroupFloat(match, "m"),
-            seconds: GroupFloat(match, "s"));
-        return duration.IsPositive ? duration : throw new ScheduleException("Interval must be positive.");
+        var duration = TimeSpan.FromHours(GroupFloat(match, "h"))
+            + TimeSpan.FromMinutes(GroupFloat(match, "m"))
+            + TimeSpan.FromSeconds(GroupFloat(match, "s"));
+        return Positive(duration);
     }
 
-    private static double GroupFloat(EngineMatch match, string name)
-        => match.Group(IsoDuration.GroupIndex[name]) is { Length: > 0 } digits ? EngineBuiltins.Float(digits) : 0.0;
+    private static double GroupFloat(Match match, string name)
+        => match.Groups[name] is { Success: true, Length: > 0 } digits ? EngineBuiltins.Float(digits.Value) : 0.0;
 
-    private static EngineTimeDelta ParseCompactInterval(string text)
+    private static TimeSpan ParseCompactInterval(string text)
     {
         var cursor = 0;
-        var total = default(EngineTimeDelta);
+        var total = TimeSpan.Zero;
         while (cursor < text.Length)
         {
-            var match = IntervalToken.Match(text[cursor..])
-                ?? throw new ScheduleException("Unsupported interval fragment near: " + text[cursor..]);
-            var amount = EngineBuiltins.Float(match.Group(IntervalToken.GroupIndex["value"]));
-            total += match.Group(IntervalToken.GroupIndex["unit"]) switch
+            var match = IntervalToken().Match(text[cursor..]);
+            if (!match.Success)
             {
-                "s" => EngineTimeDelta.FromFloats(seconds: amount),
-                "m" => EngineTimeDelta.FromFloats(minutes: amount),
-                "h" => EngineTimeDelta.FromFloats(hours: amount),
-                _ => EngineTimeDelta.FromFloats(days: amount),
+                throw new ScheduleException("Unsupported interval fragment near: " + text[cursor..]);
+            }
+
+            var amount = EngineBuiltins.Float(match.Groups["value"].Value);
+            total += match.Groups["unit"].Value switch
+            {
+                "s" => TimeSpan.FromSeconds(amount),
+                "m" => TimeSpan.FromMinutes(amount),
+                "h" => TimeSpan.FromHours(amount),
+                _ => TimeSpan.FromDays(amount),
             };
-            cursor += match.End;
+            cursor += match.Index + match.Length;
         }
 
-        return total.IsPositive ? total : throw new ScheduleException("Interval must be positive.");
+        return Positive(total);
+    }
+
+    private static TimeSpan Positive(TimeSpan interval)
+        => interval > TimeSpan.Zero ? interval : throw new ScheduleException("Interval must be positive.");
+
+    /// <summary>
+    /// A window bound: <c>H:mm</c> or <c>H:mm:ss</c> (invariant culture, hours 0-23). Anything else, including an out-of-range field,
+    /// raises <see cref="ScheduleException"/>.
+    /// </summary>
+    public static TimeOnly ParseTime(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return TimeOnly.TryParseExact(text, TimeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)
+            ? time
+            : throw new ScheduleException("Time must be HH:MM or HH:MM:SS");
     }
 
     /// <summary>
-    /// <c>_parse_time(text)</c>: <c>HH:MM</c> or <c>HH:MM:SS</c> split on ":", each part through <c>int()</c> and the result through
-    /// <c>datetime.time</c>.
+    /// A window time zone: <see cref="TimeZoneInfo.Utc"/> for an empty name, otherwise <see cref="TimeZoneInfo.FindSystemTimeZoneById"/>
+    /// (IANA ids work on every platform). A name the system cannot resolve is "Unknown time zone".
     /// </summary>
-    public static EngineTime ParseTime(string text)
-    {
-        ArgumentNullException.ThrowIfNull(text);
-        var parts = text.Split(':');
-        if (parts.Length is < 2 or > 3)
-        {
-            throw new ScheduleException("Time must be HH:MM or HH:MM:SS");
-        }
-
-        var hour = EngineBuiltins.Int(parts[0]);
-        var minute = EngineBuiltins.Int(parts[1]);
-        var second = parts.Length == 3 ? EngineBuiltins.Int(parts[2]) : BigInteger.Zero;
-        return EngineTime.Create(hour, minute, second);
-    }
-
-    /// <summary><c>_build_timezone(name)</c>: UTC for an empty name, otherwise <c>ZoneInfo(name)</c>; any failure is "Unknown time zone".</summary>
-    public static EngineTzInfo BuildTimezone(string? name)
+    public static TimeZoneInfo BuildTimezone(string? name)
     {
         if (string.IsNullOrEmpty(name))
         {
-            return EngineFixedOffset.Utc;
+            return TimeZoneInfo.Utc;
         }
 
         try
         {
-            return EngineZoneInfo.Create(name);
+            return TimeZoneInfo.FindSystemTimeZoneById(name);
         }
-        catch (Exception exc) when (exc is EngineValueException or TimeZoneNotFoundException)
+        catch (Exception exc) when (exc is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
             throw new ScheduleException("Unknown time zone: " + name, exc);
         }
     }
 
-    /// <summary><c>_ensure_aware(moment)</c>: a naive datetime is taken as UTC, an aware one is converted to UTC.</summary>
-    public static EngineDateTime EnsureAware(EngineDateTime moment)
+    /// <summary>
+    /// An ISO 8601 timestamp through <see cref="IsoTimestamp.TryParse"/> (text without an offset is UTC; the result is UTC). Failure raises
+    /// <see cref="ScheduleException"/> with "Invalid ISO 8601 timestamp: 'text'".
+    /// </summary>
+    public static DateTimeOffset ParseIsoTimestamp(string text)
     {
-        ArgumentNullException.ThrowIfNull(moment);
-        return moment.Tz is null ? moment.WithTz(EngineFixedOffset.Utc) : moment.AsTimeZone(EngineFixedOffset.Utc);
+        ArgumentNullException.ThrowIfNull(text);
+        return IsoTimestamp.TryParse(text, out var instant)
+            ? instant
+            : throw new ScheduleException("Invalid ISO 8601 timestamp: " + EngineRepr.StrRepr(text));
     }
 
     /// <summary>
-    /// <c>_parse_timestamp(value)</c>: <c>datetime.fromisoformat(str(value))</c> through <see cref="EnsureAware"/>; an empty text or a
-    /// <c>ValueError</c> from the parser is a <see cref="ScheduleException"/>.
+    /// A stored timestamp: the value as text through <see cref="IsoTimestamp.TryParse"/>. Empty text and text that does not parse raise
+    /// <see cref="ScheduleException"/>.
     /// </summary>
-    public static EngineDateTime ParseTimestamp(object? value)
+    public static DateTimeOffset ParseTimestamp(object? value)
     {
         var text = EngineRepr.Str(value);
         if (text.Length == 0)
@@ -145,16 +161,8 @@ public static class ScheduleParsing
             throw new ScheduleException("Timestamp payload must not be empty.");
         }
 
-        EngineDateTime parsed;
-        try
-        {
-            parsed = EngineDateTime.FromIsoFormat(text);
-        }
-        catch (EngineValueException exc)
-        {
-            throw new ScheduleException("Unable to parse timestamp: " + EngineRepr.Repr(value), exc);
-        }
-
-        return EnsureAware(parsed);
+        return IsoTimestamp.TryParse(text, out var instant)
+            ? instant
+            : throw new ScheduleException("Unable to parse timestamp: " + EngineRepr.Repr(value));
     }
 }

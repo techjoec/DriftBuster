@@ -98,7 +98,7 @@ public static partial class RegistryScan
         }
 
         if (spec.Patterns.Count > 0
-            && !(spec.Patterns.Any(pattern => pattern.Search(text) is not null) || spec.Patterns.Any(pattern => pattern.Search(name) is not null)))
+            && !(spec.Patterns.Any(pattern => PatternRegex.IsMatch(pattern, text)) || spec.Patterns.Any(pattern => PatternRegex.IsMatch(pattern, name))))
         {
             return null;
         }

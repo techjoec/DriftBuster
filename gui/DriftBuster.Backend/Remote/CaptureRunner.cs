@@ -22,7 +22,7 @@ public static partial class CaptureRunner
     public const string CaptureManifestSchemaVersion = "1.0";
 
     /// <summary><c>datetime.now(UTC)</c>.</summary>
-    internal static Func<EngineDateTime> UtcNow { get; set; } = EngineDateTime.UtcNow;
+    internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
 
     /// <summary><c>time.monotonic()</c> in seconds.</summary>
     internal static Func<double> Monotonic { get; set; } = () => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -43,7 +43,7 @@ public static partial class CaptureRunner
     /// <remarks>
     /// Detector guardrail warnings go to <paramref name="stderr"/> as a last-resort logging handler writes them. A file the
     /// hunt cannot read is skipped. Directory creation and file writes raise the
-    /// <c>OSError</c> text (<see cref="EngineOSError"/>).
+    /// <c>OSError</c> text (<see cref="OsError"/>).
     /// </remarks>
     public static CaptureRunOutcome RunCapture(CaptureRunOptions options, TextWriter stdout, TextWriter stderr)
     {
@@ -248,11 +248,10 @@ public static partial class CaptureRunner
     }
 
     /// <summary>
-    /// <c>datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")</c> for a capture identifier. <c>%Y</c> is the year as glibc's <c>strftime</c>
-    /// writes it, without padding (year 999 is <c>999</c>), on every platform; a clock never reads below the year 1000.
+    /// A capture identifier from the UTC clock: <c>yyyyMMddTHHmmssZ</c> (invariant culture).
     /// </summary>
-    internal static string CaptureTimestamp(EngineDateTime now)
-        => string.Create(CultureInfo.InvariantCulture, $"{now.Year}{now.Month:D2}{now.Day:D2}T{now.Hour:D2}{now.Minute:D2}{now.Second:D2}Z");
+    internal static string CaptureTimestamp(DateTimeOffset now)
+        => now.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// <c>_prepare_output_paths(directory, capture_id)</c>: creates the directory (<c>mkdir(parents=True, exist_ok=True)</c>) and returns
@@ -263,6 +262,6 @@ public static partial class CaptureRunner
         ArgumentNullException.ThrowIfNull(directory);
         ArgumentNullException.ThrowIfNull(captureId);
         EnginePath.MakeDirectories(directory);
-        return (EnginePurePath.Join(directory, $"{captureId}-snapshot.json"), EnginePurePath.Join(directory, $"{captureId}-manifest.json"));
+        return (LexicalPath.Join(directory, $"{captureId}-snapshot.json"), LexicalPath.Join(directory, $"{captureId}-manifest.json"));
     }
 }

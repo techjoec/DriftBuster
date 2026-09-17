@@ -17,7 +17,7 @@ return here for data model details. The types live in
 | --- | --- | --- | --- |
 | `id` | string | — | Stable key used for lookups and diffs (`Identifier`). |
 | `path` | string or null | null | Exact POSIX-style relative path. Normalised on load. |
-| `path_glob` | string or null | null | POSIX glob alternative when multiple files apply. Normalised like `path`. |
+| `path_glob` | string or null | null | Wildcard alternative when multiple files apply: `*` matches any run of characters (`/` included), `?` one character. Normalised like `path`. |
 | `application` / `version` / `branch` | string or null | null | Convenience helpers that match tags such as `application:<value>`. |
 | `tags` | array of strings | `[]` | Additional tag requirements beyond helper shortcuts. Whitespace is trimmed. |
 | `expected_format` / `expected_variant` | string or null | null | Hints aligning with catalog formats and variants. |
@@ -91,8 +91,10 @@ foreach (var entry in results)
 - Tags determine which profiles and configs activate. A profile applies when
   all its tags are present. A config applies when its own tags (and
   `application`/`version`/`branch` helpers) match the tag set.
-- Path matching prefers exact `path` equality, falling back to glob checks via
-  `path_glob` (both normalised to POSIX-style separators).
+- Path matching prefers exact `path` equality, falling back to `path_glob`
+  against the whole relative path (both normalised to POSIX-style
+  separators). Because `*` crosses `/`, `configs/*.json` also matches
+  `configs/sub/app.json`. Matching ignores case on Windows only.
 - If no config matches a file, `Profiles` is empty.
 - When an applied config's metadata sets `ignore_review_flags` to true, a
   detection flagged `needs_review` is marked `review_ignored` instead.
@@ -129,9 +131,9 @@ read and write the same manifest, with runtime state in
 | `name` | string | — | Unique identifier for the scheduled run. |
 | `profile` | string | — | Profile name or path the schedule runs. |
 | `every` | string or number | — | Interval such as `"15m"`, `"1h30m"`, `"PT1H"`, or seconds (`900`). |
-| `start_at` | ISO 8601 string or null | null | Optional first-run anchor. Defaults to now when omitted. |
-| `window.start` / `window.end` | `HH:MM[:SS]` | — | Optional quiet-hours window in local time. When start > end the window is treated as overnight. |
-| `window.timezone` | IANA zone string | `"UTC"` | Time zone used to evaluate the window. |
+| `start_at` | ISO 8601 string or null | null | Optional first-run anchor (`yyyy-MM-dd[THH:mm[:ss[.fraction]][Z\|±HH:MM]]`; no offset means UTC). Defaults to now when omitted. |
+| `window.start` / `window.end` | `H:MM[:SS]` | — | Optional run window in local time, bounds inclusive. When start > end the window is treated as overnight. |
+| `window.timezone` | IANA zone string | `"UTC"` | Time zone used to evaluate the window, resolved through the operating system's time zone data. |
 | `tags` | array of strings | `[]` | Free-form labels surfaced on due runs. |
 | `metadata` | object | `{}` | Arbitrary JSON metadata mirrored into schedule payloads. |
 
@@ -157,6 +159,23 @@ driftbuster schedule due --at 2025-01-02T02:30:00Z
 driftbuster schedule mark-complete --name nightly-backup
 driftbuster schedule skip-until --name nightly-backup --resume-at 2025-01-10T02:00:00Z
 ```
+
+Every stored and printed time is UTC (`2025-01-02T02:00:00+00:00`), with a
+six-digit fraction only when it is not zero.
+
+A run that falls outside its window moves to the window start: the same local
+day when it is before a daytime window (or inside an overnight window's closed
+hours), the next local day when it is after a daytime window. Around daylight
+saving changes the start time resolves as follows:
+
+- **Skipped wall time** (spring forward): the offset in force before the change
+  applies, so the run lands the length of the gap later on the clock: a window
+  starting at `02:00` in `America/Chicago` starts at 03:00 CDT (08:00Z) on
+  2025-03-09. Intervals are exact durations, so a daily run in a `02:15`-`02:45`
+  window comes due at 03:15 CDT that day, past the window end, and moves to
+  02:15 the next day.
+- **Repeated wall time** (fall back): the earliest occurrence that is not before
+  the run being aligned. A run already inside the window keeps its instant.
 
 Due runs stay pending until marked complete. In code, `ProfileScheduler`
 (`gui/DriftBuster.Backend/Scheduling/`) exposes the same `Due`, `MarkComplete`

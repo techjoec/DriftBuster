@@ -65,7 +65,7 @@ internal sealed class ReleaseSteps(string root, TextWriter stdout, Func<IReadOnl
     {
         if (!TextModeFile.Exists(releaseNotes))
         {
-            throw new CommandExitException($"Release notes not found: {EnginePurePath.Str(releaseNotes)}");
+            throw new CommandExitException($"Release notes not found: {LexicalPath.Str(releaseNotes)}");
         }
 
         var versions = RunProfileStore.ReadJson(Path.Combine(root, "versions.json"));
@@ -78,7 +78,7 @@ internal sealed class ReleaseSteps(string root, TextWriter stdout, Func<IReadOnl
             throw new CommandExitException($"Installer script not found: {script}");
         }
 
-        List<string> command = ["bash", script, "--version", guiVersion, "--rid", rid, "--release-notes", EnginePurePath.Str(releaseNotes)];
+        List<string> command = ["bash", script, "--version", guiVersion, "--rid", rid, "--release-notes", LexicalPath.Str(releaseNotes)];
         if (!string.IsNullOrEmpty(channel))
         {
             command.AddRange(["--channel", channel]);

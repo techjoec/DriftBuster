@@ -74,7 +74,7 @@ internal static partial class PurgeReportingRetention
     {
         if (new DirectoryInfo(path).LinkTarget is not null)
         {
-            throw EngineOSError.Create(EngineOSError.NotADirectory, path);
+            throw OsError.Create(OsError.NotADirectory, path);
         }
 
         Directory.Delete(path);

@@ -1,5 +1,6 @@
+using System.Text.RegularExpressions;
+
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Cli.Commands;
@@ -28,11 +29,14 @@ internal static partial class VersionSync
             : mapping;
     }
 
-    /// <summary><c>update_file(path, pattern, replacement, count=count)</c>: <c>re.subn</c> over the file's text, written back in text mode.</summary>
+    /// <summary>
+    /// <c>update_file(path, pattern, replacement, count=count)</c>: every match of the .NET regular expression (the first
+    /// <paramref name="count"/> when it is positive) replaced by the literal replacement text, written back in text mode.
+    /// </summary>
     public static void UpdateFile(string path, string pattern, string replacement, int count = 0)
     {
         var original = TextModeFile.ReadText(path);
-        var matches = EnginePattern.Compile(pattern).FindIter(original);
+        IEnumerable<Match> matches = new Regex(pattern, RegexOptions.CultureInvariant, Regex.InfiniteMatchTimeout).Matches(original);
         if (count > 0)
         {
             matches = matches.Take(count);
@@ -43,14 +47,14 @@ internal static partial class VersionSync
         var applied = 0;
         foreach (var match in matches)
         {
-            builder.Append(original, position, match.Start - position).Append(replacement);
-            position = match.End;
+            builder.Append(original, position, match.Index - position).Append(replacement);
+            position = match.Index + match.Length;
             applied++;
         }
 
         if (applied == 0)
         {
-            throw new CommandExitException($"No replacements made in {EnginePurePath.Str(path)} for pattern {EngineRepr.StrRepr(pattern)}");
+            throw new CommandExitException($"No replacements made in {LexicalPath.Str(path)} for pattern {EngineRepr.StrRepr(pattern)}");
         }
 
         TextModeFile.WriteText(path, builder.Append(original, position, original.Length - position).ToString());

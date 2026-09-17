@@ -407,7 +407,7 @@ public class RunProfilesViewModelTests
 
         schedule.Every = "24h";
         schedule.StartAt = "02:00";
-        schedule.Error.Should().Be("Invalid isoformat string: '02:00'");
+        schedule.Error.Should().Be("Invalid ISO 8601 timestamp: '02:00'");
 
         schedule.StartAt = "2025-01-01T02:00:00Z";
         schedule.WindowStart = "25:00";
@@ -416,7 +416,7 @@ public class RunProfilesViewModelTests
         schedule.Error.Should().Be("Unknown time zone: Mars/Olympus");
 
         schedule.WindowTimezone = "America/Chicago";
-        schedule.Error.Should().Be("hour must be in 0..23");
+        schedule.Error.Should().Be("Time must be HH:MM or HH:MM:SS");
 
         schedule.WindowStart = "08:00";
         schedule.Error.Should().BeNull();

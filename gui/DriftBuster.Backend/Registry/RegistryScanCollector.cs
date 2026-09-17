@@ -3,7 +3,6 @@ using System.Text;
 
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -35,7 +34,7 @@ public static class RegistryScanCollector
     /// <paramref name="destinationRoot"/> as <c>json.dumps(payload, indent=2)</c> in text mode; and returns the summary with the
     /// file's size and SHA-256.
     /// </summary>
-    /// <exception cref="EngineReException">A pattern does not compile (<c>re.error</c>).</exception>
+    /// <exception cref="System.Text.RegularExpressions.RegexParseException">A pattern is not a valid .NET regular expression.</exception>
     public static RegistryScanCollection Collect(OfflineRegistryScanSource source, string destinationRoot, Action<string>? log = null)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -62,7 +61,7 @@ public static class RegistryScanCollector
         };
         var hits = SearchRegistry(roots, spec);
 
-        var resultPath = EnginePurePath.Join(destinationRoot, ResultFileName);
+        var resultPath = LexicalPath.Join(destinationRoot, ResultFileName);
         var text = Canonicaliser.Dumps(ResultPayload(source, roots, hits), indent: true, ensureAscii: true, sortKeys: false);
         if (!string.Equals(Environment.NewLine, "\n", StringComparison.Ordinal))
         {

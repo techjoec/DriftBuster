@@ -22,6 +22,5 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\secret_rules.json" />
-    <EmbeddedResource Include="Resources\unicode_names.txt.gz" />
   </ItemGroup>
 </Project>

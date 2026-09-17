@@ -142,11 +142,7 @@ public static partial class DetectionSummary
     }
 
     private static List<string> SortedStrings(IEnumerable<string> items)
-    {
-        var list = items.ToList();
-        EngineSort<string>.Sort(list, static (left, right) => PathText.CompareCodePoints(left, right) < 0);
-        return list;
-    }
+        => items.Order(Comparer<string>.Create(PathText.CompareCodePoints)).ToList();
 
     private static List<object?> SortedList(IEnumerable<string> items) => SortedStrings(items).Cast<object?>().ToList();
 

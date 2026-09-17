@@ -5,11 +5,10 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// The home directory the password database holds for an account: CPython's <c>pwd.getpwnam(name).pw_dir</c> and
-/// <c>pwd.getpwuid(os.getuid()).pw_dir</c>, through <c>getpwnam_r(3)</c> and <c>getpwuid_r(3)</c> (NSS included, as the
-/// <c>pwd</c> module reads it). Linux only; elsewhere, and where the calls are unavailable, <see cref="Available"/> is false.
+/// The home directory the password database holds for an account, read through <c>getpwnam_r(3)</c> and <c>getpwuid_r(3)</c>
+/// (NSS included). Linux only; elsewhere, and where the calls are unavailable, <see cref="Available"/> is false.
 /// </summary>
-/// <remarks>Derived from the publicly documented getpwnam_r(3) interface and the <c>pwd</c> module's documented behaviour, not vendor source.</remarks>
+/// <remarks>Written from the publicly documented getpwnam_r(3) interface, not vendor source.</remarks>
 internal static partial class UnixPasswd
 {
     private const int RangeError = 34;
@@ -46,8 +45,8 @@ internal static partial class UnixPasswd
     internal static bool Available => !_unavailable;
 
     /// <summary>
-    /// <c>pwd.getpwnam(name).pw_dir</c> for a name already encoded as the kernel sees it (no NUL byte), decoded as CPython decodes it
-    /// (UTF-8 with <c>surrogateescape</c>); null for <c>KeyError</c> (no such account, or a lookup that fails) and when
+    /// The home directory for an account name already encoded as the kernel sees it (no NUL byte), decoded as UTF-8 with
+    /// surrogate escapes for bytes that are not; null when there is no such account, when the lookup fails and when
     /// <see cref="Available"/> is false.
     /// </summary>
     internal static unsafe string? HomeByName(byte[] name)

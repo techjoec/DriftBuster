@@ -21,7 +21,7 @@ internal sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes
     public override IReadOnlyList<(string Path, DetectionMatch? Match)> ScanPath(string root, string glob = "**/*", bool resetBudget = true)
     {
         ArgumentNullException.ThrowIfNull(root);
-        _root = EnginePurePath.Str(root);
+        _root = LexicalPath.Str(root);
         try
         {
             return base.ScanPath(root, glob, resetBudget);
@@ -34,7 +34,7 @@ internal sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes
 
     protected internal override void HandleError(string path, DetectorIOException error)
     {
-        if (_root is null || string.Equals(EnginePurePath.Str(path), _root, StringComparison.Ordinal))
+        if (_root is null || string.Equals(LexicalPath.Str(path), _root, StringComparison.Ordinal))
         {
             base.HandleError(path, error);
         }

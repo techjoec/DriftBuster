@@ -1,4 +1,3 @@
-using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Scheduling;
@@ -7,7 +6,7 @@ namespace DriftBuster.Backend.Scheduling;
 public sealed record ScheduledRun(
     string Name,
     string Profile,
-    EngineDateTime ScheduledFor,
+    DateTimeOffset ScheduledFor,
     IReadOnlyList<string> Tags,
     IReadOnlyDictionary<string, object?> Metadata)
 {

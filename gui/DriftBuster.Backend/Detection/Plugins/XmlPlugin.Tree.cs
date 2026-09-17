@@ -6,16 +6,15 @@ namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
 /// Tree parsing and the walks over it. Both the tree and the well-formedness probe come from
-/// <see cref="DefusedXmlParser"/>, which accepts exactly what <c>defusedxml.ElementTree.fromstring</c> accepts. The
-/// plugin's own guard refuses the tree parse for any payload carrying a DOCTYPE or ENTITY declaration, and a payload
-/// longer than the cap is never parsed. The tree holds elements and attributes only, as ElementTree's default parser
-/// leaves comments and processing instructions out. The no-defusedxml fallback branch alone inserts comments, whose
-/// <c>tag</c> is a function in Python: the resx and MSBuild walks then raise <c>TypeError</c> on reaching one.
+/// <see cref="DefusedXmlParser"/>, which refuses external entities. The plugin's own guard refuses the tree parse for
+/// any payload carrying a DOCTYPE or ENTITY declaration, and a payload longer than the cap is never parsed. The tree
+/// holds elements and attributes only; the fallback branch alone keeps comment nodes, which the resx and MSBuild walks
+/// reject.
 /// </summary>
 public sealed partial class XmlPlugin
 {
     /// <summary>
-    /// Test seam choosing the parser: false takes the fallback branch, where the tree comes from <c>ET.fromstring(text, parser=XMLParser(target=TreeBuilder(insert_comments=True)))</c>.
+    /// Test seam choosing the parser: false takes the fallback branch, whose tree keeps comment nodes.
     /// </summary>
     internal bool DefusedAvailable { get; set; } = true;
 
@@ -55,11 +54,10 @@ public sealed partial class XmlPlugin
     private static bool IsWellFormed(string sampleText) => DefusedXmlParser.IsWellFormed(sampleText);
 
     /// <summary>
-    /// <c>root.iter()</c> read through <c>element.tag</c>: elements in document order, root first.
+    /// Elements in document order, root first, each one read through its tag name.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// A comment node (fallback branch only) is reached: Python's <c>"}" in element.tag</c> raises
-    /// <c>TypeError</c> on the <c>Comment</c> factory function, and the plugin does not catch it.
+    /// A comment node is reached (fallback branch only): it has no tag name to read, and the plugin does not catch it.
     /// </exception>
     private static IEnumerable<XElement> IterTree(XElement root)
     {

@@ -25,7 +25,7 @@ public static partial class HuntEngine
                     ["description"] = hit.Rule.Description,
                     ["token_name"] = hit.Rule.TokenName,
                     ["keywords"] = hit.Rule.Keywords.Cast<object?>().ToList(),
-                    ["patterns"] = hit.Rule.Patterns.Select(pattern => (object?)pattern.Pattern).ToList(),
+                    ["patterns"] = hit.Rule.Patterns.Select(pattern => (object?)pattern.ToString()).ToList(),
                 },
                 ["path"] = hit.Path,
                 ["relative_path"] = RelativeTo(hit.Path, result.RootDirectory) ?? PathText.Name(hit.Path),

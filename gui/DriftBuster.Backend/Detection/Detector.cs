@@ -288,7 +288,7 @@ public class Detector
 
     /// <summary>
     /// Scans a file or directory while enforcing the aggregate sampling budget. The root is spelled as <c>Path(root)</c>
-    /// spells it (<see cref="EnginePurePath.Str"/>). Only regular files are scanned (<see cref="EnginePath.IsFile"/>); an entry
+    /// spells it (<see cref="LexicalPath.Str"/>). Only regular files are scanned (<see cref="EnginePath.IsFile"/>); an entry
     /// whose name the runtime cannot decode is reported through <see cref="HandleError"/>. A file root yields a single entry;
     /// a missing root raises <see cref="DetectorIOException"/> through <see cref="HandleError"/>; a directory walk
     /// stops after the first file that exhausts the budget.
@@ -298,7 +298,7 @@ public class Detector
     {
         ArgumentNullException.ThrowIfNull(root);
         // root = Path(root): a trailing separator, "//" and "." parts are dropped, so "x.config/" names the file.
-        root = EnginePurePath.Str(root);
+        root = LexicalPath.Str(root);
         var results = new List<(string Path, DetectionMatch? Match)>();
         try
         {
@@ -402,7 +402,7 @@ public class Detector
 
         foreach (var (path, detection) in scanResults)
         {
-            var relative = rootIsDir ? EnginePurePath.RelativeTo(path, root) ?? PathText.Name(path) : PathText.Name(path);
+            var relative = rootIsDir ? LexicalPath.RelativeTo(path, root) ?? PathText.Name(path) : PathText.Name(path);
             var applied = profileStore.MatchingConfigs(normalizedTags, relative);
             if (detection?.Metadata is { Count: > 0 } metadata)
             {

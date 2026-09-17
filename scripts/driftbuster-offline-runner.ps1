@@ -62,9 +62,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
-// Python value semantics the offline runner follows: truthiness, str()/repr(), int()/float(), iteration, text helpers and the json
-// module's loads/dumps. Written in C# 5 so Windows PowerShell 5.1's Add-Type compiles it with the .NET Framework compiler.
-// Derived from publicly documented Python behaviour, not CPython source.
+// The value semantics the offline runner follows: truthiness, text rendering, number parsing, iteration, text helpers and the
+// JSON reader and writer. Written in C# 5 so Windows PowerShell 5.1's Add-Type compiles it with the .NET Framework compiler.
+// Written from public documentation and specifications, not from another project's source.
 
 namespace DriftBusterOfflineRunner
 {
@@ -2197,9 +2197,10 @@ namespace DriftBusterOfflineRunner
     }
 }
 
-// Python path semantics the offline runner follows: os.path.expandvars/expanduser, pathlib's pure path text, glob.glob(recursive=True),
-// fnmatch, Path.rglob("*") and the stat-level checks, for the host's flavour (ntpath on Windows, posixpath elsewhere).
-// Derived from publicly documented Python behaviour, not CPython source.
+// The path semantics the offline runner follows: environment-variable and home expansion, lexical path text, a recursive tree walk
+// and the stat-level checks, under the host's rules (Windows paths on Windows, POSIX paths elsewhere). Globbing and exclusions are
+// PowerShell functions.
+// Written from public documentation and specifications, not from another project's source.
 
 namespace DriftBusterOfflineRunner
 {
@@ -2919,204 +2920,6 @@ namespace DriftBusterOfflineRunner
             homeParts.AddRange(parts);
             return Format(homeDrive, homeRoot, homeParts);
         }
-
-        /// <summary>glob.has_magic.</summary>
-        public static bool GlobHasMagic(string text)
-        {
-            return text.IndexOfAny(new[] { '*', '?', '[' }) >= 0;
-        }
-    }
-
-    /// <summary>fnmatch.fnmatch and fnmatch.filter.</summary>
-    public static class EngineFnmatch
-    {
-        private static readonly Dictionary<string, Regex> Cache = new Dictionary<string, Regex>(StringComparer.Ordinal);
-
-        private static string NormCase(string text)
-        {
-            return EngineOs.Windows ? text.Replace('/', '\\').ToLowerInvariant() : text;
-        }
-
-        public static bool FnMatch(string name, string pattern)
-        {
-            return Compile(NormCase(pattern)).IsMatch(NormCase(name));
-        }
-
-        public static Regex Compile(string pattern)
-        {
-            Regex regex;
-            lock (Cache)
-            {
-                if (Cache.TryGetValue(pattern, out regex))
-                {
-                    return regex;
-                }
-            }
-
-            regex = new Regex(@"\A(?:" + Translate(pattern) + @")\z", RegexOptions.Singleline | RegexOptions.CultureInvariant);
-            lock (Cache)
-            {
-                Cache[pattern] = regex;
-            }
-
-            return regex;
-        }
-
-        /// <summary>fnmatch.translate as a .NET pattern body.</summary>
-        public static string Translate(string pattern)
-        {
-            var result = new StringBuilder();
-            var index = 0;
-            var length = pattern.Length;
-            var lastStar = false;
-            while (index < length)
-            {
-                var ch = pattern[index];
-                index++;
-                if (ch == '*')
-                {
-                    if (!lastStar)
-                    {
-                        result.Append(".*");
-                    }
-
-                    lastStar = true;
-                    continue;
-                }
-
-                lastStar = false;
-                if (ch == '?')
-                {
-                    result.Append('.');
-                }
-                else if (ch == '[')
-                {
-                    var j = index;
-                    if (j < length && pattern[j] == '!')
-                    {
-                        j++;
-                    }
-
-                    if (j < length && pattern[j] == ']')
-                    {
-                        j++;
-                    }
-
-                    while (j < length && pattern[j] != ']')
-                    {
-                        j++;
-                    }
-
-                    if (j >= length)
-                    {
-                        result.Append("\\[");
-                        continue;
-                    }
-
-                    string stuff;
-                    var inner = pattern.Substring(index, j - index);
-                    if (inner.IndexOf('-') < 0)
-                    {
-                        stuff = inner.Replace("\\", "\\\\");
-                    }
-                    else
-                    {
-                        var chunks = new List<string>();
-                        var i = index;
-                        var k = pattern[i] == '!' ? i + 2 : i + 1;
-                        while (true)
-                        {
-                            k = k < j ? pattern.IndexOf('-', k, j - k) : -1;
-                            if (k < 0)
-                            {
-                                break;
-                            }
-
-                            chunks.Add(pattern.Substring(i, k - i));
-                            i = k + 1;
-                            k = k + 3;
-                        }
-
-                        var chunk = pattern.Substring(i, j - i);
-                        if (chunk.Length > 0)
-                        {
-                            chunks.Add(chunk);
-                        }
-                        else
-                        {
-                            chunks[chunks.Count - 1] += "-";
-                        }
-
-                        for (var position = chunks.Count - 1; position > 0; position--)
-                        {
-                            var previous = chunks[position - 1];
-                            if (previous.Length > 0 && chunks[position].Length > 0 && previous[previous.Length - 1] > chunks[position][0])
-                            {
-                                chunks[position - 1] = previous.Substring(0, previous.Length - 1) + chunks[position].Substring(1);
-                                chunks.RemoveAt(position);
-                            }
-                        }
-
-                        var escaped = new List<string>();
-                        foreach (var part in chunks)
-                        {
-                            escaped.Add(part.Replace("\\", "\\\\").Replace("-", "\\-"));
-                        }
-
-                        stuff = string.Join("-", escaped.ToArray());
-                    }
-
-                    stuff = Regex.Replace(stuff, "([&~|])", "\\$1");
-                    index = j + 1;
-                    if (stuff.Length == 0)
-                    {
-                        result.Append("(?!)");
-                    }
-                    else if (stuff == "!")
-                    {
-                        result.Append('.');
-                    }
-                    else
-                    {
-                        if (stuff[0] == '!')
-                        {
-                            stuff = "^" + stuff.Substring(1);
-                        }
-                        else if (stuff[0] == '^' || stuff[0] == '[')
-                        {
-                            stuff = "\\" + stuff;
-                        }
-
-                        // .NET reads "-[" inside a class as subtraction: a literal "[" is escaped.
-                        var classBody = new StringBuilder();
-                        for (var position = 0; position < stuff.Length; position++)
-                        {
-                            if (stuff[position] == '\\' && position + 1 < stuff.Length)
-                            {
-                                classBody.Append(stuff, position, 2);
-                                position++;
-                            }
-                            else if (stuff[position] == '[')
-                            {
-                                classBody.Append("\\[");
-                            }
-                            else
-                            {
-                                classBody.Append(stuff[position]);
-                            }
-                        }
-
-                        result.Append('[').Append(classBody).Append(']');
-                    }
-                }
-                else
-                {
-                    result.Append(Regex.Escape(ch.ToString()));
-                }
-            }
-
-            return result.ToString();
-        }
     }
 
     /// <summary>File system checks with Python's link semantics.</summary>
@@ -3516,211 +3319,11 @@ namespace DriftBusterOfflineRunner
             return files;
         }
     }
-
-    /// <summary>glob.glob(pattern, recursive=True).</summary>
-    public static class EngineGlob
-    {
-        public static List<string> Glob(string pattern)
-        {
-            var results = new List<string>();
-            var first = true;
-            foreach (var match in IGlob(pattern, false))
-            {
-                if (first && match.Length == 0 && pattern.StartsWith("**", StringComparison.Ordinal))
-                {
-                    first = false;
-                    continue;
-                }
-
-                first = false;
-                results.Add(match);
-            }
-
-            return results;
-        }
-
-        private static void Split(string path, out string head, out string tail)
-        {
-            if (!EngineOs.Windows)
-            {
-                var cut = path.LastIndexOf('/') + 1;
-                head = path.Substring(0, cut);
-                tail = path.Substring(cut);
-                if (head.Length > 0 && head != new string('/', head.Length))
-                {
-                    head = head.TrimEnd('/');
-                }
-
-                return;
-            }
-
-            string drive;
-            string root;
-            string rest;
-            EnginePath.SplitRoot(path, out drive, out root, out rest);
-            var index = rest.Length;
-            while (index > 0 && rest[index - 1] != '\\' && rest[index - 1] != '/')
-            {
-                index--;
-            }
-
-            head = drive + root + rest.Substring(0, index).TrimEnd('\\', '/');
-            tail = rest.Substring(index);
-        }
-
-        private static string JoinParts(string directory, string name)
-        {
-            if (directory.Length == 0 || name.Length == 0)
-            {
-                return directory.Length > 0 ? directory : name;
-            }
-
-            return EnginePath.OsJoin(directory, name);
-        }
-
-        private static bool IsHidden(string name)
-        {
-            return name.Length > 0 && name[0] == '.';
-        }
-
-        private static IEnumerable<string> IGlob(string pathname, bool directoriesOnly)
-        {
-            string dirname;
-            string basename;
-            Split(pathname, out dirname, out basename);
-            if (!EnginePath.GlobHasMagic(pathname))
-            {
-                if (basename.Length > 0)
-                {
-                    if (EngineFs.LExists(pathname))
-                    {
-                        yield return pathname;
-                    }
-                }
-                else if (EngineFs.IsDir(dirname))
-                {
-                    yield return pathname;
-                }
-
-                yield break;
-            }
-
-            if (dirname.Length == 0)
-            {
-                var names = basename == "**" ? Glob2(string.Empty, basename, directoriesOnly) : Glob1(string.Empty, basename, directoriesOnly);
-                foreach (var name in names)
-                {
-                    yield return name;
-                }
-
-                yield break;
-            }
-
-            IEnumerable<string> dirs;
-            if (dirname != pathname && EnginePath.GlobHasMagic(dirname))
-            {
-                dirs = IGlob(dirname, true);
-            }
-            else
-            {
-                dirs = new[] { dirname };
-            }
-
-            foreach (var directory in dirs)
-            {
-                IEnumerable<string> names;
-                if (EnginePath.GlobHasMagic(basename))
-                {
-                    names = basename == "**" ? Glob2(directory, basename, directoriesOnly) : Glob1(directory, basename, directoriesOnly);
-                }
-                else
-                {
-                    names = Glob0(directory, basename);
-                }
-
-                foreach (var name in names)
-                {
-                    yield return EnginePath.OsJoin(directory, name);
-                }
-            }
-        }
-
-        private static IEnumerable<string> Glob1(string dirname, string pattern, bool directoriesOnly)
-        {
-            var names = EngineFs.ListDir(dirname, directoriesOnly);
-            var matches = new List<string>();
-            var hiddenPattern = IsHidden(pattern);
-            var windows = EngineOs.Windows;
-            var regex = EngineFnmatch.Compile(windows ? pattern.Replace('/', '\\').ToLowerInvariant() : pattern);
-            foreach (var name in names)
-            {
-                if (!hiddenPattern && IsHidden(name))
-                {
-                    continue;
-                }
-
-                if (regex.IsMatch(windows ? name.Replace('/', '\\').ToLowerInvariant() : name))
-                {
-                    matches.Add(name);
-                }
-            }
-
-            return matches;
-        }
-
-        private static IEnumerable<string> Glob0(string dirname, string basename)
-        {
-            if (basename.Length > 0)
-            {
-                if (EngineFs.LExists(JoinParts(dirname, basename)))
-                {
-                    return new[] { basename };
-                }
-            }
-            else if (EngineFs.IsDir(dirname))
-            {
-                return new[] { basename };
-            }
-
-            return new string[0];
-        }
-
-        private static IEnumerable<string> Glob2(string dirname, string pattern, bool directoriesOnly)
-        {
-            if (dirname.Length == 0 || EngineFs.IsDir(dirname))
-            {
-                yield return string.Empty;
-            }
-
-            foreach (var name in RListDir(dirname, directoriesOnly))
-            {
-                yield return name;
-            }
-        }
-
-        private static IEnumerable<string> RListDir(string dirname, bool directoriesOnly)
-        {
-            foreach (var name in EngineFs.ListDir(dirname, directoriesOnly))
-            {
-                if (IsHidden(name))
-                {
-                    continue;
-                }
-
-                yield return name;
-                var path = dirname.Length > 0 ? JoinParts(dirname, name) : name;
-                foreach (var nested in RListDir(path, directoriesOnly))
-                {
-                    yield return JoinParts(name, nested);
-                }
-            }
-        }
-    }
 }
 
 // Secret rule compilation, detection context and the filtered copy, with a guard for lines where redaction would
 // never finish. Rules run on .NET regular expressions.
-// Derived from publicly documented Python behaviour, not CPython source.
+// Written from public documentation and specifications, not from another project's source.
 
 namespace DriftBusterOfflineRunner
 {
@@ -4449,9 +4052,9 @@ namespace DriftBusterOfflineRunner
     }
 }
 
-// sql.snapshots.build_sqlite_snapshot over the SQLite C API: Windows' built-in winsqlite3.dll, or libsqlite3.so.0 on Linux (tests).
-// Each value is read by its storage class, as Python's sqlite3 module reads it.
-// Derived from publicly documented Python and SQLite behaviour, not CPython source.
+// The SQLite snapshot export over the SQLite C API: Windows' built-in winsqlite3.dll, or libsqlite3.so.0 on Linux (tests).
+// Each value is read by its storage class.
+// Written from the publicly documented SQLite C interface, not from another project's source.
 
 namespace DriftBusterOfflineRunner
 {
@@ -6196,18 +5799,179 @@ function Copy-DbFileWithSecretFilter {
     return [SecretScanner]::CopyWithSecretFilter($Source, $Destination, $DisplayPath, $Context, $Log)
 }
 
-# File and glob sources: _iter_source_matches, _should_exclude and the collection loop of execute_config.
+# File and glob sources: matching a source path, applying excludes, and the collection loop a config runs.
+
+# One wildcard syntax, shared with the backend (PathWildcard): * matches any run of characters (a / included), ? matches one
+# character, and every other character (brackets, backtick and backslash included) is literal. Case-insensitive on Windows,
+# case-sensitive elsewhere.
 
 function Test-DbPathMagic {
-    # offline_runner._has_magic(pattern): any of * ? [ ]
+    # The text holds a wildcard character: * or ?.
     [CmdletBinding()]
     param([AllowEmptyString()][string] $Text)
 
-    return $Text.IndexOfAny([char[]]@('*', '?', '[', ']')) -ge 0
+    return $Text.IndexOfAny([char[]]@('*', '?')) -ge 0
+}
+
+function Test-DbWildcardMatch {
+    # The whole text matches the pattern. On Windows \ reads as / in both. An empty pattern never matches, and nothing matches empty text.
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string] $Text,
+        [AllowEmptyString()][string] $Pattern
+    )
+
+    if ($Pattern.Length -eq 0 -or $Text.Length -eq 0) {
+        return $false
+    }
+
+    $options = [System.Management.Automation.WildcardOptions]::None
+    if ([EngineOs]::Windows) {
+        $Text = $Text.Replace('\', '/')
+        $Pattern = $Pattern.Replace('\', '/')
+        $options = [System.Management.Automation.WildcardOptions]::IgnoreCase
+    }
+
+    $escaped = $Pattern.Replace('`', '``').Replace('[', '`[').Replace(']', '`]')
+    return [System.Management.Automation.WildcardPattern]::new($escaped, $options).IsMatch($Text)
+}
+
+function Get-DbDirectoryEntry {
+    # The entries of a directory, hidden and system ones included; none when it cannot be listed.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string] $Directory)
+
+    try {
+        return [System.IO.DirectoryInfo]::new($Directory).GetFileSystemInfos()
+    }
+    catch {
+        return @()
+    }
+}
+
+function Join-DbGlobPath {
+    # A child name under a directory; the name alone under the working directory (an empty directory text).
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string] $Directory,
+        [Parameter(Mandatory = $true)][string] $Name
+    )
+
+    if ($Directory.Length -eq 0) {
+        return $Name
+    }
+
+    return [System.IO.Path]::Combine($Directory, $Name)
+}
+
+function Test-DbWalkableDirectory {
+    # A directory that is not a symbolic link or junction: the glob walk descends only into these.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] $Entry)
+
+    $attributes = $Entry.Attributes
+    return (($attributes -band [System.IO.FileAttributes]::Directory) -ne 0) -and (($attributes -band [System.IO.FileAttributes]::ReparsePoint) -eq 0)
+}
+
+function Add-DbGlobMatch {
+    # Adds to Result the paths below Directory that Segment[Index..] match: a segment without wildcards names an entry, ** stands for
+    # zero or more directory levels, and any other segment is matched against entry names. Links are returned, never descended into.
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string] $Directory,
+        [Parameter(Mandatory = $true)][string[]] $Segment,
+        [Parameter(Mandatory = $true)][int] $Index,
+        [Parameter(Mandatory = $true)] $Result
+    )
+
+    $current = $Segment[$Index]
+    $last = $Index -eq ($Segment.Count - 1)
+    $listing = $(if ($Directory.Length -eq 0) { '.' } else { $Directory })
+    if ($current -ceq '**') {
+        if (-not $last) {
+            Add-DbGlobMatch -Directory $Directory -Segment $Segment -Index ($Index + 1) -Result $Result
+        }
+        elseif ($Directory.Length -gt 0) {
+            [void]$Result.Add($Directory)
+        }
+
+        foreach ($entry in @(Get-DbDirectoryEntry -Directory $listing)) {
+            if (Test-DbWalkableDirectory -Entry $entry) {
+                Add-DbGlobMatch -Directory (Join-DbGlobPath -Directory $Directory -Name $entry.Name) -Segment $Segment -Index $Index -Result $Result
+            }
+        }
+
+        return
+    }
+
+    if (-not (Test-DbPathMagic $current)) {
+        $child = Join-DbGlobPath -Directory $Directory -Name $current
+        if ($last) {
+            if ([EngineFs]::Exists($child) -or [EngineFs]::IsSymlink($child)) {
+                [void]$Result.Add($child)
+            }
+        }
+        elseif ([System.IO.Directory]::Exists($child)) {
+            Add-DbGlobMatch -Directory $child -Segment $Segment -Index ($Index + 1) -Result $Result
+        }
+
+        return
+    }
+
+    foreach ($entry in @(Get-DbDirectoryEntry -Directory $listing)) {
+        if (-not (Test-DbWildcardMatch -Text $entry.Name -Pattern $current)) {
+            continue
+        }
+
+        $child = Join-DbGlobPath -Directory $Directory -Name $entry.Name
+        if ($last) {
+            [void]$Result.Add($child)
+        }
+        elseif (Test-DbWalkableDirectory -Entry $entry) {
+            Add-DbGlobMatch -Directory $child -Segment $Segment -Index ($Index + 1) -Result $Result
+        }
+    }
+}
+
+function Get-DbGlobMatch {
+    # The distinct paths a pattern carrying its own base directory matches, in no particular order: the root and the leading segments
+    # without wildcards name the directory the rest is matched under (the working directory when there are none).
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string] $Pattern)
+
+    $drive = $null
+    $root = $null
+    $tail = $null
+    [EnginePath]::SplitRoot($Pattern, [ref]$drive, [ref]$root, [ref]$tail)
+    $separators = $(if ([EngineOs]::Windows) { [char[]]@('\', '/') } else { [char[]]@('/') })
+    $segments = [string[]]@($tail.Split($separators, [System.StringSplitOptions]::RemoveEmptyEntries) | Where-Object { $_ -cne '.' })
+    $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $literal = 0
+    while ($literal -lt $segments.Count -and -not (Test-DbPathMagic $segments[$literal])) {
+        $literal++
+    }
+
+    if ($literal -eq $segments.Count) {
+        if ([EngineFs]::Exists($Pattern) -or [EngineFs]::IsSymlink($Pattern)) {
+            [void]$result.Add($Pattern)
+        }
+    }
+    else {
+        $base = $drive + $root
+        if ($literal -gt 0) {
+            $base += [string]::Join([EngineOs]::Sep, $segments, 0, $literal)
+        }
+
+        if ([System.IO.Directory]::Exists($(if ($base.Length -eq 0) { '.' } else { $base }))) {
+            Add-DbGlobMatch -Directory $base -Segment $segments -Index $literal -Result $result
+        }
+    }
+
+    return , [System.Collections.Generic.List[string]]::new($result)
 }
 
 function Get-DbSourceMatch {
-    # _iter_source_matches(path_text, base_dir=base_dir): the matched paths; FileNotFoundError when there are none.
+    # The paths a source matches, relative to the base directory; FileNotFoundError when there are none.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $PathText,
@@ -6239,7 +6003,7 @@ function Get-DbSourceMatch {
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $matched = $false
     foreach ($pattern in $patterns) {
-        $globbed = [EngineGlob]::Glob($pattern)
+        $globbed = Get-DbGlobMatch -Pattern $pattern
         [EnginePath]::SortByText($globbed)
         foreach ($match in $globbed) {
             $matched = $true
@@ -6257,7 +6021,7 @@ function Get-DbSourceMatch {
 }
 
 function Test-DbExcluded {
-    # _should_exclude(relative, patterns)
+    # A pattern matches the relative path (posix form) or its last segment.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $Relative,
@@ -6271,7 +6035,7 @@ function Test-DbExcluded {
     $text = [EnginePath]::AsPosix($Relative)
     $name = [EnginePath]::Name($Relative)
     foreach ($candidate in $Pattern) {
-        if ([EngineFnmatch]::FnMatch($text, $candidate) -or [EngineFnmatch]::FnMatch($name, $candidate)) {
+        if ((Test-DbWildcardMatch -Text $text -Pattern $candidate) -or (Test-DbWildcardMatch -Text $name -Pattern $candidate)) {
             return $true
         }
     }
@@ -6280,7 +6044,7 @@ function Test-DbExcluded {
 }
 
 function Invoke-DbFileSource {
-    # The file branch of execute_config: collected files, the source summary and the running byte total.
+    # The file branch of a config run: collected files, the source summary and the running byte total.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)] $Source,
@@ -6415,7 +6179,7 @@ function Invoke-DbFileSource {
     return [pscustomobject]@{ Files = $files; Summary = $summary; TotalBytes = $running }
 }
 
-# sql.snapshots.build_sqlite_snapshot and the sql_snapshot branch of execute_config.
+# Building a SQLite snapshot, and the sql_snapshot branch of a config run.
 
 function Get-DbSqliteSnapshot {
     # build_sqlite_snapshot(path, **kwargs).to_dict()
@@ -6459,7 +6223,7 @@ function ConvertTo-DbColumnListMap {
 }
 
 function Invoke-DbSqlSnapshotSource {
-    # The sql_snapshot branch of execute_config: the summary, the sql_exports metadata entry and the collected file, or the skipped
+    # The sql_snapshot branch of a config run: the summary, the sql_exports metadata entry and the collected file, or the skipped
     # summary of an optional source whose database is missing.
     [CmdletBinding()]
     param(
@@ -6554,7 +6318,7 @@ function Invoke-DbSqlSnapshotSource {
 }
 
 # registry.scan over Microsoft.Win32.RegistryKey: installed application enumeration, root suggestions for a token and the
-# breadth-first value search, plus the registry_scan branch of execute_config. The two backend functions are the only registry
+# breadth-first value search, plus the registry_scan branch of a config run. The two backend functions are the only registry
 # calls, so tests replace them.
 
 function Test-DbWindowsPlatform {
@@ -6975,7 +6739,7 @@ function ConvertTo-DbRegistryPattern {
 }
 
 function Invoke-DbRegistryScanSource {
-    # The registry_scan branch of execute_config: the manifest summary, and the collected file when one was written.
+    # The registry_scan branch of a config run: the manifest summary, and the collected file when one was written.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)] $Source,
@@ -7370,11 +7134,11 @@ function Invoke-DbPackageEncryption {
     return [pscustomobject]@{ EncryptedPath = $encryptedPath; PackagePath = $PackagePath; Payload = $payload; RemovedPlaintext = $removed }
 }
 
-# offline_runner.execute_config and execute_config_path: collect every source into the staging directory, write the log, manifest
+# Invoke-DbOfflineRunner and Invoke-DbOfflineRunnerPath: collect every source into the staging directory, write the log, manifest
 # and config copy, package and optionally encrypt, and clean up.
 
 function Get-DbHostUser {
-    # getpass.getuser(): LOGNAME, USER, LNAME or USERNAME, else the account name.
+    # The user the run is recorded under: LOGNAME, USER, LNAME or USERNAME, else the account name.
     [CmdletBinding()]
     param()
 
@@ -7389,8 +7153,8 @@ function Get-DbHostUser {
 }
 
 function Get-DbHostPlatform {
-    # platform.platform(). On Windows: "Windows-<release>-<version>-<service pack>" from the operating system's WMI record and
-    # CPython's platform module release tables. Elsewhere the runtime's operating system description.
+    # The platform string. On Windows: "Windows-<release>-<version>-<service pack>" from the operating system's WMI record and the
+    # release table below. Elsewhere the runtime's operating system description.
     [CmdletBinding()]
     param()
 
@@ -7515,7 +7279,7 @@ function Write-DbZipPackage {
 }
 
 function Invoke-DbOfflineRunner {
-    # execute_config(config, config_path=..., base_dir=..., timestamp=...)
+    # Runs one already-loaded config.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)] $Config,
@@ -7815,7 +7579,7 @@ function Invoke-DbOfflineRunner {
 }
 
 function Invoke-DbOfflineRunnerPath {
-    # execute_config_path(config_path, base_dir=..., timestamp=...)
+    # Loads a config from disk and runs it.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $ConfigPath,

@@ -121,17 +121,16 @@ public static class EngineText
     }
 
     /// <summary>
-    /// <c>re \w</c> for str patterns: letters (L*), numbers (N*) and underscore, on whole code points, under CPython 3.13's Unicode 15.1
-    /// categories (<see cref="EngineUnicode.GetCategory"/>).
+    /// A word character: letters (L*), numbers (N*) and underscore, on whole code points, under the runtime's Unicode categories
+    /// (<see cref="EngineUnicode.GetCategory"/>).
     /// </summary>
     public static bool IsWordRune(Rune rune) => rune.Value == '_' || EngineUnicode.IsAlnum(rune.Value);
 
-    /// <summary><c>str.isalnum()</c> of one code point under CPython 3.13's Unicode 15.1 tables: letters (L*) and numbers (N*).</summary>
+    /// <summary>Whether one code point is alphanumeric: letters (L*) and numbers (N*).</summary>
     public static bool IsAlnum(Rune rune) => EngineUnicode.IsAlnum(rune.Value);
 
     /// <summary>
-    /// <c>str.isprintable()</c> of one code point (<c>Py_UNICODE_ISPRINTABLE</c>) under CPython 3.13's Unicode 15.1 tables: every
-    /// category but Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs, with U+0020 printable.
+    /// Whether one code point is printable: every category but Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs, with U+0020 printable.
     /// </summary>
     public static bool IsPrintable(int codePoint)
     {
@@ -189,7 +188,7 @@ public static class EngineText
         return builder.ToString();
     }
 
-    // CPython handle_capital_sigma: cased before (skipping case-ignorables) and not cased after (likewise).
+    // Unicode SpecialCasing Final_Sigma: cased before (skipping case-ignorables) and not cased after (likewise).
     private static bool IsFinalSigma(string text, int start, int end)
     {
         var offset = start;
@@ -224,9 +223,9 @@ public static class EngineText
         return true;
     }
 
-    // Case_Ignorable: Mn, Me, Cf, Lm, Sk plus Word_Break MidLetter, MidNumLet and Single_Quote. Verified against the
-    // interpreter over every code point (a code point that is both cased and case-ignorable is skipped, as CPython
-    // tests case-ignorable first).
+    // Case_Ignorable (Unicode DerivedCoreProperties): Mn, Me, Cf, Lm, Sk plus Word_Break MidLetter, MidNumLet and
+    // Single_Quote. A code point that is both cased and case-ignorable is skipped, because case-ignorable is tested
+    // first.
     private static bool IsCaseIgnorable(Rune rune)
     {
         switch (EngineUnicode.GetCategory(rune.Value))

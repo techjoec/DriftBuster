@@ -1,5 +1,6 @@
+using System.Text.RegularExpressions;
+
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Infrastructure.EngineRe;
 
 namespace DriftBuster.Backend.Registry;
 
@@ -13,7 +14,8 @@ public static partial class RegistryScan
     internal const string UninstallPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
     internal const string UninstallPathWow64 = @"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall";
 
-    private static readonly EnginePattern VendorSplit = EnginePattern.Compile(@"[\s_-]+");
+    [GeneratedRegex(@"[\s_-]+", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex VendorSplit();
 
     private static readonly (string Hive, string Base, string? View)[] UninstallProbes =
     [
@@ -83,21 +85,18 @@ public static partial class RegistryScan
         }
 
         var seen = new HashSet<(string, string)>();
-        var unique = apps.Where(app => seen.Add((app.Hive, app.KeyPath))).ToList();
-        EngineSort<RegistryApp>.Sort(unique, AppLessThan);
-        return unique.AsReadOnly();
+        var codePoints = Comparer<string>.Create(PathText.CompareCodePoints);
+        return apps
+            .Where(app => seen.Add((app.Hive, app.KeyPath)))
+            .OrderBy(app => EngineText.Lower(app.DisplayName), codePoints)
+            .ThenBy(app => app.Hive, codePoints)
+            .ToList()
+            .AsReadOnly();
     }
 
     // str(values.get(name)) when the value is truthy, else None.
     private static string? TruthyText(Dictionary<string, object?> values, string name)
         => values.TryGetValue(name, out var value) && EngineBuiltins.IsTruthy(value) ? EngineRepr.Str(value) : null;
-
-    // (a.display_name.lower(), a.hive) < (b.display_name.lower(), b.hive)
-    private static bool AppLessThan(RegistryApp left, RegistryApp right)
-    {
-        var byName = PathText.CompareCodePoints(EngineText.Lower(left.DisplayName), EngineText.Lower(right.DisplayName));
-        return byName != 0 ? byName < 0 : PathText.CompareCodePoints(left.Hive, right.Hive) < 0;
-    }
 
     /// <summary>
     /// <c>_candidate_vendor_app_pairs(app_name)</c>: <c>(first word, remaining words joined by " ")</c> when the name splits on runs of
@@ -105,7 +104,7 @@ public static partial class RegistryScan
     /// </summary>
     internal static IReadOnlyList<(string Vendor, string Product)> CandidateVendorAppPairs(string appName)
     {
-        var parts = RegistryText.Split(VendorSplit, appName).Where(part => part.Length > 0).ToList();
+        var parts = VendorSplit().Split(appName).Where(part => part.Length > 0).ToList();
         var pairs = new List<(string, string)>();
         if (parts.Count >= 2)
         {

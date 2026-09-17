@@ -1,6 +1,6 @@
-using DriftBuster.Backend.Infrastructure.EngineRe;
+using System.Text.RegularExpressions;
 
 namespace DriftBuster.Backend.Secrets;
 
 /// <summary>One named secret detection pattern.</summary>
-public sealed record SecretDetectionRule(string Name, EnginePattern Pattern, string? Description = null);
+public sealed record SecretDetectionRule(string Name, Regex Pattern, string? Description = null);

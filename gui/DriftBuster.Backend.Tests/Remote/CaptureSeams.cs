@@ -11,16 +11,16 @@ namespace DriftBuster.Backend.Tests.Remote;
 /// </summary>
 internal sealed class CaptureSeams : IDisposable
 {
-    private readonly Func<EngineDateTime> _utcNow = CaptureRunner.UtcNow;
+    private readonly Func<DateTimeOffset> _utcNow = CaptureRunner.UtcNow;
     private readonly Func<double> _monotonic = CaptureRunner.Monotonic;
     private readonly Func<string> _hostName = CaptureRunner.HostName;
     private readonly Func<string, string?> _environment = CaptureRunner.GetEnvironmentVariable;
-    private readonly Func<EngineDateTime> _sqlUtcNow = SqliteSnapshots.UtcNow;
+    private readonly Func<DateTimeOffset> _sqlUtcNow = SqliteSnapshots.UtcNow;
 
     /// <summary>Installs the case's <c>now</c>, <c>monotonic</c>, <c>host</c> and <c>env</c> values (absent ones leave empty queues).</summary>
     public CaptureSeams(OrderedDictionary<string, object?> entry)
     {
-        var now = new Queue<EngineDateTime>(List(entry, "now").Select(stamp => EngineDateTime.FromIsoFormat((string)stamp!)));
+        var now = new Queue<DateTimeOffset>(List(entry, "now").Select(stamp => IsoTimestamp.TryParse((string)stamp!, out var instant) ? instant : throw new FormatException((string)stamp!)));
         var clock = new Queue<double>(List(entry, "monotonic").Select(EngineBuiltins.Float));
         var environment = entry.GetValueOrDefault("env") as OrderedDictionary<string, object?> ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal);
         var host = entry.GetValueOrDefault("host") as string ?? "host";

@@ -23,7 +23,7 @@ internal static class TextModeFile
     /// <summary><c>Path.cwd() != root</c> as <c>Path</c> equality compares them (case-insensitively on Windows).</summary>
     public static bool SamePath(string left, string right)
         => string.Equals(
-            EnginePurePath.Str(left),
-            EnginePurePath.Str(right),
+            LexicalPath.Str(left),
+            LexicalPath.Str(right),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 }

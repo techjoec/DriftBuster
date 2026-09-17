@@ -55,7 +55,7 @@ internal static partial class SelfcheckMultiServerPaths
             ["host_id"] = hostId,
             ["label"] = label,
             ["scope"] = scope,
-            ["roots"] = new List<object?> { EnginePurePath.Str(root) },
+            ["roots"] = new List<object?> { LexicalPath.Str(root) },
             ["baseline"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["is_preferred"] = preferred, ["priority"] = priority },
         };
 

@@ -14,7 +14,7 @@ public sealed record MultiServerPlan
 
     public required string Label { get; init; }
 
-    /// <summary>The roots as given; the runner spells each as <c>Path(root)</c> does (<see cref="EnginePurePath.Str"/>).</summary>
+    /// <summary>The roots as given; the runner spells each as <c>Path(root)</c> does (<see cref="LexicalPath.Str"/>).</summary>
     public IReadOnlyList<string> Roots { get; init; } = [];
 
     public bool IsPreferred { get; init; }

@@ -12,24 +12,24 @@ public static partial class HuntEngine
     /// <summary>The default <c>"{{{{ {token_name} }}}}"</c>, which formats to <c>{{ name }}</c>.</summary>
     public const string DefaultPlaceholderTemplate = "{{{{ {token_name} }}}}";
 
-    /// <summary>Test seam for <c>Path.relative_to</c>: null stands for the <c>ValueError</c> Python raises.</summary>
-    internal static Func<string, string, string?> RelativeTo { get; set; } = EnginePurePath.RelativeTo;
+    /// <summary>Test seam for <see cref="LexicalPath.RelativeTo"/>: null when the path does not lie under the root directory.</summary>
+    internal static Func<string, string, string?> RelativeTo { get; set; } = LexicalPath.RelativeTo;
 
     /// <summary>
-    /// <c>hunt_path(root, rules=..., glob=..., sample_size=..., exclude_patterns=...)</c>. A file root is scanned alone;
-    /// a directory root is walked with <paramref name="glob"/> in <c>sorted(Path.glob)</c> order (symlinked directories
-    /// not followed). Exclusion patterns are tried with <c>PurePath.match</c> against each file path and its path relative
-    /// to the root directory.
+    /// Searches a root for the given rules. A file root is scanned alone; a directory root is walked with
+    /// <paramref name="glob"/> (<see cref="EnginePath.SortedGlob"/>, symlinked directories not followed). A file is
+    /// excluded when an exclusion pattern matches it (<see cref="ShouldExclude"/>).
     /// </summary>
     /// <remarks>
-    /// A file that cannot be opened, read or looked up (<c>is_file()</c> raising, as for a file inside a directory that
-    /// cannot be searched) is skipped and listed in <see cref="HuntScanResult.UnreadableFiles"/>, as is an entry whose file name
-    /// the runtime cannot decode (<see cref="EnginePath.IsUndecodableName"/>). Only regular files are
-    /// read (<see cref="EnginePath.IsFile"/>): a FIFO, socket or device is skipped as Python skips it.
-    /// Pattern searches have no time limit; <paramref name="cancellationToken"/> is honoured while the tree is
-    /// walked, between files and inside each pattern search. A root that does not exist yields no hits; a directory
-    /// root that cannot be listed raises its I/O error. An empty or anchored
-    /// <paramref name="glob"/> raises <see cref="ArgumentException"/> or <see cref="NotSupportedException"/>.
+    /// A file that cannot be opened, read or looked up (as for a file inside a directory that cannot be searched) is
+    /// skipped and listed in <see cref="HuntScanResult.UnreadableFiles"/>, as is an entry whose file name the runtime
+    /// cannot decode (<see cref="EnginePath.IsUndecodableName"/>). Only regular files are read
+    /// (<see cref="EnginePath.IsFile"/>): a FIFO, socket or device is skipped.
+    /// <paramref name="cancellationToken"/> is honoured while the tree is walked, between files and between pattern match
+    /// attempts; one attempt is bounded by <see cref="PatternRegex.AttemptTimeout"/>, so cancellation is observed within
+    /// that limit even for a pattern that backtracks badly, and such a pattern is abandoned rather than counted as an
+    /// unreadable file. A root that does not exist yields no hits; a directory root that cannot be listed raises its I/O
+    /// error. An empty or rooted <paramref name="glob"/> raises <see cref="ArgumentException"/>.
     /// </remarks>
     public static HuntScanResult HuntPath(
         string root,
@@ -42,7 +42,7 @@ public static partial class HuntEngine
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(glob);
-        var (targets, rootDirectory) = Targets(EnginePurePath.Str(root), glob, cancellationToken);
+        var (targets, rootDirectory) = Targets(LexicalPath.Str(root), glob, cancellationToken);
         var exclusions = excludePatterns ?? [];
         var hits = new List<HuntFinding>();
         var unreadable = new List<string>();
@@ -52,7 +52,7 @@ public static partial class HuntEngine
             if (exclusions.Count > 0)
             {
                 var relative = RelativeTo(candidate, rootDirectory);
-                if (ShouldExclude(pattern => EnginePurePath.Match(candidate, pattern), relative, exclusions))
+                if (ShouldExclude(candidate, relative, exclusions))
                 {
                     continue;
                 }
@@ -107,11 +107,11 @@ public static partial class HuntEngine
     {
         if (EnginePath.IsFile(root))
         {
-            return ([root], EnginePurePath.Parent(root));
+            return ([root], LexicalPath.Parent(root));
         }
 
         var targets = EnginePath.SortedGlob(root, glob, cancellationToken).Where(IsTarget).ToList();
-        return (targets, Directory.Exists(EnginePath.KernelPath(root)) ? EnginePurePath.Str(root) : EnginePurePath.Parent(root));
+        return (targets, Directory.Exists(EnginePath.KernelPath(root)) ? LexicalPath.Str(root) : LexicalPath.Parent(root));
     }
 
     // c.is_file(), keeping an entry whose name the runtime cannot decode and one whose stat raises (a file inside a directory
@@ -162,28 +162,19 @@ public static partial class HuntEngine
         return keywords.All(keyword => EngineText.Contains(lowered, keyword));
     }
 
-    /// <summary><c>_should_exclude</c>: <paramref name="candidateMatches"/> stands for <c>candidate.match</c>.</summary>
-    internal static bool ShouldExclude(Func<string, bool> candidateMatches, string? relative, IReadOnlyList<string> patterns)
-    {
-        foreach (var pattern in patterns)
-        {
-            if (candidateMatches(pattern))
-            {
-                return true;
-            }
-
-            if (relative is not null && EnginePurePath.Match(relative, pattern))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary><c>_should_exclude(candidate, relative=..., patterns=...)</c> for a real candidate path.</summary>
+    /// <summary>
+    /// True when a pattern (<see cref="PathWildcard"/> syntax) matches the candidate's posix path relative to the root directory
+    /// (<paramref name="relative"/>, when it has one), its last segment, or its full posix path. <c>*</c> crosses <c>/</c>, so
+    /// <c>**/logs/*</c> excludes every file whose full path holds a <c>logs</c> directory.
+    /// </summary>
     internal static bool ShouldExclude(string candidate, string? relative, IReadOnlyList<string> patterns)
-        => ShouldExclude(pattern => EnginePurePath.Match(candidate, pattern), relative, patterns);
+    {
+        var name = PathText.Name(candidate);
+        var posix = PathText.ToPosix(candidate);
+        return patterns.Any(pattern => (relative is not null && PathWildcard.IsMatch(relative, pattern))
+            || PathWildcard.IsMatch(name, pattern)
+            || PathWildcard.IsMatch(posix, pattern));
+    }
 
     /// <summary><c>_deduplicate_preserving_order</c>: stripped, non-empty, first occurrence kept.</summary>
     private static List<string> Deduplicate(IEnumerable<string> values)
@@ -204,8 +195,8 @@ public static partial class HuntEngine
 
     /// <summary>
     /// <c>_extract_hits</c>: per <c>str.splitlines()</c> line, the line-level keyword gate (any keyword), then every
-    /// pattern's <c>finditer</c>; each match contributes its non-empty groups up to <c>lastindex</c> and its non-empty
-    /// whole match. A rule without patterns matches every line that passes the gate.
+    /// pattern's successive matches (<see cref="PatternRegex.Matches"/>); each match contributes its captured non-empty groups in
+    /// group-number order and its non-empty whole match. A rule without patterns matches every line that passes the gate.
     /// </summary>
     internal static List<HuntFinding> ExtractHits(string text, HuntRule rule, string path, CancellationToken cancellationToken = default)
     {
@@ -245,14 +236,14 @@ public static partial class HuntEngine
         var matched = false;
         foreach (var pattern in rule.Patterns)
         {
-            foreach (var match in pattern.FindIter(line, cancellationToken))
+            foreach (var match in PatternRegex.Matches(pattern, line, cancellationToken))
             {
                 matched = true;
-                for (var group = 1; group <= (match.LastIndex ?? 0); group++)
+                for (var group = 1; group < match.Groups.Count; group++)
                 {
-                    if (match.Group(group) is { Length: > 0 } value)
+                    if (match.Groups[group] is { Success: true, Length: > 0 } captured)
                     {
-                        values.Add(EngineText.Strip(value));
+                        values.Add(EngineText.Strip(captured.Value));
                     }
                 }
 
@@ -318,19 +309,10 @@ public static partial class HuntEngine
     }
 
     /// <summary>
-    /// <c>placeholder_template.format(token_name=name)</c> (<see cref="PlaceholderFormatter"/>): a <c>KeyError</c> (a field
-    /// other than <c>token_name</c>) becomes <see cref="ArgumentException"/> ("placeholder_template must include {token_name}
-    /// placeholder"), as <c>_plan_transform_for_hit</c> re-raises it; every other <c>str.format</c> error propagates.
+    /// The placeholder for <paramref name="tokenName"/> rendered from <paramref name="template"/> by
+    /// <see cref="PlaceholderTemplate.Render"/>: a field other than <c>token_name</c> raises <see cref="EngineValueException"/>
+    /// ("placeholder_template must include {token_name} placeholder"), malformed braces raise <see cref="FormatException"/>.
     /// </summary>
     internal static string FormatPlaceholder(string template, string tokenName)
-    {
-        try
-        {
-            return PlaceholderFormatter.Format(template, tokenName);
-        }
-        catch (KeyNotFoundException exc)
-        {
-            throw new EngineValueException("placeholder_template must include {token_name} placeholder", nameof(template), exc);
-        }
-    }
+        => PlaceholderTemplate.Render(template, tokenName);
 }

@@ -69,9 +69,8 @@ public static class RegistryOperations
     }
 
     /// <summary>
-    /// <c>_format_timestamp(value)</c>: null for null, otherwise <c>datetime.fromtimestamp(value, tz=UTC).isoformat()</c> with
-    /// "+00:00" written as "Z". The fraction is rounded to microseconds half to even, as <c>_PyTime_ObjectToTimeval</c> rounds it,
-    /// and left out when it is zero.
+    /// Null for null, otherwise the Unix time in seconds as a UTC ISO 8601 timestamp (<see cref="IsoTimestamp.Format"/> with "Z" for
+    /// "+00:00"). The fraction is rounded to whole microseconds, ties to even, and left out when it is zero.
     /// </summary>
     public static string? FormatTimestamp(double? value)
     {
@@ -80,30 +79,10 @@ public static class RegistryOperations
             return null;
         }
 
-        var whole = Math.Truncate(seconds);
-        var fraction = RoundHalfEven((seconds - whole) * 1e6);
-        if (fraction >= 1e6)
-        {
-            fraction -= 1e6;
-            whole += 1.0;
-        }
-        else if (fraction < 0)
-        {
-            fraction += 1e6;
-            whole -= 1.0;
-        }
-
-        var instant = DateTime.UnixEpoch.AddSeconds(whole);
-        var utc = EngineDateTime.Create(
-            instant.Year, instant.Month, instant.Day, instant.Hour, instant.Minute, instant.Second, (int)fraction, EngineFixedOffset.Utc);
-        return utc.IsoFormat().Replace("+00:00", "Z", StringComparison.Ordinal);
-    }
-
-    // _PyTime_RoundHalfEven.
-    private static double RoundHalfEven(double value)
-    {
-        var rounded = Math.Round(value, MidpointRounding.AwayFromZero);
-        return Math.Abs(value - rounded) == 0.5 ? 2.0 * Math.Round(value / 2.0, MidpointRounding.AwayFromZero) : rounded;
+        var whole = Math.Floor(seconds);
+        var microseconds = (long)Math.Round((seconds - whole) * 1e6, MidpointRounding.ToEven);
+        var instant = DateTimeOffset.UnixEpoch.AddSeconds(whole).AddTicks(microseconds * TimeSpan.TicksPerMicrosecond);
+        return IsoTimestamp.Format(instant).Replace("+00:00", "Z", StringComparison.Ordinal);
     }
 
     // time.time(): seconds since the epoch.

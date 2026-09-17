@@ -50,7 +50,7 @@ public static partial class CaptureRunner
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(root);
-        return EnginePurePath.RelativeTo(path, root) ?? PathText.Name(path);
+        return LexicalPath.RelativeTo(path, root) ?? PathText.Name(path);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public static partial class CaptureRunner
                 ["description"] = hit.Rule.Description,
                 ["token_name"] = hit.Rule.TokenName,
                 ["keywords"] = hit.Rule.Keywords.Cast<object?>().ToList(),
-                ["patterns"] = hit.Rule.Patterns.Select(object? (pattern) => pattern.Pattern).ToList(),
+                ["patterns"] = hit.Rule.Patterns.Select(object? (pattern) => pattern.ToString()).ToList(),
             },
             ["path"] = hit.Path,
             ["relative_path"] = RelativePath(hit.Path, root),
