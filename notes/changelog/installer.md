@@ -1,5 +1,8 @@
 # DriftBuster Installer Changelog
 
+## 0.2.0
+- None.
+
 ## 0.0.3
 - None.
 

@@ -1,5 +1,9 @@
 # DriftBuster GUI Changelog
 
+## 0.2.0
+- Multi-server tab scans in process through the backend.
+- Release builds are self-contained.
+
 ## 0.0.3
 - **Multi-server tab**: Compare up to 6 servers with drag-to-reorder, validation, session persistence.
 - Registry scan output integration.

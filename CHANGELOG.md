@@ -7,7 +7,31 @@ component-level logs under `notes/changelog/` and the per-release notes under
 This format follows a simplified Keep a Changelog style: sections are grouped
 by Added, Changed, Fixed, and Docs.
 
-## [Unreleased]
+## [0.2.0] - 2026-09-17
+
+### Changed
+- The whole engine runs on .NET: detection, diff, hunt and secret scanning, multi-server orchestration, profiles, scheduling, registry scan, SQL export, reporting and capture live in `DriftBuster.Backend`. No Python interpreter or package is needed anywhere.
+- The GUI multi-server tab runs scans in process instead of starting an external engine.
+- The PowerShell module requires PowerShell 7.6 and no longer starts external processes.
+- The offline runner (`scripts/driftbuster-offline-runner.ps1`) runs on Windows PowerShell 5.1 with nothing to install.
+- Release builds of the GUI and console tool are self-contained publishes that carry the .NET runtime.
+
+### Added
+- `driftbuster` console tool with `scan`, `diff`, `hunt`, `multi-server`, `profile`, `detection-profile`, `schedule`, `registry-scan`, `sql-export`, `report`, `capture`, `version`, `release` and `maint` commands.
+
+### Fixed
+- Config identities no longer collide across applications that share a file name.
+- One unreadable file no longer fails a whole host scan; it is skipped and reported.
+- Catalog validation accepts valid plugin output for binary plists, Markdown front matter, Logstash and HCL variants.
+- XML canonicalisation keeps namespace prefixes.
+- The install-path hunt rule matches Windows paths.
+- The diff planner detects content type for every file instead of relying on an extension list.
+- Secret redaction always terminates.
+
+### Removed
+- Slack, Teams and SMTP notification adapters.
+
+## [0.0.3]
 
 ### Added
 - `registry-live` format plugin for registry scan definition manifests (JSON/YAML).
@@ -32,7 +56,6 @@ by Added, Changed, Fixed, and Docs.
  - XML plugin adds an optional well-formedness check (bounded sample) and marks malformed samples for review while still reporting structure cues.
 
 ### Fixed
-- Test import collision for the `scripts` package during collection.
 - GUI: Cleared the Avalonia 11.2 release-blocker by realigning results catalog sorting and toast resource lookups with updated build/test guidance.
 
 ### Docs
@@ -48,5 +71,6 @@ Initial public structure refresh: JSON/XML/INI detectors, offline runner,
 profile/hunt helpers, GUI scaffolding, and packaging scripts.
 
 
-[Unreleased]: https://example.invalid/driftbuster/compare/v0.0.2...HEAD
+[0.2.0]: https://example.invalid/driftbuster/compare/v0.0.3...v0.2.0
+[0.0.3]: https://example.invalid/driftbuster/compare/v0.0.2...v0.0.3
 [0.0.2]: https://example.invalid/driftbuster/releases/tag/v0.0.2

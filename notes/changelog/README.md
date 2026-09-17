@@ -1,3 +1,5 @@
+> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+
 # DriftBuster Component Changelogs
 
 Each component maintains its own Markdown changelog. Keep entries ordered with
