@@ -32,6 +32,7 @@ namespace DriftBuster.Gui.ViewModels
         private readonly Func<IDriftbusterService, IToastService, PerformanceProfile, object> _serverSelectionFactory;
         private readonly PerformanceProfile _performanceProfile;
         private readonly IThemeRuntime _themeRuntime;
+        private readonly Dictionary<MainViewSection, object> _views = new();
 
         [ObservableProperty]
         private object? _currentView;
@@ -112,29 +113,51 @@ namespace DriftBuster.Gui.ViewModels
         public void ShowDiff()
         {
             DebugLog.Trace("MainWindow", "ShowDiff");
-            ActiveView = MainViewSection.Diff;
-            CurrentView = _diffViewFactory(_service);
+            Show(MainViewSection.Diff, () => _diffViewFactory(_service));
         }
 
         public void ShowHunt(string? initial = null)
         {
             DebugLog.Trace("MainWindow", "ShowHunt");
-            ActiveView = MainViewSection.Hunt;
-            CurrentView = _huntViewFactory(_service, initial);
+            if (initial is not null && _views.TryGetValue(MainViewSection.Hunt, out var hunt) && hunt is StyledElement { DataContext: HuntViewModel huntViewModel })
+            {
+                huntViewModel.StatusMessage = initial;
+                Show(MainViewSection.Hunt, () => hunt);
+                return;
+            }
+
+            Show(MainViewSection.Hunt, () => _huntViewFactory(_service, initial), replace: initial is not null);
         }
 
         public void ShowProfiles()
         {
             DebugLog.Trace("MainWindow", "ShowProfiles");
-            ActiveView = MainViewSection.Profiles;
-            CurrentView = _profilesViewFactory(_service);
+            Show(MainViewSection.Profiles, () => _profilesViewFactory(_service));
         }
 
         public void ShowMultiServer()
         {
             DebugLog.Trace("MainWindow", "ShowMultiServer");
-            ActiveView = MainViewSection.MultiServer;
-            CurrentView = _serverSelectionFactory(_service, _toastService, _performanceProfile);
+            Show(MainViewSection.MultiServer, () => _serverSelectionFactory(_service, _toastService, _performanceProfile));
+        }
+
+        // Each section's view is built on its first visit and kept, so switching tabs never discards results or unsaved edits.
+        // A view that is replaced has its view model disposed.
+        private void Show(MainViewSection section, Func<object> create, bool replace = false)
+        {
+            if (replace && _views.Remove(section, out var previous) && previous is StyledElement { DataContext: IDisposable disposable })
+            {
+                disposable.Dispose();
+            }
+
+            if (!_views.TryGetValue(section, out var view))
+            {
+                view = create();
+                _views[section] = view;
+            }
+
+            ActiveView = section;
+            CurrentView = view;
         }
 
         public PerformanceProfile PerformanceProfile => _performanceProfile;
