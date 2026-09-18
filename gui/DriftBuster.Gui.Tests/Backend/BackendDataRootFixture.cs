@@ -6,6 +6,7 @@ namespace DriftBuster.Gui.Tests.Backend;
 public sealed class BackendDataRootFixture : IDisposable
 {
     private readonly string _root;
+    private readonly string? _previousRoot = Environment.GetEnvironmentVariable("DRIFTBUSTER_DATA_ROOT");
 
     public BackendDataRootFixture()
     {
@@ -18,7 +19,7 @@ public sealed class BackendDataRootFixture : IDisposable
 
     public void Dispose()
     {
-        Environment.SetEnvironmentVariable("DRIFTBUSTER_DATA_ROOT", null);
+        Environment.SetEnvironmentVariable("DRIFTBUSTER_DATA_ROOT", _previousRoot);
         if (Directory.Exists(_root))
         {
             Directory.Delete(_root, recursive: true);

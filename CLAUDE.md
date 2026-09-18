@@ -136,7 +136,7 @@ gitleaks dir . -v
 - Windows: `%LOCALAPPDATA%/DriftBuster`
 - Linux/Mac: `$XDG_DATA_HOME/DriftBuster`
 - Override: `DRIFTBUSTER_DATA_ROOT` environment variable
-- Contains: cached diffs, session state, the PowerShell module's backend cache
+- Contains: cached diffs, session state, drilldown exports, GUI logs, the PowerShell module's backend cache
 
 ### Console tool (`cli/DriftBuster.Cli/`)
 
@@ -156,7 +156,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 - **Multi-server orchestration** runs in process through the backend:
   - Drag-to-reorder host cards
   - Session caching: `sessions/multi-server.json` under the data root
-  - Exports to `artifacts/exports/<config>-<timestamp>.{html,json}`
+  - Exports to `exports/<config>-<timestamp>.{html,json}` under the data root
 - **Theming**: Dark/Light toggle with accessibility support
 - **State persistence**: Schedule cards persist to `Profiles/schedules.json`
 

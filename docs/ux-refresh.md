@@ -36,7 +36,7 @@ iterations have a concrete baseline.
   multi-server session.
 - Sanitized payloads only: raw backend responses are rejected and a telemetry record (`payload_kind`
   `raw`) is logged before the GUI drops the entry. Refer to the structured events the GUI
-  writes to `artifacts/logs/diff-planner-telemetry.json` when auditing the guardrail.
+  writes to `logs/diff-planner-telemetry.json` under the data root when auditing the guardrail.
 - Screenshot capture checklist lives alongside the GUI guide:
   1. Load sanitized fixtures from `artifacts/samples/diff-planner/` and toggle **Sanitized JSON**.
   2. Verify the footer banner shows **Sanitized summary** and that digests (not raw text) appear in

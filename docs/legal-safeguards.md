@@ -126,7 +126,7 @@ These guardrails cover every feature, note, and capture helper.
 - Persist only sanitized summaries. MRU entries must never include raw file contents, secrets, or unmasked configuration values; the GUI enforces this by rejecting payloads where `payload_kind` resolves to `raw`.
 - Store cache files under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/` (or the XDG data root). Operators may relocate the directory, but any alternate path must inherit the same restricted ACLs as the default location.
 - Sanitized entries should cap at ten records and rotate automatically. Manual exports must mask timestamps, hostnames, and operator identifiers before sharing outside the local workstation.
-- Record MRU telemetry samples (the GUI writes `artifacts/logs/diff-planner-telemetry.json` at runtime) when auditing sanitization behaviour and capture retention outcomes in `notes/checklists/legal-review.md`.
+- Record MRU telemetry samples (the GUI writes `logs/diff-planner-telemetry.json` under the data root at runtime) when auditing sanitization behaviour and capture retention outcomes in `notes/checklists/legal-review.md`.
 
 ## SQL snapshot safeguards
 

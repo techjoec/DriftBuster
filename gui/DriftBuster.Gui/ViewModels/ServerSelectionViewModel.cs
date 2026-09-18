@@ -16,6 +16,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using Microsoft.Extensions.Logging;
@@ -26,15 +27,7 @@ namespace DriftBuster.Gui.ViewModels
     {
         internal const string DefaultRootPath = "C:\\Program Files";
 
-        private static readonly string[] DefaultLabels =
-        {
-            "App Inc",
-            "Supporting App",
-            "FreakyFriday",
-            "Auxiliary",
-            "Helper",
-            "Diagnostics",
-        };
+        private const int DefaultServerCount = 6;
 
         private readonly IDriftbusterService _service;
         private readonly IToastService _toastService;
@@ -63,7 +56,7 @@ namespace DriftBuster.Gui.ViewModels
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
             _cacheService = cacheService ?? new SessionCacheService();
-            _logger = logger ?? new FileJsonLogger<ServerSelectionViewModel>(Path.Combine("artifacts", "logs", "drilldown-ready.json"));
+            _logger = logger ?? new FileJsonLogger<ServerSelectionViewModel>(Path.Combine(DriftbusterPaths.GetLogDirectory(), "drilldown-ready.json"));
             _performanceProfile = performanceProfile ?? PerformanceProfile.FromEnvironment();
 
             ScopeOptions = new ReadOnlyCollection<ScanScopeOption>(new[]
@@ -80,7 +73,7 @@ namespace DriftBuster.Gui.ViewModels
             RunMissingCommand = new AsyncRelayCommand(RunMissingAsync, () => !IsBusy && HasActiveServers);
             CancelRunsCommand = new RelayCommand(OnCancelRuns, () => IsBusy);
             ClearHistoryCommand = new RelayCommand(OnClearHistory);
-            SaveSessionCommand = new AsyncRelayCommand(SaveSessionAsync, () => PersistSessionState && !IsBusy);
+            SaveSessionCommand = new AsyncRelayCommand(() => SaveSessionAsync(announce: true), () => PersistSessionState && !IsBusy);
             CopyActivityCommand = new RelayCommand<ActivityEntryViewModel>(OnCopyActivity, entry => entry is not null);
             _showDrilldownForHostCommand = new RelayCommand<string>(OnShowDrilldownForHost, CanShowDrilldownForHost);
 
@@ -143,10 +136,14 @@ namespace DriftBuster.Gui.ViewModels
         private string _statusBanner = "Ready to plan a multi-server scan.";
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsViewingSetup))]
         private bool _isViewingCatalog;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsViewingSetup))]
         private bool _isViewingDrilldown;
+
+        public bool IsViewingSetup => !IsViewingCatalog && !IsViewingDrilldown;
 
         [ObservableProperty]
         private ConfigDrilldownViewModel? _drilldownViewModel;
@@ -271,7 +268,7 @@ namespace DriftBuster.Gui.ViewModels
 
         private IEnumerable<ServerSlotViewModel> CreateDefaultServers()
         {
-            for (var index = 0; index < DefaultLabels.Length; index++)
+            for (var index = 0; index < DefaultServerCount; index++)
             {
                 var enabled = index < 3;
                 yield return CreateServerSlot(index, enabled);
@@ -285,15 +282,7 @@ namespace DriftBuster.Gui.ViewModels
             return new ServerSlotViewModel(this, index, resolvedLabel, enabled, hostId, defaultLabel);
         }
 
-        private static string BuildDefaultLabel(int index)
-        {
-            if (index >= 0 && index < DefaultLabels.Length)
-            {
-                return DefaultLabels[index];
-            }
-
-            return $"Host {index + 1:00}";
-        }
+        private static string BuildDefaultLabel(int index) => $"Host {index + 1:00}";
 
         private async Task LoadSessionAsync()
         {
@@ -360,9 +349,9 @@ namespace DriftBuster.Gui.ViewModels
                     CatalogViewModel.SelectedFormat = snapshot.CatalogFilters.Format;
                 }
 
-                if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Baseline) && CatalogViewModel.BaselineOptions.Contains(snapshot.CatalogFilters.Baseline, StringComparer.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(snapshot.CatalogFilters.Drift) && CatalogViewModel.DriftFilterOptions.Contains(snapshot.CatalogFilters.Drift, StringComparer.Ordinal))
                 {
-                    CatalogViewModel.SelectedBaseline = snapshot.CatalogFilters.Baseline;
+                    CatalogViewModel.SelectedDriftFilter = snapshot.CatalogFilters.Drift;
                 }
 
                 CatalogViewModel.SearchText = snapshot.CatalogFilters.Search ?? string.Empty;
@@ -619,6 +608,7 @@ namespace DriftBuster.Gui.ViewModels
                         TimeSpan.FromSeconds(4));
                     LogActivity(ActivitySeverity.Success, "Scan complete", completion.ActivityDetail);
                 }).ConfigureAwait(false);
+                await SaveRememberedSessionAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -730,7 +720,10 @@ namespace DriftBuster.Gui.ViewModels
             RecordDrilldownTelemetry("history-cleared", null, "clear-history");
         }
 
-        private async Task SaveSessionAsync()
+        // "Remember session" means a finished run survives a restart without a separate Save.
+        private Task SaveRememberedSessionAsync() => PersistSessionState ? SaveSessionAsync(announce: false) : Task.CompletedTask;
+
+        private async Task SaveSessionAsync(bool announce)
         {
             DebugLog.Trace("ServerSelection", "SaveSessionAsync", new { PersistSessionState });
 
@@ -747,7 +740,11 @@ namespace DriftBuster.Gui.ViewModels
                 await _cacheService.SaveAsync(snapshot).ConfigureAwait(false);
                 await RunOnUiThreadAsync(() =>
                 {
-                    StatusBanner = "Session saved.";
+                    if (announce)
+                    {
+                        StatusBanner = "Session saved.";
+                    }
+
                     LogActivity(ActivitySeverity.Success, "Session saved", $"Cached {snapshot.Servers.Count} servers.");
                 }).ConfigureAwait(false);
             }
@@ -810,7 +807,7 @@ namespace DriftBuster.Gui.ViewModels
                     Coverage = CatalogViewModel.SelectedCoverageFilter.ToString(),
                     Severity = CatalogViewModel.SelectedSeverityFilter.ToString(),
                     Format = CatalogViewModel.SelectedFormat,
-                    Baseline = CatalogViewModel.SelectedBaseline,
+                    Drift = CatalogViewModel.SelectedDriftFilter,
                     Search = CatalogViewModel.SearchText,
                 },
                 Timeline = new ActivityTimelineCache
@@ -1233,8 +1230,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            var directory = Path.Combine("artifacts", "exports");
-            Directory.CreateDirectory(directory);
+            var directory = DriftbusterPaths.GetExportDirectory();
             var safeName = SanitizeFileName(string.IsNullOrWhiteSpace(request.DisplayName) ? request.ConfigId : request.DisplayName);
             var extension = request.Format == ConfigDrilldownViewModel.ExportFormat.Html ? "html" : "json";
             var fileName = $"{safeName}-{DateTime.UtcNow:yyyyMMddHHmmss}.{extension}";

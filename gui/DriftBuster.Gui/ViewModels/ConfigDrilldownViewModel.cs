@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -244,10 +245,12 @@ namespace DriftBuster.Gui.ViewModels
                 }).ToList(),
             };
 
+            // Relaxed escaping keeps quotes and '+' readable in a file people open by hand.
             return JsonSerializer.Serialize(exportModel, new JsonSerializerOptions
             {
                 WriteIndented = true,
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             });
         }
 

@@ -17,6 +17,9 @@ namespace DriftBuster.Gui.ViewModels
     public sealed partial class ResultsCatalogViewModel : ObservableObject
     {
         private const string DefaultFormatOption = "Any";
+        internal const string AnyDriftOption = "Any";
+        internal const string DriftedOption = "Drifted";
+        internal const string MatchingOption = "Matching";
 
         private readonly PerformanceProfile _performanceProfile;
 
@@ -44,13 +47,12 @@ namespace DriftBuster.Gui.ViewModels
                 new FilterOption<SeverityFilterOption>(SeverityFilterOption.None, "None"),
             });
 
-            BaselineOptions = new ReadOnlyCollection<string>(new[] { "Match", "Drift" });
+            DriftFilterOptions = new ReadOnlyCollection<string>(new[] { AnyDriftOption, DriftedOption, MatchingOption });
             FormatOptions = new ObservableCollection<string> { DefaultFormatOption };
 
             SelectedCoverageFilter = CoverageFilterOption.All;
             SelectedSeverityFilter = SeverityFilterOption.Any;
             SelectedFormat = DefaultFormatOption;
-            SelectedBaseline = BaselineOptions[0];
 
             DrilldownCommand = new RelayCommand<ConfigCatalogItemViewModel>(OnDrilldownRequested, entry => entry is not null);
             ReScanMissingCommand = new RelayCommand<ConfigCatalogItemViewModel>(OnReScanMissingRequested, entry => entry is not null && entry.MissingHosts.Count > 0);
@@ -71,7 +73,7 @@ namespace DriftBuster.Gui.ViewModels
 
         public ReadOnlyCollection<FilterOption<SeverityFilterOption>> SeverityFilterOptions { get; }
 
-        public ReadOnlyCollection<string> BaselineOptions { get; }
+        public ReadOnlyCollection<string> DriftFilterOptions { get; }
 
         public ObservableCollection<string> FormatOptions { get; }
 
@@ -106,7 +108,12 @@ namespace DriftBuster.Gui.ViewModels
         }
 
         [ObservableProperty]
-        private string _selectedBaseline;
+        private string _selectedDriftFilter = AnyDriftOption;
+
+        partial void OnSelectedDriftFilterChanged(string value)
+        {
+            RefreshFilters();
+        }
 
         [ObservableProperty]
         private string _searchText = string.Empty;
@@ -229,6 +236,16 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             if (SelectedCoverageFilter == CoverageFilterOption.Missing && !entry.IsMissingCoverage)
+            {
+                return false;
+            }
+
+            if (string.Equals(SelectedDriftFilter, DriftedOption, StringComparison.Ordinal) && !entry.HasDrift)
+            {
+                return false;
+            }
+
+            if (string.Equals(SelectedDriftFilter, MatchingOption, StringComparison.Ordinal) && entry.HasDrift)
             {
                 return false;
             }

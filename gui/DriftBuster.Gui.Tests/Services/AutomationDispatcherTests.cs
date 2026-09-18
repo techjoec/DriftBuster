@@ -145,7 +145,7 @@ public sealed class AutomationDispatcherTests
                             Format = "ini",
                             DriftCount = 1,
                             Severity = "medium",
-                            PresentHosts = new[] { "App Inc" },
+                            PresentHosts = new[] { "Host 01" },
                             MissingHosts = Array.Empty<string>(),
                             CoverageStatus = "full",
                             LastUpdated = DateTimeOffset.UtcNow,
@@ -172,7 +172,7 @@ public sealed class AutomationDispatcherTests
                     new ConfigServerDetail
                     {
                         HostId = "server01",
-                        Label = "App Inc",
+                        Label = "Host 01",
                         Present = true,
                         IsBaseline = true,
                         Status = "Baseline",

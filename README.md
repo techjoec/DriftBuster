@@ -123,7 +123,7 @@ See `docs/windows-gui-guide.md` for the full walkthrough.
 
 - Start the GUI and switch to the Multi-server tab. Enable the host slots you need, and add roots or pick scope chips. Drag host cards to reorder execution priority and turn on the session cache toggle to reuse labels, filters, and layout next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
 - Click **Run all** to queue every active host. Use **Run missing only** for retries; toasts and the activity timeline record progress, warnings, and exports.
-- Review the catalog filters, open drilldown diffs, and export HTML/JSON snapshots (they land in `artifacts/exports/<config>-<timestamp>.{html,json}`).
+- Review the catalog filters, open drilldown diffs, and export HTML/JSON snapshots (they land in `exports/<config>-<timestamp>.{html,json}` under the data root).
 
 Run the same plan from the shell; the request is read from stdin and progress
 plus the final result are written as JSON lines:

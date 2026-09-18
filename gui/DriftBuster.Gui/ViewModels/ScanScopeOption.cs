@@ -13,5 +13,8 @@ namespace DriftBuster.Gui.ViewModels
         public ServerScanScope Value { get; }
 
         public string DisplayName { get; }
+
+        // UI Automation reads a combo box's selected value through ToString.
+        public override string ToString() => DisplayName;
     }
 }

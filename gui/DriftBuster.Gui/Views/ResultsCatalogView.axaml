@@ -10,8 +10,8 @@
       <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
         <Grid ColumnDefinitions="*,*,*,*,*" RowDefinitions="Auto,Auto">
           <StackPanel Grid.Column="0" Spacing="4">
-            <TextBlock Text="Baseline" Classes="subtitle" />
-            <ComboBox ItemsSource="{Binding BaselineOptions}" SelectedItem="{Binding SelectedBaseline}" automation:AutomationProperties.AutomationId="Catalog.Baseline" automation:AutomationProperties.Name="Baseline" />
+            <TextBlock Text="Drift" Classes="subtitle" />
+            <ComboBox ItemsSource="{Binding DriftFilterOptions}" SelectedItem="{Binding SelectedDriftFilter}" automation:AutomationProperties.AutomationId="Catalog.DriftFilter" automation:AutomationProperties.Name="Drift" />
           </StackPanel>
           <StackPanel Grid.Column="1" Spacing="4" Margin="12,0,0,0">
             <TextBlock Text="Coverage" Classes="subtitle" />
@@ -58,35 +58,44 @@
                     automation:AutomationProperties.AutomationId="Catalog.Grid"
                     automation:AutomationProperties.Name="Configuration catalog">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Config"
-                                  x:DataType="vm:ConfigCatalogItemViewModel"
-                                  Binding="{Binding DisplayName}"
-                                  Width="2*"
-                                  SortMemberPath="{x:Static vm:CatalogSortColumns.Config}" />
+              <DataGridTemplateColumn Header="Config"
+                                      Width="3*"
+                                      SortMemberPath="{x:Static vm:CatalogSortColumns.Config}">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ConfigCatalogItemViewModel">
+                    <!-- Long relative paths drop middle folders, never the file name. -->
+                    <TextBlock Text="{Binding DisplayName}"
+                               TextTrimming="PathSegmentEllipsis"
+                               ToolTip.Tip="{Binding DisplayName}"
+                               VerticalAlignment="Center"
+                               Margin="12,0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTextColumn Header="Drift"
                                   x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding DriftSummary}"
-                                  Width="*"
+                                  Width="Auto"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Drift}" />
               <DataGridTextColumn Header="Coverage"
                                   x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding CoverageText}"
-                                  Width="*"
+                                  Width="Auto"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Coverage}" />
               <DataGridTextColumn Header="Format"
                                   x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding Format}"
-                                  Width="*"
+                                  Width="Auto"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Format}" />
               <DataGridTextColumn Header="Severity"
                                   x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding Severity}"
-                                  Width="*"
+                                  Width="Auto"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Severity}" />
               <DataGridTextColumn Header="Updated"
                                   x:DataType="vm:ConfigCatalogItemViewModel"
                                   Binding="{Binding LastUpdatedText}"
-                                  Width="1.5*"
+                                  Width="Auto"
                                   SortMemberPath="{x:Static vm:CatalogSortColumns.Updated}" />
               <DataGridTemplateColumn Header="Tags" Width="2*">
                 <DataGridTemplateColumn.CellTemplate>
@@ -108,7 +117,7 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTemplateColumn Header="Actions" Width="1.5*">
+              <DataGridTemplateColumn Header="Actions" Width="Auto">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:ConfigCatalogItemViewModel">
                     <StackPanel Orientation="Horizontal" Spacing="8">

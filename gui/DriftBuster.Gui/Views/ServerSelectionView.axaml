@@ -50,7 +50,7 @@
       </Grid>
 
       <StackPanel Spacing="{DynamicResource ServerSelection.SectionSpacing}"
-                  IsVisible="{Binding IsViewingCatalog, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
+                  IsVisible="{Binding IsViewingSetup}">
         <Border Classes="surface" Padding="{DynamicResource ServerSelection.CardPadding}" CornerRadius="{DynamicResource Radius.Large}">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource ServerSelection.HeaderColumnSpacing}">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -70,7 +70,7 @@
                       automation:AutomationProperties.AutomationId="ServerSelection.ClearHistory" />
             </StackPanel>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
-              <TextBlock Text="{Binding CatalogViewModel.FilteredEntries.Count, StringFormat='Catalog entries: {0}'}"
+              <TextBlock Text="{Binding CatalogViewModel.Entries.Count, StringFormat='Catalog entries: {0}'}"
                          Classes="subtitle" HorizontalAlignment="Right" />
             </StackPanel>
           </Grid>
@@ -421,6 +421,15 @@
         <ContentControl.ContentTemplate>
           <DataTemplate>
             <views:ResultsCatalogView DataContext="{Binding}" />
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+
+      <ContentControl Content="{Binding DrilldownViewModel}"
+                      IsVisible="{Binding IsViewingDrilldown}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ConfigDrilldownViewModel">
+            <views:ConfigDrilldownView DataContext="{Binding}" />
           </DataTemplate>
         </ContentControl.ContentTemplate>
       </ContentControl>

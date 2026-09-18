@@ -29,7 +29,7 @@ public sealed class ServerSelectionViewTests
 
         viewModel.Servers.Should().HaveCount(6);
         viewModel.Servers.Take(3).All(server => server.IsEnabled).Should().BeTrue();
-        viewModel.Servers[0].Label.Should().Be("App Inc");
+        viewModel.Servers[0].Label.Should().Be("Host 01");
     }
 
     [AvaloniaFact]

@@ -128,7 +128,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
                     new()
                     {
                         HostId = "host-01",
-                        Label = "App Inc",
+                        Label = "Host 01",
                         Enabled = true,
                         Scope = ServerScanScope.AllDrives,
                         Roots = Array.Empty<string>(),
@@ -159,7 +159,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
     {
         var viewModel = new ServerSelectionViewModel(new FakeDriftbusterService(), new ToastService(action => action()), new InMemorySessionCacheService());
         var slot = viewModel.Servers[0];
-        slot.Label.Should().Be("App Inc");
+        slot.Label.Should().Be("Host 01");
         slot.Scope = ServerScanScope.CustomRoots;
 
         var autoNameRoot = Path.Combine(Path.GetTempPath(), $"Server1.company.hell-{Guid.NewGuid():N}");
@@ -372,13 +372,13 @@ public sealed class ServerSelectionViewModelAdditionalTests
         warningToasts.Should().ContainSingle();
         var warning = warningToasts.Single();
         warning.Title.Should().Be("Hosts require attention");
-        warning.Message.Should().Contain("Supporting App: Offline");
-        warning.Message.Should().Contain("FreakyFriday: PermissionDenied");
+        warning.Message.Should().Contain("Host 02: Offline");
+        warning.Message.Should().Contain("Host 03: PermissionDenied");
 
         viewModel.ActivityEntries.Should().Contain(entry =>
             entry.Summary == "Hosts require attention" &&
             entry.Severity == ActivitySeverity.Warning &&
-            entry.Detail.Contains("Supporting App: Offline"));
+            entry.Detail.Contains("Host 02: Offline"));
 
         using var evidenceDirectory = new TempDirectory("server-selection-attention-toast");
         try
@@ -504,7 +504,7 @@ public sealed class ServerSelectionViewModelAdditionalTests
     [Fact]
     public async Task Provides_deterministic_drilldown_gating_and_telemetry()
     {
-        var logPath = Path.Combine("artifacts", "logs", "drilldown-ready.json");
+        var logPath = Path.Combine(DriftBuster.Backend.DriftbusterPaths.GetLogDirectory(), "drilldown-ready.json");
         if (File.Exists(logPath))
         {
             File.Delete(logPath);

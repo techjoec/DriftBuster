@@ -13,8 +13,8 @@ namespace DriftBuster.Gui.Services
         [JsonPropertyName("format")]
         public string? Format { get; set; }
 
-        [JsonPropertyName("baseline")]
-        public string? Baseline { get; set; }
+        [JsonPropertyName("drift")]
+        public string? Drift { get; set; }
 
         [JsonPropertyName("search")]
         public string? Search { get; set; }

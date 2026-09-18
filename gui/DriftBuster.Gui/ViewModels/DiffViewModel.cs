@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using Microsoft.Extensions.Logging;
@@ -94,7 +95,7 @@ namespace DriftBuster.Gui.ViewModels
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _mruStore = mruStore ?? new DiffPlannerMruStore();
             _clock = clock ?? (() => DateTimeOffset.UtcNow);
-            _logger = logger ?? new FileJsonLogger<DiffViewModel>(Path.Combine("artifacts", "logs", "diff-planner-telemetry.json"));
+            _logger = logger ?? new FileJsonLogger<DiffViewModel>(Path.Combine(DriftbusterPaths.GetLogDirectory(), "diff-planner-telemetry.json"));
 
             MruEntries = new ReadOnlyObservableCollection<DiffPlannerMruEntryView>(_mruEntries);
             _mruCollectionChangedHandler = (_, _) => OnPropertyChanged(nameof(HasMruEntries));

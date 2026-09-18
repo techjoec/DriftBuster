@@ -3,6 +3,8 @@
              x:Class="DriftBuster.Gui.App">
   <Application.Styles>
     <FluentTheme />
+    <!-- DataGrid ships its control template separately; without it the results catalog renders nothing. -->
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
     <StyleInclude Source="avares://DriftBuster.Gui/Assets/Styles/Theme.axaml" />
     <StyleInclude Source="avares://DriftBuster.Gui/Assets/Styles/Notifications.axaml" />
   </Application.Styles>

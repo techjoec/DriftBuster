@@ -79,6 +79,20 @@ namespace DriftBuster.Backend
             return path;
         }
 
+        public static string GetExportDirectory()
+        {
+            var path = Path.Combine(GetDataRoot(), "exports");
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        public static string GetLogDirectory()
+        {
+            var path = Path.Combine(GetDataRoot(), "logs");
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
         private static void AppendSegments(List<string> parts, IReadOnlyList<string>? segments)
         {
             if (segments is null)
