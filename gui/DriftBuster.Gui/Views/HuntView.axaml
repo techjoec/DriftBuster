@@ -34,6 +34,7 @@
             <StackPanel Grid.Column="0" Grid.Row="1" Spacing="8" Margin="0,12,12,0">
               <TextBlock Text="Excerpt filter" FontSize="14" FontWeight="SemiBold" />
               <TextBox Width="420"
+                       HorizontalAlignment="Left"
                        PlaceholderText="Optional excerpt filter"
                        Text="{Binding Pattern, Mode=TwoWay}"
                        automation:AutomationProperties.AutomationId="Hunt.Pattern"
@@ -44,8 +45,9 @@
                     Grid.RowSpan="2"
                     Content="Scan"
                     Command="{Binding RunHuntCommand}"
-                    VerticalAlignment="Stretch"
-                    HorizontalAlignment="Stretch"
+                    MinWidth="120"
+                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Right"
                     automation:AutomationProperties.AutomationId="Hunt.Scan" />
           </Grid>
 

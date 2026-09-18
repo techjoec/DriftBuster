@@ -305,13 +305,12 @@ public sealed class DetectorTests : IDisposable
         applied.Config.Identifier.Should().Be("cfg-prod");
     }
 
-    // With the whole registry, a run of blank lines before "[s]\nk=v\n" is claimed by toml (priority 165) before ini
-    // (170) on both sides: toml/generic/0.65 with a zero-space key_value_spacing profile. Only --plugins ini yields
-    // sectioned-ini 0.825, which is what IniPluginTests asserts on the plugin alone.
+    // With the whole registry, a run of blank lines before "[s]\nk=v\n" in a .ini file is claimed by ini: toml (priority 165)
+    // runs first but leaves sectioned key=value files without a TOML-only construct to the INI plugin.
     [Theory]
     [InlineData(5000)]
     [InlineData(30000)]
-    public void BlankRunBeforeSectionIsClaimedByTomlUnderTheFullRegistry(int blankLines)
+    public void BlankRunBeforeSectionIsClaimedByIniUnderTheFullRegistry(int blankLines)
     {
         var path = WriteText($"blank-{blankLines}-then-section.ini", new string('\n', blankLines) + "[s]\nk=v\n");
         var errors = new List<Exception>();
@@ -319,12 +318,9 @@ public sealed class DetectorTests : IDisposable
         var match = new Detector(onError: (_, exc) => errors.Add(exc)).ScanFile(path);
 
         errors.Should().BeEmpty();
-        match!.PluginName.Should().Be("toml");
-        match.Variant.Should().Be("generic");
-        match.Confidence.Should().BeApproximately(0.65, 1e-9);
-        var spacing = match.Metadata!["key_value_spacing"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
-        spacing["before"].Should().Be(0);
-        spacing["after"].Should().Be(0);
+        match!.PluginName.Should().Be("ini");
+        match.Variant.Should().Be("sectioned-ini");
+        match.Confidence.Should().BeApproximately(0.825, 1e-9);
     }
 
     [Fact]

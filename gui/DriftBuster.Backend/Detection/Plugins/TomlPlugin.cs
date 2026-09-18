@@ -79,6 +79,9 @@ public sealed partial class TomlPlugin : IFormatPlugin
         {
             HasArrayTables, HasTableHeaders, HasKeyEquals, QuotedPairs > 0, ArrayPairs > 0, InlineTables > 0,
         }.Count(flag => flag);
+
+        // Headers and bare key=value lines are also sectioned INI; only these are TOML's own.
+        public bool HasTomlOnlySignal => HasArrayTables || QuotedPairs > 0 || ArrayPairs > 0 || InlineTables > 0;
     }
 
     public DetectionMatch? Detect(string path, byte[] sample, string? text)
@@ -106,8 +109,9 @@ public sealed partial class TomlPlugin : IFormatPlugin
 
         AddSignalReasons(reasons, signals);
 
-        // Gate on content signals only; treat extension as a confidence hint, not a gate.
-        if (signals.ContentSignalCount < 2)
+        // Gate on content signals; the extension is a confidence hint. Without the .toml extension a sectioned
+        // key=value file needs a TOML-only construct, so INI files are left to the INI plugin.
+        if (signals.ContentSignalCount < 2 || (!isTomlExtension && !signals.HasTomlOnlySignal))
         {
             return null;
         }
