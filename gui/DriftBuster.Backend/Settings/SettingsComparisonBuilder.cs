@@ -1,3 +1,7 @@
+using System.Globalization;
+
+using DriftBuster.Backend.Detection;
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 
@@ -261,6 +265,93 @@ public static class SettingsComparisonBuilder
     }
 
     private static string NormalisePath(string path) => path.Replace('\\', '/');
+
+    /// <summary>
+    /// Compares files the user picked (the first is the baseline) setting by setting, each file as a column labelled by the part
+    /// of its path that tells it apart. The format comes from detection, as in a scan.
+    /// </summary>
+    public static SettingsComparison CompareFiles(IReadOnlyList<(string Path, string Text)> files, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        if (files.Count == 0)
+        {
+            return new SettingsComparison();
+        }
+
+        var detector = new Detector(onWarning: static _ => { });
+        var shared = PathText.Name(files[0].Path);
+        var labels = ColumnLabels(files.Select(file => file.Path).ToList());
+        var plans = new List<MultiServerPlan>();
+        var configs = new Dictionary<string, OrderedDictionary<string, ConfigRecord>>(StringComparer.Ordinal);
+        var results = new List<ServerScanResult>();
+        for (var index = 0; index < files.Count; index++)
+        {
+            var (path, text) = files[index];
+            var hostId = index.ToString(CultureInfo.InvariantCulture);
+            var label = labels[index];
+            plans.Add(new MultiServerPlan { HostId = hostId, Label = label, Roots = [path] });
+            results.Add(new ServerScanResult { HostId = hostId, Label = label, Status = ServerScanStatus.Succeeded });
+            DetectionMatch? match = null;
+            try
+            {
+                match = detector.ScanFile(path);
+            }
+            catch (Exception exc) when (exc is IOException or UnauthorizedAccessException or MetadataValidationException)
+            {
+                // Undetectable files are still compared, line by line.
+            }
+
+            var format = match?.Metadata is { } metadata && metadata.TryGetValue("catalog_format", out var value) && value is string catalog ? catalog : match?.FormatName ?? "text";
+            var record = new ConfigRecord
+            {
+                ConfigId = hostId,
+                DisplayName = shared,
+                FormatId = format,
+                ContentType = "text",
+                Canonical = text,
+                Raw = text,
+                FileHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text))),
+                SourcePath = path,
+                PluginName = match?.PluginName ?? "text",
+                RelativePath = shared,
+            };
+            configs[hostId] = new OrderedDictionary<string, ConfigRecord>(StringComparer.Ordinal) { [hostId] = record };
+        }
+
+        var comparison = Build(plans, configs, new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal), results, "0", cancellationToken);
+        foreach (var file in comparison.Files)
+        {
+            file.ConfigId = string.Empty;
+        }
+
+        return comparison;
+    }
+
+    /// <summary>
+    /// A short column label per path: drop the trailing folders and name every path shares, then keep as few folders before
+    /// that as make the labels unique ("baseline", "staging", "prod"). Paths with different names are labelled by name.
+    /// </summary>
+    internal static IReadOnlyList<string> ColumnLabels(IReadOnlyList<string> paths)
+    {
+        var parts = paths.Select(path => path.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)).ToList();
+        var shortest = parts.Min(segments => segments.Length);
+        var shared = 0;
+        while (shared < shortest - 1 && parts.All(segments => string.Equals(segments[^(shared + 1)], parts[0][^(shared + 1)], StringComparison.OrdinalIgnoreCase)))
+        {
+            shared++;
+        }
+
+        for (var depth = 1; depth <= shortest - shared; depth++)
+        {
+            var labels = parts.Select(segments => string.Join('/', segments[(segments.Length - shared - depth)..(segments.Length - shared)])).ToList();
+            if (labels.Distinct(StringComparer.OrdinalIgnoreCase).Count() == labels.Count)
+            {
+                return labels;
+            }
+        }
+
+        return paths.ToList();
+    }
 
     private sealed class HostTally(string hostId, string label, bool isBaseline, bool scanned, string message)
     {

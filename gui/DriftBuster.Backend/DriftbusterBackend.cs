@@ -23,6 +23,7 @@ using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Profiles.Run;
 using DriftBuster.Backend.Scheduling;
+using DriftBuster.Backend.Settings;
 
 namespace DriftBuster.Backend
 {
@@ -341,6 +342,9 @@ namespace DriftBuster.Backend
             {
                 Versions = resolved.ToArray(),
                 Comparisons = comparisons.ToArray(),
+                Settings = SettingsComparisonBuilder.CompareFiles(
+                    [(baselinePath, baselineContent), .. comparisons.Select(comparison => (comparison.Metadata.RightPath, ReadText(comparison.Metadata.RightPath)))],
+                    cancellationToken),
             };
 
             var fileNames = resolved

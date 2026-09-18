@@ -11,6 +11,10 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("comparisons")]
         public DiffComparison[] Comparisons { get; set; } = Array.Empty<DiffComparison>();
 
+        /// <summary>The same files compared setting by setting, each file as a column.</summary>
+        [JsonPropertyName("settings")]
+        public SettingsComparison Settings { get; set; } = new();
+
         [JsonIgnore]
         public string RawJson { get; set; } = string.Empty;
 

@@ -144,4 +144,49 @@ public sealed class SettingsComparisonBuilderTests
         row.Values.Select(value => value.DiffersFromBaseline).Should().Equal(false, false, true);
         comparison.Hosts[1].FilesExtra.Should().Equal("only.json");
     }
+
+    [Fact]
+    public void ColumnLabelsKeepOnlyThePartThatTellsPathsApart()
+    {
+        SettingsComparisonBuilder.ColumnLabels([@"C:\Lab\baseline\web\app.json", @"C:\Lab\staging\web\app.json", @"\\srv\C$\Lab\prod\web\app.json"])
+            .Should().Equal("baseline", "staging", "prod");
+        SettingsComparisonBuilder.ColumnLabels(["/x/a.json", "/x/b.json"]).Should().Equal("a.json", "b.json");
+        SettingsComparisonBuilder.ColumnLabels(["/one/prod/app.json", "/two/prod/app.json"]).Should().Equal("one", "two");
+        SettingsComparisonBuilder.ColumnLabels(["/a/x/app.json", "/b/x/y/app.json", "/c/y/app.json"]).Should().Equal("a/x", "x/y", "c/y");
+        SettingsComparisonBuilder.ColumnLabels(["/same/app.json", "/same/app.json"]).Should().Equal("/same/app.json", "/same/app.json");
+    }
+
+    [Fact]
+    public void CompareFilesComparesPickedFilesSettingBySetting()
+    {
+        var root = Directory.CreateTempSubdirectory("driftbuster-settings-");
+        try
+        {
+            var baseline = Directory.CreateDirectory(Path.Combine(root.FullName, "baseline")).FullName;
+            var prod = Directory.CreateDirectory(Path.Combine(root.FullName, "prod")).FullName;
+            const string before = "{\"Cache\": {\"Minutes\": 15}, \"Name\": \"web\"}";
+            const string after = "{\"Name\": \"web\", \"Cache\": {\"Minutes\": 60}}";
+            File.WriteAllText(Path.Combine(baseline, "app.json"), before);
+            File.WriteAllText(Path.Combine(prod, "app.json"), after);
+
+            var comparison = SettingsComparisonBuilder.CompareFiles([(Path.Combine(baseline, "app.json"), before), (Path.Combine(prod, "app.json"), after)], TestContext.Current.CancellationToken);
+
+            comparison.Hosts.Select(host => host.Label).Should().Equal("baseline", "prod");
+            var file = comparison.Files.Single();
+            file.ConfigId.Should().BeEmpty();
+            var row = file.Settings.Single(setting => setting.Differs);
+            row.Key.Should().Be("Cache.Minutes");
+            row.Values.Select(value => value.Value).Should().Equal("15", "60");
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CompareFilesWithNothingPickedIsEmpty()
+    {
+        SettingsComparisonBuilder.CompareFiles([], TestContext.Current.CancellationToken).Files.Should().BeEmpty();
+    }
 }
