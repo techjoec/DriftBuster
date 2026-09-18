@@ -595,18 +595,18 @@ public sealed class DetectorTests : IDisposable
         WriteText("tree/b.txt", "b");
         WriteText("tree/a/z.txt", "z");
         WriteText("tree/a.txt", "a");
-        WriteText("tree/B.txt", "B");
+        WriteText("tree/C.txt", "C");
         WriteText("tree/a/sub/y.txt", "y");
         var outside = TmpPath("outside");
         Directory.CreateDirectory(outside);
         WriteText("outside/linked.txt", "linked");
-        File.CreateSymbolicLink(Path.Combine(root, "link"), outside);
+        Directory.CreateSymbolicLink(Path.Combine(root, "link"), outside);
 
         var detector = new Detector(plugins: [], sortPlugins: false);
         var results = detector.ScanPath(root);
 
         results.Select(entry => Path.GetRelativePath(root, entry.Path).Replace('\\', '/'))
-            .Should().Equal("B.txt", "a/sub/y.txt", "a/z.txt", "a.txt", "b.txt");
+            .Should().Equal("C.txt", "a/sub/y.txt", "a/z.txt", "a.txt", "b.txt");
     }
 
     // Path.is_file() is false for a dangling symlink, so the entry is skipped rather than raised.
@@ -639,7 +639,7 @@ public sealed class DetectorTests : IDisposable
         var shared = WriteText("shared/x.conf", "alpha one\nbeta two\ngamma three\ndelta four\n");
         WriteText("a/plain.conf", "alpha one\nbeta two\ngamma three\ndelta four\n");
         Directory.CreateDirectory(TmpPath("a", "b"));
-        File.CreateSymbolicLink(TmpPath("a", "b", "uplink"), "..");
+        Directory.CreateSymbolicLink(TmpPath("a", "b", "uplink"), "..");
         File.CreateSymbolicLink(TmpPath("a", "rel.conf"), Path.Combine("..", "shared", "x.conf"));
         File.CreateSymbolicLink(TmpPath("a", "loop"), "loop");
         File.CreateSymbolicLink(TmpPath("a", "ping"), "pong");

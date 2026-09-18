@@ -65,9 +65,9 @@ public sealed class RunProfileStoreEdgeTests : IDisposable
 
         var sources = (List<object?>)RunProfileStore.LoadProfile("structured", baseDir: _tmp.FullName).ToDict()["sources"]!;
         Canonicaliser.DumpsSorted(sources[0], ensureAscii: true).Should().Be(
-            "{\n  \"alias\": \"My Logs\",\n  \"exclude\": [\n    \"*.tmp\",\n    \"nested/skip.*\"\n  ],\n  \"path\": \"" + PathText.ToPosix(logs) + "\"\n}");
+            "{\n  \"alias\": \"My Logs\",\n  \"exclude\": [\n    \"*.tmp\",\n    \"nested/skip.*\"\n  ],\n  \"path\": " + Canonicaliser.DumpsSorted(logs, ensureAscii: true) + "\n}");
         Canonicaliser.DumpsSorted(sources[2], ensureAscii: true).Should().Be(
-            "{\n  \"alias\": \"absent\",\n  \"optional\": true,\n  \"path\": \"" + PathText.ToPosix(Path.Combine(_tmp.FullName, "absent.txt")) + "\"\n}");
+            "{\n  \"alias\": \"absent\",\n  \"optional\": true,\n  \"path\": " + Canonicaliser.DumpsSorted(Path.Combine(_tmp.FullName, "absent.txt"), ensureAscii: true) + "\n}");
     }
 
     [Fact]

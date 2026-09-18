@@ -936,8 +936,10 @@ public class RunProfilesViewModelTests
                 return directory;
             }
 
-            var text = payload.Replace("{a}", Tree("a", "password = Hunter12345\n"), StringComparison.Ordinal)
-                .Replace("{b}", Tree("b", "b"), StringComparison.Ordinal).Replace("{c}", Tree("c", "c"), StringComparison.Ordinal);
+            // The directories go into a JSON string literal, so Windows backslashes are escaped.
+            static string Json(string path) => path.Replace("\\", "\\\\", StringComparison.Ordinal);
+            var text = payload.Replace("{a}", Json(Tree("a", "password = Hunter12345\n")), StringComparison.Ordinal)
+                .Replace("{b}", Json(Tree("b", "b")), StringComparison.Ordinal).Replace("{c}", Json(Tree("c", "c")), StringComparison.Ordinal);
             DriftBuster.Backend.Infrastructure.EngineJson.TryLoads(text, out var parsed).Should().BeTrue();
             var loaded = RunProfile.FromDict(parsed).ToDefinition();
 
@@ -959,7 +961,10 @@ public class RunProfilesViewModelTests
                 var record = string.Join("\n", files.Concat(sources))
                     + File.ReadAllText(Path.Combine(result.OutputDir, "metadata.json")) + File.ReadAllText(Path.Combine(profileDirectory, "profile.json"))
                     + Path.GetFileName(profileDirectory);
-                return record.Replace(baseDir, "<base>", StringComparison.Ordinal);
+                // The base directory appears as written, in POSIX form and JSON-escaped (all the same on Linux).
+                return record.Replace(baseDir.Replace("\\", "\\\\", StringComparison.Ordinal), "<base>", StringComparison.Ordinal)
+                    .Replace(baseDir.Replace('\\', '/'), "<base>", StringComparison.Ordinal)
+                    .Replace(baseDir, "<base>", StringComparison.Ordinal);
             }
 
             Run(saved!, "saved").Should().Be(Run(loaded, "loaded"));

@@ -74,6 +74,7 @@ public sealed class DriftbusterPathsTests : IDisposable
     [Fact]
     public void GetDataRoot_uses_xdg_data_home_when_override_missing()
     {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "XDG_DATA_HOME applies off Windows; Windows uses LOCALAPPDATA");
         Environment.SetEnvironmentVariable("DRIFTBUSTER_DATA_ROOT", null);
         var xdgRoot = Path.Combine(_tempRoot, "xdg");
         Environment.SetEnvironmentVariable("XDG_DATA_HOME", xdgRoot);
