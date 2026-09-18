@@ -143,7 +143,7 @@ public sealed class CliTests : IDisposable
         File.Exists(patchFile).Should().BeTrue();
         var patchContents = File.ReadAllText(patchFile, Utf8);
         patchContents.Should().StartWith("--- config.xml");
-        patchContents.Should().Contain("+<root><value>2</value></root>");
+        patchContents.Should().Contain("-  <value>1</value>").And.Contain("+  <value>2</value>");
     }
 
     [Fact]

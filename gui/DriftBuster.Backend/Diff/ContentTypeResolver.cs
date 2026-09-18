@@ -4,8 +4,9 @@ namespace DriftBuster.Backend.Diff;
 
 /// <summary>
 /// The canonicaliser a file is diffed with, chosen from what detection found in it rather than from the file extension:
-/// <c>xml</c> when the catalog format is <c>structured-config-xml</c> or <c>xml</c>, otherwise <c>text</c>. JSON is diffed as
-/// text, so multi-server output keeps its canonical payloads.
+/// <c>xml</c> when the catalog format is <c>structured-config-xml</c> or <c>xml</c>, <c>json</c> when it is <c>json</c>, otherwise
+/// <c>text</c>. JSON canonicalises with sorted keys, so reordered keys are not drift; JSON that does not parse (comments,
+/// trailing commas) falls back to text.
 /// </summary>
 public static class ContentTypeResolver
 {
@@ -15,9 +16,16 @@ public static class ContentTypeResolver
     /// <summary>The content type for XML documents.</summary>
     public const string Xml = "xml";
 
-    /// <summary><c>_determine_content_type(catalog_format)</c>.</summary>
-    public static string FromCatalogFormat(string? catalogFormat)
-        => catalogFormat is "structured-config-xml" or "xml" ? Xml : Text;
+    /// <summary>The content type for JSON documents.</summary>
+    public const string Json = "json";
+
+    /// <summary>The canonicaliser for a catalog format.</summary>
+    public static string FromCatalogFormat(string? catalogFormat) => catalogFormat switch
+    {
+        "structured-config-xml" or "xml" => Xml,
+        "json" => Json,
+        _ => Text,
+    };
 
     /// <summary>The content type of a detection match: its <c>catalog_format</c> metadata, <c>text</c> when there is none.</summary>
     public static string FromMatch(DetectionMatch? match)
@@ -49,18 +57,17 @@ public static class ContentTypeResolver
 
     /// <summary>
     /// The content type for diffing <paramref name="baselinePath"/> against <paramref name="candidatePath"/>: <c>xml</c>
-    /// when either side detects as XML (a document whose other side is malformed still canonicalises as XML where it
-    /// parses, and falls back to text where it does not), otherwise <c>text</c>.
+    /// when either side detects as XML, else <c>json</c> when either side detects as JSON, otherwise <c>text</c>. A side
+    /// that does not parse as the chosen type canonicalises as text.
     /// </summary>
     public static string ResolvePair(string baselinePath, string candidatePath)
     {
         ArgumentNullException.ThrowIfNull(baselinePath);
         ArgumentNullException.ThrowIfNull(candidatePath);
         var detector = NewDetector();
-        return IsXml(ResolveFile(baselinePath, detector)) || IsXml(ResolveFile(candidatePath, detector)) ? Xml : Text;
+        string[] sides = [ResolveFile(baselinePath, detector), ResolveFile(candidatePath, detector)];
+        return sides.Contains(Xml, StringComparer.Ordinal) ? Xml : sides.Contains(Json, StringComparer.Ordinal) ? Json : Text;
     }
-
-    private static bool IsXml(string contentType) => string.Equals(contentType, Xml, StringComparison.Ordinal);
 
     private static Detector NewDetector() => new(onWarning: static _ => { });
 }

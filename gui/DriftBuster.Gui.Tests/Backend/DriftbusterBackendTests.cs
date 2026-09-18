@@ -121,11 +121,11 @@ public sealed class DriftbusterBackendTests
         {
             var xml = await _backend.DiffAsync(new[] { xmlBaseline, xmlCandidate }, TestContext.Current.CancellationToken);
             xml.Comparisons[0].Plan.ContentType.Should().Be("xml");
-            xml.Comparisons[0].Plan.Before.Should().Be("<?xml version=\"1.0\"?>\n<configuration><add a=\"1\" b=\"2\" /></configuration>");
+            xml.Comparisons[0].Plan.Before.Should().Be("<?xml version=\"1.0\"?>\n<configuration>\n  <add a=\"1\" b=\"2\" />\n</configuration>");
 
             var json = await _backend.DiffAsync(new[] { jsonBaseline, jsonCandidate }, TestContext.Current.CancellationToken);
-            json.Comparisons[0].Plan.ContentType.Should().Be("text");
-            json.Comparisons[0].Metadata.ContentType.Should().Be("text");
+            json.Comparisons[0].Plan.ContentType.Should().Be("json");
+            json.Comparisons[0].Metadata.ContentType.Should().Be("json");
 
             var config = await _backend.DiffAsync(new[] { plainConfig, plainConfig }, TestContext.Current.CancellationToken);
             config.Comparisons[0].Plan.ContentType.Should().Be("text");

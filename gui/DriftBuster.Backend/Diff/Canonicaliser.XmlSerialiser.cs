@@ -14,28 +14,37 @@ public static partial class Canonicaliser
     /// <c>_normalise</c> then <c>ET.tostring(root, encoding="unicode")</c> with written names: <c>&lt;name</c>, the
     /// element's namespace declarations, attributes sorted by expanded name, then <c> /&gt;</c> when there is neither
     /// text nor a child, otherwise <c>&gt;</c>, text, children and the end tag; every node is followed by its tail.
-    /// Comments are written <c>&lt;!--text--&gt;</c> without escaping. Walked on an explicit stack.
+    /// Comments are written <c>&lt;!--text--&gt;</c> without escaping. Each start tag and comment, and the end tag of an
+    /// element with children, starts a new line indented two spaces per depth, so a line diff shows the drifted element
+    /// rather than the whole document. Walked on an explicit stack.
     /// </summary>
     private static string SerialiseXml(XElement root)
     {
         var builder = new StringBuilder();
-        var stack = new Stack<(XNode Node, bool Closing)>();
-        stack.Push((root, false));
+        var stack = new Stack<(XNode Node, bool Closing, int Depth)>();
+        stack.Push((root, false, 0));
         while (stack.Count > 0)
         {
-            var (node, closing) = stack.Pop();
+            var (node, closing, depth) = stack.Pop();
             switch (node)
             {
                 case XComment comment:
+                    StartLine(builder, depth);
                     builder.Append("<!--").Append(CollapseWhitespace(comment.Value)).Append("-->");
                     AppendTail(builder, comment);
                     break;
                 case XElement element when closing:
+                    if (element.Nodes().Any(child => child is not XText))
+                    {
+                        StartLine(builder, depth);
+                    }
+
                     builder.Append("</").Append(WrittenName(element)).Append('>');
                     AppendTail(builder, element);
                     break;
                 case XElement element:
-                    OpenElement(builder, stack, element);
+                    StartLine(builder, depth);
+                    OpenElement(builder, stack, element, depth);
                     break;
                 default:
                     break;
@@ -45,7 +54,15 @@ public static partial class Canonicaliser
         return builder.ToString();
     }
 
-    private static void OpenElement(StringBuilder builder, Stack<(XNode Node, bool Closing)> stack, XElement element)
+    private static void StartLine(StringBuilder builder, int depth)
+    {
+        if (builder.Length > 0)
+        {
+            builder.Append('\n').Append(' ', depth * 2);
+        }
+    }
+
+    private static void OpenElement(StringBuilder builder, Stack<(XNode Node, bool Closing, int Depth)> stack, XElement element, int depth)
     {
         var written = element.Annotation<XmlWrittenName>()!;
         builder.Append('<').Append(written.QualifiedName);
@@ -79,10 +96,10 @@ public static partial class Canonicaliser
 
         builder.Append('>');
         AppendEscapedText(builder, text);
-        stack.Push((element, true));
+        stack.Push((element, true, depth));
         for (var index = children.Count - 1; index >= 0; index--)
         {
-            stack.Push((children[index], false));
+            stack.Push((children[index], false, depth + 1));
         }
     }
 

@@ -24,7 +24,7 @@ public sealed class ContentTypeResolverTests : IDisposable
 
     [Theory]
     [InlineData("structured-config-xml", "xml")]
-    [InlineData("json", "text")]
+    [InlineData("json", "json")]
     [InlineData("XML", "text")]
     public void FromCatalogFormatFollowsTheMultiServerRule(string? catalogFormat, string expected)
     {
@@ -50,19 +50,19 @@ public sealed class ContentTypeResolverTests : IDisposable
 
         var artifact = DiffBuilder.BuildUnifiedDiff(File.ReadAllText(baseline), File.ReadAllText(candidate), contentType);
         artifact.CanonicalBefore.Should().Be(
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<configuration><appSettings><add a=\"1\" key=\"b\" value=\"2\" /></appSettings></configuration>");
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<configuration>\n  <appSettings>\n    <add a=\"1\" key=\"b\" value=\"2\" />\n  </appSettings>\n</configuration>");
     }
 
     [Fact]
-    public void AppSettingsJsonIsDiffedAsText()
+    public void AppSettingsJsonIsDiffedAsJson()
     {
         var baseline = Write("appsettings.json", AppSettingsJson);
 
         new Detector().ScanFile(baseline)!.Metadata!["catalog_format"].Should().Be("json");
-        ContentTypeResolver.ResolveFile(baseline).Should().Be("text");
-        ContentTypeResolver.ResolvePair(baseline, baseline).Should().Be("text");
+        ContentTypeResolver.ResolveFile(baseline).Should().Be("json");
+        ContentTypeResolver.ResolvePair(baseline, baseline).Should().Be("json");
         DiffBuilder.BuildUnifiedDiff(AppSettingsJson, AppSettingsJson, ContentTypeResolver.ResolvePair(baseline, baseline))
-            .CanonicalBefore.Should().Be(Canonicaliser.CanonicaliseText(AppSettingsJson));
+            .CanonicalBefore.Should().Be(Canonicaliser.CanonicaliseJson(AppSettingsJson));
     }
 
     [Fact]

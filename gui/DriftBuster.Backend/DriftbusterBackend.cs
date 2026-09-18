@@ -359,6 +359,10 @@ namespace DriftBuster.Backend
             var candidatePath = EnsureFile(candidateVersion, false);
             var candidateName = Path.GetFileName(candidatePath);
             var candidateContent = ReadText(candidatePath);
+            if (string.Equals(baselineName, candidateName, StringComparison.OrdinalIgnoreCase))
+            {
+                (baselineName, candidateName) = DistinctLabels(baselinePath, candidatePath);
+            }
 
             var contentType = ContentTypeResolver.ResolvePair(baselinePath, candidatePath);
             var artifact = DiffBuilder.BuildUnifiedDiff(baselineContent, candidateContent, contentType, baselineName, candidateName, contextLines: 3);
@@ -391,6 +395,22 @@ namespace DriftBuster.Backend
             return (comparison, artifact);
         }
 
+        // The same file name on both sides: extend both labels leftwards to the nearest folder that tells them apart,
+        // so "C:\a\baseline\web.config" and "\\host\C$\a\prod\web.config" read "baseline/web.config" and "prod/web.config".
+        private static (string Baseline, string Candidate) DistinctLabels(string baselinePath, string candidatePath)
+        {
+            var left = baselinePath.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
+            var right = candidatePath.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
+            var shared = 0;
+            while (shared < left.Length && shared < right.Length
+                && string.Equals(left[^(shared + 1)], right[^(shared + 1)], StringComparison.OrdinalIgnoreCase))
+            {
+                shared++;
+            }
+
+            string Label(string[] segments) => string.Join('/', segments[Math.Max(segments.Length - shared - 1, 0)..]);
+            return (Label(left), Label(right));
+        }
 
         private static ServerScanPlan ClonePlan(ServerScanPlan plan)
         {

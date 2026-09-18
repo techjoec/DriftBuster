@@ -37,7 +37,7 @@ public sealed class CanonicaliserLinearTimeTests
             var watch = Stopwatch.StartNew();
             var canonical = Canonicalise(count);
             watch.Stop();
-            canonical.Should().Be("<a>" + string.Concat(Enumerable.Repeat("x&amp;", count)) + "<b />" + new string('A', count) + "</a>");
+            canonical.Should().Be("<a>" + string.Concat(Enumerable.Repeat("x&amp;", count)) + "\n  <b />" + new string('A', count) + "\n</a>");
             fastest = watch.Elapsed < fastest ? watch.Elapsed : fastest;
         }
 

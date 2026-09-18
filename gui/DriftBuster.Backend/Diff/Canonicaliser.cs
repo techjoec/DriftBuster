@@ -12,7 +12,13 @@ public static partial class Canonicaliser
     /// <summary>The content types <c>_NORMALISERS</c> knows.</summary>
     public static IReadOnlyList<string> ContentTypes { get; } = ["text", "json", "xml"];
 
-    /// <summary>True when <paramref name="contentType"/> names a normaliser (exact, case-sensitive, as the Python dict lookup).</summary>
+    /// <summary>
+    /// The version of the canonical forms. Bump it whenever a canonicaliser's output changes, so caches keyed on it
+    /// (the multi-server diff cache) stop serving forms the current build no longer produces.
+    /// </summary>
+    public const int FormVersion = 2;
+
+    /// <summary>True when <paramref name="contentType"/> names a normaliser (exact, case-sensitive).</summary>
     public static bool IsSupported(string contentType) => ContentTypes.Contains(contentType, StringComparer.Ordinal);
 
     /// <summary>

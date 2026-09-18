@@ -23,8 +23,10 @@ public sealed class CanonicaliseXmlTests
             + "<!DOCTYPE note [\n"
             + "<!ELEMENT note ANY>\n"
             + "]>\n"
-            + "<note a=\"1\" b=\"2\"><child attr=\" value \" other=\"two\">  spaced text  </child>"
-            + "<selfclosing alpha=\"a\" beta=\"b\" /></note>";
+            + "<note a=\"1\" b=\"2\">\n"
+            + "  <child attr=\" value \" other=\"two\">  spaced text  </child>\n"
+            + "  <selfclosing alpha=\"a\" beta=\"b\" />\n"
+            + "</note>";
 
         Canonicaliser.CanonicaliseXml(payload).Should().Be(expected);
     }
@@ -38,7 +40,7 @@ public sealed class CanonicaliseXmlTests
             + "    <node b='2' a='1'>value</node>\n"
             + "</root>\n";
 
-        var expected = "<root attr=\" padded \" other=\"value\"><empty /><node a=\"1\" b=\"2\">value</node></root>";
+        var expected = "<root attr=\" padded \" other=\"value\">\n  <empty />\n  <node a=\"1\" b=\"2\">value</node>\n</root>";
 
         Canonicaliser.CanonicaliseXml(payload).Should().Be(expected);
     }
