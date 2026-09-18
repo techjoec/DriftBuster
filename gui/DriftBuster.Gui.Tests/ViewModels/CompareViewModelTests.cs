@@ -78,4 +78,59 @@ public sealed class CompareViewModelTests
         viewModel.HasData.Should().BeFalse();
         viewModel.EmptyMessage.Should().Be("Run a scan to compare servers.");
     }
+
+    [Fact]
+    public void Selects_the_first_file_and_walks_every_difference_across_files()
+    {
+        var viewModel = new CompareViewModel();
+        viewModel.Load(SampleComparison.Build());
+
+        viewModel.ShowFileList.Should().BeTrue();
+        viewModel.SelectedFile!.Path.Should().Be("inetpub/app/appsettings.json");
+        viewModel.PositionText.Should().Be("2 differences");
+        viewModel.VisibleFiles[1].Badge.Should().Be("missing");
+        viewModel.VisibleFiles[0].Badge.Should().Be("2");
+
+        viewModel.NextDifferenceCommand.Execute(null);
+        viewModel.SelectedRow!.Key.Should().Be("Cache.Minutes");
+        viewModel.PositionText.Should().Be("Difference 1 of 2");
+
+        viewModel.NextDifferenceCommand.Execute(null);
+        viewModel.SelectedRow!.Key.Should().Be("db.password");
+
+        viewModel.NextDifferenceCommand.Execute(null);
+        viewModel.SelectedFile.Path.Should().Be("legacy.ini", "a missing file is a stop of its own");
+        viewModel.SelectedRow.Should().BeNull();
+
+        viewModel.NextDifferenceCommand.Execute(null);
+        viewModel.SelectedFile.Path.Should().Be("inetpub/app/appsettings.json", "the walk wraps around");
+        viewModel.SelectedRow!.Key.Should().Be("Cache.Minutes");
+
+        viewModel.PreviousDifferenceCommand.Execute(null);
+        viewModel.SelectedFile.Path.Should().Be("legacy.ini");
+        viewModel.PreviousDifferenceCommand.Execute(null);
+        viewModel.SelectedRow!.Key.Should().Be("db.password");
+    }
+
+    [Fact]
+    public void Keeps_the_selected_file_while_it_still_matches_the_filters()
+    {
+        var viewModel = new CompareViewModel();
+        viewModel.Load(SampleComparison.Build());
+        viewModel.SelectedFile = viewModel.VisibleFiles[1];
+
+        viewModel.DifferencesOnly = false;
+        viewModel.SelectedFile.Path.Should().Be("legacy.ini");
+        viewModel.VisibleFiles[0].RowCountText.Should().Be("3 settings");
+
+        viewModel.DifferencesOnly = true;
+        viewModel.VisibleFiles[0].RowCountText.Should().Be("2 of 3 settings shown");
+        viewModel.SearchText = "cache";
+        viewModel.SelectedFile.Path.Should().Be("inetpub/app/appsettings.json", "the selected file no longer matches");
+
+        viewModel.Reset();
+        viewModel.SelectedFile.Should().BeNull();
+        viewModel.ShowFileList.Should().BeFalse();
+        viewModel.PositionText.Should().BeEmpty();
+    }
 }

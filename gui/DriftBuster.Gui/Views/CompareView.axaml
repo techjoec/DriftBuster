@@ -4,19 +4,24 @@
              xmlns:automation="using:Avalonia.Automation"
              x:Class="DriftBuster.Gui.Views.CompareView"
              x:DataType="vm:CompareViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="F8" Command="{Binding NextDifferenceCommand}" />
+    <KeyBinding Gesture="Shift+F8" Command="{Binding PreviousDifferenceCommand}" />
+  </UserControl.KeyBindings>
   <UserControl.Styles>
-    <!-- A server line reads like text and acts as a filter toggle. -->
-    <Style Selector="Button.server-line">
+    <!-- A server chip reads like text and acts as a filter toggle. -->
+    <Style Selector="Button.server-chip">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="Margin" Value="0,0,8,6" />
       <Setter Property="MinWidth" Value="0" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
       <Setter Property="CornerRadius" Value="{DynamicResource Radius.Small}" />
     </Style>
-    <Style Selector="Button.server-line.focused">
+    <Style Selector="Button.server-chip.focused">
       <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
     </Style>
     <Style Selector="TextBlock.dot">
       <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
@@ -32,6 +37,12 @@
     </Style>
     <Style Selector="TextBlock.file-summary.differs">
       <Setter Property="Foreground" Value="{DynamicResource Brush.DiffersText}" />
+    </Style>
+    <Style Selector="Border.count">
+      <Setter Property="Background" Value="{DynamicResource Brush.DiffersBackground}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Small}" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.cell">
       <Setter Property="Padding" Value="8,5" />
@@ -51,34 +62,35 @@
     <Style Selector="Border.cell.differs TextBlock.absent">
       <Setter Property="Foreground" Value="{DynamicResource Brush.MissingText}" />
     </Style>
-    <Style Selector="Border.setting-row">
-      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
-      <Setter Property="BorderThickness" Value="0,1,0,0" />
-      <Setter Property="Padding" Value="0,2" />
-    </Style>
   </UserControl.Styles>
 
-  <StackPanel Spacing="14">
+  <!-- Fills the space it is given: the file list and the settings table scroll on their own, the rest stays put. -->
+  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
     <!-- What differs, per server, in one sentence each. -->
-    <Border Classes="surface" CornerRadius="{DynamicResource Radius.Large}">
-      <StackPanel Spacing="8">
-        <TextBlock Text="{Binding Headline}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+    <Border Classes="surface" CornerRadius="{DynamicResource Radius.Large}" Padding="14,10">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding Headline}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
         <ItemsControl ItemsSource="{Binding Servers}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:CompareServerViewModel">
-              <Button Classes="server-line"
+              <Button Classes="server-chip"
                       Classes.focused="{Binding IsFocused}"
                       Command="{Binding ((vm:CompareViewModel)DataContext).FocusServerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       CommandParameter="{Binding}"
                       ToolTip.Tip="Show only what differs on this server"
                       automation:AutomationProperties.AutomationId="Compare.Server"
                       automation:AutomationProperties.Name="{Binding Label, StringFormat='Show only what differs on {0}'}">
-                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
                   <TextBlock Classes="dot" Classes.ok="{Binding Matches}" Classes.differs="{Binding Differs}" Classes.failed="{Binding Failed}"
-                             Text="●" VerticalAlignment="Top" />
-                  <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold" />
-                  <TextBlock Grid.Column="2" Text="{Binding Summary}" TextWrapping="Wrap" />
-                </Grid>
+                             Text="●" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" />
+                </StackPanel>
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -87,7 +99,7 @@
     </Border>
 
     <!-- Filters and export. -->
-    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
       <CheckBox Content="Only show differences"
                 IsChecked="{Binding DifferencesOnly}"
                 VerticalAlignment="Center"
@@ -98,6 +110,13 @@
                automation:AutomationProperties.AutomationId="Compare.Search"
                automation:AutomationProperties.Name="Search settings, values or files" />
       <Button Grid.Column="2"
+              Content="Show all servers"
+              Classes="outline"
+              IsVisible="{Binding HasFocus}"
+              Command="{Binding ClearFocusCommand}"
+              ToolTip.Tip="{Binding FocusText}"
+              automation:AutomationProperties.AutomationId="Compare.ClearFocus" />
+      <Button Grid.Column="3"
               Content="Save report"
               Classes="outline"
               Command="{Binding SaveReportCommand}"
@@ -105,89 +124,98 @@
               automation:AutomationProperties.AutomationId="Compare.SaveReport" />
     </Grid>
 
-    <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasFocus}">
-      <TextBlock Text="{Binding FocusText}" VerticalAlignment="Center" FontWeight="SemiBold" />
-      <Button Content="Show all servers"
-              Classes="outline"
-              Command="{Binding ClearFocusCommand}"
-              automation:AutomationProperties.AutomationId="Compare.ClearFocus" />
+    <StackPanel Grid.Row="2" Spacing="4">
+      <TextBlock Text="{Binding FocusText}" IsVisible="{Binding HasFocus}" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" Classes="subtitle" />
+      <TextBlock Text="{Binding EmptyMessage}" IsVisible="{Binding HasEmptyMessage}" FontSize="16" TextWrapping="Wrap" />
     </StackPanel>
 
-    <TextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" Classes="subtitle" />
-    <TextBlock Text="{Binding EmptyMessage}" IsVisible="{Binding HasEmptyMessage}" FontSize="16" TextWrapping="Wrap" />
-
-    <!-- One card per file: what differs in words, then the settings table. -->
-    <ItemsControl ItemsSource="{Binding VisibleFiles}">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="vm:CompareFileViewModel">
-          <Border Classes="surface" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,12">
-            <StackPanel Spacing="8">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <StackPanel Spacing="2">
-                  <TextBlock Text="{Binding FileName}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding Folder}" IsVisible="{Binding HasFolder}" Classes="subtitle" TextWrapping="Wrap" />
-                  <TextBlock Classes="file-summary" Classes.differs="{Binding Differs}" Text="{Binding Summary}" TextWrapping="Wrap" />
+    <Grid Grid.Row="3" x:Name="Body" ColumnDefinitions="320,6,*" MinHeight="240">
+      <!-- Every file that matches the filters; pick one to see its settings. -->
+      <Border x:Name="FileListPane" Classes="surface" CornerRadius="{DynamicResource Radius.Medium}" Padding="0">
+        <ListBox ItemsSource="{Binding VisibleFiles}"
+                 SelectedItem="{Binding SelectedFile}"
+                 Background="Transparent"
+                 automation:AutomationProperties.AutomationId="Compare.Files"
+                 automation:AutomationProperties.Name="Files">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:CompareFileViewModel">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" ToolTip.Tip="{Binding Path}"
+                    automation:AutomationProperties.Name="{Binding Path}">
+                <TextBlock Classes="dot" Classes.differs="{Binding Differs}" Text="●" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Folder}" IsVisible="{Binding HasFolder}" Classes="subtitle" FontSize="12"
+                             TextTrimming="PathSegmentEllipsis" />
                 </StackPanel>
-                <Button Grid.Column="1"
-                        Content="File details"
-                        Classes="outline"
-                        VerticalAlignment="Top"
-                        IsVisible="{Binding HasDetails}"
-                        Command="{Binding ((vm:CompareViewModel)DataContext).OpenDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                        CommandParameter="{Binding}"
-                        automation:AutomationProperties.AutomationId="Compare.FileDetails"
-                        automation:AutomationProperties.Name="{Binding Path, StringFormat='File details for {0}'}" />
+                <Border Grid.Column="2" Classes="count" IsVisible="{Binding HasBadge}">
+                  <TextBlock Text="{Binding Badge}" FontSize="12" FontWeight="SemiBold" />
+                </Border>
               </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+      <GridSplitter x:Name="FileListSplitter" Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
 
-              <StackPanel IsVisible="{Binding HasVisibleRows}">
-                <Grid ColumnDefinitions="2*,5*">
-                  <TextBlock Text="Setting" Classes="subtitle" FontWeight="SemiBold" Margin="8,4" />
-                  <ItemsControl Grid.Column="1"
-                                ItemsSource="{Binding ((vm:CompareViewModel)DataContext).Columns, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <UniformGrid Rows="1" />
-                      </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="x:String">
-                        <TextBlock Text="{Binding}" Classes="subtitle" FontWeight="SemiBold" Margin="10,4" TextWrapping="Wrap" />
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </Grid>
-                <ItemsControl ItemsSource="{Binding VisibleRows}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:CompareRowViewModel">
-                      <Border Classes="setting-row">
-                        <Grid ColumnDefinitions="2*,5*">
-                          <SelectableTextBlock Text="{Binding Key}" TextWrapping="Wrap" Margin="8,5" />
-                          <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
-                            <ItemsControl.ItemsPanel>
-                              <ItemsPanelTemplate>
-                                <UniformGrid Rows="1" />
-                              </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:CompareCellViewModel">
-                                <Border Classes="cell" Classes.differs="{Binding IsDifferent}">
-                                  <SelectableTextBlock Text="{Binding Text}" Classes.absent="{Binding IsAbsent}" TextWrapping="Wrap"
-                                                       automation:AutomationProperties.Name="{Binding AutomationName}" />
-                                </Border>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-              <TextBlock Text="{Binding RowNote}" IsVisible="{Binding HasRowNote}" Classes="subtitle" TextWrapping="Wrap" />
+      <!-- The selected file: what differs in words, then its settings with the headers and setting names kept in view. -->
+      <Border Grid.Column="2" Classes="surface" CornerRadius="{DynamicResource Radius.Medium}" Padding="12,10"
+              IsVisible="{Binding HasSelectedFile}">
+        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{Binding SelectedFile.FileName, FallbackValue=''}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding SelectedFile.Folder, FallbackValue=''}" IsVisible="{Binding SelectedFile.HasFolder, FallbackValue=False}"
+                         Classes="subtitle" TextWrapping="Wrap" />
+              <TextBlock Classes="file-summary" Classes.differs="{Binding SelectedFile.Differs, FallbackValue=False}"
+                         Text="{Binding SelectedFile.Summary, FallbackValue=''}" TextWrapping="Wrap" />
+              <TextBlock Classes="subtitle" TextWrapping="Wrap">
+                <Run Text="{Binding SelectedFile.RowCountText, FallbackValue=''}" />
+                <Run Text="  " />
+                <Run Text="{Binding PositionText}" />
+              </TextBlock>
             </StackPanel>
-          </Border>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
-  </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
+              <Button Content="◀ Previous"
+                      Classes="outline"
+                      Command="{Binding PreviousDifferenceCommand}"
+                      ToolTip.Tip="Previous difference (Shift+F8)"
+                      automation:AutomationProperties.AutomationId="Compare.PreviousDifference"
+                      automation:AutomationProperties.Name="Previous difference" />
+              <Button Content="Next ▶"
+                      Classes="outline"
+                      Command="{Binding NextDifferenceCommand}"
+                      ToolTip.Tip="Next difference (F8)"
+                      automation:AutomationProperties.AutomationId="Compare.NextDifference"
+                      automation:AutomationProperties.Name="Next difference" />
+              <Button Content="File details"
+                      Classes="outline"
+                      IsVisible="{Binding SelectedFile.HasDetails, FallbackValue=False}"
+                      Command="{Binding OpenDetailsCommand}"
+                      CommandParameter="{Binding SelectedFile}"
+                      ToolTip.Tip="Line-by-line diff and exports for this file"
+                      automation:AutomationProperties.AutomationId="Compare.FileDetails"
+                      automation:AutomationProperties.Name="File details" />
+            </StackPanel>
+          </Grid>
+
+          <DataGrid x:Name="SettingsGrid"
+                    Grid.Row="1"
+                    ItemsSource="{Binding SelectedFile.VisibleRows, FallbackValue={x:Null}}"
+                    SelectedItem="{Binding SelectedRow}"
+                    IsVisible="{Binding SelectedFile.HasVisibleRows, FallbackValue=False}"
+                    AutoGenerateColumns="False"
+                    IsReadOnly="True"
+                    SelectionMode="Single"
+                    HeadersVisibility="Column"
+                    GridLinesVisibility="Horizontal"
+                    FrozenColumnCount="1"
+                    CanUserSortColumns="False"
+                    CanUserReorderColumns="False"
+                    automation:AutomationProperties.AutomationId="Compare.Settings"
+                    automation:AutomationProperties.Name="Settings" />
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
 </UserControl>

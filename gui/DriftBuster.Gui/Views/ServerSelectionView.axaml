@@ -16,8 +16,8 @@
     <Thickness x:Key="ServerSelection.CardMargin">0,0,0,16</Thickness>
     <Thickness x:Key="ServerSelection.HighlightPadding">18</Thickness>
   </UserControl.Resources>
-  <ScrollViewer AllowAutoHide="False" Padding="0,0,18,0">
-    <StackPanel Margin="{DynamicResource ServerSelection.OuterMargin}" Spacing="{DynamicResource ServerSelection.StackSpacing}">
+  <!-- The view switcher stays at the top; Setup scrolls as a page, the result views fill the rest and scroll their own panes. -->
+  <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource ServerSelection.StackSpacing}" Margin="{DynamicResource ServerSelection.OuterMargin}">
       <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
         <ToggleButton x:Name="SetupButton"
                       Content="Setup"
@@ -56,8 +56,8 @@
                    Text="{Binding StatusBanner}" />
       </Grid>
 
-      <StackPanel Spacing="{DynamicResource ServerSelection.SectionSpacing}"
-                  IsVisible="{Binding IsViewingSetup}">
+      <ScrollViewer Grid.Row="1" AllowAutoHide="False" Padding="0,0,18,0" IsVisible="{Binding IsViewingSetup}">
+      <StackPanel Spacing="{DynamicResource ServerSelection.SectionSpacing}">
         <Border Classes="surface" Padding="{DynamicResource ServerSelection.CardPadding}" CornerRadius="{DynamicResource Radius.Large}">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource ServerSelection.HeaderColumnSpacing}">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -419,12 +419,14 @@
           </Grid>
         </Expander>
       </StackPanel>
+      </ScrollViewer>
 
-      <Border IsVisible="{Binding IsViewingCompare}">
+      <Border Grid.Row="1" IsVisible="{Binding IsViewingCompare}">
         <views:CompareView DataContext="{Binding CompareViewModel}" />
       </Border>
 
-      <ContentControl Content="{Binding CatalogViewModel}"
+      <ContentControl Grid.Row="1"
+                      Content="{Binding CatalogViewModel}"
                       IsVisible="{Binding IsViewingCatalog}">
         <ContentControl.ContentTemplate>
           <DataTemplate>
@@ -433,7 +435,8 @@
         </ContentControl.ContentTemplate>
       </ContentControl>
 
-      <ContentControl Content="{Binding DrilldownViewModel}"
+      <ContentControl Grid.Row="1"
+                      Content="{Binding DrilldownViewModel}"
                       IsVisible="{Binding IsViewingDrilldown}">
         <ContentControl.ContentTemplate>
           <DataTemplate x:DataType="vm:ConfigDrilldownViewModel">
@@ -441,6 +444,5 @@
           </DataTemplate>
         </ContentControl.ContentTemplate>
       </ContentControl>
-    </StackPanel>
-  </ScrollViewer>
+  </Grid>
 </UserControl>

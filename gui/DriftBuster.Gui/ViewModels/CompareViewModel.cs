@@ -17,8 +17,9 @@ using DriftBuster.Backend.Settings;
 namespace DriftBuster.Gui.ViewModels
 {
     /// <summary>
-    /// The settings comparison: one plain line per server, then one table per file (a row per setting, a column per server),
-    /// showing only what differs by default.
+    /// The settings comparison: one plain line per server, a list of files, and the selected file's settings table (a row per
+    /// setting, a column per server), showing only what differs by default. Previous/next difference walks every differing
+    /// setting across the listed files.
     /// </summary>
     public sealed partial class CompareViewModel : ObservableObject
     {
@@ -45,6 +46,8 @@ namespace DriftBuster.Gui.ViewModels
             });
             ClearFocusCommand = new RelayCommand(() => FocusHostId = null);
             SaveReportCommand = new AsyncRelayCommand(SaveReportAsync, () => HasData);
+            NextDifferenceCommand = new RelayCommand(() => MoveToDifference(forward: true), () => VisibleFiles.Count > 0);
+            PreviousDifferenceCommand = new RelayCommand(() => MoveToDifference(forward: false), () => VisibleFiles.Count > 0);
         }
 
         /// <summary>Raised with a config id when the user asks for a file's details.</summary>
@@ -64,6 +67,39 @@ namespace DriftBuster.Gui.ViewModels
         public IRelayCommand ClearFocusCommand { get; }
 
         public IAsyncRelayCommand SaveReportCommand { get; }
+
+        public IRelayCommand NextDifferenceCommand { get; }
+
+        public IRelayCommand PreviousDifferenceCommand { get; }
+
+        /// <summary>The file list is worth showing only when there is more than one file.</summary>
+        public bool ShowFileList => _files.Count > 1;
+
+        [ObservableProperty]
+        private CompareFileViewModel? _selectedFile;
+
+        [ObservableProperty]
+        private CompareRowViewModel? _selectedRow;
+
+        public bool HasSelectedFile => SelectedFile is not null;
+
+        /// <summary>Where the selected setting sits among the file's differences: "Difference 3 of 6".</summary>
+        public string PositionText
+        {
+            get
+            {
+                if (SelectedFile is null)
+                {
+                    return string.Empty;
+                }
+
+                var differing = SelectedFile.VisibleRows.Where(row => row.Differs).ToList();
+                var index = SelectedRow is null ? -1 : differing.IndexOf(SelectedRow);
+                return differing.Count == 0 ? string.Empty
+                    : index < 0 ? string.Create(CultureInfo.InvariantCulture, $"{differing.Count} {(differing.Count == 1 ? "difference" : "differences")}")
+                    : string.Create(CultureInfo.InvariantCulture, $"Difference {index + 1} of {differing.Count}");
+            }
+        }
 
         public bool HasData => _comparison is not null && _files.Count > 0;
 
@@ -118,6 +154,15 @@ namespace DriftBuster.Gui.ViewModels
 
         partial void OnEmptyMessageChanged(string value) => OnPropertyChanged(nameof(HasEmptyMessage));
 
+        partial void OnSelectedFileChanged(CompareFileViewModel? value)
+        {
+            SelectedRow = null;
+            OnPropertyChanged(nameof(HasSelectedFile));
+            OnPropertyChanged(nameof(PositionText));
+        }
+
+        partial void OnSelectedRowChanged(CompareRowViewModel? value) => OnPropertyChanged(nameof(PositionText));
+
         partial void OnStatusMessageChanged(string value) => OnPropertyChanged(nameof(HasStatus));
 
         public void Load(SettingsComparison? comparison)
@@ -143,6 +188,7 @@ namespace DriftBuster.Gui.ViewModels
             Headline = BuildHeadline(comparison, ItemNoun);
             OnPropertyChanged(nameof(HasData));
             OnPropertyChanged(nameof(ColumnCount));
+            OnPropertyChanged(nameof(ShowFileList));
             SaveReportCommand.NotifyCanExecuteChanged();
             if (FocusHostId is not null && Servers.All(server => !string.Equals(server.HostId, FocusHostId, StringComparison.Ordinal)))
             {
@@ -159,6 +205,7 @@ namespace DriftBuster.Gui.ViewModels
         private void ApplyFilters()
         {
             var search = SearchText.Trim();
+            var selected = SelectedFile;
             VisibleFiles.Clear();
             foreach (var file in _files)
             {
@@ -168,11 +215,80 @@ namespace DriftBuster.Gui.ViewModels
                 }
             }
 
+            // Keep the file in view when it still matches; otherwise start at the first one.
+            SelectedFile = selected is not null && VisibleFiles.Contains(selected) ? selected : VisibleFiles.FirstOrDefault();
+            OnPropertyChanged(nameof(PositionText));
+            NextDifferenceCommand.NotifyCanExecuteChanged();
+            PreviousDifferenceCommand.NotifyCanExecuteChanged();
+
             EmptyMessage = _files.Count == 0 ? "Run a scan to compare servers."
                 : VisibleFiles.Count > 0 ? string.Empty
                 : search.Length > 0 ? $"Nothing matches \"{search}\"."
                 : DifferencesOnly ? "No differences: every server matches the baseline."
                 : "No files.";
+        }
+
+        /// <summary>
+        /// Selects the next (or previous) differing setting, moving on to the next listed file that differs when the selected
+        /// file has no more. A file that differs only by being missing or extra is a stop of its own, with no setting selected.
+        /// </summary>
+        private void MoveToDifference(bool forward)
+        {
+            if (VisibleFiles.Count == 0)
+            {
+                return;
+            }
+
+            var fileIndex = SelectedFile is null ? -1 : VisibleFiles.IndexOf(SelectedFile);
+            if (fileIndex >= 0 && SelectRowInFile(VisibleFiles[fileIndex], SelectedRow, forward))
+            {
+                return;
+            }
+
+            for (var step = 1; step <= VisibleFiles.Count; step++)
+            {
+                var index = fileIndex < 0
+                    ? (forward ? step - 1 : VisibleFiles.Count - step)
+                    : ((fileIndex + (forward ? step : -step)) % VisibleFiles.Count + VisibleFiles.Count) % VisibleFiles.Count;
+                var file = VisibleFiles[index];
+                if (!file.Differs)
+                {
+                    continue;
+                }
+
+                SelectedFile = file;
+                SelectRowInFile(file, null, forward);
+                return;
+            }
+        }
+
+        private bool SelectRowInFile(CompareFileViewModel file, CompareRowViewModel? from, bool forward)
+        {
+            var rows = file.VisibleRows;
+            var start = from is null ? (forward ? -1 : rows.Count) : IndexOf(rows, from);
+            for (var index = forward ? start + 1 : start - 1; index >= 0 && index < rows.Count; index += forward ? 1 : -1)
+            {
+                if (rows[index].Differs)
+                {
+                    SelectedRow = rows[index];
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static int IndexOf(IReadOnlyList<CompareRowViewModel> rows, CompareRowViewModel row)
+        {
+            for (var index = 0; index < rows.Count; index++)
+            {
+                if (ReferenceEquals(rows[index], row))
+                {
+                    return index;
+                }
+            }
+
+            return -1;
         }
 
         private static string BuildHeadline(SettingsComparison? comparison, string noun)
