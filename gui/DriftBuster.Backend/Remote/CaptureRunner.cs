@@ -42,8 +42,7 @@ public static partial class CaptureRunner
     /// </summary>
     /// <remarks>
     /// Detector guardrail warnings go to <paramref name="stderr"/> as a last-resort logging handler writes them. A file the
-    /// hunt cannot read is skipped. Directory creation and file writes raise the
-    /// <c>OSError</c> text (<see cref="OsError"/>).
+    /// hunt cannot read is skipped. Directory creation and file writes raise the runtime's exceptions.
     /// </remarks>
     public static CaptureRunOutcome RunCapture(CaptureRunOptions options, TextWriter stdout, TextWriter stderr)
     {

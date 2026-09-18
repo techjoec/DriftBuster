@@ -75,7 +75,7 @@ public sealed class MultiServerPathAndCacheTests : IDisposable
 
         var entry = runner.Cache.EntryPath("host", "json/generic/app-json");
         response.Results[0].Availability.Should().Be(ServerAvailabilityStatus.Offline);
-        response.Results[0].Message.Should().Be(MultiServerRunner.TruncateCodePoints($"Scan failed: [Errno 13] Permission denied: '{entry}'", 160));
+        response.Results[0].Message.Should().Be(MultiServerRunner.TruncateCodePoints($"Scan failed: Access to the path '{entry}' is denied.", 160));
         Directory.GetFileSystemEntries(CacheDir).Should().BeEmpty();
     }
 }

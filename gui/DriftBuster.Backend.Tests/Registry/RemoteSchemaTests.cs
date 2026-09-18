@@ -7,7 +7,7 @@ namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
 /// Remote registry scan schema: <see cref="OfflineRegistryScanSource.FromDict"/> and <see cref="RegistryCommands.ParseRemoteTargetArg"/>,
-/// which refuse bad input with <see cref="EngineValueException"/>.
+/// which refuse bad input with <see cref="InvalidDataException"/> and <see cref="FormatException"/>.
 /// </summary>
 public sealed class RemoteSchemaTests
 {
@@ -79,7 +79,7 @@ public sealed class RemoteSchemaTests
         var payload = Map(("registry_scan", Map(("token", "VendorA"), ("remote", Map(("host", "forbidden"), ("password", "super-secret"))))));
 
         var act = () => OfflineRegistryScanSource.FromDict(payload);
-        act.Should().Throw<EngineValueException>();
+        act.Should().Throw<InvalidDataException>();
     }
 
     public static TheoryData<string, OrderedDictionary<string, object?>> RoundtripCases => new()
@@ -108,6 +108,6 @@ public sealed class RemoteSchemaTests
     public void ParseRemoteTargetArgErrors(string value)
     {
         var act = () => RegistryCommands.ParseRemoteTargetArg(value);
-        act.Should().Throw<EngineValueException>();
+        act.Should().Throw<FormatException>();
     }
 }

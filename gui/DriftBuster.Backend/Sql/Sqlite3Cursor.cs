@@ -3,6 +3,8 @@ using System.Text;
 
 using DriftBuster.Backend.Infrastructure;
 
+using Microsoft.Data.Sqlite;
+
 using SQLitePCL;
 
 namespace DriftBuster.Backend.Sql;
@@ -23,21 +25,21 @@ internal static class Sqlite3Cursor
     /// The statement's column names (<c>cursor.description</c>) and every row it yields. Each value follows its per-row storage class:
     /// NULL is null, INTEGER a <see cref="long"/>, FLOAT a <see cref="double"/>, TEXT a string decoded as strict UTF-8, BLOB a byte array.
     /// </summary>
-    /// <exception cref="Sqlite3Exception">SQLite refuses the statement or a step (the class <c>sqlite3</c> maps its result code to), the
-    /// text holds a NUL (<c>ProgrammingError</c>), more than one statement (<c>ProgrammingError</c>), is longer than the library allows
-    /// (<c>DataError</c>), or a TEXT value is not UTF-8 (<c>OperationalError</c>).</exception>
-    /// <exception cref="EngineUnicodeDecodeException">A column name or error message is not UTF-8.</exception>
+    /// <exception cref="SqliteException">SQLite refuses the statement or a step (its result code), the text holds a NUL or more than one
+    /// statement (<c>SQLITE_MISUSE</c>), is longer than the library allows (<c>SQLITE_TOOBIG</c>), or a TEXT value is not UTF-8
+    /// (<c>SQLITE_ERROR</c>).</exception>
+    /// <exception cref="InvalidDataException">A column name or error message is not UTF-8.</exception>
     internal static Sqlite3Rows FetchAll(sqlite3 db, string sql)
     {
         var bytes = Encoding.UTF8.GetBytes(sql);
         if (bytes.Length > raw.sqlite3_limit(db, LimitSqlLength, -1))
         {
-            throw new Sqlite3Exception("DataError", "query string is too large");
+            throw new SqliteException("query string is too large", raw.SQLITE_TOOBIG);
         }
 
         if (Array.IndexOf(bytes, (byte)0) >= 0)
         {
-            throw new Sqlite3Exception("ProgrammingError", "the query contains a null character");
+            throw new SqliteException("the query contains a null character", raw.SQLITE_MISUSE);
         }
 
         var terminated = new byte[bytes.Length + 1];
@@ -52,7 +54,7 @@ internal static class Sqlite3Cursor
 
             if (StatementFollows(tail))
             {
-                throw new Sqlite3Exception("ProgrammingError", "You can only execute one statement at a time.");
+                throw new SqliteException("You can only execute one statement at a time.", raw.SQLITE_MISUSE);
             }
 
             return Drain(db, statement);
@@ -61,7 +63,7 @@ internal static class Sqlite3Cursor
 
     /// <summary>
     /// <c>row[key]</c> on a <c>sqlite3.Row</c>: the first column whose name equals <paramref name="key"/>, or matches it ignoring ASCII case
-    /// when both are pure ASCII; <c>IndexError("No item with that key")</c> otherwise.
+    /// when both are pure ASCII; <see cref="KeyNotFoundException"/> otherwise.
     /// </summary>
     internal static object? Lookup(Sqlite3Rows result, object?[] row, string key)
     {
@@ -69,11 +71,11 @@ internal static class Sqlite3Cursor
         {
             if (NamesMatch(result.Description[index], key))
             {
-                return index < row.Length ? row[index] : throw new EngineIndexException(nameof(row), "tuple index out of range");
+                return index < row.Length ? row[index] : throw new InvalidOperationException("The row holds fewer values than the result has columns.");
             }
         }
 
-        throw new EngineIndexException(nameof(key), "No item with that key");
+        throw new KeyNotFoundException($"The row has no column named '{key}'.");
     }
 
     private static bool NamesMatch(string left, string right)
@@ -150,7 +152,7 @@ internal static class Sqlite3Cursor
         {
             return EngineUtf8.Decode(bytes);
         }
-        catch (EngineUnicodeDecodeException)
+        catch (InvalidDataException)
         {
             var message = new List<byte>();
             message.AddRange("Could not decode to UTF-8 column '"u8.ToArray());
@@ -159,7 +161,7 @@ internal static class Sqlite3Cursor
             message.AddRange(bytes.TakeWhile(value => value != 0));
             message.Add((byte)'\'');
             var kept = message.Take(DecodeMessageBytes).Select(value => value < 0x80 ? (char)value : '\uFFFD');
-            throw new Sqlite3Exception("OperationalError", string.Concat(kept));
+            throw new SqliteException(string.Concat(kept), raw.SQLITE_ERROR);
         }
     }
 
@@ -185,7 +187,8 @@ internal static class Sqlite3Cursor
     }
 
     /// <summary>
-    /// <c>_pysqlite_seterror</c>: the class for the primary result code, the extended code, and <c>sqlite3_errmsg</c> decoded as strict UTF-8.
+    /// The <see cref="SqliteException"/> for the handle's last error: its primary and extended result codes, and <c>sqlite3_errmsg</c>
+    /// decoded as strict UTF-8.
     /// </summary>
     internal static Exception Error(sqlite3 db)
     {
@@ -196,21 +199,8 @@ internal static class Sqlite3Cursor
         }
 
         var message = EngineUtf8.Decode(NullTerminated(raw.sqlite3_errmsg(db)));
-        return new Sqlite3Exception(ErrorClass(code), message, raw.sqlite3_extended_errcode(db));
+        return new SqliteException(message, code, raw.sqlite3_extended_errcode(db));
     }
-
-    /// <summary>The <c>sqlite3</c> exception class for a primary result code.</summary>
-    internal static string ErrorClass(int primaryCode) => primaryCode switch
-    {
-        raw.SQLITE_INTERNAL or raw.SQLITE_NOTFOUND => "InternalError",
-        raw.SQLITE_ERROR or raw.SQLITE_PERM or raw.SQLITE_ABORT or raw.SQLITE_BUSY or raw.SQLITE_LOCKED or raw.SQLITE_READONLY
-            or raw.SQLITE_INTERRUPT or raw.SQLITE_IOERR or raw.SQLITE_FULL or raw.SQLITE_CANTOPEN or raw.SQLITE_PROTOCOL
-            or raw.SQLITE_EMPTY or raw.SQLITE_SCHEMA => "OperationalError",
-        raw.SQLITE_TOOBIG => "DataError",
-        raw.SQLITE_CONSTRAINT or raw.SQLITE_MISMATCH => "IntegrityError",
-        raw.SQLITE_MISUSE or raw.SQLITE_RANGE => "InterfaceError",
-        _ => "DatabaseError",
-    };
 
     // lstrip_sql: skips white space (space, tab, form feed, new line, carriage return), "--" line comments and "/* */" block comments;
     // true when a character other than those remains before the terminating NUL. An unterminated comment ends the text.

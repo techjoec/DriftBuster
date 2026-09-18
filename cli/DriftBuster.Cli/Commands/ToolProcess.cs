@@ -28,15 +28,18 @@ internal static class ToolProcess
 
         try
         {
-            using var process = Process.Start(info) ?? throw OsError.Create(OsError.NoSuchFile, command[0]);
+            using var process = Process.Start(info) ?? throw ProgramNotFound(command[0], inner: null);
             process.WaitForExit();
             return process.ExitCode;
         }
         catch (Win32Exception exc)
         {
-            throw OsError.Create(OsError.NoSuchFile, command[0], exc);
+            throw ProgramNotFound(command[0], exc);
         }
     }
+
+    private static FileNotFoundException ProgramNotFound(string name, Exception? inner)
+        => new($"Could not find the program '{name}'.", name, inner);
 
     // execvp's lookup: a name without a slash is found in the PATH directories in order (an empty entry is the current directory),
     // where the runtime would look beside the running host first.
@@ -59,7 +62,7 @@ internal static class ToolProcess
             }
         }
 
-        throw OsError.Create(OsError.NoSuchFile, name);
+        throw ProgramNotFound(name, inner: null);
     }
 
     public static void Run(IReadOnlyList<string> command, string? cwd, string arrow, TextWriter stdout, Func<IReadOnlyList<string>, string?, int> launcher)

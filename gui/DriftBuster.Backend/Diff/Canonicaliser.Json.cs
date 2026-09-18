@@ -30,9 +30,8 @@ public static partial class Canonicaliser
     /// anything else goes through <see cref="CanonicaliseText"/>.
     /// </summary>
     /// <remarks>
-    /// <c>json.loads</c> also raises <c>ValueError</c> past 4300 integer digits and <c>RecursionError</c> past the
-    /// nesting limit; neither is a <c>JSONDecodeError</c>. <see cref="EngineJson"/> refuses
-    /// both, and the canonicaliser falls back to text like any other undecodable payload.
+    /// A document past 4300 integer digits or past the nesting limit is refused by <see cref="EngineJson"/>, and the
+    /// canonicaliser falls back to text like any other undecodable payload.
     /// </remarks>
     public static string CanonicaliseJson(string payload)
     {
@@ -171,7 +170,7 @@ public static partial class Canonicaliser
         double number when double.IsPositiveInfinity(number) => "Infinity",
         double number when double.IsNegativeInfinity(number) => "-Infinity",
         double number => EngineRepr.Float(number),
-        byte[] => throw new EngineTypeException("Object of type bytes is not JSON serializable", nameof(value)),
+        byte[] => throw new NotSupportedException("A value of type 'byte array' cannot be written as JSON."),
         _ => throw new ArgumentException($"Unsupported JSON value type {value.GetType()}", nameof(value)),
     };
 

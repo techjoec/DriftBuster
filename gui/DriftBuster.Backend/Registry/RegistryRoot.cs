@@ -24,33 +24,32 @@ public sealed partial record RegistryRoot(string Hive, string Path, string? View
     /// <c>parse_registry_root_descriptor(text)</c>: <c>HIVE\path[,view=32|64|auto]</c> with "/" read as "\", the hive matched
     /// case-insensitively and upper-cased, the path stripped, and <c>view=auto</c> read as no view (the last view option wins).
     /// </summary>
-    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
-    /// <exception cref="EngineIndexException">A descriptor of only commas and whitespace (Python's <c>IndexError</c>).</exception>
+    /// <exception cref="FormatException">Each refusal, a descriptor of only commas and whitespace included.</exception>
     public static RegistryRoot Parse(string? text)
     {
         var value = EngineText.Strip(text ?? string.Empty);
         if (value.Length == 0)
         {
-            throw new EngineValueException("Registry root descriptor must be non-empty", nameof(text));
+            throw new FormatException("Registry root descriptor must be non-empty");
         }
 
         var segments = value.Split(',').Select(EngineText.Strip).Where(segment => segment.Length > 0).ToList();
         if (segments.Count == 0)
         {
-            throw new EngineIndexException(nameof(text), "list index out of range");
+            throw new FormatException("Registry root descriptor must be non-empty");
         }
 
         var match = DescriptorPattern().Match(segments[0].Replace('/', '\\'));
         if (!match.Success)
         {
-            throw new EngineValueException("Registry root descriptor must start with HKLM\\ or HKCU\\", nameof(text));
+            throw new FormatException("Registry root descriptor must start with HKLM\\ or HKCU\\");
         }
 
         var hive = RegistryText.Upper(match.Groups["hive"].Value);
         var path = EngineText.Strip(match.Groups["path"].Value);
         if (path.Length == 0)
         {
-            throw new EngineValueException("Registry root path segment must be non-empty", nameof(text));
+            throw new FormatException("Registry root path segment must be non-empty");
         }
 
         string? view = null;
@@ -67,19 +66,19 @@ public sealed partial record RegistryRoot(string Hive, string Path, string? View
         var separator = option.IndexOf('=', StringComparison.Ordinal);
         if (separator < 0)
         {
-            throw new EngineValueException($"Registry root option '{option}' must be formatted as key=value", nameof(option));
+            throw new FormatException($"Registry root option '{option}' must be formatted as key=value");
         }
 
         var key = EngineText.Lower(EngineText.Strip(option[..separator]));
         var rawValue = EngineText.Strip(option[(separator + 1)..]);
         if (!string.Equals(key, "view", StringComparison.Ordinal))
         {
-            throw new EngineValueException($"Unsupported registry root option '{key}'", nameof(option));
+            throw new FormatException($"Unsupported registry root option '{key}'");
         }
 
         if (rawValue.Length == 0)
         {
-            throw new EngineValueException("Registry root view must be non-empty when provided", nameof(option));
+            throw new FormatException("Registry root view must be non-empty when provided");
         }
 
         return RegistryText.Upper(rawValue) switch
@@ -87,7 +86,7 @@ public sealed partial record RegistryRoot(string Hive, string Path, string? View
             "AUTO" => null,
             "32" => "32",
             "64" => "64",
-            _ => throw new EngineValueException("Registry root view must be 32, 64, or auto", nameof(option)),
+            _ => throw new FormatException("Registry root view must be 32, 64, or auto"),
         };
     }
 }

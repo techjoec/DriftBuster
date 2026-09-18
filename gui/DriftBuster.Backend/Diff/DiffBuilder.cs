@@ -176,17 +176,17 @@ public static class DiffBuilder
         ArgumentNullException.ThrowIfNull(results);
         if (results.Count == 0)
         {
-            throw new EngineValueException("results must not be empty", nameof(results));
+            throw new ArgumentException("results must not be empty.", nameof(results));
         }
 
         if (baselineNames is not null && baselineNames.Count != results.Count)
         {
-            throw new EngineValueException("baseline_names length must match results", nameof(baselineNames));
+            throw new ArgumentException("baseline_names length must match results.", nameof(baselineNames));
         }
 
         if (comparisonNames is not null && comparisonNames.Count != results.Count)
         {
-            throw new EngineValueException("comparison_names length must match results", nameof(comparisonNames));
+            throw new ArgumentException("comparison_names length must match results.", nameof(comparisonNames));
         }
 
         var comparisons = results

@@ -49,7 +49,7 @@ public static class JsonLinesReport
     }
 
     internal static HuntFinding AsFinding(object? hit) => hit as HuntFinding
-        ?? throw new Infrastructure.EngineAttributeException($"expected a hunt hit, not '{Infrastructure.EngineBuiltins.TypeName(hit)}'");
+        ?? throw new InvalidDataException($"expected a hunt hit, not '{Infrastructure.EngineBuiltins.TypeName(hit)}'");
 
     /// <summary>
     /// <c>iter_json_records</c>: a detection record per match (metadata updated with <paramref name="extraMetadata"/>), then a

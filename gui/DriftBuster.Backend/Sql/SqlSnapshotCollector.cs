@@ -17,7 +17,7 @@ public static class SqlSnapshotCollector
     /// <summary>
     /// The database is <c>os.path.expanduser(os.path.expandvars(path))</c>, joined under <paramref name="baseDir"/> when relative (the
     /// expanded path itself when that does not exist and the expanded path does). A missing database is skipped with reason
-    /// <c>missing</c> when the source is optional, else raises <c>FileNotFoundError("SQL snapshot source not found: {path}")</c>. Otherwise
+    /// <c>missing</c> when the source is optional, else raises <see cref="FileNotFoundException"/> (<c>SQL snapshot source not found: {path}</c>). Otherwise
     /// <see cref="SqliteSnapshots.BuildSqliteSnapshot"/> runs with the source's keyword arguments, its payload is written as
     /// <c>json.dumps(payload, indent=2, sort_keys=True)</c> (bytes, no line-break translation) to <see cref="ResultFileName"/> under
     /// <paramref name="destinationRoot"/>, and the summary and metadata carry the table names, row counts, column maps, placeholder,

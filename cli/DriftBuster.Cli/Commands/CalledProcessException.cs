@@ -1,10 +1,8 @@
 using System.Globalization;
 
-using DriftBuster.Backend.Infrastructure;
-
 namespace DriftBuster.Cli.Commands;
 
-/// <summary><c>subprocess.CalledProcessError</c>: a command run with <c>check=True</c> exited with a non-zero status.</summary>
+/// <summary>A command the tool ran exited with a non-zero status.</summary>
 internal sealed class CalledProcessException : Exception
 {
     public CalledProcessException()
@@ -24,7 +22,7 @@ internal sealed class CalledProcessException : Exception
     public CalledProcessException(IReadOnlyList<string> command, int exitCode)
         : base(string.Create(
             CultureInfo.InvariantCulture,
-            $"Command '{EngineRepr.Repr(command.Cast<object?>().ToList())}' returned non-zero exit status {exitCode}."))
+            $"The command '{string.Join(' ', command)}' exited with code {exitCode}."))
     {
     }
 }

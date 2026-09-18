@@ -57,13 +57,13 @@ public static partial class CaptureRunner
     /// <c>_serialise_detection(entry, root)</c>: <see cref="DetectionMetadata.SummariseMetadata"/> of the match plus <c>path</c>,
     /// <c>relative_path</c> and one <see cref="SerialiseProfileConfig"/> entry per applied profile config.
     /// </summary>
-    /// <exception cref="EngineValueException">The entry has no match (<c>Cannot serialise detection for paths without a match.</c>).</exception>
+    /// <exception cref="ArgumentException">The entry has no match (<c>Cannot serialise detection for paths without a match.</c>).</exception>
     public static OrderedDictionary<string, object?> SerialiseDetection(ProfiledDetection entry, string root)
     {
         ArgumentNullException.ThrowIfNull(entry);
         if (entry.Detection is null)
         {
-            throw new EngineValueException("Cannot serialise detection for paths without a match.", nameof(entry));
+            throw new ArgumentException("Cannot serialise detection for paths without a match.", nameof(entry));
         }
 
         var payload = DetectionPayload(entry.Detection);

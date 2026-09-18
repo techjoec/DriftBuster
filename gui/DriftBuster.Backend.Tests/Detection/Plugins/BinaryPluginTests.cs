@@ -142,11 +142,11 @@ public sealed class BinaryPluginTests
         match.Metadata!.Keys.Should().Equal("signature", "decode_error");
         var error = (OrderedDictionary<string, object?>)match.Metadata["decode_error"]!;
         error.Keys.Should().Equal("type", "message");
-        error["type"].Should().Be("InvalidFileException");
-        error["message"].Should().Be("Invalid file");
+        error["type"].Should().Be("InvalidDataException");
+        error["message"].Should().Be("The binary property list is not valid.");
 
         var headerOnly = plugin.Detect("x.plist", "bplist00"u8.ToArray(), null);
-        ((OrderedDictionary<string, object?>)headerOnly!.Metadata!["decode_error"]!)["type"].Should().Be("InvalidFileException");
+        ((OrderedDictionary<string, object?>)headerOnly!.Metadata!["decode_error"]!)["type"].Should().Be("InvalidDataException");
     }
 
     [Fact]

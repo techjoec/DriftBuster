@@ -21,7 +21,6 @@ internal static partial class UnixFileType
     private const int DirectoryFileType = 0x4000;
     private const int NoSuchSystemCall = 38;
     private const int OperationNotPermitted = 1;
-    private const int PermissionDenied = 13;
 
     // pathlib._abc._IGNORED_ERRNOS: ENOENT, ENOTDIR, EBADF, ELOOP. Path.is_file() reports these as False and raises any other.
     private static readonly int[] IgnoredErrors = [2, 20, 9, 40];
@@ -52,8 +51,7 @@ internal static partial class UnixFileType
 
     /// <summary>
     /// <c>os.stat(path, follow_symlinks=...)</c> reduced to its file type; null when this platform or kernel offers no
-    /// <c>statx</c>. A path holding a NUL character is <see cref="Kind.Missing"/> (Python raises <c>ValueError</c>, which
-    /// <c>is_file()</c> reports as False).
+    /// <c>statx</c>. A path holding a NUL character is <see cref="Kind.Missing"/>, as <c>is_file()</c> reports it.
     /// </summary>
     /// <exception cref="UnauthorizedAccessException">The lookup was refused (<c>EACCES</c>: a component cannot be searched).</exception>
     /// <exception cref="IOException">Any other failure Python's <c>is_file()</c> raises (<c>ENAMETOOLONG</c>, <c>EIO</c>, ...).</exception>
@@ -114,10 +112,8 @@ internal static partial class UnixFileType
                 return Kind.Missing;
             }
 
-            // The errno travels as HResult (on the inner exception of an UnauthorizedAccessException), where OsError.Errno and the
-            // error name mappers read it.
-            var raised = OsError.Create(failed, display);
-            throw failed == PermissionDenied ? new UnauthorizedAccessException(raised.Message, raised) : raised;
+            // The errno travels as HResult, where FileSystemError.Errno reads it.
+            throw FileSystemError.Create(failed, display);
         }
 
         // stx_mode is a native-endian __u16.

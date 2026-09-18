@@ -27,7 +27,7 @@ public static class RegistryCommands
     internal static Func<IReadOnlyList<RegistryRoot>, SearchSpec, IReadOnlyList<RegistryHit>> SearchRegistry { get; set; }
         = (roots, spec) => RegistryOperations.SearchRegistry(roots, spec);
 
-    /// <summary><c>main</c>'s gate: <c>SystemExit("Registry scanning requires Windows.")</c> off Windows.</summary>
+    /// <summary><c>main</c>'s gate: <c>Registry scanning requires Windows.</c> off Windows.</summary>
     /// <exception cref="CommandExitException">Not on Windows.</exception>
     public static void RequireWindows()
     {
@@ -60,7 +60,7 @@ public static class RegistryCommands
 
     /// <summary>
     /// <c>search TOKEN</c> (<c>--max-depth</c> and <c>--max-hits</c> are <c>argparse</c> <c>int</c>s of any size, default 12 and 200): the explicit <c>--root</c> values (<see cref="ParseRootArgument"/>, a refusal becoming
-    /// <c>SystemExit("invalid --root value: ...")</c>) or the roots suggested for the token, searched with the keywords, the patterns
+    /// <see cref="CommandExitException"/> <c>invalid --root value: ...</c>) or the roots suggested for the token, searched with the keywords, the patterns
     /// compiled in order and the limits; <c>"{hive} \ {path} :: {value_name} = {data_preview}"</c> per hit.
     /// </summary>
     /// <exception cref="System.Text.RegularExpressions.RegexParseException">A pattern is not a valid .NET regular expression.</exception>
@@ -98,7 +98,7 @@ public static class RegistryCommands
     /// prints <see cref="EmitConfigJson"/> of it.
     /// </summary>
     /// <exception cref="CommandExitException">A <c>--root</c> value is refused.</exception>
-    /// <exception cref="EngineValueException">A <c>--remote-target</c> value is refused (not converted to <c>SystemExit</c>).</exception>
+    /// <exception cref="FormatException">A <c>--remote-target</c> value is refused (not converted to <see cref="CommandExitException"/>).</exception>
     public static OrderedDictionary<string, object?> EmitConfig(
         string token,
         string? alias = null,
@@ -175,7 +175,7 @@ public static class RegistryCommands
         {
             return values.Select(ParseRootArgument).ToList();
         }
-        catch (EngineValueException exc)
+        catch (FormatException exc)
         {
             throw new CommandExitException($"invalid --root value: {exc.Message}", exc);
         }
@@ -189,19 +189,19 @@ public static class RegistryCommands
     /// <c>use_ssl</c> (1/true/yes/on or 0/false/no/off), <c>username</c> (also <c>user</c>), <c>password_env</c>,
     /// <c>credential_profile</c>, <c>transport</c> and <c>alias</c>; keys are stripped, lower-cased and read with "-" as "_".
     /// </summary>
-    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal, or from <c>int()</c>.</exception>
+    /// <exception cref="FormatException">Each refusal, or a port that is not an integer.</exception>
     public static OrderedDictionary<string, object?> ParseRemoteTargetArg(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
         var parts = value.Split(',').Select(EngineText.Strip).Where(segment => segment.Length > 0).ToList();
         if (parts.Count == 0)
         {
-            throw new EngineValueException("remote target requires a host segment", nameof(value));
+            throw new FormatException("remote target requires a host segment");
         }
 
         if (parts[0].Contains('=', StringComparison.Ordinal))
         {
-            throw new EngineValueException("remote target must start with the host name", nameof(value));
+            throw new FormatException("remote target must start with the host name");
         }
 
         var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["host"] = parts[0] };
@@ -218,7 +218,7 @@ public static class RegistryCommands
         var separator = entry.IndexOf('=', StringComparison.Ordinal);
         if (separator < 0)
         {
-            throw new EngineValueException($"Remote target entry '{entry}' must include '='", nameof(entry));
+            throw new FormatException($"Remote target entry '{entry}' must include '='");
         }
 
         var key = entry[..separator];
@@ -226,7 +226,7 @@ public static class RegistryCommands
         var rawValue = EngineText.Strip(entry[(separator + 1)..]);
         if (rawValue.Length == 0)
         {
-            throw new EngineValueException($"Remote target value for '{key}' must be non-empty", nameof(entry));
+            throw new FormatException($"Remote target value for '{key}' must be non-empty");
         }
 
         switch (normalised)
@@ -244,7 +244,7 @@ public static class RegistryCommands
                 payload[normalised] = rawValue;
                 break;
             default:
-                throw new EngineValueException($"Unsupported remote target key '{key}'", nameof(entry));
+                throw new FormatException($"Unsupported remote target key '{key}'");
         }
     }
 
@@ -258,6 +258,6 @@ public static class RegistryCommands
 
         return FalseWords.Contains(lowered, StringComparer.Ordinal)
             ? false
-            : throw new EngineValueException($"Unsupported boolean value '{rawValue}' for use-ssl", nameof(rawValue));
+            : throw new FormatException($"Unsupported boolean value '{rawValue}' for use-ssl");
     }
 }

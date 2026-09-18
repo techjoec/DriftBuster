@@ -84,7 +84,7 @@ public sealed class OfflineSqlSnapshotSourceTests : IDisposable
     {
         var payload = Map(("sql_snapshot", Map(("path", "sample.db"), ("limit", 0L))));
         var act = () => OfflineSqlSnapshotSource.FromDict(payload);
-        act.Should().Throw<EngineValueException>();
+        act.Should().Throw<InvalidDataException>();
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class OfflineSqlSnapshotSourceTests : IDisposable
     {
         var payload = Map(("sql_snapshot", Map(("path", "sample.db"), ("dialect", "postgres"))));
         var act = () => OfflineSqlSnapshotSource.FromDict(payload);
-        act.Should().Throw<EngineValueException>();
+        act.Should().Throw<InvalidDataException>();
     }
 
     [Fact]

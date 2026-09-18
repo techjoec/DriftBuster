@@ -16,7 +16,7 @@ public sealed class BinaryPlistTests
     private static string DecodeErrorType(string hex)
     {
         var act = () => Load(hex);
-        return act.Should().Throw<BinaryPlist.DecodeException>().Which.EngineType;
+        return act.Should().Throw<BinaryPlist.DecodeException>().Which.ErrorType;
     }
 
     [Theory]
@@ -62,11 +62,11 @@ public sealed class BinaryPlistTests
     [InlineData("62706c6973743030517808000000000000010100000000000000010000000000000005000000000000000a")] // top object out of range
     [InlineData("62706c6973743030")] // header only
     [InlineData("62706c69737430300000000000000000000000000000000000000000000000000000000000000000")] // zero trailer
-    public void InvalidPayloadsRaiseInvalidFileException(string hex)
+    public void InvalidPayloadsRaiseInvalidDataException(string hex)
     {
-        DecodeErrorType(hex).Should().Be("InvalidFileException");
+        DecodeErrorType(hex).Should().Be("InvalidDataException");
         var act = () => Load(hex);
-        act.Should().Throw<BinaryPlist.DecodeException>().WithMessage("Invalid file");
+        act.Should().Throw<BinaryPlist.DecodeException>().WithMessage("The binary property list is not valid.");
     }
 
     [Fact]
@@ -85,9 +85,9 @@ public sealed class BinaryPlistTests
 
     // The error names the first key's type and the type of the first later key that cannot be ordered against it.
     [Theory]
-    [InlineData("62706c6973743030d201020303516110015176080d0f110000000000000101000000000000000400000000000000000000000000000013", "'<' not supported between instances of 'str' and 'int'")]
-    [InlineData("62706c6973743030d201020303333ff800000000000051735176080d1618000000000000010100000000000000040000000000000000000000000000001a", "'<' not supported between instances of 'datetime.datetime' and 'str'")]
-    [InlineData("62706c6973743030d301020304040410020010015176080f1112140000000000000101000000000000000500000000000000000000000000000016", "'<' not supported between instances of 'int' and 'NoneType'")]
+    [InlineData("62706c6973743030d201020303516110015176080d0f110000000000000101000000000000000400000000000000000000000000000013", "A key of type 'string' cannot be compared with a key of type 'integer'.")]
+    [InlineData("62706c6973743030d201020303333ff800000000000051735176080d1618000000000000010100000000000000040000000000000000000000000000001a", "A key of type 'date' cannot be compared with a key of type 'string'.")]
+    [InlineData("62706c6973743030d301020304040410020010015176080f1112140000000000000101000000000000000500000000000000000000000000000016", "A key of type 'integer' cannot be compared with a key of type 'null'.")]
     public void MixedKeyTypesAreRejectedBeforeSorting(string hex, string message)
     {
         var act = () => Keys(hex);

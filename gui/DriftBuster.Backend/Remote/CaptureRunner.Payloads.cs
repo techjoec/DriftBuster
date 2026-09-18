@@ -56,7 +56,7 @@ public static partial class CaptureRunner
     /// <c>profile_summary</c> totals (0 when absent); <c>redaction</c> (placeholder, mask token count, total redactions); and a copy of
     /// each registry scan summary.
     /// </summary>
-    /// <exception cref="KeyNotFoundException">A capture field is missing (<c>KeyError</c>).</exception>
+    /// <exception cref="KeyNotFoundException">A capture field is missing.</exception>
     public static OrderedDictionary<string, object?> BuildManifestPayload(
         IReadOnlyDictionary<string, object?> capture,
         string snapshotPath,
@@ -110,7 +110,7 @@ public static partial class CaptureRunner
         };
     }
 
-    // The manifest's capture block, the fields subscripted in Python's order so the first missing one is the KeyError raised.
+    // The manifest's capture block, the fields read in Python's order so the first missing one is the one reported.
     private static OrderedDictionary<string, object?> ManifestCapture(IReadOnlyDictionary<string, object?> capture, string snapshotPath, string manifestPath)
     {
         var block = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -146,7 +146,7 @@ public static partial class CaptureRunner
 
     /// <summary>
     /// <c>path.write_text(json.dumps(payload, indent=2, sort_keys=True))</c>: ASCII-escaped JSON with keys in code point order, each line
-    /// break written as the platform's (text mode), no trailing newline. A write failure raises Python's <c>OSError</c> text.
+    /// break written as the platform's (text mode), no trailing newline. A write failure raises the runtime's exception.
     /// </summary>
     internal static void WriteJsonText(string path, OrderedDictionary<string, object?> payload)
     {

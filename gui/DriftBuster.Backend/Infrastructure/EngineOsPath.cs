@@ -17,7 +17,7 @@ public static partial class EngineOsPath
     [GeneratedRegex(@"'[^']*'?|%(?<percent>%|[^%]*%?)|\$(?<dollar>\$|[-A-Za-z0-9_]+|\{[^}]*\}?)", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex WindowsVariable();
 
-    /// <summary>Test seam for <c>os.environ[name]</c>: null stands for the <c>KeyError</c> of an unset variable.</summary>
+    /// <summary>Test seam for <c>os.environ[name]</c>: null stands for an unset variable.</summary>
     internal static Func<string, string?> GetEnvironmentVariable { get; set; } = Lookup;
 
     /// <summary>
@@ -99,10 +99,10 @@ public static partial class EngineOsPath
         return GetEnvironmentVariable(name) ?? match.Value;
     }
 
-    /// <summary>Test seam for <c>pwd.getpwnam(name).pw_dir</c> over the encoded name: null stands for <c>KeyError</c>.</summary>
+    /// <summary>Test seam for <c>pwd.getpwnam(name).pw_dir</c> over the encoded name: null stands for no such account.</summary>
     internal static Func<byte[], string?> GetUserHome { get; set; } = UnixPasswd.HomeByName;
 
-    /// <summary>Test seam for <c>pwd.getpwuid(os.getuid()).pw_dir</c>: null stands for <c>KeyError</c>.</summary>
+    /// <summary>Test seam for <c>pwd.getpwuid(os.getuid()).pw_dir</c>: null stands for no such account.</summary>
     internal static Func<string?> GetCurrentUserHome { get; set; } = UnixPasswd.HomeOfCurrentUser;
 
     /// <summary>
@@ -113,7 +113,7 @@ public static partial class EngineOsPath
     /// <c>~user</c> is left unchanged. On Windows <c>USERPROFILE</c> (or <c>HOMEDRIVE</c> + <c>HOMEPATH</c>) is used and
     /// <c>~user</c> is guessed as a sibling profile directory.
     /// </summary>
-    /// <exception cref="EngineValueException">A posix <c>~user</c> name holding a NUL character (<c>embedded null byte</c>).</exception>
+    /// <exception cref="ArgumentException">A posix <c>~user</c> name holding a NUL character.</exception>
     public static string ExpandUser(string path) => ExpandUser(path, OperatingSystem.IsWindows());
 
     internal static string ExpandUser(string path, bool windows)
@@ -151,8 +151,8 @@ public static partial class EngineOsPath
         else
         {
             var name = path[1..end];
-            // pwd.getpwnam encodes the name with the filesystem encoding: an unpaired surrogate raises UnicodeEncodeError, which
-            // is not reproduced (the root keeps its surrogate and is never looked up), and a NUL raises ValueError.
+            // pwd.getpwnam encodes the name with the filesystem encoding: an unpaired surrogate cannot be encoded, and is left
+            // unexpanded (the root keeps its surrogate and is never looked up); a NUL is refused.
             if (EngineUtf8.HasUnpairedSurrogate(name))
             {
                 return path;
@@ -160,7 +160,7 @@ public static partial class EngineOsPath
 
             if (name.Contains('\0', StringComparison.Ordinal))
             {
-                throw new EngineValueException("embedded null byte", nameof(path));
+                throw new ArgumentException("Null character in path.", nameof(path));
             }
 
             home = GetUserHome(Encoding.UTF8.GetBytes(name));

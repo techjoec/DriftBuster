@@ -10,8 +10,9 @@ public static class EngineUtf8
     private static readonly UTF8Encoding Strict = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     /// <summary>
-    /// The decoded text; a byte sequence that is not UTF-8 raises <see cref="EngineUnicodeDecodeException"/>, whose message names the
-    /// offending byte and its position, for example <c>'utf-8' codec can't decode byte 0xff in position 1: invalid start byte</c>.
+    /// The decoded text; a byte sequence that is not UTF-8 raises <see cref="InvalidDataException"/>, whose message names the
+    /// first bad sequence and its position, for example <c>The data is not valid UTF-8: byte 0xFF at position 1 cannot start a
+    /// character.</c>
     /// </summary>
     public static string Decode(byte[] bytes)
     {
@@ -22,7 +23,7 @@ public static class EngineUtf8
         }
         catch (DecoderFallbackException)
         {
-            throw new EngineUnicodeDecodeException(DecodeErrorMessage(bytes) ?? "'utf-8' codec can't decode the bytes");
+            throw new InvalidDataException(DecodeErrorMessage(bytes) ?? "The data is not valid UTF-8.");
         }
     }
 
@@ -48,18 +49,22 @@ public static class EngineUtf8
         return false;
     }
 
-    /// <summary><c>str(UnicodeDecodeError)</c> for the first invalid sequence of <paramref name="bytes"/>; null when they are valid UTF-8.</summary>
+    /// <summary>The error message for the first invalid sequence of <paramref name="bytes"/>; null when they are valid UTF-8.</summary>
     internal static string? DecodeErrorMessage(ReadOnlySpan<byte> bytes)
     {
         var position = 0;
         while (position < bytes.Length)
         {
-            var (length, span, reason) = Sequence(bytes[position..]);
+            var (length, _, reason) = Sequence(bytes[position..]);
             if (reason is not null)
             {
-                return span == 1
-                    ? string.Create(CultureInfo.InvariantCulture, $"'utf-8' codec can't decode byte 0x{bytes[position]:x2} in position {position}: {reason}")
-                    : string.Create(CultureInfo.InvariantCulture, $"'utf-8' codec can't decode bytes in position {position}-{position + span - 1}: {reason}");
+                var detail = reason switch
+                {
+                    InvalidStart => string.Create(CultureInfo.InvariantCulture, $"byte 0x{bytes[position]:X2} at position {position} cannot start a character"),
+                    InvalidContinuation => string.Create(CultureInfo.InvariantCulture, $"the sequence at position {position} has an invalid continuation byte"),
+                    _ => string.Create(CultureInfo.InvariantCulture, $"the data ends inside the sequence at position {position}"),
+                };
+                return string.Create(CultureInfo.InvariantCulture, $"The data is not valid UTF-8: {detail}.");
             }
 
             position += length;
@@ -71,11 +76,12 @@ public static class EngineUtf8
     // One sequence at the start of rest: (bytes consumed, error span, error reason or null). The lead byte decides the length, the
     // second byte's range is narrowed after E0, ED, F0 and F4 (Unicode Table 3-7), and a sequence cut short by the end of the data
     // reports every remaining byte unless a byte already present is invalid.
+    private const string InvalidStart = "invalid start byte";
+    private const string InvalidContinuation = "invalid continuation byte";
+    private const string EndOfData = "unexpected end of data";
+
     private static (int Length, int Span, string? Reason) Sequence(ReadOnlySpan<byte> rest)
     {
-        const string InvalidStart = "invalid start byte";
-        const string InvalidContinuation = "invalid continuation byte";
-        const string EndOfData = "unexpected end of data";
         var lead = rest[0];
         if (lead < 0x80)
         {

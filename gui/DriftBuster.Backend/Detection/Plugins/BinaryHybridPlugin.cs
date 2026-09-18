@@ -109,7 +109,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
         {
             metadata["decode_error"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["type"] = exc.EngineType,
+                ["type"] = exc.ErrorType,
                 ["message"] = exc.Message,
             };
             reasons.Add("Binary plist payload could not be decoded; recorded error metadata");

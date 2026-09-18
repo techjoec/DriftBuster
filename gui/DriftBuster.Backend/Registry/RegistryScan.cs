@@ -7,7 +7,7 @@ namespace DriftBuster.Backend.Registry;
 /// <summary>
 /// <c>registry.scan</c>: installed application enumeration from the Uninstall keys, registry root suggestions for an application
 /// token, and the breadth-first value search. Every function takes an <see cref="IRegistryBackend"/>; without one the Windows
-/// backend is used, and off Windows <see cref="DefaultBackend"/> raises Python's <c>RuntimeError</c> text.
+/// backend is used, and off Windows <see cref="DefaultBackend"/> raises <see cref="PlatformNotSupportedException"/>.
 /// </summary>
 public static partial class RegistryScan
 {
@@ -36,7 +36,7 @@ public static partial class RegistryScan
     public static bool IsWindows() => IsWindowsProbe();
 
     /// <summary><c>_default_backend()</c>: the Windows backend.</summary>
-    /// <exception cref="PlatformNotSupportedException">Python's <c>RuntimeError("Windows Registry scanning requires Windows platform")</c>.</exception>
+    /// <exception cref="PlatformNotSupportedException"><c>Windows Registry scanning requires Windows platform</c>.</exception>
     public static IRegistryBackend DefaultBackend()
     {
         if (!IsWindows() || !OperatingSystem.IsWindows())

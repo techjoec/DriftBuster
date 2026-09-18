@@ -22,7 +22,7 @@ internal static partial class PurgeReportingRetention
         ArgumentNullException.ThrowIfNull(roots);
         if (retentionDays.Sign < 0)
         {
-            throw new EngineValueException("retention_days must be non-negative", nameof(retentionDays));
+            throw new ArgumentOutOfRangeException(nameof(retentionDays), "retention_days must be non-negative.");
         }
 
         var clock = MicrosecondsOf((now ?? DateTimeOffset.UtcNow).UtcTicks);

@@ -72,18 +72,18 @@ public static class RunProfileStore
     /// </summary>
     /// <remarks>
     /// A structured profile (<see cref="RunProfile.IsStructured"/>) is checked as the offline runner finds its sources instead: a source
-    /// that is not optional and holds no glob character must exist once expanded (<c>FileNotFoundError("Path does not exist: {path}")</c>
+    /// that is not optional and holds no glob character must exist once expanded (<see cref="FileNotFoundException"/>, <c>Path does not exist: {path}</c>
     /// with the path as written); a glob that matches nothing raises the same error when the run collects it; and the baseline need not
     /// exist (an optional baseline source may be missing).
     /// </remarks>
-    /// <exception cref="EngineValueException">No sources, a blank source path, or a baseline that is not a source path.</exception>
+    /// <exception cref="ArgumentException">No sources, a blank source path, or a baseline that is not a source path.</exception>
     /// <exception cref="FileNotFoundException">A required source path, a glob base directory or the baseline path is missing.</exception>
     public static void ValidateProfile(RunProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
         if (profile.Sources.Count == 0)
         {
-            throw new EngineValueException("At least one source must be provided.", nameof(profile));
+            throw new InvalidDataException("At least one source must be provided.");
         }
 
         var structured = profile.IsStructured;
@@ -91,7 +91,7 @@ public static class RunProfileStore
         {
             if (EngineText.Strip(source.Path).Length == 0)
             {
-                throw new EngineValueException("Source paths must not be empty.", nameof(profile));
+                throw new InvalidDataException("Source paths must not be empty.");
             }
 
             if (!structured)
@@ -108,7 +108,7 @@ public static class RunProfileStore
         {
             if (!profile.Sources.Any(source => string.Equals(source.Path, profile.Baseline, StringComparison.Ordinal)))
             {
-                throw new EngineValueException("Baseline must be one of the sources.", nameof(profile));
+                throw new InvalidDataException("Baseline must be one of the sources.");
             }
 
             if (!structured)
@@ -177,7 +177,7 @@ public static class RunProfileStore
             return EnginePath.IsFile(configPath) ? RunProfile.FromDict(ReadJson(configPath)) : null;
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException or ArgumentException or KeyNotFoundException
-            or InvalidOperationException or EngineAttributeException or EngineUnicodeDecodeException)
+            or InvalidOperationException or InvalidDataException or FormatException)
         {
             return null;
         }
@@ -266,17 +266,15 @@ public static class RunProfileStore
     }
 
     /// <summary><c>json.loads(path.read_text(encoding="utf-8"))</c>.</summary>
-    /// <exception cref="IOException">The path is a directory (<c>open()</c>'s error for one, <see cref="OsError.DirectoryOpenErrno"/>), or
-    /// cannot be opened or read (Python's <c>OSError</c> text, naming the path as <c>str(Path)</c> spells it when <c>open()</c> raised).</exception>
-    /// <exception cref="EngineUnicodeDecodeException">The bytes are not UTF-8 (<c>UnicodeDecodeError</c>).</exception>
-    /// <exception cref="EngineValueException">The text is not a JSON document (<c>JSONDecodeError</c>), or holds an integer past the decoder's
-    /// digit limit (<c>ValueError</c>, Python's text).</exception>
-    /// <exception cref="EngineRecursionException">Containers nested past the decoder's limit (<c>RecursionError</c>).</exception>
+    /// <exception cref="IOException">The path cannot be opened or read.</exception>
+    /// <exception cref="UnauthorizedAccessException">The path is a directory, or access to it is refused.</exception>
+    /// <exception cref="InvalidDataException">The bytes are not UTF-8, the text is not a JSON document, or it holds an integer or a
+    /// nesting past the decoder's limits.</exception>
     internal static object? ReadJson(string path)
     {
         var text = EngineUtf8.Decode(EngineTextFile.ReadBytes(path, LexicalPath.Str(path)));
         return EngineJson.TryLoadsOrRaiseLimits(text, out var value)
             ? value
-            : throw new EngineValueException($"Invalid JSON document: {path}", nameof(path));
+            : throw new InvalidDataException($"Invalid JSON document: {path}");
     }
 }

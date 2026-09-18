@@ -3,10 +3,11 @@ using System.Runtime.InteropServices;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Operating-system errors reported as <c>[Errno N] description</c> text. An error number is a POSIX <c>errno</c> value: the named
-/// constants below mean the same thing on every platform, and <see cref="Errno"/> classifies runtime exceptions into them.
+/// File-system failures as the .NET exceptions the runtime raises for them, with the runtime's message wording. The native calls
+/// (<see cref="UnixMkdir"/>, <see cref="UnixFileType"/>) report a POSIX <c>errno</c>; <see cref="Create"/> turns one into the exception
+/// the runtime would have raised, and <see cref="Errno"/> classifies a runtime exception back into the constants below.
 /// </summary>
-public static class OsError
+public static class FileSystemError
 {
     public const int OperationNotPermitted = 1;
     public const int NoSuchFile = 2;
@@ -15,7 +16,6 @@ public static class OsError
     public const int NotADirectory = 20;
     public const int IsADirectory = 21;
     public const int InvalidArgument = 22;
-    public const int FileTooLarge = 27;
     public const int NameTooLong = 36;
     public const int TooManyLinks = 40;
 
@@ -26,67 +26,45 @@ public static class OsError
     private const uint Win32FacilityMask = 0xFFFF0000;
     private const uint Win32Facility = 0x80070000;
 
-    /// <summary>The error opening a directory as a file reports: access denied on Windows, "Is a directory" elsewhere.</summary>
-    public static int DirectoryOpenErrno => OperatingSystem.IsWindows() ? PermissionDenied : IsADirectory;
-
-    /// <summary>An <see cref="IOException"/> reading <c>[Errno N] description</c>, with <see cref="Exception.HResult"/> set to <paramref name="errno"/>.</summary>
-    public static IOException Create(int errno, Exception? inner = null)
-        => Build($"[Errno {errno}] {StrError(errno)}", errno, inner);
-
-    /// <summary><see cref="Create(int, Exception?)"/> naming <paramref name="filename"/>, quoted by <see cref="EngineRepr.StrRepr"/>.</summary>
-    public static IOException Create(int errno, string filename, Exception? inner = null)
-    {
-        ArgumentNullException.ThrowIfNull(filename);
-        return Build($"[Errno {errno}] {StrError(errno)}: {EngineRepr.StrRepr(filename)}", errno, inner);
-    }
-
     /// <summary>
-    /// Rejects a path holding a NUL character: <c>embedded null byte</c>, or <c>{function}: embedded null character in path</c> when
-    /// the failing operation is named.
+    /// The exception for <paramref name="errno"/> naming <paramref name="path"/>, with <see cref="Exception.HResult"/> set to the errno:
+    /// <see cref="FileNotFoundException"/>, <see cref="UnauthorizedAccessException"/>, <see cref="PathTooLongException"/>, or an
+    /// <see cref="IOException"/> for any other failure.
     /// </summary>
-    /// <exception cref="EngineValueException">The path holds a NUL character.</exception>
-    public static void ThrowIfEmbeddedNull(string path, string? function = null)
+    public static Exception Create(int errno, string path, Exception? inner = null)
     {
         ArgumentNullException.ThrowIfNull(path);
-        if (!path.Contains('\0', StringComparison.Ordinal))
+        Exception exception = errno switch
         {
-            return;
-        }
-
-        var message = function is null ? "embedded null byte" : $"{function}: embedded null character in path";
-        throw new EngineValueException(message, nameof(path));
+            NoSuchFile => new FileNotFoundException($"Could not find file '{path}'.", path, inner),
+            OperationNotPermitted or PermissionDenied or IsADirectory => AccessDeniedException(path, inner),
+            FileExists => new IOException($"The file '{path}' already exists.", inner),
+            NotADirectory => new IOException($"The path '{path}' is not a directory.", inner),
+            NameTooLong => new PathTooLongException($"The path '{path}' is too long.", inner),
+            TooManyLinks => new IOException($"Too many levels of symbolic links in the path '{path}'.", inner),
+            _ => new IOException($"{Description(errno)}: '{path}'.", inner),
+        };
+        exception.HResult = errno;
+        return exception;
     }
 
-    /// <summary>
-    /// The description of <paramref name="errno"/>: fixed texts for the named constants, the C library's text for any other value on
-    /// Unix, and <c>Unknown error N</c> for any other value on Windows.
-    /// </summary>
-    public static string StrError(int errno) => errno switch
+    /// <summary>The <see cref="UnauthorizedAccessException"/> the runtime raises for a path it may not open, a directory included.</summary>
+    public static UnauthorizedAccessException AccessDenied(string path)
     {
-        OperationNotPermitted => "Operation not permitted",
-        NoSuchFile => "No such file or directory",
-        PermissionDenied => "Permission denied",
-        FileExists => "File exists",
-        NotADirectory => "Not a directory",
-        IsADirectory => "Is a directory",
-        InvalidArgument => "Invalid argument",
-        FileTooLarge => "File too large",
-        NameTooLong => "File name too long",
-        TooManyLinks => "Too many levels of symbolic links",
-        _ when OperatingSystem.IsWindows() => $"Unknown error {errno}",
-        _ => Marshal.GetPInvokeErrorMessage(errno),
-    };
+        ArgumentNullException.ThrowIfNull(path);
+        return AccessDeniedException(path, inner: null);
+    }
 
-    /// <summary>The error kind name reported for <paramref name="errno"/>, the same on every platform.</summary>
-    public static string TypeName(int errno) => errno switch
+    /// <summary>Rejects a path holding a NUL character with the runtime's <see cref="ArgumentException"/> text.</summary>
+    /// <exception cref="ArgumentException">The path holds a NUL character.</exception>
+    public static void ThrowIfEmbeddedNull(string path)
     {
-        NoSuchFile => "FileNotFoundError",
-        OperationNotPermitted or PermissionDenied => "PermissionError",
-        FileExists => "FileExistsError",
-        NotADirectory => "NotADirectoryError",
-        IsADirectory => "IsADirectoryError",
-        _ => "OSError",
-    };
+        ArgumentNullException.ThrowIfNull(path);
+        if (path.Contains('\0', StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Null character in path.", nameof(path));
+        }
+    }
 
     /// <summary>
     /// The errno <paramref name="exc"/> stands for, or null when it is not one of the known kinds. <paramref name="path"/>, when
@@ -103,8 +81,12 @@ public static class OsError
         return OperatingSystem.IsWindows() ? WindowsErrno(exc) : UnixErrno(exc, path);
     }
 
-    private static IOException Build(string message, int errno, Exception? inner)
-        => new(message, inner) { HResult = errno };
+    private static UnauthorizedAccessException AccessDeniedException(string path, Exception? inner)
+        => new($"Access to the path '{path}' is denied.", inner);
+
+    // The C library's description of an errno this class does not name.
+    private static string Description(int errno)
+        => OperatingSystem.IsWindows() ? $"Unknown error {errno}" : Marshal.GetPInvokeErrorMessage(errno);
 
     private static int? UnixErrno(Exception exc, string? path) => exc switch
     {

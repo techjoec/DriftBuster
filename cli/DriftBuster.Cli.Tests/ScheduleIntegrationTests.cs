@@ -60,7 +60,7 @@ public sealed class ScheduleIntegrationTests : IDisposable
         listing.Json()[0].GetProperty("next_run").GetString().Should().Be("2025-01-05T09:30:00+00:00");
     }
 
-    /// <summary><c>raise SystemExit(message)</c> from the schedule commands: the message on stderr and exit code 1.</summary>
+    /// <summary>A <c>CommandExitException</c> from the schedule commands: the message on stderr and exit code 1.</summary>
     [Fact]
     public void ScheduleErrorsExitOneWithTheMessage()
     {

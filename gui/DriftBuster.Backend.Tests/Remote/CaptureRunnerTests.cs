@@ -117,11 +117,11 @@ public sealed class CaptureRunnerTests : IDisposable
     public void SerialisationGuardsAndRelativePaths()
     {
         var withoutMatch = () => CaptureRunner.SerialiseDetection(new ProfiledDetection("/root/a", null, []), "/root");
-        withoutMatch.Should().Throw<EngineValueException>().WithMessage("Cannot serialise detection for paths without a match.");
+        withoutMatch.Should().Throw<ArgumentException>().WithMessage("Cannot serialise detection for paths without a match. (Parameter 'entry')");
 
         var capture = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["captured_at"] = "t" };
         var manifest = () => CaptureRunner.BuildManifestPayload(capture, "s.json", "m.json", 0, 0, 0, 0, 0, 0, null, "[X]", 0, 0);
-        manifest.Should().Throw<KeyNotFoundException>().WithMessage("'id'");
+        manifest.Should().Throw<KeyNotFoundException>().WithMessage("The required key 'id' is missing.");
 
         CaptureRunner.RelativePath("/root/a/b.json", "/root").Should().Be("a/b.json");
         CaptureRunner.RelativePath("/root", "/root").Should().Be(".");

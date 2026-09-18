@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Scheduling;
 
-/// <summary><c>scheduler.ScheduleError</c> (a <c>ValueError</c>): invalid schedule input, with Python's message text exactly.</summary>
+/// <summary>Invalid schedule input. The message is the refusal alone, without a parameter name.</summary>
 public sealed class ScheduleException : ArgumentException
 {
     private readonly string _message;

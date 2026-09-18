@@ -133,7 +133,7 @@ public sealed class RunProfilesTests : IDisposable
         var profile = new RunProfile("baseline", sources: Sources(source), baseline: Tmp("other.json"));
 
         var act = () => RunProfileExecutor.ExecuteProfile(profile, baseDir: _tmp.FullName, cancellationToken: TestContext.Current.CancellationToken);
-        act.Should().Throw<EngineValueException>();
+        act.Should().Throw<InvalidDataException>();
     }
 
     [Fact]

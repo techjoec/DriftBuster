@@ -17,7 +17,7 @@ public static partial class Canonicaliser
 
     /// <summary>
     /// The normaliser for <paramref name="contentType"/> applied to <paramref name="payload"/>; an unknown type raises
-    /// <see cref="EngineValueException"/> (Python's <c>ValueError("Unsupported content_type: ...")</c>).
+    /// <see cref="ArgumentException"/> (<c>Unsupported content_type: ...</c>).
     /// </summary>
     public static string Canonicalise(string payload, string contentType)
     {
@@ -31,7 +31,7 @@ public static partial class Canonicaliser
         };
     }
 
-    internal static EngineValueException UnsupportedContentType(string contentType) => new($"Unsupported content_type: {contentType}", nameof(contentType));
+    internal static ArgumentException UnsupportedContentType(string contentType) => new($"Unsupported content_type: {contentType}", nameof(contentType));
 
     /// <summary>
     /// <c>canonicalise_text</c>: every leading U+FEFF removed; U+2028, U+2029 and U+0085 become LF; CRLF then CR become

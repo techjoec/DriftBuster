@@ -35,7 +35,7 @@ public sealed class ReleaseBuildTests : IDisposable
     {
         var act = () => ToolProcess.Launch(["missing_module"], null);
 
-        act.Should().Throw<IOException>().WithMessage("[Errno 2] No such file or directory: 'missing_module'");
+        act.Should().Throw<FileNotFoundException>().WithMessage("Could not find the program 'missing_module'.");
     }
 
     [Fact]

@@ -6,7 +6,7 @@ namespace DriftBuster.Backend.Tests.Registry;
 /// <summary>
 /// <see cref="RegistryCommands"/> with fakes for <c>is_windows</c>, <c>enumerate_installed_apps</c>, <c>find_app_registry_roots</c> and
 /// <c>search_registry</c> swapped into its seams; the command's lines are joined as
-/// <c>print</c> writes them. <c>SystemExit</c> is <see cref="CommandExitException"/>; the return code of 0 and argv parsing belong to
+/// <c>print</c> writes them. A refusal raises <see cref="CommandExitException"/>; the return code of 0 and argv parsing belong to
 /// the console tool.
 /// </summary>
 [Collection(RegistrySeamCollection.Name)]

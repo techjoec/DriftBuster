@@ -92,7 +92,7 @@ public sealed class ProfileCliTests : IDisposable
     public void StoreFromPayloadIgnoresInvalidEntries()
     {
         var original = DetectionProfileCommands.FromDict;
-        DetectionProfileCommands.FromDict = payload => throw new EngineValueException("fallback", nameof(payload));
+        DetectionProfileCommands.FromDict = payload => throw new InvalidDataException("fallback");
         try
         {
             var storePath = Write("store.json", """{"profiles": ["invalid", {"name": "demo", "configs": ["skip", {"id": "cfg", "path": "config.json"}]}]}""");

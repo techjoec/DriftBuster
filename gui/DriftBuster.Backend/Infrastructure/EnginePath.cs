@@ -97,9 +97,9 @@ public static class EnginePath
     /// A path with no root whose first segment starts with <c>~</c> has that segment replaced by <see cref="EngineOsPath.ExpandUser(string)"/>
     /// of it; any other path is returned in <see cref="LexicalPath.Str"/> form.
     /// </summary>
-    /// <exception cref="EngineRuntimeException">The first segment is still <c>~</c>-prefixed after expansion (an account the password
+    /// <exception cref="InvalidOperationException">The first segment is still <c>~</c>-prefixed after expansion (an account the password
     /// database does not hold, or no home directory at all): <c>Could not determine home directory.</c></exception>
-    /// <exception cref="EngineValueException">A posix <c>~user</c> name holding a NUL character (<c>embedded null byte</c>).</exception>
+    /// <exception cref="ArgumentException">A posix <c>~user</c> name holding a NUL character.</exception>
     public static string ExpandUser(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -112,7 +112,7 @@ public static class EnginePath
         var home = EngineOsPath.ExpandUser(segments[0]);
         if (home.StartsWith('~'))
         {
-            throw new EngineRuntimeException("Could not determine home directory.");
+            throw new InvalidOperationException("Could not determine home directory.");
         }
 
         return LexicalPath.Str(Path.Join(home, string.Join(Path.DirectorySeparatorChar, segments.Skip(1))));
@@ -127,14 +127,14 @@ public static class EnginePath
     /// spelling of it (<see cref="KernelPath"/>), which reaches the same entry through its links; a link loop or a link that cannot be read
     /// falls back to the lexically normalised absolute path.
     /// </summary>
-    /// <exception cref="EngineValueException">On posix, a path holding a NUL character (<c>lstat: embedded null character in path</c>).</exception>
+    /// <exception cref="ArgumentException">On posix, a path holding a NUL character.</exception>
     public static string Resolve(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
         // posixpath.realpath lstats every component, and the first lstat refuses a NUL anywhere in the path.
         if (!OperatingSystem.IsWindows())
         {
-            OsError.ThrowIfEmbeddedNull(path, "lstat");
+            FileSystemError.ThrowIfEmbeddedNull(path);
         }
 
         if (OperatingSystem.IsWindows())
@@ -238,22 +238,22 @@ public static class EnginePath
 
     /// <summary>
     /// <c>Path(path).mkdir(parents=True, exist_ok=True)</c>: every missing directory is created as the kernel reaches it. A <c>..</c>
-    /// after a directory that does not exist yet steps out of that directory once it is created, as Python's retry on
-    /// <c>FileNotFoundError</c> does (<c>new/../sub</c> creates <c>new</c> and <c>sub</c>), where <see cref="KernelPath"/> alone names a
+    /// after a directory that does not exist yet steps out of that directory once it is created, as Python's retry on a missing
+    /// parent does (<c>new/../sub</c> creates <c>new</c> and <c>sub</c>), where <see cref="KernelPath"/> alone names a
     /// path under the missing part that nothing can create. A directory that already exists is left as it is.
     /// </summary>
     /// <remarks>
     /// On Linux this is <c>Path.mkdir</c>'s own algorithm over <c>mkdir(2)</c> (<see cref="UnixMkdir"/>): a failure raises the
-    /// <see cref="IOException"/> <see cref="OsError"/> builds for the call's <c>errno</c> (its <see cref="Exception.HResult"/>)
-    /// naming the directory whose call failed as <c>str(Path)</c> spells it (<c>[Errno 17] File exists: 'afile'</c>,
-    /// <c>[Errno 20] Not a directory: 'afile/x'</c>). Elsewhere, and for a path holding an unpaired surrogate (or with the
+    /// exception <see cref="FileSystemError.Create"/> builds for the call's <c>errno</c> (its <see cref="Exception.HResult"/>)
+    /// naming the directory whose call failed as <c>str(Path)</c> spells it (<c>The file 'afile' already exists.</c>,
+    /// <c>The path 'afile/x' is not a directory.</c>). Elsewhere, and for a path holding an unpaired surrogate (or with the
     /// <see cref="UnixPathWalk.Disabled"/> seam set), the directories are created through the runtime, whose exceptions carry its own text.
     /// </remarks>
-    /// <exception cref="EngineValueException">The path holds a NUL character (<c>mkdir: embedded null character in path</c>).</exception>
+    /// <exception cref="ArgumentException">The path holds a NUL character.</exception>
     public static void MakeDirectories(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        OsError.ThrowIfEmbeddedNull(path, "mkdir");
+        FileSystemError.ThrowIfEmbeddedNull(path);
         var spelled = LexicalPath.Str(path);
         if (!UnixPathWalk.Disabled && UnixMkdir.MakeDirectory(spelled) is { } error)
         {
@@ -286,12 +286,12 @@ public static class EnginePath
             return;
         }
 
-        if (error == OsError.NoSuchFile)
+        if (error == FileSystemError.NoSuchFile)
         {
             var parent = LexicalPath.Parent(path);
             if (!parents || string.Equals(parent, path, StringComparison.Ordinal))
             {
-                throw OsError.Create(error, path);
+                throw new DirectoryNotFoundException($"Could not find a part of the path '{path}'.");
             }
 
             MakeDirectoryChecked(parent, MakeDirectoryNative(parent), parents: true);
@@ -299,19 +299,9 @@ public static class EnginePath
             return;
         }
 
-        bool isDirectory;
-        try
+        if (UnixFileType.Stat(path, followSymlinks: true) != UnixFileType.Kind.Directory)
         {
-            isDirectory = UnixFileType.Stat(path, followSymlinks: true) == UnixFileType.Kind.Directory;
-        }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-        {
-            throw OsError.Create(OsError.Errno(exc, path) ?? error, path, exc);
-        }
-
-        if (!isDirectory)
-        {
-            throw OsError.Create(error, path);
+            throw FileSystemError.Create(error, path);
         }
     }
 

@@ -332,7 +332,7 @@ Describe 'package encryption' {
                 metadata = @{}
             })
 
-        Assert-EngineError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z' } 'ValueError'
+        Assert-EngineError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z' } 'InvalidDataException'
     }
 
     It 'execute config path supports relative paths' {
@@ -436,12 +436,12 @@ Describe 'config helpers' {
 
     It 'offline sql snapshot source limit validation' {
         $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; limit = 0 } })
-        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'InvalidDataException'
     }
 
     It 'offline sql snapshot source dialect validation' {
         $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; dialect = 'postgres' } })
-        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'InvalidDataException'
     }
 
     It 'offline runner profile with registry and sql sources' {
@@ -478,7 +478,7 @@ Describe 'config helpers' {
         $settings.output_extension | Should -BeExactly '.encpkg'
         $settings.remove_plaintext | Should -BeFalse
 
-        Assert-EngineError { ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{ enabled = $true })) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{ enabled = $true })) } 'InvalidDataException'
     }
 
     It 'offline runner settings from dict handles defaults' {
@@ -676,7 +676,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
             })
 
-        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'FileNotFoundError'
+        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'FileNotFoundException'
     }
 
     It 'execute offline run respects exclude patterns' {
@@ -724,7 +724,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ max_total_bytes = 10; output_directory = (Join-Path $tmp 'out') }
             })
 
-        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'ValueError' '*max_total_bytes*'
+        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'InvalidOperationException' '*max_total_bytes*'
     }
 
     It 'execute offline run scrubs secret lines' {
@@ -881,7 +881,7 @@ Describe 'runner execution' {
     }
 
     It 'offline collection source validations' {
-        Assert-EngineError { ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue @{}) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue @{}) } 'InvalidDataException'
 
         $source = ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '~/data'; alias = '  '; exclude = '*.tmp' }))
         $source.alias | Should -BeNullOrEmpty
@@ -892,11 +892,11 @@ Describe 'runner execution' {
     }
 
     It 'offline runner profile validations' {
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = '' })) } 'ValueError'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); baseline = 'missing' })) } 'ValueError'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); options = 'invalid' })) } 'ValueError'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); secret_scanner = 'invalid' })) } 'ValueError'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo' })) } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = '' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); baseline = 'missing' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); options = 'invalid' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); secret_scanner = 'invalid' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo' })) } 'InvalidDataException'
 
         $profileObject = ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'tags'; sources = @('/tmp/a'); tags = 'prod' }))
         $profileObject.tags | Should -Be @('prod')
@@ -1001,7 +1001,7 @@ Describe 'SQL snapshots' {
         $audit = Get-DbSqliteSnapshot -Path $dbPath -Tables @('audit')
         $audit['tables'][0]['rows'][0]['payload']['type'] | Should -BeExactly 'base64'
 
-        Assert-EngineError { Get-DbSqliteSnapshot -Path $dbPath -Limit 0 } 'ValueError'
+        Assert-EngineError { Get-DbSqliteSnapshot -Path $dbPath -Limit 0 } 'ArgumentOutOfRangeException'
     }
 
     It 'offline runner sql snapshot source' {
@@ -1177,7 +1177,7 @@ Describe 'OfflineRegistryScanSource' {
         $payload = ConvertTo-EngineValue ([ordered]@{
                 registry_scan = [ordered]@{ token = 'VendorA'; remote = [ordered]@{ host = 'forbidden'; password = 'super-secret' } }
             })
-        Assert-EngineError { ConvertFrom-DbOfflineRegistryScanSource $payload } 'ValueError'
+        Assert-EngineError { ConvertFrom-DbOfflineRegistryScanSource $payload } 'InvalidDataException'
     }
 
     It 'remote batch allows mapping payload' {

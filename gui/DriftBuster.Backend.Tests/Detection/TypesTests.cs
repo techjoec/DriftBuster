@@ -38,7 +38,7 @@ public sealed class TypesTests
 
         var act = () => DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        act.Should().Throw<MetadataValidationError>().WithMessage("Unknown catalog format: unknown-format");
+        act.Should().Throw<MetadataValidationException>().WithMessage("Unknown catalog format: unknown-format");
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class TypesTests
 
         var act = () => DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        act.Should().Throw<MetadataValidationError>().WithMessage("Unknown catalog variant 'mystery' for format 'json'.");
+        act.Should().Throw<MetadataValidationException>().WithMessage("Unknown catalog variant 'mystery' for format 'json'.");
     }
 
     [Theory]
@@ -132,7 +132,7 @@ public sealed class TypesTests
         var match = new DetectionMatch("plugin", "unknown-format", null, 0.5, [], null);
 
         var strictAct = () => DetectionMetadata.ValidateDetectionMetadata(match, catalog);
-        strictAct.Should().Throw<MetadataValidationError>();
+        strictAct.Should().Throw<MetadataValidationException>();
 
         var relaxed = DetectionMetadata.ValidateDetectionMetadata(match, catalog, strict: false);
         relaxed["catalog_format"].Should().Be("unknown-format");
@@ -140,6 +140,6 @@ public sealed class TypesTests
         var badFormat = new DetectionMatch("plugin", null!, null, 0.1, [], null);
 
         var badAct = () => DetectionMetadata.ValidateDetectionMetadata(badFormat, catalog);
-        badAct.Should().Throw<MetadataValidationError>().WithMessage("DetectionMatch.format_name must be a string.");
+        badAct.Should().Throw<MetadataValidationException>().WithMessage("DetectionMatch.format_name must be a string.");
     }
 }

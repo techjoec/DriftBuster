@@ -41,7 +41,7 @@ public static class ContentTypeResolver
         {
             return FromMatch((detector ?? NewDetector()).ScanFile(path));
         }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException or MetadataValidationError)
+        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException or MetadataValidationException)
         {
             return Text;
         }

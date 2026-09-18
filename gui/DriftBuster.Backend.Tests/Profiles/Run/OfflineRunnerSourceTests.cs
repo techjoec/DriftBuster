@@ -103,7 +103,7 @@ public sealed class OfflineRunnerSourceTests : IDisposable
     public void OfflineCollectionSourceValidations()
     {
         var act = () => RunProfile.SourceFromDict(Map());
-        act.Should().Throw<EngineValueException>();
+        act.Should().Throw<InvalidDataException>();
 
         var source = RunProfile.SourceFromDict(Map(("path", "~/data"), ("alias", "  "), ("exclude", "*.tmp")));
         source.Alias.Should().BeNull();
@@ -162,15 +162,15 @@ public sealed class OfflineRunnerSourceTests : IDisposable
     public void OfflineRunnerProfileValidations()
     {
         FromDict(Map(("name", string.Empty)))
-            .Should().Throw<EngineValueException>().WithMessage("Profile requires a non-empty 'name'.");
+            .Should().Throw<InvalidDataException>().WithMessage("Profile requires a non-empty 'name'.");
         FromDict(Map(("name", "demo"), ("sources", new List<object?> { "/tmp/a" }), ("baseline", "missing")))
-            .Should().Throw<EngineValueException>().WithMessage("Profile baseline must reference one of the declared sources.");
+            .Should().Throw<InvalidDataException>().WithMessage("Profile baseline must reference one of the declared sources.");
         FromDict(Map(("name", "demo"), ("sources", new List<object?> { "/tmp/a" }), ("options", "invalid")))
-            .Should().Throw<EngineValueException>().WithMessage("Profile 'options' must be a mapping if provided.");
+            .Should().Throw<InvalidDataException>().WithMessage("Profile 'options' must be a mapping if provided.");
         FromDict(Map(("name", "demo"), ("sources", new List<object?> { "/tmp/a" }), ("secret_scanner", "invalid")))
-            .Should().Throw<EngineValueException>().WithMessage("Profile 'secret_scanner' must be a mapping if provided.");
+            .Should().Throw<InvalidDataException>().WithMessage("Profile 'secret_scanner' must be a mapping if provided.");
         FromDict(Map(("name", "demo")))
-            .Should().Throw<EngineValueException>().WithMessage("Profile must define at least one source.");
+            .Should().Throw<InvalidDataException>().WithMessage("Profile must define at least one source.");
 
         var profile = RunProfile.FromOfflineRunnerDict(Map(("name", "tags"), ("sources", new List<object?> { "/tmp/a" }), ("tags", "prod")));
         profile.Name.Should().Be("tags");

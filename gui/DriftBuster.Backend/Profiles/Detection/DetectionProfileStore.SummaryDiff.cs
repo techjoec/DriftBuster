@@ -17,8 +17,8 @@ public sealed partial class DetectionProfileStore
     /// <c>added_config_ids</c> and <c>removed_config_ids</c>.
     /// </summary>
     /// <remarks>
-    /// Values are read as Python reads them: counts through <c>int()</c> with the fallback on <c>TypeError</c> or
-    /// <c>ValueError</c>, totals of zero replaced by the computed ones, entries without a truthy <c>name</c> skipped, names and
+    /// Values are read as Python reads them: counts through <c>int()</c> with the fallback where the value is not an
+    /// integer, totals of zero replaced by the computed ones, entries without a truthy <c>name</c> skipped, names and
     /// ids compared with Python <c>==</c> and hashing (<see cref="EngineValues"/>) and sorted with Python's <c>&lt;</c>, so a
     /// payload Python rejects raises the same error type.
     /// </remarks>
@@ -112,14 +112,14 @@ public sealed partial class DetectionProfileStore
         return (entries, totals);
     }
 
-    // _as_int: int(value), or the fallback where int() raises TypeError or ValueError.
+    // _as_int: int(value), or the fallback where the value is not an integer.
     private static BigInteger AsInt(object? value, BigInteger fallback)
     {
         try
         {
             return EngineBuiltins.Int(value);
         }
-        catch (Exception exc) when (exc is EngineTypeException or EngineValueException)
+        catch (Exception exc) when (exc is InvalidDataException or FormatException)
         {
             return fallback;
         }

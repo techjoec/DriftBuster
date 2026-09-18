@@ -165,22 +165,21 @@ public sealed partial class MultiServerRunner
     /// <summary>
     /// <c>time.sleep(seconds)</c>'s argument checks for a positive <paramref name="seconds"/>, which raise out of <c>run()</c>
     /// (the sleep follows the host's <c>try</c>): the timeout in nanoseconds, rounded up, must be below
-    /// 2<sup>63</sup> (<c>OverflowError: timestamp out of range for platform time_t</c>, as <see cref="OverflowException"/>), and
-    /// off Windows the absolute deadline, CLOCK_MONOTONIC (<paramref name="monotonicSeconds"/>) plus the timeout, must be below
-    /// 2<sup>63</sup> nanoseconds as well (<c>clock_nanosleep</c> fails with <c>OSError: [Errno 22] Invalid argument</c>).
+    /// 2<sup>63</sup>, and off Windows the absolute deadline, CLOCK_MONOTONIC (<paramref name="monotonicSeconds"/>) plus the timeout,
+    /// must be below 2<sup>63</sup> nanoseconds as well; either failure raises <see cref="OverflowException"/>.
     /// </summary>
     internal static TimeSpan SleepDuration(double seconds, double monotonicSeconds)
     {
         var nanoseconds = Math.Ceiling(seconds * 1e9);
         if (!(nanoseconds < 9223372036854775808.0))
         {
-            throw new OverflowException("timestamp out of range for platform time_t");
+            throw new OverflowException("The throttle delay is too large.");
         }
 
         var timeout = (long)nanoseconds;
         if (!OperatingSystem.IsWindows() && (long)(monotonicSeconds * 1e9) > long.MaxValue - timeout)
         {
-            throw OsError.Create(OsError.InvalidArgument);
+            throw new OverflowException("The throttle delay reaches past the end of the monotonic clock.");
         }
 
         return TimeSpan.FromTicks((timeout + 99) / 100);

@@ -63,7 +63,7 @@ internal static partial class UnixPasswd
         });
     }
 
-    /// <summary><c>pwd.getpwuid(os.getuid()).pw_dir</c>; null for <c>KeyError</c> and when <see cref="Available"/> is false.</summary>
+    /// <summary><c>pwd.getpwuid(os.getuid()).pw_dir</c>; null when there is no entry and when <see cref="Available"/> is false.</summary>
     internal static unsafe string? HomeOfCurrentUser()
     {
         if (_unavailable)
@@ -87,7 +87,7 @@ internal static partial class UnixPasswd
 
     private unsafe delegate int LookupCall(Passwd* entry, byte* buffer, nuint size, Passwd** result);
 
-    // The pwd module's loop: a buffer that is too small (ERANGE) is doubled; any other failure, or no entry, is KeyError.
+    // The pwd module's loop: a buffer that is too small (ERANGE) is doubled; any other failure, or no entry, is no result.
     private static unsafe string? Lookup(LookupCall call)
     {
         if (_unavailable)

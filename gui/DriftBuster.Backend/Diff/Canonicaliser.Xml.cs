@@ -29,8 +29,8 @@ public static partial class Canonicaliser
     /// <para>
     /// A document whose DOCTYPE reaches the parser (one not at the start, or one the bracket scan could not close) and
     /// declares entities is refused, so it canonicalises as text; ElementTree would expand the entities. Documents
-    /// nested deeper than a recursion limit and text holding unpaired surrogates would raise
-    /// (<c>RecursionError</c>, <c>UnicodeEncodeError</c>); the canonicaliser normalises and serialises on an explicit stack and
+    /// nested deeper than a recursion limit and text holding unpaired surrogates would fail a recursive serialiser; the
+    /// canonicaliser normalises and serialises on an explicit stack and
     /// treats a surrogate as a parse failure.
     /// </para>
     /// </remarks>

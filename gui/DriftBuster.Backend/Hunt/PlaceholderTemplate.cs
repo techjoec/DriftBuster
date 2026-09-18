@@ -15,8 +15,8 @@ internal static class PlaceholderTemplate
     private const string FieldName = "token_name";
 
     /// <summary>The template with every field replaced by <paramref name="tokenName"/>.</summary>
-    /// <exception cref="EngineValueException">A field other than <c>token_name</c> (another name, an index, or empty).</exception>
-    /// <exception cref="FormatException">Unbalanced braces, a malformed alignment, or a <c>:format</c> component.</exception>
+    /// <exception cref="FormatException">A field other than <c>token_name</c> (another name, an index, or empty), unbalanced braces, a
+    /// malformed alignment, or a <c>:format</c> component.</exception>
     public static string Render(string template, string tokenName)
     {
         ArgumentNullException.ThrowIfNull(template);
@@ -70,7 +70,7 @@ internal static class PlaceholderTemplate
         var name = nameLength < 0 ? field : field[..nameLength];
         if (!name.SequenceEqual(FieldName))
         {
-            throw new EngineValueException("placeholder_template must include {token_name} placeholder", nameof(template));
+            throw new FormatException("placeholder_template must include {token_name} placeholder");
         }
 
         var rest = field[name.Length..];

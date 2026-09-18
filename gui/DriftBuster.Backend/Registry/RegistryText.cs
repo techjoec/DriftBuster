@@ -9,7 +9,7 @@ namespace DriftBuster.Backend.Registry;
 
 /// <summary>
 /// Built-ins the registry code needs that the shared helpers do not cover: <c>str.upper()</c> over a whole string,
-/// registry search pattern compilation and <c>type(exc).__name__</c> for the exceptions the registry code raises.
+/// and registry search pattern compilation.
 /// </summary>
 internal static class RegistryText
 {
@@ -42,29 +42,4 @@ internal static class RegistryText
 
     /// <summary>True for a value <c>isinstance(value, (list, tuple))</c> accepts: any list that is neither a str nor bytes nor a dict.</summary>
     public static bool IsList(object? value) => value is IList and not byte[] and not IDictionary && value is not IReadOnlyDictionary<string, object?>;
-
-    /// <summary>
-    /// <c>type(exc).__name__</c> of the error kind each exception stands for: <c>RuntimeError</c> is
-    /// <see cref="PlatformNotSupportedException"/> (the default backend off Windows) or <see cref="InvalidOperationException"/>; any
-    /// other exception keeps its runtime name.
-    /// </summary>
-    public static string ErrorName(Exception exc) => exc switch
-    {
-        CommandExitException => "SystemExit",
-        EngineValueException => "ValueError",
-        EngineTypeException => "TypeError",
-        EngineIndexException => "IndexError",
-        EngineAttributeException => "AttributeError",
-        EngineRecursionException => "RecursionError",
-        EngineUnicodeDecodeException => "UnicodeDecodeError",
-        RegexParseException => "PatternError",
-        EngineNotImplementedException => "NotImplementedError",
-        KeyNotFoundException => "KeyError",
-        OverflowException => "OverflowError",
-        OutOfMemoryException => "MemoryError",
-        PlatformNotSupportedException or InvalidOperationException => "RuntimeError",
-        IOException { HResult: > 0 and < 4096 } => OsError.TypeName(exc.HResult),
-        IOException => "OSError",
-        _ => exc.GetType().Name,
-    };
 }

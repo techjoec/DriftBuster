@@ -77,15 +77,14 @@ public class RedactionFilter
 
     /// <summary>
     /// <c>resolve_redactor</c>: the explicit redactor, or a new filter over <paramref name="maskTokens"/>, or null when
-    /// neither is given. Supplying both (with at least one mask token) raises <see cref="ArgumentException"/>, Python's
-    /// <c>ValueError</c>.
+    /// neither is given. Supplying both (with at least one mask token) raises <see cref="ArgumentException"/>.
     /// </summary>
     public static RedactionFilter? Resolve(RedactionFilter? redactor = null, IReadOnlyList<string>? maskTokens = null, string placeholder = DefaultPlaceholder)
     {
         var hasTokens = maskTokens is { Count: > 0 };
         if (redactor is not null && hasTokens)
         {
-            throw new EngineValueException("Provide either an explicit redactor or mask_tokens, not both.", nameof(maskTokens));
+            throw new ArgumentException("Provide either an explicit redactor or mask_tokens, not both.", nameof(maskTokens));
         }
 
         if (redactor is not null)

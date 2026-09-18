@@ -52,6 +52,6 @@ public sealed class SqlExportCommandTests : IDisposable
         var run = CliInvocation.Invoke("sql-export", "demo.sqlite", "--limit", "x");
 
         run.ExitCode.Should().Be(2);
-        run.Err.Should().StartWith("driftbuster: error: argument --limit: invalid int value: 'x'");
+        run.Err.Should().StartWith("driftbuster: error: argument --limit: The value 'x' is not a valid integer.");
     }
 }

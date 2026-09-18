@@ -37,17 +37,17 @@ public static partial class CaptureRunner
     /// </summary>
     /// <remarks>
     /// The file is read as <c>path.read_text(encoding="utf-8")</c> and decoded as <c>json.loads</c> decodes it. Text that is not a JSON
-    /// document raises <c>ValueError("Failed to parse registry scan {path}: invalid JSON document")</c>: <see cref="EngineJson"/> reports no
-    /// decoder reason (Python writes the <c>JSONDecodeError</c> text). Every other error is Python's: <c>AttributeError</c> for a payload
-    /// or root list that is not a mapping where <c>.get</c> is called, <c>TypeError</c> for roots that cannot be iterated or hits without a
-    /// length, <c>UnicodeDecodeError</c>, the decoder's limits, and <c>IsADirectoryError</c>.
+    /// document raises <see cref="InvalidDataException"/> (<c>Failed to parse registry scan {path}: invalid JSON document</c>;
+    /// <see cref="EngineJson"/> reports no decoder reason). A payload or root list that is not a mapping where <c>.get</c> is called, roots
+    /// that cannot be iterated, hits without a length, bytes that are not UTF-8 and the decoder's limits raise
+    /// <see cref="InvalidDataException"/>; a directory raises <see cref="UnauthorizedAccessException"/>.
     /// </remarks>
     public static OrderedDictionary<string, object?> SummariseRegistryScan(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
         var payload = EngineJson.TryLoadsOrRaiseLimits(ReadUtf8Text(path), out var value)
             ? value
-            : throw new EngineValueException($"Failed to parse registry scan {path}: invalid JSON document", nameof(path));
+            : throw new InvalidDataException($"Failed to parse registry scan {path}: invalid JSON document");
 
         // payload.get(key, []) or []: an absent or falsy value counts as an empty list.
         var roots = RootLabels(DetectionProfileStore.GetOrDefault(payload, "roots", null));

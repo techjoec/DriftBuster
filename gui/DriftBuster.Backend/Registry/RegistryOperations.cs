@@ -122,7 +122,7 @@ public static class RegistryOperations
                 counters.Errors++;
                 counters.TotalDuration += duration;
                 counters.LastDuration = duration;
-                counters.LastError = $"{RegistryText.ErrorName(exc)}: {exc.Message}";
+                counters.LastError = $"{exc.GetType().Name}: {exc.Message}";
             }
 
             throw;

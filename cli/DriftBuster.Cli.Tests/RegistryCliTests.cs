@@ -85,7 +85,7 @@ public sealed class RegistryCliTests : IDisposable
         seen.TimeBudgetS.Should().Be(1.0);
     }
 
-    /// <summary><c>emit-config</c> prints <c>json.dumps(snippet, indent=2, sort_keys=True)</c>; a refused <c>--remote-target</c> escapes as <c>ValueError</c>.</summary>
+    /// <summary><c>emit-config</c> prints <c>json.dumps(snippet, indent=2, sort_keys=True)</c>; a refused <c>--remote-target</c> escapes as <see cref="FormatException"/>.</summary>
     [Fact]
     public void RegistryCliEmitConfig()
     {
@@ -108,7 +108,7 @@ public sealed class RegistryCliTests : IDisposable
 
         var refused = CliInvocation.Invoke("registry-scan", "emit-config", "VendorA", "--remote-target", "host,bogus=1");
         refused.ExitCode.Should().Be(1);
-        refused.Err.Should().Be("ValueError: Unsupported remote target key 'bogus'" + Environment.NewLine);
+        refused.Err.Should().Be("FormatException: Unsupported remote target key 'bogus'" + Environment.NewLine);
     }
 
     /// <summary><c>type=int</c> refuses a value <c>int()</c> does not accept: a parse error with exit code 2.</summary>
@@ -120,6 +120,6 @@ public sealed class RegistryCliTests : IDisposable
         var run = CliInvocation.Invoke("registry-scan", "search", "VendorA", "--max-depth", "deep");
 
         run.ExitCode.Should().Be(2);
-        run.Err.Should().Contain("argument --max-depth: invalid int value: 'deep'");
+        run.Err.Should().Contain("argument --max-depth: The value 'deep' is not a valid integer.");
     }
 }

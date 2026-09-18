@@ -87,7 +87,7 @@ public static partial class HtmlReport
         destination.Write(Render(matches, title, diffs, profileSummary, huntHits, redactor, maskTokens, placeholder, extraMetadata, warnings, legalNotice));
     }
 
-    /// <summary><c>write_html_report</c> to a path: <c>Path(destination).write_text(html, encoding="utf-8")</c>, in text mode, a write failure raising Python's <c>OSError</c> text.</summary>
+    /// <summary><c>write_html_report</c> to a path: <c>Path(destination).write_text(html, encoding="utf-8")</c>, in text mode, a write failure raising the runtime's exception.</summary>
     public static void Write(
         IEnumerable<DetectionMatch> matches,
         string destination,

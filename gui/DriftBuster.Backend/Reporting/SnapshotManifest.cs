@@ -89,7 +89,7 @@ public static class SnapshotManifest
     /// <summary>
     /// <c>write_snapshot</c>: the manifest of <see cref="Build"/> written to <paramref name="destination"/> as
     /// <c>json.dump(manifest, ensure_ascii=False, indent=indent)</c> and a line break, in text mode, after creating the parent
-    /// directories; a write failure raises Python's <c>OSError</c> text.
+    /// directories; a write failure raises the runtime's exception.
     /// </summary>
     public static void Write(
         IEnumerable<DetectionMatch> matches,

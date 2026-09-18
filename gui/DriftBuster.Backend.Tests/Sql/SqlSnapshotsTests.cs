@@ -79,7 +79,7 @@ public sealed class SqlSnapshotsTests : IDisposable
         auditPayload["type"].Should().Be("base64");
 
         var build = () => SqliteSnapshots.BuildSqliteSnapshot(dbPath, limit: 0);
-        build.Should().Throw<EngineValueException>();
+        build.Should().Throw<ArgumentException>();
     }
 
     [Fact]

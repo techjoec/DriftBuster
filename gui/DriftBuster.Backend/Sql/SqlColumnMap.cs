@@ -15,8 +15,8 @@ public static class SqlColumnMap
     /// <c>parse_column_map(values)</c>: a mapping goes through <see cref="NormaliseColumnMap"/>, anything else through
     /// <see cref="ParseColumnList"/>. Tables keep their first-seen order.
     /// </summary>
-    /// <exception cref="EngineAttributeException">A list entry that is truthy and not a str (<c>'int' object has no attribute 'strip'</c>).</exception>
-    /// <exception cref="EngineTypeException">A truthy value that is neither a mapping nor iterable (<c>'int' object is not iterable</c>).</exception>
+    /// <exception cref="InvalidDataException">A list entry that is truthy and not a str, or a truthy value that is neither a mapping nor
+    /// iterable.</exception>
     public static OrderedDictionary<string, IReadOnlyList<string>> ParseColumnMap(object? values) => values switch
     {
         IReadOnlyDictionary<string, object?> mapping => NormaliseColumnMap(mapping),
@@ -72,7 +72,7 @@ public static class SqlColumnMap
 
             if (entry is not string raw)
             {
-                throw new EngineAttributeException($"expected a column name string, not '{EngineBuiltins.TypeName(entry)}'");
+                throw new InvalidDataException($"expected a column name string, not '{EngineBuiltins.TypeName(entry)}'");
             }
 
             var text = EngineText.Strip(raw);

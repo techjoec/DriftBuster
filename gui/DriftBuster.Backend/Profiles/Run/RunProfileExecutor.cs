@@ -238,7 +238,7 @@ public static partial class RunProfileExecutor
 
     /// <summary>
     /// The path itself when it exists; the <see cref="FileTreeGlob.GlobPathname"/> matches (sorted by code point over their posix form)
-    /// when it holds a wildcard; otherwise <c>FileNotFoundError("Path does not exist: ...")</c>.
+    /// when it holds a wildcard; otherwise <see cref="FileNotFoundException"/> (<c>Path does not exist: ...</c>).
     /// </summary>
     internal static IReadOnlyList<string> CollectMatches(string pathText, CancellationToken cancellationToken = default)
     {

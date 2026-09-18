@@ -19,10 +19,10 @@ public static class DetectionProfileCommands
 
     /// <summary>
     /// <c>_load_json(path)</c>: the JSON value stored at <paramref name="path"/>, decoded as UTF-8. A read failure raises
-    /// <c>ValueError("Unable to read JSON payload from {path}: {exc}")</c> with the <c>OSError</c> text, invalid JSON
-    /// <c>ValueError("Failed to parse JSON from {path}: ...")</c>; bytes that are not UTF-8 raise the <c>UnicodeDecodeError</c>
-    /// (<see cref="EngineUnicodeDecodeException"/>, as <see cref="EngineUtf8.Decode"/> raises it) and the decoder's interpreter limits
-    /// (<see cref="EngineJson.TryLoadsOrRaiseLimits"/>) unwrapped.
+    /// <see cref="IOException"/> (<c>Unable to read JSON payload from {path}: {reason}</c>), invalid JSON
+    /// <see cref="InvalidDataException"/> (<c>Failed to parse JSON from {path}: ...</c>); bytes that are not UTF-8
+    /// (<see cref="EngineUtf8.Decode"/>) and the decoder's limits (<see cref="EngineJson.TryLoadsOrRaiseLimits"/>) raise their own
+    /// <see cref="InvalidDataException"/>.
     /// </summary>
     public static object? LoadJson(string path)
     {
@@ -35,12 +35,12 @@ public static class DetectionProfileCommands
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            throw new EngineValueException($"Unable to read JSON payload from {shown}: {exc.Message}", nameof(path), exc);
+            throw new IOException($"Unable to read JSON payload from {shown}: {exc.Message}", exc);
         }
 
         return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.Decode(raw), out var value)
             ? value
-            : throw new EngineValueException($"Failed to parse JSON from {shown}: invalid JSON document", nameof(path));
+            : throw new InvalidDataException($"Failed to parse JSON from {shown}: invalid JSON document");
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public static class DetectionProfileCommands
     /// <summary>
     /// <c>_handle_hunt_bridge</c>: attaches the matching profile configs to each hunt hit. The hunt payload must be a JSON array
     /// (or a str, which Python also accepts as a sequence); anything else raises
-    /// <c>ValueError("Hunt payload must be a JSON array of hunt hits.")</c>. Items that are not dicts are skipped.
+    /// <see cref="InvalidDataException"/> (<c>Hunt payload must be a JSON array of hunt hits.</c>). Items that are not dicts are skipped.
     /// </summary>
     public static OrderedDictionary<string, object?> HuntBridge(string storePath, string huntPath, IEnumerable<string?>? tags, string? root)
     {
@@ -109,7 +109,7 @@ public static class DetectionProfileCommands
         // isinstance(payload, Sequence): a list or a str; a dict (which OrderedDictionary also exposes as IList) is not one.
         if (huntsPayload is IReadOnlyDictionary<string, object?> or not (IList or string))
         {
-            throw new EngineValueException("Hunt payload must be a JSON array of hunt hits.", nameof(huntPath));
+            throw new InvalidDataException("Hunt payload must be a JSON array of hunt hits.");
         }
 
         var store = StoreFromPayload(storePayload);

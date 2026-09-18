@@ -16,7 +16,7 @@ public static partial class CaptureRunner
     /// </summary>
     /// <remarks>
     /// A table whose schema SQLite stores as a BLOB builds (<see cref="SnapshotTable.SchemaBytes"/>), and <c>json.dumps</c> of the snapshot
-    /// then raises <c>TypeError</c> (<see cref="EngineTypeException"/>) outside the export's error handling, after the destination is chosen
+    /// then raises <see cref="NotSupportedException"/> outside the export's error handling, after the destination is chosen
     /// and before it is written, ending the command without a manifest.
     /// </remarks>
     public static SqlExportOutcome RunSqlExport(SqlExportOptions options, TextWriter stdout, TextWriter stderr)

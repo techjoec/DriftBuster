@@ -28,12 +28,12 @@ public static class WinRegistryKeys
         _ => KeyRead,
     };
 
-    /// <summary><c>self._hives[hive]</c>: the handle for <c>HKLM</c> or <c>HKCU</c>; any other name raises Python's <c>KeyError</c>.</summary>
-    /// <exception cref="KeyNotFoundException">The hive is neither, with the <c>KeyError</c> text (the name's repr).</exception>
+    /// <summary><c>self._hives[hive]</c>: the handle for <c>HKLM</c> or <c>HKCU</c>.</summary>
+    /// <exception cref="KeyNotFoundException">The hive is neither.</exception>
     public static nint HiveHandle(string hive) => hive switch
     {
         "HKLM" => LocalMachine,
         "HKCU" => CurrentUser,
-        _ => throw new KeyNotFoundException(EngineRepr.StrRepr(hive)),
+        _ => throw new KeyNotFoundException($"Unknown registry hive {EngineRepr.StrRepr(hive)}."),
     };
 }

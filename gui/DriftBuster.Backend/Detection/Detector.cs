@@ -79,7 +79,7 @@ public class Detector
     {
         if (sampleSize <= 0)
         {
-            throw new EngineValueException("sample_size must be a positive integer", nameof(sampleSize));
+            throw new ArgumentOutOfRangeException(nameof(sampleSize), "sample_size must be a positive integer.");
         }
 
         if (sampleSize > MaxSampleSize)
@@ -104,7 +104,7 @@ public class Detector
 
         if (value <= 0)
         {
-            throw new EngineValueException("max_total_sample_bytes must be a positive integer", nameof(value));
+            throw new ArgumentOutOfRangeException(nameof(value), "max_total_sample_bytes must be a positive integer.");
         }
 
         return value;
@@ -392,7 +392,7 @@ public class Detector
         ArgumentNullException.ThrowIfNull(root);
         if (profileStore is null)
         {
-            throw new EngineValueException("profile_store must be provided", nameof(profileStore));
+            throw new ArgumentNullException(nameof(profileStore), "profile_store must be provided.");
         }
 
         var normalizedTags = ProfileTags.Normalize(tags);

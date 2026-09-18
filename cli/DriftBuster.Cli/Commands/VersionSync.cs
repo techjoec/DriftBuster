@@ -20,7 +20,7 @@ internal static partial class VersionSync
         var data = RunProfileStore.ReadJson(Path.Combine(root, "versions.json"));
         if (data is not IReadOnlyDictionary<string, object?> mapping)
         {
-            throw new EngineAttributeException($"versions.json must hold a JSON object, not '{EngineBuiltins.TypeName(data)}'");
+            throw new InvalidDataException($"versions.json must hold a JSON object, not '{EngineBuiltins.TypeName(data)}'");
         }
 
         var missing = ExpectedKeys.Where(key => !mapping.ContainsKey(key)).Order(StringComparer.Ordinal).Cast<object?>().ToList();

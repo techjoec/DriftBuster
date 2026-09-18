@@ -114,7 +114,7 @@ internal static class ReportValues
 
     /// <summary>
     /// <c>payload.setdefault("run_metadata", {}).update(extra)</c>: a mapping already stored there is updated in place (the caller's
-    /// own dict, as the shallow copies share it); any other stored value raises <c>AttributeError</c>.
+    /// own dict, as the shallow copies share it); any other stored value raises <see cref="InvalidDataException"/>.
     /// </summary>
     public static void MergeRunMetadata(OrderedDictionary<string, object?> payload, IEnumerable<KeyValuePair<string, object?>> extra)
     {
@@ -141,11 +141,11 @@ internal static class ReportValues
 
                 return;
             default:
-                throw new EngineAttributeException($"expected a JSON object, not '{TypeName(existing)}'");
+                throw new InvalidDataException($"expected a JSON object, not '{TypeName(existing)}'");
         }
     }
 
-    /// <summary><c>for item in value</c> over a str, list, tuple or mapping; anything else raises <c>TypeError</c>.</summary>
+    /// <summary><c>for item in value</c> over a str, list, tuple or mapping; anything else raises <see cref="InvalidDataException"/>.</summary>
     public static IEnumerable<object?> Iterate(object? value) => EngineBuiltins.Iterate(value);
 
     /// <summary><c>bool(value)</c>.</summary>
@@ -155,7 +155,7 @@ internal static class ReportValues
     public static double Max(double current, double candidate) => candidate > current ? candidate : current;
 
     /// <summary>
-    /// <c>float(value or 0.0)</c> where Python catches <c>TypeError</c> and <c>ValueError</c> and uses 0.0 instead.
+    /// <c>float(value or 0.0)</c>, or 0.0 where the value is not a number.
     /// </summary>
     public static double FloatOrZero(object? value)
     {
@@ -163,11 +163,7 @@ internal static class ReportValues
         {
             return EngineBuiltins.Float(Truthy(value) ? value : 0.0);
         }
-        catch (EngineTypeException)
-        {
-            return 0.0;
-        }
-        catch (EngineValueException)
+        catch (Exception exc) when (exc is InvalidDataException or FormatException)
         {
             return 0.0;
         }
@@ -224,7 +220,7 @@ internal static class ReportValues
 
     /// <summary>
     /// The value as the JSON domain <see cref="Canonicaliser.Dumps"/> writes: mappings become ordered dictionaries, lists and tuples
-    /// become lists; a value <c>json.dumps</c> cannot serialise raises <c>TypeError</c>.
+    /// become lists; a value JSON cannot hold raises <see cref="NotSupportedException"/>.
     /// </summary>
     public static object? ToJsonValue(object? value) => value switch
     {
@@ -237,7 +233,7 @@ internal static class ReportValues
                 return copy;
             }),
         IList list and not byte[] => list.Cast<object?>().Select(ToJsonValue).ToList(),
-        _ => throw new EngineTypeException($"Object of type {TypeName(value)} is not JSON serializable", nameof(value)),
+        _ => throw new NotSupportedException($"A value of type '{TypeName(value)}' cannot be written as JSON."),
     };
 
     /// <summary>
@@ -286,7 +282,7 @@ internal static class ReportValues
 
     private static string TypeName(object? value) => value switch
     {
-        object[] => "tuple",
+        object[] => "array",
         IEnumerable and not string when value.GetType().GetInterfaces().Any(contract => contract.IsGenericType && contract.GetGenericTypeDefinition() == typeof(ISet<>)) => "set",
         _ => EngineBuiltins.TypeName(value),
     };

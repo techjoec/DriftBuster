@@ -22,7 +22,7 @@ internal static partial class UnixMkdir
     /// <summary>
     /// 0 when <paramref name="path"/> was created, otherwise the <c>errno</c> of the failed call; null when this platform offers no
     /// <c>mkdir(2)</c> binding, or <paramref name="path"/> holds a NUL or an unpaired surrogate (text the kernel cannot receive as
-    /// Python spells it: Python raises <c>ValueError</c> or <c>UnicodeEncodeError</c> before the call).
+    /// Python spells it: Python refuses both before the call).
     /// </summary>
     internal static unsafe int? MakeDirectory(string path)
     {

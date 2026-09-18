@@ -18,11 +18,11 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <see cref="OrderedDictionary{TKey, TValue}"/> whose keys compare with <see cref="KeyComparer"/> (<c>true</c>, 1 and 1.0
 /// are one key; a NaN is equal only to itself). Every malformed payload — a short read, an unknown token, an out-of-range
 /// reference, an undecodable string, a key that cannot be hashed, a UID at or above 2**64, a date outside years 1-9999 —
-/// surfaces as a <see cref="DecodeException"/> of type <c>InvalidFileException</c> with the message <c>Invalid file</c>.
+/// surfaces as a <see cref="DecodeException"/> of type <c>InvalidDataException</c> with one message for every kind of damage.
 /// </para>
 /// <para>
 /// Containers are read recursively, so the reader follows at most <see cref="MaxNestingDepth"/> levels of nesting and
-/// reports a deeper payload as a <see cref="DecodeException"/> of type <c>RecursionError</c> rather than running out of
+/// reports a deeper payload as a <see cref="DecodeException"/> of type <c>InvalidDataException</c> rather than running out of
 /// stack. Detection samples are bounded, so only a hand-built payload reaches the limit.
 /// </para>
 /// </remarks>
@@ -32,9 +32,9 @@ internal static partial class BinaryPlist
     internal const int MaxNestingDepth = 1000;
 
     /// <summary>A decode failure, named by the kind of failure it stands for.</summary>
-    internal sealed class DecodeException(string valueType, string message) : Exception(message)
+    internal sealed class DecodeException(string errorType, string message) : Exception(message)
     {
-        public string EngineType { get; } = valueType;
+        public string ErrorType { get; } = errorType;
     }
 
     /// <summary>A plist UID; its string form is <c>UID(7)</c>.</summary>
@@ -56,9 +56,10 @@ internal static partial class BinaryPlist
     private static readonly DateTime PlistEpoch = new(2001, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
 
     // Every malformed payload reports the same failure: the reader does not tell one kind of damage from another.
-    private static DecodeException InvalidFile() => new("InvalidFileException", "Invalid file");
+    private static DecodeException InvalidFile() => new(nameof(InvalidDataException), "The binary property list is not valid.");
 
-    private static DecodeException TooDeep() => new("RecursionError", "maximum recursion depth exceeded");
+    private static DecodeException TooDeep()
+        => new(nameof(InvalidDataException), string.Create(CultureInfo.InvariantCulture, $"The binary property list is nested more than {MaxNestingDepth} levels deep."));
 
     /// <summary>Reads a bplist00 payload.</summary>
     /// <exception cref="DecodeException">The payload is malformed or nested past <see cref="MaxNestingDepth"/>.</exception>

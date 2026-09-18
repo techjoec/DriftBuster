@@ -87,7 +87,7 @@ public sealed class CaptureCommandTests : IDisposable
 
         run.ExitCode.Should().Be(1);
         run.Out.Should().BeEmpty();
-        run.Err.Should().Be($"error: failed to export {database}: limit must be positive when provided{Environment.NewLine}");
+        run.Err.Should().Be($"error: failed to export {database}: limit must be positive when provided. (Parameter 'limit'){Environment.NewLine}");
         File.Exists(Path.Combine(output, "sql-manifest.json")).Should().BeTrue();
     }
 }

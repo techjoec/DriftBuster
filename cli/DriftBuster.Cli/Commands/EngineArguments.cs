@@ -50,9 +50,9 @@ internal static class EngineArguments
         {
             return EngineBuiltins.Int(text);
         }
-        catch (EngineValueException)
+        catch (FormatException exc)
         {
-            result.AddError($"argument {name}: invalid int value: {EngineRepr.StrRepr(text)}");
+            result.AddError($"argument {name}: {exc.Message}");
             return null;
         }
     }
@@ -69,9 +69,9 @@ internal static class EngineArguments
         {
             return EngineBuiltins.Float(text);
         }
-        catch (EngineValueException)
+        catch (FormatException exc)
         {
-            result.AddError($"argument {name}: invalid float value: {EngineRepr.StrRepr(text)}");
+            result.AddError($"argument {name}: {exc.Message}");
             return null;
         }
     }

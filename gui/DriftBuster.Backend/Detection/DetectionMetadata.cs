@@ -239,7 +239,7 @@ public static partial class DetectionMetadata
             {
                 keys.Add(NormaliseIdentifier(format.Name, "format_name"));
             }
-            catch (MetadataValidationError)
+            catch (MetadataValidationException)
             {
                 // Names that are not valid slugs contribute only their lowered form.
             }
@@ -310,12 +310,12 @@ public static partial class DetectionMetadata
         var identifier = Slugify(raw);
         if (identifier.Length == 0)
         {
-            throw new MetadataValidationError($"{field} cannot be empty.");
+            throw new MetadataValidationException($"{field} cannot be empty.");
         }
 
         if (!ValidIdentifier().IsMatch(identifier))
         {
-            throw new MetadataValidationError(
+            throw new MetadataValidationException(
                 $"{field} must be a lowercase slug containing letters, numbers, hyphen, or underscore.");
         }
 
@@ -337,7 +337,7 @@ public static partial class DetectionMetadata
         var formatName = match.FormatName;
         if (formatName is null)
         {
-            throw new MetadataValidationError("DetectionMatch.format_name must be a string.");
+            throw new MetadataValidationException("DetectionMatch.format_name must be a string.");
         }
 
         var formatId = NormaliseIdentifier(formatName, "format_name");
@@ -351,7 +351,7 @@ public static partial class DetectionMetadata
         }
         else if (strict)
         {
-            throw new MetadataValidationError($"Unknown catalog format: {formatId}");
+            throw new MetadataValidationException($"Unknown catalog format: {formatId}");
         }
         else
         {
@@ -394,7 +394,7 @@ public static partial class DetectionMetadata
 
         if (strict && allowedVariants.Count > 0 && !allowedVariants.Contains(variantId))
         {
-            throw new MetadataValidationError(
+            throw new MetadataValidationException(
                 $"Unknown catalog variant '{variantId}' for format '{canonicalFormat}'.");
         }
 

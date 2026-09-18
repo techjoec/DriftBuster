@@ -6,11 +6,10 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Python built-ins over the values <see cref="EngineJson"/> produces (<c>None</c>, bool, int, float, str, list, dict), with
-/// Python's results and error texts: <c>bool()</c>, <c>int()</c>, <c>float()</c>, <c>iter()</c>, <c>type().__name__</c> and
-/// <c>mapping.get</c>. <c>TypeError</c> is <see cref="EngineTypeException"/>, <c>ValueError</c>
-/// <see cref="EngineValueException"/>, <c>OverflowError</c> <see cref="OverflowException"/> and <c>AttributeError</c>
-/// <see cref="EngineAttributeException"/>.
+/// Python built-ins over the values <see cref="EngineJson"/> produces (null, bool, int, float, str, list, dict), with Python's
+/// results: <c>bool()</c>, <c>int()</c>, <c>float()</c>, <c>iter()</c> and <c>mapping.get</c>. A value of the wrong kind raises
+/// <see cref="ArgumentException"/>, text that is not a number <see cref="FormatException"/>, a number out of range
+/// <see cref="OverflowException"/> and a lookup on something other than a JSON object <see cref="InvalidDataException"/>.
 /// </summary>
 public static class EngineBuiltins
 {
@@ -20,18 +19,17 @@ public static class EngineBuiltins
     // Py_ISSPACE: the whitespace PyLong_FromString and float_from_string_inner strip around the ASCII literal.
     private static readonly char[] AsciiWhitespace = [' ', '\t', '\n', '\v', '\f', '\r'];
 
-    /// <summary><c>type(value).__name__</c>.</summary>
+    /// <summary>The kind of <paramref name="value"/> as error messages name it, in JSON's terms where the value is a JSON value.</summary>
     public static string TypeName(object? value) => value switch
     {
-        null => "NoneType",
-        bool => "bool",
-        int or long or BigInteger => "int",
-        double => "float",
-        string => "str",
-        byte[] => "bytes",
-        object?[] => "tuple",
-        IDictionary or IReadOnlyDictionary<string, object?> => "dict",
-        IEnumerable => "list",
+        null => "null",
+        bool => "boolean",
+        int or long or BigInteger => "integer",
+        double => "number",
+        string => "string",
+        byte[] => "byte array",
+        IDictionary or IReadOnlyDictionary<string, object?> => "object",
+        IEnumerable => "array",
         _ => value.GetType().Name,
     };
 
@@ -51,14 +49,14 @@ public static class EngineBuiltins
 
     /// <summary>
     /// <c>len(value)</c>: the code points of a str (an unpaired surrogate is one), the items of a list or tuple, the keys of a dict;
-    /// anything else raises <c>TypeError: object of type '&lt;type&gt;' has no len()</c>.
+    /// anything else raises <see cref="ArgumentException"/>.
     /// </summary>
     public static int Len(object? value) => value switch
     {
         string text => CodePointCount(text),
         IReadOnlyDictionary<string, object?> mapping => mapping.Count,
         ICollection collection => collection.Count,
-        _ => throw new EngineTypeException($"object of type '{TypeName(value)}' has no len()", nameof(value)),
+        _ => throw new InvalidDataException($"A value of type '{TypeName(value)}' has no length."),
     };
 
     private static int CodePointCount(string text)
@@ -72,7 +70,7 @@ public static class EngineBuiltins
         return count;
     }
 
-    /// <summary><c>value.get(key)</c> on a mapping; any other value raises <c>AttributeError</c>.</summary>
+    /// <summary><c>value.get(key)</c> on a mapping; any other value raises <see cref="InvalidDataException"/>.</summary>
     public static object? Get(object? value, string key)
     {
         if (value is IReadOnlyDictionary<string, object?> mapping)
@@ -80,20 +78,22 @@ public static class EngineBuiltins
             return mapping.TryGetValue(key, out var item) ? item : null;
         }
 
-        throw new EngineAttributeException($"expected a JSON object, not '{TypeName(value)}'");
+        throw new InvalidDataException($"expected a JSON object, not '{TypeName(value)}'");
     }
 
     /// <summary>
     /// <c>for item in value</c>: a str yields its code points (an unpaired surrogate is one), a list its items, a dict its keys;
-    /// anything else raises <c>TypeError: '&lt;type&gt;' object is not iterable</c>.
+    /// anything else raises <see cref="ArgumentException"/>.
     /// </summary>
     public static IEnumerable<object?> Iterate(object? value) => value switch
     {
         string text => CodePoints(text),
         IReadOnlyDictionary<string, object?> mapping => mapping.Keys.Cast<object?>().ToList(),
         IList list => list.Cast<object?>().ToList(),
-        _ => throw new EngineTypeException($"'{TypeName(value)}' object is not iterable", nameof(value)),
+        _ => throw NotEnumerable(value),
     };
+
+    private static InvalidDataException NotEnumerable(object? value) => new($"A value of type '{TypeName(value)}' cannot be enumerated.");
 
     private static IEnumerable<object?> CodePoints(string text)
     {
@@ -110,13 +110,10 @@ public static class EngineBuiltins
 
     /// <summary>
     /// <c>dict(value)</c>: a mapping is copied in its order; a str, list or tuple is read as key/value pairs, each item an iterable of
-    /// exactly two elements (<c>TypeError: cannot convert dictionary update sequence element #N to a sequence</c>, <c>ValueError:
-    /// dictionary update sequence element #N has length L; 2 is required</c>), a later pair replacing an earlier key; any other value
-    /// raises <c>TypeError: '&lt;type&gt;' object is not iterable</c>. A pair whose key is a list or dict raises Python's
-    /// <c>unhashable type</c>; one whose key is any other non-str value raises <c>TypeError: {what} keys must be str, not '&lt;type&gt;'</c>,
-    /// the typed mappings holding str keys only.
+    /// exactly two elements, a later pair replacing an earlier key; any other value, an item that is not a pair and a key that is not a
+    /// string (the typed mappings hold string keys only) raise <see cref="ArgumentException"/>.
     /// </summary>
-    public static OrderedDictionary<string, object?> Dict(object? value, string what = "dict")
+    public static OrderedDictionary<string, object?> Dict(object? value, string what = "mapping")
     {
         var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
         if (value is IReadOnlyDictionary<string, object?> mapping)
@@ -131,7 +128,7 @@ public static class EngineBuiltins
 
         if (value is not (IList or string))
         {
-            throw new EngineTypeException($"'{TypeName(value)}' object is not iterable", nameof(value));
+            throw NotEnumerable(value);
         }
 
         var index = 0;
@@ -149,17 +146,15 @@ public static class EngineBuiltins
     {
         if (item is not (string or IList or IReadOnlyDictionary<string, object?>))
         {
-            throw new EngineTypeException(
-                string.Create(CultureInfo.InvariantCulture, $"cannot convert dictionary update sequence element #{index} to a sequence"),
-                nameof(item));
+            throw new InvalidDataException(
+                string.Create(CultureInfo.InvariantCulture, $"Element {index} of the {what} sequence is not a key/value pair."));
         }
 
         var elements = Iterate(item).ToList();
         if (elements.Count != 2)
         {
-            throw new EngineValueException(
-                string.Create(CultureInfo.InvariantCulture, $"dictionary update sequence element #{index} has length {elements.Count}; 2 is required"),
-                nameof(item));
+            throw new InvalidDataException(
+                string.Create(CultureInfo.InvariantCulture, $"Element {index} of the {what} sequence has {elements.Count} items; a key/value pair has 2."));
         }
 
         if (elements[0] is { } candidate)
@@ -169,21 +164,24 @@ public static class EngineBuiltins
 
         return elements[0] is string key
             ? (key, elements[1])
-            : throw new EngineTypeException($"{what} keys must be str, not '{TypeName(elements[0])}'", nameof(item));
+            : throw new InvalidDataException($"The {what} keys must be strings, not '{TypeName(elements[0])}'.");
     }
 
-    /// <summary><c>int(value)</c>: bools and ints as themselves, floats truncated, strs parsed in base 10.</summary>
+    /// <summary>
+    /// <c>int(value)</c>: bools and ints as themselves, floats truncated, strs parsed in base 10 (<see cref="FormatException"/> for text
+    /// that is not an integer).
+    /// </summary>
     public static BigInteger Int(object? value) => value switch
     {
         bool flag => flag ? BigInteger.One : BigInteger.Zero,
         int number => number,
         long number => number,
         BigInteger number => number,
-        double number when double.IsNaN(number) => throw new EngineValueException("cannot convert float NaN to integer", nameof(value)),
-        double number when double.IsInfinity(number) => throw new OverflowException("cannot convert float infinity to integer"),
+        double number when double.IsNaN(number) => throw new InvalidDataException("NaN cannot be converted to an integer."),
+        double number when double.IsInfinity(number) => throw new OverflowException("Infinity cannot be converted to an integer."),
         double number => new BigInteger(Math.Truncate(number)),
         string text => ParseInt(text),
-        _ => throw new EngineTypeException($"int() argument must be a string, a bytes-like object or a real number, not '{TypeName(value)}'", nameof(value)),
+        _ => throw new InvalidDataException($"A value of type '{TypeName(value)}' cannot be converted to an integer."),
     };
 
     // PyLong_FromUnicodeObject(text, 10): Unicode decimal digits and whitespace become ASCII, then optional whitespace, a sign,
@@ -217,15 +215,14 @@ public static class EngineBuiltins
         if (!valid)
         {
             var repr = EngineRepr.StrRepr(text);
-            throw new EngineValueException($"invalid literal for int() with base 10: {TruncateCodePoints(repr, 200)}", nameof(text));
+            throw new FormatException($"The value {TruncateCodePoints(repr, 200)} is not a valid integer.");
         }
 
         if (digits.Length > MaxIntStringDigits)
         {
-            throw new EngineValueException(string.Create(
+            throw new FormatException(string.Create(
                 CultureInfo.InvariantCulture,
-                $"Exceeds the limit ({MaxIntStringDigits} digits) for integer string conversion: value has {digits.Length} digits"),
-                nameof(text));
+                $"The value has {digits.Length} digits, more than the {MaxIntStringDigits} an integer may have."));
         }
 
         var magnitude = BigInteger.Parse(digits.ToString(), NumberStyles.None, CultureInfo.InvariantCulture);
@@ -233,7 +230,7 @@ public static class EngineBuiltins
     }
 
     /// <summary>
-    /// <c>float(value)</c>: bools and ints converted (an int past the float range raises <c>OverflowError</c>), floats as
+    /// <c>float(value)</c>: bools and ints converted (an int past the float range raises <see cref="OverflowException"/>), floats as
     /// themselves, strs parsed as <c>PyFloat_FromString</c> does.
     /// </summary>
     public static double Float(object? value) => value switch
@@ -241,11 +238,11 @@ public static class EngineBuiltins
         bool flag => flag ? 1.0 : 0.0,
         int number => number,
         long number => number,
-        BigInteger number when double.IsInfinity((double)number) => throw new OverflowException("int too large to convert to float"),
+        BigInteger number when double.IsInfinity((double)number) => throw new OverflowException("The integer is too large to convert to a floating-point number."),
         BigInteger number => (double)number,
         double number => number,
         string text => ParseFloat(text),
-        _ => throw new EngineTypeException($"float() argument must be a string or a real number, not '{TypeName(value)}'", nameof(value)),
+        _ => throw new InvalidDataException($"A value of type '{TypeName(value)}' cannot be converted to a number."),
     };
 
     // PyFloat_FromString: Unicode decimal digits and whitespace become ASCII; an underscore must sit between two digits; then
@@ -280,7 +277,7 @@ public static class EngineBuiltins
             }
         }
 
-        throw new EngineValueException($"could not convert string to float: {EngineRepr.StrRepr(text)}", nameof(text));
+        throw new FormatException($"The value {EngineRepr.StrRepr(text)} is not a valid number.");
     }
 
     // digits [. digits] or . digits, then an optional exponent with digits.

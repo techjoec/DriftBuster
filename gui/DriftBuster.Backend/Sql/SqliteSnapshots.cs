@@ -31,17 +31,17 @@ public static partial class SqliteSnapshots
     /// masked column holds <paramref name="placeholder"/> (mask wins over hash), a hashed column <see cref="HashText"/> salted with
     /// <c>{table}.{column}:{hash_salt}</c>, any other column <see cref="NormaliseValue"/>. <paramref name="limit"/> is the value as the caller
     /// passes it (null, an integer of any size, a float or a bool): <c>limit &lt;= 0</c> is refused up front with a value comparison
-    /// (a str or list raises its <c>TypeError</c>), and each exported table splices <c>int(limit)</c> (a NaN raises <c>ValueError</c>, an
-    /// infinity <c>OverflowError</c>, only once a table is reached).
+    /// (a str or list raises <see cref="InvalidDataException"/>), and each exported table splices <c>int(limit)</c> (a NaN raises
+    /// <see cref="InvalidDataException"/>, an infinity <see cref="OverflowException"/>, only once a table is reached).
     /// </summary>
     /// <remarks>
     /// The database is opened read-only through <see cref="SqliteConnectionStringBuilder"/>, never as a file URI.
     /// Each value keeps its per-row storage class, as <c>sqlite3</c> reads it.
     /// </remarks>
-    /// <exception cref="EngineValueException"><paramref name="limit"/> is zero or negative.</exception>
-    /// <exception cref="EngineTypeException"><paramref name="limit"/> has no ordering with 0.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="limit"/> is zero or negative.</exception>
+    /// <exception cref="InvalidDataException"><paramref name="limit"/> has no ordering with 0.</exception>
     /// <exception cref="FileNotFoundException">The path does not exist (<c>Database not found: {path}</c>).</exception>
-    /// <exception cref="Sqlite3Exception">SQLite, or Python's <c>sqlite3</c> module, refuses the database, a statement or a value.</exception>
+    /// <exception cref="SqliteException">SQLite, or the export's own checks, refuse the database, a statement or a value.</exception>
     public static SqlSnapshot BuildSqliteSnapshot(
         string path,
         IEnumerable<string?>? tables = null,
@@ -56,7 +56,7 @@ public static partial class SqliteSnapshots
         ArgumentNullException.ThrowIfNull(hashSalt);
         if (limit is not null && EngineValues.LessThanOrEqual(limit, 0))
         {
-            throw new EngineValueException("limit must be positive when provided", nameof(limit));
+            throw new ArgumentOutOfRangeException(nameof(limit), "limit must be positive when provided.");
         }
 
         var resolved = LexicalPath.Str(path);
@@ -132,8 +132,7 @@ public static partial class SqliteSnapshots
     /// whose name is not text or a BLOB (<c>malformed database schema</c>). The rows are fetched up front and yielded one at a time, as
     /// the generator yields them, so every table before a refused row is exported first.
     /// </summary>
-    /// <exception cref="EngineTypeException">A name stored as a BLOB (<c>bytes.startswith</c> refuses the str prefix), raised when the
-    /// iteration reaches that row.</exception>
+    /// <exception cref="InvalidDataException">A name stored as a BLOB, raised when the iteration reaches that row.</exception>
     internal static IEnumerable<(string Name, object? Schema)> IterTables(sqlite3 db)
     {
         ArgumentNullException.ThrowIfNull(db);
@@ -146,7 +145,7 @@ public static partial class SqliteSnapshots
         {
             if (row[0] is byte[])
             {
-                throw new EngineTypeException("startswith first arg must be bytes or a tuple of bytes, not str", nameof(rows));
+                throw new InvalidDataException("A table name stored as a BLOB cannot be exported.");
             }
 
             var name = (string)row[0]!;
@@ -172,7 +171,7 @@ public static partial class SqliteSnapshots
         if (RunProfileStore.IsDirectory(resolved))
         {
             Batteries_V2.Init();
-            throw new Sqlite3Exception("OperationalError", raw.sqlite3_errstr(raw.SQLITE_CANTOPEN).utf8_to_string(), raw.SQLITE_CANTOPEN);
+            throw new SqliteException(raw.sqlite3_errstr(raw.SQLITE_CANTOPEN).utf8_to_string(), raw.SQLITE_CANTOPEN);
         }
 
         var connectionString = new SqliteConnectionStringBuilder
@@ -191,7 +190,7 @@ public static partial class SqliteSnapshots
         {
             connection.Dispose();
             var primary = exc.SqliteErrorCode & 0xFF;
-            throw new Sqlite3Exception(Sqlite3Cursor.ErrorClass(primary), raw.sqlite3_errstr(primary).utf8_to_string(), exc.SqliteExtendedErrorCode, exc);
+            throw new SqliteException(raw.sqlite3_errstr(primary).utf8_to_string(), exc.SqliteErrorCode, exc.SqliteExtendedErrorCode);
         }
     }
 

@@ -20,7 +20,7 @@ internal static partial class PurgeReportingRetention
         return remainder > 5 || (remainder == 5 && (micros & 1) == 1) ? micros + 1 : micros;
     }
 
-    // entry.stat().st_mtime; null when the entry is gone or a link whose target is (FileNotFoundError).
+    // entry.stat().st_mtime; null when the entry is gone or a link whose target is.
     private static BigInteger? ModifiedMicroseconds(string entry)
     {
         FileSystemInfo info = Directory.Exists(entry) ? new DirectoryInfo(entry) : new FileInfo(entry);
@@ -69,12 +69,12 @@ internal static partial class PurgeReportingRetention
         }
     }
 
-    // Path.rmdir(): a link to a directory is not a directory to remove (NotADirectoryError).
+    // Path.rmdir(): a link to a directory is not a directory to remove.
     private static void RemoveDirectory(string path)
     {
         if (new DirectoryInfo(path).LinkTarget is not null)
         {
-            throw OsError.Create(OsError.NotADirectory, path);
+            throw FileSystemError.Create(FileSystemError.NotADirectory, path);
         }
 
         Directory.Delete(path);

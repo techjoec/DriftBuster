@@ -477,7 +477,7 @@ public sealed class DriftbusterBackendTests
             // Listing reads every profile.json and raises on the first that is not JSON.
             var invalidDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Broken"));
             File.WriteAllText(Path.Combine(invalidDir.FullName, "profile.json"), "{ invalid json");
-            await Assert.ThrowsAnyAsync<ArgumentException>(() => _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<InvalidDataException>(() => _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken));
         }
         finally
         {

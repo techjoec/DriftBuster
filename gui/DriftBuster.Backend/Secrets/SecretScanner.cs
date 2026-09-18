@@ -104,7 +104,7 @@ public static partial class SecretScanner
     /// <c>load_secret_rules()</c>: the cached <c>(rules, version, loaded)</c>, loading the packaged ruleset on first use.
     /// A missing resource or a JSON <c>null</c> caches no rules, version "none", not loaded; a ruleset without usable rules
     /// caches no rules with its version (or "unknown"), loaded. A payload that is not a mapping raises
-    /// <see cref="InvalidOperationException"/> where Python's <c>payload.get</c> raises <c>AttributeError</c>.
+    /// <see cref="InvalidOperationException"/>.
     /// </summary>
     public static (IReadOnlyList<SecretDetectionRule> Rules, string Version, bool Loaded) LoadSecretRules()
     {
@@ -235,15 +235,7 @@ public static partial class SecretScanner
             return mapping.TryGetValue("version", out var value) ? value : "unknown";
         }
 
-        var typeName = payload switch
-        {
-            string => "str",
-            bool => "bool",
-            double => "float",
-            int or long or BigInteger => "int",
-            _ => "list",
-        };
-        throw new InvalidOperationException($"expected a JSON object, not '{typeName}'");
+        throw new InvalidOperationException($"expected a JSON object, not '{EngineBuiltins.TypeName(payload)}'");
     }
 
     // Python's "value or fallback".

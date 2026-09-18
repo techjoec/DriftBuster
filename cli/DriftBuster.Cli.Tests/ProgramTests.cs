@@ -61,7 +61,7 @@ public sealed class ProgramTests
             var run = CliInvocation.Invoke("profile", "show", "absent-profile", "--base-dir", Path.Combine(tmp.FullName, "no-such-base"));
 
             run.ExitCode.Should().Be(1);
-            run.Err.Should().Be("FileNotFoundError: Profile not found: absent-profile" + Environment.NewLine);
+            run.Err.Should().Be("FileNotFoundException: Profile not found: absent-profile" + Environment.NewLine);
         }
         finally
         {

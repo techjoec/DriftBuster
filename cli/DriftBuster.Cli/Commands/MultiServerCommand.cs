@@ -83,7 +83,7 @@ internal static class MultiServerCommand
             EmitLine(stdout, new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["type"] = "result", ["payload"] = ResponsePayload(response) });
             return 0;
         }
-        catch (Exception exc) when (exc is CommandExitException or InvalidDataException)
+        catch (CommandExitException exc)
         {
             EmitError(stdout, exc.Message.Length > 0 ? exc.Message : "Request aborted");
             return 1;
@@ -114,13 +114,13 @@ internal static class MultiServerCommand
         return new MultiServerRunner(cacheDir).Run(plans, new LineProgress(stdout));
     }
 
-    // `if cache_dir: Path(cache_dir)`: a truthy value that is not a str raises Path's TypeError.
+    // `if cache_dir: Path(cache_dir)`: a truthy value that is not a str is refused.
     private static string? CacheDirText(object? value) => value switch
     {
         _ when !EngineBuiltins.IsTruthy(value) => null,
         string text => text,
-        _ => throw new EngineTypeException(
-            $"cache_dir must be a path string, not '{EngineBuiltins.TypeName(value)}'", nameof(value)),
+        _ => throw new InvalidDataException(
+            $"cache_dir must be a path string, not '{EngineBuiltins.TypeName(value)}'"),
     };
 
     private static void EmitError(TextWriter stdout, string message)

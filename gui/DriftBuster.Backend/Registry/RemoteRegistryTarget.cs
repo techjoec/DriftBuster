@@ -41,7 +41,7 @@ public sealed record RemoteRegistryTarget(
 
         return FalseWords.Contains(text, StringComparer.Ordinal)
             ? false
-            : throw new EngineValueException($"Unsupported boolean value '{EngineRepr.Str(value)}' for remote target", nameof(value));
+            : throw new InvalidDataException($"Unsupported boolean value '{EngineRepr.Str(value)}' for remote target");
     }
 
     /// <summary>
@@ -51,37 +51,38 @@ public sealed record RemoteRegistryTarget(
     /// <c>int(port)</c>, <c>use_ssl</c>/<c>use-ssl</c> through <see cref="CoerceBool"/> and <c>alias</c>, each text stripped and
     /// dropped when blank.
     /// </summary>
-    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal, or from <c>int()</c>.</exception>
+    /// <exception cref="InvalidDataException">Each refusal.</exception>
+    /// <exception cref="FormatException">A port that is not an integer.</exception>
     public static RemoteRegistryTarget FromPayload(object? payload)
     {
         if (payload is string hostText)
         {
             var host = EngineText.Strip(hostText);
             return host.Length == 0
-                ? throw new EngineValueException("remote target host must be non-empty", nameof(payload))
+                ? throw new InvalidDataException("remote target host must be non-empty")
                 : new RemoteRegistryTarget(host);
         }
 
         if (payload is not IReadOnlyDictionary<string, object?> mapping)
         {
-            throw new EngineValueException("remote target must be a string host or mapping", nameof(payload));
+            throw new InvalidDataException("remote target must be a string host or mapping");
         }
 
         var hostValue = Or(mapping, "host", "hostname");
         if (!EngineBuiltins.IsTruthy(hostValue) || EngineText.Strip(EngineRepr.Str(hostValue)).Length == 0)
         {
-            throw new EngineValueException("remote target requires 'host'", nameof(payload));
+            throw new InvalidDataException("remote target requires 'host'");
         }
 
         if (mapping.ContainsKey("password"))
         {
-            throw new EngineValueException("remote target must not embed raw passwords; use password_env", nameof(payload));
+            throw new InvalidDataException("remote target must not embed raw passwords; use password_env");
         }
 
         var passwordEnv = FirstPresent(mapping, "password_env", "password-env");
         if (passwordEnv is not null && EngineText.Strip(EngineRepr.Str(passwordEnv)).Length == 0)
         {
-            throw new EngineValueException("remote target password_env must be non-empty when provided", nameof(payload));
+            throw new InvalidDataException("remote target password_env must be non-empty when provided");
         }
 
         var username = Or(mapping, "username", "user");
@@ -135,6 +136,6 @@ public sealed record RemoteRegistryTarget(
         }
 
         var port = EngineBuiltins.Int(value);
-        return port <= 0 ? throw new EngineValueException("remote target port must be positive", nameof(value)) : port;
+        return port <= 0 ? throw new InvalidDataException("remote target port must be positive") : port;
     }
 }

@@ -69,7 +69,7 @@ public sealed partial class XmlPlugin
                     yield return element;
                     break;
                 case XComment:
-                    throw new InvalidOperationException("argument of type 'function' is not iterable");
+                    throw new InvalidOperationException("An XML comment node has no tag name.");
             }
         }
     }

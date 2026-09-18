@@ -39,7 +39,7 @@ namespace DriftBuster.Backend.Models
             {
                 return RunProfile.SourceFromDict(mapping);
             }
-            catch (ArgumentException exc)
+            catch (Exception exc) when (exc is ArgumentException or InvalidDataException or FormatException)
             {
                 throw new JsonException(exc.Message, exc);
             }

@@ -38,7 +38,7 @@ internal static partial class BinaryPlist
         if (!ReferenceEquals(mismatch, NoMismatch))
         {
             throw new InvalidOperationException(
-                $"'<' not supported between instances of '{ValueTypeName(keys[0])}' and '{ValueTypeName(mismatch)}'");
+                $"A key of type '{ValueTypeName(keys[0])}' cannot be compared with a key of type '{ValueTypeName(mismatch)}'.");
         }
 
         return keys.Order(Comparer<object?>.Create((left, right) => CompareKeys(category, left!, right!))).ToList();
@@ -93,13 +93,13 @@ internal static partial class BinaryPlist
 
     private static string ValueTypeName(object? key) => key switch
     {
-        null => "NoneType",
-        string => "str",
-        bool => "bool",
-        BigInteger => "int",
-        double => "float",
-        byte[] => "bytes",
-        DateTime => "datetime.datetime",
+        null => "null",
+        string => "string",
+        bool => "boolean",
+        BigInteger => "integer",
+        double => "real",
+        byte[] => "data",
+        DateTime => "date",
         Uid => "UID",
         _ => key.GetType().Name,
     };

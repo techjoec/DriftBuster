@@ -44,19 +44,19 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     /// <see cref="NormaliseSnapshotColumns"/>; <c>int(limit)</c> when not null, which must be positive; the placeholder and salt the first
     /// truthy of the spec's and the payload's as <c>str()</c>; <c>str(dialect).lower()</c>, which must be <c>sqlite</c>.
     /// </summary>
-    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
+    /// <exception cref="InvalidDataException">Each refusal.</exception>
     public static OfflineSqlSnapshotSource FromDict(IReadOnlyDictionary<string, object?> payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
         if (payload.GetValueOrDefault("sql_snapshot") is not IReadOnlyDictionary<string, object?> spec)
         {
-            throw new EngineValueException("sql_snapshot source requires an object payload", nameof(payload));
+            throw new InvalidDataException("sql_snapshot source requires an object payload");
         }
 
         var pathValue = FirstTruthy(spec.GetValueOrDefault("path"), payload.GetValueOrDefault("path"));
         if (!EngineBuiltins.IsTruthy(pathValue) || EngineText.Strip(EngineRepr.Str(pathValue)).Length == 0)
         {
-            throw new EngineValueException("sql_snapshot requires a 'path'.", nameof(payload));
+            throw new InvalidDataException("sql_snapshot requires a 'path'.");
         }
 
         var aliasValue = FirstTruthy(payload.GetValueOrDefault("alias"), spec.GetValueOrDefault("alias"));
@@ -71,7 +71,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
             limit = EngineBuiltins.Int(limitValue);
             if (limit.Value.Sign <= 0)
             {
-                throw new EngineValueException("sql_snapshot limit must be positive if provided", nameof(payload));
+                throw new InvalidDataException("sql_snapshot limit must be positive if provided");
             }
         }
 
@@ -81,7 +81,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
         var dialect = EngineText.Lower(EngineRepr.Str(FirstTruthy(spec.GetValueOrDefault("dialect"), "sqlite")));
         if (!string.Equals(dialect, "sqlite", StringComparison.Ordinal))
         {
-            throw new EngineValueException("sql_snapshot currently supports only the 'sqlite' dialect", nameof(payload));
+            throw new InvalidDataException("sql_snapshot currently supports only the 'sqlite' dialect");
         }
 
         return new OfflineSqlSnapshotSource(EngineRepr.Str(pathValue))

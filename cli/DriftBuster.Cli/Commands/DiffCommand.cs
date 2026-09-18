@@ -163,8 +163,8 @@ internal static class DiffCommand
     }
 
     /// <summary>
-    /// <c>_read_text(path)</c>: the file decoded as UTF-8 with invalid bytes dropped and universal newlines translated; an <c>OSError</c>
-    /// becomes <c>FileNotFoundError("Unable to read {path}: {exc}")</c>.
+    /// <c>_read_text(path)</c>: the file decoded as UTF-8 with invalid bytes dropped and universal newlines translated; a read failure
+    /// becomes <see cref="FileNotFoundException"/> (<c>Unable to read {path}: {reason}</c>).
     /// </summary>
     internal static string ReadText(string path)
     {

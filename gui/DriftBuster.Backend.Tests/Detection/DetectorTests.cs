@@ -203,14 +203,14 @@ public sealed class DetectorTests : IDisposable
     }
 
     // A static plugin wins, and with sortPlugins false registration order beats priority. A plugin reporting a format that is
-    // not in the catalog raises MetadataValidationError; the ordering claims are then asserted with a catalog format.
+    // not in the catalog raises MetadataValidationException; the ordering claims are then asserted with a catalog format.
     [Fact]
     public void StaticAndManualPluginOrdering()
     {
         var self = WriteText("detector.txt", "fixture\n");
 
         var unknown = () => Detector.ScanFileWithDefaults(self, sampleSize: 64, plugins: [new UnknownFormatPlugin()]);
-        unknown.Should().Throw<MetadataValidationError>().WithMessage("Unknown catalog format: fixture");
+        unknown.Should().Throw<MetadataValidationException>().WithMessage("Unknown catalog format: fixture");
 
         var result = Detector.ScanFileWithDefaults(self, sampleSize: 64, plugins: [new StaticPlugin()]);
         result!.FormatName.Should().Be("xml");
@@ -331,10 +331,10 @@ public sealed class DetectorTests : IDisposable
     public void DetectorRejectsInvalidSampleSize()
     {
         var act = () => new Detector(sampleSize: 0);
-        act.Should().Throw<EngineValueException>().WithMessage("sample_size must be a positive integer");
+        act.Should().Throw<ArgumentOutOfRangeException>().WithMessage("sample_size must be a positive integer. (Parameter 'sampleSize')");
 
         var budget = () => new Detector(maxTotalSampleBytes: 0);
-        budget.Should().Throw<EngineValueException>().WithMessage("max_total_sample_bytes must be a positive integer");
+        budget.Should().Throw<ArgumentOutOfRangeException>().WithMessage("max_total_sample_bytes must be a positive integer. (Parameter 'value')");
     }
 
     private sealed class TimingOutPlugin : IFormatPlugin
@@ -421,7 +421,7 @@ public sealed class DetectorTests : IDisposable
     }
 
     [Fact]
-    public void ScanPathSwallowsOsErrorWhenHandlerReturns()
+    public void ScanPathSwallowsIOExceptionWhenHandlerReturns()
     {
         var root = TmpPath("root");
         Directory.CreateDirectory(root);
@@ -440,7 +440,7 @@ public sealed class DetectorTests : IDisposable
     {
         var detector = new Detector();
         var act = () => detector.ScanWithProfiles(TmpPath("file"), null!);
-        act.Should().Throw<EngineValueException>().WithMessage("profile_store must be provided");
+        act.Should().Throw<ArgumentNullException>().WithMessage("profile_store must be provided. (Parameter 'profileStore')");
     }
 
     [Fact]
@@ -659,7 +659,7 @@ public sealed class DetectorTests : IDisposable
     }
 
     // A file root whose read fails reports once through on_error with a single "{path}: reason" message,
-    // as DetectorIOError (not an OSError) propagates untouched through the scan.
+    // as a DetectorIOException propagates untouched through the scan.
     [Fact]
     public void ScanPathFileRootReadFailureReportsOnce()
     {

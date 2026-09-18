@@ -45,9 +45,9 @@ public sealed record MultiServerPlan
     /// <summary>
     /// <c>multi_server._build_plans(request)</c> over a decoded JSON request (<see cref="EngineJson"/> values): <c>request.get("plans")
     /// or []</c> must be a list or a str (a str yields no plans), entries that are not mappings are skipped, and each mapping goes
-    /// through <see cref="FromMapping"/>. Python's errors are raised with Python's text: a request that is not a mapping
-    /// (<c>AttributeError</c>), a <c>plans</c> value of any other type (<c>SystemExit: 'plans' must be an array</c>, as
-    /// <see cref="InvalidDataException"/>) and every error <see cref="FromMapping"/> raises.
+    /// through <see cref="FromMapping"/>. A <c>plans</c> value of any other type raises <see cref="CommandExitException"/>
+    /// (<c>'plans' must be an array</c>); a request that is not a mapping raises <see cref="InvalidDataException"/>, as does every
+    /// error <see cref="FromMapping"/> raises.
     /// </summary>
     public static IReadOnlyList<MultiServerPlan> BuildPlans(object? request)
     {
@@ -59,7 +59,7 @@ public sealed record MultiServerPlan
 
         if (payload is not (string or List<object?>))
         {
-            throw new InvalidDataException("'plans' must be an array");
+            throw new CommandExitException("'plans' must be an array");
         }
 
         return EngineBuiltins.Iterate(payload)
@@ -71,7 +71,7 @@ public sealed record MultiServerPlan
     /// <summary>
     /// <c>Plan.from_mapping(payload)</c> with Python's coercions: <c>str(host_id or "")</c> and <c>str(label or host_id)</c>
     /// (<see cref="EngineRepr.Str"/>), <c>for entry in roots or []</c> with <c>str(entry or "")</c>, <c>bool(is_preferred)</c>,
-    /// <c>int(priority)</c>, <c>float(throttle_seconds)</c> (null when that raises <c>TypeError</c> or <c>ValueError</c>) and a
+    /// <c>int(priority)</c>, <c>float(throttle_seconds)</c> (null when the value is not a number) and a
     /// truthy <c>baseline</c> or <c>export</c> that must be a mapping. <c>scope</c>, <c>role</c>, the export flags and
     /// <c>cached_at</c> are read by Python but never used by the runner, and none of their coercions can raise.
     /// </summary>
@@ -109,7 +109,7 @@ public sealed record MultiServerPlan
             Throttle(EngineBuiltins.Get(payload, "throttle_seconds")));
     }
 
-    // float(throttle_value), None when it raises TypeError or ValueError; OverflowError propagates.
+    // float(throttle_value), None when the value is not a number; an OverflowException propagates.
     private static double? Throttle(object? value)
     {
         if (value is null)
@@ -121,7 +121,7 @@ public sealed record MultiServerPlan
         {
             return EngineBuiltins.Float(value);
         }
-        catch (Exception exc) when (exc is EngineTypeException or EngineValueException)
+        catch (Exception exc) when (exc is InvalidDataException or FormatException)
         {
             return null;
         }

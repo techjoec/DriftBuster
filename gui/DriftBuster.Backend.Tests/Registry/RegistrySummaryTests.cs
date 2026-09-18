@@ -101,7 +101,7 @@ public sealed class RegistrySummaryTests
         stats["calls"].Should().Be(1);
         stats["successes"].Should().Be(0);
         stats["errors"].Should().Be(1);
-        stats["last_error"].Should().BeOfType<string>().Which.Should().Be("RuntimeError: backend not initialised");
+        stats["last_error"].Should().BeOfType<string>().Which.Should().Be("InvalidOperationException: backend not initialised");
 
         RegistryOperations.RegistrySummary(reset: true);
         var resetSummary = Summary();

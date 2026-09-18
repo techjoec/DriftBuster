@@ -105,7 +105,7 @@ public sealed partial class RunProfile
     }
 
     /// <summary>
-    /// <c>OfflineCollectionSource.from_dict(payload)</c>: a non-empty <c>path</c> (<c>ValueError</c> otherwise), an <c>alias</c> that
+    /// <c>OfflineCollectionSource.from_dict(payload)</c>: a non-empty <c>path</c> (<see cref="InvalidDataException"/> otherwise), an <c>alias</c> that
     /// is dropped when blank or falsy, <c>bool(optional)</c>, and <c>exclude</c> as one pattern for a str or each item's <c>str()</c>.
     /// </summary>
     public static RunProfileSource SourceFromDict(IReadOnlyDictionary<string, object?> payload)
@@ -114,7 +114,7 @@ public sealed partial class RunProfile
         var path = payload.GetValueOrDefault("path");
         if (!EngineBuiltins.IsTruthy(path) || EngineText.Strip(EngineRepr.Str(path)).Length == 0)
         {
-            throw new EngineValueException("Source entry requires a non-empty 'path'.", nameof(payload));
+            throw new InvalidDataException("Source entry requires a non-empty 'path'.");
         }
 
         var alias = payload.GetValueOrDefault("alias");
@@ -235,7 +235,7 @@ public sealed partial class RunProfile
         => entry is IReadOnlyDictionary<string, object?> mapping ? SourceFromDict(mapping) : new RunProfileSource(EngineRepr.Str(entry));
 
     // The argument _normalise_options and _normalise_secret_scanner call .items() on: falsy is empty, a dict is itself, anything else
-    // raises AttributeError.
+    // is refused.
     private static IReadOnlyDictionary<string, object?>? Mapping(object? value)
     {
         if (!EngineBuiltins.IsTruthy(value))
@@ -244,7 +244,7 @@ public sealed partial class RunProfile
         }
 
         return value as IReadOnlyDictionary<string, object?>
-            ?? throw new EngineAttributeException($"expected a JSON object, not '{EngineBuiltins.TypeName(value)}'");
+            ?? throw new InvalidDataException($"expected a JSON object, not '{EngineBuiltins.TypeName(value)}'");
     }
 
     // _normalise_options.

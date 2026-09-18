@@ -58,14 +58,14 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         return results;
     }
 
-    // _open: None where winreg raises OSError. A path holding NUL raises ValueError from the argument conversion.
+    // _open: None where the key cannot be opened. A path holding NUL raises ArgumentException.
     private static SafeRegistryHandle? Open(string hive, string path, string? view)
     {
         ArgumentNullException.ThrowIfNull(path);
         var root = WinRegistryKeys.HiveHandle(hive);
         if (path.Contains('\0', StringComparison.Ordinal))
         {
-            throw new EngineValueException("embedded null character", nameof(path));
+            throw new ArgumentException("Null character in path.", nameof(path));
         }
 
         var rc = RegOpenKeyEx(root, path, 0, WinRegistryKeys.AccessFor(view), out var handle);
@@ -78,7 +78,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         return null;
     }
 
-    // winreg.EnumKey: None where it raises OSError.
+    // winreg.EnumKey: None where the call fails.
     private static unsafe string? EnumKey(SafeRegistryHandle handle, int index)
     {
         var buffer = stackalloc char[KeyNameBufferLength];
@@ -87,7 +87,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         return rc == 0 ? new string(buffer, 0, length) : null;
     }
 
-    // winreg.EnumValue: None where it raises OSError.
+    // winreg.EnumValue: None where the call fails.
     private static unsafe KeyValuePair<string, object?>? EnumValue(SafeRegistryHandle handle, int index)
     {
         int maxNameLength;
@@ -118,7 +118,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
                 break;
             }
 
-            // PyMem_Realloc to twice the size: an allocation the runtime cannot make raises OutOfMemoryException (MemoryError).
+            // PyMem_Realloc to twice the size: an allocation the runtime cannot make raises OutOfMemoryException.
             var grown = new byte[(long)bufDataSize * 2];
             data.CopyTo(grown, 0);
             data = grown;

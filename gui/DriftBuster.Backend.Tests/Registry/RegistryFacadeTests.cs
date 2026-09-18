@@ -5,7 +5,7 @@ namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
 /// The registry operations of <see cref="DriftbusterBackend"/>: off Windows both fail with the default registry backend's
-/// <c>RuntimeError</c> text before anything else is read.
+/// <see cref="PlatformNotSupportedException"/> before anything else is read.
 /// </summary>
 [Collection(RegistrySeamCollection.Name)]
 public sealed class RegistryFacadeTests

@@ -310,8 +310,8 @@ public static partial class HuntEngine
 
     /// <summary>
     /// The placeholder for <paramref name="tokenName"/> rendered from <paramref name="template"/> by
-    /// <see cref="PlaceholderTemplate.Render"/>: a field other than <c>token_name</c> raises <see cref="EngineValueException"/>
-    /// ("placeholder_template must include {token_name} placeholder"), malformed braces raise <see cref="FormatException"/>.
+    /// <see cref="PlaceholderTemplate.Render"/>: a field other than <c>token_name</c> ("placeholder_template must include
+    /// {token_name} placeholder") and malformed braces raise <see cref="FormatException"/>.
     /// </summary>
     internal static string FormatPlaceholder(string template, string tokenName)
         => PlaceholderTemplate.Render(template, tokenName);

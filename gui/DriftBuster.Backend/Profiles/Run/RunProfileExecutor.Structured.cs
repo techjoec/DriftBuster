@@ -20,7 +20,7 @@ public static partial class RunProfileExecutor
     /// <summary>
     /// <c>_iter_source_matches(path_text)</c> without a base directory: when the unexpanded text holds no glob character, the expanded
     /// path if it exists; otherwise the distinct <see cref="FileTreeGlob.GlobPathname"/> matches. Nothing found raises
-    /// <c>FileNotFoundError("Path does not exist: {path_text}")</c>, and so does a path whose every match <paramref name="isOwnOutput"/>
+    /// <see cref="FileNotFoundException"/> (<c>Path does not exist: {path_text}</c>), and so does a path whose every match <paramref name="isOwnOutput"/>
     /// names: the offline runner writes its output elsewhere, so there the run's own output does not exist to be matched.
     /// </summary>
     internal static IReadOnlyList<string> CollectStructuredMatches(

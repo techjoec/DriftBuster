@@ -68,7 +68,10 @@ using System.Text.RegularExpressions;
 
 namespace DriftBusterOfflineRunner
 {
-    /// <summary>An engine error: <see cref="ErrorType"/> is the error class name (ValueError, TypeError, ...), the message is str(exc).</summary>
+    /// <summary>
+    /// A runner error: <see cref="ErrorType"/> names the .NET exception type the backend raises for the same failure
+    /// (InvalidDataException, FormatException, FileNotFoundException, ...), the message is the backend's message.
+    /// </summary>
     public sealed class EngineException : Exception
     {
         public EngineException(string errorType, string message) : base(message)
@@ -161,42 +164,42 @@ namespace DriftBusterOfflineRunner
             value = Unwrap(value);
             if (value == null)
             {
-                return "NoneType";
+                return "null";
             }
 
             if (value is bool)
             {
-                return "bool";
+                return "boolean";
             }
 
             if (IsInt(value))
             {
-                return "int";
+                return "integer";
             }
 
             if (IsFloat(value))
             {
-                return "float";
+                return "number";
             }
 
             if (value is string)
             {
-                return "str";
+                return "string";
             }
 
             if (value is byte[])
             {
-                return "bytes";
+                return "byte array";
             }
 
             if (value is IDictionary)
             {
-                return "dict";
+                return "object";
             }
 
             if (value is IList)
             {
-                return "list";
+                return "array";
             }
 
             return value.GetType().Name;
@@ -246,13 +249,13 @@ namespace DriftBusterOfflineRunner
             return Truthy(first) ? first : second;
         }
 
-        /// <summary><c>mapping.get(key, default)</c> on a dict; <c>AttributeError</c> for anything else.</summary>
+        /// <summary><c>mapping.get(key, default)</c> on a dict; InvalidDataException for anything else.</summary>
         public static object Get(object mapping, string key, object fallback)
         {
             var dictionary = Unwrap(mapping) as IDictionary;
             if (dictionary == null)
             {
-                throw new EngineException("AttributeError", "expected a JSON object, not '" + TypeName(mapping) + "'");
+                throw new EngineException("InvalidDataException", "expected a JSON object, not '" + TypeName(mapping) + "'");
             }
 
             return dictionary.Contains(key) ? dictionary[key] : fallback;
@@ -302,7 +305,7 @@ namespace DriftBusterOfflineRunner
                 return result;
             }
 
-            throw new EngineException("TypeError", "'" + TypeName(value) + "' object is not iterable");
+            throw new EngineException("InvalidDataException", "A value of type '" + TypeName(value) + "' cannot be enumerated.");
         }
 
         public static string Str(object value)
@@ -405,12 +408,12 @@ namespace DriftBusterOfflineRunner
                 var number = ToDouble(value);
                 if (double.IsNaN(number))
                 {
-                    throw new EngineException("ValueError", "cannot convert float NaN to integer");
+                    throw new EngineException("InvalidDataException", "NaN cannot be converted to an integer.");
                 }
 
                 if (double.IsInfinity(number))
                 {
-                    throw new EngineException("OverflowError", "cannot convert float infinity to integer");
+                    throw new EngineException("OverflowException", "Infinity cannot be converted to an integer.");
                 }
 
                 return new BigInteger(Math.Truncate(number));
@@ -425,10 +428,10 @@ namespace DriftBusterOfflineRunner
                     return parsed;
                 }
 
-                throw new EngineException("ValueError", "invalid literal for int() with base 10: " + EngineText.Repr(text));
+                throw new EngineException("FormatException", "The value " + EngineText.Repr(text) + " is not a valid integer.");
             }
 
-            throw new EngineException("TypeError", "int() argument must be a string, a bytes-like object or a real number, not '" + TypeName(value) + "'");
+            throw new EngineException("InvalidDataException", "A value of type '" + TypeName(value) + "' cannot be converted to an integer.");
         }
 
         private static bool TryParseIntText(string text, out BigInteger result)
@@ -498,7 +501,7 @@ namespace DriftBusterOfflineRunner
                 var converted = (double)big;
                 if (double.IsInfinity(converted))
                 {
-                    throw new EngineException("OverflowError", "int too large to convert to float");
+                    throw new EngineException("OverflowException", "The integer is too large to convert to a floating-point number.");
                 }
 
                 return converted;
@@ -518,13 +521,13 @@ namespace DriftBusterOfflineRunner
                     return parsed;
                 }
 
-                throw new EngineException("ValueError", "could not convert string to float: " + EngineText.Repr(text));
+                throw new EngineException("FormatException", "The value " + EngineText.Repr(text) + " is not a valid number.");
             }
 
-            throw new EngineException("TypeError", "float() argument must be a string or a real number, not '" + TypeName(value) + "'");
+            throw new EngineException("InvalidDataException", "A value of type '" + TypeName(value) + "' cannot be converted to a number.");
         }
 
-        /// <summary><c>value &lt;= 0</c> for an int, float or bool; <c>TypeError</c> for anything else.</summary>
+        /// <summary><c>value &lt;= 0</c> for an int, float or bool; InvalidDataException for anything else.</summary>
         public static bool LessOrEqualZero(object value)
         {
             value = Unwrap(value);
@@ -543,7 +546,7 @@ namespace DriftBusterOfflineRunner
                 return ToDouble(value) <= 0.0;
             }
 
-            throw new EngineException("TypeError", "'<=' not supported between instances of '" + TypeName(value) + "' and 'int'");
+            throw new EngineException("InvalidDataException", "A value of type '" + TypeName(value) + "' cannot be compared with a value of type 'integer'.");
         }
     }
 
@@ -1302,10 +1305,10 @@ namespace DriftBusterOfflineRunner
         /// <summary>True once any ill-formed sequence was replaced.</summary>
         public bool Invalid { get; private set; }
 
-        /// <summary>str(UnicodeDecodeError) that strict decoding raises for the first ill-formed sequence, or null.</summary>
+        /// <summary>The error message strict decoding raises for the first ill-formed sequence, or null.</summary>
         public string ErrorMessage { get; private set; }
 
-        /// <summary>bytes.decode("utf-8") under errors="strict": the text, or the UnicodeDecodeError.</summary>
+        /// <summary>bytes.decode("utf-8") under errors="strict": the text, or InvalidDataException.</summary>
         public static string DecodeStrict(byte[] bytes)
         {
             var decoder = new EngineUtf8Decoder();
@@ -1313,7 +1316,7 @@ namespace DriftBusterOfflineRunner
             decoder.Decode(bytes, 0, bytes.Length, true, builder);
             if (decoder.Invalid)
             {
-                throw new EngineException("UnicodeDecodeError", decoder.ErrorMessage);
+                throw new EngineException("InvalidDataException", decoder.ErrorMessage);
             }
 
             return builder.ToString();
@@ -1457,12 +1460,22 @@ namespace DriftBusterOfflineRunner
         {
             if (!Invalid)
             {
-                var position = _base + from - start;
-                ErrorMessage = to - from == 1
-                    ? "'utf-8' codec can't decode byte 0x" + data[from].ToString("x2", CultureInfo.InvariantCulture) + " in position "
-                        + position.ToString(CultureInfo.InvariantCulture) + ": " + reason
-                    : "'utf-8' codec can't decode bytes in position " + position.ToString(CultureInfo.InvariantCulture) + "-"
-                        + (position + to - from - 1).ToString(CultureInfo.InvariantCulture) + ": " + reason;
+                var position = (_base + from - start).ToString(CultureInfo.InvariantCulture);
+                string detail;
+                if (reason == "invalid start byte")
+                {
+                    detail = "byte 0x" + data[from].ToString("X2", CultureInfo.InvariantCulture) + " at position " + position + " cannot start a character";
+                }
+                else if (reason == "invalid continuation byte")
+                {
+                    detail = "the sequence at position " + position + " has an invalid continuation byte";
+                }
+                else
+                {
+                    detail = "the data ends inside the sequence at position " + position;
+                }
+
+                ErrorMessage = "The data is not valid UTF-8: " + detail + ".";
             }
 
             Invalid = true;
@@ -1477,7 +1490,7 @@ namespace DriftBusterOfflineRunner
         {
             if (text.Length > 0 && text[0] == (char)0xFEFF)
             {
-                throw Error("Unexpected UTF-8 BOM (decode using utf-8-sig)", text, 0);
+                throw Error("the text starts with a byte order mark", text, 0);
             }
 
             var reader = new Reader(text, 0);
@@ -1486,7 +1499,7 @@ namespace DriftBusterOfflineRunner
             index = reader.SkipWhitespace(index);
             if (index != text.Length)
             {
-                throw Error("Extra data", text, index);
+                throw Error("unexpected text follows the value", text, index);
             }
 
             return value;
@@ -1507,13 +1520,13 @@ namespace DriftBusterOfflineRunner
 
             var column = position - lastNewline;
             return new EngineException(
-                "JSONDecodeError",
-                string.Format(CultureInfo.InvariantCulture, "{0}: line {1} column {2} (char {3})", message, line, column, position));
+                "InvalidDataException",
+                string.Format(CultureInfo.InvariantCulture, "The file is not valid JSON: {0} at line {1}, position {2}.", message, line, column));
         }
 
         private sealed class Reader
         {
-            // Nesting past this depth raises RecursionError instead of exhausting the thread's stack.
+            // Nesting past this depth raises InvalidDataException instead of exhausting the thread's stack.
             private const int MaxDepth = 1000;
 
             private readonly string _text;
@@ -1539,7 +1552,7 @@ namespace DriftBusterOfflineRunner
             {
                 if (index >= _text.Length)
                 {
-                    throw Error("Expecting value", _text, index);
+                    throw Error("a value was expected", _text, index);
                 }
 
                 var ch = _text[index];
@@ -1603,7 +1616,7 @@ namespace DriftBusterOfflineRunner
                     }
                 }
 
-                throw Error("Expecting value", _text, index);
+                throw Error("a value was expected", _text, index);
             }
 
             private bool Matches(int index, string literal)
@@ -1688,7 +1701,7 @@ namespace DriftBusterOfflineRunner
                 {
                     if (position >= _text.Length)
                     {
-                        throw Error("Unterminated string starting at", _text, begin);
+                        throw Error("a string is not terminated", _text, begin);
                     }
 
                     var ch = _text[position];
@@ -1702,7 +1715,7 @@ namespace DriftBusterOfflineRunner
                     {
                         if (position + 1 >= _text.Length)
                         {
-                            throw Error("Unterminated string starting at", _text, begin);
+                            throw Error("a string is not terminated", _text, begin);
                         }
 
                         var escape = _text[position + 1];
@@ -1749,7 +1762,7 @@ namespace DriftBusterOfflineRunner
                                 builder.Append((char)unit);
                                 continue;
                             default:
-                                throw Error("Invalid \\escape", _text, position);
+                                throw Error("a string holds an invalid escape", _text, position);
                         }
 
                         position += 2;
@@ -1758,7 +1771,7 @@ namespace DriftBusterOfflineRunner
 
                     if (ch < ' ')
                     {
-                        throw Error("Invalid control character at", _text, position);
+                        throw Error("a string holds a control character", _text, position);
                     }
 
                     builder.Append(ch);
@@ -1793,7 +1806,7 @@ namespace DriftBusterOfflineRunner
                 var value = ReadHexOrNegative(start);
                 if (value < 0)
                 {
-                    throw Error("Invalid \\uXXXX escape", _text, escapeAt + 1);
+                    throw Error("a string holds an invalid \\u escape", _text, escapeAt + 1);
                 }
 
                 return value;
@@ -1823,7 +1836,9 @@ namespace DriftBusterOfflineRunner
             {
                 if (++_depth > MaxDepth)
                 {
-                    throw new EngineException("RecursionError", "maximum recursion depth exceeded while decoding a JSON " + kind + " from a unicode string");
+                    throw new EngineException(
+                        "InvalidDataException",
+                        "The JSON document is nested more than " + MaxDepth.ToString(CultureInfo.InvariantCulture) + " levels deep.");
                 }
             }
 
@@ -1867,14 +1882,14 @@ namespace DriftBusterOfflineRunner
                 {
                     if (position >= _text.Length || _text[position] != '"')
                     {
-                        throw Error("Expecting property name enclosed in double quotes", _text, position);
+                        throw Error("a property name in double quotes was expected", _text, position);
                     }
 
                     var key = ParseString(ref position);
                     position = SkipWhitespace(position);
                     if (position >= _text.Length || _text[position] != ':')
                     {
-                        throw Error("Expecting ':' delimiter", _text, position);
+                        throw Error("':' was expected", _text, position);
                     }
 
                     position = SkipWhitespace(position + 1);
@@ -1889,14 +1904,14 @@ namespace DriftBusterOfflineRunner
 
                     if (position >= _text.Length || _text[position] != ',')
                     {
-                        throw Error("Expecting ',' delimiter", _text, position);
+                        throw Error("',' was expected", _text, position);
                     }
 
                     var comma = position;
                     position = SkipWhitespace(position + 1);
                     if (position < _text.Length && _text[position] == '}')
                     {
-                        throw Error("Illegal trailing comma before end of object", _text, comma);
+                        throw Error("a trailing comma ends an object", _text, comma);
                     }
                 }
             }
@@ -1923,14 +1938,14 @@ namespace DriftBusterOfflineRunner
 
                     if (position >= _text.Length || _text[position] != ',')
                     {
-                        throw Error("Expecting ',' delimiter", _text, position);
+                        throw Error("',' was expected", _text, position);
                     }
 
                     var comma = position;
                     position = SkipWhitespace(position + 1);
                     if (position < _text.Length && _text[position] == ']')
                     {
-                        throw Error("Illegal trailing comma before end of array", _text, comma);
+                        throw Error("a trailing comma ends an array", _text, comma);
                     }
                 }
             }
@@ -1989,7 +2004,7 @@ namespace DriftBusterOfflineRunner
             {
                 if (!defaultStr)
                 {
-                    throw new EngineException("TypeError", "Object of type bytes is not JSON serializable");
+                    throw new EngineException("NotSupportedException", "A value of type 'byte array' cannot be written as JSON.");
                 }
 
                 WriteString(builder, EngineText.BytesRepr(bytes));
@@ -2069,7 +2084,7 @@ namespace DriftBusterOfflineRunner
                 return;
             }
 
-            throw new EngineException("TypeError", "Object of type " + value.GetType().Name + " is not JSON serializable");
+            throw new EngineException("NotSupportedException", "A value of type '" + value.GetType().Name + "' cannot be written as JSON.");
         }
 
         private static void StableSort(List<KeyValuePair<string, object>> entries)
@@ -2117,7 +2132,7 @@ namespace DriftBusterOfflineRunner
                 return FloatText(Engine.ToDouble(key));
             }
 
-            throw new EngineException("TypeError", "keys must be str, int, float, bool or None, not " + key.GetType().Name);
+            throw new EngineException("NotSupportedException", "A key of type '" + key.GetType().Name + "' cannot be written as JSON.");
         }
 
         private static void NewLine(StringBuilder builder, int indent, int level)
@@ -2545,7 +2560,7 @@ namespace DriftBusterOfflineRunner
             return EngineOs.Windows ? text.ToLowerInvariant() : text;
         }
 
-        /// <summary>str(Path(path).relative_to(other)), or null where relative_to raises ValueError.</summary>
+        /// <summary>str(Path(path).relative_to(other)), or null where the path is not under the other.</summary>
         public static string RelativeTo(string path, string other)
         {
             string drive;
@@ -2606,13 +2621,13 @@ namespace DriftBusterOfflineRunner
             if (suffix.IndexOf(sep, StringComparison.Ordinal) >= 0 || (EngineOs.Windows && suffix.IndexOf('/') >= 0)
                 || (suffix.Length > 0 && (!suffix.StartsWith(".", StringComparison.Ordinal) || suffix == ".")))
             {
-                throw new EngineException("ValueError", "Invalid suffix " + EngineText.Repr(suffix));
+                throw new EngineException("ArgumentException", "Invalid suffix " + EngineText.Repr(suffix) + ".");
             }
 
             var name = Name(path);
             if (name.Length == 0)
             {
-                throw new EngineException("ValueError", EngineText.Repr(Normalise(path)) + " has an empty name");
+                throw new EngineException("ArgumentException", "The path " + EngineText.Repr(Normalise(path)) + " has an empty name.");
             }
 
             var stem = Stem(path);
@@ -2894,7 +2909,7 @@ namespace DriftBusterOfflineRunner
             return null;
         }
 
-        /// <summary>Path(path).expanduser() as text: RuntimeError when the home directory cannot be determined.</summary>
+        /// <summary>Path(path).expanduser() as text: InvalidOperationException when the home directory cannot be determined.</summary>
         public static string PathExpandUser(string path)
         {
             string drive;
@@ -2909,7 +2924,7 @@ namespace DriftBusterOfflineRunner
             var home = ExpandUser(parts[0]);
             if (home.StartsWith("~", StringComparison.Ordinal))
             {
-                throw new EngineException("RuntimeError", "Could not determine home directory.");
+                throw new EngineException("InvalidOperationException", "Could not determine home directory.");
             }
 
             parts.RemoveAt(0);
@@ -3248,7 +3263,7 @@ namespace DriftBusterOfflineRunner
                 long size;
                 if (!WinStat(path, out attributes, out size))
                 {
-                    throw new EngineException("FileNotFoundError", "[WinError 2] The system cannot find the file specified: " + EngineText.Repr(path));
+                    throw new EngineException("FileNotFoundException", "Could not find file '" + path + "'.");
                 }
 
                 return size;
@@ -3478,11 +3493,11 @@ namespace DriftBusterOfflineRunner
             }
             catch (FileNotFoundException)
             {
-                throw new EngineException("FileNotFoundError", "[Errno 2] No such file or directory: " + EngineText.Repr(path));
+                throw new EngineException("FileNotFoundException", "Could not find file '" + path + "'.");
             }
             catch (DirectoryNotFoundException)
             {
-                throw new EngineException("FileNotFoundError", "[Errno 2] No such file or directory: " + EngineText.Repr(path));
+                throw new EngineException("DirectoryNotFoundException", "Could not find a part of the path '" + path + "'.");
             }
 
             var text = EngineUtf8Decoder.DecodeStrict(bytes);
@@ -3508,7 +3523,7 @@ namespace DriftBusterOfflineRunner
             }
             catch (EncoderFallbackException)
             {
-                throw new EngineException("UnicodeEncodeError", "'utf-8' codec can't encode character: surrogates not allowed");
+                throw new EngineException("InvalidDataException", "The text holds an unpaired surrogate and cannot be written as UTF-8.");
             }
         }
 
@@ -4217,7 +4232,7 @@ namespace DriftBusterOfflineRunner
                 }
             }
 
-            throw new EngineException("IndexError", "No item with that key");
+            throw new EngineException("KeyNotFoundException", "The row has no column named '" + name + "'.");
         }
 
         private static bool EqualIgnoreAsciiCase(string left, string right)
@@ -4351,43 +4366,10 @@ namespace DriftBusterOfflineRunner
             return EngineUtf8Decoder.Decode(bytes, out invalid);
         }
 
-        /// <summary>The sqlite3 module's exception class for a primary result code.</summary>
+        /// <summary>The .NET exception type the backend raises for a primary result code.</summary>
         public static string ErrorClass(int code)
         {
-            switch (code)
-            {
-                case 2:
-                case 12:
-                    return "InternalError";
-                case 7:
-                    return "MemoryError";
-                case 1:
-                case 3:
-                case 4:
-                case 5:
-                case 6:
-                case 8:
-                case 9:
-                case 10:
-                case 13:
-                case 14:
-                case 15:
-                case 16:
-                case 17:
-                    return "OperationalError";
-                case 11:
-                    return "DatabaseError";
-                case 18:
-                    return "DataError";
-                case 19:
-                case 20:
-                    return "IntegrityError";
-                case 21:
-                case 25:
-                    return "InterfaceError";
-                default:
-                    return "DatabaseError";
-            }
+            return code == 7 ? "InsufficientMemoryException" : "SqliteException";
         }
 
         /// <summary>cursor.execute(sql).fetchall(): every row, each value by its storage class.</summary>
@@ -4472,7 +4454,7 @@ namespace DriftBusterOfflineRunner
                     var decoded = Utf8At(text, length, out invalid) ?? string.Empty;
                     if (invalid)
                     {
-                        throw new EngineException("OperationalError", "Could not decode to UTF-8 column '" + columnName + "' with text '" + decoded + "'");
+                        throw new EngineException("SqliteException", "Could not decode to UTF-8 column '" + columnName + "' with text '" + decoded + "'");
                     }
 
                     return decoded;
@@ -4583,12 +4565,12 @@ namespace DriftBusterOfflineRunner
             limit = Engine.Unwrap(limit);
             if (limit != null && Engine.LessOrEqualZero(limit))
             {
-                throw new EngineException("ValueError", "limit must be positive when provided");
+                throw new EngineException("ArgumentOutOfRangeException", "limit must be positive when provided. (Parameter 'limit')");
             }
 
             if (!EngineFs.Exists(path))
             {
-                throw new EngineException("FileNotFoundError", "Database not found: " + path);
+                throw new EngineException("FileNotFoundException", "Database not found: " + path);
             }
 
             var include = new HashSet<string>(StringComparer.Ordinal);
@@ -4617,7 +4599,7 @@ namespace DriftBusterOfflineRunner
 
             if (EngineFs.IsDir(path))
             {
-                throw new EngineException("OperationalError", "unable to open database file");
+                throw new EngineException("SqliteException", "unable to open database file");
             }
 
             var exported = new List<object>();
@@ -4628,13 +4610,13 @@ namespace DriftBusterOfflineRunner
                 {
                     if (row[0] is byte[])
                     {
-                        throw new EngineException("TypeError", "startswith first arg must be bytes or a tuple of bytes, not str");
+                        throw new EngineException("InvalidDataException", "A table name stored as a BLOB cannot be exported.");
                     }
 
                     var name = row[0] as string;
                     if (name == null)
                     {
-                        throw new EngineException("AttributeError", "expected a table name string, not '" + Engine.TypeName(row[0]) + "'");
+                        throw new EngineException("InvalidDataException", "expected a table name string, not '" + Engine.TypeName(row[0]) + "'");
                     }
 
                     if (name.StartsWith("sqlite_", StringComparison.Ordinal))
@@ -4825,7 +4807,7 @@ function ConvertFrom-DbOfflineCollectionSource {
 
     $path = [Engine]::Get($Payload, 'path', $null)
     if (-not [Engine]::Truthy($path) -or [EngineText]::Strip([Engine]::Str($path)).Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' "Source entry requires a non-empty 'path'.")
+        throw (Get-DbEngineError 'InvalidDataException' "Source entry requires a non-empty 'path'.")
     }
 
     $alias = [Engine]::Get($Payload, 'alias', $null)
@@ -4861,7 +4843,7 @@ function ConvertFrom-DbRegistryRootDescriptor {
 
     $value = [EngineText]::Strip([string]$Text)
     if ($value.Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' 'Registry root descriptor must be non-empty')
+        throw (Get-DbEngineError 'FormatException' 'Registry root descriptor must be non-empty')
     }
 
     $segments = [System.Collections.Generic.List[string]]::new()
@@ -4873,37 +4855,37 @@ function ConvertFrom-DbRegistryRootDescriptor {
     }
 
     if ($segments.Count -eq 0) {
-        throw (Get-DbEngineError 'IndexError' 'list index out of range')
+        throw (Get-DbEngineError 'FormatException' 'Registry root descriptor must be non-empty')
     }
 
     $base = $segments[0].Replace('/', '\')
     $match = [regex]::Match($base, '^(HKLM|HKCU)\\(.+)$', 'IgnoreCase, CultureInvariant')
     if (-not $match.Success) {
-        throw (Get-DbEngineError 'ValueError' 'Registry root descriptor must start with HKLM\ or HKCU\')
+        throw (Get-DbEngineError 'FormatException' 'Registry root descriptor must start with HKLM\ or HKCU\')
     }
 
     $hive = [EngineText]::Upper($match.Groups[1].Value)
     $path = [EngineText]::Strip($match.Groups[2].Value)
     if ($path.Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' 'Registry root path segment must be non-empty')
+        throw (Get-DbEngineError 'FormatException' 'Registry root path segment must be non-empty')
     }
 
     $view = $null
     for ($index = 1; $index -lt $segments.Count; $index++) {
         $option = $segments[$index]
         if ($option.IndexOf('=') -lt 0) {
-            throw (Get-DbEngineError 'ValueError' "Registry root option '$option' must be formatted as key=value")
+            throw (Get-DbEngineError 'FormatException' "Registry root option '$option' must be formatted as key=value")
         }
 
         $cut = $option.IndexOf('=')
         $key = [EngineText]::Lower([EngineText]::Strip($option.Substring(0, $cut)))
         $rawValue = [EngineText]::Strip($option.Substring($cut + 1))
         if ($key -cne 'view') {
-            throw (Get-DbEngineError 'ValueError' "Unsupported registry root option '$key'")
+            throw (Get-DbEngineError 'FormatException' "Unsupported registry root option '$key'")
         }
 
         if ($rawValue.Length -eq 0) {
-            throw (Get-DbEngineError 'ValueError' 'Registry root view must be non-empty when provided')
+            throw (Get-DbEngineError 'FormatException' 'Registry root view must be non-empty when provided')
         }
 
         $normalised = [EngineText]::Upper($rawValue)
@@ -4914,7 +4896,7 @@ function ConvertFrom-DbRegistryRootDescriptor {
             $view = $normalised
         }
         else {
-            throw (Get-DbEngineError 'ValueError' 'Registry root view must be 32, 64, or auto')
+            throw (Get-DbEngineError 'FormatException' 'Registry root view must be 32, 64, or auto')
         }
     }
 
@@ -4948,7 +4930,7 @@ function ConvertTo-DbRegistryRootList {
             $hive = [EngineText]::Strip([Engine]::Str([Engine]::Get($entry, 'hive', '')))
             $path = [EngineText]::Strip([Engine]::Str([Engine]::Get($entry, 'path', '')))
             if ($hive.Length -eq 0 -or $path.Length -eq 0) {
-                throw (Get-DbEngineError 'ValueError' "registry_scan roots entries require 'hive' and 'path'")
+                throw (Get-DbEngineError 'InvalidDataException' "registry_scan roots entries require 'hive' and 'path'")
             }
 
             $viewRaw = [Engine]::Get($entry, 'view', $null)
@@ -4962,7 +4944,7 @@ function ConvertTo-DbRegistryRootList {
                     $view = $candidate
                 }
                 else {
-                    throw (Get-DbEngineError 'ValueError' 'registry_scan root view must be 32, 64, or auto')
+                    throw (Get-DbEngineError 'InvalidDataException' 'registry_scan root view must be 32, 64, or auto')
                 }
             }
 
@@ -4970,7 +4952,7 @@ function ConvertTo-DbRegistryRootList {
             continue
         }
 
-        throw (Get-DbEngineError 'ValueError' 'registry_scan roots entries must be strings or mappings')
+        throw (Get-DbEngineError 'InvalidDataException' 'registry_scan roots entries must be strings or mappings')
     }
 
     return , $roots.ToArray()
@@ -4993,7 +4975,7 @@ function ConvertTo-DbRemoteBool {
         return $false
     }
 
-    throw (Get-DbEngineError 'ValueError' "Unsupported boolean value '$([Engine]::Str($Value))' for remote target")
+    throw (Get-DbEngineError 'InvalidDataException' "Unsupported boolean value '$([Engine]::Str($Value))' for remote target")
 }
 
 function ConvertFrom-DbRemoteRegistryTarget {
@@ -5004,7 +4986,7 @@ function ConvertFrom-DbRemoteRegistryTarget {
     if ($Payload -is [string]) {
         $host_ = [EngineText]::Strip($Payload)
         if ($host_.Length -eq 0) {
-            throw (Get-DbEngineError 'ValueError' 'remote target host must be non-empty')
+            throw (Get-DbEngineError 'InvalidDataException' 'remote target host must be non-empty')
         }
 
         return [pscustomobject]@{
@@ -5014,16 +4996,16 @@ function ConvertFrom-DbRemoteRegistryTarget {
     }
 
     if (-not [Engine]::IsMapping($Payload)) {
-        throw (Get-DbEngineError 'ValueError' 'remote target must be a string host or mapping')
+        throw (Get-DbEngineError 'InvalidDataException' 'remote target must be a string host or mapping')
     }
 
     $hostValue = [Engine]::Or([Engine]::Get($Payload, 'host', $null), [Engine]::Get($Payload, 'hostname', $null))
     if (-not [Engine]::Truthy($hostValue) -or [EngineText]::Strip([Engine]::Str($hostValue)).Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' "remote target requires 'host'")
+        throw (Get-DbEngineError 'InvalidDataException' "remote target requires 'host'")
     }
 
     if ([Engine]::Has($Payload, 'password')) {
-        throw (Get-DbEngineError 'ValueError' 'remote target must not embed raw passwords; use password_env')
+        throw (Get-DbEngineError 'InvalidDataException' 'remote target must not embed raw passwords; use password_env')
     }
 
     $passwordEnvValue = $null
@@ -5035,7 +5017,7 @@ function ConvertFrom-DbRemoteRegistryTarget {
     }
 
     if ($null -ne $passwordEnvValue -and [EngineText]::Strip([Engine]::Str($passwordEnvValue)).Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' 'remote target password_env must be non-empty when provided')
+        throw (Get-DbEngineError 'InvalidDataException' 'remote target password_env must be non-empty when provided')
     }
 
     $usernameValue = [Engine]::Or([Engine]::Get($Payload, 'username', $null), [Engine]::Get($Payload, 'user', $null))
@@ -5056,7 +5038,7 @@ function ConvertFrom-DbRemoteRegistryTarget {
     if ($null -ne $portValue) {
         $port = [Engine]::Int($portValue)
         if ($port.Sign -le 0) {
-            throw (Get-DbEngineError 'ValueError' 'remote target port must be positive')
+            throw (Get-DbEngineError 'InvalidDataException' 'remote target port must be positive')
         }
     }
 
@@ -5134,12 +5116,12 @@ function ConvertFrom-DbOfflineRegistryScanSource {
 
     $spec = [Engine]::Get($Payload, 'registry_scan', $null)
     if (-not [Engine]::IsMapping($spec)) {
-        throw (Get-DbEngineError 'ValueError' 'registry_scan source requires an object payload')
+        throw (Get-DbEngineError 'InvalidDataException' 'registry_scan source requires an object payload')
     }
 
     $tokenRaw = [Engine]::Get($spec, 'token', $null)
     if (-not [Engine]::Truthy($tokenRaw) -or [EngineText]::Strip([Engine]::Str($tokenRaw)).Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' "registry_scan requires non-empty 'token'.")
+        throw (Get-DbEngineError 'InvalidDataException' "registry_scan requires non-empty 'token'.")
     }
 
     $alias = [Engine]::Get($Payload, 'alias', $null)
@@ -5273,12 +5255,12 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
 
     $spec = [Engine]::Get($Payload, 'sql_snapshot', $null)
     if (-not [Engine]::IsMapping($spec)) {
-        throw (Get-DbEngineError 'ValueError' 'sql_snapshot source requires an object payload')
+        throw (Get-DbEngineError 'InvalidDataException' 'sql_snapshot source requires an object payload')
     }
 
     $pathValue = [Engine]::Or([Engine]::Get($spec, 'path', $null), [Engine]::Get($Payload, 'path', $null))
     if (-not [Engine]::Truthy($pathValue) -or [EngineText]::Strip([Engine]::Str($pathValue)).Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' "sql_snapshot requires a 'path'.")
+        throw (Get-DbEngineError 'InvalidDataException' "sql_snapshot requires a 'path'.")
     }
 
     $alias = Get-DbStrippedTruthy ([Engine]::Or([Engine]::Get($Payload, 'alias', $null), [Engine]::Get($spec, 'alias', $null)))
@@ -5314,7 +5296,7 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
     if ($null -ne $limitValue) {
         $limit = [Engine]::Int($limitValue)
         if ($limit.Sign -le 0) {
-            throw (Get-DbEngineError 'ValueError' 'sql_snapshot limit must be positive if provided')
+            throw (Get-DbEngineError 'InvalidDataException' 'sql_snapshot limit must be positive if provided')
         }
     }
 
@@ -5322,7 +5304,7 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
     $hashSalt = [Engine]::Str([Engine]::Or([Engine]::Or([Engine]::Get($spec, 'hash_salt', $null), [Engine]::Get($Payload, 'hash_salt', $null)), ''))
     $dialect = [EngineText]::Lower([Engine]::Str([Engine]::Or([Engine]::Get($spec, 'dialect', $null), 'sqlite')))
     if ($dialect -cne 'sqlite') {
-        throw (Get-DbEngineError 'ValueError' "sql_snapshot currently supports only the 'sqlite' dialect")
+        throw (Get-DbEngineError 'InvalidDataException' "sql_snapshot currently supports only the 'sqlite' dialect")
     }
 
     return [pscustomobject]@{
@@ -5401,12 +5383,12 @@ function ConvertFrom-DbOfflineRunnerProfile {
 
     $name = [Engine]::Get($Payload, 'name', $null)
     if (-not [Engine]::Truthy($name) -or [EngineText]::Strip([Engine]::Str($name)).Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' "Profile requires a non-empty 'name'.")
+        throw (Get-DbEngineError 'InvalidDataException' "Profile requires a non-empty 'name'.")
     }
 
     $rawSources = [Engine]::Get($Payload, 'sources', $null)
     if (-not [Engine]::Truthy($rawSources)) {
-        throw (Get-DbEngineError 'ValueError' 'Profile must define at least one source.')
+        throw (Get-DbEngineError 'InvalidDataException' 'Profile must define at least one source.')
     }
 
     $sources = [System.Collections.Generic.List[object]]::new()
@@ -5434,7 +5416,7 @@ function ConvertFrom-DbOfflineRunnerProfile {
         $baseline = [Engine]::Str($baseline)
         $paths = @($sources | Where-Object { $_.kind -ne 'registry_scan' } | ForEach-Object { $_.path })
         if ($paths -cnotcontains $baseline) {
-            throw (Get-DbEngineError 'ValueError' 'Profile baseline must reference one of the declared sources.')
+            throw (Get-DbEngineError 'InvalidDataException' 'Profile baseline must reference one of the declared sources.')
         }
     }
 
@@ -5451,7 +5433,7 @@ function ConvertFrom-DbOfflineRunnerProfile {
 
     $optionsPayload = [Engine]::Get($Payload, 'options', (Get-DbOrderedMap))
     if (-not [Engine]::IsMapping($optionsPayload)) {
-        throw (Get-DbEngineError 'ValueError' "Profile 'options' must be a mapping if provided.")
+        throw (Get-DbEngineError 'InvalidDataException' "Profile 'options' must be a mapping if provided.")
     }
 
     $options = Get-DbOrderedMap
@@ -5461,7 +5443,7 @@ function ConvertFrom-DbOfflineRunnerProfile {
 
     $scannerPayload = [Engine]::Get($Payload, 'secret_scanner', (Get-DbOrderedMap))
     if ([Engine]::Truthy($scannerPayload) -and -not [Engine]::IsMapping($scannerPayload)) {
-        throw (Get-DbEngineError 'ValueError' "Profile 'secret_scanner' must be a mapping if provided.")
+        throw (Get-DbEngineError 'InvalidDataException' "Profile 'secret_scanner' must be a mapping if provided.")
     }
 
     $scanner = Get-DbOrderedMap
@@ -5497,7 +5479,7 @@ function ConvertFrom-DbOfflineEncryptionSetting {
     }
 
     if (-not [Engine]::IsMapping($Payload)) {
-        throw (Get-DbEngineError 'ValueError' "Runner 'encryption' must be a mapping if provided.")
+        throw (Get-DbEngineError 'InvalidDataException' "Runner 'encryption' must be a mapping if provided.")
     }
 
     $mode = [Engine]::Str([Engine]::Get($Payload, 'mode', 'dpapi-aes'))
@@ -5524,7 +5506,7 @@ function ConvertFrom-DbOfflineEncryptionSetting {
     }
 
     if ($settings.enabled -and $null -eq $settings.keyset_path) {
-        throw (Get-DbEngineError 'ValueError' "Encryption is enabled but no 'keyset_path' was provided.")
+        throw (Get-DbEngineError 'InvalidDataException' "Encryption is enabled but no 'keyset_path' was provided.")
     }
 
     return $settings
@@ -5559,7 +5541,7 @@ function ConvertFrom-DbOfflineRunnerSetting {
     $outputDirectory = $null
     if ([Engine]::Truthy($directory)) {
         if ($directory -isnot [string]) {
-            throw (Get-DbEngineError 'TypeError' "expected str, bytes or os.PathLike object, not $([Engine]::TypeName($directory))")
+            throw (Get-DbEngineError 'InvalidDataException' "output_directory must be a path string, not '$([Engine]::TypeName($directory))'")
         }
 
         $outputDirectory = [EnginePath]::PathExpandUser([EnginePath]::Normalise([EnginePath]::ExpandVars($directory)))
@@ -5579,7 +5561,7 @@ function ConvertFrom-DbOfflineRunnerSetting {
     if ($null -ne $maxTotalBytes) {
         $maxTotalBytes = [Engine]::Int($maxTotalBytes)
         if ($maxTotalBytes.Sign -le 0) {
-            throw (Get-DbEngineError 'ValueError' 'max_total_bytes must be positive if provided.')
+            throw (Get-DbEngineError 'InvalidDataException' 'max_total_bytes must be positive if provided.')
         }
     }
 
@@ -5612,26 +5594,26 @@ function ConvertFrom-DbOfflineRunnerConfig {
     param($Payload)
 
     if (-not [Engine]::IsMapping($Payload)) {
-        throw (Get-DbEngineError 'TypeError' 'Config payload must be a mapping.')
+        throw (Get-DbEngineError 'InvalidDataException' 'Config payload must be a mapping.')
     }
 
     $schema = [Engine]::Str([Engine]::Get($Payload, 'schema', 'https://driftbuster.dev/offline-runner/config/v1'))
     $version = [Engine]::Str([Engine]::Get($Payload, 'version', '1'))
     $profilePayload = [Engine]::Get($Payload, 'profile', $null)
     if (-not [Engine]::IsMapping($profilePayload)) {
-        throw (Get-DbEngineError 'ValueError' "Config requires a 'profile' object.")
+        throw (Get-DbEngineError 'InvalidDataException' "Config requires a 'profile' object.")
     }
 
     $settingsPayload = [Engine]::Or([Engine]::Get($Payload, 'runner', $null), [Engine]::Get($Payload, 'settings', $null))
     $metadataPayload = [Engine]::Get($Payload, 'metadata', (Get-DbOrderedMap))
     if ([Engine]::Truthy($metadataPayload) -and -not [Engine]::IsMapping($metadataPayload)) {
-        throw (Get-DbEngineError 'ValueError' 'Metadata must be a mapping if provided.')
+        throw (Get-DbEngineError 'InvalidDataException' 'Metadata must be a mapping if provided.')
     }
 
     $profileObject = ConvertFrom-DbOfflineRunnerProfile $profilePayload
     $settings = ConvertFrom-DbOfflineRunnerSetting $settingsPayload
 
-    # dict(metadata_payload): a falsy str or list gives {}, a falsy number, bool or None raises TypeError.
+    # dict(metadata_payload): a falsy str or list gives {}, a falsy number, bool or None is refused.
     $metadata = Get-DbOrderedMap
     if ([Engine]::IsMapping($metadataPayload)) {
         foreach ($key in @($metadataPayload.Keys)) {
@@ -5639,7 +5621,7 @@ function ConvertFrom-DbOfflineRunnerConfig {
         }
     }
     elseif (-not ($metadataPayload -is [string] -or [Engine]::IsList($metadataPayload))) {
-        throw (Get-DbEngineError 'TypeError' "'$([Engine]::TypeName($metadataPayload))' object is not iterable")
+        throw (Get-DbEngineError 'InvalidDataException' "A value of type '$([Engine]::TypeName($metadataPayload))' cannot be enumerated.")
     }
 
     return [pscustomobject]@{
@@ -5971,7 +5953,7 @@ function Get-DbGlobMatch {
 }
 
 function Get-DbSourceMatch {
-    # The paths a source matches, relative to the base directory; FileNotFoundError when there are none.
+    # The paths a source matches, relative to the base directory; FileNotFoundException when there are none.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $PathText,
@@ -5997,7 +5979,7 @@ function Get-DbSourceMatch {
             }
         }
 
-        throw (Get-DbEngineError 'FileNotFoundError' "Path does not exist: $PathText")
+        throw (Get-DbEngineError 'FileNotFoundException' "Path does not exist: $PathText")
     }
 
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
@@ -6014,7 +5996,7 @@ function Get-DbSourceMatch {
     }
 
     if (-not $matched) {
-        throw (Get-DbEngineError 'FileNotFoundError' "Path does not exist: $PathText")
+        throw (Get-DbEngineError 'FileNotFoundException' "Path does not exist: $PathText")
     }
 
     return , $found.ToArray()
@@ -6064,7 +6046,7 @@ function Invoke-DbFileSource {
     }
     catch {
         $engineError = Get-DbEngineException $_
-        if ($null -eq $engineError -or $engineError.ErrorType -cne 'FileNotFoundError') {
+        if ($null -eq $engineError -or $engineError.ErrorType -cne 'FileNotFoundException') {
             throw
         }
 
@@ -6144,7 +6126,7 @@ function Invoke-DbFileSource {
 
             $originalSize = [EngineFs]::Size($file)
             if ($null -ne $MaxTotalBytes -and ([System.Numerics.BigInteger]::new($running) + $originalSize) -gt $MaxTotalBytes) {
-                throw (Get-DbEngineError 'ValueError' 'Collection exceeds configured max_total_bytes limit.')
+                throw (Get-DbEngineError 'InvalidOperationException' 'Collection exceeds configured max_total_bytes limit.')
             }
 
             $destination = [EnginePath]::Join($DestinationRoot, $relative)
@@ -6260,7 +6242,7 @@ function Invoke-DbSqlSnapshotSource {
         }
 
         $Log.Write("sql snapshot source missing: $($Source.path)")
-        throw (Get-DbEngineError 'FileNotFoundError' "SQL snapshot source not found: $($Source.path)")
+        throw (Get-DbEngineError 'FileNotFoundException' "SQL snapshot source not found: $($Source.path)")
     }
 
     $Log.Write("building sql snapshot from $candidate")
@@ -6270,7 +6252,7 @@ function Invoke-DbSqlSnapshotSource {
         -Placeholder $arguments.placeholder -HashSalt $arguments.hash_salt
     $encoded = [EngineFile]::EncodeUtf8([EngineJson]::Dumps($payload, 2, $true))
     if ($null -ne $MaxTotalBytes -and ([System.Numerics.BigInteger]::new($TotalBytes) + $encoded.Length) -gt $MaxTotalBytes) {
-        throw (Get-DbEngineError 'ValueError' 'Collection exceeds configured max_total_bytes limit.')
+        throw (Get-DbEngineError 'InvalidOperationException' 'Collection exceeds configured max_total_bytes limit.')
     }
 
     $snapshotPath = [EnginePath]::Join($DestinationRoot, 'sql-snapshot.json')
@@ -6330,14 +6312,14 @@ function Test-DbWindowsPlatform {
 }
 
 function Open-DbRegistryKey {
-    # _WinRegBackend._open: the key read-only in the requested view, or $null where winreg raises OSError.
+    # _WinRegBackend._open: the key read-only in the requested view, or $null where the key cannot be opened.
     [CmdletBinding()]
     param([string] $Hive, [string] $Path, $View)
 
     switch -CaseSensitive ($Hive) {
         'HKLM' { $baseHive = [Microsoft.Win32.RegistryHive]::LocalMachine }
         'HKCU' { $baseHive = [Microsoft.Win32.RegistryHive]::CurrentUser }
-        default { throw (Get-DbEngineError 'KeyError' ([EngineText]::Repr($Hive))) }
+        default { throw (Get-DbEngineError 'KeyNotFoundException' "Unknown registry hive $([EngineText]::Repr($Hive)).") }
     }
 
     $registryView = [Microsoft.Win32.RegistryView]::Default
@@ -6734,7 +6716,7 @@ function ConvertTo-DbRegistryPattern {
         return [regex]::new($Pattern, [System.Text.RegularExpressions.RegexOptions]::CultureInvariant)
     }
     catch [System.ArgumentException] {
-        throw (Get-DbEngineError 'PatternError' $_.Exception.Message)
+        throw (Get-DbEngineError 'RegexParseException' $_.Exception.Message)
     }
 }
 
@@ -6836,7 +6818,7 @@ function Unprotect-DbDpapiBlob {
     )
 
     if (-not [EngineOs]::Windows) {
-        throw (Get-DbEngineError 'RuntimeError' 'DPAPI key decryption is only supported on Windows.')
+        throw (Get-DbEngineError 'PlatformNotSupportedException' 'DPAPI key decryption is only supported on Windows.')
     }
 
     Add-Type -AssemblyName System.Security
@@ -6849,7 +6831,7 @@ function Unprotect-DbDpapiBlob {
         return , [System.Security.Cryptography.ProtectedData]::Unprotect($Blob, $null, $protectionScope)
     }
     catch [System.Security.Cryptography.CryptographicException] {
-        throw (Get-DbEngineError 'RuntimeError' 'CryptUnprotectData failed to decrypt the key material.')
+        throw (Get-DbEngineError 'CryptographicException' 'CryptUnprotectData failed to decrypt the key material.')
     }
 }
 
@@ -6861,7 +6843,7 @@ function ConvertFrom-DbBase64Text {
 
     foreach ($ch in $Text.ToCharArray()) {
         if ([int]$ch -gt 127) {
-            throw (Get-DbEngineError 'ValueError' 'string argument should contain only ASCII characters')
+            throw (Get-DbEngineError 'FormatException' 'The input is not a valid Base-64 string: it holds a non-ASCII character.')
         }
     }
 
@@ -6898,11 +6880,11 @@ function ConvertFrom-DbBase64Text {
 
     if ($quadPos -eq 1) {
         $count = [long]([math]::Floor($bytes.Count / 3)) * 4 + 1
-        throw (Get-DbEngineError 'Error' "Invalid base64-encoded string: number of data characters ($count) cannot be 1 more than a multiple of 4")
+        throw (Get-DbEngineError 'FormatException' "The input is not a valid Base-64 string: its $count data characters are one more than a multiple of 4.")
     }
 
     if ($quadPos -ne 0) {
-        throw (Get-DbEngineError 'Error' 'Incorrect padding')
+        throw (Get-DbEngineError 'FormatException' 'The input is not a valid Base-64 string: its padding is incorrect.')
     }
 
     return , $bytes.ToArray()
@@ -6924,7 +6906,7 @@ function ConvertFrom-DbHexText {
 
         if ($index + 1 -ge $Text.Length -or -not [Uri]::IsHexDigit($ch) -or -not [Uri]::IsHexDigit($Text[$index + 1])) {
             $position = $(if ([Uri]::IsHexDigit($ch)) { $index + 1 } else { $index })
-            throw (Get-DbEngineError 'ValueError' "non-hexadecimal number found in fromhex() arg at position $position")
+            throw (Get-DbEngineError 'FormatException' "The input is not a valid hexadecimal string: position $position is not a hexadecimal digit pair.")
         }
 
         $bytes.Add([System.Convert]::ToByte($Text.Substring($index, 2), 16))
@@ -6943,12 +6925,12 @@ function ConvertFrom-DbKeyEntry {
     )
 
     if (-not [Engine]::IsMapping($Entry)) {
-        throw (Get-DbEngineError 'ValueError' "$Description must be a mapping.")
+        throw (Get-DbEngineError 'InvalidDataException' "$Description must be a mapping.")
     }
 
     $data = [Engine]::Or([Engine]::Or([Engine]::Get($Entry, 'data', $null), [Engine]::Get($Entry, 'value', $null)), [Engine]::Get($Entry, 'key', $null))
     if ($data -isnot [string] -or [EngineText]::Strip($data).Length -eq 0) {
-        throw (Get-DbEngineError 'ValueError' "$Description is missing key material.")
+        throw (Get-DbEngineError 'InvalidDataException' "$Description is missing key material.")
     }
 
     $encoding = [EngineText]::Lower([EngineText]::Strip([Engine]::Str([Engine]::Get($Entry, 'encoding', 'base64'))))
@@ -6965,13 +6947,13 @@ function ConvertFrom-DbKeyEntry {
             $keyBytes = Unprotect-DbDpapiBlob -Blob $blob -Scope $scope
         }
         else {
-            throw (Get-DbEngineError 'ValueError' "Unsupported encoding '$encoding' for $Description.")
+            throw (Get-DbEngineError 'InvalidDataException' "Unsupported encoding '$encoding' for $Description.")
         }
     }
     catch {
         $engineError = Get-DbEngineException $_
-        if ($null -ne $engineError -and ($engineError.ErrorType -ceq 'ValueError' -or $engineError.ErrorType -ceq 'Error')) {
-            throw (Get-DbEngineError 'ValueError' "Failed to decode ${Description}: $($engineError.Message)")
+        if ($null -ne $engineError -and ($engineError.ErrorType -ceq 'FormatException' -or $engineError.ErrorType -ceq 'InvalidDataException')) {
+            throw (Get-DbEngineError 'InvalidDataException' "Failed to decode ${Description}: $($engineError.Message)")
         }
 
         throw
@@ -6981,7 +6963,7 @@ function ConvertFrom-DbKeyEntry {
     if ($null -ne $minimumLength) {
         $minimum = [Engine]::Int($minimumLength)
         if ([System.Numerics.BigInteger]::new($keyBytes.Length) -lt $minimum) {
-            throw (Get-DbEngineError 'ValueError' "$Description must be at least $minimum bytes.")
+            throw (Get-DbEngineError 'InvalidDataException' "$Description must be at least $minimum bytes.")
         }
     }
 
@@ -6995,32 +6977,32 @@ function Import-DbEncryptionKeyset {
 
     $payload = [EngineJson]::Loads([EngineFile]::ReadText($Path))
     if (-not [Engine]::IsMapping($payload)) {
-        throw (Get-DbEngineError 'ValueError' 'Encryption keyset must be a JSON object.')
+        throw (Get-DbEngineError 'InvalidDataException' 'Encryption keyset must be a JSON object.')
     }
 
     $schema = [Engine]::Get($payload, 'schema', $null)
     if ([Engine]::Truthy($schema) -and -not ($schema -is [string] -and $schema -ceq 'https://driftbuster.dev/offline-runner/encryption/keyset/v1')) {
-        throw (Get-DbEngineError 'ValueError' 'Unsupported encryption keyset schema.')
+        throw (Get-DbEngineError 'InvalidDataException' 'Unsupported encryption keyset schema.')
     }
 
     $aesEntry = [Engine]::Or([Engine]::Get($payload, 'aes_key', $null), [Engine]::Get($payload, 'aes', $null))
     $hmacEntry = [Engine]::Or([Engine]::Or([Engine]::Get($payload, 'hmac_key', $null), [Engine]::Get($payload, 'hmac', $null)), [Engine]::Get($payload, 'mac_key', $null))
     if (-not [Engine]::IsMapping($aesEntry) -or -not [Engine]::IsMapping($hmacEntry)) {
-        throw (Get-DbEngineError 'ValueError' "Encryption keyset must include 'aes_key' and 'hmac_key' mappings.")
+        throw (Get-DbEngineError 'InvalidDataException' "Encryption keyset must include 'aes_key' and 'hmac_key' mappings.")
     }
 
     $aesKey = ConvertFrom-DbKeyEntry -Entry $aesEntry -Description 'aes_key'
     $hmacKey = ConvertFrom-DbKeyEntry -Entry $hmacEntry -Description 'hmac_key'
     if (@(16, 24, 32) -notcontains $aesKey.Length) {
-        throw (Get-DbEngineError 'ValueError' 'AES key must be 16, 24, or 32 bytes.')
+        throw (Get-DbEngineError 'InvalidDataException' 'AES key must be 16, 24, or 32 bytes.')
     }
 
     if ($aesKey.Length -ne 32) {
-        throw (Get-DbEngineError 'ValueError' 'AES-256 encryption requires a 32-byte AES key.')
+        throw (Get-DbEngineError 'InvalidDataException' 'AES-256 encryption requires a 32-byte AES key.')
     }
 
     if ($hmacKey.Length -lt 32) {
-        throw (Get-DbEngineError 'ValueError' 'HMAC key must be at least 32 bytes.')
+        throw (Get-DbEngineError 'InvalidDataException' 'HMAC key must be at least 32 bytes.')
     }
 
     return [pscustomobject]@{ AesKey = $aesKey; HmacKey = $hmacKey }
@@ -7101,7 +7083,7 @@ function Invoke-DbPackageEncryption {
     )
 
     if ($null -eq $Settings.keyset_path) {
-        throw (Get-DbEngineError 'ValueError' 'Encryption is enabled but keyset_path is missing.')
+        throw (Get-DbEngineError 'InvalidDataException' 'Encryption is enabled but keyset_path is missing.')
     }
 
     $resolved = $Settings.keyset_path
@@ -7111,7 +7093,7 @@ function Invoke-DbPackageEncryption {
 
     $resolved = [EnginePath]::PathExpandUser($resolved)
     if (-not [EngineFs]::Exists($resolved)) {
-        throw (Get-DbEngineError 'FileNotFoundError' "Encryption keyset not found: $resolved")
+        throw (Get-DbEngineError 'FileNotFoundException' "Encryption keyset not found: $resolved")
     }
 
     $keys = Import-DbEncryptionKeyset -Path $resolved
@@ -7241,15 +7223,15 @@ function Write-DbZipPackage {
                 # the years 1980 to 2107.
                 $modified = [System.IO.File]::GetLastWriteTime([EngineOs]::Abs($source))
                 if ([EngineOs]::Windows -and $modified.ToUniversalTime() -lt [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)) {
-                    throw (Get-DbEngineError 'OSError' '[Errno 22] Invalid argument')
+                    throw (Get-DbEngineError 'ArgumentOutOfRangeException' 'The file timestamp is before 1970 and cannot be stored.')
                 }
 
                 if ($modified.Year -lt 1980) {
-                    throw (Get-DbEngineError 'ValueError' 'ZIP does not support timestamps before 1980')
+                    throw (Get-DbEngineError 'ArgumentOutOfRangeException' 'ZIP does not support timestamps before 1980.')
                 }
 
                 if ($modified.Year -gt 2107) {
-                    throw (Get-DbEngineError 'error' "'H' format requires 0 <= number <= 65535")
+                    throw (Get-DbEngineError 'ArgumentOutOfRangeException' 'ZIP does not support timestamps after 2107.')
                 }
 
                 $entry = $archive.CreateEntry([EnginePath]::AsPosix($relative), [System.IO.Compression.CompressionLevel]::Optimal)
@@ -7559,7 +7541,7 @@ function Invoke-DbOfflineRunner {
         }
     }
     elseif ($null -ne $encryption -and $encryption.enabled) {
-        throw (Get-DbEngineError 'ValueError' 'Encryption requires compression to be enabled.')
+        throw (Get-DbEngineError 'InvalidDataException' 'Encryption requires compression to be enabled.')
     }
 
     return [pscustomobject]@{

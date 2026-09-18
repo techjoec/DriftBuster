@@ -35,7 +35,7 @@ internal static partial class StagePortable
     {
         if (TextModeFile.Exists(destination))
         {
-            throw OsError.Create(OsError.FileExists, destination);
+            throw FileSystemError.Create(FileSystemError.FileExists, destination);
         }
 
         Directory.CreateDirectory(destination);
@@ -154,7 +154,8 @@ internal static partial class StagePortable
         }
     }
 
-    // PermissionError: EACCES or EPERM (a Windows sharing violation maps to EACCES).
+    // Access refused: EACCES or EPERM (a Windows sharing violation maps to EACCES).
     private static bool IsPermissionError(Exception exc)
-        => exc is UnauthorizedAccessException || (exc is IOException && OsError.Errno(exc) is OsError.PermissionDenied or OsError.OperationNotPermitted);
+        => exc is UnauthorizedAccessException
+            || (exc is IOException && FileSystemError.Errno(exc) is FileSystemError.PermissionDenied or FileSystemError.OperationNotPermitted);
 }

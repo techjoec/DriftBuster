@@ -48,14 +48,13 @@ public static class EngineJson
         public string? PendingKey { get; set; }
     }
 
-    /// <summary>Decodes <paramref name="text"/>; false when Python's decoder would raise.</summary>
+    /// <summary>Decodes <paramref name="text"/>; false when it is not a JSON document.</summary>
     public static bool TryLoads(string text, out object? value) => TryLoads(text, out value, out _);
 
     /// <summary>
-    /// Decodes <paramref name="text"/> for a caller that catches only <c>JSONDecodeError</c>: false for text that is not a JSON document,
-    /// and the exception <c>json.loads</c> raises past an interpreter limit instead, at the first failure in text order:
-    /// <see cref="EngineValueException"/> for an integer literal of more than <see cref="MaxIntDigits"/> digits, and
-    /// <see cref="EngineRecursionException"/> for a container nested deeper than <see cref="MaxNestingDepth"/>.
+    /// Decodes <paramref name="text"/>: false for text that is not a JSON document, and <see cref="InvalidDataException"/> for a document
+    /// past a decoder limit instead, at the first failure in text order: an integer literal of more than <see cref="MaxIntDigits"/>
+    /// digits, or a container nested deeper than <see cref="MaxNestingDepth"/>.
     /// </summary>
     /// <remarks>
     /// The nesting boundary is the one <c>json.loads</c> hits with the interpreter's frames of a top-level script; a caller holding more
@@ -144,7 +143,7 @@ public static class EngineJson
         var c = text[pos];
         if ((c is '{' or '[') && stack.Count >= MaxNestingDepth)
         {
-            limit = new EngineRecursionException($"maximum recursion depth exceeded while decoding a JSON {(c == '{' ? "object" : "array")} from a unicode string");
+            limit = new InvalidDataException(string.Create(CultureInfo.InvariantCulture, $"The JSON document is nested more than {MaxNestingDepth} levels deep."));
             return false;
         }
 
@@ -373,9 +372,9 @@ public static class EngineJson
 
         if (digitsEnd - digitsStart > MaxIntDigits)
         {
-            limit = new EngineValueException(
-                $"Exceeds the limit ({MaxIntDigits} digits) for integer string conversion: value has {digitsEnd - digitsStart} digits",
-                nameof(text));
+            limit = new InvalidDataException(string.Create(
+                CultureInfo.InvariantCulture,
+                $"The JSON document holds an integer of {digitsEnd - digitsStart} digits, more than the {MaxIntDigits} allowed."));
             return false;
         }
 

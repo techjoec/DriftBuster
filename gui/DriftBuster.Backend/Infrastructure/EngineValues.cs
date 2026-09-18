@@ -12,7 +12,7 @@ namespace DriftBuster.Backend.Infrastructure;
 /// </summary>
 public static class EngineValues
 {
-    /// <summary>Set and dict key semantics: <see cref="Equal"/>, and <c>TypeError: unhashable type</c> for a list or dict.</summary>
+    /// <summary>Set and dict key semantics: <see cref="Equal"/>, and <see cref="InvalidDataException"/> for a list or dict.</summary>
     public static IEqualityComparer<object?> HashKeys { get; } = new HashKeyComparer();
 
     /// <summary><c>left == right</c>.</summary>
@@ -45,7 +45,7 @@ public static class EngineValues
         };
     }
 
-    /// <summary><c>left &lt; right</c>; <c>TypeError</c> (<see cref="EngineTypeException"/>) when the two have no ordering.</summary>
+    /// <summary><c>left &lt; right</c>; <see cref="InvalidDataException"/> when the two have no ordering.</summary>
     public static bool LessThan(object? left, object? right)
     {
         if (left is string a && right is string b)
@@ -68,12 +68,10 @@ public static class EngineValues
             return SequenceLessThan(leftList, rightList);
         }
 
-        throw new EngineTypeException(
-            $"'<' not supported between instances of '{EngineBuiltins.TypeName(left)}' and '{EngineBuiltins.TypeName(right)}'",
-            nameof(left));
+        throw NotComparable(left, right);
     }
 
-    /// <summary><c>left &lt;= right</c>; <c>TypeError</c> (<see cref="EngineTypeException"/>) when the two have no ordering. A NaN is never <c>&lt;=</c> anything.</summary>
+    /// <summary><c>left &lt;= right</c>; <see cref="InvalidDataException"/> when the two have no ordering. A NaN is never <c>&lt;=</c> anything.</summary>
     public static bool LessThanOrEqual(object? left, object? right)
     {
         if (left is string a && right is string b)
@@ -92,15 +90,13 @@ public static class EngineValues
             return Equal(left, right) || LessThan(left, right);
         }
 
-        throw new EngineTypeException(
-            $"'<=' not supported between instances of '{EngineBuiltins.TypeName(left)}' and '{EngineBuiltins.TypeName(right)}'",
-            nameof(left));
+        throw NotComparable(left, right);
     }
 
     /// <summary>
     /// The items in ascending order by a stable sort: strings by code point, numbers by value (NaN first), and lists or tuples
     /// element by element with the shorter first on a tie. Items with no ordering between them (such as a string and a number)
-    /// raise <see cref="EngineTypeException"/> naming the first item's type and the type of the first later item that cannot be
+    /// raise <see cref="InvalidDataException"/> naming the first item's type and the type of the first later item that cannot be
     /// ordered against it; the check runs before sorting.
     /// </summary>
     public static IReadOnlyList<object?> Sorted(IEnumerable<object?> items)
@@ -113,14 +109,14 @@ public static class EngineValues
 
         // Nested elements can still disagree only between two later items; the sort must not throw, so the first such error
         // is kept and raised once the sort returns.
-        EngineTypeException? failure = null;
+        InvalidDataException? failure = null;
         var comparer = Comparer<object?>.Create((left, right) =>
         {
             try
             {
                 return CompareOrdered(left, right);
             }
-            catch (EngineTypeException exc)
+            catch (InvalidDataException exc)
             {
                 failure ??= exc;
                 return 0;
@@ -130,7 +126,7 @@ public static class EngineValues
         return failure is null ? sorted : throw failure;
     }
 
-    // A total order within each orderable kind; EngineTypeException between kinds.
+    // A total order within each orderable kind; InvalidDataException between kinds.
     private static int CompareOrdered(object? left, object? right)
     {
         if (left is string a && right is string b)
@@ -162,10 +158,12 @@ public static class EngineValues
             return leftItems.Count.CompareTo(rightItems.Count);
         }
 
-        throw new EngineTypeException(
-            $"'<' not supported between instances of '{EngineBuiltins.TypeName(left)}' and '{EngineBuiltins.TypeName(right)}'",
-            nameof(left));
+        throw NotComparable(left, right);
     }
+
+    /// <summary>The error for two values with no ordering between them.</summary>
+    internal static InvalidDataException NotComparable(object? left, object? right)
+        => new($"A value of type '{EngineBuiltins.TypeName(left)}' cannot be compared with a value of type '{EngineBuiltins.TypeName(right)}'.");
 
     /// <summary>A Python int as the smallest of <see cref="int"/>, <see cref="long"/> and <see cref="BigInteger"/> that holds it.</summary>
     public static object Narrow(BigInteger value)
@@ -241,6 +239,10 @@ public static class EngineValues
         return result != 0 ? result : (real > floor ? -1 : 0);
     }
 
+    /// <summary>The error for a value that cannot serve as a key: a list or a mapping.</summary>
+    internal static InvalidDataException NotHashable(object? value)
+        => new($"A value of type '{EngineBuiltins.TypeName(value)}' cannot be used as a key.");
+
     private sealed class HashKeyComparer : IEqualityComparer<object?>
     {
         public new bool Equals(object? x, object? y) => Equal(x, y);
@@ -252,7 +254,7 @@ public static class EngineValues
             double real => double.IsNaN(real) ? 0 : real.GetHashCode(),
             bool or int or long or BigInteger => ((double)ToInteger(obj)).GetHashCode(),
             object?[] tuple => tuple.Aggregate(tuple.Length, (hash, item) => HashCode.Combine(hash, GetHashCode(item))),
-            _ => throw new EngineTypeException($"unhashable type: '{EngineBuiltins.TypeName(obj)}'", nameof(obj)),
+            _ => throw NotHashable(obj),
         };
     }
 }

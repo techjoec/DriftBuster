@@ -15,11 +15,11 @@ namespace DriftBuster.Backend.MultiServer;
 /// failed write never leaves a partial entry. The outcome stays that of an in-place write in the two cases a rename changes it: an existing entry
 /// that cannot be opened for writing fails as <c>open(path, "w")</c> fails, even though a rename could replace it, and when the
 /// directory refuses the temporary file the entry is written in place (an existing writable entry in a
-/// directory that refuses new names is truncated and rewritten; a missing one fails with the <c>OSError</c> text). That in-place write is
+/// directory that refuses new names is truncated and rewritten; a missing one fails as the write fails). That in-place write is
 /// the only one a crash can leave partial; cancellation is checked before it starts. Every other outcome: a
-/// missing entry (a dangling link included) loads as null; a file that is not UTF-8, or whose JSON is not an object, raises with
-/// the <c>UnicodeDecodeError</c> or <c>AttributeError</c> text; an I/O failure raises with the <c>OSError</c> text naming the
-/// entry path (<see cref="OsError"/>). A raise fails the host as offline in <see cref="MultiServerRunner"/>.
+/// missing entry (a dangling link included) loads as null; a file that is not UTF-8, or whose JSON is not an object, raises
+/// <see cref="InvalidDataException"/>; an I/O failure raises the runtime's exception. A raise fails the host as offline in
+/// <see cref="MultiServerRunner"/>.
 /// </remarks>
 public sealed class DiffCache
 {
@@ -57,7 +57,7 @@ public sealed class DiffCache
 
         if (kind == UnixFileType.Kind.Directory || (kind is null && Directory.Exists(EnginePath.KernelPath(path))))
         {
-            throw OsError.Create(OsError.DirectoryOpenErrno, path);
+            throw FileSystemError.AccessDenied(path);
         }
 
         var raw = EngineTextFile.ReadBytes(path, path);
@@ -69,7 +69,7 @@ public sealed class DiffCache
 
         if (parsed is not OrderedDictionary<string, object?> payload)
         {
-            throw new EngineAttributeException($"expected a JSON object, not '{EngineBuiltins.TypeName(parsed)}'");
+            throw new InvalidDataException($"expected a JSON object, not '{EngineBuiltins.TypeName(parsed)}'");
         }
 
         return payload.TryGetValue("signature", out var stored) && stored is string storedText && string.Equals(storedText, signature, StringComparison.Ordinal)
@@ -106,12 +106,6 @@ public sealed class DiffCache
             TemporaryWritten?.Invoke(temporary);
             cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporary, target, overwrite: true);
-        }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-        {
-            throw exc.Message.StartsWith("[Errno ", StringComparison.Ordinal) || OsError.Errno(exc, path) is not { } errno
-                ? exc
-                : OsError.Create(errno, path, exc);
         }
         finally
         {
@@ -158,7 +152,7 @@ public sealed class DiffCache
         if (UnixFileType.Stat(path, followSymlinks: false) == UnixFileType.Kind.Other)
         {
             var physical = EnginePath.ResolvePhysicalPath(Path.GetFullPath(target), out var nameable)
-                ?? throw OsError.Create(OsError.TooManyLinks, path);
+                ?? throw FileSystemError.Create(FileSystemError.TooManyLinks, path);
             if (!nameable)
             {
                 RequireNotDirectory(path, target);
@@ -176,7 +170,7 @@ public sealed class DiffCache
     {
         if (UnixFileType.Stat(target, followSymlinks: true) == UnixFileType.Kind.Directory || (!OperatingSystem.IsLinux() && Directory.Exists(target)))
         {
-            throw OsError.Create(OsError.DirectoryOpenErrno, path);
+            throw FileSystemError.AccessDenied(path);
         }
     }
 

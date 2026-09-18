@@ -46,10 +46,10 @@ public sealed class ProfilesTests
         applied.Config.Identifier.Should().Be("cfg-app");
 
         var duplicateProfile = () => store.RegisterProfile(prodProfile);
-        duplicateProfile.Should().Throw<EngineValueException>();
+        duplicateProfile.Should().Throw<InvalidOperationException>();
 
         var duplicateConfig = () => store.RegisterProfile(new DetectionProfile("dupe-config", configs: [new DetectionProfileConfig("cfg-app")]));
-        duplicateConfig.Should().Throw<EngineValueException>();
+        duplicateConfig.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class ProfilesTests
         var store = new DetectionProfileStore([profile]);
 
         var notCallable = () => store.UpdateProfile("default", mutator: null);
-        notCallable.Should().Throw<EngineTypeException>();
+        notCallable.Should().Throw<ArgumentException>();
 
         static DetectionProfile Mutate(DetectionProfile original) => new(original.Name, configs: original.Configs.Take(original.Configs.Count - 1));
 
@@ -91,7 +91,7 @@ public sealed class ProfilesTests
         updated.Configs.Should().HaveCount(1);
 
         var missing = () => store.RemoveConfig("default", "cfg-missing");
-        missing.Should().Throw<EngineValueException>();
+        missing.Should().Throw<InvalidOperationException>();
 
         store.RemoveConfig("default", "cfg1");
         store.FindConfig("cfg1").Should().BeEmpty();
@@ -141,16 +141,16 @@ public sealed class ProfilesTests
         var store = new DetectionProfileStore([profile]);
 
         var notCallable = () => store.UpdateProfile("demo", mutator: null);
-        notCallable.Should().Throw<EngineTypeException>();
+        notCallable.Should().Throw<ArgumentException>();
 
         var invalid = () => store.UpdateProfile("demo", _ => null!);
-        invalid.Should().Throw<EngineTypeException>();
+        invalid.Should().Throw<InvalidOperationException>();
 
         static DetectionProfile Rename(DetectionProfile original) => original with { Name = "other" };
 
         store.RegisterProfile(new DetectionProfile("other", configs: []));
         var clash = () => store.UpdateProfile("demo", Rename);
-        clash.Should().Throw<EngineValueException>();
+        clash.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public sealed class ProfilesTests
         }
 
         var act = () => store.UpdateProfile("demo", BadMutator);
-        act.Should().Throw<EngineValueException>();
+        act.Should().Throw<InvalidOperationException>();
 
         store.GetProfile("demo").Configs.Should().Equal(original.Configs);
     }
@@ -184,7 +184,7 @@ public sealed class ProfilesTests
         missingProfile.Should().Throw<KeyNotFoundException>();
 
         var missingConfig = () => store.RemoveConfig("demo", "missing");
-        missingConfig.Should().Throw<EngineValueException>();
+        missingConfig.Should().Throw<InvalidOperationException>();
 
         store.RemoveProfile("demo");
         store.FindConfig("cfg").Should().BeEmpty();

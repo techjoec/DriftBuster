@@ -57,10 +57,10 @@ public sealed class ReportingEdgeTests : IDisposable
     {
         var redactor = new RedactionFilter(["x"]);
         var html = () => HtmlReport.Render([Match()], redactor: redactor, maskTokens: ["y"]);
-        html.Should().Throw<EngineValueException>().WithMessage("Provide either an explicit redactor or mask_tokens, not both.");
+        html.Should().Throw<ArgumentException>().WithMessage("Provide either an explicit redactor or mask_tokens, not both. (Parameter 'maskTokens')");
         var jsonl = () => JsonLinesReport.RenderJsonLines([Match()], redactor: redactor, maskTokens: ["y"]);
-        jsonl.Should().Throw<EngineValueException>();
+        jsonl.Should().Throw<ArgumentException>();
         var snapshot = () => SnapshotManifest.Build([Match()], redactor: redactor, maskTokens: ["y"]);
-        snapshot.Should().Throw<EngineValueException>();
+        snapshot.Should().Throw<ArgumentException>();
     }
 }

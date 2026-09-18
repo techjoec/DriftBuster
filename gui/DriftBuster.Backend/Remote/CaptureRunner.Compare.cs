@@ -19,8 +19,8 @@ public static partial class CaptureRunner
     /// </summary>
     /// <remarks>
     /// Detections are keyed by <c>(relative_path or path, format, variant)</c> tuples in dicts and sets with Python's equality and hashing
-    /// (<see cref="EngineValues"/>), so <c>1</c>, <c>1.0</c> and <c>true</c> are one key and a list in a key raises <c>TypeError</c>; keys
-    /// sort with Python's tuple ordering. A snapshot that is not a mapping raises <c>AttributeError</c>, as it does in Python, and an error
+    /// (<see cref="EngineValues"/>), so <c>1</c>, <c>1.0</c> and <c>true</c> are one key and a list in a key raises <see cref="InvalidDataException"/>;
+    /// keys sort with Python's tuple ordering. A snapshot that is not a mapping raises <see cref="InvalidDataException"/>, and an error
     /// met while the summary is written (a profile name that is not a str) escapes after the lines already written.
     /// </remarks>
     public static CaptureComparison CompareSnapshots(CaptureCompareOptions options, TextWriter stdout, TextWriter stderr)
@@ -62,7 +62,8 @@ public static partial class CaptureRunner
 
     /// <summary>
     /// <c>_load_snapshot(path)</c>: <c>json.loads(path.read_text())</c>. Text that is not a JSON document raises
-    /// <c>ValueError("Failed to parse snapshot {path}: invalid JSON document")</c> (<see cref="EngineJson"/> reports no decoder reason);
+    /// <see cref="InvalidDataException"/> (<c>Failed to parse snapshot {path}: invalid JSON document</c>; <see cref="EngineJson"/> reports no
+    /// decoder reason);
     /// read, decode and limit errors are raised as they are.
     /// </summary>
     public static object? LoadSnapshot(string path)
@@ -70,7 +71,7 @@ public static partial class CaptureRunner
         ArgumentNullException.ThrowIfNull(path);
         return EngineJson.TryLoadsOrRaiseLimits(ReadUtf8Text(path), out var value)
             ? value
-            : throw new EngineValueException($"Failed to parse snapshot {path}: invalid JSON document", nameof(path));
+            : throw new InvalidDataException($"Failed to parse snapshot {path}: invalid JSON document");
     }
 
     /// <summary>
@@ -242,7 +243,7 @@ public static partial class CaptureRunner
         }
     }
 
-    // ', '.join(items) or 'none': every item must be a str (TypeError "sequence item N: expected str instance, T found").
+    // ', '.join(items) or 'none': every item must be a str.
     private static string JoinOrNone(IEnumerable<object?> items)
     {
         var builder = new StringBuilder();
@@ -251,9 +252,8 @@ public static partial class CaptureRunner
         {
             if (item is not string text)
             {
-                throw new EngineTypeException(
-                    string.Create(CultureInfo.InvariantCulture, $"sequence item {index}: expected str instance, {EngineBuiltins.TypeName(item)} found"),
-                    nameof(items));
+                throw new InvalidDataException(
+                    string.Create(CultureInfo.InvariantCulture, $"Item {index} is a value of type '{EngineBuiltins.TypeName(item)}', not a string."));
             }
 
             builder.Append(index++ == 0 ? string.Empty : ", ").Append(text);

@@ -45,19 +45,20 @@ public sealed partial record OfflineRegistryScanSource(string Token)
     /// <see cref="RemoteRegistryTarget.FromPayload"/> (a mapping is one target, a list each entry, anything else one target);
     /// <c>int(max_depth)</c>, <c>int(max_hits)</c>, <c>float(time_budget_s)</c>; and <c>roots</c> through <see cref="NormaliseRoots"/>.
     /// </summary>
-    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
+    /// <exception cref="InvalidDataException">Each refusal.</exception>
+    /// <exception cref="FormatException">A root descriptor or a number that does not parse.</exception>
     public static OfflineRegistryScanSource FromDict(IReadOnlyDictionary<string, object?> payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
         if (payload.GetValueOrDefault("registry_scan") is not IReadOnlyDictionary<string, object?> spec)
         {
-            throw new EngineValueException("registry_scan source requires an object payload", nameof(payload));
+            throw new InvalidDataException("registry_scan source requires an object payload");
         }
 
         var tokenRaw = spec.GetValueOrDefault("token");
         if (!EngineBuiltins.IsTruthy(tokenRaw) || EngineText.Strip(EngineRepr.Str(tokenRaw)).Length == 0)
         {
-            throw new EngineValueException("registry_scan requires non-empty 'token'.", nameof(payload));
+            throw new InvalidDataException("registry_scan requires non-empty 'token'.");
         }
 
         var alias = payload.GetValueOrDefault("alias");
@@ -130,7 +131,8 @@ public sealed partial record OfflineRegistryScanSource(string Token)
     /// entry is <see cref="RegistryRoot.Parse"/>; a mapping needs non-blank <c>str(hive)</c> and <c>str(path)</c> (stripped, the hive
     /// upper-cased) and reads a non-blank <c>view</c> as 32, 64 or auto; anything else is refused.
     /// </summary>
-    /// <exception cref="EngineValueException">Python's <c>ValueError</c> text for each refusal.</exception>
+    /// <exception cref="InvalidDataException">Each refusal of a mapping or another value.</exception>
+    /// <exception cref="FormatException">A root descriptor that does not parse.</exception>
     public static IReadOnlyList<RegistryRoot> NormaliseRoots(object? value)
     {
         if (!EngineBuiltins.IsTruthy(value))
@@ -148,7 +150,7 @@ public sealed partial record OfflineRegistryScanSource(string Token)
                 RegistryRoot root => root,
                 string text => RegistryRoot.Parse(text),
                 IReadOnlyDictionary<string, object?> mapping => RootFromMapping(mapping),
-                _ => throw new EngineValueException("registry_scan roots entries must be strings or mappings", nameof(value)),
+                _ => throw new InvalidDataException("registry_scan roots entries must be strings or mappings"),
             });
         }
 
@@ -161,7 +163,7 @@ public sealed partial record OfflineRegistryScanSource(string Token)
         var path = EngineText.Strip(EngineRepr.Str(mapping.TryGetValue("path", out var pathValue) ? pathValue : string.Empty));
         if (hive.Length == 0 || path.Length == 0)
         {
-            throw new EngineValueException("registry_scan roots entries require 'hive' and 'path'", nameof(mapping));
+            throw new InvalidDataException("registry_scan roots entries require 'hive' and 'path'");
         }
 
         var viewRaw = mapping.GetValueOrDefault("view");
@@ -173,7 +175,7 @@ public sealed partial record OfflineRegistryScanSource(string Token)
                 "AUTO" => null,
                 "32" => "32",
                 "64" => "64",
-                _ => throw new EngineValueException("registry_scan root view must be 32, 64, or auto", nameof(mapping)),
+                _ => throw new InvalidDataException("registry_scan root view must be 32, 64, or auto"),
             };
         }
 

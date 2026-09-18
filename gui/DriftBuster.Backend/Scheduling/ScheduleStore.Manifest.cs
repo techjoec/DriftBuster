@@ -37,8 +37,8 @@ public static partial class ScheduleStore
     /// <c>schedules</c>, or the document itself; a missing file, a falsy value and a string are no schedules.
     /// </summary>
     /// <exception cref="CommandExitException">Text that is not JSON, or a truthy value that is neither an array nor a string (Python's messages).</exception>
-    /// <exception cref="EngineValueException">An integer past the decoder's digit limit, which the scheduler cannot read either.</exception>
-    /// <exception cref="EngineRecursionException">Containers nested past the decoder's limit, which the scheduler cannot read either.</exception>
+    /// <exception cref="ArgumentException">An integer past the decoder's digit limit, which the scheduler cannot read either.</exception>
+    /// <exception cref="InvalidDataException">Containers nested past the decoder's limit, which the scheduler cannot read either.</exception>
     public static ScheduleListResult ListSchedules(string? baseDir, CancellationToken cancellationToken = default)
     {
         var path = ScheduleManifestPath(baseDir);
@@ -64,7 +64,7 @@ public static partial class ScheduleStore
     /// <summary>Writes the cards to the manifest in their order, creating the profiles directory.</summary>
     /// <exception cref="InvalidOperationException">A card without a name, profile or interval.</exception>
     /// <exception cref="ScheduleException">An entry <see cref="ScheduleSpec.FromDict"/> refuses, or a name used twice.</exception>
-    /// <exception cref="EngineValueException">A start time or window time <c>fromisoformat</c> or <c>int()</c> refuses, or a window time out of range.</exception>
+    /// <exception cref="ArgumentException">A start time or window time <c>fromisoformat</c> or <c>int()</c> refuses, or a window time out of range.</exception>
     /// <exception cref="OverflowException">An interval, window time or start time out of Python's range, or a first run past it.</exception>
     public static void SaveSchedules(IEnumerable<ScheduleDefinition> schedules, string? baseDir, CancellationToken cancellationToken = default)
     {
@@ -101,7 +101,7 @@ public static partial class ScheduleStore
             _ = new ProfileScheduler([ScheduleSpec.FromDict(SerialiseSchedule(Normalise(schedule)))]);
             return null;
         }
-        catch (Exception exc) when (exc is ArgumentException or OverflowException or InvalidOperationException)
+        catch (Exception exc) when (exc is ArgumentException or FormatException or InvalidDataException or OverflowException or InvalidOperationException)
         {
             return exc.Message;
         }

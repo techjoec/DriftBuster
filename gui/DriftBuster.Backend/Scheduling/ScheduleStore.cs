@@ -113,8 +113,8 @@ public static partial class ScheduleStore
 
     /// <summary>
     /// <c>_write_schedule_state(scheduler, path)</c>: the snapshot as sorted, indented, ASCII-escaped JSON with a trailing new line, parents
-    /// created. A state path Python cannot write raises its <c>OSError</c> text (<see cref="OsError"/>): the parent directory's
-    /// (<see cref="EnginePath.MakeDirectories"/>), or the file's, <c>open()</c>'s error for a directory (<see cref="OsError.DirectoryOpenErrno"/>).
+    /// created. A state path that cannot be written raises the runtime's exception: the parent directory's
+    /// (<see cref="EnginePath.MakeDirectories"/>), or the file's (<see cref="UnauthorizedAccessException"/> for a directory).
     /// </summary>
     public static void WriteScheduleState(ProfileScheduler scheduler, string path)
     {
@@ -135,12 +135,11 @@ public static partial class ScheduleStore
         WriteText(path, text);
     }
 
-    // path.write_text(text, encoding="utf-8"): open() names the path as str(Path) spells it in its OSError.
+    // path.write_text(text, encoding="utf-8").
     private static void WriteText(string path, string text) => EngineTextFile.WriteText(path, text);
 
-    // json.loads(path.read_text(encoding="utf-8")): null when the text is not JSON; a directory raises open()'s error for one (EISDIR on
-    // Unix, EACCES on Windows), bytes that are not UTF-8 raise UnicodeDecodeError and the decoder's interpreter limits raise ValueError /
-    // RecursionError, all unwrapped (the loaders catch only JSONDecodeError).
+    // json.loads(path.read_text(encoding="utf-8")): null when the text is not JSON; a directory raises UnauthorizedAccessException,
+    // bytes that are not UTF-8 and the decoder's limits raise InvalidDataException, all unwrapped.
     private static JsonValue? ReadJson(string path)
     {
         return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.Decode(EngineTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;

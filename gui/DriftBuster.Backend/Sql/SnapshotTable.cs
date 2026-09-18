@@ -19,7 +19,7 @@ public sealed record SnapshotTable(
 {
     /// <summary>
     /// The <c>sql</c> value when a writable schema stored it as a BLOB: the schema is then <c>bytes</c>, which
-    /// <see cref="ToDict"/> carries so that <c>json.dumps</c> of the snapshot raises its <c>TypeError</c>.
+    /// <see cref="ToDict"/> carries so that writing the snapshot as JSON raises <see cref="NotSupportedException"/>.
     /// </summary>
     public byte[]? SchemaBytes { get; init; }
 

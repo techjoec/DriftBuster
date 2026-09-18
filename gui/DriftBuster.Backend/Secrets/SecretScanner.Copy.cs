@@ -354,7 +354,7 @@ public static partial class SecretScanner
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
-            // contextlib.suppress(OSError)
+            // Timestamps are best effort: a failure to copy them is ignored.
         }
     }
 

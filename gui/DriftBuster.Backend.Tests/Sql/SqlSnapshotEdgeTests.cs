@@ -61,8 +61,8 @@ public sealed class SqlSnapshotEdgeTests : IDisposable
         }
         else
         {
-            run.Should().Throw<Sqlite3Exception>()
-                .Where(exc => exc.TypeName == "ProgrammingError" && exc.Message == "You can only execute one statement at a time.");
+            run.Should().Throw<SqliteException>()
+                .Where(exc => exc.SqliteErrorCode == SQLitePCL.raw.SQLITE_MISUSE && exc.Message == "You can only execute one statement at a time.");
         }
     }
 
@@ -116,8 +116,8 @@ public sealed class SqlSnapshotEdgeTests : IDisposable
         var before = File.ReadAllBytes(Path.Combine(copy, "db.sqlite"));
         var build = () => SqliteSnapshots.BuildSqliteSnapshot(Path.Combine(copy, "db.sqlite"));
 
-        build.Should().Throw<Sqlite3Exception>()
-            .Where(exc => exc.TypeName == "OperationalError" && exc.Message == "attempt to write a readonly database");
+        build.Should().Throw<SqliteException>()
+            .Where(exc => exc.SqliteErrorCode == SQLitePCL.raw.SQLITE_READONLY && exc.Message == "attempt to write a readonly database");
         File.ReadAllBytes(Path.Combine(copy, "db.sqlite")).Should().Equal(before);
     }
 
