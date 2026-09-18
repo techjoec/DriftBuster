@@ -17,6 +17,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using DriftBuster.Backend;
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using Microsoft.Extensions.Logging;
@@ -318,10 +319,10 @@ namespace DriftBuster.Gui.ViewModels
             {
                 await RunOnUiThreadAsync(() =>
                 {
-                    StatusBanner = $"Failed to load session: {ex.Message}";
+                    StatusBanner = $"Failed to load session: {ErrorText.Plain(ex)}";
                     _toastService.Show(
                         "Session load failed",
-                        ex.Message,
+                        ErrorText.Plain(ex),
                         ToastLevel.Warning,
                         TimeSpan.FromSeconds(6),
                         new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
@@ -624,10 +625,10 @@ namespace DriftBuster.Gui.ViewModels
                 DebugLog.Trace("ServerSelection", "RunScans exception", new { ExceptionType = ex.GetType().Name, ex.Message, ex.StackTrace });
                 await RunOnUiThreadAsync(() =>
                 {
-                    StatusBanner = $"Scan failed: {ex.Message}";
+                    StatusBanner = $"Scan failed: {ErrorText.Plain(ex)}";
                     _toastService.Show(
                         "Multi-server scan failed",
-                        ex.Message,
+                        ErrorText.Plain(ex),
                         ToastLevel.Error,
                         TimeSpan.FromSeconds(10),
                         new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
@@ -752,10 +753,10 @@ namespace DriftBuster.Gui.ViewModels
             {
                 await RunOnUiThreadAsync(() =>
                 {
-                    StatusBanner = $"Failed to save session: {ex.Message}";
+                    StatusBanner = $"Failed to save session: {ErrorText.Plain(ex)}";
                     _toastService.Show(
                         "Session save failed",
-                        ex.Message,
+                        ErrorText.Plain(ex),
                         ToastLevel.Error,
                         TimeSpan.FromSeconds(6),
                         new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));

@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using DriftBuster.Backend;
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
 using Microsoft.Extensions.Logging;
@@ -360,7 +361,7 @@ namespace DriftBuster.Gui.ViewModels
             }
             catch (Exception ex)
             {
-                ErrorMessage = ex.Message;
+                ErrorMessage = ErrorText.Plain(ex);
                 Comparisons.Clear();
                 RawJson = string.Empty;
                 SanitizedJson = string.Empty;

@@ -176,15 +176,15 @@ public static partial class DetectionMetadata
     private static string KeyText(object? key) => key is string text ? text : EngineStr(key);
 
     /// <summary>
-    /// Python <c>str()</c> for the values plugins store: <c>None</c>, <c>True</c>/<c>False</c>, integers, floats as
+    /// Text for the values plugins store: <c>null</c>, <c>true</c>/<c>false</c>, integers, floats as
     /// <c>repr</c>, a <see cref="DateTime"/> as <c>YYYY-MM-DD HH:MM:SS</c> with <c>.ffffff</c> only when there are
     /// microseconds, and any other object through its own <see cref="object.ToString"/>.
     /// </summary>
     internal static string EngineStr(object? value) => value switch
     {
-        null => "None",
+        null => "null",
         string text => text,
-        bool flag => flag ? "True" : "False",
+        bool flag => flag ? "true" : "false",
         double number => EngineRepr.Float(number),
         float number => EngineRepr.Float(number),
         DateTime date => EngineDateTime(date),

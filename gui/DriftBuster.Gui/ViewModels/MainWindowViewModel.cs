@@ -9,6 +9,7 @@ using Avalonia.Input.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Views;
 
@@ -172,10 +173,10 @@ namespace DriftBuster.Gui.ViewModels
             }
             catch (Exception ex)
             {
-                ShowHunt($"Ping failed: {ex.Message}");
+                ShowHunt($"Ping failed: {ErrorText.Plain(ex)}");
                 _toastService.Show(
                     "Ping failed",
-                    ex.Message,
+                    ErrorText.Plain(ex),
                     ToastLevel.Error,
                     TimeSpan.FromSeconds(8),
                     new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
@@ -194,10 +195,10 @@ namespace DriftBuster.Gui.ViewModels
             catch (Exception ex)
             {
                 IsBackendHealthy = false;
-                BackendStatusText = $"Core unavailable: {ex.Message}";
+                BackendStatusText = $"Core unavailable: {ErrorText.Plain(ex)}";
                 _toastService.Show(
                     "Core unavailable",
-                    ex.Message,
+                    ErrorText.Plain(ex),
                     ToastLevel.Error,
                     TimeSpan.FromSeconds(8),
                     new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));

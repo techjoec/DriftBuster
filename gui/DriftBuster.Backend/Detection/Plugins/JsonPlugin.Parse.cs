@@ -9,11 +9,11 @@ public sealed partial class JsonPlugin
         internal static ParseResult Failure { get; } = new(false, new OrderedDictionary<string, object?>(StringComparer.Ordinal));
     }
 
-    private static readonly string[] TypeNames = ["dict", "list", "str", "int", "float", "bool", "NoneType"];
+    private static readonly string[] TypeNames = ["object", "array", "string", "integer", "number", "boolean", "null"];
 
     /// <summary>
     /// Parses the structurally complete prefix of <paramref name="text"/> with the acceptance rules of Python's
-    /// <c>json.loads</c> and reports the top-level type, the first five object keys, or the Python type names of the
+    /// <c>json.loads</c> and reports the top-level type, the first five object keys, or the JSON type names of the
     /// first five array items. Comments are never accepted: with <paramref name="allowComments"/> the parse is skipped.
     /// </summary>
     internal static ParseResult AttemptParse(string text, bool allowComments)

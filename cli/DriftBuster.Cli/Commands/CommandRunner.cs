@@ -25,7 +25,7 @@ internal static class CommandRunner
         }
         catch (Exception exc) when (exc is not OutOfMemoryException)
         {
-            ConsoleText.Print(stderr, $"{exc.GetType().Name}: {exc.Message}");
+            ConsoleText.Print(stderr, $"{exc.GetType().Name}: {ErrorText.Plain(exc)}");
             return 1;
         }
     }

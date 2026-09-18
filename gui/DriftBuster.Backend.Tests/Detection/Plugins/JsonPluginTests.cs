@@ -108,7 +108,7 @@ public sealed class JsonPluginTests
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
         match.Metadata.Should().ContainKey("top_level_sample_types");
-        match.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "dict" });
+        match.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "object" });
         match.Metadata["top_level_type"].Should().Be("array");
     }
 
@@ -195,7 +195,7 @@ public sealed class JsonPluginTests
     public void ScannerAcceptsNonStandardLiterals()
     {
         var match = Detect("nan.json", "[NaN, Infinity, -Infinity]");
-        match!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "float" });
+        match!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "number" });
         match.Metadata.Should().NotContainKey("parse_failed");
 
         var scalar = Detect("neg-inf-top.json", "-Infinity");
@@ -208,10 +208,10 @@ public sealed class JsonPluginTests
     {
         var match = Detect("mix.json", "[1, 1.5, \"s\", true, null, {}, [], -0, 1e5]");
         match!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(
-            new[] { "NoneType", "bool", "float", "int", "str" },
+            new[] { "boolean", "integer", "null", "number", "string" },
             options => options.WithStrictOrdering());
 
-        Detect("num5.json", "[1.5e+3, 2E-1, -0.0]")!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "float" });
+        Detect("num5.json", "[1.5e+3, 2E-1, -0.0]")!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "number" });
     }
 
     [Fact]

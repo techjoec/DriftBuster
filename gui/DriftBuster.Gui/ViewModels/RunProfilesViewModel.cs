@@ -283,7 +283,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = ErrorText.Plain(ex);
         }
         finally
         {
@@ -304,7 +304,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             ApplySchedules(Array.Empty<ScheduleDefinition>());
-            return ex.Message;
+            return ErrorText.Plain(ex);
         }
     }
 
@@ -404,7 +404,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = ErrorText.Plain(ex);
         }
         finally
         {
@@ -436,7 +436,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = ErrorText.Plain(ex);
             ClearRunResults();
         }
         finally
@@ -496,7 +496,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = ErrorText.Plain(ex);
         }
         finally
         {
@@ -796,7 +796,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = ErrorText.Plain(ex);
         }
     }
 
