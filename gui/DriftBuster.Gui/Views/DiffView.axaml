@@ -6,98 +6,112 @@
              xmlns:views="using:DriftBuster.Gui.Views"
              x:Class="DriftBuster.Gui.Views.DiffView"
              x:DataType="vm:DiffViewModel">
-  <ScrollViewer AllowAutoHide="False">
-    <StackPanel Spacing="24" Margin="0,0,18,0">
-      <StackPanel Spacing="6">
-        <TextBlock Classes="heading" Text="Diff planner" />
-        <TextBlock Classes="subtitle"
-                   Text="Compare multiple snapshots, capture plan metadata, and export raw JSON." />
-      </StackPanel>
+  <!-- Fills the space it is given: the inputs fold away after a build and the results take the rest, one tab at a time. -->
+  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+    <StackPanel Spacing="2">
+      <TextBlock Classes="heading" Text="Diff planner" />
+      <TextBlock Classes="subtitle" Text="Pick a baseline file and the files to compare with it." />
+    </StackPanel>
 
-      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="18">
-          <StackPanel Orientation="Horizontal"
-                      Spacing="12"
-                      VerticalAlignment="Center"
-                      IsVisible="{Binding HasMruEntries}">
-            <TextBlock Text="Recent plans"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
-            <ComboBox MinWidth="360"
-                      ItemsSource="{Binding MruEntries}"
-                      SelectedItem="{Binding SelectedMruEntry, Mode=TwoWay}"
-                      PlaceholderText="Select a previous diff"
-                      automation:AutomationProperties.AutomationId="DiffPlanner.MruSelector"
-                      automation:AutomationProperties.Name="Recent diff planner entries">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:DiffViewModel+DiffPlannerMruEntryView">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{Binding DisplayName}" />
-                    <TextBlock Text="{Binding PayloadKind}"
-                               Classes="subtitle" />
-                  </StackPanel>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </StackPanel>
-
-          <ItemsControl ItemsSource="{Binding Inputs}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Classes="surface" Padding="16" Margin="0,0,0,12" CornerRadius="{DynamicResource Radius.Medium}">
-                  <StackPanel Spacing="8">
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                      <RadioButton Content="Baseline"
-                                   IsChecked="{Binding IsBaseline, Mode=TwoWay}"
-                                   GroupName="BaselineGroup"
-                                   automation:AutomationProperties.AutomationId="DiffPlanner.Input.Baseline" />
-                      <TextBlock Text="Active baseline"
-                                 Foreground="{DynamicResource Brush.TextSecondary}"
-                                 IsVisible="{Binding IsBaseline}" />
+    <Expander Grid.Row="1"
+              HorizontalAlignment="Stretch"
+              IsExpanded="{Binding InputsExpanded}"
+              automation:AutomationProperties.AutomationId="DiffPlanner.Inputs"
+              automation:AutomationProperties.Name="Files to compare">
+      <Expander.Header>
+        <TextBlock Text="{Binding InputsHeader}" FontWeight="SemiBold" />
+      </Expander.Header>
+      <ScrollViewer MaxHeight="420" AllowAutoHide="False">
+        <StackPanel Spacing="12" Margin="0,0,18,0">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="12"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding HasMruEntries}">
+              <TextBlock Text="Recent plans"
+                         FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
+              <ComboBox MinWidth="360"
+                        ItemsSource="{Binding MruEntries}"
+                        SelectedItem="{Binding SelectedMruEntry, Mode=TwoWay}"
+                        PlaceholderText="Select a previous diff"
+                        automation:AutomationProperties.AutomationId="DiffPlanner.MruSelector"
+                        automation:AutomationProperties.Name="Recent diff planner entries">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DiffViewModel+DiffPlannerMruEntryView">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding DisplayName}" />
+                      <TextBlock Text="{Binding PayloadKind}"
+                                 Classes="subtitle" />
                     </StackPanel>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                      <TextBox PlaceholderText="Select snapshot"
-                               Text="{Binding Path, Mode=TwoWay}"
-                               automation:AutomationProperties.AutomationId="DiffPlanner.Input.Path"
-                               automation:AutomationProperties.Name="Snapshot path" />
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                        <Button Content="Browse" Classes="outline"
-                                Tag="{Binding}"
-                                Click="OnBrowseFile"
-                                automation:AutomationProperties.AutomationId="DiffPlanner.Input.Browse" />
-                        <Button Content="Remove" Classes="outline"
-                                Command="{Binding ((vm:DiffViewModel)DataContext).RemoveVersionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                CommandParameter="{Binding}"
-                                automation:AutomationProperties.AutomationId="DiffPlanner.Input.Remove" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{Binding Inputs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="surface" Padding="16" Margin="0,0,0,12" CornerRadius="{DynamicResource Radius.Medium}">
+                    <StackPanel Spacing="8">
+                      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <RadioButton Content="Baseline"
+                                     IsChecked="{Binding IsBaseline, Mode=TwoWay}"
+                                     GroupName="BaselineGroup"
+                                     automation:AutomationProperties.AutomationId="DiffPlanner.Input.Baseline" />
+                        <TextBlock Text="Active baseline"
+                                   Foreground="{DynamicResource Brush.TextSecondary}"
+                                   IsVisible="{Binding IsBaseline}" />
                       </StackPanel>
-                    </Grid>
-                    <TextBlock Text="{Binding Error}"
-                               Foreground="{DynamicResource Brush.Accent}"
-                               FontSize="12"
-                               IsVisible="{Binding Error, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <TextBox PlaceholderText="Select snapshot"
+                                 Text="{Binding Path, Mode=TwoWay}"
+                                 automation:AutomationProperties.AutomationId="DiffPlanner.Input.Path"
+                                 automation:AutomationProperties.Name="Snapshot path" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                          <Button Content="Browse" Classes="outline"
+                                  Tag="{Binding}"
+                                  Click="OnBrowseFile"
+                                  automation:AutomationProperties.AutomationId="DiffPlanner.Input.Browse" />
+                          <Button Content="Remove" Classes="outline"
+                                  Command="{Binding ((vm:DiffViewModel)DataContext).RemoveVersionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  CommandParameter="{Binding}"
+                                  automation:AutomationProperties.AutomationId="DiffPlanner.Input.Remove" />
+                        </StackPanel>
+                      </Grid>
+                      <TextBlock Text="{Binding Error}"
+                                 Foreground="{DynamicResource Brush.Accent}"
+                                 FontSize="12"
+                                 IsVisible="{Binding Error, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
-          <Button Content="Add version" Classes="outline"
-                  HorizontalAlignment="Left"
-                  Command="{Binding AddVersionCommand}"
-                  automation:AutomationProperties.AutomationId="DiffPlanner.AddVersion" />
+            <Button Content="Add version" Classes="outline"
+                    HorizontalAlignment="Left"
+                    Command="{Binding AddVersionCommand}"
+                    automation:AutomationProperties.AutomationId="DiffPlanner.AddVersion" />
+        </StackPanel>
+      </ScrollViewer>
+    </Expander>
 
-          <StackPanel Orientation="Horizontal" Spacing="16">
-            <Button Content="Build plan" Classes="primary"
-                    Command="{Binding RunDiffCommand}"
-                    automation:AutomationProperties.AutomationId="DiffPlanner.BuildPlan" />
-            <ProgressBar Width="160"
-                         IsVisible="{Binding IsBusy}"
-                         IsIndeterminate="True"
-                         automation:AutomationProperties.AutomationId="DiffPlanner.Progress"
-                         automation:AutomationProperties.Name="Building plan" />
-          </StackPanel>
-
-          <Border Classes="notice"
+    <StackPanel Grid.Row="2" Spacing="8">
+      <StackPanel Orientation="Horizontal" Spacing="16">
+        <Button Content="Build plan" Classes="primary"
+                Command="{Binding RunDiffCommand}"
+                automation:AutomationProperties.AutomationId="DiffPlanner.BuildPlan" />
+        <ProgressBar Width="160"
+                     IsVisible="{Binding IsBusy}"
+                     IsIndeterminate="True"
+                     automation:AutomationProperties.AutomationId="DiffPlanner.Progress"
+                     automation:AutomationProperties.Name="Building plan" />
+        <TextBlock Text="Select files and build the plan to compare them."
+                   Classes="subtitle"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding ShouldShowPlanHint}" />
+      </StackPanel>
+      <Border Classes="notice"
                   IsVisible="{Binding HasError}">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <TextBlock Text="⚠"
@@ -106,27 +120,45 @@
               <TextBlock Text="{Binding ErrorMessage}" FontSize="13" />
             </StackPanel>
           </Border>
-        </StackPanel>
-      </Border>
+    </StackPanel>
 
-      <!-- What differs, setting by setting: the same view Multi-server uses, one column per file. -->
-      <StackPanel x:Name="SettingsSection" Spacing="8" IsVisible="{Binding Settings.HasData}">
-        <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" />
+    <TabControl Grid.Row="3"
+                IsVisible="{Binding HasResult}"
+                SelectedIndex="{Binding ResultTab}"
+                automation:AutomationProperties.AutomationId="DiffPlanner.Results"
+                automation:AutomationProperties.Name="Results">
+      <TabItem Header="Settings" IsVisible="{Binding Settings.HasData}" automation:AutomationProperties.AutomationId="DiffPlanner.Tab.Settings">
         <views:CompareView DataContext="{Binding Settings}" />
-      </StackPanel>
-
-      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="18">
-          <StackPanel>
-            <TextBlock Text="Line-by-line diff" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Classes="subtitle"
-                       Text="The same comparison as text lines, for when you need the exact file contents." />
-          </StackPanel>
-
-          <StackPanel Orientation="Horizontal"
-                      HorizontalAlignment="Right"
-                      Spacing="8"
-                      IsVisible="{Binding HasAnyJson}">
+      </TabItem>
+      <TabItem Header="Line by line" automation:AutomationProperties.AutomationId="DiffPlanner.Tab.Lines">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+          <ComboBox ItemsSource="{Binding Comparisons}"
+                    SelectedItem="{Binding SelectedComparison}"
+                    IsVisible="{Binding HasMultipleComparisons}"
+                    MinWidth="360"
+                    automation:AutomationProperties.AutomationId="DiffPlanner.ComparisonPicker"
+                    automation:AutomationProperties.Name="Comparison">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:DiffViewModel+DiffComparisonView">
+                <TextBlock Text="{Binding Title}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Text="{Binding SelectedComparison.Title, FallbackValue=''}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    Classes="outline"
+                    Content="Copy diff"
+                    Tag="{Binding SelectedComparison.UnifiedDiff, FallbackValue=''}"
+                    Click="OnCopyDiff"
+                    automation:AutomationProperties.AutomationId="DiffPlanner.Comparison.CopyDiff" />
+          </Grid>
+          <views:DiffLinesView Grid.Row="2" DataContext="{Binding SelectedComparison.Lines, FallbackValue={x:Null}}" />
+        </Grid>
+      </TabItem>
+      <TabItem Header="JSON" IsVisible="{Binding HasAnyJson}" automation:AutomationProperties.AutomationId="DiffPlanner.Tab.Json">
+        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
             <ItemsControl x:Name="JsonViewToggleList"
                           ItemsSource="{Binding JsonViewOptions}">
               <ItemsControl.ItemsPanel>
@@ -162,129 +194,37 @@
                     automation:AutomationProperties.AutomationId="DiffPlanner.CopyJsonButton"
                     automation:AutomationProperties.Name="Copy active diff JSON" />
           </StackPanel>
+          <Panel Grid.Row="1">
+            <Border x:Name="SanitizedJsonPane"
+                    Background="{DynamicResource Brush.SurfaceAlt}"
+                    Padding="16"
+                    CornerRadius="{DynamicResource Radius.Medium}"
+                    IsVisible="{Binding IsSanitizedViewActive}"
+                    automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Sanitized"
+                    automation:AutomationProperties.Name="Sanitized diff JSON">
+              <ScrollViewer AllowAutoHide="False">
+                <TextBlock Text="{Binding SanitizedJson}"
+                           FontFamily="Consolas"
+                           TextWrapping="Wrap" />
+              </ScrollViewer>
+            </Border>
 
-          <ItemsControl ItemsSource="{Binding Comparisons}" IsVisible="{Binding HasResult}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border BorderBrush="{DynamicResource Brush.Border}"
-                        BorderThickness="{DynamicResource Thickness.Border}"
-                        CornerRadius="{DynamicResource Radius.Large}"
-                        Padding="18"
-                        Margin="0,0,0,16"
-                        Background="{DynamicResource Brush.SurfaceAlt}">
-                  <StackPanel Spacing="14">
-                    <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
-
-                    <ItemsControl ItemsSource="{Binding PlanEntries}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <WrapPanel />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                          <Border Classes="surface" Padding="12" Margin="0,0,12,12" CornerRadius="{DynamicResource Radius.Medium}">
-                            <StackPanel Spacing="4">
-                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                              <TextBlock Text="{Binding Value}" Classes="subtitle" TextWrapping="Wrap" />
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <ItemsControl ItemsSource="{Binding MetadataEntries}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <WrapPanel />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                          <Border Background="{DynamicResource Brush.SurfaceMuted}"
-                                  BorderBrush="{DynamicResource Brush.Border}"
-                                  BorderThickness="{DynamicResource Thickness.Border}"
-                                  CornerRadius="{DynamicResource Radius.Medium}"
-                                  Padding="12"
-                                  Margin="0,0,12,12">
-                            <StackPanel Spacing="4">
-                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                              <TextBlock Text="{Binding Value}" Classes="subtitle" TextWrapping="Wrap" />
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <Border Background="{DynamicResource Brush.SurfaceAlt}"
-                            BorderBrush="{DynamicResource Brush.Border}"
-                            BorderThickness="{DynamicResource Thickness.Border}"
-                            CornerRadius="{DynamicResource Radius.Medium}"
-                            Padding="12"
-                            Margin="0,4,0,0"
-                            IsVisible="{Binding HasDiff}">
-                      <StackPanel Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch">
-                          <TextBlock Text="Unified diff" FontWeight="SemiBold" />
-                          <Button Classes="outline"
-                                  Content="Copy diff"
-                                  Tag="{Binding UnifiedDiff}"
-                                  HorizontalAlignment="Right"
-                                  Click="OnCopyDiff"
-                                  automation:AutomationProperties.AutomationId="DiffPlanner.Comparison.CopyDiff" />
-                        </StackPanel>
-                        <ScrollViewer MaxHeight="400" AllowAutoHide="False">
-                          <TextBlock Text="{Binding UnifiedDiff}"
-                                     FontFamily="Consolas"
-                                     TextWrapping="Wrap" />
-                        </ScrollViewer>
-                      </StackPanel>
-                    </Border>
-
-                    <TextBlock Text="No diff output (files are identical)."
-                               Classes="subtitle"
-                               HorizontalAlignment="Center"
-                               IsVisible="{Binding HasDiff, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <TextBlock Text="Select files and build the plan to populate comparison cards."
-                     Classes="subtitle"
-                     HorizontalAlignment="Center"
-                     IsVisible="{Binding ShouldShowPlanHint}" />
-
-          <Border x:Name="SanitizedJsonPane"
-                  Background="{DynamicResource Brush.SurfaceAlt}"
-                  Padding="16"
-                  CornerRadius="{DynamicResource Radius.Medium}"
-                  IsVisible="{Binding IsSanitizedViewActive}"
-                  automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Sanitized"
-                  automation:AutomationProperties.Name="Sanitized diff JSON">
-            <ScrollViewer MaxHeight="320" AllowAutoHide="False">
-              <TextBlock Text="{Binding SanitizedJson}"
-                         FontFamily="Consolas"
-                         TextWrapping="Wrap" />
-            </ScrollViewer>
-          </Border>
-
-          <Border x:Name="RawJsonPane"
-                  Background="{DynamicResource Brush.SurfaceAlt}"
-                  Padding="16"
-                  CornerRadius="{DynamicResource Radius.Medium}"
-                  IsVisible="{Binding IsRawViewActive}"
-                  automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Raw"
-                  automation:AutomationProperties.Name="Raw diff JSON">
-            <ScrollViewer MaxHeight="320" AllowAutoHide="False">
-              <TextBlock Text="{Binding RawJson}"
-                         FontFamily="Consolas"
-                         TextWrapping="Wrap" />
-            </ScrollViewer>
-          </Border>
-        </StackPanel>
-      </Border>
-    </StackPanel>
-  </ScrollViewer>
+            <Border x:Name="RawJsonPane"
+                    Background="{DynamicResource Brush.SurfaceAlt}"
+                    Padding="16"
+                    CornerRadius="{DynamicResource Radius.Medium}"
+                    IsVisible="{Binding IsRawViewActive}"
+                    automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Raw"
+                    automation:AutomationProperties.Name="Raw diff JSON">
+              <ScrollViewer AllowAutoHide="False">
+                <TextBlock Text="{Binding RawJson}"
+                           FontFamily="Consolas"
+                           TextWrapping="Wrap" />
+              </ScrollViewer>
+            </Border>
+          </Panel>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </Grid>
 </UserControl>

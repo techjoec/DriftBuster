@@ -75,6 +75,23 @@ namespace DriftBuster.Gui.ViewModels
         public bool HasSanitizedJson => !string.IsNullOrEmpty(SanitizedJson);
         public bool HasMruEntries => _mruEntries.Count > 0;
         public bool HasResult => Comparisons.Count > 0;
+
+        /// <summary>More than one comparison: the line-by-line tab offers a picker.</summary>
+        public bool HasMultipleComparisons => Comparisons.Count > 1;
+
+        /// <summary>The comparison whose lines the line-by-line tab shows.</summary>
+        [ObservableProperty]
+        private DiffComparisonView? _selectedComparison;
+
+        /// <summary>The file inputs stay open until a plan is built, then fold away so the results get the room.</summary>
+        [ObservableProperty]
+        private bool _inputsExpanded = true;
+
+        /// <summary>The results tab: 0 settings, 1 line by line, 2 JSON.</summary>
+        [ObservableProperty]
+        private int _resultTab;
+
+        public string InputsHeader => string.Create(CultureInfo.InvariantCulture, $"Files to compare ({Inputs.Count})");
         public bool ShouldShowPlanHint => !HasResult;
         public bool IsSanitizedViewActive => JsonViewMode == DiffJsonViewMode.Sanitized && HasSanitizedJson;
         public bool IsRawViewActive => JsonViewMode == DiffJsonViewMode.Raw || !HasSanitizedJson;
@@ -124,6 +141,7 @@ namespace DriftBuster.Gui.ViewModels
             Comparisons.CollectionChanged += (_, _) =>
             {
                 OnPropertyChanged(nameof(HasResult));
+                OnPropertyChanged(nameof(HasMultipleComparisons));
                 OnPropertyChanged(nameof(ShouldShowPlanHint));
             };
 
@@ -191,6 +209,7 @@ namespace DriftBuster.Gui.ViewModels
         {
             EnsureBaselinePresence();
             UpdateValidation();
+            OnPropertyChanged(nameof(InputsHeader));
             RunDiffCommand.NotifyCanExecuteChanged();
             AddVersionCommand.NotifyCanExecuteChanged();
             RemoveVersionCommand.NotifyCanExecuteChanged();
@@ -366,7 +385,9 @@ namespace DriftBuster.Gui.ViewModels
             {
                 ErrorMessage = ErrorText.Plain(ex);
                 Comparisons.Clear();
+                SelectedComparison = null;
                 Settings.Reset();
+                InputsExpanded = true;
                 RawJson = string.Empty;
                 SanitizedJson = string.Empty;
                 JsonViewMode = DiffJsonViewMode.Raw;
@@ -383,6 +404,9 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             Settings.Load(result.Settings);
+            SelectedComparison = Comparisons.FirstOrDefault();
+            ResultTab = Settings.HasData ? 0 : 1;
+            InputsExpanded = false;
 
             RawJson = result.RawJson ?? string.Empty;
             SanitizedJson = result.SanitizedJson ?? string.Empty;
@@ -756,6 +780,11 @@ namespace DriftBuster.Gui.ViewModels
             public string UnifiedDiff { get; }
 
             public bool HasDiff { get; }
+
+            private DiffLinesViewModel? _lines;
+
+            /// <summary>The unified diff line by line, built the first time it is shown.</summary>
+            public DiffLinesViewModel Lines => _lines ??= DiffLinesViewModel.FromUnified(UnifiedDiff);
         }
 
         public sealed class NameValuePair
