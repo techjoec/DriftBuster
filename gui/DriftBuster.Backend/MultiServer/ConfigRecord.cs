@@ -9,7 +9,7 @@ public sealed record ConfigRecord
 
     public required string FormatId { get; init; }
 
-    /// <summary><c>xml</c> or <c>text</c> (<see cref="Diff.ContentTypeResolver.FromCatalogFormat"/>).</summary>
+    /// <summary><c>xml</c>, <c>json</c> or <c>text</c> (<see cref="Diff.ContentTypeResolver.FromCatalogFormat"/>).</summary>
     public required string ContentType { get; init; }
 
     public required string Canonical { get; init; }

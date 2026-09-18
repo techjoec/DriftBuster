@@ -122,9 +122,9 @@ public sealed class MultiServerTests : IDisposable
         var runner = new MultiServerRunner(CacheDir);
         MultiServerPlan[] plans = [SamplePlan("server01", 10, isPreferred: true), SamplePlan("server02", 5)];
         var originalScanPlan = runner.ScanPlan;
-        runner.ScanPlan = (plan, existingRoots, secretHits, token) => string.Equals(plan.HostId, "server02", StringComparison.Ordinal)
+        runner.ScanPlan = (plan, existingRoots, token) => string.Equals(plan.HostId, "server02", StringComparison.Ordinal)
             ? throw new InvalidOperationException("simulated offline host")
-            : originalScanPlan(plan, existingRoots, secretHits, token);
+            : originalScanPlan(plan, existingRoots, token);
 
         ServerScanResponse response;
         try

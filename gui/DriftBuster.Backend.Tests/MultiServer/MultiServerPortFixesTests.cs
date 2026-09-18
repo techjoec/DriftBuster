@@ -45,7 +45,7 @@ public sealed class MultiServerPortFixesTests : IDisposable
         response.Results[0].Message.Should().Be("Evaluated 2 configuration(s).");
         var ids = response.Catalog.Select(entry => entry.ConfigId).ToList();
         ids.Should().Equal("structured-config-xml/web-config/app1/web-config", "structured-config-xml/web-config/app2/web-config");
-        response.Catalog.Select(entry => entry.DisplayName).Should().AllBe("web.config");
+        response.Catalog.Select(entry => entry.DisplayName).Should().Equal("app1/web.config", "app2/web.config");
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public sealed class MultiServerPortFixesTests : IDisposable
             var runner = new MultiServerRunner(CacheDir);
             PlanScan? scan = null;
             var original = runner.ScanPlan;
-            runner.ScanPlan = (plan, roots, secrets, token) => scan = original(plan, roots, secrets, token);
+            runner.ScanPlan = (plan, roots, token) => scan = original(plan, roots, token);
 
             var response = runner.Run([Plan("host", Path.Combine(_tmp.FullName, "host"))], cancellationToken: TestContext.Current.CancellationToken);
 
@@ -167,10 +167,10 @@ public sealed class MultiServerPortFixesTests : IDisposable
         using var source = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         var runner = new MultiServerRunner(CacheDir);
         var original = runner.ScanPlan;
-        runner.ScanPlan = (plan, roots, secrets, token) =>
+        runner.ScanPlan = (plan, roots, token) =>
         {
             source.Cancel();
-            return original(plan, roots, secrets, token);
+            return original(plan, roots, token);
         };
         var progress = new CollectingProgress();
 
@@ -186,7 +186,7 @@ public sealed class MultiServerPortFixesTests : IDisposable
         using var source = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         var runner = new MultiServerRunner(CacheDir);
         var plan = MultiServerTests.SamplePlan("server01", 1) with { ThrottleSeconds = 3600 };
-        runner.ScanPlan = (_, _, _, _) =>
+        runner.ScanPlan = (_, _, _) =>
         {
             source.CancelAfter(TimeSpan.FromMilliseconds(50));
             return new PlanScan(new OrderedDictionary<string, ConfigRecord>(StringComparer.Ordinal), false, false, []);

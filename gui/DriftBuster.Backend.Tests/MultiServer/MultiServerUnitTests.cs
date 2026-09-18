@@ -54,16 +54,6 @@ public sealed class MultiServerUnitTests : IDisposable
         ConfigIdentity.NormaliseConfigId(match, "conf/app.ini").Should().Be("ini/conf/app-ini");
     }
 
-    [Fact]
-    public void DisplayNamePrefersOriginalFilename()
-    {
-        var metadata = new Dictionary<string, object?>(StringComparer.Ordinal) { ["config_original_filename"] = "  web.config " };
-
-        ConfigIdentity.DisplayName(metadata, "app/web.config").Should().Be("web.config");
-        ConfigIdentity.DisplayName(new Dictionary<string, object?>(StringComparer.Ordinal) { ["config_original_filename"] = " " }, "app/web.config").Should().Be("app/web.config");
-        ConfigIdentity.DisplayName(null, "app/web.config").Should().Be("app/web.config");
-    }
-
     private static MultiServerPlan Plan(string host, bool preferred = false, int priority = 0)
         => new() { HostId = host, Label = host, IsPreferred = preferred, Priority = priority };
 

@@ -88,22 +88,6 @@ public static class ConfigIdentity
         return $"{Slugify(formatId)}#{digest[..12]}";
     }
 
-    /// <summary><c>_display_name</c>: <c>config_original_filename</c> stripped when it is a non-blank string, else the relative path.</summary>
-    public static string DisplayName(IReadOnlyDictionary<string, object?>? metadata, string relativePosix)
-    {
-        ArgumentNullException.ThrowIfNull(relativePosix);
-        if (Get(metadata, "config_original_filename") is string name)
-        {
-            var stripped = EngineText.Strip(name);
-            if (stripped.Length > 0)
-            {
-                return stripped;
-            }
-        }
-
-        return relativePosix;
-    }
-
     /// <summary>
     /// <paramref name="configId"/> when <paramref name="isTaken"/> rejects it; otherwise <c>{configId}@root{rootIndex}</c>, then
     /// <c>{configId}@root{rootIndex}.{n}</c> for n = 2, 3, ... until one is free.

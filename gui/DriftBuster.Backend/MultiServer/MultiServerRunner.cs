@@ -57,7 +57,7 @@ public sealed partial class MultiServerRunner
     internal long MaxTextBytes { get; set; } = DefaultMaxTextBytes;
 
     /// <summary>Seam for <c>MultiServerRunner._scan_plan(plan, existing_roots, secret_hits)</c>.</summary>
-    internal Func<MultiServerPlan, IReadOnlyList<string>, IReadOnlySet<string>, CancellationToken, PlanScan> ScanPlan { get; set; }
+    internal Func<MultiServerPlan, IReadOnlyList<string>, CancellationToken, PlanScan> ScanPlan { get; set; }
 
     /// <summary>Seam for <c>datetime.now(UTC)</c>.</summary>
     internal Func<DateTimeOffset> UtcNow { get; set; } = static () => DateTimeOffset.UtcNow;
@@ -131,8 +131,7 @@ public sealed partial class MultiServerRunner
         var configs = Empty();
         try
         {
-            var secretHits = CollectSecretHits(existingRoots, cancellationToken);
-            var scan = ScanPlan(plan, existingRoots, secretHits, cancellationToken);
+            var scan = ScanPlan(plan, existingRoots, cancellationToken);
             configs = scan.Configs;
             var message = string.Create(CultureInfo.InvariantCulture, $"Evaluated {configs.Count} configuration(s).");
             if (scan.BudgetReached)

@@ -200,16 +200,22 @@ public static class CatalogBuilder
         };
     }
 
-    // The single diff pane: the baseline host's diff (its self-diff when it holds the config), else the first present host's,
-    // else the first diff recorded; null stands for an empty pane over the baseline's raw text.
+    // The single diff pane: the first other host whose diff against the baseline has changes, so the pane shows drift when
+    // there is any; else the baseline host's own (empty) diff, else the first diff recorded; null stands for an empty pane
+    // over the baseline's raw text.
     private static HostDiff? ChooseDiff(ConfigView view, string baselineHostId)
     {
-        var chosenHostId = view.UnifiedDiffs.ContainsKey(baselineHostId)
-            ? baselineHostId
-            : view.PresentHostIds.Count > 0 ? view.PresentHostIds[0] : baselineHostId;
-        if (view.UnifiedDiffs.TryGetValue(chosenHostId, out var chosen))
+        foreach (var (hostId, diff) in view.UnifiedDiffs)
         {
-            return chosen;
+            if (!string.Equals(hostId, baselineHostId, StringComparison.Ordinal) && diff.Diff.Length > 0)
+            {
+                return diff;
+            }
+        }
+
+        if (view.UnifiedDiffs.TryGetValue(baselineHostId, out var own))
+        {
+            return own;
         }
 
         return view.UnifiedDiffs.Count > 0 ? view.UnifiedDiffs.GetAt(0).Value : null;

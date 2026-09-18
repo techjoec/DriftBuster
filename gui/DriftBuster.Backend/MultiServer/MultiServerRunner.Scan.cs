@@ -3,58 +3,21 @@ using System.Text;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Diff;
-using DriftBuster.Backend.Hunt;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.MultiServer;
 
-/// <summary>The per-host scan: <c>_collect_secret_hits</c> and <c>_scan_plan</c>.</summary>
+/// <summary>The per-host scan.</summary>
 public sealed partial class MultiServerRunner
 {
     private static readonly UTF8Encoding ReplacingUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
     /// <summary>
-    /// <c>_collect_secret_hits</c>: the absolute paths of every file the default hunt rules hit under each root. A root that
-    /// does not exist is skipped; one that cannot be looked up or listed raises <see cref="DetectorIOException"/> for the root.
-    /// Unreadable files are skipped by the hunt itself.
-    /// </summary>
-    internal static IReadOnlySet<string> CollectSecretHits(IReadOnlyList<string> roots, CancellationToken cancellationToken)
-    {
-        var secretPaths = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var root in roots)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            HuntScanResult result;
-            try
-            {
-                result = HuntEngine.HuntPath(root, HuntRules.Default, "**/*", cancellationToken: cancellationToken);
-            }
-            catch (Exception exc) when (exc is FileNotFoundException or DirectoryNotFoundException)
-            {
-                continue;
-            }
-            catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-            {
-                throw new DetectorIOException(root, exc.Message, exc);
-            }
-
-            foreach (var hit in result.Hits)
-            {
-                if (!string.IsNullOrEmpty(hit.Path))
-                {
-                    secretPaths.Add(Path.GetFullPath(hit.Path));
-                }
-            }
-        }
-
-        return secretPaths;
-    }
-
-    /// <summary>
     /// <c>_scan_plan</c>: the detector's budget is shared by every root of the host; each detected file becomes a record whose
-    /// canonical payload comes from the cache when the entry's signature (host, config, root fingerprint, file hash) matches.
+    /// canonical payload comes from the cache when the entry's signature (host, config, root fingerprint, file hash, content type, canonical form version) matches.
     /// </summary>
-    private PlanScan ScanPlanCore(MultiServerPlan plan, IReadOnlyList<string> roots, IReadOnlySet<string> secretPaths, CancellationToken cancellationToken)
+    private PlanScan ScanPlanCore(MultiServerPlan plan, IReadOnlyList<string> roots, CancellationToken cancellationToken)
     {
         var configs = new OrderedDictionary<string, ConfigRecord>(StringComparer.Ordinal);
         var cachedEntries = 0;
@@ -88,7 +51,7 @@ public sealed partial class MultiServerRunner
                     continue;
                 }
 
-                var built = BuildRecord(plan, root, rootPositions[rootIndex], fingerprint, path, match, secretPaths, configs, cancellationToken);
+                var built = BuildRecord(plan, root, rootPositions[rootIndex], fingerprint, path, match, configs, cancellationToken);
                 if (built is { } entry)
                 {
                     cachedEntries += entry.Cached ? 1 : 0;
@@ -159,7 +122,6 @@ public sealed partial class MultiServerRunner
         string fingerprint,
         string path,
         DetectionMatch match,
-        IReadOnlySet<string> secretPaths,
         OrderedDictionary<string, ConfigRecord> configs,
         CancellationToken cancellationToken)
     {
@@ -182,7 +144,7 @@ public sealed partial class MultiServerRunner
         }
 
         var fileHash = Sha256Hex(rawText);
-        var signature = Sha256Hex($"{plan.HostId}:{configId}:{fingerprint}:{fileHash}");
+        var signature = Sha256Hex($"{plan.HostId}:{configId}:{fingerprint}:{fileHash}:{contentType}:{Canonicaliser.FormVersion}");
         var cached = Cache.Load(plan.HostId, configId, signature);
         string canonical;
         if (cached is not null && cached.Count > 0)
@@ -205,21 +167,28 @@ public sealed partial class MultiServerRunner
         var record = new ConfigRecord
         {
             ConfigId = configId,
-            DisplayName = ConfigIdentity.DisplayName(metadata, relative),
+            DisplayName = relative,
             FormatId = formatId,
             ContentType = contentType,
             Canonical = canonical,
             Raw = rawText,
             Metadata = metadata,
             FileHash = fileHash,
-            // os.path.abspath(path) on both sides: ".." removed lexically, as the hunt's hit paths were.
-            Secrets = secretPaths.Contains(Path.GetFullPath(path)),
+            Secrets = ContainsSecret(rawText, cancellationToken),
             Masked = metadata.TryGetValue("has_masked_tokens", out var maskedValue) && ConfigIdentity.IsTruthy(maskedValue),
             SourcePath = path,
             PluginName = string.IsNullOrEmpty(match.PluginName) ? "unknown" : match.PluginName,
             RelativePath = relative,
         };
         return (record, cached is not null && cached.Count > 0);
+    }
+
+    // Any line matching one of the secret scanner's rules (the embedded secret_rules.json), the same rules the profile
+    // collector redacts with.
+    private static bool ContainsSecret(string text, CancellationToken cancellationToken)
+    {
+        var rules = SecretScanner.LoadSecretRules().Rules;
+        return rules.Count > 0 && text.Split('\n').Any(line => rules.Any(rule => PatternRegex.Search(rule.Pattern, line, cancellationToken) is not null));
     }
 
     // path.is_file(), where a lookup error means the file cannot be read rather than failing the host.

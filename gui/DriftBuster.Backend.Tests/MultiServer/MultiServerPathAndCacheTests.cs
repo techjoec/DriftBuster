@@ -48,7 +48,7 @@ public sealed class MultiServerPathAndCacheTests : IDisposable
         var runner = new MultiServerRunner(CacheDir) { MaxTextBytes = 32 };
         PlanScan? scan = null;
         var original = runner.ScanPlan;
-        runner.ScanPlan = (plan, roots, secrets, token) => scan = original(plan, roots, secrets, token);
+        runner.ScanPlan = (plan, roots, token) => scan = original(plan, roots, token);
 
         var response = runner.Run([Plan("host", Path.Combine(_tmp.FullName, "host"))], cancellationToken: TestContext.Current.CancellationToken);
 
