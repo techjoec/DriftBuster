@@ -2,11 +2,11 @@ using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.MultiServer;
 
-/// <summary>The <c>multi-server.v1</c> contract: the version and shape guarantees the GUI facade checks on every response.</summary>
+/// <summary>The <c>multi-server.v2</c> contract: the version and shape guarantees the GUI facade checks on every response.</summary>
 public static class MultiServerSchema
 {
     /// <summary><c>SCHEMA_VERSION</c>.</summary>
-    public const string Version = "multi-server.v1";
+    public const string Version = "multi-server.v2";
 
     /// <summary>
     /// Rejects a response whose version is not <see cref="Version"/> (case-insensitive) and fills every null collection and a
@@ -23,6 +23,9 @@ public static class MultiServerSchema
         response.Results ??= [];
         response.Catalog ??= [];
         response.Drilldown ??= [];
+        response.Comparison ??= new SettingsComparison();
+        response.Comparison.Hosts ??= [];
+        response.Comparison.Files ??= [];
         response.Summary ??= new ServerScanSummary
         {
             BaselineHostId = string.Empty,

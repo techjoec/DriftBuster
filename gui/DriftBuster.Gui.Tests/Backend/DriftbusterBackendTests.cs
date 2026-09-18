@@ -518,7 +518,7 @@ public sealed class DriftbusterBackendTests
 
         var response = await backend.RunServerScansAsync(plans, progress: null, CancellationToken.None);
 
-        Assert.Equal("multi-server.v1", response.Version);
+        Assert.Equal("multi-server.v2", response.Version);
         Assert.Equal(2, response.Results.Length);
         Assert.Contains(response.Results, result => string.Equals(result.HostId, "baseline", StringComparison.Ordinal) && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);
         Assert.Contains(response.Results, result => string.Equals(result.HostId, "drift", StringComparison.Ordinal) && result.Status == ServerScanStatus.Succeeded && result.Availability == ServerAvailabilityStatus.Found);

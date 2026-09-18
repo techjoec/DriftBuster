@@ -30,7 +30,7 @@ public sealed class MultiServerCommandTests : IDisposable
         var hostB = Host("b", "{\"Mode\": \"off\"}\n");
         var cache = Path.Combine(_tmp.FullName, "cache");
         var request = $$$"""
-            {"schema_version": "multi-server.v1", "cache_dir": {{{Quote(cache)}}}, "plans": [
+            {"schema_version": "multi-server.v2", "cache_dir": {{{Quote(cache)}}}, "plans": [
               {"host_id": "a", "label": "Caf\u00e9 \\ A \ud800", "roots": [{{{Quote(hostA)}}}], "baseline": {"is_preferred": true}},
               {"host_id": "b", "label": "B", "roots": [{{{Quote(hostB)}}}]}]}
             """;
@@ -41,7 +41,7 @@ public sealed class MultiServerCommandTests : IDisposable
         var lines = run.Out.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         lines.Should().OnlyContain(line => line.All(ch => ch < 0x7F));
         lines[..^1].Should().NotBeEmpty().And.OnlyContain(line => line.StartsWith("{\"type\": \"progress\", \"payload\": {\"host_id\": ", StringComparison.Ordinal));
-        lines[^1].Should().StartWith("{\"type\": \"result\", \"payload\": {\"version\": \"multi-server.v1\", \"results\": [{\"host_id\": \"a\", \"label\": \"Caf\\u00e9 \\\\ A \\ud800\"");
+        lines[^1].Should().StartWith("{\"type\": \"result\", \"payload\": {\"version\": \"multi-server.v2\", \"results\": [{\"host_id\": \"a\", \"label\": \"Caf\\u00e9 \\\\ A \\ud800\"");
         var result = JsonDocument.Parse(lines[^1]).RootElement.GetProperty("payload");
         result.GetProperty("summary").GetProperty("baseline_host_id").GetString().Should().Be("a");
         result.GetProperty("summary").GetProperty("generated_at").GetString().Should().MatchRegex(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{6})?\+00:00$");

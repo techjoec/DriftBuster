@@ -1,6 +1,7 @@
 using System.Numerics;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.MultiServer;
 
 namespace DriftBuster.Cli.Commands;
 
@@ -62,7 +63,7 @@ internal static partial class SelfcheckMultiServerPaths
     private static OrderedDictionary<string, object?> Request(string cacheDir, params OrderedDictionary<string, object?>[] plans)
         => new(StringComparer.Ordinal)
         {
-            ["schema_version"] = "multi-server.v1",
+            ["schema_version"] = MultiServerSchema.Version,
             ["cache_dir"] = cacheDir,
             ["plans"] = plans.Cast<object?>().ToList(),
         };

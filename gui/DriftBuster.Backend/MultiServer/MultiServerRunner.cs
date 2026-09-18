@@ -5,12 +5,13 @@ using System.Text;
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.Settings;
 
 namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>
 /// Scans every host's roots in plan order, strictly one after another, and
-/// builds the <c>multi-server.v1</c> response (host results, catalog, drilldown and summary).
+/// builds the <c>multi-server.v2</c> response (host results, catalog, drilldown, summary and the settings comparison).
 /// </summary>
 /// <remarks>
 /// Progress is reported on the calling thread through <see cref="IProgress{T}.Report"/>, throttled per run
@@ -88,7 +89,7 @@ public sealed partial class MultiServerRunner
         var planList = plans.ToList();
         if (planList.Count == 0)
         {
-            return BuildResponse([], [], [], string.Empty);
+            return BuildResponse([], [], [], string.Empty, new SettingsComparison());
         }
 
         var baselineHostId = BaselineSelector.Select(planList).HostId;
@@ -96,20 +97,23 @@ public sealed partial class MultiServerRunner
         var hostResults = new List<ServerScanResult>();
         var hostConfigs = new OrderedDictionary<string, OrderedDictionary<string, ConfigRecord>>(StringComparer.Ordinal);
         var hostAvailability = new Dictionary<string, ServerAvailabilityStatus>(StringComparer.Ordinal);
+        var hostUnreadable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
         foreach (var plan in planList)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var (result, configs) = RunPlan(plan, throttle, progress, cancellationToken);
+            var (result, configs, unreadable) = RunPlan(plan, throttle, progress, cancellationToken);
             hostResults.Add(result);
             hostConfigs[plan.HostId] = configs;
             hostAvailability[plan.HostId] = result.Availability;
+            hostUnreadable[plan.HostId] = unreadable;
         }
 
         var (catalog, drilldown) = CatalogBuilder.Build(planList, hostConfigs, hostAvailability, baselineHostId, Now, cancellationToken);
-        return BuildResponse(hostResults, catalog, drilldown, baselineHostId);
+        var comparison = SettingsComparisonBuilder.Build(planList, hostConfigs, hostUnreadable, hostResults, baselineHostId, cancellationToken);
+        return BuildResponse(hostResults, catalog, drilldown, baselineHostId, comparison);
     }
 
-    private (ServerScanResult Result, OrderedDictionary<string, ConfigRecord> Configs) RunPlan(
+    private (ServerScanResult Result, OrderedDictionary<string, ConfigRecord> Configs, IReadOnlyList<string> Unreadable) RunPlan(
         MultiServerPlan plan,
         ProgressThrottle throttle,
         IProgress<ScanProgress>? progress,
@@ -124,15 +128,17 @@ public sealed partial class MultiServerRunner
         {
             const string message = "No accessible roots.";
             Emit(ServerScanStatus.Failed, message);
-            return (Result(plan, ServerScanStatus.Failed, ServerAvailabilityStatus.NotFound, message, roots), Empty());
+            return (Result(plan, ServerScanStatus.Failed, ServerAvailabilityStatus.NotFound, message, roots), Empty(), []);
         }
 
         ServerScanResult result;
         var configs = Empty();
+        IReadOnlyList<string> unreadable = [];
         try
         {
             var scan = ScanPlan(plan, existingRoots, cancellationToken);
             configs = scan.Configs;
+            unreadable = RelativeToRoots(scan.SkippedFiles, existingRoots);
             var message = string.Create(CultureInfo.InvariantCulture, $"Evaluated {configs.Count} configuration(s).");
             if (scan.BudgetReached)
             {
@@ -156,8 +162,14 @@ public sealed partial class MultiServerRunner
             Sleep(SleepDuration(seconds, Monotonic()), cancellationToken);
         }
 
-        return (result, result.Status == ServerScanStatus.Succeeded ? configs : Empty());
+        return result.Status == ServerScanStatus.Succeeded ? (result, configs, unreadable) : (result, Empty(), []);
     }
+
+    // Skipped files as paths relative to the root that holds them, the form records use.
+    private static string[] RelativeToRoots(IReadOnlyList<string> paths, IReadOnlyList<string> roots) =>
+        paths.Select(path => roots.Select(root => LexicalPath.RelativeTo(EnginePath.Absolute(path), EnginePath.Absolute(root))).FirstOrDefault(relative => relative is not null) ?? PathText.Name(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
     private static OrderedDictionary<string, ConfigRecord> Empty() => new(StringComparer.Ordinal);
 
@@ -240,9 +252,11 @@ public sealed partial class MultiServerRunner
         List<ServerScanResult> hostResults,
         ConfigCatalogEntry[] catalog,
         ConfigDrilldown[] drilldown,
-        string baselineHostId) => new()
+        string baselineHostId,
+        SettingsComparison comparison) => new()
         {
             Version = MultiServerSchema.Version,
+            Comparison = comparison,
             Results = hostResults.ToArray(),
             Catalog = catalog,
             Drilldown = drilldown,

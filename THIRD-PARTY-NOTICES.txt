@@ -65,6 +65,7 @@ Shipped in the GUI publish output:
   SQLitePCLRaw.provider.e_sqlite3           2.1.12   Apache-2.0  Copyright 2014-2024 SourceGear, LLC
   Tmds.DBus.Protocol                        0.94.1   MIT   Copyright Tom Deseyn
   Velopack                                  1.2.0    MIT   Copyright (c) Velopack Ltd. All rights reserved.
+  YamlDotNet                                18.1.0   MIT   Copyright (c) Antoine Aubry and contributors
 
 Shipped in the console tool (driftbuster) publish output:
 
@@ -75,10 +76,11 @@ Shipped in the console tool (driftbuster) publish output:
   SQLitePCLRaw.lib.e_sqlite3                2.1.12   Apache-2.0  Copyright 2014-2024 SourceGear, LLC
   SQLitePCLRaw.provider.e_sqlite3           2.1.12   Apache-2.0  Copyright 2014-2024 SourceGear, LLC
   System.CommandLine                        2.0.12   MIT   Copyright (c) Microsoft Corporation. All rights reserved.
+  YamlDotNet                                18.1.0   MIT   Copyright (c) Antoine Aubry and contributors
 
 Shipped in the PowerShell module package (the backend publish folder beside the
-module): Microsoft.Data.Sqlite, Microsoft.Data.Sqlite.Core and the four
-SQLitePCLRaw packages above, with the e_sqlite3 native libraries.
+module): Microsoft.Data.Sqlite, Microsoft.Data.Sqlite.Core, the four
+SQLitePCLRaw packages above with the e_sqlite3 native libraries, and YamlDotNet.
 
 Build-time only, never redistributed: Meziantou.Analyzer (MIT, author:
 meziantou), Avalonia.BuildServices (MIT, Copyright 2023-2025 (c) The AvaloniaUI

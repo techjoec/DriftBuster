@@ -568,7 +568,7 @@ public sealed class ServerSelectionViewTests
 
         return Task.FromResult(new ServerScanResponse
         {
-            Version = "multi-server.v1",
+            Version = "multi-server.v2",
             Results = new[]
             {
                 new ServerScanResult

@@ -20,5 +20,8 @@ namespace DriftBuster.Backend.Models
 
         [JsonPropertyName("summary")]
         public ServerScanSummary? Summary { get; set; }
+
+        [JsonPropertyName("comparison")]
+        public SettingsComparison Comparison { get; set; } = new();
     }
 }

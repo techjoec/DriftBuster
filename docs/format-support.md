@@ -21,6 +21,27 @@ the code.
 | Dockerfile               | Multi-stage builds and directives                                 | dockerfile | 0.0.1       | Preview      | Filename/Dockerfile hint, `FROM` on first non-comment line, and common directives (RUN/COPY/ARG). |
 | Binary hybrid            | SQLite databases, binary property lists, Markdown with YAML front matter | binary-hybrid | 0.1.0 | Preview | Header signatures on the raw sample; SQLite table count and plist top-level keys recorded as metadata. |
 
+## Settings comparison
+
+A multi-server scan compares every file setting by setting, so a difference reads as a named setting with each server's
+value rather than as diff lines. Files are matched across servers by their path under the scanned root. Each format's
+settings are named like this:
+
+| Format | Setting names |
+|--------|---------------|
+| .NET XML configs | `appSettings:<key>`, `connectionStrings:<name>`, then element paths with `@attribute` (`system.web/compilation@debug`); an element with a `key`, `name` or `id` attribute is named by it (`rules/logger[*]@minlevel`), repeated elements by position (`server[2]`) |
+| Other XML | Element paths and `@attribute`, as above |
+| JSON | Dotted paths (`Logging.LogLevel.Default`), array items by position (`Hosts[2]`); comments are tolerated |
+| YAML | Dotted paths, sequence items by position; a second document is prefixed `doc2.` |
+| TOML | `table.key`, arrays of tables by position (`plugin[2].name`) |
+| INI, `.env`, `.properties`, `.reg` | `[section] key`, or the bare key before any section |
+| HCL, nginx and other conf, Dockerfile, text | The directive or key, prefixed by the blocks it sits in (`http.server.listen`); repeated names are numbered (`RUN #2`) |
+| SQLite and other binary files | One `(file contents)` entry compared by hash |
+
+A file that does not parse as its format is read line by line instead. Values that look like secrets (by setting name or by
+the secret scanner's rules) are compared but never shown. A file with more settings than a table can hold is also compared
+as a whole, so a difference past the cut still shows.
+
 ## Catalog reference links
 
 Detection metadata carries a `catalog_references` array sourced from the
