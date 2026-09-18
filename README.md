@@ -18,8 +18,9 @@ plus a standalone offline collector script for Windows hosts.
   flag snapshots that slip outside your guardrails.
 - **Diff reporting** – unified diffs, HTML and JSON lines reports with optional
   redaction.
-- **Multi-server comparison** – scan several hosts at once and drill into the
-  configurations that drifted.
+- **Multi-server comparison** – scan several hosts at once and see, setting by
+  setting, what each server has that the baseline does not: one plain line per
+  server, then a table per file with a column per server.
 - **Windows Registry live scans** – enumerate apps, suggest likely registry
   roots, and search values by keyword/regex (see `docs/registry.md`).
 - **Self-contained releases** – published builds carry the .NET runtime, so
@@ -123,7 +124,9 @@ See `docs/windows-gui-guide.md` for the full walkthrough.
 
 - Start the GUI and switch to the Multi-server tab. Enable the host slots you need, and add roots or pick scope chips. Drag host cards to reorder execution priority and turn on the session cache toggle to reuse labels, filters, and layout next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
 - Click **Run all** to queue every active host. Use **Run missing only** for retries; toasts and the activity timeline record progress, warnings, and exports.
-- Review the catalog filters, open drilldown diffs, and export HTML/JSON snapshots (they land in `exports/<config>-<timestamp>.{html,json}` under the data root).
+- The run lands on **Compare**: a sentence per server ("prod: 6 settings differ in 2 files, 1 file missing"), then each file as a table of settings with a column per server and the differing values highlighted. Click a server to show only what differs there, search settings and values, or turn off **Only show differences**. Secrets are masked but still compared. **Save report** writes the comparison as HTML and CSV under `exports/` in the data root.
+- **Files** lists every scanned configuration with filters; **File details** opens one file's line-by-line diff and exports HTML/JSON snapshots (`exports/<config>-<timestamp>.{html,json}` under the data root).
+- The **Diff planner** tab compares files you pick the same way: a settings table first, the line-by-line diff below it.
 
 Run the same plan from the shell; the request is read from stdin and progress
 plus the final result are written as JSON lines:

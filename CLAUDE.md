@@ -121,6 +121,7 @@ gitleaks dir . -v
 - `Detection/Plugins/` - Format plugins implementing `IFormatPlugin`: registry-live, XML, Dockerfile, conf, HCL, YAML, TOML, INI, JSON, binary-hybrid, text
 - `Diff/` - Canonicaliser, `LineDiff` (Myers line diff), `UnifiedDiffWriter`, redaction filter
 - `Hunt/`, `Secrets/` - Hunt rules and engine; secret scanner with the embedded `Resources/secret_rules.json`
+- `Settings/` - Per-format settings extraction (`SettingsExtractor`) and the setting-by-setting comparison across servers or picked files (`SettingsComparisonBuilder`, `SettingsComparisonReport`); carried in multi-server responses and diff results
 - `MultiServer/` - Multi-host runner, config identity, diff cache
 - `Profiles/Run/`, `Profiles/Detection/` - Run profiles and offline collector configs; detection profile store with summary and diff
 - `Scheduling/`, `Registry/`, `Sql/`, `Reporting/`, `Remote/` - Schedules, registry live scan, SQLite snapshot export, HTML/JSON lines reports, capture runner
@@ -147,7 +148,8 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 - Target: .NET 10, nullable + implicit usings enabled; compiled bindings by default
 - **ViewModels** (all implement `IDisposable` for proper cleanup; `ls gui/DriftBuster.Gui/ViewModels/` for the full list):
   - `MainWindowViewModel` - Top-level shell, tab navigation
-  - `ServerSelectionViewModel` - Multi-server orchestration, drag/drop server management
+  - `ServerSelectionViewModel` - Multi-server orchestration, drag/drop server management; `CurrentView` (`MultiServerView`: Setup, Compare, Details, Drilldown) and lands on Compare after a run
+  - `CompareViewModel` - Settings comparison (per-server summary lines, per-file setting tables, filters, HTML/CSV report); also the Diff planner's Settings section
   - `ConfigDrilldownViewModel` - Configuration detail exploration
   - `DiffViewModel` - Side-by-side comparison view
   - `HuntViewModel` / `SecretScannerSettingsViewModel` - Secret scanning
