@@ -15,19 +15,19 @@ public sealed class MainWindowUiTests
         var window = new MainWindow();
 
         ResponsiveLayoutService.Apply(window, 1200, ResponsiveSpacingProfiles.MainWindow);
-        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(20, 16, 20, 16));
+        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(12, 8, 12, 8));
         window.Resources["Toast.Width"].Should().Be(320d);
 
         ResponsiveLayoutService.Apply(window, 1400, ResponsiveSpacingProfiles.MainWindow);
-        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(24, 20, 24, 20));
+        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(16, 8, 16, 8));
         window.Resources["Toast.Width"].Should().Be(360d);
 
         ResponsiveLayoutService.Apply(window, 1700, ResponsiveSpacingProfiles.MainWindow);
-        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(28, 22, 28, 22));
+        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(20, 10, 20, 10));
         window.Resources["Toast.Width"].Should().Be(400d);
 
         ResponsiveLayoutService.Apply(window, 2100, ResponsiveSpacingProfiles.MainWindow);
-        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(32, 24, 32, 24));
+        window.Resources["Layout.HeaderPadding"].Should().Be(new Thickness(24, 12, 24, 12));
         window.Resources["Toast.Width"].Should().Be(440d);
     }
 }

@@ -83,15 +83,6 @@
           </Grid>
         </Border>
 
-        <Border Padding="{DynamicResource ServerSelection.HighlightPadding}" CornerRadius="{DynamicResource Radius.Large}" Background="#1E293B" Opacity="0.95">
-          <StackPanel Spacing="6">
-            <TextBlock Text="Planning guidance" FontSize="16" FontWeight="SemiBold" Foreground="#E2E8F0" />
-            <TextBlock TextWrapping="Wrap"
-                       Foreground="#E2E8F0"
-                       Text="Enable the hosts you want to scan, add absolute root paths, then run all or fill in gaps with the partial rerun buttons. Activity history keeps a concise trail of exports, retries, and errors." />
-          </StackPanel>
-        </Border>
-
         <ItemsControl x:Name="ServerCardsVirtualRepeater"
                        ItemsSource="{Binding Servers}"
                        HorizontalAlignment="Stretch"
@@ -317,110 +308,116 @@
 
 
 
-        <Grid ColumnDefinitions="2*,3*" ColumnSpacing="16">
-          <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
-            <StackPanel Spacing="10">
-              <TextBlock Text="Execution" FontSize="18" FontWeight="SemiBold" />
-              <WrapPanel>
-                <Button Content="Run all" Classes="primary" Command="{Binding RunAllCommand}" IsEnabled="{Binding HasActiveServers}" Margin="0,0,10,10" automation:AutomationProperties.AutomationId="ServerSelection.Execution.RunAll" />
-                <Button Content="Run missing" Classes="outline" Command="{Binding RunMissingCommand}" Margin="0,0,10,10" automation:AutomationProperties.AutomationId="ServerSelection.Execution.RunMissing" />
-                <Button Content="Cancel" Classes="outline" Command="{Binding CancelRunsCommand}" IsEnabled="{Binding IsBusy}" Margin="0,0,10,10" automation:AutomationProperties.AutomationId="ServerSelection.Execution.Cancel" />
-              </WrapPanel>
-              <ItemsControl ItemsSource="{Binding Servers}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Grid ColumnDefinitions="2*,*,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Label}" />
-                      <TextBlock Text="{Binding RunState}" />
-                      <TextBlock Text="{Binding StatusText}" />
-                      <Button Grid.Column="3"
-                              Content="View drilldown"
-                              Classes="outline"
-                              Command="{Binding ((vm:ServerSelectionViewModel)DataContext).ShowDrilldownForHostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              CommandParameter="{Binding HostId}"
-                              ToolTip.Tip="Open the most recent drilldown for this host."
-                              automation:AutomationProperties.Name="{Binding Label, StringFormat='View drilldown for {0}'}"
-                              automation:AutomationProperties.AutomationId="ServerSelection.Execution.ViewDrilldown" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
+        <!-- Per-host run state and the activity log: useful when something goes wrong, so kept out of the way. -->
+        <Expander Header="Run status and activity"
+                  HorizontalAlignment="Stretch"
+                  automation:AutomationProperties.AutomationId="ServerSelection.RunDetails"
+                  automation:AutomationProperties.Name="Run status and activity">
+          <Grid ColumnDefinitions="2*,3*" ColumnSpacing="16">
+            <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
+              <StackPanel Spacing="10">
+                <TextBlock Text="Execution" FontSize="18" FontWeight="SemiBold" />
+                <WrapPanel>
+                  <Button Content="Run all" Classes="primary" Command="{Binding RunAllCommand}" IsEnabled="{Binding HasActiveServers}" Margin="0,0,10,10" automation:AutomationProperties.AutomationId="ServerSelection.Execution.RunAll" />
+                  <Button Content="Run missing" Classes="outline" Command="{Binding RunMissingCommand}" Margin="0,0,10,10" automation:AutomationProperties.AutomationId="ServerSelection.Execution.RunMissing" />
+                  <Button Content="Cancel" Classes="outline" Command="{Binding CancelRunsCommand}" IsEnabled="{Binding IsBusy}" Margin="0,0,10,10" automation:AutomationProperties.AutomationId="ServerSelection.Execution.Cancel" />
+                </WrapPanel>
+                <ItemsControl ItemsSource="{Binding Servers}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="2*,*,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Label}" />
+                        <TextBlock Text="{Binding RunState}" />
+                        <TextBlock Text="{Binding StatusText}" />
+                        <Button Grid.Column="3"
+                                Content="View drilldown"
+                                Classes="outline"
+                                Command="{Binding ((vm:ServerSelectionViewModel)DataContext).ShowDrilldownForHostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding HostId}"
+                                ToolTip.Tip="Open the most recent drilldown for this host."
+                                automation:AutomationProperties.Name="{Binding Label, StringFormat='View drilldown for {0}'}"
+                                automation:AutomationProperties.AutomationId="ServerSelection.Execution.ViewDrilldown" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
 
-          <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
-            <StackPanel Spacing="10">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <TextBlock Text="Activity timeline" FontSize="18" FontWeight="SemiBold" />
-                <ComboBox Grid.Column="1"
-                          Width="160"
-                          ItemsSource="{Binding ActivityFilterOptions}"
-                          SelectedItem="{Binding ActivityFilter}"
-                          automation:AutomationProperties.AutomationId="ServerSelection.ActivityFilter"
-                          automation:AutomationProperties.Name="Activity filter" />
-              </Grid>
-              <TextBlock Text="No activity recorded yet."
-                         Classes="subtitle"
-                         HorizontalAlignment="Center"
-                         IsVisible="{Binding HasActivityEntries, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
-              <ItemsControl x:Name="ActivityVirtualRepeater"
-                             ItemsSource="{Binding FilteredActivityEntries}"
-                             IsVisible="{Binding UseVirtualizedActivityFeed}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <VirtualizingStackPanel />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border Padding="12" Margin="0,0,0,10" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
-                      <StackPanel Spacing="4">
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                          <TextBlock Text="{Binding TimestampText}" Classes="subtitle" />
-                          <TextBlock Grid.Column="1" Text="{Binding SeverityLabel}" Classes="subtitle" />
-                        </Grid>
-                        <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
-                                   IsVisible="{Binding Detail, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
-                        <Button Content="Copy entry"
-                                HorizontalAlignment="Right"
-                                Classes="outline"
-                                Command="{Binding ((vm:ServerSelectionViewModel)DataContext).CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                CommandParameter="{Binding}"
-                                automation:AutomationProperties.AutomationId="ServerSelection.Activity.Copy" />
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <ItemsControl x:Name="ActivityFallback"
-                            ItemsSource="{Binding FilteredActivityEntries}"
-                            IsVisible="{Binding UseVirtualizedActivityFeed, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border Padding="12" Margin="0,0,0,10" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
-                      <StackPanel Spacing="4">
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                          <TextBlock Text="{Binding TimestampText}" Classes="subtitle" />
-                          <TextBlock Grid.Column="1" Text="{Binding SeverityLabel}" Classes="subtitle" />
-                        </Grid>
-                        <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
-                                   IsVisible="{Binding Detail, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
-                        <Button Content="Copy entry"
-                                HorizontalAlignment="Right"
-                                Classes="outline"
-                                Command="{Binding ((vm:ServerSelectionViewModel)DataContext).CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                CommandParameter="{Binding}"
-                                automation:AutomationProperties.AutomationId="ServerSelection.Activity.Copy" />
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
-        </Grid>
+            <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <TextBlock Text="Activity timeline" FontSize="18" FontWeight="SemiBold" />
+                  <ComboBox Grid.Column="1"
+                            Width="160"
+                            ItemsSource="{Binding ActivityFilterOptions}"
+                            SelectedItem="{Binding ActivityFilter}"
+                            automation:AutomationProperties.AutomationId="ServerSelection.ActivityFilter"
+                            automation:AutomationProperties.Name="Activity filter" />
+                </Grid>
+                <TextBlock Text="No activity recorded yet."
+                           Classes="subtitle"
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding HasActivityEntries, Converter={x:Static conv:BooleanNegationConverter.Instance}}" />
+                <ItemsControl x:Name="ActivityVirtualRepeater"
+                               ItemsSource="{Binding FilteredActivityEntries}"
+                               IsVisible="{Binding UseVirtualizedActivityFeed}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Padding="12" Margin="0,0,0,10" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
+                        <StackPanel Spacing="4">
+                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <TextBlock Text="{Binding TimestampText}" Classes="subtitle" />
+                            <TextBlock Grid.Column="1" Text="{Binding SeverityLabel}" Classes="subtitle" />
+                          </Grid>
+                          <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
+                                     IsVisible="{Binding Detail, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
+                          <Button Content="Copy entry"
+                                  HorizontalAlignment="Right"
+                                  Classes="outline"
+                                  Command="{Binding ((vm:ServerSelectionViewModel)DataContext).CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  CommandParameter="{Binding}"
+                                  automation:AutomationProperties.AutomationId="ServerSelection.Activity.Copy" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ItemsControl x:Name="ActivityFallback"
+                              ItemsSource="{Binding FilteredActivityEntries}"
+                              IsVisible="{Binding UseVirtualizedActivityFeed, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Padding="12" Margin="0,0,0,10" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
+                        <StackPanel Spacing="4">
+                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <TextBlock Text="{Binding TimestampText}" Classes="subtitle" />
+                            <TextBlock Grid.Column="1" Text="{Binding SeverityLabel}" Classes="subtitle" />
+                          </Grid>
+                          <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
+                                     IsVisible="{Binding Detail, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
+                          <Button Content="Copy entry"
+                                  HorizontalAlignment="Right"
+                                  Classes="outline"
+                                  Command="{Binding ((vm:ServerSelectionViewModel)DataContext).CopyActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  CommandParameter="{Binding}"
+                                  automation:AutomationProperties.AutomationId="ServerSelection.Activity.Copy" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Expander>
       </StackPanel>
 
       <Border IsVisible="{Binding IsViewingCompare}">

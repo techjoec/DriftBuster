@@ -97,9 +97,7 @@
                          automation:AutomationProperties.Name="Building plan" />
           </StackPanel>
 
-          <Border Background="#30162128"
-                  CornerRadius="{DynamicResource Radius.Medium}"
-                  Padding="14"
+          <Border Classes="notice"
                   IsVisible="{Binding HasError}">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <TextBlock Text="⚠"

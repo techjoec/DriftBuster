@@ -5,7 +5,6 @@
              xmlns:conv="using:DriftBuster.Gui.Converters"
              x:Class="DriftBuster.Gui.Views.ResultsCatalogView"
              x:DataType="vm:ResultsCatalogViewModel">
-  <ScrollViewer>
     <StackPanel Margin="0,0,0,24" Spacing="18">
       <Border Classes="surface" Padding="18" CornerRadius="{DynamicResource Radius.Large}">
         <Grid ColumnDefinitions="*,*,*,*,*" RowDefinitions="Auto,Auto">
@@ -53,7 +52,7 @@
                     IsReadOnly="True"
                     HeadersVisibility="Column"
                     GridLinesVisibility="All"
-                    MinHeight="280"
+                    MaxHeight="520"
                     Sorting="OnCatalogGridSorting"
                     automation:AutomationProperties.AutomationId="Catalog.Grid"
                     automation:AutomationProperties.Name="Configuration catalog">
@@ -101,17 +100,17 @@
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:ConfigCatalogItemViewModel">
                     <WrapPanel>
-                      <Border Background="#4C1D95" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasDrift}" Margin="0,0,6,6">
-                        <TextBlock Text="Drift" FontSize="12" />
+                      <Border Classes="badge" IsVisible="{Binding HasDrift}">
+                        <TextBlock Text="Drift" />
                       </Border>
-                      <Border Background="#991B1B" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasSecrets}" Margin="0,0,6,6">
-                        <TextBlock Text="Secrets" FontSize="12" />
+                      <Border Classes="badge danger" IsVisible="{Binding HasSecrets}">
+                        <TextBlock Text="Secrets" />
                       </Border>
-                      <Border Background="#9A3412" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasMaskedTokens}" Margin="0,0,6,6">
-                        <TextBlock Text="Masked" FontSize="12" />
+                      <Border Classes="badge warn" IsVisible="{Binding HasMaskedTokens}">
+                        <TextBlock Text="Masked" />
                       </Border>
-                      <Border Background="#92400E" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasValidationIssues}" Margin="0,0,6,6">
-                        <TextBlock Text="Validation" FontSize="12" />
+                      <Border Classes="badge warn" IsVisible="{Binding HasValidationIssues}">
+                        <TextBlock Text="Validation" />
                       </Border>
                     </WrapPanel>
                   </DataTemplate>
@@ -209,5 +208,4 @@
         </StackPanel>
       </Border>
     </StackPanel>
-  </ScrollViewer>
 </UserControl>

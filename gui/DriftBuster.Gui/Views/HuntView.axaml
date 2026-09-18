@@ -57,9 +57,7 @@
                        automation:AutomationProperties.AutomationId="Hunt.Progress"
                        automation:AutomationProperties.Name="Scanning" />
 
-          <Border Background="#30162128"
-                  CornerRadius="{DynamicResource Radius.Medium}"
-                  Padding="14"
+          <Border Classes="notice"
                   IsVisible="{Binding HasError}">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <TextBlock Text="⚠"
@@ -125,7 +123,7 @@
                       <TextBlock Text="Line" FontSize="12" FontWeight="SemiBold" />
                       <TextBlock Text="{Binding LineNumber}" />
                     </StackPanel>
-                    <Border Background="#22191F2C" CornerRadius="{DynamicResource Radius.Small}" Padding="10">
+                    <Border Background="{DynamicResource Brush.SurfaceMuted}" CornerRadius="{DynamicResource Radius.Small}" Padding="10">
                       <TextBlock Text="{Binding Excerpt}" TextWrapping="Wrap" />
                     </Border>
                   </StackPanel>

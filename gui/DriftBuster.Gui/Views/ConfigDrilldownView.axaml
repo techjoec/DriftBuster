@@ -5,7 +5,6 @@
              xmlns:conv="using:DriftBuster.Gui.Converters"
              x:Class="DriftBuster.Gui.Views.ConfigDrilldownView"
              x:DataType="vm:ConfigDrilldownViewModel">
-  <ScrollViewer>
     <StackPanel Margin="0,0,0,24" Spacing="18">
       <Grid ColumnDefinitions="Auto,Auto,*" VerticalAlignment="Center">
         <Button Content="Back" Classes="outline" Command="{Binding BackCommand}" automation:AutomationProperties.AutomationId="Drilldown.Back" />
@@ -30,14 +29,14 @@
                          FontWeight="SemiBold"
                          VerticalAlignment="Center" />
               <WrapPanel>
-                <Border Background="#7C3AED" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasSecrets}" Margin="0,0,6,6">
-                  <TextBlock Text="Secrets" FontSize="12" />
+                <Border Classes="badge danger" IsVisible="{Binding HasSecrets}">
+                  <TextBlock Text="Secrets" />
                 </Border>
-                <Border Background="#FB923C" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasMaskedTokens}" Margin="0,0,6,6">
-                  <TextBlock Text="Masked" FontSize="12" />
+                <Border Classes="badge warn" IsVisible="{Binding HasMaskedTokens}">
+                  <TextBlock Text="Masked" />
                 </Border>
-                <Border Background="#F59E0B" Padding="6,2" CornerRadius="6" IsVisible="{Binding HasValidationIssues}" Margin="0,0,6,6">
-                  <TextBlock Text="Validation" FontSize="12" />
+                <Border Classes="badge warn" IsVisible="{Binding HasValidationIssues}">
+                  <TextBlock Text="Validation" />
                 </Border>
               </WrapPanel>
             </StackPanel>
@@ -97,11 +96,11 @@
                         </StackPanel>
                       </StackPanel>
                       <StackPanel Grid.Column="2" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0">
-                        <Border Background="#2563EB" Padding="6,2" CornerRadius="6" IsVisible="{Binding IsBaseline}">
-                          <TextBlock Text="Baseline" FontSize="12" />
+                        <Border Classes="badge accent" IsVisible="{Binding IsBaseline}">
+                          <TextBlock Text="Baseline" />
                         </Border>
-                        <Border Background="#B91C1C" Padding="6,2" CornerRadius="6" IsVisible="{Binding Present, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
-                          <TextBlock Text="Missing" FontSize="12" />
+                        <Border Classes="badge danger" IsVisible="{Binding Present, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
+                          <TextBlock Text="Missing" />
                         </Border>
                       </StackPanel>
                     </Grid>
@@ -123,19 +122,19 @@
               <Grid ColumnDefinitions="1*,1*" IsVisible="{Binding IsSideBySide}">
                 <StackPanel Spacing="6" Margin="0,0,12,0">
                   <TextBlock Text="Baseline" Classes="subtitle" />
-                  <ScrollViewer Height="220">
+                  <ScrollViewer MaxHeight="360" AllowAutoHide="False">
                     <TextBlock Text="{Binding DiffBefore}" FontFamily="Consolas" TextWrapping="Wrap" />
                   </ScrollViewer>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Spacing="6">
                   <TextBlock Text="Comparison" Classes="subtitle" />
-                  <ScrollViewer Height="220">
+                  <ScrollViewer MaxHeight="360" AllowAutoHide="False">
                     <TextBlock Text="{Binding DiffAfter}" FontFamily="Consolas" TextWrapping="Wrap" />
                   </ScrollViewer>
                 </StackPanel>
               </Grid>
               <Border Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface" IsVisible="{Binding IsUnified}">
-                <ScrollViewer Height="260">
+                <ScrollViewer MaxHeight="420" AllowAutoHide="False">
                   <TextBlock Text="{Binding UnifiedDiff}" FontFamily="Consolas" TextWrapping="Wrap" />
                 </ScrollViewer>
               </Border>
@@ -164,5 +163,4 @@
         </StackPanel>
       </Grid>
     </StackPanel>
-  </ScrollViewer>
 </UserControl>

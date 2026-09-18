@@ -30,24 +30,34 @@
   </Window.Resources>
 
   <Grid RowDefinitions="Auto,*">
-    <Border Padding="{DynamicResource Layout.HeaderPadding}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.BorderStrong}">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
-        <Border Width="48"
-                Height="48"
-                CornerRadius="24"
-                Background="{DynamicResource Brush.Accent}">
-          <TextBlock Text="DrB"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     FontSize="18"
-                     FontWeight="Bold"
-                     Foreground="#0B1120" />
-        </Border>
-        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" Margin="16,0,0,0">
-          <TextBlock Text="DriftBuster" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="Configuration reconnaissance, diff planning &amp; hunt insights" Classes="subtitle" />
+    <!-- One compact bar: name, tabs, core status, theme. -->
+    <Border Padding="{DynamicResource Layout.HeaderPadding}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border}" Background="{DynamicResource Brush.Surface}">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="16" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource Brush.Accent}">
+            <TextBlock Text="DrB" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Foreground="#0B1120" />
+          </Border>
+          <TextBlock Text="DriftBuster" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
         </StackPanel>
-        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="16,0,0,0">
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <ToggleButton Content="Multi-server"
+                        Command="{Binding ShowMultiServerCommand}"
+                        IsChecked="{Binding IsMultiServerSelected, Mode=OneWay}"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.MultiServer" />
+          <ToggleButton Content="Diff planner"
+                        Command="{Binding ShowDiffCommand}"
+                        IsChecked="{Binding IsDiffSelected, Mode=OneWay}"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.DiffPlanner" />
+          <ToggleButton Content="Hunt explorer"
+                        Command="{Binding ShowHuntCommand}"
+                        IsChecked="{Binding IsHuntSelected, Mode=OneWay}"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.HuntExplorer" />
+          <ToggleButton Content="Profiles"
+                        Command="{Binding ShowProfilesCommand}"
+                        IsChecked="{Binding IsProfilesSelected, Mode=OneWay}"
+                        automation:AutomationProperties.AutomationId="Shell.Tab.Profiles" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <Border Width="10" Height="10" CornerRadius="5"
                   Background="{Binding IsBackendHealthy, Converter={x:Static conv:BoolToBrushConverter.Instance}, ConverterParameter='#21C55D;#EF4444'}">
             <ToolTip.Tip>
@@ -56,74 +66,40 @@
           </Border>
           <Button Classes="outline" Content="Check core" Command="{Binding CheckHealthCommand}" automation:AutomationProperties.AutomationId="Shell.CheckCore" />
         </StackPanel>
-        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="16,0,0,0">
-          <TextBlock Text="Theme" Classes="subtitle" VerticalAlignment="Center" />
-          <ComboBox x:Name="ThemeSelector"
-                    Width="150"
-                    ItemsSource="{Binding ThemeOptions}"
-                    SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
-                    automation:AutomationProperties.AutomationId="Shell.Theme"
-                    automation:AutomationProperties.Name="Theme">
-            <ComboBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding DisplayName}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-            <ComboBox.SelectionBoxItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding DisplayName}" />
-              </DataTemplate>
-            </ComboBox.SelectionBoxItemTemplate>
-          </ComboBox>
-        </StackPanel>
+        <ComboBox x:Name="ThemeSelector"
+                  Grid.Column="3"
+                  MinWidth="110"
+                  VerticalAlignment="Center"
+                  ItemsSource="{Binding ThemeOptions}"
+                  SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                  ToolTip.Tip="Theme"
+                  automation:AutomationProperties.AutomationId="Shell.Theme"
+                  automation:AutomationProperties.Name="Theme">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+          <ComboBox.SelectionBoxItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.SelectionBoxItemTemplate>
+        </ComboBox>
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" Margin="{DynamicResource Layout.ContentMargin}" RowDefinitions="Auto,*">
-      <Border Classes="surface" Padding="{DynamicResource Layout.SectionCardPadding}" CornerRadius="{DynamicResource Radius.Large}">
-        <WrapPanel VerticalAlignment="Center">
-          <ToggleButton Content="Diff planner"
-                        MinWidth="120"
-                        Command="{Binding ShowDiffCommand}"
-                        IsChecked="{Binding IsDiffSelected, Mode=OneWay}" Margin="0,0,12,12"
-                        automation:AutomationProperties.AutomationId="Shell.Tab.DiffPlanner" />
-          <ToggleButton Content="Hunt explorer"
-                        MinWidth="120"
-                        Command="{Binding ShowHuntCommand}"
-                        IsChecked="{Binding IsHuntSelected, Mode=OneWay}" Margin="0,0,12,12"
-                        automation:AutomationProperties.AutomationId="Shell.Tab.HuntExplorer" />
-          <ToggleButton Content="Profiles"
-                        MinWidth="120"
-                        Command="{Binding ShowProfilesCommand}"
-                        IsChecked="{Binding IsProfilesSelected, Mode=OneWay}" Margin="0,0,12,12"
-                        automation:AutomationProperties.AutomationId="Shell.Tab.Profiles" />
-          <ToggleButton Content="Multi-server"
-                        MinWidth="120"
-                        Command="{Binding ShowMultiServerCommand}"
-                        IsChecked="{Binding IsMultiServerSelected, Mode=OneWay}" Margin="0,0,12,12"
-                        automation:AutomationProperties.AutomationId="Shell.Tab.MultiServer" />
-          <Border Width="1" Height="26" Background="{DynamicResource Brush.Border}" Margin="12,0,12,12" />
-          <TextBlock Text="Fast scanning, rich metadata, zero drift surprises." VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" Margin="0,0,12,12" />
-          <Button Content="Ping core"
-                  Classes="outline"
-                  Command="{Binding PingCoreCommand}"
-                  ToolTip.Tip="Send ping and show reply in Hunt" Margin="0,0,12,12"
-                  automation:AutomationProperties.AutomationId="Shell.PingCore" />
-        </WrapPanel>
-      </Border>
-
-      <Border Grid.Row="1"
-              Margin="{DynamicResource Layout.SectionSpacing}"
-              Classes="dashboard-card"
-              Padding="{DynamicResource Layout.PrimaryCardPadding}"
-              CornerRadius="{DynamicResource Radius.Large}">
-        <TransitioningContentControl Content="{Binding CurrentView}">
-          <TransitioningContentControl.PageTransition>
-            <anim:CrossFade Duration="0:0:0.15" />
-          </TransitioningContentControl.PageTransition>
-        </TransitioningContentControl>
-      </Border>
-    </Grid>
+    <Border Grid.Row="1"
+            Margin="{DynamicResource Layout.ContentMargin}"
+            Classes="dashboard-card"
+            Padding="{DynamicResource Layout.PrimaryCardPadding}"
+            CornerRadius="{DynamicResource Radius.Large}">
+      <TransitioningContentControl Content="{Binding CurrentView}">
+        <TransitioningContentControl.PageTransition>
+          <anim:CrossFade Duration="0:0:0.15" />
+        </TransitioningContentControl.PageTransition>
+      </TransitioningContentControl>
+    </Border>
     <views:ToastHost Grid.RowSpan="2" DataContext="{Binding Toasts}" />
   </Grid>
 </Window>

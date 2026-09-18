@@ -25,7 +25,11 @@ namespace DriftBuster.Gui
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel() };
+                var mainViewModel = new MainWindowViewModel();
+
+                // The app opens on the comparison of servers, the task most people start it for.
+                mainViewModel.ShowMultiServer();
+                desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
 
 #if DEBUG
                 if (string.Equals(Environment.GetEnvironmentVariable("DRIFTBUSTER_AUTOMATION"), "1", StringComparison.Ordinal))
