@@ -355,8 +355,8 @@ namespace DriftBuster.Gui.ViewModels
                 var orderedPaths = new List<string?> { baseline.Path };
                 orderedPaths.AddRange(comparisons);
 
-                var result = await _service.DiffAsync(orderedPaths).ConfigureAwait(false);
-                await ApplyResultAsync(result, orderedPaths).ConfigureAwait(false);
+                var result = await _service.DiffAsync(orderedPaths).ConfigureAwait(true);
+                await ApplyResultAsync(result, orderedPaths).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -389,7 +389,7 @@ namespace DriftBuster.Gui.ViewModels
                 JsonViewMode = DiffJsonViewMode.Raw;
             }
 
-            await RecordMruEntryAsync(orderedPaths).ConfigureAwait(false);
+            await RecordMruEntryAsync(orderedPaths).ConfigureAwait(true);
         }
 
         private void UpdateValidation()
@@ -413,7 +413,7 @@ namespace DriftBuster.Gui.ViewModels
         {
             try
             {
-                var snapshot = await _mruStore.LoadAsync().ConfigureAwait(false);
+                var snapshot = await _mruStore.LoadAsync().ConfigureAwait(true);
                 var ordered = snapshot.Entries
                     .OrderByDescending(entry => entry.LastUsedUtc)
                     .Select(entry => new DiffPlannerMruEntryView(entry))
@@ -467,7 +467,7 @@ namespace DriftBuster.Gui.ViewModels
 
             try
             {
-                await _mruStore.RecordAsync(entry).ConfigureAwait(false);
+                await _mruStore.RecordAsync(entry).ConfigureAwait(true);
             }
             catch
             {

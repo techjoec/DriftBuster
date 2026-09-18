@@ -55,4 +55,8 @@
     <None Include="..\..\NOTICE" Link="NOTICE" CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- "Prepare offline collector" packages the runner script, found under scripts\ beside the app. -->
+  <ItemGroup>
+    <None Include="..\..\scripts\driftbuster-offline-runner.ps1" Link="scripts\driftbuster-offline-runner.ps1" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

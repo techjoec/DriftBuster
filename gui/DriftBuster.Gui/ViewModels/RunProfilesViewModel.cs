@@ -266,12 +266,12 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             _schedulesLoaded = false;
             var previous = SelectedProfile?.Name;
             Profiles.Clear();
-            var response = await _service.ListProfilesAsync().ConfigureAwait(false);
+            var response = await _service.ListProfilesAsync().ConfigureAwait(true);
             foreach (var profile in response.Profiles.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
             {
                 Profiles.Add(profile);
             }
-            var scheduleError = await LoadSchedulesAsync().ConfigureAwait(false);
+            var scheduleError = await LoadSchedulesAsync().ConfigureAwait(true);
             RebuildProfileSuggestions();
             StatusMessage = scheduleError is not null
                 ? $"The schedule manifest could not be loaded, so schedules are not saved until it loads: {scheduleError}"
@@ -296,7 +296,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var scheduleResponse = await _service.ListSchedulesAsync().ConfigureAwait(false);
+            var scheduleResponse = await _service.ListSchedulesAsync().ConfigureAwait(true);
             ApplySchedules(scheduleResponse.Schedules ?? Array.Empty<ScheduleDefinition>());
             _schedulesLoaded = true;
             return null;
@@ -319,7 +319,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             return schedules.Length > 0;
         }
 
-        await _service.SaveSchedulesAsync(schedules).ConfigureAwait(false);
+        await _service.SaveSchedulesAsync(schedules).ConfigureAwait(true);
         return false;
     }
 
@@ -394,8 +394,8 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             IsBusy = true;
             var profile = BuildCurrentProfile();
             var schedules = BuildCurrentSchedules();
-            await _service.SaveProfileAsync(profile).ConfigureAwait(false);
-            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(false);
+            await _service.SaveProfileAsync(profile).ConfigureAwait(true);
+            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(true);
             await RefreshAsync().ConfigureAwait(true);
             if (schedulesSkipped && _schedulesLoaded)
             {
@@ -426,8 +426,9 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             IsBusy = true;
             var profile = BuildCurrentProfile();
             var schedules = BuildCurrentSchedules();
-            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(false);
-            var result = await _service.RunProfileAsync(profile, saveProfile: true).ConfigureAwait(false);
+            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(true);
+            var result = await _service.RunProfileAsync(profile, saveProfile: true).ConfigureAwait(true);
+            ListSavedProfile(profile);
             PopulateRunResults(result);
             StatusMessage = (result.Files.Length == 0
                 ? "Run complete. No files were copied."
@@ -469,8 +470,8 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         {
             IsBusy = true;
             var schedules = BuildCurrentSchedules();
-            await _service.SaveProfileAsync(profile).ConfigureAwait(false);
-            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(false);
+            await _service.SaveProfileAsync(profile).ConfigureAwait(true);
+            var schedulesSkipped = await SaveSchedulesIfLoadedAsync(schedules).ConfigureAwait(true);
 
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -490,7 +491,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
                 Metadata = metadata,
             };
 
-            var result = await _service.PrepareOfflineCollectorAsync(profile, request).ConfigureAwait(false);
+            var result = await _service.PrepareOfflineCollectorAsync(profile, request).ConfigureAwait(true);
             StatusMessage = $"Offline collector saved to '{result.PackagePath}'." + (schedulesSkipped ? " " + SchedulesNotSavedMessage : string.Empty);
         }
         catch (Exception ex)
@@ -724,6 +725,19 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
 
         OutputDirectory = string.IsNullOrWhiteSpace(result.OutputDir) ? null : result.OutputDir;
+    }
+
+    // A run saves the profile; list it without reloading the schedule cards the way Refresh does.
+    private void ListSavedProfile(RunProfileDefinition profile)
+    {
+        if (Profiles.Any(existing => string.Equals(existing.Name, profile.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        var index = Profiles.TakeWhile(existing => StringComparer.OrdinalIgnoreCase.Compare(existing.Name, profile.Name) < 0).Count();
+        Profiles.Insert(index, profile);
+        RebuildProfileSuggestions();
     }
 
     private void ClearRunResults()

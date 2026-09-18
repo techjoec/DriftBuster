@@ -290,7 +290,7 @@ namespace DriftBuster.Gui.ViewModels
 
             try
             {
-                var snapshot = await _cacheService.LoadAsync().ConfigureAwait(false);
+                var snapshot = await _cacheService.LoadAsync().ConfigureAwait(true);
                 if (snapshot is null)
                 {
                     DebugLog.Trace("ServerSelection", "LoadSessionAsync: no snapshot found");
@@ -312,7 +312,7 @@ namespace DriftBuster.Gui.ViewModels
                     ShowCatalogCommand.NotifyCanExecuteChanged();
                     LogActivity(ActivitySeverity.Success, "Loaded saved session", $"Restored {snapshot.Servers.Count} servers.");
                     _showDrilldownForHostCommand.NotifyCanExecuteChanged();
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -326,7 +326,7 @@ namespace DriftBuster.Gui.ViewModels
                         TimeSpan.FromSeconds(6),
                         new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
                     LogActivity(ActivitySeverity.Error, "Failed to load session", ex.ToString());
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
             }
         }
 
@@ -513,12 +513,12 @@ namespace DriftBuster.Gui.ViewModels
 
         private async Task RunAllAsync()
         {
-            await ExecuteRunAsync(retryOnly: false).ConfigureAwait(false);
+            await ExecuteRunAsync(retryOnly: false).ConfigureAwait(true);
         }
 
         private async Task RunMissingAsync()
         {
-            await ExecuteRunAsync(retryOnly: true).ConfigureAwait(false);
+            await ExecuteRunAsync(retryOnly: true).ConfigureAwait(true);
         }
 
         private async Task RunScopedAsync(IReadOnlyCollection<string>? hostIds)
@@ -553,7 +553,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            if (!await _runGate.WaitAsync(0).ConfigureAwait(false))
+            if (!await _runGate.WaitAsync(0).ConfigureAwait(true))
             {
                 StatusBanner = "Another multi-server run is already in progress.";
                 return;
@@ -579,7 +579,7 @@ namespace DriftBuster.Gui.ViewModels
                 LogActivity(ActivitySeverity.Info, retryOnly ? "Re-running missing hosts" : "Running multi-server scan", $"Hosts queued: {plans.Count}, cached reused: {cachedCount}.");
                 _showDrilldownForHostCommand.NotifyCanExecuteChanged();
 
-                await RunScansWithNotificationsAsync(plans, cachedCount).ConfigureAwait(false);
+                await RunScansWithNotificationsAsync(plans, cachedCount).ConfigureAwait(true);
             }
             finally
             {
@@ -595,7 +595,7 @@ namespace DriftBuster.Gui.ViewModels
                 // pool, so reports could land after the caller has moved on; report inline and let
                 // UpdateProgress marshal to the UI thread itself.
                 var progress = new InlineProgress<ScanProgress>(UpdateProgress);
-                var response = await _service.RunServerScansAsync(plans, progress, _runCancellation!.Token).ConfigureAwait(false);
+                var response = await _service.RunServerScansAsync(plans, progress, _runCancellation!.Token).ConfigureAwait(true);
                 await RunOnUiThreadAsync(() =>
                 {
                     ApplyResults(response);
@@ -607,8 +607,8 @@ namespace DriftBuster.Gui.ViewModels
                         ToastLevel.Success,
                         TimeSpan.FromSeconds(4));
                     LogActivity(ActivitySeverity.Success, "Scan complete", completion.ActivityDetail);
-                }).ConfigureAwait(false);
-                await SaveRememberedSessionAsync().ConfigureAwait(false);
+                }).ConfigureAwait(true);
+                await SaveRememberedSessionAsync().ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
@@ -617,7 +617,7 @@ namespace DriftBuster.Gui.ViewModels
                     StatusBanner = "Scan cancelled.";
                     _toastService.Show("Scan cancelled", "Active scan was cancelled.", ToastLevel.Info, TimeSpan.FromSeconds(3));
                     LogActivity(ActivitySeverity.Info, "Scan cancelled.");
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -632,7 +632,7 @@ namespace DriftBuster.Gui.ViewModels
                         TimeSpan.FromSeconds(10),
                         new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
                     LogActivity(ActivitySeverity.Error, "Scan failed", ex.ToString());
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
             }
             finally
             {
@@ -642,7 +642,7 @@ namespace DriftBuster.Gui.ViewModels
                     _runCancellation?.Dispose();
                     _runCancellation = null;
                     _showDrilldownForHostCommand.NotifyCanExecuteChanged();
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
             }
         }
 
@@ -737,7 +737,7 @@ namespace DriftBuster.Gui.ViewModels
             {
                 var snapshot = BuildSessionSnapshot();
 
-                await _cacheService.SaveAsync(snapshot).ConfigureAwait(false);
+                await _cacheService.SaveAsync(snapshot).ConfigureAwait(true);
                 await RunOnUiThreadAsync(() =>
                 {
                     if (announce)
@@ -746,7 +746,7 @@ namespace DriftBuster.Gui.ViewModels
                     }
 
                     LogActivity(ActivitySeverity.Success, "Session saved", $"Cached {snapshot.Servers.Count} servers.");
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -760,7 +760,7 @@ namespace DriftBuster.Gui.ViewModels
                         TimeSpan.FromSeconds(6),
                         new ToastAction("Copy details", () => CopyToClipboardAsync(ex.ToString())));
                     LogActivity(ActivitySeverity.Error, "Failed to save session", ex.ToString());
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
             }
         }
 
@@ -1221,12 +1221,12 @@ namespace DriftBuster.Gui.ViewModels
         {
             if (ExportCallback is not null)
             {
-                await ExportCallback(request).ConfigureAwait(false);
+                await ExportCallback(request).ConfigureAwait(true);
                 await RunOnUiThreadAsync(() =>
                 {
                     StatusBanner = $"Exported {request.DisplayName} ({request.Format}).";
                     LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName} ({request.Format})", request.Payload, ActivityCategory.Export);
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(true);
                 return;
             }
 
@@ -1235,12 +1235,12 @@ namespace DriftBuster.Gui.ViewModels
             var extension = request.Format == ConfigDrilldownViewModel.ExportFormat.Html ? "html" : "json";
             var fileName = $"{safeName}-{DateTime.UtcNow:yyyyMMddHHmmss}.{extension}";
             var path = Path.Combine(directory, fileName);
-            await File.WriteAllTextAsync(path, request.Payload).ConfigureAwait(false);
+            await File.WriteAllTextAsync(path, request.Payload).ConfigureAwait(true);
             await RunOnUiThreadAsync(() =>
             {
                 StatusBanner = $"Exported {request.DisplayName} to {path}.";
                 LogActivity(ActivitySeverity.Success, $"Exported {request.DisplayName}", path, ActivityCategory.Export);
-            }).ConfigureAwait(false);
+            }).ConfigureAwait(true);
         }
 
         private static string SanitizeFileName(string name)
@@ -1326,7 +1326,7 @@ namespace DriftBuster.Gui.ViewModels
                 var clipboard = lifetime.MainWindow?.Clipboard;
                 if (clipboard is not null)
                 {
-                    await clipboard.SetTextAsync(content).ConfigureAwait(false);
+                    await clipboard.SetTextAsync(content).ConfigureAwait(true);
                 }
             }
         }

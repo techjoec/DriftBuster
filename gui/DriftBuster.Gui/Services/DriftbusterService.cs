@@ -38,22 +38,22 @@ namespace DriftBuster.Gui.Services
 
         public Task<RunProfileListResult> ListProfilesAsync(CancellationToken cancellationToken = default)
         {
-            return _backend.ListProfilesAsync(baseDir: null, cancellationToken);
+            return _backend.ListProfilesAsync(baseDir: DriftbusterPaths.GetDataRoot(), cancellationToken);
         }
 
         public Task SaveProfileAsync(RunProfileDefinition profile, CancellationToken cancellationToken = default)
         {
-            return _backend.SaveProfileAsync(profile, baseDir: null, cancellationToken);
+            return _backend.SaveProfileAsync(profile, baseDir: DriftbusterPaths.GetDataRoot(), cancellationToken);
         }
 
         public Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, CancellationToken cancellationToken = default)
         {
-            return _backend.RunProfileAsync(profile, saveProfile, baseDir: null, timestamp: null, cancellationToken);
+            return _backend.RunProfileAsync(profile, saveProfile, baseDir: DriftbusterPaths.GetDataRoot(), timestamp: null, cancellationToken);
         }
 
         public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, CancellationToken cancellationToken = default)
         {
-            return _backend.PrepareOfflineCollectorAsync(profile, request, baseDir: null, cancellationToken);
+            return _backend.PrepareOfflineCollectorAsync(profile, request, baseDir: DriftbusterPaths.GetDataRoot(), cancellationToken);
         }
 
         public Task<ServerScanResponse> RunServerScansAsync(IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
@@ -63,12 +63,12 @@ namespace DriftBuster.Gui.Services
 
         public Task<ScheduleListResult> ListSchedulesAsync(CancellationToken cancellationToken = default)
         {
-            return _backend.ListSchedulesAsync(baseDir: null, cancellationToken);
+            return _backend.ListSchedulesAsync(baseDir: DriftbusterPaths.GetDataRoot(), cancellationToken);
         }
 
         public Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, CancellationToken cancellationToken = default)
         {
-            return _backend.SaveSchedulesAsync(schedules, baseDir: null, cancellationToken);
+            return _backend.SaveSchedulesAsync(schedules, baseDir: DriftbusterPaths.GetDataRoot(), cancellationToken);
         }
     }
 }

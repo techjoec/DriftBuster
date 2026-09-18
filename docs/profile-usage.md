@@ -23,7 +23,7 @@ driftbuster profile run --name prod-web
 ```
 
 - Profiles are stored as `Profiles/<name>/profile.json` under `--base-dir`
-  (the current directory by default).
+  (the current directory by default); the GUI keeps its profiles under the data root.
 - `--option key=value` adds custom options; `--secret-ignore-rule` and
   `--secret-ignore-pattern` tune the secret scanner.
 - `profile run --profile <file.json> --save` runs a profile file and stores it.

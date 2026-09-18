@@ -85,7 +85,7 @@ namespace DriftBuster.Gui.ViewModels
 
             try
             {
-                var result = await _service.HuntAsync(DirectoryPath, Pattern).ConfigureAwait(false);
+                var result = await _service.HuntAsync(DirectoryPath, Pattern).ConfigureAwait(true);
                 ApplyResult(result);
             }
             catch (System.Exception ex)

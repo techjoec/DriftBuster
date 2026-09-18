@@ -216,7 +216,7 @@ namespace DriftBuster.Gui.ViewModels
                 var clipboard = lifetime.MainWindow?.Clipboard;
                 if (clipboard is not null)
                 {
-                    await clipboard.SetTextAsync(content).ConfigureAwait(false);
+                    await clipboard.SetTextAsync(content).ConfigureAwait(true);
                 }
             }
         }

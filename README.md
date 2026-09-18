@@ -109,13 +109,13 @@ dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj
 Tips:
 - Use the header theme toggle to switch Dark/Light.
 - Click “Check core” to verify backend health (status dot shows green/red).
-- The Profiles view includes schedule cards. Add a schedule name, profile reference, and interval (e.g. `24h`, `PT1H30M`) to persist cadence metadata alongside `Profiles/schedules.json`. Optional window start/end/timezone fields narrow execution windows, while metadata rows capture contacts or ticket IDs.
+- The Profiles view includes schedule cards. Add a schedule name, profile reference, and interval (e.g. `24h`, `PT1H30M`) to persist cadence metadata alongside `Profiles/schedules.json` under the data root. Optional window start/end/timezone fields narrow execution windows, while metadata rows capture contacts or ticket IDs.
 
 See `docs/windows-gui-guide.md` for the full walkthrough.
 
 ### Schedule recurring runs
 
-- Build or load a profile, then add schedule entries in the GUI to define cadence, window, tags, and metadata. Saving the profile writes both `profile.json` and the consolidated `Profiles/schedules.json` manifest.
+- Build or load a profile, then add schedule entries in the GUI to define cadence, window, tags, and metadata. Saving the profile writes both `profile.json` and the consolidated `Profiles/schedules.json` manifest under the data root.
 - Use the editable **Profile** dropdown on each schedule card to pick an existing profile name quickly.
 - Inspect or act on the same schedules from the shell with `driftbuster schedule list`, `due`, `mark-complete --name <schedule>`, or `skip-until --name <schedule> --resume-at <iso8601>`. The console tool shares the GUI’s manifest and `scheduler-state.json`.
 

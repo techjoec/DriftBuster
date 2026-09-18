@@ -5,6 +5,9 @@ namespace DriftBuster.Backend.Models
 {
     public sealed class RunProfileDefinition
     {
+        // UI Automation reads a list item through ToString.
+        public override string ToString() => Name;
+
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
 
