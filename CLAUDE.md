@@ -149,7 +149,9 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 - **ViewModels** (all implement `IDisposable` for proper cleanup; `ls gui/DriftBuster.Gui/ViewModels/` for the full list):
   - `MainWindowViewModel` - Top-level shell, tab navigation
   - `ServerSelectionViewModel` - Multi-server orchestration, drag/drop server management; `CurrentView` (`MultiServerView`: Setup, Compare, Details, Drilldown) and lands on Compare after a run
-  - `CompareViewModel` - Settings comparison (per-server summary lines, per-file setting tables, filters, HTML/CSV report); also the Diff planner's Settings section
+  - `CompareViewModel` - Settings comparison (per-server summary, file list, the selected file's setting table, difference navigation, filters, HTML/CSV report); also the Diff planner's Settings tab
+  - `DiffLinesViewModel` - Line diff for reading (side by side with folded context, or unified text) with change navigation; used by File details and the Diff planner
+  - Result views fill the window and scroll their own virtualised panes (list, grid, lines); only Setup and the form pages scroll as a page
   - `ConfigDrilldownViewModel` - Configuration detail exploration
   - `DiffViewModel` - Side-by-side comparison view
   - `HuntViewModel` / `SecretScannerSettingsViewModel` - Secret scanning
