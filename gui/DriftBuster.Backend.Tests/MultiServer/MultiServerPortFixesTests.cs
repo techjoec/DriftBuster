@@ -3,6 +3,7 @@ using System.Globalization;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
+using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.MultiServer;
 
@@ -10,6 +11,8 @@ namespace DriftBuster.Backend.Tests.MultiServer;
 /// Multi-server config ids from the relative path, unreadable files skipped and unreadable roots denied, atomic cache writes under
 /// cancellation, per-run progress throttling and the severity thresholds.
 /// </summary>
+// Scans flag secrets through the process-wide secret rule cache that the secret scanner tests replace.
+[Collection(SecretRuleCacheCollection.Name)]
 public sealed class MultiServerPortFixesTests : IDisposable
 {
     private const string WebConfig = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<configuration>\n  <appSettings>\n    <add key=\"Mode\" value=\"{0}\" />\n  </appSettings>\n</configuration>\n";

@@ -3,6 +3,7 @@ using System.Text.Json;
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
+using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.MultiServer;
 
@@ -13,6 +14,8 @@ namespace DriftBuster.Backend.Tests.MultiServer;
 /// cache directory tests live in <see cref="MultiServerCacheDirectoryTests"/>, which runs apart because it sets
 /// <c>DRIFTBUSTER_DATA_ROOT</c>.
 /// </summary>
+// Scans flag secrets through the process-wide secret rule cache that the secret scanner tests replace.
+[Collection(SecretRuleCacheCollection.Name)]
 public sealed class MultiServerTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-multi-server-");

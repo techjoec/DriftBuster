@@ -2,12 +2,15 @@ using System.Globalization;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
+using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.MultiServer;
 
 /// <summary>
 /// Runner behaviour for files too long to read whole and for a cache failure that fails the host offline.
 /// </summary>
+// Scans flag secrets through the process-wide secret rule cache that the secret scanner tests replace.
+[Collection(SecretRuleCacheCollection.Name)]
 public sealed class MultiServerPathAndCacheTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-multi-server-paths-");
