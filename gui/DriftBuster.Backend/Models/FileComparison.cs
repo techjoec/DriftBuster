@@ -35,5 +35,20 @@ namespace DriftBuster.Backend.Models
 
         [JsonPropertyName("settings")]
         public SettingRow[] Settings { get; set; } = Array.Empty<SettingRow>();
+
+        /// <summary>The application a rule names for this file; empty when none does.</summary>
+        [JsonPropertyName("app_name")]
+        public string AppName { get; set; } = string.Empty;
+
+        /// <summary>A friendlier name a rule gives the file; empty when none does.</summary>
+        [JsonPropertyName("file_label")]
+        public string FileLabel { get; set; } = string.Empty;
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = string.Empty;
+
+        /// <summary>True when a curation choice or rule leaves the whole file (the source) out of the differences.</summary>
+        [JsonPropertyName("ignored")]
+        public bool Ignored { get; set; }
     }
 }

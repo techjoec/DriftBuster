@@ -22,5 +22,17 @@ namespace DriftBuster.Backend.Models
         /// <summary>True when this server's value or state differs from the baseline server's.</summary>
         [JsonPropertyName("differs")]
         public bool DiffersFromBaseline { get; set; }
+
+        /// <summary>True when a curation choice leaves this value out of the differences.</summary>
+        [JsonPropertyName("ignored")]
+        public bool Ignored { get; set; }
+
+        /// <summary>The value's fingerprint (lowercase hex SHA-256), masked or not; in process only, never serialised.</summary>
+        [JsonIgnore]
+        public string? ValueHash { get; set; }
+
+        /// <summary>A masked value's text, kept in process only so the user can unmask it; never serialised.</summary>
+        [JsonIgnore]
+        public string? SecretValue { get; set; }
     }
 }

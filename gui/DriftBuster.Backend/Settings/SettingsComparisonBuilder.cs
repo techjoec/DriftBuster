@@ -1,5 +1,6 @@
 using System.Globalization;
 
+using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
@@ -256,6 +257,8 @@ public static class SettingsComparisonBuilder
                     Value = masked ? null : value,
                     Masked = masked && state == SettingValueState.Value,
                     DiffersFromBaseline = differs,
+                    ValueHash = value is null ? null : CurationTarget.ValueHashOf(value),
+                    SecretValue = masked ? value : null,
                 };
             }).ToArray();
             rows[index] = new SettingRow { Key = key, Values = values, Differs = values.Any(value => value.DiffersFromBaseline) };
