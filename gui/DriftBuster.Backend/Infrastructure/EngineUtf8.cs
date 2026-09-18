@@ -28,6 +28,16 @@ public static class EngineUtf8
     }
 
     /// <summary>
+    /// <see cref="Decode"/> for a file's contents, without a leading UTF-8 byte order mark: Windows PowerShell 5.1
+    /// (<c>Set-Content -Encoding UTF8</c>, <c>Out-File</c>) and older editors write one ahead of the JSON people hand us.
+    /// </summary>
+    public static string DecodeFile(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        return bytes is [0xEF, 0xBB, 0xBF, ..] ? Decode(bytes[3..]) : Decode(bytes);
+    }
+
+    /// <summary>
     /// True when <paramref name="text"/> holds a surrogate that is not half of a pair: text strict UTF-8 cannot encode, and that
     /// the runtime's encoders silently replace with U+FFFD.
     /// </summary>

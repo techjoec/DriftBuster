@@ -142,7 +142,7 @@ public static partial class ScheduleStore
     // bytes that are not UTF-8 and the decoder's limits raise InvalidDataException, all unwrapped.
     private static JsonValue? ReadJson(string path)
     {
-        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.Decode(EngineTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;
+        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.DecodeFile(EngineTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;
     }
 
     private sealed record JsonValue(object? Value);

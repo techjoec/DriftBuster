@@ -65,7 +65,7 @@ internal static class EngineTextFile
     /// <see cref="InvalidDataException"/>.
     /// </summary>
     /// <exception cref="ArgumentException">The path holds a NUL character.</exception>
-    public static string ReadUtf8Text(string path) => EngineUtf8.Decode(ReadBytes(path, path));
+    public static string ReadUtf8Text(string path) => EngineUtf8.DecodeFile(ReadBytes(path, path));
 
     /// <summary>
     /// <c>open(path, "rb").read()</c> with the failures <see cref="ReadUtf8Text"/> raises, naming a directory as <paramref name="shown"/>.

@@ -38,7 +38,7 @@ public static class DetectionProfileCommands
             throw new IOException($"Unable to read JSON payload from {shown}: {exc.Message}", exc);
         }
 
-        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.Decode(raw), out var value)
+        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.DecodeFile(raw), out var value)
             ? value
             : throw new InvalidDataException($"Failed to parse JSON from {shown}: invalid JSON document");
     }

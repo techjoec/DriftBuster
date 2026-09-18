@@ -272,7 +272,7 @@ public static class RunProfileStore
     /// nesting past the decoder's limits.</exception>
     internal static object? ReadJson(string path)
     {
-        var text = EngineUtf8.Decode(EngineTextFile.ReadBytes(path, LexicalPath.Str(path)));
+        var text = EngineUtf8.DecodeFile(EngineTextFile.ReadBytes(path, LexicalPath.Str(path)));
         return EngineJson.TryLoadsOrRaiseLimits(text, out var value)
             ? value
             : throw new InvalidDataException($"Invalid JSON document: {path}");

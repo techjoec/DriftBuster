@@ -1486,6 +1486,13 @@ namespace DriftBusterOfflineRunner
     /// <summary>json.loads and json.dumps (ensure_ascii, allow_nan).</summary>
     public static class EngineJson
     {
+        // A JSON file as Windows PowerShell 5.1 writes it (Set-Content -Encoding UTF8, Out-File) starts with a byte order mark.
+        public static object LoadsFile(string path)
+        {
+            var text = EngineFile.ReadText(path);
+            return Loads(text.Length > 0 && text[0] == (char)0xFEFF ? text.Substring(1) : text);
+        }
+
         public static object Loads(string text)
         {
             if (text.Length > 0 && text[0] == (char)0xFEFF)
@@ -5651,7 +5658,7 @@ function Import-DbOfflineRunnerConfig {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Path)
 
-    $payload = [EngineJson]::Loads([EngineFile]::ReadText($Path))
+    $payload = [EngineJson]::LoadsFile($Path)
     return ConvertFrom-DbOfflineRunnerConfig $payload
 }
 
@@ -5675,7 +5682,7 @@ function Get-DbSecretOptionValue {
 }
 
 function Get-DbSecretRuleFile {
-    # The packaged rules the runner falls back to: secret_rules.json beside the runner, then the repository's backend resource.
+    # Rule files that override the embedded rules: secret_rules.json beside the runner, then the repository's backend resource.
     [CmdletBinding()]
     param()
 
@@ -5683,6 +5690,39 @@ function Get-DbSecretRuleFile {
         (Join-Path -Path $PSScriptRoot -ChildPath 'secret_rules.json'),
         [System.IO.Path]::Combine((Split-Path -Path $PSScriptRoot -Parent), 'gui', 'DriftBuster.Backend', 'Resources', 'secret_rules.json')
     )
+}
+
+function Get-DbEmbeddedSecretRuleText {
+    # gui/DriftBuster.Backend/Resources/secret_rules.json, verbatim; scripts/lint_powershell.ps1 fails when the two differ.
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+
+    return @'
+{
+  "version": "2024-06-01",
+  "rules": [
+    {
+      "name": "PasswordAssignment",
+      "description": "Matches common password assignment patterns in configuration files.",
+      "pattern": "(?i)password\\s*[:=]\\s*['\"]?[A-Za-z0-9\\-_/+=]{8,}",
+      "flags": ""
+    },
+    {
+      "name": "GenericApiToken",
+      "description": "Detects API key or token style strings with obvious labels.",
+      "pattern": "(?i)(api|auth|token)[-_ ]?(key|token)\\s*[:=]\\s*['\"]?[A-Za-z0-9]{16,}",
+      "flags": ""
+    },
+    {
+      "name": "AwsAccessKeyId",
+      "description": "AWS-style access key identifiers.",
+      "pattern": "AKIA[0-9A-Z]{16}",
+      "flags": ""
+    }
+  ]
+}
+'@
 }
 
 function Get-DbPackagedSecretRule {
@@ -5697,14 +5737,14 @@ function Get-DbPackagedSecretRule {
     $payload = $null
     foreach ($candidate in Get-DbSecretRuleFile) {
         if ([System.IO.File]::Exists($candidate)) {
-            $payload = [EngineJson]::Loads([EngineFile]::ReadText($candidate))
+            $payload = [EngineJson]::LoadsFile($candidate)
             break
         }
     }
 
     if ($null -eq $payload) {
-        [SecretScanner]::PackagedRules = [pscustomobject]@{ ruleset = $null; version = 'none'; loaded = $false }
-        return [SecretScanner]::PackagedRules
+        # The runner ships as one file, so the default rules travel inside it.
+        $payload = [EngineJson]::Loads((Get-DbEmbeddedSecretRuleText))
     }
 
     $compiled = [SecretScanner]::CompileRuleset($payload)
@@ -6975,7 +7015,7 @@ function Import-DbEncryptionKeyset {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Path)
 
-    $payload = [EngineJson]::Loads([EngineFile]::ReadText($Path))
+    $payload = [EngineJson]::LoadsFile($Path)
     if (-not [Engine]::IsMapping($payload)) {
         throw (Get-DbEngineError 'InvalidDataException' 'Encryption keyset must be a JSON object.')
     }
