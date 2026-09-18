@@ -27,6 +27,9 @@ public static class RegistryCommands
     internal static Func<IReadOnlyList<RegistryRoot>, SearchSpec, IReadOnlyList<RegistryHit>> SearchRegistry { get; set; }
         = (roots, spec) => RegistryOperations.SearchRegistry(roots, spec);
 
+    internal static Func<RegistryRoot, bool> RootExists { get; set; }
+        = root => !OperatingSystem.IsWindows() || WinRegistryBackend.KeyExists(root.Hive, root.Path, root.View);
+
     /// <summary><c>main</c>'s gate: <c>Registry scanning requires Windows.</c> off Windows.</summary>
     /// <exception cref="CommandExitException">Not on Windows.</exception>
     public static void RequireWindows()
@@ -71,11 +74,18 @@ public static class RegistryCommands
         BigInteger? maxDepth = null,
         BigInteger? maxHits = null,
         double timeBudget = 10.0,
-        IReadOnlyList<string>? roots = null)
+        IReadOnlyList<string>? roots = null,
+        Action<string>? warn = null)
     {
         RequireWindows();
         var apps = EnumerateInstalledApps();
         var explicitRoots = ParseRootArguments(roots ?? []);
+        // A --root that does not open would otherwise read as "no hits".
+        foreach (var missing in explicitRoots.Where(root => !RootExists(root)))
+        {
+            warn?.Invoke($"Registry key not found: {missing.Hive}\\{missing.Path}");
+        }
+
         var searchRoots = explicitRoots.Count > 0 ? explicitRoots : FindAppRegistryRoots(token, apps);
         var spec = new SearchSpec
         {

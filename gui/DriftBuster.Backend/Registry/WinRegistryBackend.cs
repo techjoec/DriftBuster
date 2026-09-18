@@ -58,6 +58,13 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         return results;
     }
 
+    /// <summary>True when <paramref name="path"/> opens for reading under <paramref name="hive"/> in <paramref name="view"/>.</summary>
+    public static bool KeyExists(string hive, string path, string? view)
+    {
+        using var handle = Open(hive, path, view);
+        return handle is not null;
+    }
+
     // _open: None where the key cannot be opened. A path holding NUL raises ArgumentException.
     private static SafeRegistryHandle? Open(string hive, string path, string? view)
     {

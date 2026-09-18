@@ -80,14 +80,15 @@ internal static class RegistryScanCommand
         var command = new Command("search", "Search registry under suggested roots") { token };
         var options = AddSearchOptions(command);
         command.Options.Add(options.Root);
-        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) => PrintLines(stdout, RegistryCommands.Search(
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => PrintLines(stdout, RegistryCommands.Search(
             parseResult.GetValue(token)!,
             parseResult.GetValue(options.Keyword),
             parseResult.GetValue(options.Pattern),
             parseResult.GetValue(options.MaxDepth),
             parseResult.GetValue(options.MaxHits),
             parseResult.GetValue(options.TimeBudget),
-            parseResult.GetValue(options.Root)))));
+            parseResult.GetValue(options.Root),
+            message => ConsoleText.Print(stderr, message)))));
         return command;
     }
 
