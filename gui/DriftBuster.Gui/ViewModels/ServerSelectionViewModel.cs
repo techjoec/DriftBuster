@@ -83,7 +83,7 @@ namespace DriftBuster.Gui.ViewModels
             ReindexServers();
             CatalogViewModel = new ResultsCatalogViewModel(_performanceProfile);
             CatalogViewModel.ReScanRequested += (_, e) => _ = RunScopedAsync(e.Value);
-            CatalogViewModel.DrilldownRequested += (_, e) => LoadDrilldown(e.Value.ConfigId);
+            CatalogViewModel.DrilldownRequested += (_, e) => LoadDrilldown(e.Value.ConfigId, MultiServerView.Details);
             CatalogViewModel.PropertyChanged += OnCatalogPropertyChanged;
 
             _activityEntriesReadonly = new ReadOnlyObservableCollection<ActivityEntryViewModel>(_activityEntries);
@@ -92,22 +92,16 @@ namespace DriftBuster.Gui.ViewModels
             RefreshServerVirtualization();
             RefreshActivityVirtualization();
 
-            ShowSetupCommand = new RelayCommand(() =>
-            {
-                IsViewingCatalog = false;
-                IsViewingDrilldown = false;
-            });
-            ShowCatalogCommand = new RelayCommand(() =>
-            {
-                IsViewingCatalog = true;
-                IsViewingDrilldown = false;
-            }, () => CatalogViewModel.HasEntries);
+            CompareViewModel = new CompareViewModel();
+            CompareViewModel.DetailsRequested += OnCompareDetailsRequested;
+            ShowSetupCommand = new RelayCommand(() => CurrentView = MultiServerView.Setup);
+            ShowCompareCommand = new RelayCommand(() => CurrentView = MultiServerView.Compare, () => CompareViewModel.HasData);
+            ShowCatalogCommand = new RelayCommand(() => CurrentView = MultiServerView.Details, () => CatalogViewModel.HasEntries);
             ShowDrilldownCommand = new RelayCommand(() =>
             {
                 if (DrilldownViewModel is not null)
                 {
-                    IsViewingCatalog = false;
-                    IsViewingDrilldown = true;
+                    CurrentView = MultiServerView.Drilldown;
                 }
             }, () => DrilldownViewModel is not null);
 
@@ -137,14 +131,26 @@ namespace DriftBuster.Gui.ViewModels
         private string _statusBanner = "Ready to plan a multi-server scan.";
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsViewingSetup))]
-        private bool _isViewingCatalog;
+        [NotifyPropertyChangedFor(nameof(IsViewingSetup), nameof(IsViewingCompare), nameof(IsViewingCatalog), nameof(IsViewingDrilldown))]
+        private MultiServerView _currentView;
 
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsViewingSetup))]
-        private bool _isViewingDrilldown;
+        // Where the drilldown's Back button returns: the view it was opened from.
+        private MultiServerView _drilldownReturn = MultiServerView.Details;
 
-        public bool IsViewingSetup => !IsViewingCatalog && !IsViewingDrilldown;
+        public bool IsViewingSetup => CurrentView == MultiServerView.Setup;
+
+        public bool IsViewingCompare => CurrentView == MultiServerView.Compare;
+
+        public bool IsViewingCatalog => CurrentView == MultiServerView.Details;
+
+        public bool IsViewingDrilldown => CurrentView == MultiServerView.Drilldown;
+
+        public CompareViewModel CompareViewModel { get; }
+
+        // After a scan: the comparison when there is one, else the file list, else setup.
+        private MultiServerView ResultsView => CompareViewModel.HasData ? MultiServerView.Compare
+            : CatalogViewModel.HasEntries ? MultiServerView.Details
+            : MultiServerView.Setup;
 
         [ObservableProperty]
         private ConfigDrilldownViewModel? _drilldownViewModel;
@@ -168,6 +174,8 @@ namespace DriftBuster.Gui.ViewModels
         public IRelayCommand ShowSetupCommand { get; }
 
         public IRelayCommand ShowCatalogCommand { get; }
+
+        public IRelayCommand ShowCompareCommand { get; }
 
         public IRelayCommand ShowDrilldownCommand { get; }
 
@@ -219,9 +227,9 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             ShowDrilldownCommand.NotifyCanExecuteChanged();
-            if (value is null)
+            if (value is null && CurrentView == MultiServerView.Drilldown)
             {
-                IsViewingDrilldown = false;
+                CurrentView = _drilldownReturn;
             }
         }
 
@@ -423,21 +431,13 @@ namespace DriftBuster.Gui.ViewModels
         private void RestoreActiveView(ServerSelectionCache snapshot)
         {
             var activeView = (snapshot.ActiveView ?? string.Empty).Trim().ToLowerInvariant();
-            if (string.Equals(activeView, "catalog", StringComparison.Ordinal) && CatalogViewModel.HasEntries)
+            CurrentView = activeView switch
             {
-                IsViewingCatalog = true;
-                IsViewingDrilldown = false;
-            }
-            else if (string.Equals(activeView, "drilldown", StringComparison.Ordinal) && DrilldownViewModel is not null)
-            {
-                IsViewingCatalog = false;
-                IsViewingDrilldown = true;
-            }
-            else
-            {
-                IsViewingCatalog = false;
-                IsViewingDrilldown = false;
-            }
+                "compare" when CompareViewModel.HasData => MultiServerView.Compare,
+                "catalog" when CatalogViewModel.HasEntries => MultiServerView.Details,
+                "drilldown" when DrilldownViewModel is not null => MultiServerView.Drilldown,
+                _ => MultiServerView.Setup,
+            };
         }
 
         private void OnAddRoot(ServerSlotViewModel? slot)
@@ -530,14 +530,15 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             var wasDrilldown = IsViewingDrilldown;
+            var returnView = _drilldownReturn;
             await ExecuteRunAsync(retryOnly: false, scopedHostIds: hostIds).ConfigureAwait(true);
             if (wasDrilldown && DrilldownViewModel is not null)
             {
-                LoadDrilldown(DrilldownViewModel.ConfigId);
+                LoadDrilldown(DrilldownViewModel.ConfigId, returnView);
             }
             else
             {
-                IsViewingCatalog = CatalogViewModel.HasEntries;
+                CurrentView = ResultsView;
             }
         }
 
@@ -575,8 +576,7 @@ namespace DriftBuster.Gui.ViewModels
                 _runCancellation = new CancellationTokenSource();
                 IsBusy = true;
                 StatusBanner = retryOnly ? "Re-running missing hosts…" : "Running multi-server scan…";
-                IsViewingCatalog = false;
-                IsViewingDrilldown = false;
+                CurrentView = MultiServerView.Setup;
                 LogActivity(ActivitySeverity.Info, retryOnly ? "Re-running missing hosts" : "Running multi-server scan", $"Hosts queued: {plans.Count}, cached reused: {cachedCount}.");
                 _showDrilldownForHostCommand.NotifyCanExecuteChanged();
 
@@ -712,11 +712,12 @@ namespace DriftBuster.Gui.ViewModels
             OnPropertyChanged(nameof(HasActivityEntries));
             LogActivity(ActivitySeverity.Info, "Cleared session history.");
             CatalogViewModel.Reset();
+            CompareViewModel.Reset();
             ShowCatalogCommand.NotifyCanExecuteChanged();
+            ShowCompareCommand.NotifyCanExecuteChanged();
             DrilldownViewModel = null;
             _lastResponse = null;
-            IsViewingCatalog = false;
-            IsViewingDrilldown = false;
+            CurrentView = MultiServerView.Setup;
             _showDrilldownForHostCommand.NotifyCanExecuteChanged();
             RecordDrilldownTelemetry("history-cleared", null, "clear-history");
         }
@@ -816,7 +817,13 @@ namespace DriftBuster.Gui.ViewModels
                     Filter = ActivityFilter.ToString(),
                     LastOpenedHostId = DrilldownViewModel?.BaselineHostId,
                 },
-                ActiveView = IsViewingDrilldown ? "drilldown" : (IsViewingCatalog ? "catalog" : "setup"),
+                ActiveView = CurrentView switch
+                {
+                    MultiServerView.Compare => "compare",
+                    MultiServerView.Details => "catalog",
+                    MultiServerView.Drilldown => "drilldown",
+                    _ => "setup",
+                },
             };
         }
 
@@ -962,12 +969,14 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             CatalogViewModel.LoadFromResponse(response, ActiveServers.Count());
+            CompareViewModel.Load(response?.Comparison);
             ShowCatalogCommand.NotifyCanExecuteChanged();
+            ShowCompareCommand.NotifyCanExecuteChanged();
             ShowDrilldownCommand.NotifyCanExecuteChanged();
 
             if (!IsViewingDrilldown)
             {
-                IsViewingCatalog = CatalogViewModel.HasEntries;
+                CurrentView = ResultsView;
             }
         }
 
@@ -1089,8 +1098,7 @@ namespace DriftBuster.Gui.ViewModels
                 return;
             }
 
-            LoadDrilldown(target.ConfigId);
-            IsViewingDrilldown = true;
+            LoadDrilldown(target.ConfigId, CurrentView == MultiServerView.Drilldown ? _drilldownReturn : ResultsView);
             LogActivity(ActivitySeverity.Info, "Opened drilldown", $"Host: {hostId} via execution summary.");
             RecordDrilldownTelemetry("drilldown-opened", hostId, null);
         }
@@ -1156,7 +1164,7 @@ namespace DriftBuster.Gui.ViewModels
             return target;
         }
 
-        private void LoadDrilldown(string configId)
+        private void LoadDrilldown(string configId, MultiServerView returnView)
         {
             if (_lastResponse?.Drilldown is not { Length: > 0 })
             {
@@ -1172,16 +1180,19 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             DrilldownViewModel = new ConfigDrilldownViewModel(detail);
-            IsViewingCatalog = false;
-            IsViewingDrilldown = true;
+            _drilldownReturn = returnView;
+            CurrentView = MultiServerView.Drilldown;
             StatusBanner = $"Drilldown ready for {DrilldownViewModel.DisplayName}.";
         }
 
         private void OnDrilldownBackRequested(object? sender, EventArgs e)
         {
-            IsViewingDrilldown = false;
-            IsViewingCatalog = CatalogViewModel.HasEntries;
+            CurrentView = _drilldownReturn == MultiServerView.Compare && CompareViewModel.HasData ? MultiServerView.Compare
+                : CatalogViewModel.HasEntries ? MultiServerView.Details
+                : ResultsView;
         }
+
+        private void OnCompareDetailsRequested(object? sender, ValueEventArgs<string> e) => LoadDrilldown(e.Value, MultiServerView.Compare);
 
         private void OnDrilldownReScanRequested(object? sender, ValueEventArgs<IReadOnlyList<string>> e)
         {
@@ -1556,7 +1567,7 @@ namespace DriftBuster.Gui.ViewModels
                 ShowCatalogCommand.NotifyCanExecuteChanged();
                 if (!CatalogViewModel.HasEntries && IsViewingCatalog)
                 {
-                    IsViewingCatalog = false;
+                    CurrentView = ResultsView;
                 }
             }
         }
@@ -1613,6 +1624,7 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             CatalogViewModel.PropertyChanged -= OnCatalogPropertyChanged;
+            CompareViewModel.DetailsRequested -= OnCompareDetailsRequested;
             _runGate.Dispose();
             _runCancellation?.Dispose();
             _disposed = true;

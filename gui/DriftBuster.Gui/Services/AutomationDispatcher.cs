@@ -156,7 +156,7 @@ internal sealed class AutomationDispatcher
                 return NavigateMultiServerSubView(subView);
             default:
                 return AutomationState.ErrorResponse(
-                    $"Unknown tab: {tab}. Valid: diff, hunt, profiles, multi-server, multi-server/setup, multi-server/catalog, multi-server/drilldown.");
+                    $"Unknown tab: {tab}. Valid: diff, hunt, profiles, multi-server, multi-server/setup, multi-server/compare, multi-server/catalog, multi-server/drilldown.");
         }
 
         return AutomationState.OkResponse();
@@ -193,6 +193,14 @@ internal sealed class AutomationDispatcher
             case "setup":
                 vm.ShowSetupCommand.Execute(null);
                 return AutomationState.OkResponse();
+            case "compare":
+                if (!vm.ShowCompareCommand.CanExecute(null))
+                {
+                    return AutomationState.ErrorResponse("Compare view is unavailable (no scan results).");
+                }
+
+                vm.ShowCompareCommand.Execute(null);
+                return AutomationState.OkResponse();
             case "catalog":
                 if (!vm.ShowCatalogCommand.CanExecute(null))
                 {
@@ -211,7 +219,7 @@ internal sealed class AutomationDispatcher
                 return AutomationState.OkResponse();
             default:
                 return AutomationState.ErrorResponse(
-                    $"Unknown multi-server sub-view: {subView}. Valid: setup, catalog, drilldown.");
+                    $"Unknown multi-server sub-view: {subView}. Valid: setup, compare, catalog, drilldown.");
         }
     }
 

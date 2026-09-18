@@ -38,6 +38,7 @@ public sealed class AutomationPropertiesTests
         nameof(RunProfilesView),
         nameof(ConfigDrilldownView),
         nameof(ResultsCatalogView),
+        nameof(CompareView),
         nameof(SecretScannerSettingsWindow),
         nameof(ToastHost),
     };
@@ -189,6 +190,7 @@ public sealed class AutomationPropertiesTests
             nameof(RunProfilesView) => new RunProfilesView { DataContext = CreateRunProfilesViewModel(service) },
             nameof(ConfigDrilldownView) => new ConfigDrilldownView { DataContext = new ConfigDrilldownViewModel(BuildDrilldown()) },
             nameof(ResultsCatalogView) => new ResultsCatalogView { DataContext = CreateCatalogViewModel() },
+            nameof(CompareView) => new CompareView { DataContext = CreateCompareViewModel() },
             nameof(SecretScannerSettingsWindow) => new SecretScannerSettingsWindow { DataContext = CreateSecretScannerViewModel() },
             nameof(ToastHost) => new ToastHost { DataContext = CreateToastService() },
             _ => throw new ArgumentOutOfRangeException(nameof(viewName), viewName, "Unknown view"),
@@ -221,6 +223,14 @@ public sealed class AutomationPropertiesTests
         viewModel.AddOptionCommand.Execute(null);
         viewModel.AddScheduleCommand.Execute(null);
         viewModel.Schedules[0].AddMetadataCommand.Execute(null);
+        return viewModel;
+    }
+
+    private static CompareViewModel CreateCompareViewModel()
+    {
+        var viewModel = new CompareViewModel();
+        viewModel.Load(SampleComparison.Build());
+        viewModel.FocusServerCommand.Execute(viewModel.Servers[2]);
         return viewModel;
     }
 

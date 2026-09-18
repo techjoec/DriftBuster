@@ -18,32 +18,39 @@
   </UserControl.Resources>
   <ScrollViewer>
     <StackPanel Margin="{DynamicResource ServerSelection.OuterMargin}" Spacing="{DynamicResource ServerSelection.StackSpacing}">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="{DynamicResource ServerSelection.HeaderColumnSpacing}" VerticalAlignment="Center">
-        <Button x:Name="SetupButton"
-                Content="Setup"
-                Classes="outline"
-                Command="{Binding ShowSetupCommand}"
-                automation:AutomationProperties.AutomationId="ServerSelection.Setup" />
-        <Button Grid.Column="1"
-                Content="Results"
-                Classes="outline"
-                Command="{Binding ShowCatalogCommand}"
-                IsEnabled="{Binding CatalogViewModel.HasEntries}"
-                automation:AutomationProperties.AutomationId="ServerSelection.Results" />
-        <Button Grid.Column="2"
-                Content="Drilldown"
-                Classes="outline"
-                Command="{Binding ShowDrilldownCommand}"
-                automation:AutomationProperties.AutomationId="ServerSelection.Drilldown" />
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
+        <ToggleButton x:Name="SetupButton"
+                      Content="Setup"
+                      Command="{Binding ShowSetupCommand}"
+                      IsChecked="{Binding IsViewingSetup, Mode=OneWay}"
+                      automation:AutomationProperties.AutomationId="ServerSelection.Setup" />
+        <ToggleButton Grid.Column="1"
+                      Content="Compare"
+                      Command="{Binding ShowCompareCommand}"
+                      IsChecked="{Binding IsViewingCompare, Mode=OneWay}"
+                      automation:AutomationProperties.AutomationId="ServerSelection.Compare" />
+        <ToggleButton Grid.Column="2"
+                      Content="Files"
+                      Command="{Binding ShowCatalogCommand}"
+                      IsChecked="{Binding IsViewingCatalog, Mode=OneWay}"
+                      automation:AutomationProperties.AutomationId="ServerSelection.Results" />
+        <ToggleButton Grid.Column="3"
+                      Content="File details"
+                      Command="{Binding ShowDrilldownCommand}"
+                      IsChecked="{Binding IsViewingDrilldown, Mode=OneWay}"
+                      IsVisible="{Binding DrilldownViewModel, Converter={x:Static ObjectConverters.IsNotNull}}"
+                      automation:AutomationProperties.AutomationId="ServerSelection.Drilldown" />
         <Button x:Name="HeaderRunAllButton"
-                Grid.Column="3"
+                Grid.Column="4"
                 Content="Run all"
                 Classes="primary"
+                Margin="8,0,0,0"
                 Command="{Binding RunAllCommand}"
                 IsEnabled="{Binding HasActiveServers}"
                 automation:AutomationProperties.AutomationId="ServerSelection.RunAll" />
-        <TextBlock Grid.Column="4"
+        <TextBlock Grid.Column="5"
                    HorizontalAlignment="Right"
+                   VerticalAlignment="Center"
                    TextWrapping="Wrap"
                    Classes="subtitle"
                    Text="{Binding StatusBanner}" />
@@ -415,6 +422,10 @@
           </Border>
         </Grid>
       </StackPanel>
+
+      <Border IsVisible="{Binding IsViewingCompare}">
+        <views:CompareView DataContext="{Binding CompareViewModel}" />
+      </Border>
 
       <ContentControl Content="{Binding CatalogViewModel}"
                       IsVisible="{Binding IsViewingCatalog}">

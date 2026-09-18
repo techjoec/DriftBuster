@@ -24,6 +24,12 @@
       <SolidColorBrush x:Key="Brush.BorderStrong" Color="#FF3B4A5A" />
       <SolidColorBrush x:Key="Brush.TextPrimary" Color="#FFFFFFFF" />
       <SolidColorBrush x:Key="Brush.TextSecondary" Color="#FFBEC8D8" />
+      <!-- Comparison states: a value that differs from the baseline, a missing file or setting, a match, a warning. -->
+      <SolidColorBrush x:Key="Brush.DiffersBackground" Color="#FF4A3410" />
+      <SolidColorBrush x:Key="Brush.DiffersText" Color="#FFFCD34D" />
+      <SolidColorBrush x:Key="Brush.MissingText" Color="#FFF87171" />
+      <SolidColorBrush x:Key="Brush.OkText" Color="#FF4ADE80" />
+      <SolidColorBrush x:Key="Brush.WarnText" Color="#FFFBBF24" />
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Palette.LightPlus">
@@ -48,6 +54,11 @@
       <SolidColorBrush x:Key="Brush.BorderStrong" Color="#FF94A3B8" />
       <SolidColorBrush x:Key="Brush.TextPrimary" Color="#FF0F172A" />
       <SolidColorBrush x:Key="Brush.TextSecondary" Color="#FF475569" />
+      <SolidColorBrush x:Key="Brush.DiffersBackground" Color="#FFFEF3C7" />
+      <SolidColorBrush x:Key="Brush.DiffersText" Color="#FF92400E" />
+      <SolidColorBrush x:Key="Brush.MissingText" Color="#FFB91C1C" />
+      <SolidColorBrush x:Key="Brush.OkText" Color="#FF15803D" />
+      <SolidColorBrush x:Key="Brush.WarnText" Color="#FFB45309" />
     </ResourceDictionary>
 
     <!-- Migration defaults keep the original dark palette active until selectors run -->
@@ -73,6 +84,11 @@
     <SolidColorBrush x:Key="Brush.BorderStrong" Color="{DynamicResource Color.BorderStrong}" />
     <SolidColorBrush x:Key="Brush.TextPrimary" Color="{DynamicResource Color.TextPrimary}" />
     <SolidColorBrush x:Key="Brush.TextSecondary" Color="{DynamicResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Brush.DiffersBackground" Color="#FF4A3410" />
+    <SolidColorBrush x:Key="Brush.DiffersText" Color="#FFFCD34D" />
+    <SolidColorBrush x:Key="Brush.MissingText" Color="#FFF87171" />
+    <SolidColorBrush x:Key="Brush.OkText" Color="#FF4ADE80" />
+    <SolidColorBrush x:Key="Brush.WarnText" Color="#FFFBBF24" />
 
     <CornerRadius x:Key="Radius.Small">6</CornerRadius>
     <CornerRadius x:Key="Radius.Medium">10</CornerRadius>

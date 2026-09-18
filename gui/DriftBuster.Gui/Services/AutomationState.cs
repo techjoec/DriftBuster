@@ -34,6 +34,7 @@ internal static class AutomationState
         {
             state["isBusy"] = serverVm.IsBusy;
             state["statusBanner"] = serverVm.StatusBanner;
+            state["isViewingCompare"] = serverVm.IsViewingCompare;
             state["isViewingCatalog"] = serverVm.IsViewingCatalog;
             state["isViewingDrilldown"] = serverVm.IsViewingDrilldown;
             state["hasCatalogEntries"] = serverVm.CatalogViewModel.HasEntries;

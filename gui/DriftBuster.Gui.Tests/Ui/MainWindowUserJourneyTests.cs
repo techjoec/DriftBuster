@@ -37,7 +37,9 @@ public sealed class MainWindowUserJourneyTests
             {
                 var list = plans.ToList();
                 await Task.Yield();
-                return BuildScanResponse(list);
+                var response = BuildScanResponse(list);
+                response.Comparison = SampleComparison.Build();
+                return response;
             },
         };
 
@@ -94,8 +96,11 @@ public sealed class MainWindowUserJourneyTests
         await serverSelection!.RunAllCommand.ExecuteAsync(null);
         await WaitUntilAsync(() => !serverSelection.IsBusy);
         serverSelection.CatalogViewModel.HasEntries.Should().BeTrue();
-        serverSelection.IsViewingCatalog.Should().BeTrue();
+        serverSelection.IsViewingCompare.Should().BeTrue("a scan lands on the settings comparison");
+        serverSelection.CompareViewModel.Headline.Should().Be("1 of 2 servers differ from baseline.");
         serverSelection.FilteredActivityEntries.Should().NotBeEmpty();
+        serverSelection.ShowCatalogCommand.Execute(null);
+        serverSelection.IsViewingCatalog.Should().BeTrue();
 
         var catalogEntry = serverSelection.CatalogViewModel.FilteredEntries.First();
         serverSelection.CatalogViewModel.DrilldownCommand.Execute(catalogEntry);
@@ -123,6 +128,17 @@ public sealed class MainWindowUserJourneyTests
         serverSelection.ShowCatalogCommand.Execute(null);
         serverSelection.IsViewingCatalog.Should().BeTrue();
         serverSelection.ShowDrilldownCommand.CanExecute(null).Should().BeTrue();
+
+        // A file's details opened from Compare go back to Compare.
+        serverSelection.ShowCompareCommand.Execute(null);
+        var compareFile = serverSelection.CompareViewModel.VisibleFiles.First();
+        serverSelection.CompareViewModel.OpenDetailsCommand.Execute(compareFile);
+        if (serverSelection.IsViewingDrilldown)
+        {
+            serverSelection.DrilldownViewModel!.BackCommand.Execute(null);
+        }
+
+        serverSelection.IsViewingCompare.Should().BeTrue();
 
         serverSelection.CopyActivityCommand.CanExecute(serverSelection.FilteredActivityEntries.First()).Should().BeTrue();
         serverSelection.CopyActivityCommand.Execute(serverSelection.FilteredActivityEntries.First());

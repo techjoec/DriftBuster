@@ -1,0 +1,193 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             xmlns:automation="using:Avalonia.Automation"
+             x:Class="DriftBuster.Gui.Views.CompareView"
+             x:DataType="vm:CompareViewModel">
+  <UserControl.Styles>
+    <!-- A server line reads like text and acts as a filter toggle. -->
+    <Style Selector="Button.server-line">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Small}" />
+    </Style>
+    <Style Selector="Button.server-line.focused">
+      <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}" />
+    </Style>
+    <Style Selector="TextBlock.dot">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    </Style>
+    <Style Selector="TextBlock.dot.ok">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.OkText}" />
+    </Style>
+    <Style Selector="TextBlock.dot.differs">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.DiffersText}" />
+    </Style>
+    <Style Selector="TextBlock.dot.failed">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.MissingText}" />
+    </Style>
+    <Style Selector="TextBlock.file-summary.differs">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.DiffersText}" />
+    </Style>
+    <Style Selector="Border.cell">
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="Margin" Value="2,1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Small}" />
+    </Style>
+    <Style Selector="Border.cell.differs">
+      <Setter Property="Background" Value="{DynamicResource Brush.DiffersBackground}" />
+    </Style>
+    <Style Selector="Border.cell.differs TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.absent">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+      <Setter Property="FontStyle" Value="Italic" />
+    </Style>
+    <Style Selector="Border.cell.differs TextBlock.absent">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.MissingText}" />
+    </Style>
+    <Style Selector="Border.setting-row">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="Padding" Value="0,2" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="14">
+    <!-- What differs, per server, in one sentence each. -->
+    <Border Classes="surface" CornerRadius="{DynamicResource Radius.Large}">
+      <StackPanel Spacing="8">
+        <TextBlock Text="{Binding Headline}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding Servers}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CompareServerViewModel">
+              <Button Classes="server-line"
+                      Classes.focused="{Binding IsFocused}"
+                      Command="{Binding ((vm:CompareViewModel)DataContext).FocusServerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      CommandParameter="{Binding}"
+                      ToolTip.Tip="Show only what differs on this server"
+                      automation:AutomationProperties.AutomationId="Compare.Server"
+                      automation:AutomationProperties.Name="{Binding Label, StringFormat='Show only what differs on {0}'}">
+                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
+                  <TextBlock Classes="dot" Classes.ok="{Binding Matches}" Classes.differs="{Binding Differs}" Classes.failed="{Binding Failed}"
+                             Text="●" VerticalAlignment="Top" />
+                  <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="2" Text="{Binding Summary}" TextWrapping="Wrap" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <!-- Filters and export. -->
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+      <CheckBox Content="Only show differences"
+                IsChecked="{Binding DifferencesOnly}"
+                VerticalAlignment="Center"
+                automation:AutomationProperties.AutomationId="Compare.DifferencesOnly" />
+      <TextBox Grid.Column="1"
+               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+               PlaceholderText="Search settings, values or files"
+               automation:AutomationProperties.AutomationId="Compare.Search"
+               automation:AutomationProperties.Name="Search settings, values or files" />
+      <Button Grid.Column="2"
+              Content="Save report"
+              Classes="outline"
+              Command="{Binding SaveReportCommand}"
+              ToolTip.Tip="Save this comparison as an HTML report and a CSV file"
+              automation:AutomationProperties.AutomationId="Compare.SaveReport" />
+    </Grid>
+
+    <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasFocus}">
+      <TextBlock Text="{Binding FocusText}" VerticalAlignment="Center" FontWeight="SemiBold" />
+      <Button Content="Show all servers"
+              Classes="outline"
+              Command="{Binding ClearFocusCommand}"
+              automation:AutomationProperties.AutomationId="Compare.ClearFocus" />
+    </StackPanel>
+
+    <TextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" Classes="subtitle" />
+    <TextBlock Text="{Binding EmptyMessage}" IsVisible="{Binding HasEmptyMessage}" FontSize="16" TextWrapping="Wrap" />
+
+    <!-- One card per file: what differs in words, then the settings table. -->
+    <ItemsControl ItemsSource="{Binding VisibleFiles}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:CompareFileViewModel">
+          <Border Classes="surface" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,12">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding FileName}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Folder}" IsVisible="{Binding HasFolder}" Classes="subtitle" TextWrapping="Wrap" />
+                  <TextBlock Classes="file-summary" Classes.differs="{Binding Differs}" Text="{Binding Summary}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="File details"
+                        Classes="outline"
+                        VerticalAlignment="Top"
+                        IsVisible="{Binding HasDetails}"
+                        Command="{Binding ((vm:CompareViewModel)DataContext).OpenDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}"
+                        automation:AutomationProperties.AutomationId="Compare.FileDetails"
+                        automation:AutomationProperties.Name="{Binding Path, StringFormat='File details for {0}'}" />
+              </Grid>
+
+              <StackPanel IsVisible="{Binding HasVisibleRows}">
+                <Grid ColumnDefinitions="2*,5*">
+                  <TextBlock Text="Setting" Classes="subtitle" FontWeight="SemiBold" Margin="8,4" />
+                  <ItemsControl Grid.Column="1"
+                                ItemsSource="{Binding ((vm:CompareViewModel)DataContext).Columns, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <UniformGrid Rows="1" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" Classes="subtitle" FontWeight="SemiBold" Margin="10,4" TextWrapping="Wrap" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding VisibleRows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CompareRowViewModel">
+                      <Border Classes="setting-row">
+                        <Grid ColumnDefinitions="2*,5*">
+                          <SelectableTextBlock Text="{Binding Key}" TextWrapping="Wrap" Margin="8,5" />
+                          <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:CompareCellViewModel">
+                                <Border Classes="cell" Classes.differs="{Binding IsDifferent}">
+                                  <SelectableTextBlock Text="{Binding Text}" Classes.absent="{Binding IsAbsent}" TextWrapping="Wrap"
+                                                       automation:AutomationProperties.Name="{Binding AutomationName}" />
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+              <TextBlock Text="{Binding RowNote}" IsVisible="{Binding HasRowNote}" Classes="subtitle" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>
