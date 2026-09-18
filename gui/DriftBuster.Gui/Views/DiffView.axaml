@@ -3,17 +3,18 @@
              xmlns:automation="using:Avalonia.Automation"
              xmlns:conv="using:DriftBuster.Gui.Converters"
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             xmlns:views="using:DriftBuster.Gui.Views"
              x:Class="DriftBuster.Gui.Views.DiffView"
              x:DataType="vm:DiffViewModel">
-  <ScrollViewer>
-    <StackPanel Spacing="24">
+  <ScrollViewer AllowAutoHide="False">
+    <StackPanel Spacing="24" Margin="0,0,18,0">
       <StackPanel Spacing="6">
         <TextBlock Classes="heading" Text="Diff planner" />
         <TextBlock Classes="subtitle"
                    Text="Compare multiple snapshots, capture plan metadata, and export raw JSON." />
       </StackPanel>
 
-      <Border Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}">
+      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
         <StackPanel Spacing="18">
           <StackPanel Orientation="Horizontal"
                       Spacing="12"
@@ -22,7 +23,7 @@
             <TextBlock Text="Recent plans"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center" />
-            <ComboBox Width="360"
+            <ComboBox MinWidth="360"
                       ItemsSource="{Binding MruEntries}"
                       SelectedItem="{Binding SelectedMruEntry, Mode=TwoWay}"
                       PlaceholderText="Select a previous diff"
@@ -54,13 +55,12 @@
                                  Foreground="{DynamicResource Brush.TextSecondary}"
                                  IsVisible="{Binding IsBaseline}" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <TextBox Width="420"
-                               PlaceholderText="Select snapshot"
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                      <TextBox PlaceholderText="Select snapshot"
                                Text="{Binding Path, Mode=TwoWay}"
                                automation:AutomationProperties.AutomationId="DiffPlanner.Input.Path"
                                automation:AutomationProperties.Name="Snapshot path" />
-                      <StackPanel Orientation="Horizontal" Spacing="8">
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                         <Button Content="Browse" Classes="outline"
                                 Tag="{Binding}"
                                 Click="OnBrowseFile"
@@ -70,7 +70,7 @@
                                 CommandParameter="{Binding}"
                                 automation:AutomationProperties.AutomationId="DiffPlanner.Input.Remove" />
                       </StackPanel>
-                    </StackPanel>
+                    </Grid>
                     <TextBlock Text="{Binding Error}"
                                Foreground="{DynamicResource Brush.Accent}"
                                FontSize="12"
@@ -109,12 +109,18 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}">
+      <!-- What differs, setting by setting: the same view Multi-server uses, one column per file. -->
+      <StackPanel x:Name="SettingsSection" Spacing="8" IsVisible="{Binding Settings.HasData}">
+        <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" />
+        <views:CompareView DataContext="{Binding Settings}" />
+      </StackPanel>
+
+      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
         <StackPanel Spacing="18">
           <StackPanel>
-            <TextBlock Text="Plan output" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="Line-by-line diff" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Classes="subtitle"
-                       Text="Preview generated diff plans for each comparison." />
+                       Text="The same comparison as text lines, for when you need the exact file contents." />
           </StackPanel>
 
           <StackPanel Orientation="Horizontal"
@@ -227,7 +233,7 @@
                                   Click="OnCopyDiff"
                                   automation:AutomationProperties.AutomationId="DiffPlanner.Comparison.CopyDiff" />
                         </StackPanel>
-                        <ScrollViewer Height="200">
+                        <ScrollViewer MaxHeight="400" AllowAutoHide="False">
                           <TextBlock Text="{Binding UnifiedDiff}"
                                      FontFamily="Consolas"
                                      TextWrapping="Wrap" />
@@ -257,7 +263,7 @@
                   IsVisible="{Binding IsSanitizedViewActive}"
                   automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Sanitized"
                   automation:AutomationProperties.Name="Sanitized diff JSON">
-            <ScrollViewer Height="160">
+            <ScrollViewer MaxHeight="320" AllowAutoHide="False">
               <TextBlock Text="{Binding SanitizedJson}"
                          FontFamily="Consolas"
                          TextWrapping="Wrap" />
@@ -271,7 +277,7 @@
                   IsVisible="{Binding IsRawViewActive}"
                   automation:AutomationProperties.AutomationId="DiffPlanner.JsonPane.Raw"
                   automation:AutomationProperties.Name="Raw diff JSON">
-            <ScrollViewer Height="160">
+            <ScrollViewer MaxHeight="320" AllowAutoHide="False">
               <TextBlock Text="{Binding RawJson}"
                          FontFamily="Consolas"
                          TextWrapping="Wrap" />

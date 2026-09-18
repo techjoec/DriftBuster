@@ -16,7 +16,7 @@
     <Thickness x:Key="ServerSelection.CardMargin">0,0,0,16</Thickness>
     <Thickness x:Key="ServerSelection.HighlightPadding">18</Thickness>
   </UserControl.Resources>
-  <ScrollViewer>
+  <ScrollViewer AllowAutoHide="False" Padding="0,0,18,0">
     <StackPanel Margin="{DynamicResource ServerSelection.OuterMargin}" Spacing="{DynamicResource ServerSelection.StackSpacing}">
       <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
         <ToggleButton x:Name="SetupButton"

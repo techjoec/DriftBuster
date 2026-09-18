@@ -18,6 +18,7 @@
         <ListBox ItemsSource="{Binding Profiles}"
                  SelectedItem="{Binding SelectedProfile}"
                  MinHeight="240"
+                 Background="Transparent"
                  automation:AutomationProperties.AutomationId="Profiles.List"
                  automation:AutomationProperties.Name="Saved profiles">
           <ListBox.ItemTemplate>
@@ -38,9 +39,21 @@
       </StackPanel>
     </Border>
 
-    <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}" Margin="0,6,0,0">
-      <ScrollViewer>
-        <StackPanel Spacing="18">
+    <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}" Margin="0,6,0,0">
+      <Grid RowDefinitions="Auto,*" RowSpacing="12">
+      <!-- The actions stay in view while the form below scrolls. -->
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Save profile" Classes="primary" Command="{Binding SaveCommand}" automation:AutomationProperties.AutomationId="Profiles.Save" />
+          <Button Content="Run profile" Classes="primary" Command="{Binding RunCommand}" automation:AutomationProperties.AutomationId="Profiles.Run" />
+          <Button Content="Prepare offline collector" Classes="outline"
+                  Click="OnPrepareOfflineCollector"
+                  automation:AutomationProperties.AutomationId="Profiles.PrepareOfflineCollector" />
+        </StackPanel>
+        <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" TextWrapping="Wrap" />
+      </StackPanel>
+      <ScrollViewer Grid.Row="1" AllowAutoHide="False">
+        <StackPanel Spacing="18" Margin="0,0,18,0">
           <StackPanel Spacing="6">
             <TextBlock Text="Profile details" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Classes="subtitle" Text="Define paths, baseline, and options for repeatable scans." />
@@ -48,12 +61,12 @@
 
           <StackPanel Spacing="8">
             <TextBlock Text="Name" FontWeight="SemiBold" />
-            <TextBox Text="{Binding ProfileName, Mode=TwoWay}" Width="360" automation:AutomationProperties.AutomationId="Profiles.Name" automation:AutomationProperties.Name="Profile name" />
+            <TextBox Text="{Binding ProfileName, Mode=TwoWay}" automation:AutomationProperties.AutomationId="Profiles.Name" automation:AutomationProperties.Name="Profile name" />
           </StackPanel>
 
           <StackPanel Spacing="8">
             <TextBlock Text="Description" FontWeight="SemiBold" />
-            <TextBox Text="{Binding ProfileDescription, Mode=TwoWay}" Width="520" automation:AutomationProperties.AutomationId="Profiles.Description" automation:AutomationProperties.Name="Profile description" />
+            <TextBox Text="{Binding ProfileDescription, Mode=TwoWay}" automation:AutomationProperties.AutomationId="Profiles.Description" automation:AutomationProperties.Name="Profile description" />
           </StackPanel>
 
           <StackPanel Spacing="8">
@@ -72,12 +85,11 @@
                                    Classes="subtitle"
                                    IsVisible="{Binding IsBaseline}" />
                       </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <TextBox Text="{Binding Path, Mode=TwoWay}"
-                                 Width="360"
                                  automation:AutomationProperties.AutomationId="Profiles.Source.Path"
                                  automation:AutomationProperties.Name="Source path" />
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                           <Button Content="File"
                                   Tag="{Binding}"
                                   Click="OnBrowseFile"
@@ -91,26 +103,26 @@
                                   CommandParameter="{Binding}"
                                   automation:AutomationProperties.AutomationId="Profiles.Source.Remove" />
                         </StackPanel>
-                      </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      </Grid>
+                      <Grid ColumnDefinitions="*,2*,Auto" ColumnSpacing="8">
                         <TextBox Text="{Binding Alias, Mode=TwoWay}"
-                                 Width="160"
                                  PlaceholderText="Alias (optional)"
                                  automation:AutomationProperties.AutomationId="Profiles.Source.Alias"
                                  automation:AutomationProperties.Name="Source alias" />
-                        <TextBox Text="{Binding Exclude, Mode=TwoWay}"
-                                 Width="260"
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding Exclude, Mode=TwoWay}"
                                  AcceptsReturn="True"
                                  TextWrapping="NoWrap"
                                  MinHeight="32"
                                  PlaceholderText="Exclude patterns (one per line)"
                                  automation:AutomationProperties.AutomationId="Profiles.Source.Exclude"
                                  automation:AutomationProperties.Name="Source exclude patterns" />
-                        <CheckBox Content="Optional"
+                        <CheckBox Grid.Column="2"
+                                  Content="Optional"
                                   IsChecked="{Binding Optional, Mode=TwoWay}"
                                   automation:AutomationProperties.AutomationId="Profiles.Source.Optional"
                                   automation:AutomationProperties.Name="Optional source" />
-                      </StackPanel>
+                      </Grid>
                       <TextBlock Text="{Binding Error}" Foreground="{DynamicResource Brush.Accent}" Classes="subtitle" />
                     </StackPanel>
                   </Border>
@@ -125,14 +137,14 @@
             <ItemsControl ItemsSource="{Binding Options}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-                    <TextBox Text="{Binding Key, Mode=TwoWay}" Width="180" PlaceholderText="Key" automation:AutomationProperties.AutomationId="Profiles.Option.Key" automation:AutomationProperties.Name="Option key" />
-                    <TextBox Text="{Binding Value, Mode=TwoWay}" Width="320" PlaceholderText="Value" automation:AutomationProperties.AutomationId="Profiles.Option.Value" automation:AutomationProperties.Name="Option value" />
-                    <Button Content="Remove" Classes="outline"
+                  <Grid ColumnDefinitions="*,2*,Auto" ColumnSpacing="8" Margin="0,0,0,8">
+                    <TextBox Text="{Binding Key, Mode=TwoWay}" PlaceholderText="Key" automation:AutomationProperties.AutomationId="Profiles.Option.Key" automation:AutomationProperties.Name="Option key" />
+                    <TextBox Grid.Column="1" Text="{Binding Value, Mode=TwoWay}" PlaceholderText="Value" automation:AutomationProperties.AutomationId="Profiles.Option.Value" automation:AutomationProperties.Name="Option value" />
+                    <Button Grid.Column="2" Content="Remove" Classes="outline"
                             Command="{Binding ((vm:RunProfilesViewModel)DataContext).RemoveOptionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}"
                             automation:AutomationProperties.AutomationId="Profiles.Option.Remove" />
-                  </StackPanel>
+                  </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -153,53 +165,46 @@
                 <DataTemplate>
                   <Border Margin="0,0,0,10" Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface">
                     <StackPanel Spacing="8">
-                      <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBox Width="160"
-                                 Text="{Binding Name, Mode=TwoWay}"
+                      <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="8">
+                        <TextBox Text="{Binding Name, Mode=TwoWay}"
                                  PlaceholderText="Name"
                                  automation:AutomationProperties.AutomationId="Profiles.Schedule.Name"
                                  automation:AutomationProperties.Name="Schedule name" />
-                        <ComboBox Width="200"
-                                  IsEditable="True"
+                        <ComboBox Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch"
                                   ItemsSource="{Binding ((vm:RunProfilesViewModel)DataContext).ProfileSuggestions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                   SelectedItem="{Binding Profile, Mode=TwoWay}"
                                   Text="{Binding Profile, Mode=TwoWay}"
                                   PlaceholderText="Profile"
                                   automation:AutomationProperties.AutomationId="Profiles.Schedule.Profile"
                                   automation:AutomationProperties.Name="Schedule profile" />
-                        <TextBox Width="140"
-                                 Text="{Binding Every, Mode=TwoWay}"
+                        <TextBox Grid.Column="2" Text="{Binding Every, Mode=TwoWay}"
                                  PlaceholderText="Interval (e.g. 24h)"
                                  automation:AutomationProperties.AutomationId="Profiles.Schedule.Interval"
                                  automation:AutomationProperties.Name="Schedule interval" />
-                        <Button Content="Remove"
+                        <Button Grid.Column="3" Content="Remove"
                                 Classes="outline"
                                 Command="{Binding ((vm:RunProfilesViewModel)DataContext).RemoveScheduleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}"
                                 automation:AutomationProperties.AutomationId="Profiles.Schedule.Remove" />
-                      </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBox Width="200"
-                                 Text="{Binding StartAt, Mode=TwoWay}"
+                      </Grid>
+                      <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="8">
+                        <TextBox Text="{Binding StartAt, Mode=TwoWay}"
                                  PlaceholderText="Start at (UTC, optional)"
                                  automation:AutomationProperties.AutomationId="Profiles.Schedule.StartAt"
                                  automation:AutomationProperties.Name="Schedule start time" />
-                        <TextBox Width="120"
-                                 Text="{Binding WindowStart, Mode=TwoWay}"
+                        <TextBox Grid.Column="1" Text="{Binding WindowStart, Mode=TwoWay}"
                                  PlaceholderText="Window start"
                                  automation:AutomationProperties.AutomationId="Profiles.Schedule.WindowStart"
                                  automation:AutomationProperties.Name="Window start" />
-                        <TextBox Width="120"
-                                 Text="{Binding WindowEnd, Mode=TwoWay}"
+                        <TextBox Grid.Column="2" Text="{Binding WindowEnd, Mode=TwoWay}"
                                  PlaceholderText="Window end"
                                  automation:AutomationProperties.AutomationId="Profiles.Schedule.WindowEnd"
                                  automation:AutomationProperties.Name="Window end" />
-                        <TextBox Width="120"
-                                 Text="{Binding WindowTimezone, Mode=TwoWay}"
+                        <TextBox Grid.Column="3" Text="{Binding WindowTimezone, Mode=TwoWay}"
                                  PlaceholderText="Timezone"
                                  automation:AutomationProperties.AutomationId="Profiles.Schedule.WindowTimezone"
                                  automation:AutomationProperties.Name="Window timezone" />
-                      </StackPanel>
+                      </Grid>
                       <TextBox Text="{Binding TagsText, Mode=TwoWay}"
                                PlaceholderText="Tags (comma separated)"
                                automation:AutomationProperties.AutomationId="Profiles.Schedule.Tags"
@@ -211,23 +216,21 @@
                             <DataTemplate>
                               <!-- ReflectionBinding: the command lives on the nested ScheduleEntry type and the compiled
                                    binding path parser does not accept the Outer+Nested cast form. -->
-                              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
-                                <TextBox Width="160"
-                                         Text="{Binding Key, Mode=TwoWay}"
+                              <Grid ColumnDefinitions="*,2*,Auto" ColumnSpacing="8" Margin="0,0,0,6">
+                                <TextBox Text="{Binding Key, Mode=TwoWay}"
                                          PlaceholderText="Key"
                                          automation:AutomationProperties.AutomationId="Profiles.Schedule.Metadata.Key"
                                          automation:AutomationProperties.Name="Metadata key" />
-                                <TextBox Width="220"
-                                         Text="{Binding Value, Mode=TwoWay}"
+                                <TextBox Grid.Column="1" Text="{Binding Value, Mode=TwoWay}"
                                          PlaceholderText="Value"
                                          automation:AutomationProperties.AutomationId="Profiles.Schedule.Metadata.Value"
                                          automation:AutomationProperties.Name="Metadata value" />
-                                <Button Content="Remove"
+                                <Button Grid.Column="2" Content="Remove"
                                         Classes="outline"
                                         Command="{ReflectionBinding DataContext.RemoveMetadataCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         CommandParameter="{Binding}"
                                         automation:AutomationProperties.AutomationId="Profiles.Schedule.Metadata.Remove" />
-                              </StackPanel>
+                              </Grid>
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -251,16 +254,6 @@
                     HorizontalAlignment="Left"
                     automation:AutomationProperties.AutomationId="Profiles.AddSchedule" />
           </StackPanel>
-
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <Button Content="Save profile" Classes="primary" Command="{Binding SaveCommand}" automation:AutomationProperties.AutomationId="Profiles.Save" />
-            <Button Content="Run profile" Classes="primary" Command="{Binding RunCommand}" automation:AutomationProperties.AutomationId="Profiles.Run" />
-            <Button Content="Prepare offline collector" Classes="outline"
-                    Click="OnPrepareOfflineCollector"
-                    automation:AutomationProperties.AutomationId="Profiles.PrepareOfflineCollector" />
-          </StackPanel>
-
-          <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" />
 
           <StackPanel Spacing="10" IsVisible="{Binding HasRunResults}">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -296,6 +289,7 @@
           </StackPanel>
         </StackPanel>
       </ScrollViewer>
+      </Grid>
     </Border>
   </Grid>
 </UserControl>

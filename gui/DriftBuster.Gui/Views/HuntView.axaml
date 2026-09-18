@@ -4,27 +4,26 @@
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
              x:Class="DriftBuster.Gui.Views.HuntView"
              x:DataType="vm:HuntViewModel">
-  <ScrollViewer>
-    <StackPanel Spacing="24">
+  <ScrollViewer AllowAutoHide="False">
+    <StackPanel Spacing="24" Margin="0,0,18,0">
       <StackPanel Spacing="6">
         <TextBlock Classes="heading" Text="Hunt explorer" />
         <TextBlock Classes="subtitle"
                    Text="Scan directories for dynamic signals and surface contextual metadata." />
       </StackPanel>
 
-      <Border Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}">
+      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
         <StackPanel Spacing="18">
           <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
             <StackPanel Spacing="8" Margin="0,0,12,0">
               <TextBlock Text="Target path" FontSize="14" FontWeight="SemiBold" />
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBox Width="420"
-                         PlaceholderText="Directory or file"
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <TextBox PlaceholderText="Directory or file"
                          Text="{Binding DirectoryPath, Mode=TwoWay}"
                          automation:AutomationProperties.AutomationId="Hunt.Path"
                          automation:AutomationProperties.Name="Target path" />
-                <Button Content="Browse" Classes="outline" Click="OnBrowseDirectory" automation:AutomationProperties.AutomationId="Hunt.Browse" />
-              </StackPanel>
+                <Button Grid.Column="1" Content="Browse" Classes="outline" Click="OnBrowseDirectory" automation:AutomationProperties.AutomationId="Hunt.Browse" />
+              </Grid>
               <TextBlock Text="{Binding DirectoryError}"
                          Foreground="{DynamicResource Brush.Accent}"
                          FontSize="12"
@@ -33,9 +32,7 @@
 
             <StackPanel Grid.Column="0" Grid.Row="1" Spacing="8" Margin="0,12,12,0">
               <TextBlock Text="Excerpt filter" FontSize="14" FontWeight="SemiBold" />
-              <TextBox Width="420"
-                       HorizontalAlignment="Left"
-                       PlaceholderText="Optional excerpt filter"
+              <TextBox PlaceholderText="Optional excerpt filter"
                        Text="{Binding Pattern, Mode=TwoWay}"
                        automation:AutomationProperties.AutomationId="Hunt.Pattern"
                        automation:AutomationProperties.Name="Excerpt filter" />
@@ -83,7 +80,7 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="surface" Padding="24" CornerRadius="{DynamicResource Radius.Large}">
+      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
         <StackPanel Spacing="18">
           <TextBlock Text="Findings" FontSize="18" FontWeight="SemiBold" />
           <TextBlock Classes="subtitle"
@@ -143,7 +140,7 @@
                     automation:AutomationProperties.AutomationId="Hunt.RawJson"
                     automation:AutomationProperties.Name="Raw JSON">
             <Border Background="{DynamicResource Brush.SurfaceAlt}" Padding="16" CornerRadius="{DynamicResource Radius.Medium}">
-              <ScrollViewer Height="160">
+              <ScrollViewer MaxHeight="320" AllowAutoHide="False">
                 <TextBlock Text="{Binding RawJson}"
                            FontFamily="Consolas"
                            TextWrapping="Wrap" />

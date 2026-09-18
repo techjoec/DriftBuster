@@ -67,6 +67,9 @@ namespace DriftBuster.Gui.ViewModels
 
         public bool HasData => _comparison is not null && _files.Count > 0;
 
+        /// <summary>What a column is, for the headline: "server" on Multi-server, "file" in the Diff planner.</summary>
+        public string ItemNoun { get; init; } = "server";
+
         public int ColumnCount => Math.Max(Columns.Count, 1);
 
         [ObservableProperty]
@@ -137,7 +140,7 @@ namespace DriftBuster.Gui.ViewModels
                 _files.AddRange(comparison.Files.Select(file => new CompareFileViewModel(file, labels)));
             }
 
-            Headline = BuildHeadline(comparison);
+            Headline = BuildHeadline(comparison, ItemNoun);
             OnPropertyChanged(nameof(HasData));
             OnPropertyChanged(nameof(ColumnCount));
             SaveReportCommand.NotifyCanExecuteChanged();
@@ -172,7 +175,7 @@ namespace DriftBuster.Gui.ViewModels
                 : "No files.";
         }
 
-        private static string BuildHeadline(SettingsComparison? comparison)
+        private static string BuildHeadline(SettingsComparison? comparison, string noun)
         {
             if (comparison is null || comparison.Hosts.Length == 0)
             {
@@ -184,8 +187,8 @@ namespace DriftBuster.Gui.ViewModels
             var failed = others.Count(host => !host.Scanned);
             var baseline = comparison.Hosts.FirstOrDefault(host => host.IsBaseline)?.Label ?? comparison.BaselineHostId;
             var text = differing == 0
-                ? $"All servers match {baseline}."
-                : string.Create(CultureInfo.InvariantCulture, $"{differing} of {others.Count} {(others.Count == 1 ? "server differs" : "servers differ")} from {baseline}.");
+                ? $"All {noun}s match {baseline}."
+                : string.Create(CultureInfo.InvariantCulture, $"{differing} of {others.Count} {(others.Count == 1 ? noun + " differs" : noun + "s differ")} from {baseline}.");
             return failed == 0 ? text : string.Create(CultureInfo.InvariantCulture, $"{text} {failed} could not be scanned.");
         }
 

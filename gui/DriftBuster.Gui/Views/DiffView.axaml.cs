@@ -1,11 +1,14 @@
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 
 using DriftBuster.Gui.ViewModels;
 
@@ -18,9 +21,45 @@ namespace DriftBuster.Gui.Views
         internal Func<string, Task>? ClipboardSetTextOverride { get; set; }
         internal IStorageProvider? StorageProviderOverride { get; set; }
 
+        private CompareViewModel? _settings;
+
         public DiffView()
         {
             InitializeComponent();
+            DataContextChanged += (_, _) => WatchSettings((DataContext as DiffViewModel)?.Settings);
+            AttachedToVisualTree += (_, _) => WatchSettings((DataContext as DiffViewModel)?.Settings);
+            DetachedFromVisualTree += (_, _) => WatchSettings(null);
+        }
+
+        private void WatchSettings(CompareViewModel? settings)
+        {
+            if (_settings is not null)
+            {
+                _settings.PropertyChanged -= OnSettingsChanged;
+            }
+
+            _settings = settings;
+            if (_settings is not null)
+            {
+                _settings.PropertyChanged += OnSettingsChanged;
+            }
+        }
+
+        // A fresh comparison lands below the inputs; scroll it into view so the answer is on screen.
+        private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (!string.Equals(e.PropertyName, nameof(CompareViewModel.HasData), StringComparison.Ordinal) || _settings is not { HasData: true })
+            {
+                return;
+            }
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (this.FindControl<StackPanel>("SettingsSection") is { } section)
+                {
+                    section.BringIntoView(new Rect(0, 0, section.Bounds.Width, Math.Min(section.Bounds.Height, 480)));
+                }
+            }, DispatcherPriority.Background);
         }
 
         private void InitializeComponent()

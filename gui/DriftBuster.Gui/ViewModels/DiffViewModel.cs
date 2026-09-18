@@ -42,6 +42,9 @@ namespace DriftBuster.Gui.ViewModels
         public ObservableCollection<DiffInput> Inputs { get; } = new();
         public ObservableCollection<DiffComparisonView> Comparisons { get; } = new();
 
+        /// <summary>The planned files compared setting by setting, each file as a column.</summary>
+        public CompareViewModel Settings { get; } = new() { ItemNoun = "file" };
+
         public ReadOnlyObservableCollection<DiffPlannerMruEntryView> MruEntries { get; }
 
         public Task Initialization => _initializationTask;
@@ -363,6 +366,7 @@ namespace DriftBuster.Gui.ViewModels
             {
                 ErrorMessage = ErrorText.Plain(ex);
                 Comparisons.Clear();
+                Settings.Reset();
                 RawJson = string.Empty;
                 SanitizedJson = string.Empty;
                 JsonViewMode = DiffJsonViewMode.Raw;
@@ -377,6 +381,8 @@ namespace DriftBuster.Gui.ViewModels
             {
                 Comparisons.Add(new DiffComparisonView(comparison));
             }
+
+            Settings.Load(result.Settings);
 
             RawJson = result.RawJson ?? string.Empty;
             SanitizedJson = result.SanitizedJson ?? string.Empty;
