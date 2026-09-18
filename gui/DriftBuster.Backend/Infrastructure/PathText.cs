@@ -9,6 +9,35 @@ public static class PathText
     /// </summary>
     public static string Name(string path) => LexicalPath.Name(path);
 
+    /// <summary>
+    /// Labels for two paths shown side by side: their file names, or, when the names are the same, each path from the
+    /// nearest folder that tells them apart ("C:\a\baseline\web.config" and "\\host\C$\a\prod\web.config" read
+    /// "baseline/web.config" and "prod/web.config").
+    /// </summary>
+    public static (string Left, string Right) DistinctNames(string left, string right)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+        var leftName = Name(left);
+        var rightName = Name(right);
+        if (!string.Equals(leftName, rightName, StringComparison.OrdinalIgnoreCase))
+        {
+            return (leftName, rightName);
+        }
+
+        var leftParts = left.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
+        var rightParts = right.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
+        var shared = 0;
+        while (shared < leftParts.Length && shared < rightParts.Length
+            && string.Equals(leftParts[^(shared + 1)], rightParts[^(shared + 1)], StringComparison.OrdinalIgnoreCase))
+        {
+            shared++;
+        }
+
+        string Label(string[] parts) => string.Join('/', parts[Math.Max(parts.Length - shared - 1, 0)..]);
+        return (Label(leftParts), Label(rightParts));
+    }
+
     /// <summary><see cref="Name"/> lowered with the invariant culture.</summary>
     public static string NameLower(string path) => EngineText.Lower(Name(path));
 

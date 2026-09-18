@@ -230,7 +230,7 @@ public sealed partial class MultiServerRunner
 
         using var buffer = new MemoryStream((int)stream.Length);
         stream.CopyTo(buffer);
-        var text = ReplacingUtf8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        var text = TextDecoding.Decode(buffer.GetBuffer().AsSpan(0, (int)buffer.Length), ReplacingUtf8);
         return text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
     }
 

@@ -126,12 +126,13 @@ internal static class DiffCommand
             ? ContentTypeResolver.ResolvePair(baselinePath, candidatePath)
             : args.ContentType;
         var tokens = args.MaskTokens.Where(token => token.Length > 0).ToList();
+        var (fromLabel, toLabel) = PathText.DistinctNames(baselinePath, candidatePath);
         var result = DiffBuilder.BuildUnifiedDiff(
             baselineContent,
             candidateContent,
             contentType,
-            fromLabel: PathText.Name(baselinePath),
-            toLabel: PathText.Name(candidatePath),
+            fromLabel: fromLabel,
+            toLabel: toLabel,
             maskTokens: tokens.Count > 0 ? tokens : null,
             placeholder: args.Placeholder,
             contextLines: (int)BigInteger.Min(args.ContextLines, int.MaxValue));
@@ -144,7 +145,7 @@ internal static class DiffCommand
         }
         else
         {
-            ConsoleText.Write(stdout, $"=== {PathText.Name(baselinePath)} → {PathText.Name(candidatePath)} ({contentType}) ===\n");
+            ConsoleText.Write(stdout, $"=== {fromLabel} → {toLabel} ({contentType}) ===\n");
             ConsoleText.Write(stdout, result.Diff.Trim('\n').Length > 0 ? $"{result.Diff}\n" : "(no differences)\n");
         }
 
@@ -178,7 +179,7 @@ internal static class DiffCommand
             throw new FileNotFoundException($"Unable to read {LexicalPath.Str(path)}: {exc.Message}", path, exc);
         }
 
-        return Utf8Ignore.GetString(raw).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        return TextDecoding.Decode(raw, Utf8Ignore).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
     }
 
     /// <summary><c>_build_patch_name(baseline, candidate)</c>: <c>{left}--{right}.patch</c> from the stems with spaces as hyphens.</summary>

@@ -324,7 +324,6 @@ namespace DriftBuster.Backend
                 .ToList();
 
             var baselinePath = EnsureFile(resolved[0], true);
-            var baselineName = Path.GetFileName(baselinePath);
             var baselineContent = ReadText(baselinePath);
 
             var comparisons = new List<DiffComparison>();
@@ -333,7 +332,7 @@ namespace DriftBuster.Backend
             for (var index = 1; index < resolved.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var (comparison, artifact) = BuildComparison(resolved[index], baselinePath, baselineName, baselineContent);
+                var (comparison, artifact) = BuildComparison(resolved[index], baselinePath, baselineContent);
                 comparisons.Add(comparison);
                 artifacts.Add(artifact);
             }
@@ -354,15 +353,11 @@ namespace DriftBuster.Backend
             return result;
         }
 
-        private static (DiffComparison Comparison, DiffArtifact Artifact) BuildComparison(string candidateVersion, string baselinePath, string baselineName, string baselineContent)
+        private static (DiffComparison Comparison, DiffArtifact Artifact) BuildComparison(string candidateVersion, string baselinePath, string baselineContent)
         {
             var candidatePath = EnsureFile(candidateVersion, false);
-            var candidateName = Path.GetFileName(candidatePath);
             var candidateContent = ReadText(candidatePath);
-            if (string.Equals(baselineName, candidateName, StringComparison.OrdinalIgnoreCase))
-            {
-                (baselineName, candidateName) = DistinctLabels(baselinePath, candidatePath);
-            }
+            var (baselineName, candidateName) = PathText.DistinctNames(baselinePath, candidatePath);
 
             var contentType = ContentTypeResolver.ResolvePair(baselinePath, candidatePath);
             var artifact = DiffBuilder.BuildUnifiedDiff(baselineContent, candidateContent, contentType, baselineName, candidateName, contextLines: 3);
@@ -393,23 +388,6 @@ namespace DriftBuster.Backend
                 UnifiedDiff = artifact.Diff,
             };
             return (comparison, artifact);
-        }
-
-        // The same file name on both sides: extend both labels leftwards to the nearest folder that tells them apart,
-        // so "C:\a\baseline\web.config" and "\\host\C$\a\prod\web.config" read "baseline/web.config" and "prod/web.config".
-        private static (string Baseline, string Candidate) DistinctLabels(string baselinePath, string candidatePath)
-        {
-            var left = baselinePath.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
-            var right = candidatePath.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
-            var shared = 0;
-            while (shared < left.Length && shared < right.Length
-                && string.Equals(left[^(shared + 1)], right[^(shared + 1)], StringComparison.OrdinalIgnoreCase))
-            {
-                shared++;
-            }
-
-            string Label(string[] segments) => string.Join('/', segments[Math.Max(segments.Length - shared - 1, 0)..]);
-            return (Label(left), Label(right));
         }
 
         private static ServerScanPlan ClonePlan(ServerScanPlan plan)
