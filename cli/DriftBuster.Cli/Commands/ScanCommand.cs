@@ -43,7 +43,11 @@ internal static class ScanCommand
     {
         var root = LexicalPath.Str(path);
         IReadOnlyList<(string Path, DetectionMatch? Match)> results;
-        var detector = new Detector(sampleSize: ConsoleText.DetectorSampleSize(sampleSize, Warn), onWarning: Warn);
+        // A tree scan reports an unreadable file and carries on; a single file, or a root that cannot be listed, still fails.
+        var detector = new SkippingDetector(ConsoleText.DetectorSampleSize(sampleSize, Warn), Detector.DefaultTotalSampleBudget, Warn)
+        {
+            OnSkipped = (_, error) => Warn($"Skipped unreadable file: {error.Message}"),
+        };
         if (EnginePath.IsFile(root))
         {
             results = [(root, detector.ScanFile(root))];

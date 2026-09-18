@@ -36,7 +36,19 @@ internal static class EngineArguments
     public static Option<double> Float(string name, double defaultValue, string description)
         => new(name) { Description = description, DefaultValueFactory = _ => defaultValue, CustomParser = result => ParseFloat(result, name) ?? defaultValue };
 
-    public static Argument<string> Positional(string name, string description) => new(name) { Description = description };
+    /// <summary>A positional value; one that starts with "-" is an unknown option, not a path (as argparse reads it).</summary>
+    public static Argument<string> Positional(string name, string description)
+    {
+        var argument = new Argument<string>(name) { Description = description };
+        argument.Validators.Add(result =>
+        {
+            if (result.Tokens.Count > 0 && result.Tokens[0].Value is { Length: > 1 } value && value[0] == '-')
+            {
+                result.AddError($"unrecognized arguments: {value}");
+            }
+        });
+        return argument;
+    }
 
     private static BigInteger? ParseInt(ArgumentResult result, string name)
     {

@@ -1,20 +1,21 @@
-using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
 
-namespace DriftBuster.Backend.MultiServer;
+namespace DriftBuster.Backend.Detection;
 
 /// <summary>
-/// The multi-server detector: a file that cannot be read or looked up is recorded in <see cref="SkippedFiles"/>
-/// and the walk continues. An error on the root being scanned (it
+/// A detector for walks that must survive single bad files (multi-server, the console scan): a file that cannot be read
+/// or looked up is recorded in <see cref="SkippedFiles"/>, reported to <see cref="OnSkipped"/>, and the walk continues. An error on the root being scanned (it
 /// cannot be looked up, read or listed) still raises. <see cref="CancellationToken"/> is checked before every entry is
 /// looked up and while the tree is walked.
 /// </summary>
-internal sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes)
-    : Detector(sampleSize: sampleSize, maxTotalSampleBytes: maxTotalSampleBytes)
+public sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes, Action<string>? onWarning = null)
+    : Detector(sampleSize: sampleSize, maxTotalSampleBytes: maxTotalSampleBytes, onWarning: onWarning)
 {
     private string? _root;
 
-    public List<string> SkippedFiles { get; } = [];
+    public IList<string> SkippedFiles { get; } = new List<string>();
+
+    public Action<string, DetectorIOException>? OnSkipped { get; set; }
 
     public CancellationToken CancellationToken { get; set; }
 
@@ -40,6 +41,7 @@ internal sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes
         }
 
         SkippedFiles.Add(path);
+        OnSkipped?.Invoke(path, error);
     }
 
     protected internal override bool IsFile(string path)
