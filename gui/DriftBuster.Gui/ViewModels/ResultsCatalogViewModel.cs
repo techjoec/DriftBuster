@@ -129,6 +129,8 @@ namespace DriftBuster.Gui.ViewModels
 
         public bool HasPartialCoverage => PartialCoverageEntries.Any();
 
+        public string PartialCoverageTitle => $"Files missing on some servers ({PartialCoverageEntries.Count()})";
+
         [ObservableProperty]
         private bool _useVirtualizedPartialCoverage;
 
@@ -365,6 +367,7 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             OnPropertyChanged(nameof(HasPartialCoverage));
+            OnPropertyChanged(nameof(PartialCoverageTitle));
             OnPropertyChanged(nameof(PartialCoverageEntries));
             ReScanAllPartialCommand.NotifyCanExecuteChanged();
             RefreshPartialCoverageVirtualization();

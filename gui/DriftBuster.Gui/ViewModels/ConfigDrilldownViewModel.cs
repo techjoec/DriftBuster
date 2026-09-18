@@ -39,6 +39,9 @@ namespace DriftBuster.Gui.ViewModels
             UnifiedDiff = string.IsNullOrWhiteSpace(_source.UnifiedDiff)
                 ? BuildUnifiedDiff(_source.DiffBefore, _source.DiffAfter)
                 : _source.UnifiedDiff;
+            Comparisons = BuildComparisons();
+            _selectedComparison = Comparisons.FirstOrDefault(choice => string.Equals(choice.HostId, _source.DiffHostId, StringComparison.Ordinal))
+                ?? Comparisons.FirstOrDefault();
 
             BackCommand = new RelayCommand(() => BackRequested?.Invoke(this, EventArgs.Empty));
             ExportHtmlCommand = new AsyncRelayCommand(() => RaiseExportAsync(ExportFormat.Html));
@@ -61,6 +64,62 @@ namespace DriftBuster.Gui.ViewModels
         {
             OnPropertyChanged(nameof(IsSideBySide));
             OnPropertyChanged(nameof(IsUnified));
+            OnPropertyChanged(nameof(Lines));
+        }
+
+        private readonly Dictionary<(string HostId, DiffViewMode Mode), DiffLinesViewModel> _lines = new();
+
+        /// <summary>The servers whose copy can be shown against the baseline's.</summary>
+        public IReadOnlyList<ConfigDrilldownComparison> Comparisons { get; }
+
+        public bool HasComparisonChoice => Comparisons.Count > 1;
+
+        /// <summary>The server whose copy the diff shows.</summary>
+        [ObservableProperty]
+        private ConfigDrilldownComparison? _selectedComparison;
+
+        partial void OnSelectedComparisonChanged(ConfigDrilldownComparison? value) => OnPropertyChanged(nameof(Lines));
+
+        /// <summary>The diff lines for the selected server and mode, built the first time they are shown.</summary>
+        public DiffLinesViewModel Lines
+        {
+            get
+            {
+                var choice = SelectedComparison;
+                var key = (choice?.HostId ?? string.Empty, DiffMode);
+                if (!_lines.TryGetValue(key, out var lines))
+                {
+                    var after = choice?.After ?? DiffAfter;
+                    var unified = choice?.UnifiedDiff ?? UnifiedDiff;
+                    lines = IsSideBySide
+                        ? DiffLinesViewModel.FromTexts(DiffBefore, after)
+                        : DiffLinesViewModel.FromUnified(string.IsNullOrWhiteSpace(unified) ? BuildUnifiedDiff(DiffBefore, after) : unified);
+                    lines.LeftTitle = BaselineLabel;
+                    lines.RightTitle = choice?.Label ?? "Comparison";
+                    _lines[key] = lines;
+                }
+
+                return lines;
+            }
+        }
+
+        private List<ConfigDrilldownComparison> BuildComparisons()
+        {
+            string LabelOf(string hostId) =>
+                Servers.FirstOrDefault(server => string.Equals(server.HostId, hostId, StringComparison.Ordinal)) is { } server && !string.IsNullOrWhiteSpace(server.Label)
+                    ? server.Label
+                    : hostId;
+
+            var choices = (_source.HostDiffs ?? Array.Empty<ConfigHostDiff>())
+                .Select(diff => new ConfigDrilldownComparison(diff.HostId, LabelOf(diff.HostId), diff.After, diff.UnifiedDiff))
+                .ToList();
+            if (choices.Count == 0)
+            {
+                // Entries without per-server copies still show their one diff.
+                choices.Add(new ConfigDrilldownComparison(_source.DiffHostId, string.IsNullOrWhiteSpace(_source.DiffHostId) ? "Comparison" : LabelOf(_source.DiffHostId), DiffAfter, UnifiedDiff));
+            }
+
+            return choices;
         }
 
         public bool IsSideBySide => DiffMode == DiffViewMode.SideBySide;
@@ -94,6 +153,8 @@ namespace DriftBuster.Gui.ViewModels
         public string Provenance => string.IsNullOrWhiteSpace(_source.Provenance) ? "Unknown provenance" : _source.Provenance;
 
         public IReadOnlyList<string> Notes => _source.Notes ?? Array.Empty<string>();
+
+        public bool HasNotes => Notes.Count > 0;
 
         public string BaselineHostId => _source.BaselineHostId;
 

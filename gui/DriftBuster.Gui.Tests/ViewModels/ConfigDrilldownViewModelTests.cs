@@ -122,4 +122,42 @@ public sealed class ConfigDrilldownViewModelTests
         json.RootElement.TryGetProperty("Servers", out var servers).Should().BeTrue();
         servers.GetArrayLength().Should().Be(2);
     }
+
+    [Fact]
+    public void Shows_the_diff_against_any_server_and_names_both_sides()
+    {
+        var source = BuildSample();
+        source.DiffHostId = "server02";
+        source.HostDiffs =
+        [
+            new ConfigHostDiff { HostId = "server02", After = source.DiffAfter, UnifiedDiff = string.Empty },
+            new ConfigHostDiff { HostId = "server03", After = "{\n  \"Logging\": \"Information\"\n}", UnifiedDiff = string.Empty },
+        ];
+        using var drilldown = new ConfigDrilldownViewModel(source);
+
+        drilldown.HasComparisonChoice.Should().BeTrue();
+        drilldown.SelectedComparison!.Label.Should().Be("Drifting");
+        drilldown.Comparisons[1].Label.Should().Be("server03", "a host without a server entry is named by its id");
+        drilldown.Lines.LeftTitle.Should().Be("Baseline");
+        drilldown.Lines.RightTitle.Should().Be("Drifting");
+        drilldown.Lines.ChangeCount.Should().Be(1);
+
+        drilldown.SelectedComparison = drilldown.Comparisons[1];
+        drilldown.Lines.ChangeCount.Should().Be(0);
+        drilldown.Lines.SummaryText.Should().Be("No changes.");
+
+        drilldown.DiffMode = DiffViewMode.Unified;
+        drilldown.Lines.IsUnified.Should().BeTrue();
+        drilldown.HasNotes.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Without_per_server_copies_the_one_diff_is_shown()
+    {
+        using var drilldown = new ConfigDrilldownViewModel(BuildSample());
+
+        drilldown.HasComparisonChoice.Should().BeFalse();
+        drilldown.Lines.RightTitle.Should().Be("Comparison");
+        drilldown.Lines.ChangeCount.Should().Be(1);
+    }
 }

@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             xmlns:automation="using:Avalonia.Automation"
+             x:Class="DriftBuster.Gui.Views.DiffLinesView"
+             x:DataType="vm:DiffLinesViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="F7" Command="{Binding NextChangeCommand}" />
+    <KeyBinding Gesture="Shift+F7" Command="{Binding PreviousChangeCommand}" />
+  </UserControl.KeyBindings>
+  <UserControl.Styles>
+    <Style Selector="TextBlock.code, SelectableTextBlock.code">
+      <Setter Property="FontFamily" Value="Consolas" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.number">
+      <Setter Property="FontFamily" Value="Consolas" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="Margin" Value="0,1,8,1" />
+    </Style>
+    <Style Selector="Border.side">
+      <Setter Property="Padding" Value="6,1" />
+    </Style>
+    <Style Selector="Border.side.removed">
+      <Setter Property="Background" Value="{DynamicResource Brush.RemovedBackground}" />
+    </Style>
+    <Style Selector="Border.side.added">
+      <Setter Property="Background" Value="{DynamicResource Brush.AddedBackground}" />
+    </Style>
+    <Style Selector="SelectableTextBlock.header">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    </Style>
+    <Style Selector="TextBlock.fold">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+      <Setter Property="FontStyle" Value="Italic" />
+      <Setter Property="Margin" Value="8,3" />
+    </Style>
+    <Style Selector="ListBox.lines ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*" RowSpacing="6">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+      <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+        <TextBlock Text="{Binding PositionText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <CheckBox Content="Hide unchanged lines"
+                  IsVisible="{Binding IsSplit}"
+                  IsChecked="{Binding OnlyChanges}"
+                  automation:AutomationProperties.AutomationId="DiffLines.OnlyChanges" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+        <Button Content="◀ Previous change"
+                Classes="outline"
+                Command="{Binding PreviousChangeCommand}"
+                ToolTip.Tip="Previous change (Shift+F7)"
+                automation:AutomationProperties.AutomationId="DiffLines.PreviousChange" />
+        <Button Content="Next change ▶"
+                Classes="outline"
+                Command="{Binding NextChangeCommand}"
+                ToolTip.Tip="Next change (F7)"
+                automation:AutomationProperties.AutomationId="DiffLines.NextChange" />
+      </StackPanel>
+    </Grid>
+
+    <!-- Split: baseline on the left, comparison on the right, changed lines side by side. -->
+    <Grid Grid.Row="1" RowDefinitions="Auto,*" IsVisible="{Binding IsSplit}">
+      <Grid ColumnDefinitions="48,*,48,*" Margin="0,0,0,4">
+        <TextBlock Grid.Column="1" Text="{Binding LeftTitle}" Classes="subtitle" FontWeight="SemiBold" Margin="6,0" />
+        <TextBlock Grid.Column="3" Text="{Binding RightTitle}" Classes="subtitle" FontWeight="SemiBold" Margin="6,0" />
+      </Grid>
+      <ListBox x:Name="SplitLines"
+               Grid.Row="1"
+               Classes="lines"
+               ItemsSource="{Binding Lines}"
+               SelectedItem="{Binding SelectedLine}"
+               Background="Transparent"
+               automation:AutomationProperties.AutomationId="DiffLines.Split"
+               automation:AutomationProperties.Name="Baseline and comparison lines">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:DiffLineViewModel">
+            <Panel>
+              <TextBlock Classes="fold" Text="{Binding LeftText}" IsVisible="{Binding IsFolded}" />
+              <Grid ColumnDefinitions="48,*,48,*" IsVisible="{Binding !IsFolded}">
+                <TextBlock Classes="number" Text="{Binding LeftNumberText}" />
+                <Border Grid.Column="1" Classes="side" Classes.removed="{Binding LeftDiffers}">
+                  <SelectableTextBlock Classes="code" Text="{Binding LeftText}" />
+                </Border>
+                <TextBlock Grid.Column="2" Classes="number" Text="{Binding RightNumberText}" />
+                <Border Grid.Column="3" Classes="side" Classes.added="{Binding RightDiffers}">
+                  <SelectableTextBlock Classes="code" Text="{Binding RightText}" />
+                </Border>
+              </Grid>
+            </Panel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+
+    <!-- Unified: one column, baseline-only lines marked red, comparison-only lines green. -->
+    <ListBox x:Name="UnifiedLines"
+             Grid.Row="1"
+             Classes="lines"
+             IsVisible="{Binding IsUnified}"
+             ItemsSource="{Binding Lines}"
+             SelectedItem="{Binding SelectedLine}"
+             Background="Transparent"
+             automation:AutomationProperties.AutomationId="DiffLines.Unified"
+             automation:AutomationProperties.Name="Diff lines">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:DiffLineViewModel">
+          <Grid ColumnDefinitions="48,48,*">
+            <TextBlock Classes="number" Text="{Binding LeftNumberText}" />
+            <TextBlock Grid.Column="1" Classes="number" Text="{Binding RightNumberText}" />
+            <Border Grid.Column="2" Classes="side" Classes.removed="{Binding LeftDiffers}" Classes.added="{Binding RightDiffers}">
+              <SelectableTextBlock Classes="code" Classes.header="{Binding IsHeader}" Text="{Binding LeftText}" />
+            </Border>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</UserControl>

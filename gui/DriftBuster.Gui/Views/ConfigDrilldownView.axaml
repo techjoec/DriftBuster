@@ -2,165 +2,138 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:automation="using:Avalonia.Automation"
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
+             xmlns:views="using:DriftBuster.Gui.Views"
              xmlns:conv="using:DriftBuster.Gui.Converters"
              x:Class="DriftBuster.Gui.Views.ConfigDrilldownView"
              x:DataType="vm:ConfigDrilldownViewModel">
-    <StackPanel Margin="0,0,0,24" Spacing="18">
-      <Grid ColumnDefinitions="Auto,Auto,*" VerticalAlignment="Center">
-        <Button Content="Back" Classes="outline" Command="{Binding BackCommand}" automation:AutomationProperties.AutomationId="Drilldown.Back" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="12,0,0,0">
-          <Button Content="Export HTML" Classes="outline" Command="{Binding ExportHtmlCommand}" automation:AutomationProperties.AutomationId="Drilldown.ExportHtml" />
-          <Button Content="Export JSON" Classes="outline" Command="{Binding ExportJsonCommand}" automation:AutomationProperties.AutomationId="Drilldown.ExportJson" />
-          <Button Content="Copy JSON" Classes="outline" Command="{Binding CopyJsonCommand}" ToolTip.Tip="Copy sanitized payload" automation:AutomationProperties.AutomationId="Drilldown.CopyJson" />
-          <Button Content="Re-scan selected" Classes="primary" Command="{Binding ReScanSelectedCommand}" automation:AutomationProperties.AutomationId="Drilldown.ReScanSelected" />
+  <!-- Fills the space it is given: a compact header, the servers on the left, the diff taking the rest. -->
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+      <Button Content="◀ Back" Classes="outline" Command="{Binding BackCommand}" VerticalAlignment="Top"
+              automation:AutomationProperties.AutomationId="Drilldown.Back" />
+      <StackPanel Grid.Column="1" Spacing="2">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
+          <Border Classes="badge danger" IsVisible="{Binding HasSecrets}" VerticalAlignment="Center">
+            <TextBlock Text="Secrets" />
+          </Border>
+          <Border Classes="badge warn" IsVisible="{Binding HasMaskedTokens}" VerticalAlignment="Center">
+            <TextBlock Text="Masked" />
+          </Border>
+          <Border Classes="badge warn" IsVisible="{Binding HasValidationIssues}" VerticalAlignment="Center">
+            <TextBlock Text="Validation" />
+          </Border>
         </StackPanel>
-        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="12,0,0,0">
-          <TextBlock Text="Diff mode" Classes="subtitle" VerticalAlignment="Center" />
-          <ComboBox Width="140" ItemsSource="{Binding DiffModes}" SelectedItem="{Binding DiffMode}" automation:AutomationProperties.AutomationId="Drilldown.DiffMode" automation:AutomationProperties.Name="Diff mode" />
-        </StackPanel>
-      </Grid>
+        <TextBlock Classes="subtitle" TextWrapping="Wrap" ToolTip.Tip="{Binding BaselineHostSummary}">
+          <Run Text="{Binding Format}" />
+          <Run Text=" · baseline " />
+          <Run Text="{Binding BaselineLabel}" FontWeight="SemiBold" />
+          <Run Text=" · " />
+          <Run Text="{Binding DriftCount}" />
+          <Run Text=" servers drift · updated " />
+          <Run Text="{Binding LastUpdatedText}" />
+          <Run Text=" · " />
+          <Run Text="{Binding Provenance}" />
+        </TextBlock>
+      </StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
+        <ToggleButton Content="Side by side"
+                      IsChecked="{Binding IsSideBySide, Mode=OneWay}"
+                      Command="{Binding ToggleModeCommand}"
+                      CommandParameter="{x:Static vm:DiffViewMode.SideBySide}"
+                      automation:AutomationProperties.AutomationId="Drilldown.SideBySide" />
+        <ToggleButton Content="Unified"
+                      IsChecked="{Binding IsUnified, Mode=OneWay}"
+                      Command="{Binding ToggleModeCommand}"
+                      CommandParameter="{x:Static vm:DiffViewMode.Unified}"
+                      automation:AutomationProperties.AutomationId="Drilldown.Unified" />
+        <Button Content="Export HTML" Classes="outline" Command="{Binding ExportHtmlCommand}" automation:AutomationProperties.AutomationId="Drilldown.ExportHtml" />
+        <Button Content="Export JSON" Classes="outline" Command="{Binding ExportJsonCommand}" automation:AutomationProperties.AutomationId="Drilldown.ExportJson" />
+        <Button Content="Copy JSON" Classes="outline" Command="{Binding CopyJsonCommand}" ToolTip.Tip="Copy sanitized payload" automation:AutomationProperties.AutomationId="Drilldown.CopyJson" />
+      </StackPanel>
+    </Grid>
 
-      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="12">
-          <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-            <StackPanel Spacing="6">
-              <TextBlock Text="{Binding DisplayName}"
-                         FontSize="20"
-                         FontWeight="SemiBold"
-                         VerticalAlignment="Center" />
-              <WrapPanel>
-                <Border Classes="badge danger" IsVisible="{Binding HasSecrets}">
-                  <TextBlock Text="Secrets" />
-                </Border>
-                <Border Classes="badge warn" IsVisible="{Binding HasMaskedTokens}">
-                  <TextBlock Text="Masked" />
-                </Border>
-                <Border Classes="badge warn" IsVisible="{Binding HasValidationIssues}">
-                  <TextBlock Text="Validation" />
-                </Border>
-              </WrapPanel>
-            </StackPanel>
-            <TextBlock Grid.Column="1"
-                       Text="{Binding LastUpdatedText}"
-                       Classes="subtitle"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Margin="8,0,0,0" />
-          </Grid>
+    <Expander Grid.Row="1" HorizontalAlignment="Stretch" IsVisible="{Binding HasNotes}"
+              automation:AutomationProperties.AutomationId="Drilldown.Notes"
+              automation:AutomationProperties.Name="Notes">
+      <Expander.Header>
+        <TextBlock Text="{Binding Notes.Count, StringFormat='Notes ({0})'}" FontWeight="SemiBold" />
+      </Expander.Header>
+      <ScrollViewer MaxHeight="160" AllowAutoHide="False">
+        <ItemsControl ItemsSource="{Binding Notes}" Margin="0,0,18,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,4" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Expander>
 
-          <WrapPanel>
-            <StackPanel Width="160" Spacing="4" Margin="0,0,16,12">
-              <TextBlock Text="Format" Classes="subtitle" />
-              <TextBlock Text="{Binding Format}" FontWeight="SemiBold" />
-            </StackPanel>
-            <StackPanel Width="220" Spacing="4" ToolTip.Tip="{Binding BaselineHostSummary}" Margin="0,0,16,12">
-              <TextBlock Text="Baseline host" Classes="subtitle" />
-              <TextBlock Text="{Binding BaselineLabel}" FontWeight="SemiBold" />
-            </StackPanel>
-            <StackPanel Width="140" Spacing="4" Margin="0,0,16,12">
-              <TextBlock Text="Drift count" Classes="subtitle" />
-              <TextBlock Text="{Binding DriftCount}" FontWeight="SemiBold" />
-            </StackPanel>
-            <StackPanel Width="260" Spacing="4" Margin="0,0,16,12">
-              <TextBlock Text="Provenance" Classes="subtitle" />
-              <TextBlock Text="{Binding Provenance}" FontWeight="SemiBold" TextWrapping="Wrap" />
-            </StackPanel>
-          </WrapPanel>
-        </StackPanel>
-      </Border>
-
-
-      <Grid ColumnDefinitions="2*,3*">
-        <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-          <StackPanel Spacing="10">
-            <TextBlock Text="Servers" FontSize="18" FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding Servers}">
+    <Grid Grid.Row="2" ColumnDefinitions="260,6,*" MinHeight="240">
+      <!-- The servers holding this file; pick some to re-scan. -->
+      <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+          <TextBlock Text="Servers" FontWeight="SemiBold" />
+          <ScrollViewer Grid.Row="1" AllowAutoHide="False">
+            <ItemsControl ItemsSource="{Binding Servers}" Margin="0,0,14,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Border Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,0,0,8">
-                    <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                      <CheckBox IsChecked="{Binding IsSelected}" automation:AutomationProperties.AutomationId="Drilldown.Server.Select" automation:AutomationProperties.Name="{Binding Label, StringFormat='Select {0}'}" />
-                      <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
-                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock Text="Status:" Classes="subtitle" />
-                          <TextBlock Text="{Binding Status}" />
-                          <TextBlock Text="Drift lines:" Classes="subtitle" />
-                          <TextBlock Text="{Binding DriftLineCount}" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock Text="Redaction:" Classes="subtitle" />
-                          <TextBlock Text="{Binding RedactionStatus}" />
-                          <TextBlock Text="Last seen:" Classes="subtitle" />
-                          <TextBlock Text="{Binding LastSeenText}" />
-                        </StackPanel>
-                      </StackPanel>
-                      <StackPanel Grid.Column="2" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0">
-                        <Border Classes="badge accent" IsVisible="{Binding IsBaseline}">
-                          <TextBlock Text="Baseline" />
-                        </Border>
-                        <Border Classes="badge danger" IsVisible="{Binding Present, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
-                          <TextBlock Text="Missing" />
-                        </Border>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
+                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8" ToolTip.Tip="{Binding LastSeenText, StringFormat='Last seen {0}'}">
+                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Top"
+                              automation:AutomationProperties.AutomationId="Drilldown.Server.Select"
+                              automation:AutomationProperties.Name="{Binding Label, StringFormat='Select {0}'}" />
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="subtitle" FontSize="12" TextWrapping="Wrap">
+                        <Run Text="{Binding Status}" />
+                        <Run Text=" · " />
+                        <Run Text="{Binding DriftLineCount}" />
+                        <Run Text=" drift lines · " />
+                        <Run Text="{Binding RedactionStatus}" />
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Top">
+                      <Border Classes="badge accent" IsVisible="{Binding IsBaseline}">
+                        <TextBlock Text="Baseline" />
+                      </Border>
+                      <Border Classes="badge danger" IsVisible="{Binding Present, Converter={x:Static conv:BooleanNegationConverter.Instance}}">
+                        <TextBlock Text="Missing" />
+                      </Border>
+                    </StackPanel>
+                  </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-              <Button Content="Select all" Classes="outline" Command="{Binding SelectAllCommand}" automation:AutomationProperties.AutomationId="Drilldown.SelectAll" />
-              <Button Content="Select none" Classes="outline" Command="{Binding SelectNoneCommand}" automation:AutomationProperties.AutomationId="Drilldown.SelectNone" />
-            </StackPanel>
+          </ScrollViewer>
+          <WrapPanel Grid.Row="2">
+            <Button Content="All" Classes="outline" Margin="0,0,6,6" Command="{Binding SelectAllCommand}" automation:AutomationProperties.AutomationId="Drilldown.SelectAll" automation:AutomationProperties.Name="Select all" />
+            <Button Content="None" Classes="outline" Margin="0,0,6,6" Command="{Binding SelectNoneCommand}" automation:AutomationProperties.AutomationId="Drilldown.SelectNone" automation:AutomationProperties.Name="Select none" />
+            <Button Content="Re-scan selected" Classes="primary" Margin="0,0,6,6" Command="{Binding ReScanSelectedCommand}" automation:AutomationProperties.AutomationId="Drilldown.ReScanSelected" />
+          </WrapPanel>
+        </Grid>
+      </Border>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+      <Border Grid.Column="2" Classes="surface" Padding="10" CornerRadius="{DynamicResource Radius.Medium}">
+        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasComparisonChoice}">
+            <TextBlock Text="Compared with" VerticalAlignment="Center" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding Comparisons}"
+                      SelectedItem="{Binding SelectedComparison}"
+                      MinWidth="200"
+                      automation:AutomationProperties.AutomationId="Drilldown.ComparedWith"
+                      automation:AutomationProperties.Name="Compared with">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ConfigDrilldownComparison">
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
           </StackPanel>
-        </Border>
-
-        <StackPanel Spacing="16" Grid.Column="1" Margin="16,0,0,0">
-          <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-            <StackPanel Spacing="8">
-              <TextBlock Text="Diff preview" FontSize="18" FontWeight="SemiBold" />
-              <Grid ColumnDefinitions="1*,1*" IsVisible="{Binding IsSideBySide}">
-                <StackPanel Spacing="6" Margin="0,0,12,0">
-                  <TextBlock Text="Baseline" Classes="subtitle" />
-                  <ScrollViewer MaxHeight="360" AllowAutoHide="False">
-                    <TextBlock Text="{Binding DiffBefore}" FontFamily="Consolas" TextWrapping="Wrap" />
-                  </ScrollViewer>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Spacing="6">
-                  <TextBlock Text="Comparison" Classes="subtitle" />
-                  <ScrollViewer MaxHeight="360" AllowAutoHide="False">
-                    <TextBlock Text="{Binding DiffAfter}" FontFamily="Consolas" TextWrapping="Wrap" />
-                  </ScrollViewer>
-                </StackPanel>
-              </Grid>
-              <Border Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Classes="surface" IsVisible="{Binding IsUnified}">
-                <ScrollViewer MaxHeight="420" AllowAutoHide="False">
-                  <TextBlock Text="{Binding UnifiedDiff}" FontFamily="Consolas" TextWrapping="Wrap" />
-                </ScrollViewer>
-              </Border>
-            </StackPanel>
-          </Border>
-
-          <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-            <StackPanel Spacing="6">
-              <TextBlock Text="Metadata" FontSize="18" FontWeight="SemiBold" />
-              <TextBlock Text="Last updated" Classes="subtitle" />
-              <TextBlock Text="{Binding LastUpdatedText}" />
-              <TextBlock Text="Provenance" Classes="subtitle" Margin="0,6,0,0" />
-              <TextBlock Text="{Binding Provenance}" TextWrapping="Wrap" />
-              <TextBlock Text="Notes" Classes="subtitle" Margin="0,6,0,0" />
-              <ItemsControl ItemsSource="{Binding Notes}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border Padding="6" Margin="0,0,0,6" CornerRadius="{DynamicResource Radius.Small}" Classes="surface">
-                      <TextBlock Text="{Binding}" TextWrapping="Wrap" />
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </Grid>
-    </StackPanel>
+          <views:DiffLinesView Grid.Row="1" DataContext="{Binding Lines}" />
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
 </UserControl>

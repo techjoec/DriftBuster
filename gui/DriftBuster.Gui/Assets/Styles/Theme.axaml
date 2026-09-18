@@ -30,6 +30,9 @@
       <SolidColorBrush x:Key="Brush.MissingText" Color="#FFF87171" />
       <SolidColorBrush x:Key="Brush.OkText" Color="#FF4ADE80" />
       <SolidColorBrush x:Key="Brush.WarnText" Color="#FFFBBF24" />
+      <!-- Line diffs: a line only the comparison has, a line only the baseline has. -->
+      <SolidColorBrush x:Key="Brush.AddedBackground" Color="#FF123D26" />
+      <SolidColorBrush x:Key="Brush.RemovedBackground" Color="#FF4A1B1B" />
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Palette.LightPlus">
@@ -59,6 +62,8 @@
       <SolidColorBrush x:Key="Brush.MissingText" Color="#FFB91C1C" />
       <SolidColorBrush x:Key="Brush.OkText" Color="#FF15803D" />
       <SolidColorBrush x:Key="Brush.WarnText" Color="#FFB45309" />
+      <SolidColorBrush x:Key="Brush.AddedBackground" Color="#FFDCFCE7" />
+      <SolidColorBrush x:Key="Brush.RemovedBackground" Color="#FFFEE2E2" />
     </ResourceDictionary>
 
     <!-- Migration defaults keep the original dark palette active until selectors run -->
@@ -89,6 +94,8 @@
     <SolidColorBrush x:Key="Brush.MissingText" Color="#FFF87171" />
     <SolidColorBrush x:Key="Brush.OkText" Color="#FF4ADE80" />
     <SolidColorBrush x:Key="Brush.WarnText" Color="#FFFBBF24" />
+    <SolidColorBrush x:Key="Brush.AddedBackground" Color="#FF123D26" />
+    <SolidColorBrush x:Key="Brush.RemovedBackground" Color="#FF4A1B1B" />
 
     <CornerRadius x:Key="Radius.Small">6</CornerRadius>
     <CornerRadius x:Key="Radius.Medium">10</CornerRadius>
@@ -244,6 +251,25 @@
   </Style>
 
   <!-- A warning or error line inside a page. -->
+  <!-- Tabs read as section switches, not headlines. -->
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="12,4" />
+  </Style>
+
+  <!-- Data grids follow the theme: muted header band, transparent body, theme text. -->
+  <Style Selector="DataGrid">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource Brush.Border}" />
+  </Style>
+  <Style Selector="DataGridColumnHeader">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
   <Style Selector="Border.notice">
     <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Brush.WarnText}" />
