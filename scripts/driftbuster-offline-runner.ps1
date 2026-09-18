@@ -320,12 +320,12 @@ namespace DriftBusterOfflineRunner
             value = Unwrap(value);
             if (value == null)
             {
-                return "None";
+                return "null";
             }
 
             if (value is bool)
             {
-                return (bool)value ? "True" : "False";
+                return (bool)value ? "true" : "false";
             }
 
             if (IsInt(value))

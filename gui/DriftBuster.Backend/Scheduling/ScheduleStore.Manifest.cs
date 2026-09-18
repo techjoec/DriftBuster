@@ -168,12 +168,11 @@ public static partial class ScheduleStore
     // str(value) of the decoded JSON value, the text from_dict reads.
     private static string EngineText(object? value) => EngineRepr.Str(value);
 
-    // The text a card shows for a metadata value: a str as it is, null as nothing, a bool as True or False, anything else as its JSON text.
+    // The text a card shows for a metadata value: a str as it is, null as nothing, anything else as its JSON text.
     private static string MetadataText(object? value) => value switch
     {
         null => string.Empty,
         string text => text,
-        bool flag => flag ? "True" : "False",
         _ => Canonicaliser.Dumps(value, indent: false, ensureAscii: false, sortKeys: false),
     };
 

@@ -59,7 +59,7 @@ public sealed class ScheduleStoreTests : IDisposable
     {
         ScheduleStore.LoadScheduleState(Path.Combine(_tmp.FullName, "none.json")).Should().BeEmpty();
         var state = ScheduleStore.LoadScheduleState(Write("s.json", """{"a": 5, "b": {"next_run": "2025-01-01", "pending": null, "x": 1}}"""));
-        EngineRepr.Repr(state).Should().Be("{'b': {'next_run': '2025-01-01', 'pending': None}}");
+        EngineRepr.Repr(state).Should().Be("{'b': {'next_run': '2025-01-01', 'pending': null}}");
         FluentActions.Invoking(() => ScheduleStore.LoadScheduleState(Write("list.json", "[1]")))
             .Should().Throw<CommandExitException>().WithMessage("Scheduler state payload must be a JSON object.");
         var invalid = Write("bad.json", "{bad");
@@ -132,14 +132,14 @@ public sealed class ScheduleStoreTests : IDisposable
         var listing = ScheduleCommands.List(baseDir);
         EngineRepr.Repr(listing.ToList()).Should().Be(
             "[{'name': 'a', 'profile': 'p', 'interval_seconds': 3600.0, 'tags': ['b', 'z'], 'metadata': {'n': [1, 2.5]}, "
-            + "'start_at': '2025-01-01T00:00:00+00:00', 'next_run': '2025-01-01T19:30:00+00:00', 'pending': None, "
+            + "'start_at': '2025-01-01T00:00:00+00:00', 'next_run': '2025-01-01T19:30:00+00:00', 'pending': null, "
             + "'window': {'start': '01:00:00', 'end': '02:00:00', 'timezone': 'Asia/Kolkata'}}]");
         var custom = Path.Combine(_tmp.FullName, "elsewhere", "state.json");
         EngineRepr.Repr(ScheduleCommands.Due("2025-01-02T00:00:00", baseDir, statePath: custom).ToList())
             .Should().Be("[{'name': 'a', 'profile': 'p', 'scheduled_for': '2025-01-01T19:30:00+00:00', 'tags': ['b', 'z'], 'metadata': {'n': [1, 2.5]}}]");
         File.Exists(custom).Should().BeTrue();
         EngineRepr.Repr(ScheduleCommands.MarkComplete("a", null, baseDir, statePath: custom))
-            .Should().Be("{'name': 'a', 'next_run': '2025-01-01T20:30:00+00:00', 'pending': None}");
+            .Should().Be("{'name': 'a', 'next_run': '2025-01-01T20:30:00+00:00', 'pending': null}");
     }
 
     [Fact]

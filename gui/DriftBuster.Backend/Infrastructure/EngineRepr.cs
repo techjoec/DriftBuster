@@ -5,8 +5,8 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Python <c>str()</c> and <c>repr()</c> over the values <see cref="EngineJson"/> produces: <c>None</c>,
-/// <c>True</c>/<c>False</c>, integers, floats in the shortest round-trip form with Python's fixed/exponent switch,
+/// Text for the values <see cref="EngineJson"/> produces, shaped like Python's <c>str()</c> and <c>repr()</c> but with JSON's
+/// <c>null</c> and <c>true</c>/<c>false</c>: integers, floats in the shortest round-trip form with Python's fixed/exponent switch,
 /// strings quoted and escaped as <c>str.__repr__</c> does, bytes (<see cref="byte"/> arrays) as <c>b'...'</c>, and lists, tuples
 /// (<see cref="object"/> arrays) and dicts spelled with their elements' reprs.
 /// </summary>
@@ -67,8 +67,8 @@ public static class EngineRepr
 
     private static string ScalarRepr(object? value) => value switch
     {
-        null => "None",
-        bool flag => flag ? "True" : "False",
+        null => "null",
+        bool flag => flag ? "true" : "false",
         int number => number.ToString(CultureInfo.InvariantCulture),
         long number => number.ToString(CultureInfo.InvariantCulture),
         BigInteger number => number.ToString(CultureInfo.InvariantCulture),
