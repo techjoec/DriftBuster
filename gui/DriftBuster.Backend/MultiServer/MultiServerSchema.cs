@@ -50,6 +50,7 @@ public static class MultiServerSchema
         {
             drilldown.Servers ??= [];
             drilldown.Notes ??= [];
+            drilldown.HostDiffs ??= [];
         }
     }
 }

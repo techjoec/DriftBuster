@@ -178,6 +178,8 @@ public static class CatalogBuilder
             .Select(plan => ServerDetail(hostsById[plan.HostId], view, hostAvailability, baselineHostId, utcNow))
             .ToArray();
         var chosen = ChooseDiff(view, baselineHostId);
+        var chosenHostId = chosen is null ? string.Empty
+            : view.UnifiedDiffs.FirstOrDefault(pair => ReferenceEquals(pair.Value, chosen)).Key ?? string.Empty;
         var plugin = view.Baseline.PluginName;
         return new ConfigDrilldown
         {
@@ -189,6 +191,11 @@ public static class CatalogBuilder
             DiffBefore = chosen?.Before ?? view.Baseline.Raw,
             DiffAfter = chosen?.After ?? view.Baseline.Raw,
             UnifiedDiff = chosen?.Diff ?? string.Empty,
+            DiffHostId = chosenHostId,
+            HostDiffs = view.UnifiedDiffs
+                .Where(pair => !string.Equals(pair.Key, baselineHostId, StringComparison.Ordinal))
+                .Select(pair => new ConfigHostDiff { HostId = pair.Key, After = pair.Value.After, UnifiedDiff = pair.Value.Diff })
+                .ToArray(),
             DiffSummary = chosen?.Summary,
             HasSecrets = view.PerHost.Values.Any(record => record.Secrets),
             HasMaskedTokens = view.PerHost.Values.Any(record => record.Masked),

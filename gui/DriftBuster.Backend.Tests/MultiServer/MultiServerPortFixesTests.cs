@@ -69,6 +69,30 @@ public sealed class MultiServerPortFixesTests : IDisposable
     }
 
     [Fact]
+    public void DrilldownCarriesEveryServersCopyAgainstTheBaseline()
+    {
+        Write("base/app/web.config", string.Format(CultureInfo.InvariantCulture, WebConfig, "Same"));
+        Write("stage/app/web.config", string.Format(CultureInfo.InvariantCulture, WebConfig, "Same"));
+        Write("prod/app/web.config", string.Format(CultureInfo.InvariantCulture, WebConfig, "Changed"));
+        var runner = new MultiServerRunner(CacheDir);
+        MultiServerPlan[] plans =
+        [
+            Plan("base", Path.Combine(_tmp.FullName, "base")),
+            Plan("stage", Path.Combine(_tmp.FullName, "stage")),
+            Plan("prod", Path.Combine(_tmp.FullName, "prod")),
+        ];
+
+        var response = runner.Run(plans, cancellationToken: TestContext.Current.CancellationToken);
+
+        var drilldown = response.Drilldown.Single();
+        drilldown.DiffHostId.Should().Be("prod", "the pane opens on the first server that drifts");
+        drilldown.HostDiffs.Select(diff => diff.HostId).Should().Equal("stage", "prod");
+        drilldown.HostDiffs[0].UnifiedDiff.Should().BeEmpty();
+        drilldown.HostDiffs[1].After.Should().Contain("Changed");
+        drilldown.HostDiffs[1].UnifiedDiff.Should().Contain("Changed");
+    }
+
+    [Fact]
     public void HostSucceedsWhenOneFileUnreadable()
     {
         if (!CanDenyAccess)

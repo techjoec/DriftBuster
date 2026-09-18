@@ -31,6 +31,14 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("unified_diff")]
         public string UnifiedDiff { get; set; } = string.Empty;
 
+        /// <summary>The host whose copy <see cref="DiffAfter"/> and <see cref="UnifiedDiff"/> show; empty when no host holds a diff.</summary>
+        [JsonPropertyName("diff_host_id")]
+        public string DiffHostId { get; set; } = string.Empty;
+
+        /// <summary>Every other host's copy against the baseline (same baseline text as <see cref="DiffBefore"/>), in plan order.</summary>
+        [JsonPropertyName("host_diffs")]
+        public ConfigHostDiff[] HostDiffs { get; set; } = Array.Empty<ConfigHostDiff>();
+
         /// <summary>The selected diff's <c>diff_summary_to_payload</c> mapping, keys in a fixed order; null when no host holds a diff.</summary>
         [JsonPropertyName("diff_summary")]
         public JsonElement? DiffSummary { get; set; }
