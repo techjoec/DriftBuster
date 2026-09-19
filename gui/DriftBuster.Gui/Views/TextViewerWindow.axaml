@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="using:Avalonia.Automation"
+        x:Class="DriftBuster.Gui.Views.TextViewerWindow"
+        Width="820"
+        Height="600"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10" Margin="20">
+    <TextBlock x:Name="Heading" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+    <Border Grid.Row="1" x:Name="NoteBorder" Classes="notice" IsVisible="False">
+      <TextBlock x:Name="Note" TextWrapping="Wrap" />
+    </Border>
+    <TextBox Grid.Row="2"
+             x:Name="Body"
+             IsReadOnly="True"
+             AcceptsReturn="True"
+             TextWrapping="NoWrap"
+             FontFamily="Consolas"
+             automation:AutomationProperties.AutomationId="TextViewer.Body"
+             automation:AutomationProperties.Name="Text" />
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="Copy" Classes="outline" Click="OnCopy" automation:AutomationProperties.AutomationId="TextViewer.Copy" />
+      <Button Content="Close" Classes="primary" Click="OnClose" automation:AutomationProperties.AutomationId="TextViewer.Close" />
+    </StackPanel>
+  </Grid>
+</Window>

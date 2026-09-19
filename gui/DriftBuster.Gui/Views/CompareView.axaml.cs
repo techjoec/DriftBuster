@@ -1,10 +1,14 @@
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -147,12 +151,7 @@ namespace DriftBuster.Gui.Views
                 Header = "Setting",
                 Width = new DataGridLength(2, DataGridLengthUnitType.Star),
                 MinWidth = 180,
-                CellTemplate = new FuncDataTemplate<CompareRowViewModel>((_, _) =>
-                {
-                    var text = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Avalonia.Thickness(8, 5) };
-                    text.DataContextChanged += (_, _) => text.Text = (text.DataContext as CompareRowViewModel)?.Key;
-                    return text;
-                }, supportsRecycling: true),
+                CellTemplate = new FuncDataTemplate<CompareRowViewModel>((_, _) => BuildSettingCell(), supportsRecycling: true),
             });
 
             for (var index = 0; index < _viewModel.Columns.Count; index++)
@@ -163,14 +162,67 @@ namespace DriftBuster.Gui.Views
                     Header = _viewModel.Columns[index],
                     Width = new DataGridLength(3, DataGridLengthUnitType.Star),
                     MinWidth = 160,
-                    CellTemplate = new FuncDataTemplate<CompareRowViewModel>((_, _) => BuildCell(column), supportsRecycling: true),
+                    CellTemplate = new FuncDataTemplate<CompareRowViewModel>((_, _) => BuildValueCell(column), supportsRecycling: true),
                 });
             }
         }
 
-        private static Border BuildCell(int column)
+        // The setting's name, with its marker, review flag and groups beneath; right-click for the menu.
+        private Border BuildSettingCell()
         {
-            var text = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap };
+            var key = new TextBlock { TextWrapping = TextWrapping.Wrap };
+            var flags = new TextBlock { TextWrapping = TextWrapping.Wrap };
+            flags.Classes.Add("row-flags");
+            var border = new Border { Child = new StackPanel { Children = { key, flags } }, Padding = new Avalonia.Thickness(8, 5), Background = Brushes.Transparent };
+            CompareRowViewModel? shown = null;
+            void Update()
+            {
+                var row = border.DataContext as CompareRowViewModel;
+                key.Text = row is null ? null : (row.IsMarked ? "★ " : string.Empty) + row.Key;
+                var parts = new List<string>();
+                if (row?.InReview == true)
+                {
+                    parts.Add("⚑ review");
+                }
+
+                if (row?.Ignored == true)
+                {
+                    parts.Add("ignored");
+                }
+
+                if (row is { Groups.Count: > 0 })
+                {
+                    parts.Add(string.Join(", ", row.Groups));
+                }
+
+                flags.Text = string.Join("  ·  ", parts);
+                flags.IsVisible = parts.Count > 0;
+                border.Classes.Set("ignored", row?.Ignored == true);
+            }
+
+            void OnRowChanged(object? sender, PropertyChangedEventArgs e) => Update();
+            border.DataContextChanged += (_, _) =>
+            {
+                if (shown is not null)
+                {
+                    shown.PropertyChanged -= OnRowChanged;
+                }
+
+                shown = border.DataContext as CompareRowViewModel;
+                if (shown is not null)
+                {
+                    shown.PropertyChanged += OnRowChanged;
+                }
+
+                Update();
+            };
+            border.ContextRequested += (_, e) => OpenMenu(border, e, border.DataContext as CompareRowViewModel, null);
+            return border;
+        }
+
+        private Border BuildValueCell(int column)
+        {
+            var text = new TextBlock { TextWrapping = TextWrapping.Wrap };
             var border = new Border { Child = text };
             border.Classes.Add("cell");
             border.DataContextChanged += (_, _) =>
@@ -179,10 +231,76 @@ namespace DriftBuster.Gui.Views
                 var cell = row is not null && column < row.Cells.Count ? row.Cells[column] : null;
                 text.Text = cell?.Text;
                 text.Classes.Set("absent", cell?.IsAbsent == true);
-                border.Classes.Set("differs", cell?.IsDifferent == true);
+                border.Classes.Set("differs", cell?.IsDifferent == true && cell.IsIgnored == false && row?.Ignored == false);
+                border.Classes.Set("ignored", cell?.IsIgnored == true || row?.Ignored == true);
                 AutomationProperties.SetName(text, cell?.AutomationName ?? string.Empty);
             };
+            border.ContextRequested += (_, e) =>
+            {
+                var row = border.DataContext as CompareRowViewModel;
+                OpenMenu(border, e, row, row is not null && column < row.Cells.Count ? row.Cells[column] : null);
+            };
             return border;
+        }
+
+        private void OpenMenu(Control target, ContextRequestedEventArgs e, CompareRowViewModel? row, CompareCellViewModel? cell)
+        {
+            if (_viewModel?.SelectedFile is not { } file || row is null)
+            {
+                return;
+            }
+
+            _viewModel.SelectedRow = row;
+            var menu = CompareContextMenu.Build(this, _viewModel, new CompareContext(file, row, cell));
+            target.ContextMenu = menu;
+            menu.Open(target);
+            e.Handled = true;
+        }
+
+        private void OnFileContextRequested(object? sender, ContextRequestedEventArgs e)
+        {
+            if (_viewModel is null || sender is not Control { DataContext: CompareFileViewModel file } target)
+            {
+                return;
+            }
+
+            var menu = CompareContextMenu.Build(this, _viewModel, new CompareContext(file));
+            target.ContextMenu = menu;
+            menu.Open(target);
+            e.Handled = true;
+        }
+
+        private async void OnManageChoices(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (_viewModel is not null)
+            {
+                await ShowManagerAsync(new CurationManagerViewModel(_viewModel.Curation, _viewModel.HostSetId)).ConfigureAwait(true);
+            }
+        }
+
+        internal async Task ShowManagerAsync(CurationManagerViewModel manager) =>
+            await ShowAsync(new CurationManagerWindow(manager)).ConfigureAwait(true);
+
+        /// <summary>Shows a dialog over the window this view is in, or on its own when there is none.</summary>
+        internal async Task<T?> ShowAsync<T>(Window dialog)
+        {
+            if (TopLevel.GetTopLevel(this) is Window owner)
+            {
+                return await dialog.ShowDialog<T?>(owner).ConfigureAwait(true);
+            }
+
+            dialog.Show();
+            return default;
+        }
+
+        internal Task ShowAsync(Window dialog) => ShowAsync<object>(dialog);
+
+        internal async Task CopyAsync(string text)
+        {
+            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            {
+                await clipboard.SetTextAsync(text).ConfigureAwait(true);
+            }
         }
     }
 }

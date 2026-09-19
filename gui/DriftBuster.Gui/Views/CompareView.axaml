@@ -44,6 +44,13 @@
       <Setter Property="Padding" Value="6,1" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <Style Selector="Grid.ignored, Border.ignored">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="TextBlock.row-flags">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
     <Style Selector="Border.cell">
       <Setter Property="Padding" Value="8,5" />
       <Setter Property="Margin" Value="2,1" />
@@ -124,7 +131,52 @@
               automation:AutomationProperties.AutomationId="Compare.SaveReport" />
     </Grid>
 
-    <StackPanel Grid.Row="2" Spacing="4">
+    <StackPanel Grid.Row="2" Spacing="6">
+      <!-- Curation filters: marks, ignored things, the review list, and the saved choices. -->
+      <WrapPanel>
+        <TextBlock Text="Show" VerticalAlignment="Center" Margin="0,0,6,6" Classes="subtitle" />
+        <ComboBox ItemsSource="{Binding MarkFilters}"
+                  SelectedItem="{Binding MarkFilter}"
+                  MinWidth="120"
+                  Margin="0,0,12,6"
+                  ToolTip.Tip="All settings, only marked ones, or only unmarked ones"
+                  automation:AutomationProperties.AutomationId="Compare.MarkFilter"
+                  automation:AutomationProperties.Name="Marked settings" />
+        <CheckBox Content="Show ignored"
+                  IsChecked="{Binding ShowIgnored}"
+                  Margin="0,0,12,6"
+                  ToolTip.Tip="Show ignored files and settings, dimmed"
+                  automation:AutomationProperties.AutomationId="Compare.ShowIgnored" />
+        <ToggleButton Content="{Binding ReviewToggleText}"
+                      IsChecked="{Binding ReviewOnly}"
+                      Margin="0,0,6,6"
+                      ToolTip.Tip="Show only the settings picked for review"
+                      automation:AutomationProperties.AutomationId="Compare.ReviewOnly"
+                      automation:AutomationProperties.Name="Review list" />
+        <Button Content="Export review"
+                Classes="outline"
+                Margin="0,0,12,6"
+                IsVisible="{Binding ReviewOnly}"
+                Command="{Binding ExportReviewCommand}"
+                ToolTip.Tip="Save the review list as an HTML report and a CSV file"
+                automation:AutomationProperties.AutomationId="Compare.ExportReview" />
+        <Button Content="Manage choices…"
+                Classes="outline"
+                Margin="0,0,6,6"
+                Click="OnManageChoices"
+                ToolTip.Tip="Groups, rules, ignore and mask choices, history, import and export"
+                automation:AutomationProperties.AutomationId="Compare.Manage" />
+      </WrapPanel>
+      <Border Classes="notice" IsVisible="{Binding HasCurationWarning}">
+        <TextBlock Text="{Binding CurationWarning}" TextWrapping="Wrap" />
+      </Border>
+      <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasGroupFilter}">
+        <TextBlock Text="{Binding GroupFilterText}" VerticalAlignment="Center" FontWeight="SemiBold" />
+        <Button Content="Show every setting"
+                Classes="outline"
+                Command="{Binding ClearGroupFilterCommand}"
+                automation:AutomationProperties.AutomationId="Compare.ClearGroup" />
+      </StackPanel>
       <TextBlock Text="{Binding FocusText}" IsVisible="{Binding HasFocus}" FontWeight="SemiBold" TextWrapping="Wrap" />
       <TextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" Classes="subtitle" />
       <TextBlock Text="{Binding EmptyMessage}" IsVisible="{Binding HasEmptyMessage}" FontSize="16" TextWrapping="Wrap" />
@@ -141,10 +193,14 @@
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:CompareFileViewModel">
               <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" ToolTip.Tip="{Binding Path}"
+                    Classes.ignored="{Binding Ignored}"
+                    Background="Transparent"
+                    ContextRequested="OnFileContextRequested"
                     automation:AutomationProperties.Name="{Binding Path}">
                 <TextBlock Classes="dot" Classes.differs="{Binding Differs}" Text="●" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1">
                   <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding AppName}" IsVisible="{Binding HasAppName}" Classes="subtitle" FontSize="12" TextTrimming="CharacterEllipsis" />
                   <TextBlock Text="{Binding Folder}" IsVisible="{Binding HasFolder}" Classes="subtitle" FontSize="12"
                              TextTrimming="PathSegmentEllipsis" />
                 </StackPanel>
@@ -165,6 +221,8 @@
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
             <StackPanel Spacing="2">
               <TextBlock Text="{Binding SelectedFile.FileName, FallbackValue=''}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding SelectedFile.AppName, FallbackValue=''}" IsVisible="{Binding SelectedFile.HasAppName, FallbackValue=False}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding SelectedFile.Description, FallbackValue=''}" IsVisible="{Binding SelectedFile.HasDescription, FallbackValue=False}" Classes="subtitle" TextWrapping="Wrap" />
               <TextBlock Text="{Binding SelectedFile.Folder, FallbackValue=''}" IsVisible="{Binding SelectedFile.HasFolder, FallbackValue=False}"
                          Classes="subtitle" TextWrapping="Wrap" />
               <TextBlock Classes="file-summary" Classes.differs="{Binding SelectedFile.Differs, FallbackValue=False}"

@@ -5,29 +5,33 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-
 using DriftBuster.Backend;
+using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Settings;
+using DriftBuster.Gui.Services;
 
 namespace DriftBuster.Gui.ViewModels
 {
     /// <summary>
     /// The settings comparison: one plain line per server, a list of files, and the selected file's settings table (a row per
     /// setting, a column per server), showing only what differs by default. Previous/next difference walks every differing
-    /// setting across the listed files.
+    /// setting across the listed files. The user's curation (saved choices and rules, plus this run's choices and marks) is
+    /// applied on top of the scan's comparison and re-applied after every change.
     /// </summary>
-    public sealed partial class CompareViewModel : ObservableObject
+    public sealed partial class CompareViewModel : ObservableObject, IDisposable
     {
         private readonly List<CompareFileViewModel> _files = new();
+        private SettingsComparison? _source;
         private SettingsComparison? _comparison;
 
-        public CompareViewModel()
+        public CompareViewModel(ICurationService? curation = null)
         {
+            Curation = curation ?? CurationService.Shared;
+            Curation.Changed += OnCurationChanged;
             OpenDetailsCommand = new RelayCommand<CompareFileViewModel>(file =>
             {
                 if (file is { HasDetails: true })
@@ -48,7 +52,66 @@ namespace DriftBuster.Gui.ViewModels
             SaveReportCommand = new AsyncRelayCommand(SaveReportAsync, () => HasData);
             NextDifferenceCommand = new RelayCommand(() => MoveToDifference(forward: true), () => VisibleFiles.Count > 0);
             PreviousDifferenceCommand = new RelayCommand(() => MoveToDifference(forward: false), () => VisibleFiles.Count > 0);
+            ClearGroupFilterCommand = new RelayCommand(() => GroupFilter = null);
+            ExportReviewCommand = new AsyncRelayCommand(ExportReviewAsync, () => HasData);
         }
+
+        public ICurationService Curation { get; }
+
+        /// <summary>The host set this comparison belongs to, for choices saved for these servers only.</summary>
+        public string HostSetId { get; set; } = CurationScopes.AllRuns;
+
+        public IRelayCommand ClearGroupFilterCommand { get; }
+
+        public IAsyncRelayCommand ExportReviewCommand { get; }
+
+        /// <summary>Show ignored files and settings, dimmed, instead of hiding them.</summary>
+        [ObservableProperty]
+        private bool _showIgnored;
+
+        [ObservableProperty]
+        private CompareMarkFilter _markFilter = CompareMarkFilter.All;
+
+        /// <summary>Show only this group's settings; null for every setting.</summary>
+        [ObservableProperty]
+        private string? _groupFilter;
+
+        /// <summary>Show only settings on the review list.</summary>
+        [ObservableProperty]
+        private bool _reviewOnly;
+
+        public IReadOnlyList<CompareMarkFilter> MarkFilters { get; } = Enum.GetValues<CompareMarkFilter>();
+
+        public bool HasGroupFilter => GroupFilter is not null;
+
+        public string GroupFilterText => GroupFilter is null ? string.Empty : $"Showing group \"{GroupFilter}\"";
+
+        /// <summary>How many settings are on the review list, for the review toggle.</summary>
+        public int ReviewCount => Curation.Document.Review.Count;
+
+        public string ReviewToggleText => string.Create(CultureInfo.InvariantCulture, $"Review list ({ReviewCount})");
+
+        /// <summary>Why saved curation is not being used, when it could not be read.</summary>
+        public string? CurationWarning => Curation.LoadError is null ? null : $"Saved choices could not be read, so nothing will be saved: {Curation.LoadError}";
+
+        public bool HasCurationWarning => CurationWarning is not null;
+
+        partial void OnShowIgnoredChanged(bool value) => ApplyFilters();
+
+        partial void OnMarkFilterChanged(CompareMarkFilter value) => ApplyFilters();
+
+        partial void OnReviewOnlyChanged(bool value) => ApplyFilters();
+
+        partial void OnGroupFilterChanged(string? value)
+        {
+            OnPropertyChanged(nameof(HasGroupFilter));
+            OnPropertyChanged(nameof(GroupFilterText));
+            ApplyFilters();
+        }
+
+        public void Dispose() => Curation.Changed -= OnCurationChanged;
+
+        private void OnCurationChanged(object? sender, EventArgs e) => Refresh();
 
         /// <summary>Raised with a config id when the user asks for a file's details.</summary>
         public event EventHandler<ValueEventArgs<string>>? DetailsRequested;
@@ -165,31 +228,60 @@ namespace DriftBuster.Gui.ViewModels
 
         partial void OnStatusMessageChanged(string value) => OnPropertyChanged(nameof(HasStatus));
 
+        /// <summary>Shows a scan's comparison with the user's curation applied.</summary>
         public void Load(SettingsComparison? comparison)
         {
+            _source = comparison;
+            StatusMessage = string.Empty;
+            Refresh();
+        }
+
+        /// <summary>Re-applies curation to the loaded comparison, keeping the selected file and setting where they still are.</summary>
+        public void Refresh()
+        {
+            var selectedPath = SelectedFile?.Path;
+            var selectedKey = SelectedRow?.Key;
+            var comparison = _source is null ? null : CurationApplier.Apply(_source, Curation.Document, _sessionChoices, HostSetId);
             _comparison = comparison;
             _files.Clear();
             Servers.Clear();
-            Columns.Clear();
-            StatusMessage = string.Empty;
+            // Mark the baseline column unless its name already says so.
+            var columns = comparison?.Hosts.Select(host => host.IsBaseline && !host.Label.Contains("baseline", StringComparison.OrdinalIgnoreCase) ? $"{host.Label} (baseline)" : host.Label).ToList() ?? [];
+            if (!columns.SequenceEqual(Columns, StringComparer.Ordinal))
+            {
+                // Only when the servers change: rebuilding the table's columns on every curation change would reset their widths.
+                Columns.Clear();
+                foreach (var column in columns)
+                {
+                    Columns.Add(column);
+                }
+            }
+
             if (comparison is not null)
             {
                 var labels = SettingsComparisonReport.Labels(comparison);
                 foreach (var host in comparison.Hosts)
                 {
                     Servers.Add(new CompareServerViewModel(host));
-                    // Mark the baseline column unless its name already says so.
-                    Columns.Add(host.IsBaseline && !host.Label.Contains("baseline", StringComparison.OrdinalIgnoreCase) ? $"{host.Label} (baseline)" : host.Label);
                 }
 
                 _files.AddRange(comparison.Files.Select(file => new CompareFileViewModel(file, labels)));
+                foreach (var row in _files.SelectMany(file => file.AllRows))
+                {
+                    row.IsMarked = _marks.Contains(MarkKey(row.Path, row.Key));
+                }
             }
+
+            OnPropertyChanged(nameof(ReviewCount));
+            OnPropertyChanged(nameof(ReviewToggleText));
 
             Headline = BuildHeadline(comparison, ItemNoun);
             OnPropertyChanged(nameof(HasData));
             OnPropertyChanged(nameof(ColumnCount));
             OnPropertyChanged(nameof(ShowFileList));
             SaveReportCommand.NotifyCanExecuteChanged();
+            ExportReviewCommand.NotifyCanExecuteChanged();
+            SelectedFile = null;
             if (FocusHostId is not null && Servers.All(server => !string.Equals(server.HostId, FocusHostId, StringComparison.Ordinal)))
             {
                 FocusHostId = null;
@@ -198,18 +290,36 @@ namespace DriftBuster.Gui.ViewModels
             {
                 ApplyFilters();
             }
+
+            if (selectedPath is not null && VisibleFiles.FirstOrDefault(file => string.Equals(file.Path, selectedPath, StringComparison.OrdinalIgnoreCase)) is { } file)
+            {
+                SelectedFile = file;
+                SelectedRow = selectedKey is null ? null : file.VisibleRows.FirstOrDefault(row => string.Equals(row.Key, selectedKey, StringComparison.Ordinal));
+            }
         }
 
         public void Reset() => Load(null);
 
+        private CompareFilter CurrentFilter() => new()
+        {
+            DifferencesOnly = DifferencesOnly,
+            FocusHostId = FocusHostId,
+            Search = SearchText.Trim(),
+            ShowIgnored = ShowIgnored,
+            Marks = MarkFilter,
+            Group = GroupFilter,
+            ReviewOnly = ReviewOnly,
+        };
+
         private void ApplyFilters()
         {
-            var search = SearchText.Trim();
+            var filter = CurrentFilter();
+            var search = filter.Search;
             var selected = SelectedFile;
             VisibleFiles.Clear();
             foreach (var file in _files)
             {
-                if (file.ApplyFilter(DifferencesOnly, FocusHostId, search))
+                if (file.ApplyFilter(filter))
                 {
                     VisibleFiles.Add(file);
                 }
@@ -224,6 +334,9 @@ namespace DriftBuster.Gui.ViewModels
             EmptyMessage = _files.Count == 0 ? "Run a scan to compare servers."
                 : VisibleFiles.Count > 0 ? string.Empty
                 : search.Length > 0 ? $"Nothing matches \"{search}\"."
+                : ReviewOnly ? "The review list is empty. Right-click a setting and choose Add to report."
+                : GroupFilter is not null ? $"Nothing in group \"{GroupFilter}\" shows under these filters."
+                : MarkFilter == CompareMarkFilter.Marked ? "Nothing is marked. Right-click a setting and choose Mark."
                 : DifferencesOnly ? "No differences: every server matches the baseline."
                 : "No files.";
         }

@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="using:Avalonia.Automation"
+        x:Class="DriftBuster.Gui.Views.GroupPickerWindow"
+        Width="420"
+        Height="440"
+        Title="Add to group"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto,Auto,Auto" RowSpacing="10" Margin="20">
+    <TextBlock x:Name="Heading" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+    <ListBox Grid.Row="1" x:Name="Groups" DoubleTapped="OnPick"
+             automation:AutomationProperties.AutomationId="GroupPicker.Groups"
+             automation:AutomationProperties.Name="Groups" />
+    <TextBlock Grid.Row="2" Text="Or create a new group:" Classes="subtitle" />
+    <TextBox Grid.Row="3" x:Name="NewName" PlaceholderText="New group name"
+             automation:AutomationProperties.AutomationId="GroupPicker.NewName"
+             automation:AutomationProperties.Name="New group name" />
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="Cancel" Classes="outline" Click="OnCancel" automation:AutomationProperties.AutomationId="GroupPicker.Cancel" />
+      <Button Content="Add" Classes="primary" Click="OnPick" automation:AutomationProperties.AutomationId="GroupPicker.Add" />
+    </StackPanel>
+  </Grid>
+</Window>

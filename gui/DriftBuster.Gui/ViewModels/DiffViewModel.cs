@@ -864,6 +864,7 @@ namespace DriftBuster.Gui.ViewModels
 
             _mruEntries.CollectionChanged -= _mruCollectionChangedHandler;
             Inputs.CollectionChanged -= OnInputsChanged;
+            Settings.Dispose();
             _disposed = true;
         }
     }

@@ -1,3 +1,4 @@
+using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Gui.Tests.Fakes;
@@ -29,7 +30,7 @@ internal static class SampleComparison
                 [
                     Row("Cache.Minutes", "15", "15", "60"),
                     Row("Logging.Default", "Info", "Info", "Info"),
-                    new() { Key = "db.password", Differs = true, Values = [Masked("a", false), Masked("b", false), Masked("c", true)] },
+                    new() { Key = "db.password", Differs = true, Values = [Masked("a", "one", false), Masked("b", "one", false), Masked("c", "two", true)] },
                 ],
             },
             new()
@@ -56,9 +57,11 @@ internal static class SampleComparison
 
     private static SettingValue Present(string host) => new() { HostId = host, State = SettingValueState.Value, Value = "present" };
 
-    private static SettingValue Value(string host, string value, bool differs) => new() { HostId = host, State = SettingValueState.Value, Value = value, DiffersFromBaseline = differs };
+    private static SettingValue Value(string host, string value, bool differs) =>
+        new() { HostId = host, State = SettingValueState.Value, Value = value, DiffersFromBaseline = differs, ValueHash = CurationTarget.ValueHashOf(value) };
 
-    private static SettingValue Masked(string host, bool differs) => new() { HostId = host, State = SettingValueState.Value, Masked = true, DiffersFromBaseline = differs };
+    private static SettingValue Masked(string host, string secret, bool differs) =>
+        new() { HostId = host, State = SettingValueState.Value, Masked = true, DiffersFromBaseline = differs, ValueHash = CurationTarget.ValueHashOf(secret), SecretValue = secret };
 
     private static SettingRow Row(string key, string a, string b, string c)
     {

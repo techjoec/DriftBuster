@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DriftBuster.Gui.ViewModels"
+        xmlns:automation="using:Avalonia.Automation"
+        x:Class="DriftBuster.Gui.Views.BugReportWindow"
+        x:DataType="vm:BugReportDraft"
+        Width="900"
+        Height="720"
+        Title="Report a bug"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10" Margin="20">
+    <StackPanel Spacing="2">
+      <TextBlock Text="Report a bug" FontSize="18" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding Title}" Classes="subtitle" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+      <TextBlock Text="What went wrong" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:BugReportDraft.Categories}" SelectedItem="{Binding Category}" HorizontalAlignment="Stretch"
+                automation:AutomationProperties.AutomationId="BugReport.Category" automation:AutomationProperties.Name="What went wrong" />
+      <TextBlock Grid.Row="1" Text="Describe it" VerticalAlignment="Top" Margin="0,6,0,0" />
+      <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Description}" AcceptsReturn="True" TextWrapping="Wrap" Height="90"
+               PlaceholderText="What you expected, what you saw"
+               automation:AutomationProperties.AutomationId="BugReport.Description" automation:AutomationProperties.Name="Description" />
+      <TextBlock Grid.Row="2" Text="Contact email" VerticalAlignment="Center" />
+      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ContactEmail}" PlaceholderText="Optional, if you want a reply"
+               automation:AutomationProperties.AutomationId="BugReport.Email" automation:AutomationProperties.Name="Contact email" />
+    </Grid>
+
+    <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="4">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <TextBlock Text="Exactly this is sent. Edit it to take anything out; changing a field above rebuilds it." Classes="subtitle" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <CheckBox Grid.Column="1" Content="Include values" IsChecked="{Binding IncludeValues}" automation:AutomationProperties.AutomationId="BugReport.IncludeValues" />
+      </Grid>
+      <TextBox Grid.Row="1" Text="{Binding PayloadText}" AcceptsReturn="True" FontFamily="Consolas" TextWrapping="NoWrap"
+               automation:AutomationProperties.AutomationId="BugReport.Payload" automation:AutomationProperties.Name="Report payload" />
+    </Grid>
+
+    <Border Grid.Row="3" Classes="notice">
+      <StackPanel Spacing="6">
+        <TextBlock TextWrapping="Wrap" FontWeight="SemiBold"
+                   Text="Check the payload for anything sensitive before sending: server names in values, internal addresses, account names, anything that should not leave your network. Masked values stay masked, and the file path is relative to the scanned folder." />
+        <CheckBox x:Name="Checked" Content="I have checked the payload and removed anything sensitive"
+                  IsCheckedChanged="OnCheckedChanged"
+                  automation:AutomationProperties.AutomationId="BugReport.Checked" />
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextWrapping="Wrap" Classes="subtitle" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="Close" Classes="outline" Click="OnClose" automation:AutomationProperties.AutomationId="BugReport.Close" />
+        <Button x:Name="SendApi" Content="Send to receiver" Classes="outline" IsEnabled="False" Click="OnSendApi"
+                automation:AutomationProperties.AutomationId="BugReport.SendApi" />
+        <Button x:Name="OpenIssue" Content="Open GitHub issue" Classes="primary" IsEnabled="False" Click="OnOpenIssue"
+                automation:AutomationProperties.AutomationId="BugReport.OpenIssue" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

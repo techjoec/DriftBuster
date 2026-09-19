@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:history="using:DriftBuster.Backend.History"
+        xmlns:automation="using:Avalonia.Automation"
+        x:Class="DriftBuster.Gui.Views.HistoryWindow"
+        Width="980"
+        Height="680"
+        WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <DataTemplate x:Key="EntryTemplate" x:DataType="history:HistoryEntry">
+      <Grid ColumnDefinitions="150,110,2*,2*,2*" ColumnSpacing="10">
+        <TextBlock Text="{Binding RecordedAtLocal, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Classes="subtitle" />
+        <TextBlock Grid.Column="1" Text="{Binding HostLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Column="2" Text="{Binding Path}" TextWrapping="Wrap" />
+        <TextBlock Grid.Column="3" Text="{Binding Key}" TextWrapping="Wrap" />
+        <TextBlock Grid.Column="4" Text="{Binding Value, FallbackValue='•••• (masked)', TargetNullValue='•••• (masked)'}" TextWrapping="Wrap" />
+      </Grid>
+    </DataTemplate>
+  </Window.Resources>
+  <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10" Margin="20">
+    <StackPanel Spacing="4">
+      <TextBlock x:Name="Heading" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock x:Name="Empty" Text="Nothing recorded yet: history grows with every Multi-server run." Classes="subtitle" IsVisible="False" />
+    </StackPanel>
+    <TabControl Grid.Row="1" x:Name="Tabs">
+      <TabItem x:Name="OverTimeTab" Header="This setting over time" automation:AutomationProperties.AutomationId="History.OverTime">
+        <ListBox x:Name="OverTime" ItemTemplate="{StaticResource EntryTemplate}" />
+      </TabItem>
+      <TabItem x:Name="ElsewhereTab" Header="Where else it is set" automation:AutomationProperties.AutomationId="History.Elsewhere">
+        <ListBox x:Name="Elsewhere" ItemTemplate="{StaticResource EntryTemplate}" />
+      </TabItem>
+      <TabItem x:Name="ValueTab" Header="Where else this value appears" automation:AutomationProperties.AutomationId="History.Value">
+        <ListBox x:Name="ValueElsewhere" ItemTemplate="{StaticResource EntryTemplate}" />
+      </TabItem>
+    </TabControl>
+    <Button Grid.Row="2" Content="Close" Classes="primary" HorizontalAlignment="Right" Click="OnClose"
+            automation:AutomationProperties.AutomationId="History.Close" />
+  </Grid>
+</Window>

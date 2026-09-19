@@ -1,0 +1,153 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DriftBuster.Gui.ViewModels"
+        xmlns:automation="using:Avalonia.Automation"
+        x:Class="DriftBuster.Gui.Views.CurationManagerWindow"
+        x:DataType="vm:CurationManagerViewModel"
+        Width="1040"
+        Height="720"
+        Title="Manage choices"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10" Margin="20">
+    <StackPanel Spacing="2">
+      <TextBlock Text="Manage choices" FontSize="18" FontWeight="SemiBold" />
+      <TextBlock Classes="subtitle" TextWrapping="Wrap"
+                 Text="What you decide here applies to every future comparison: groups to look at together, rules that name and quiet files and settings, and saved ignore and mask choices." />
+    </StackPanel>
+
+    <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTab}">
+      <TabItem Header="Groups" automation:AutomationProperties.AutomationId="Manage.Groups">
+        <Grid ColumnDefinitions="260,*" ColumnSpacing="12">
+          <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}"
+                   automation:AutomationProperties.AutomationId="Manage.GroupList" automation:AutomationProperties.Name="Groups">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:GroupEditViewModel">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel Grid.Column="1" Spacing="8" IsVisible="{Binding SelectedGroup, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock Text="Name" Classes="subtitle" />
+            <TextBox Text="{Binding SelectedGroup.Name, FallbackValue=''}" automation:AutomationProperties.AutomationId="Manage.GroupName" automation:AutomationProperties.Name="Group name" />
+            <TextBlock Text="Description" Classes="subtitle" />
+            <TextBox Text="{Binding SelectedGroup.Description, FallbackValue=''}" automation:AutomationProperties.AutomationId="Manage.GroupDescription" automation:AutomationProperties.Name="Group description" />
+            <TextBlock Text="Members (add more from the Compare view's right-click menu)" Classes="subtitle" />
+            <ListBox ItemsSource="{Binding SelectedGroup.Members, FallbackValue={x:Null}}" MaxHeight="320"
+                     automation:AutomationProperties.AutomationId="Manage.GroupMembers" automation:AutomationProperties.Name="Group members">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CurationTargetItem">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="Remove" Classes="outline"
+                            Command="{Binding ((vm:CurationManagerViewModel)DataContext).RemoveMemberCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}" automation:AutomationProperties.AutomationId="Manage.RemoveMember" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Content="Delete this group" Classes="outline" HorizontalAlignment="Left"
+                    Command="{Binding DeleteGroupCommand}" CommandParameter="{Binding SelectedGroup}"
+                    automation:AutomationProperties.AutomationId="Manage.DeleteGroup" />
+          </StackPanel>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Rules" automation:AutomationProperties.AutomationId="Manage.Rules">
+        <Grid ColumnDefinitions="260,*" ColumnSpacing="12">
+          <Grid RowDefinitions="*,Auto" RowSpacing="6">
+            <ListBox ItemsSource="{Binding Rules}" SelectedItem="{Binding SelectedRule}"
+                     automation:AutomationProperties.AutomationId="Manage.RuleList" automation:AutomationProperties.Name="Rules">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:RuleEditViewModel">
+                  <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Grid.Row="1" Content="New rule" Classes="outline" Command="{Binding AddRuleCommand}" automation:AutomationProperties.AutomationId="Manage.AddRule" />
+          </Grid>
+          <ScrollViewer Grid.Column="1" AllowAutoHide="False" IsVisible="{Binding SelectedRule, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="8" Margin="0,0,18,0">
+              <TextBlock Text="Name" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding SelectedRule.Name, FallbackValue=''}" automation:AutomationProperties.AutomationId="Manage.RuleName" automation:AutomationProperties.Name="Rule name" />
+              <TextBlock Grid.Row="1" Text="Files" VerticalAlignment="Center" />
+              <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedRule.FilePattern, FallbackValue=''}" PlaceholderText="Any file; * and ? wildcards, ; between alternatives"
+                       automation:AutomationProperties.AutomationId="Manage.RuleFiles" automation:AutomationProperties.Name="File pattern" />
+              <TextBlock Grid.Row="2" Text="Settings" VerticalAlignment="Center" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRule.KeyPattern, FallbackValue=''}" PlaceholderText="Empty: the rule is about whole files. Example: *.Timestamp;Built"
+                       automation:AutomationProperties.AutomationId="Manage.RuleSettings" automation:AutomationProperties.Name="Setting pattern" />
+              <TextBlock Grid.Row="3" Text="Application name" VerticalAlignment="Center" />
+              <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SelectedRule.AppName, FallbackValue=''}" automation:AutomationProperties.AutomationId="Manage.RuleApp" automation:AutomationProperties.Name="Application name" />
+              <TextBlock Grid.Row="4" Text="File label" VerticalAlignment="Center" />
+              <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SelectedRule.FileLabel, FallbackValue=''}" PlaceholderText="A friendlier name shown instead of the file name"
+                       automation:AutomationProperties.AutomationId="Manage.RuleLabel" automation:AutomationProperties.Name="File label" />
+              <TextBlock Grid.Row="5" Text="Description" VerticalAlignment="Center" />
+              <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding SelectedRule.Description, FallbackValue=''}" automation:AutomationProperties.AutomationId="Manage.RuleDescription" automation:AutomationProperties.Name="Description" />
+              <TextBlock Grid.Row="6" Text="Groups" VerticalAlignment="Center" />
+              <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SelectedRule.Groups, FallbackValue=''}" PlaceholderText="Group names, comma separated"
+                       automation:AutomationProperties.AutomationId="Manage.RuleGroups" automation:AutomationProperties.Name="Groups" />
+              <TextBlock Grid.Row="7" Text="Values" VerticalAlignment="Center" />
+              <ComboBox Grid.Row="7" Grid.Column="1" ItemsSource="{x:Static vm:RuleEditViewModel.MaskOptions}" SelectedItem="{Binding SelectedRule.MaskOption, FallbackValue={x:Null}}" MinWidth="200"
+                        automation:AutomationProperties.AutomationId="Manage.RuleMask" automation:AutomationProperties.Name="Mask values" />
+              <CheckBox Grid.Row="8" Grid.Column="1" Content="Ignore what the rule matches" IsChecked="{Binding SelectedRule.Ignore, FallbackValue=False}" automation:AutomationProperties.AutomationId="Manage.RuleIgnore" />
+              <CheckBox Grid.Row="9" Grid.Column="1" Content="Only when these servers are compared" IsChecked="{Binding SelectedRule.TheseServersOnly, FallbackValue=False}" automation:AutomationProperties.AutomationId="Manage.RuleScope" />
+              <CheckBox Grid.Row="10" Grid.Column="1" Content="Enabled" IsChecked="{Binding SelectedRule.Enabled, FallbackValue=False}" automation:AutomationProperties.AutomationId="Manage.RuleEnabled" />
+              <Button Grid.Row="11" Grid.Column="1" Content="Delete this rule" Classes="outline" HorizontalAlignment="Left"
+                      Command="{Binding DeleteRuleCommand}" CommandParameter="{Binding SelectedRule}" automation:AutomationProperties.AutomationId="Manage.DeleteRule" />
+            </Grid>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Ignore and mask" automation:AutomationProperties.AutomationId="Manage.Choices">
+        <ListBox ItemsSource="{Binding Choices}" automation:AutomationProperties.AutomationId="Manage.ChoiceList" automation:AutomationProperties.Name="Saved ignore and mask choices">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:CurationChoiceItem">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="Remove" Classes="outline"
+                        Command="{Binding ((vm:CurationManagerViewModel)DataContext).RemoveChoiceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}" automation:AutomationProperties.AutomationId="Manage.RemoveChoice" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+
+      <TabItem Header="Review list" automation:AutomationProperties.AutomationId="Manage.Review">
+        <ListBox ItemsSource="{Binding Review}" automation:AutomationProperties.AutomationId="Manage.ReviewList" automation:AutomationProperties.Name="Review list">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:CurationTargetItem">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="Remove" Classes="outline"
+                        Command="{Binding ((vm:CurationManagerViewModel)DataContext).RemoveReviewCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}" automation:AutomationProperties.AutomationId="Manage.RemoveReview" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+
+      <TabItem Header="History and files" automation:AutomationProperties.AutomationId="Manage.History">
+        <StackPanel Spacing="12" Margin="0,8,0,0">
+          <TextBlock Text="{Binding HistoryText}" TextWrapping="Wrap" />
+          <Button Content="Clear scan history…" Classes="outline" HorizontalAlignment="Left" Click="OnClearHistory" automation:AutomationProperties.AutomationId="Manage.ClearHistory" />
+          <TextBlock Text="Move your choices between machines, or share them:" Classes="subtitle" />
+          <WrapPanel>
+            <Button Content="Export…" Classes="outline" Margin="0,0,8,8" Click="OnExport" automation:AutomationProperties.AutomationId="Manage.Export" />
+            <Button Content="Import and merge…" Classes="outline" Margin="0,0,8,8" Click="OnImportMerge" automation:AutomationProperties.AutomationId="Manage.ImportMerge" />
+            <Button Content="Import and replace…" Classes="outline" Margin="0,0,8,8" Click="OnImportReplace" automation:AutomationProperties.AutomationId="Manage.ImportReplace" />
+          </WrapPanel>
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+      <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Classes="subtitle" TextWrapping="Wrap" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="Close" Classes="outline" Click="OnClose" automation:AutomationProperties.AutomationId="Manage.Close" />
+        <Button Content="Save" Classes="primary" Command="{Binding SaveCommand}" IsEnabled="{Binding IsDirty}" automation:AutomationProperties.AutomationId="Manage.Save" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

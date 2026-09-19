@@ -17,8 +17,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using DriftBuster.Backend;
+using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.MultiServer;
 using DriftBuster.Gui.Services;
 using Microsoft.Extensions.Logging;
 
@@ -52,7 +54,8 @@ namespace DriftBuster.Gui.ViewModels
             IToastService toastService,
             ISessionCacheService? cacheService = null,
             ILogger<ServerSelectionViewModel>? logger = null,
-            PerformanceProfile? performanceProfile = null)
+            PerformanceProfile? performanceProfile = null,
+            ICurationService? curation = null)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
@@ -92,7 +95,7 @@ namespace DriftBuster.Gui.ViewModels
             RefreshServerVirtualization();
             RefreshActivityVirtualization();
 
-            CompareViewModel = new CompareViewModel();
+            CompareViewModel = new CompareViewModel(curation) { RawTextProvider = RawTextOf };
             CompareViewModel.DetailsRequested += OnCompareDetailsRequested;
             ShowSetupCommand = new RelayCommand(() => CurrentView = MultiServerView.Setup);
             ShowCompareCommand = new RelayCommand(() => CurrentView = MultiServerView.Compare, () => CompareViewModel.HasData);
@@ -597,8 +600,10 @@ namespace DriftBuster.Gui.ViewModels
                 // UpdateProgress marshal to the UI thread itself.
                 var progress = new InlineProgress<ScanProgress>(UpdateProgress);
                 var response = await _service.RunServerScansAsync(plans, progress, _runCancellation!.Token).ConfigureAwait(true);
+                var hostSetId = CurationScopes.HostSetId(plans.Select(MultiServerPlan.FromServerScanPlan));
                 await RunOnUiThreadAsync(() =>
                 {
+                    CompareViewModel.HostSetId = hostSetId;
                     ApplyResults(response);
                     var completion = BuildCompletionMessaging(response, plans.Count, cachedCount);
                     StatusBanner = completion.Banner;
@@ -610,6 +615,7 @@ namespace DriftBuster.Gui.ViewModels
                     LogActivity(ActivitySeverity.Success, "Scan complete", completion.ActivityDetail);
                 }).ConfigureAwait(true);
                 await SaveRememberedSessionAsync().ConfigureAwait(true);
+                await RecordHistoryAsync(response, hostSetId).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
@@ -978,6 +984,38 @@ namespace DriftBuster.Gui.ViewModels
             {
                 CurrentView = ResultsView;
             }
+        }
+
+        // Keeps the scan's settings for the history views; a failure is noted and does not affect the results.
+        private async Task RecordHistoryAsync(ServerScanResponse? response, string hostSetId)
+        {
+            if (response?.Comparison is not { Files.Length: > 0 } comparison)
+            {
+                return;
+            }
+
+            try
+            {
+                await CompareViewModel.Curation.RecordHistoryAsync(comparison, hostSetId).ConfigureAwait(true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+            {
+                LogActivity(ActivitySeverity.Warning, "History not saved", ErrorText.Plain(ex));
+            }
+        }
+
+        // One server's copy of a file as the scan read it: the baseline's text, or that server's copy against it.
+        private string? RawTextOf(string configId, string hostId)
+        {
+            var entry = _lastResponse?.Drilldown.FirstOrDefault(item => string.Equals(item.ConfigId, configId, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
+            {
+                return null;
+            }
+
+            return string.Equals(entry.BaselineHostId, hostId, StringComparison.Ordinal)
+                ? entry.DiffBefore
+                : entry.HostDiffs.FirstOrDefault(diff => string.Equals(diff.HostId, hostId, StringComparison.Ordinal))?.After;
         }
 
         internal void ReorderServer(string sourceHostId, string targetHostId, bool insertBefore)
@@ -1625,6 +1663,7 @@ namespace DriftBuster.Gui.ViewModels
 
             CatalogViewModel.PropertyChanged -= OnCatalogPropertyChanged;
             CompareViewModel.DetailsRequested -= OnCompareDetailsRequested;
+            CompareViewModel.Dispose();
             _runGate.Dispose();
             _runCancellation?.Dispose();
             _disposed = true;

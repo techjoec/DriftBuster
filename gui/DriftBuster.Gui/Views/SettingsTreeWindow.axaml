@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DriftBuster.Gui.ViewModels"
+        xmlns:automation="using:Avalonia.Automation"
+        x:Class="DriftBuster.Gui.Views.SettingsTreeWindow"
+        Width="900"
+        Height="640"
+        WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="TextBlock.differs">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.DiffersText}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10" Margin="20">
+    <TextBlock x:Name="Heading" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+    <TreeView Grid.Row="1" x:Name="Tree"
+              automation:AutomationProperties.AutomationId="SettingsTree.Tree"
+              automation:AutomationProperties.Name="Settings tree">
+      <TreeView.ItemTemplate>
+        <TreeDataTemplate x:DataType="vm:SettingsTreeNode" ItemsSource="{Binding Children}">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Name}" Classes.differs="{Binding Differs}" />
+            <TextBlock Text="{Binding ValuesText}" Classes="subtitle" />
+          </StackPanel>
+        </TreeDataTemplate>
+      </TreeView.ItemTemplate>
+    </TreeView>
+    <Button Grid.Row="2" Content="Close" Classes="primary" HorizontalAlignment="Right" Click="OnClose"
+            automation:AutomationProperties.AutomationId="SettingsTree.Close" />
+  </Grid>
+</Window>
