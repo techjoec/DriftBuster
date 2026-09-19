@@ -279,7 +279,7 @@ public sealed class XmlPluginTests
         var namespaceReasons = match.Reasons.Where(reason => reason.Contains("namespace", StringComparison.OrdinalIgnoreCase)).ToList();
         namespaceReasons.Should().Contain(reason => reason.Contains("@L", StringComparison.Ordinal));
 
-        // The declaration sits after leading whitespace, so the well-formedness probe fails exactly as expat does.
+        // The declaration sits after leading whitespace, so the well-formedness probe fails.
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
             "File extension .manifest suggests XML content",

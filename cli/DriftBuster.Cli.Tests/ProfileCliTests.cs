@@ -135,7 +135,7 @@ public sealed class ProfileCliTests : IDisposable
         items[0].GetProperty("relative_path").GetString().Should().Be("outside.txt");
     }
 
-    /// <summary><c>_write_json</c>: <c>--indent</c> of zero or less writes one line, and <c>--sort-keys</c> orders the keys.</summary>
+    /// <summary><c>--indent</c> of zero or less writes one line, and <c>--sort-keys</c> orders the keys.</summary>
     [Fact]
     public void WriteJsonHonoursIndentAndSortKeys()
     {

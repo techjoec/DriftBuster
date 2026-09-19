@@ -85,7 +85,7 @@ public sealed class RegistryCliTests : IDisposable
         seen.TimeBudgetS.Should().Be(1.0);
     }
 
-    /// <summary><c>emit-config</c> prints <c>json.dumps(snippet, indent=2, sort_keys=True)</c>; a refused <c>--remote-target</c> escapes as <see cref="FormatException"/>.</summary>
+    /// <summary><c>emit-config</c> prints the snippet as sorted JSON indented 2; a refused <c>--remote-target</c> escapes as <see cref="FormatException"/>.</summary>
     [Fact]
     public void RegistryCliEmitConfig()
     {
@@ -111,7 +111,7 @@ public sealed class RegistryCliTests : IDisposable
         refused.Err.Should().Be("FormatException: Unsupported remote target key 'bogus'" + Environment.NewLine);
     }
 
-    /// <summary><c>type=int</c> refuses a value <c>int()</c> does not accept: a parse error with exit code 2.</summary>
+    /// <summary>An integer option refuses a value that is not an integer: a parse error with exit code 2.</summary>
     [Fact]
     public void RegistryCliRefusesAnInvalidIntegerAsAParseError()
     {

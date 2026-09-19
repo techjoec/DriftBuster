@@ -27,7 +27,7 @@ public sealed class XmlPluginDefusedTests
 
         var md = plugin.CollectMetadata(xmlText, ".xml");
 
-        // The fake stood in for the defusedxml parser exactly once, with the stripped payload.
+        // The fake stood in for the safe XML parser exactly once, with the stripped payload.
         calls.Should().Equal(xmlText);
 
         XmlPluginTests.AssertMapping(md["xml_declaration"], ("version", "1.0"), ("encoding", "utf-8"));

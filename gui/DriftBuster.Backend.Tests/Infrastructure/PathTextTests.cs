@@ -49,7 +49,7 @@ public sealed class PathTextTests
         PathText.RelativePosix(root, root).Should().Be(".");
     }
 
-    // sorted() over PurePosixPath objects compares component lists, each component by code point.
+    // POSIX paths order by their component lists, each component by code point.
     [Fact]
     public void ComparePosixPathsMatchesPurePathOrdering()
     {

@@ -9,8 +9,8 @@ namespace DriftBuster.Backend.Tests.Sql;
 
 /// <summary>
 /// Builds SQLite databases for the SQL tests: each step one
-/// statement stepped to completion in autocommit mode, parameters bound as <c>sqlite3</c> binds them (int as INTEGER, float as REAL, so
-/// NaN stores NULL, str as UTF-8 TEXT, bytes as BLOB, None as NULL).
+/// statement stepped to completion in autocommit mode, parameters bound by type (integer as INTEGER, double as REAL, so
+/// NaN stores NULL, string as UTF-8 TEXT, bytes as BLOB, null as NULL).
 /// </summary>
 internal static class SqlTestDatabase
 {

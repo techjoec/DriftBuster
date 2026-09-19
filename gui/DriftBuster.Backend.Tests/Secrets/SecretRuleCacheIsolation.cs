@@ -2,7 +2,7 @@ using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
 
-/// <summary>The autouse <c>_isolate_secret_rule_caches</c> fixture: restores the cache to its state before the test.</summary>
+/// <summary>Restores the secret rule cache to its state before the test.</summary>
 public sealed class SecretRuleCacheIsolation : IDisposable
 {
     private readonly IReadOnlyList<SecretDetectionRule>? _rules = SecretScanner.RuleCache;

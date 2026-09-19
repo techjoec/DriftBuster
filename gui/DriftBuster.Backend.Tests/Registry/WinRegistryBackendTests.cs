@@ -9,7 +9,7 @@ namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
 /// <see cref="WinRegistryBackend"/> against the real registry, Windows only: a scratch key under <c>HKCU\Software</c> holds one value of
-/// each type and two subkeys, written through <see cref="RegistryKey"/> and read back as <c>winreg</c> returns them.
+/// each type and two subkeys, written through <see cref="RegistryKey"/> and read back through the backend.
 /// </summary>
 [Collection(RegistrySeamCollection.Name)]
 public sealed class WinRegistryBackendTests : IDisposable

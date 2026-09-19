@@ -222,7 +222,7 @@ public sealed class DetectorTests : IDisposable
         sorted.ScanFile(self)!.PluginName.Should().Be("static-fixture");
     }
 
-    // A plugin returning None yields no match.
+    // A plugin returning null yields no match.
     [Fact]
     public void DummyPluginReturnsNull()
     {

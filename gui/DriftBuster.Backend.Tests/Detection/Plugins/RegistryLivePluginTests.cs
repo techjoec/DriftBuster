@@ -57,7 +57,7 @@ public sealed class RegistryLivePluginTests
     {
         const string bad = "{\"registry_scan\": {\"token\": \"App\""; // missing closing braces
         var m = Detect("scan.json", bad);
-        // Detection may fall through to None; ensure code path executes without error
+        // Detection may fall through to null; the code path must not throw.
         m.Should().BeNull();
     }
 

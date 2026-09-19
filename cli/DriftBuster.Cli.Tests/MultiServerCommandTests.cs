@@ -5,7 +5,7 @@ namespace DriftBuster.Cli.Tests;
 
 /// <summary>
 /// <c>driftbuster multi-server</c>: the request on stdin, progress and result lines on stdout
-/// as <c>json.dumps(record, ensure_ascii=True)</c>, error lines with exit code 1.
+/// as ASCII-escaped JSON, error lines with exit code 1.
 /// </summary>
 public sealed class MultiServerCommandTests : IDisposable
 {
