@@ -45,8 +45,6 @@ Docs are grouped so you can jump straight to the guide you need.
 - [`format-backlog-briefing.md`](format-backlog-briefing.md) — queued formats
   and heuristics.
 - [`windows-gui-guide.md`](windows-gui-guide.md) — Avalonia usage guide.
-- [`ux-refresh.md`](ux-refresh.md) — screenshot manifest, MRU guidance, and
-  links to manual run evidence for release captures.
 - [`windows-gui-notes.md`](windows-gui-notes.md) — engineering notes and
   packaging research.
 - [`experiments/`](experiments/) — dated detection experiments.

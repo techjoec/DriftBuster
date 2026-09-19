@@ -1,5 +1,3 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # XML Config Verification Checklist
 
 Track manual runs that validate the XML detector plus hunt token coverage.
@@ -8,31 +6,22 @@ Track manual runs that validate the XML detector plus hunt token coverage.
 
 | Variant | Fixture Path | Detector Step | Hunt Step | Notes |
 |---------|--------------|---------------|-----------|-------|
-| web-config | `fixtures/config/web.config` | ☐ `Detector().scan_file` recorded | ☐ `hunt_path` tokens logged | |
-| app-config | `fixtures/config/app.config` | ☐ `Detector().scan_file` recorded | ☐ `hunt_path` tokens logged | |
-| machine-config | `fixtures/config/machine.config` | ☐ `Detector().scan_file` recorded | ☐ `hunt_path` tokens logged | |
-| web-config-transform | `fixtures/config/web.Release.config` | ☐ `Detector().scan_file` recorded | ☐ `hunt_path` tokens logged | |
+| web-config | `fixtures/config/web.config` | ☐ `scan --json` recorded | ☐ `hunt` tokens logged | |
+| app-config | `fixtures/config/App.config` | ☐ `scan --json` recorded | ☐ `hunt` tokens logged | |
+| machine-config | `fixtures/config/machine.config` | ☐ `scan --json` recorded | ☐ `hunt` tokens logged | |
+| web-config-transform | `fixtures/config/web.Release.config` | ☐ `scan --json` recorded | ☐ `hunt` tokens logged | |
 
 ## Manual Steps
 
-1. Load each fixture with the detector:
+1. Scan each fixture and hunt its folder:
 
-   ```python
-   from pathlib import Path
-
-   from driftbuster.core.detector import Detector
-   from driftbuster.hunt import default_rules, hunt_path
-
-   fixture = Path("fixtures/config/web.config")
-   detector = Detector()
-   match = detector.scan_file(fixture)
-   print(match.format_name, match.variant)
-
-   results = list(hunt_path(fixture.parent, rules=default_rules(), exclude_patterns=["*.json"]))
-   for hit in results:
-       if hit.path == fixture:
-           print(hit.rule.name, hit.value)
+   ```bash
+   driftbuster scan fixtures/config/web.config --json
+   driftbuster hunt fixtures/config --exclude "*.json"
    ```
+
+   The scan prints the format, variant and metadata; the hunt prints its hits as a JSON array (an empty array when
+   nothing matched).
 
 2. Save the before/after metadata JSON (baseline vs. current detector output)
    alongside manual notes in `notes/snippets/xml-config-diffs.md` under the

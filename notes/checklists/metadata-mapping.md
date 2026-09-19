@@ -1,5 +1,3 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # Metadata Mapping Checklist
 
 Track detector outputs against catalog identifiers to ensure metadata stays
@@ -9,9 +7,9 @@ aligned across releases.
 
 | Fixture Path | Expected Format | Expected Variant | Notes |
 |--------------|----------------|------------------|-------|
-| `fixtures/xml/sample.resx` | `xml` | `resource-xml` | Resource XML metadata keys present. |
+| `fixtures/xml/namespace_provenance_sample.xml` | `xml` | `generic` | Namespace provenance metadata present. |
 | `fixtures/config/web.config` | `structured-config-xml` | `web-config` | Transform flags recorded when applicable. |
-| `fixtures/binary/config.dat` | `binary-dat` | `generic` | Verify fallback metadata only. |
+| `fixtures/binary/preferences.plist` | `plist` | `xml-or-binary` | Verify binary-hybrid metadata. |
 
 ## Framework Config Manual Verification
 
@@ -21,7 +19,7 @@ the supporting diff snippet paths.
 | Variant | Fixture Path | Checklist | Diff Snippet |
 |---------|--------------|-----------|--------------|
 | web-config | `fixtures/config/web.config` | ☐ Variant ☐ Role ☐ Namespace captured | `notes/snippets/xml-config-diffs.md#web-config` |
-| app-config | `fixtures/config/app.config` | ☐ Variant ☐ Role ☐ Namespace captured | `notes/snippets/xml-config-diffs.md#app-config` |
+| app-config | `fixtures/config/App.config` | ☐ Variant ☐ Role ☐ Namespace captured | `notes/snippets/xml-config-diffs.md#app-config` |
 | machine-config | `fixtures/config/machine.config` | ☐ Variant ☐ Role ☐ Namespace captured | `notes/snippets/xml-config-diffs.md#machine-config` |
 | web-config-transform | `fixtures/config/web.Release.config` | ☐ Variant ☐ Transform scope | `notes/snippets/xml-config-diffs.md#web-config-transform` |
 
@@ -33,11 +31,11 @@ the supporting diff snippet paths.
 
 ## Diff Tracking
 
-Record before/after `summarise_metadata` payloads to detect regressions.
+Record before/after `driftbuster scan --json` payloads to detect regressions.
 
-- Capture baseline JSON via ``summarise_metadata`` prior to code changes.
-- After modifications, re-run the detector and compare payloads with
-  ``python -m json.tool`` or ``jq`` to highlight key differences.
+- Capture baseline JSON with `driftbuster scan <fixture> --json` prior to code changes.
+- After modifications, re-run the scan and compare the payloads with `jq` or
+  `driftbuster diff` to highlight key differences.
 - Paste noteworthy diffs below (link to commit/branch when possible):
 
 ```
@@ -54,4 +52,4 @@ Log unexpected metadata and assign an owner for follow-up.
 
 | Fixture | Issue | Owner | Notes |
 |---------|-------|-------|-------|
-| `fixtures/xml/custom.xml` | Missing `catalog_variant` | TBD | Investigate plugin coverage. |
+| | | | |

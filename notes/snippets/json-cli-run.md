@@ -1,19 +1,17 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
-# JSON CLI run — 2025-10-17
+# JSON CLI run
 
 Command:
 
 ```bash
-PYTHONPATH=src python -m driftbuster.cli fixtures/config/appsettings.json
+driftbuster scan fixtures/config/appsettings.json
 ```
 
 Output:
 
 ```
-Path  Format  Variant                   Confidence  Metadata keys                                   
-----  ------  ------------------------  ----------  ------------------------------------------------
-.     json    structured-settings-json  0.95        bytes_sampled, catalog_format, catalog_variant,…
+Path  Format  Variant                   Confidence  Severity  Severity hint                                                             Metadata keys
+----  ------  ------------------------  ----------  --------  ------------------------------------------------------------------------  ------------------------------------------------
+.     json    structured-settings-json  0.95        medium    JSON configuration files reveal feature flags, API endpoints, and secre…  bytes_sampled, catalog_format, catalog_referenc…
 ```
 
 - `reasons` captured JSON structure, key/value detection, balanced delimiters,

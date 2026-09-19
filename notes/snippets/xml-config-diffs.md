@@ -1,5 +1,3 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # XML Config Diff Snippets
 
 Use this file to track sanitised before/after metadata snapshots for XML config
@@ -120,45 +118,9 @@ Last refresh: 2025-10-13 (structured-config metadata verified via Detector scan 
 ## Diff plan blueprint
 
 ```bash
-PYTHONPATH=src python - <<'PY'
-import json
-
-from driftbuster.core.diffing import build_diff_plan, execute_diff_plan, plan_to_kwargs
-from driftbuster.reporting.diff import diff_summary_to_payload
-
-before = open("fixtures/config/web.config", "r", encoding="utf-8").read()
-after = open("fixtures/config/web.Release.config", "r", encoding="utf-8").read()
-
-plan = build_diff_plan(
-    before,
-    after,
-    content_type="xml",
-    label="web-config-release",
-    mask_tokens=["example.com"],
-    context_lines=5,
-)
-
-print(plan)
-print(plan_to_kwargs(plan))
-
-execution = execute_diff_plan(
-    plan,
-    summarise=True,
-    versions=("fixtures:web.config", "fixtures:web.Release.config"),
-    baseline_name="fixtures/web.config",
-    comparison_name="fixtures/web.Release.config",
-)
-
-print(json.dumps(diff_summary_to_payload(execution.summary), indent=2))
-print("Unified diff sample:")
-print("\n".join(execution.result.diff.splitlines()[:12]))
-PY
+driftbuster diff fixtures/config/web.config fixtures/config/web.Release.config \
+  --content-type xml --mask-token example.com --context-lines 5
 ```
 
-Manual rehearsal log:
-
-- 2025-10-24T21:52:15Z (UTC): confirmed `execute_diff_plan` returns a summary
-  matching the rehearsal diff by running the above snippet. Stored the full diff
-  output under secure evidence share and validated that the summary redaction
-  counts were empty (fixture already redacted) while canonicalisation preserved
-  XML namespace additions from the transform file.
+The output is the unified diff after XML canonicalisation and masking, ending with a
+`Summary: added=… removed=… changed=…` line. Add `--output-dir <dir>` to write the patch.

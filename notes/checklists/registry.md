@@ -1,25 +1,16 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+# Plugin registry smoke-test checklist
 
-# Registry smoke-test checklist
+Use this when adding, removing or reordering format plugins. The ordering rules are in `docs/customization.md`.
 
-- **Fixture mix:** XML, JSON, binary sample set from `notes/checklists/core-scan.md` reused for registry verification.
-- **Stub plugin:** `debug_registry_plugin.py` (kept outside the repo) exposes ``name = "debug-registry"`` and logs invocation; registered via ``register(DebugPlugin())`` before running scans.
+- **Fixture mix:** the XML, JSON and binary samples from `notes/checklists/core-scan.md`.
+- **Stub plugin:** a throwaway `IFormatPlugin` kept outside the repo (name `debug-registry`, a low `Priority`) that records
+  each call and returns `null` except on the files it targets. Build the detector with
+  `DefaultPlugins.CreateBuiltIns().Prepend(new DebugPlugin())`.
 - **Ordering check:**
-  - ``get_plugins()`` returned ``("debug-registry", "xml", ...)`` once the stub plugin registered.
-  - ``Detector(sort_plugins=False, plugins=get_plugins())`` respected the tuple order; the debug plugin executed first and short-circuited on targeted files.
-- **Metadata spot-check:** XML plugin still populated ``bytes_sampled``/``encoding`` metadata after the stub plugin declined to match; registry ordering did not strip existing fields.
-- **Error handling:** Forced a failure by pointing the detector at an unreadable file; the ``on_error`` hook received ``DetectorIOError`` while the stub plugin stayed untouched.
-- **Performance note:** Additional plugin increased the mixed-fixture run by ~40 ms over 25 files (manual timing). Acceptable for diagnostics, but remove the stub before longer scans.
-- **Telemetry snapshot:**
-
-  ```bash
-  PYTHONPATH=src python - <<'PY'
-  import json
-  from driftbuster import registry_summary
-
-  summary = registry_summary()
-  print(json.dumps(summary, indent=2))
-  PY
-  ```
-  Store the JSON output path here (redacted if needed) so future runs can
-  compare plugin orderings without rerunning the scan.
+  - `FormatRegistry.RegistrySummary()` lists `debug-registry` first once registered.
+  - `new Detector(plugins, sortPlugins: false)` keeps the order passed in; the stub runs first and wins on its target files.
+- **Metadata spot-check:** after the stub declines a file, the XML plugin still fills `bytes_sampled` and `encoding`.
+- **Error handling:** point the detector at an unreadable file; the scan raises `DetectorIOException` and the stub is
+  never called for it.
+- **Clean up:** drop the stub before longer scans. Ordering regressions are covered by
+  `gui/DriftBuster.Backend.Tests/Detection/FormatRegistryTests.cs`.

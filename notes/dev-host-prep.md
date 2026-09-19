@@ -1,85 +1,41 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
+# Dev host prep (Avalonia GUI)
 
-# Dev Host Prep Log (Avalonia GUI)
+## Toolchain
 
-## Toolchain Verification
+- `dotnet --list-sdks` lists a 10.0 SDK (the solution targets `net10.0`).
+- `pwsh --version` reports PowerShell 7.6 or later (Pester suites, PSScriptAnalyzer, packaging scripts).
+- Set `AVALONIA_TELEMETRY_OPTOUT=1` for anything that builds or runs Avalonia.
 
-- `dotnet --list-sdks`
-  - Result: `8.0.119 [/usr/lib/dotnet/sdk]`
-- `python --version`
-  - Result: `PowerShell 7.4.1`
-- `pip --version`
-  - Result: `pip 24.0 (python 3.12)`
+## Restore and build
 
-> Host already satisfied the .NET 8 + PowerShell 7.x prerequisite checklist.
+- `dotnet build DriftBuster.sln` restores and builds everything with zero warnings; analyzers are configured in
+  `Directory.Build.props`.
+- `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj` for ad-hoc validation after changes.
 
-## Package Restore
+## Packaging
 
-- `dotnet restore /tmp/DrB/DriftBuster-GUI-Base/gui/DriftBuster.Gui/DriftBuster.Gui.csproj`
-  - Needed extended timeout (120 s) on first run.
-  - Warning: `FluentAvaloniaUI (>= 2.1.2)` not found; NuGet resolved `2.2.0` automatically.
+- `driftbuster release --runtime win-x64 --no-installer` runs the tests and publishes the self-contained CLI and GUI to
+  `build/artifacts/{cli,gui}/win-x64`; add `--framework-dependent` for a build that needs the .NET runtime on the host.
+- Drop `--no-installer` and pass `--release-notes notes/releases/<semver>.md --installer-rid win-x64` for the Velopack
+  installer under `artifacts/velopack/releases/win-x64`.
 
-## Initial Build Attempt
+## MSIX packaging checklist
 
-- `dotnet build -c Debug …`
-  - Failed: missing `InitializeComponent`, missing `Avalonia.Fonts.Inter`, empty `Assets/app.ico`, and XAML compile errors because compiled bindings lacked `x:DataType` definitions.
+- [ ] Confirm the Windows SDK App Packaging tools are installed (`makeappx.exe`, `signtool.exe`).
+- [ ] Generate MSIX-ready icons under `gui/DriftBuster.Gui/Assets/Msix/` (Square150x150Logo.png, Square44x44Logo.png,
+      StoreLogo.png, Wide310x150Logo.png).
+- [ ] Pack and sign via `pwsh -NonInteractive -File scripts/package_msix.ps1 -Version <major.minor.patch.0> -CertificatePath <pfx> [-CertificatePassword (Read-Host -AsSecureString)]`.
+- [ ] Archive the resulting `.msix`, `AppxManifest.xml` and PowerShell transcript into `artifacts/gui-packaging/msix/`.
+- [ ] Record the SHA256 checksum next to the `.msix` and keep it with the release evidence.
 
-### Actions Taken During Integration
+The script keeps its staging layout at `artifacts/gui-packaging/msix/staging/` so checks on `App/AppxManifest.xml` are
+repeatable before promoting the package.
 
-- Added explicit package references (`Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`, `Avalonia.Fonts.Inter`, `Avalonia.Diagnostics`) pinned to **11.2.0** so the GUI aligns with the latest supported toolchain.
-- Dropped FluentAvalonia in favour of a standard Avalonia `Window`, simplifying the red/black layout while keeping dependencies lean.
-- Disabled compiled bindings by setting `<AvaloniaUseCompiledBindingsByDefault>false</…>` and wiring manual `InitializeComponent` loaders in each view.
-- Generated a 32x32 DrB icon (`gui/DriftBuster.Gui/Assets/app.ico`) via a custom script and re-enabled `<ApplicationIcon>`.
-- Created `notes/dev-host-prep.md` to capture every command/result and keep future prep predictable.
+## Manual verification
 
-## Current Status (2025-10-13)
+- GUI smoke pass: `notes/checklists/gui-smoke.md`.
 
-- `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` → succeeds with Avalonia 11.2.0 packages.
-- `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj` → succeeds; outputs under `gui/DriftBuster.Gui/bin/Debug/net8.0/`.
-- Outstanding follow-up: none. The host is primed for `dotnet run` and future publish steps.
+## Lint and format
 
-## Packaging Notes
-
-- `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true`
-  - Produces a portable zip-friendly build that depends on the host .NET 8 runtime.
-- `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=true`
-  - Emits a self-contained bundle (~120 MB) suitable for offline installs.
-- Both publish flavours rely solely on the bundled .NET bits; no external Python runtime required.
-
-## MSIX Packaging Checklist (2025-10-28)
-
-- [ ] Confirm Windows SDK App Packaging tools are installed (`makeappx.exe`, `signtool.exe`).
-- [ ] Generate MSIX-ready icons under `gui/DriftBuster.Gui/Assets/Msix/` (Square150x150Logo.png, Square44x44Logo.png, StoreLogo.png, Wide310x150Logo.png).
-- [ ] Publish self-contained GUI payload for the target RID (defaults to `win10-x64`).
-- [ ] Pack + sign the MSIX via `pwsh -NonInteractive -File scripts/package_msix.ps1 -Version <major.minor.patch.0> -CertificatePath <pfx> [-CertificatePassword (Read-Host -AsSecureString)]`.
-- [ ] Archive resulting `.msix`, `AppxManifest.xml`, and PowerShell transcript into `artifacts/gui-packaging/msix/`.
-- [ ] Record SHA256 checksum next to the `.msix` and cross-link evidence in `notes/status/gui-research.md`.
-
-> The script keeps the staging layout at `artifacts/gui-packaging/msix/staging/` so smoke checks (e.g., verifying `App/AppxManifest.xml` values) are repeatable before promoting the package.
-
-## Publish Validation (2025-10-25)
-
-- `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=false /p:IncludeNativeLibrariesForSelfExtract=true`
-  - Result: ✅ succeeded (see `artifacts/gui-packaging/publish-framework-dependent.log`).
-  - Hash: recorded `DriftBuster.Gui.exe` checksum in `artifacts/gui-packaging/publish-framework-dependent.sha256`.
-  - Notes: output folder only includes the single-file host plus backend PDB, matching expectations for portable ZIP packaging.
-- `dotnet publish gui/DriftBuster.Gui/DriftBuster.Gui.csproj -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=true`
-  - Result: ✅ succeeded (see `artifacts/gui-packaging/publish-self-contained.log`).
-  - Hash: recorded `DriftBuster.Gui.exe` checksum in `artifacts/gui-packaging/publish-self-contained.sha256` alongside native payloads.
-  - Notes: publish directory expands with native `libSkiaSharp`/`av_libglesv2` binaries; archive entire folder when producing the self-contained ZIP/MSIX payload.
-
-> WebView2 offline installer should be staged with either publish flavour per the distribution plan in `docs/windows-gui-notes.md`.
-
-## Manual Verification Snapshot
-
-- GUI smoke test documented in `notes/checklists/gui-smoke.md` (ping core, diff two samples, hunt directory, observe error handling, quit → verify backend exits).
-- Use `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj` for ad-hoc validation after changes.
-
-## Lint & Format Bundle
-
-- Run `scripts/lint_all.sh` after Python or GUI edits to execute the shared lint block:
-  - `python -m compileall src`
-  - `python -m pycodestyle src` (respects the `setup.cfg` 140-column cap)
-  - `pwsh scripts/lint_powershell.ps1`
-  - `dotnet format` against backend, GUI, and test projects with `--verify-no-changes`
-- The `.editorconfig` generated by `dotnet format` lives under each project's `obj/Debug` folder; no custom overrides are required beyond `Directory.Build.props`.
+- `scripts/lint_all.sh` runs `dotnet format DriftBuster.sln --verify-no-changes` and `scripts/lint_powershell.ps1`
+  (PSScriptAnalyzer over `cli/` and `scripts/`).

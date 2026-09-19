@@ -1,5 +1,3 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # Legal review checklist
 
 Use this log to document compliance passes for reporting artefacts and to track
@@ -32,7 +30,7 @@ follow-up questions.
 
 ## Retention purge checklist
 
-1. Run `python scripts/purge_reporting_retention.py captures/ artifacts/reporting/` without
+1. Run `driftbuster maint purge-reporting-retention captures/ artifacts/reporting/` without
    `--confirm` and save the transcript under `artifacts/reporting/` with the current date.
 2. Verify each candidate's JSON/HTML/diff outputs retain `[REDACTED]` placeholders and note the
    files inspected in this log with initials.

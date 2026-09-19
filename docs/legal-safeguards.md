@@ -104,7 +104,7 @@ These guardrails cover every feature, note, and capture helper.
   - Document minimum OS requirements (Windows 10 1809+, x64) and disk footprint inside the operator hand-off notes.
 - **Security evidence**
   - Keep the publish transcript for each packaging flavour with the release bundle (commands in `artifacts/gui-packaging/README.md`) and reference it from the legal review log.
-  - Record any third-party dependency updates (e.g., .NET runtime version, Avalonia patch level) in `notes/status/gui-research.md` and refresh `THIRD-PARTY-NOTICES.txt` before release builds.
+  - Record any third-party dependency updates (e.g., .NET runtime version, Avalonia patch level) in the release notes (`notes/releases/<version>.md`) and refresh `THIRD-PARTY-NOTICES.txt` before release builds.
   - Confirm that all redistributables shipped with the bundle allow offline redistribution and include their licence text within the package.
 
 ## Realtime secret scanning safeguards
@@ -134,8 +134,8 @@ These guardrails cover every feature, note, and capture helper.
   `fixtures/sql/README.md` before exporting.
 - Store generated manifests (`sql-manifest.json`) and masked exports in a
   restricted directory with the same retention plan as the source evidence.
-- Record the anonymisation choices inside `notes/status/gui-research.md` when
-  sharing samples so reviewers understand what data was transformed.
+- Record the anonymisation choices in a README beside the shared samples so
+  reviewers understand what data was transformed.
 - Keep checksum files under `artifacts/sql/` so downstream consumers can
   confirm the artefacts were not modified after approval.
 
@@ -170,7 +170,6 @@ These guardrails cover every feature, note, and capture helper.
 
 ## HOLD Exit Briefing
 
-- Check `notes/status/hold-log.md#decision-ready-summary` before resuming reporting work.
 - Confirm the sample list in `docs/testing-strategy.md#hold-exit-checklist-hooks` sticks to the rules above and stays format-universal.
 - Record HOLD clearance in the status log when the guardrails still hold true.
 - 2025-10-24 audit: Reconfirmed sample names, placeholders, and remediation copy stay neutral; no vendor identifiers detected.

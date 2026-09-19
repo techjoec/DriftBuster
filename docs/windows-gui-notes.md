@@ -7,8 +7,9 @@ Updated audit of the Avalonia starter plus earlier research log. For a user-faci
 - **Avalonia shell**: `gui/DriftBuster.Gui` targets `net10.0` with Avalonia 12. The refined header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
 - **Backend library**: `gui/DriftBuster.Backend` hosts shared diff, hunt, and run-profile helpers consumed by both the GUI and the PowerShell module.
 - **Execution contract**: Operations run in process on background tasks through `IDriftbusterBackend`, returning the JSON payloads the UI bindings consume.
-- **UI snapshot**: Diff view validates inputs, renders plan/metadata cards, and offers a copy-raw-JSON action. Hunt view adds directory picker, status messaging, and card-style findings with token badges. The multi-server screen now uses tidy host cards, side-by-side execution/timeline panels, and a lean guidance banner to keep the orchestration workflow focused.
-- **Responses**: Diff returns `plan` + `metadata` describing the selected files; Hunt returns filtered hit lists using the built-in rule set.
+- **UI snapshot**: every page fills the window with a list or grid beside the selected item's details, panes that scroll on their own, and right-click menus for actions (see `docs/windows-gui-guide.md`). Shared styles (`Border.pane`, `Button.chip`, `Border.count`, data grid headers, tabs) live in `Assets/Styles/Theme.axaml`; dialogs and the clipboard go through `Views/DialogHost.cs`.
+- **Responses**: Multi-server returns the catalog, drilldown entries with every server's copy of each file, and the setting-by-setting `comparison`; Diff returns `plan` + `metadata` per comparison plus a `settings` comparison of the picked files; Hunt returns hit lists from the built-in rule set.
+- **Curation and history**: `ICurationService` (`CurationService.Shared` over the data root) holds the user's groups, rules, ignore and mask choices and review list (`curation.json`) and the scan history (`history.db`); `CompareViewModel` re-applies curation on every change.
 - **Assets**: `Directory.Build.props` centralises net10.0 defaults; `gui/DriftBuster.Gui/Assets/app.ico` holds the DrB red/black logo baked into the WinExe manifest.
 
 ## Embedded Inter Font
@@ -68,7 +69,7 @@ Publishing with a runtime identifier is self-contained by default (the GUI proje
 
 ## Manual Smoke Checklist
 
-- Follow `notes/checklists/gui-smoke.md` for the current walkthrough (ping core, run diff/hunt, validate error handling, and confirm backend shutdown).
+- Follow `notes/checklists/gui-smoke.md` for the current walkthrough of every page, the right-click menus and Manage choices, in both themes.
 
 ## Headless UI Testing
 
@@ -110,31 +111,14 @@ Packaging evidence is captured per release, not kept in the repository: the publ
 4. Launch `DriftBuster.Gui.exe` once while offline and confirm the main window opens.
 5. Document the activation steps in `notes/dev-host-prep.md` so subsequent operators can replay the process without re-downloading assets.
 
-## Data Flow & UX Outline
-
-- **Input Sources**: Consume generated HTML reports for rich rendering and JSON summaries for metadata panels.
-- **Workflow**: Prompt user to select snapshot bundle → parse JSON metadata → display HTML diff alongside metadata sidebar.
-- **Minimal Features**:
-  - Load snapshot/scan outputs from local disk.
-  - Toggle between HTML diff view and metadata table.
-  - Highlight sensitive tokens flagged by redaction hooks.
-  - Provide quick links to open source file paths in default editor (read-only).
-- **Extensibility Hooks**: Keep data loading modular so CLI continues to own scanning logic.
-
-## Manual Testing Expectations (Future)
-
-- Smoke test the self-contained build on a clean Windows VM with nothing installed to confirm the bundled runtime works.
-- Validate GUI handles large HTML reports (>5 MB) without freezing; note memory footprint.
-- Confirm JSON metadata parsing tolerates missing optional fields and surfaces errors via dialog.
-
 ## Compliance & Accessibility Checklist
 
 - Legal Guardrails: Never embed vendor logos or proprietary sample content; rely on neutral icons.
-- Security: Store recent files list in memory only; avoid writing cache files unless explicitly configured.
+- Security: the only files the GUI writes are under the data root: the session, sanitized Diff planner history (never raw file contents), `curation.json`, `history.db` (masked values as fingerprints only), exports the user asks for, and logs.
 - Accessibility: Target keyboard navigation, high-contrast theme, and screen-reader labels for critical controls.
   1. Launch packaged build on Windows 11 VM with stable Narrator + Inspect versions logged in the accessibility evidence file.
   2. Start Narrator (`Win + Ctrl + Enter`) before opening the DriftBuster shell so focus events are captured from the splash screen.
-  3. Tab through server selection and drilldown views; record any unlabeled controls or incorrect announcements.
+  3. Tab through Setup, Compare, Files, File details and the dialogs; record any unlabeled controls or incorrect announcements.
   4. Run `inspect.exe` from the Windows SDK, attach to the DriftBuster window, and capture `Name`, `AutomationId`, and `HelpText` for critical controls.
   5. Switch to High Contrast mode (Windows Settings → Accessibility → Contrast Themes) and repeat Inspect sweeps to document contrast ratio readings.
   6. Store transcripts, tool versions, and screenshots in `artifacts/gui-accessibility/` for auditability.

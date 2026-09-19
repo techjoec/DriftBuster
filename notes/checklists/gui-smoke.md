@@ -1,39 +1,48 @@
 # GUI Smoke Checklist (Avalonia shell)
 
-Goal: quick confidence pass before handing the Windows build to reviewers.
+Goal: a confidence pass over every page before handing a Windows build to reviewers. Run it in Dark+ and again in Light+.
+Use two or more copies of a configuration tree that differ (the `fixtures/multi-server/` folders work) as the hosts.
 
 1. **Launch**
-   - `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`
-   - Confirm the DrB red/black window appears with Diff default view.
+   - Run `DriftBuster.Gui.exe` from the release zip (or `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`).
+   - The window opens on **Multi-server**; the core dot turns green after **Check core**.
 
-2. **Ping core**
-   - Click the **Ping Core** button in the title strip.
-   - Verify the Hunt view loads with a positive status message (`Ping reply: pong`).
+2. **Setup**
+   - Select each host in the list; the editor on the right follows. Add a root, remove it, change the scope.
+   - **Add host** appends and selects a new host; untick it so it is not scanned.
+   - Drag a host to a new position; the order holds after a restart when **Remember session** is on.
 
-3. **Diff workflow**
-   - Navigate back to **Diff**.
-   - Use the **Browse** buttons to pick two sample files (e.g. `fixtures/sample.md` vs itself).
-   - Ensure validation removes the warning once both files exist.
-   - Click **Build Plan**.
-   - Expect the plan/metadata tables to populate and the raw JSON expander to light up.
-   - Use **Copy raw JSON** and confirm clipboard contents match the displayed JSON.
+3. **Compare**
+   - **Run all**; the page lands on Compare with one chip per server and the file list.
+   - **Next** / **Previous** (F8 / Shift+F8) walk the differences into the next file; right-clicking a row does not move the grid.
+   - Click a server chip, search, toggle **Only show differences**, **Show: Marked**, **Show ignored**.
 
-4. **Hunt workflow**
-   - Switch to **Hunt**.
-   - Browse to a directory with mixed content (e.g. `fixtures/`).
-   - Optionally add a filter substring (e.g. `server`).
-   - Click **Scan**.
-   - Confirm the hits table lists matches with rule, relative path, and excerpt columns.
+4. **Right-click menu** (on a setting, a value and a file)
+   - Group: add (new name), view, remove. Rule: create from the item with an application name, add another setting to it.
+   - Mark, Copy as each format (check the clipboard), View as tree, raw data, History (all three tabs).
+   - Add to report, then **Review list** and **Export review**; remove it again.
+   - Ignore a setting (this run), a value (always) and a file (these servers): the chip counts drop; **Show ignored** shows them dimmed; **Forget this run's choices**.
+   - Mask and unmask values; a restart keeps the saved choice and drops the this-run one.
+   - Report bug: the send buttons stay disabled until the check is ticked; a secret shown unmasked on screen still goes out masked.
 
-5. **Error handling**
-   - In Diff view, clear the right-hand file path and verify the warning + disabled run button.
-   - In Hunt view, point at a non-existent directory; a validation message should block execution.
+5. **Manage choices**
+   - Every saved group, rule, choice and review item is listed; remove one and **Save**; **Export…** writes a file; **Clear scan history…** asks first.
 
-6. **Backend lifecycle**
-   - Close the window.
-   - Confirm no lingering error dialogs appear; all backend processing now runs in-process.
+6. **Files and File details**
+   - Right-click a row: **Show settings in Compare** lands on that file; **File details** opens the line diff.
+   - In File details, switch **Compared with** between servers, use **Next change** (F7), and **Side by side** / **Unified**.
 
-Record run outcomes and timestamps below when executing manually.
+7. **Diff planner**
+   - Pick a baseline and two other files, **Build plan**; the inputs fold away and the Settings tab opens.
+   - Line by line and JSON tabs show the comparison; right-click works in the Settings tab.
 
-| Date (UTC) | Operator | Notes |
-|-----------|----------|-------|
+8. **Hunt explorer**
+   - Scan a folder; click a rule chip, search, right-click a finding (copy location, show only this file, report false positive, open folder).
+
+9. **Profiles**
+   - Load a saved profile; the actions stay pinned while the form scrolls.
+
+10. **Close**
+    - Close the window; no error dialogs appear and no DriftBuster process remains.
+
+Record run outcomes in the release evidence, not in this file.

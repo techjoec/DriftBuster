@@ -38,11 +38,8 @@ packaging script enforces these guards automatically.
   `gui.md`, `installer.md`, `tooling.md`, or `formats/<name>.md`).
 - Lifetime data (dates, operator) should live in `Notes` if required.
 - The file name convention is `notes/releases/<version>.md`.
-- When theme updates land, embed or link to the refreshed captures in
-  `docs/assets/themes/` and reference the manifest table in
-  `docs/ux-refresh.md#theme-capture-manifest` so reviewers can trace when the
-  visuals were last regenerated.
-- Cite the matching manual run evidence (`artifacts/manual-runs/2025-10-24-multi-server-notes.md`) when noting multi-server or diff planner changes; the Dark+ capture already highlights the MRU dropdown and export timeline pairing validated during that walkthrough.
+- When the UI changes visibly, attach fresh Dark+ and Light+ screenshots to the release
+  evidence rather than committing them to `docs/`.
 
 ## Component Changelog Files
 - `notes/changelog/core.md`

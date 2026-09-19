@@ -1,5 +1,3 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # Hunt + profile review checklist
 
 ## Context
@@ -7,7 +5,7 @@
 - [ ] Reviewer:
 - [ ] Date:
 - [ ] Profile snapshot reference (path or commit):
-- [ ] Hunt command (include `exclude_patterns` / `return_json` args):
+- [ ] Hunt command (include `--glob` / `--exclude` options):
 
 ## Token decisions
 | token_name | file / relative path | line | excerpt / masking notes | decision (approved/reject) | placeholder |
@@ -17,8 +15,8 @@
 - Log excerpts without exposing secrets; use deterministic placeholders when the
   snippet contains sensitive material.
 - Tie each decision back to the matching configuration profile metadata entry.
-- Use `notes/snippets/token-catalog.py` to generate hashed token entries before
-  closing the review.
+- Record a SHA-256 hash for each approved token (for example `sha256sum` over the
+  value) in the token catalog before closing the review.
 
 ### Sample plan transforms (automation reference)
 

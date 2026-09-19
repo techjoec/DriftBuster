@@ -1,74 +1,80 @@
 # DriftBuster Windows GUI Guide
 
-This guide explains the capabilities, layout, and operational details of the Avalonia-based Windows shell shipped in `gui/DriftBuster.Gui`.
+How the Avalonia desktop app in `gui/DriftBuster.Gui` is laid out and what each page does.
 
 ## 1. Overview
-- **Purpose:** Provide a Windows-first experience for building diff plans and running hunt scans powered by the new .NET backend.
-- **Architecture:** Avalonia (net10.0) desktop app backed by the shared `DriftBuster.Backend` library used by the PowerShell module.
-- **Audience:** Analysts validating configuration drift manually, as well as developers exercising the core engine without the CLI.
+- **Purpose:** show, for people who do not read diffs, which settings differ between servers or files and what each one has; then let them quiet the noise so the next run shows only what matters.
+- **Architecture:** Avalonia (net10.0) desktop app over the shared `DriftBuster.Backend` library, which the console tool and PowerShell module use too. Everything runs in process.
+- **Look and feel:** every page fills the window. A list or grid sits beside the selected item's details, each pane scrolls on its own, and right-click menus carry the actions. Colours come from theme tokens, so Dark+ and Light+ both work.
 
 ## 2. Prerequisites
 | Dependency | Notes |
 |------------|-------|
 | .NET SDK 10.0.x | Required to build, run, and publish the GUI from source. Released builds are self-contained and need nothing installed. |
-| DriftBuster repo checkout | Required for fixtures and sample data referenced by the UI. |
+| DriftBuster repo checkout | Required for fixtures and sample data when running from source. |
 | Optional editor tooling | JetBrains Rider, VS Code + Avalonia extension, or equivalent for XAML previews. |
 
 ## 3. Launching the GUI
 1. Ensure the SDK is installed (`dotnet --list-sdks`).
-2. Restore + build: `dotnet restore gui/DriftBuster.Gui/DriftBuster.Gui.csproj` then `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
-4. The “DrB DriftBuster” window opens with Diff view selected by default. The compact header presents the DrB badge, navigation summary, a live backend health dot with **Check core**, and a **Theme** selector (Dark+/Light+). A pillbox banner beneath the header shows the current view context and shortcuts.
-5. Multi-server fixture data is bundled with the app under a `Samples/MultiServer/` directory in the output folder.
-6. Registry scan results collected by the offline runner (JSON under `data/<alias>/registry_scan.json`)
-   are displayed alongside file-based findings when present.
+2. Build: `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
+3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`, or run `DriftBuster.Gui.exe` from a release zip.
+4. The window opens on **Multi-server**. The top bar holds the tabs (Multi-server, Diff planner, Hunt explorer, Profiles), a core status dot with **Check core**, and the **Theme** selector (Dark+ / Light+).
 
-## 4. Layout Walkthrough
-- **Header strip:** DrB badge + title stack, navigation toggle group (Diff / Hunt / Profiles / Multi-server), backend health indicator with **Check core**, a **Theme** dropdown (Dark+/Light+), and a **Ping core** shortcut. Status messages from the active view flow into the headline banner so you can see scan progress even while switching tabs. Contextual toast notifications appear in the top-right overlay; each toast exposes copy actions for quick sharing of error details.
-- **Diff view:** Build diff plans from multiple snapshots. Primary action uses accent fill; secondary actions use outline style. Includes validation, plan/metadata cards, raw JSON expander, and copy control.
-- **Run profiles view:** Capture filesystem snapshots using saved profiles. The command bar exposes **Run profile**, **Run missing only**, and a **Secret scanner settings** dialog so you can review ignores before the scrubber runs.
-- **Hunt view:** Targets directories/files, runs the hunt pipeline, and displays results as cards with rule metadata, counts, and status messaging.
-- **Multi-server view:** Configure up to six hosts, validate roots, and orchestrate runs. The refreshed layout moves host management, execution controls, and the activity audit feed into balanced columns, so you can compare hosts without scrolling. Toasts surface scan status (success, attention, failure) and each timeline card exposes copy shortcuts for rapid sharing.
+## 4. Multi-server
+The toggles at the top of the page switch between **Setup**, **Compare**, **Files** and **File details**; **Run all** scans every included host. After a run the page lands on Compare.
 
-### Run profile scheduling workflow
+### Setup
+- The host list on the left shows every host: tick to include it in runs, drag to change the order, and read its scope in one line ("Custom roots: C:\\apps (+1 more)") and its state in a word (Ready, Scanning, Done, Cached, Failed, Off).
+- The selected host's settings sit on the right: label, scope (all drives, single drive, custom roots), roots with add and remove, **Retry** after a failure, and the last run time.
+- **Remember session** keeps hosts, roots and view state in `sessions/multi-server.json` under the data root; **Save**, **Add host** and **Clear** sit beside it.
+- **Run status and activity** (collapsed at the bottom) lists each host's run state with a **File details** link, and the activity timeline with **All / Errors / Warnings / Exports** filters and copy buttons. Toasts report progress, warnings and failures.
 
-1. Open the **Profiles** view and either load an existing profile or enter the sources/baseline for a new one.
-2. Scroll past the options list to find the schedule cards. Each card requires a **Name**, **Profile** reference (typically the profile name), and an **Every** interval (shorthand like `15m`, `24h`, or ISO 8601). The **Profile** field is now an editable dropdown that lists every saved profile plus the in-progress draft name so you can reuse definitions without retyping. Optional **Start at**, **Window start/end/timezone**, **Tags**, and metadata rows capture quiet hours, labels, and notification contacts.
-3. Renaming the active profile updates any blank schedule rows automatically so cadence entries continue targeting the right definition; schedule cards with custom profile overrides keep their values intact.
-4. Click **Save profile** to persist both the `profile.json` definition and the consolidated `Profiles/schedules.json` manifest. The GUI normalises tag lists and metadata keys before writing to disk.
-5. Use the console tool when automating: `driftbuster schedule list` to inspect schedules, `due` to surface pending runs, `mark-complete` to advance cadence after a run, and `skip-until` to defer execution. The GUI and console tool share the manifest and `scheduler-state.json` files so state remains aligned.
+### Compare
+- One chip per server says in plain words what differs ("prod: 6 settings differ in 2 files, 1 file missing"); click a chip to show only what differs on that server.
+- The file list shows every file with the number of differing settings or why it differs (missing, extra, unreadable). The selected file's settings fill a grid: the setting name stays in view, one column per server, differing values highlighted, secrets masked but still compared.
+- **Previous / Next** (Shift+F8 / F8) walk every difference and carry on into the next file.
+- Filters: **Only show differences**, search (settings, values, files), **Show: All / Marked / Unmarked**, **Show ignored** (dimmed), **Review list**.
+- **Save report** writes the comparison as HTML and CSV under `exports/` in the data root; **Export review** does the same for the review list.
 
-## Themes
+### Right-click: curate what future runs show
+Right-click any setting, value, or file (in Compare, in the Diff planner's Settings tab, and in Files):
+- **Group**: add to a group (pick or name one), view a group, remove from it, manage groups.
+- **Rule**: create a rule from the item, add the item to an existing rule, manage rules. A rule matches files and settings by pattern (`*` and `?`, `;` between alternatives); it can name the application, give the file a friendlier label and a description, and ignore, mask, unmask, or group what it matches.
+- **Mark / Unmark**: a marker kept until the app closes.
+- **Copy as** JSON, TSV, Text or Hex: the setting and every value, the setting name, the values, or the right-clicked value. Masked values are copied as their marker.
+- **View**: the file as a tree, the raw text of any server's copy, and history.
+- **Add to report / Remove from report**: the review list, kept until removed.
+- **Ignore** the setting, the right-clicked value, or the whole file, and **Mask / Unmask values**: each for this run only, always, or always for these servers. Ignored things leave the counts.
+- **History**: the setting's values over time, where else it is set, and where else the value appears, from every recorded run.
+- **What is…**: a placeholder showing the question a future assistant will be asked.
+- **Report bug**: a preview of the whole payload (relative file path, setting, values with secrets always masked, metadata). You must confirm it holds nothing sensitive; then open a prefilled GitHub issue, or post it to a receiver set with `DRIFTBUSTER_BUG_REPORT_URL`. Nothing is sent otherwise.
 
-- **Palette catalog:** `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` now exposes `Palette.DarkPlus` and `Palette.LightPlus` resource dictionaries. Each dictionary defines the `Color.*` and `Brush.*` tokens consumed throughout the GUI so palette updates remain isolated to a single file.
-- **Migration defaults:** Legacy callers that rely on `Color.Accent`, `Brush.Surface`, and related keys continue to resolve without change. The base resources still point at the Dark+ palette until the selector applies a new option, preventing regressions for cached control templates and custom styles.
-- **Runtime selection:** `MainWindowViewModel` binds the header dropdown to these palette entries. Selecting an option updates `Application.Current.RequestedThemeVariant` and rewrites the shared color/brush tokens so view refreshes pick up the new palette immediately.
-- **Extending palettes:** To add additional themes, clone the structure used by `Palette.DarkPlus`, register a new `ThemeOption` in `ApplicationThemeRuntime`, and update the documentation matrix above. Keep the `Theme.DefaultPaletteId` resource in sync with the intended startup palette so migrations stay deterministic.
+**Manage choices…** edits everything saved: groups, rules, ignore and mask choices, the review list, the history's size (and clearing it), and export or import (merge or replace) of the whole set. Choices live in `curation.json` and scan history in `history.db`, both in the data root.
 
-![Dark+ theme overview at 1600px](assets/themes/20250309-theme-darkplus-1600px.png)
+### Files
+- Every scanned file in a sortable grid with drift, coverage, format, severity and tags; filters on top.
+- Double-click a row for File details. Right-click for **Show settings in Compare**, **File details**, and Compare's file actions.
+- **Files missing on some servers** (collapsed at the bottom) lists partial coverage with per-file and all-at-once re-scan.
 
-![Light+ theme overview at 1600px](assets/themes/20250309-theme-lightplus-1600px.png)
+### File details
+- The baseline and any other server's copy (**Compared with**) side by side with changed lines aligned and unchanged runs folded, or as a unified diff. **Previous / Next change** (Shift+F7 / F7).
+- The servers that hold the file, with selection for **Re-scan selected**; **Export HTML**, **Export JSON** and **Copy JSON**.
 
-The captures above follow the asset naming convention documented in `docs/ux-refresh.md#theme-capture-manifest`. Reuse them in release material whenever the palettes change, and regenerate fresh captures after significant visual adjustments to keep the manifest traceable. The Dark+ capture also records the diff planner MRU dropdown and export timeline pairing validated in `artifacts/manual-runs/2025-10-24-multi-server-notes.md`.
+### Remote capture orchestration
+- Use the PowerShell module when coordinating multi-host captures without launching the GUI: `Invoke-DriftBusterRemoteScan -ComputerName branch-01 -RemotePath "ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -MaskToken <token>` mounts the admin share and runs the capture in process against the UNC path.
+- For environments where SMB access is blocked, flip to WinRM with `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath "C:\\ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -AllowUnmasked -RemoteWorkingDirectory "$env:ProgramData\\DriftBusterRemote"`. The cmdlet stages the module and backend on the remote host (PowerShell 7.6 required there), runs the capture, and copies the snapshot and manifest back into `<output>/<host>/` alongside GUI evidence.
+- Generate offline runner snippets with `driftbuster registry-scan emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` so the multi-server view and manifests can display the requested hive list next to each host.
+- After pulling results back, run `driftbuster capture run --registry-scan <output>/<host>/registry_scan.json ...` to embed the registry summary alongside filesystem detections before importing evidence into the GUI session archive.
 
-## 5. Diff Planner Details
-### Inputs & Validation
-- Use the **Browse** buttons beside each textbox to pick the left/right file.
-- Inline messages (in red) surface when a path is missing or invalid.
-- The **Build Plan** button stays disabled while validation fails or a request is running.
-
-### Execution & Results
-- Clicking **Build Plan** triggers an async request to the backend.
-- While running, a progress bar animates and the button remains disabled.
-- On success:
-  - **Plan cards** list before/after snapshots, content type, labels, masks, and context lines.
-  - **Metadata cards** reflect resolved paths and diff settings.
-  - **Raw JSON** expander contains the untouched backend payload.
-  - **Copy raw JSON** copies the payload for downstream tooling or manual inspection.
-- Errors (e.g., missing files, permission issues) bubble into the red message banner.
+## 5. Diff Planner
+- **Files to compare** (folds away after a build): pick a baseline and one or more files, or reopen a **Recent plans** entry. **Build plan** runs the comparison.
+- Results open in tabs:
+  - **Settings**: the Compare view for the picked files (one column per file), with the same filters and right-click menu.
+  - **Line by line**: the unified diff of each comparison with line numbers, colours and **Previous / Next change**; a picker when there are several comparisons; **Copy diff**.
+  - **JSON**: the sanitized or raw payload with **Copy JSON**.
 
 ### JSON payload schema
-- The **Raw JSON** expander mirrors the backend response returned by `DriftbusterBackend.DiffAsync`. The payload is a
+- The **JSON** tab (Raw) mirrors the backend response returned by `DriftbusterBackend.DiffAsync`. The payload is a
   single object with the following shape:
   - `versions`: ordered list of absolute or relative file paths exactly as submitted to the backend.
   - `comparisons`: array of comparisons, each containing:
@@ -90,107 +96,48 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
   - `raw_payload.json` demonstrates the direct backend contract.
   - `sanitized_summary.json` shows the MRU-safe structure with digests and counts.
 
-### MRU replay workflow
-- Open the **Recent plans** dropdown in the diff planner header to list the most recent sanitized payloads (capped to ten).
-- Selecting an item restores the plan inputs, sanitised metadata cards, and summary digests without rehydrating raw file
-  contents.
-- Each MRU entry includes the generated timestamp, baseline alias, and comparison count so analysts can confirm provenance
-  before replaying a plan.
-- Use **Manage saved plans…** to purge entries you no longer need. The dialog exposes the cache root resolved via
-  `DriftbusterPaths.GetCacheDirectory("diff-planner")` so you can audit or delete payloads outside the GUI when required.
-- MRU persistence never writes raw payloads to disk—only the sanitized summary described above. If validation detects an
-  unsanitized payload, the GUI logs a structured rejection event (see `DiffViewModel` telemetry) and refuses to cache it.
+## 6. Hunt Explorer
+- Scan a folder or file for values that change between machines (paths, hosts, connection strings, versions), optionally only lines containing some text.
+- Rule chips show how many findings each rule has; click one to show only its findings. Search narrows by rule, file, or excerpt.
+- The findings grid (rule, file, line) sits beside the selected finding in full: rule, token, description, `path:line`, the excerpt, **Copy location**, **Copy excerpt**, **Open folder**.
+- Right-click a finding to copy it (location, path, excerpt, JSON, TSV), show only its rule or file, open its folder, or **Report false positive** through the bug report preview. The **JSON** tab holds the raw result.
 
-### Sanitised screenshot capture
-- When documenting MRU workflows, launch the GUI with the sanitized fixtures under `artifacts/samples/diff-planner/` to ensure
-  no raw secrets appear in the UI.
-- Capture screenshots after toggling **Sanitized JSON** so the diff panes render digest fields instead of file contents. Confirm
-  the footer banner notes "Sanitized summary" before taking the capture.
-- Store captures in `docs/assets/diff-planner/` using the naming pattern `YYYYMMDD-mru-<theme>-<resolution>.png` and log each
-  addition in `docs/ux-refresh.md#diff-planner-mru`.
-- Mask any lingering filesystem paths or operator names by overlaying solid rectangles before committing assets. Re-run the
-  capture if masking would obscure key UI elements.
+## 7. Profiles
+- Saved profiles on the left (**Refresh**, **Load**), the selected profile's form on the right with **Save profile**, **Run profile** and **Prepare offline collector** pinned above it.
+
+### Run profile scheduling workflow
+
+1. Open the **Profiles** view and either load an existing profile or enter the sources/baseline for a new one.
+2. Scroll past the options list to find the schedule cards. Each card requires a **Name**, **Profile** reference (typically the profile name), and an **Every** interval (shorthand like `15m`, `24h`, or ISO 8601). The **Profile** field is now an editable dropdown that lists every saved profile plus the in-progress draft name so you can reuse definitions without retyping. Optional **Start at**, **Window start/end/timezone**, **Tags**, and metadata rows capture quiet hours, labels, and notification contacts.
+3. Renaming the active profile updates any blank schedule rows automatically so cadence entries continue targeting the right definition; schedule cards with custom profile overrides keep their values intact.
+4. Click **Save profile** to persist both the `profile.json` definition and the consolidated `Profiles/schedules.json` manifest. The GUI normalises tag lists and metadata keys before writing to disk.
+5. Use the console tool when automating: `driftbuster schedule list` to inspect schedules, `due` to surface pending runs, `mark-complete` to advance cadence after a run, and `skip-until` to defer execution. The GUI and console tool share the manifest and `scheduler-state.json` files so state remains aligned.
 
 ### Run profiles secret scanner workflow
-- Switch to **Run profiles** and open **Secret scanner settings** to review ignore lists. The dialog (`SecretScannerSettingsViewModel`) clones the active profile configuration, so cancelling leaves the persisted options untouched.
+- Switch to **Profiles** and open **Secret scanner settings** to review ignore lists. The dialog (`SecretScannerSettingsViewModel`) clones the active profile configuration, so cancelling leaves the persisted options untouched.
 - Saving applies the ignore rules/patterns plus optional inline ruleset JSON to the profile and updates the summary string beneath the button. The view model emits the same payload the backend run profile executor consumes for `driftbuster profile run`, so the GUI and console runs stay aligned.
 - When a run executes, the backend writes redaction messages (for example, `secret candidate redacted (PasswordAssignment) …`) into the activity timeline and into `metadata.json → secrets.messages`. Rows associated with scrubbed files surface a **Secrets** pill, mirroring the `HasSecrets` flag in the results view models.
 - Sanitised copies persist under the profile output directory alongside `metadata.json`. The manifest exposes rule version, ignored lists, findings, and the logged messages so auditors can reconcile GUI output with stored evidence. Pair these manifests with `artifacts/secret-scanning/realtime-validation-20251025T065645Z.log` when capturing validation proof for A13.3.
 
-## 6. Hunt View Details
-### Inputs
-- **Target** accepts either a directory or single file. The Browse button opens a folder picker first, falling back to file selection.
-- **Filter** (optional) applies a case-insensitive substring filter to result excerpts.
-- Validation ensures the path exists before enabling the **Scan** button.
+## Themes
 
-### Execution & Results
-- A progress bar appears during scans; results persist until the next run.
-- **Status banner** reports success (hit count) or “No matches found”.
-- **Findings** are shown as cards that surface rule name/description, token badges, path, line number, and a trimmed excerpt.
-- Hover tooltips provide full text when truncated.
-- Raw JSON is available in the expander for exporting or analysis.
+- **Palette catalog:** `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` now exposes `Palette.DarkPlus` and `Palette.LightPlus` resource dictionaries. Each dictionary defines the `Color.*` and `Brush.*` tokens consumed throughout the GUI so palette updates remain isolated to a single file.
+- **Migration defaults:** Legacy callers that rely on `Color.Accent`, `Brush.Surface`, and related keys continue to resolve without change. The base resources still point at the Dark+ palette until the selector applies a new option, preventing regressions for cached control templates and custom styles.
+- **Runtime selection:** `MainWindowViewModel` binds the header dropdown to these palette entries. Selecting an option updates `Application.Current.RequestedThemeVariant` and rewrites the shared color/brush tokens so view refreshes pick up the new palette immediately.
+- **Extending palettes:** To add additional themes, clone the structure used by `Palette.DarkPlus`, register a new `ThemeOption` in `ApplicationThemeRuntime`, and update the documentation matrix above. Keep the `Theme.DefaultPaletteId` resource in sync with the intended startup palette so migrations stay deterministic.
 
-## 7. Multi-server View Details
-### Host Configuration
-- Host cards now render inside a responsive grid that fits 1280–1920 px widths without horizontal scrolling. Cards stretch to fill available space while keeping a minimum width, so you can scan labels, scopes, and roots side by side.
-- Each card exposes a `ValidationSummary` tooltip and automation name that narrates the current root status (ready, pending validation, or needs attention) for screen readers.
-- Keyboard users get high-contrast focus outlines on buttons, toggles, combo boxes, and root text boxes; the Run/Cancel strip also exposes access keys (`Alt+R`, `Alt+M`, `Alt+C`).
-- Drag-and-drop host cards to reorder execution priority. The baseline preference and command ordering update in-place, and the new order is captured with the session snapshot.
-
-### Root Validation & Persistence
-- Switching a server to **Custom roots** keeps the validation summary live while you type. Duplicate or relative paths flag the card immediately, and summaries stay cached even when the card loses focus.
-- Session saves now persist the active catalog sort descriptor, catalog filters, timeline filter, selected view (setup/results/drilldown), and root ordering so reloading a session restores the same working state.
-- Manual walkthrough recorded in `artifacts/manual-runs/2025-10-24-multi-server-notes.md` exercises save/restore, confirms cached diff planner MRU entries, and maps the persisted timeline filter shown in the Dark+ capture above.
-
-
-### Remote capture orchestration
-- Use the PowerShell module when coordinating multi-host captures without launching the GUI: `Invoke-DriftBusterRemoteScan -ComputerName branch-01 -RemotePath "ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -MaskToken <token>` mounts the admin share and runs the capture in process against the UNC path.
-- For environments where SMB access is blocked, flip to WinRM with `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath "C:\\ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -AllowUnmasked -RemoteWorkingDirectory "$env:ProgramData\\DriftBusterRemote"`. The cmdlet stages the module and backend on the remote host (PowerShell 7.6 required there), runs the capture, and copies the snapshot and manifest back into `<output>/<host>/` alongside GUI evidence.
-- Generate offline runner snippets with `driftbuster registry-scan emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` so the multi-server view and manifests can display the requested hive list next to each host.
-- After pulling results back, run `driftbuster capture run --registry-scan <output>/<host>/registry_scan.json ...` to embed the registry summary alongside filesystem detections before importing evidence into the GUI session archive.
-
-#### Persistence walkthrough
-1. Click **Save session** after a successful multi-server run. The awaitable `SessionCacheService` writes the snapshot to `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json` (or the `$XDG_DATA_HOME` equivalent) while recording migration counters.
-2. Relaunch the GUI; `ServerSelectionViewModel` loads the snapshot, reapplies host enablement, restores catalog/drilldown/timeline state, and logs a **Loaded saved session** activity entry summarising the number of restored servers.
-3. Trigger **Run missing only** to validate the restored session. Cached hosts remain in **succeeded** state, while active plans append fresh activity telemetry without losing the restored context.
-
-### Catalog & Drilldown Enhancements
-- Catalog columns support click-to-sort with visual indicators; the current sort mode is cached alongside server state.
-- Drilldown headers now surface format, baseline host, drift count, and provenance in a metadata strip for quick triage.
-- A dedicated **Copy JSON** action copies the sanitised export payload to the clipboard without triggering a file save, mirroring the HTML/JSON export options.
-- The execution summary grid exposes a **View drilldown** shortcut per host so analysts can jump into the latest drift snapshot without leaving the setup surface.
-
-### Notifications & Timeline
-- Toast alerts now surface in a compact stack with at most three visible at once; additional messages collapse into an overflow tray so long-running scans don't flood the viewport.
-- Toast styling reads the Avalonia theme dictionaries directly: override `Brush.Toast.*` or `Toast.Icon.*` resources under `ThemeVariant.Dark` / `ThemeVariant.Light` to tailor per-theme palettes without touching the converters.
-- Timeline filters include **All**, **Errors**, **Warnings**, and **Exports**, and the chosen filter plus the last opened drilldown host persist with the rest of the multi-server session.
-- Clipboard/export actions write to the timeline with the new **Exports** filter so analysts can isolate delivery events quickly.
-- Diff planner exports from the manual run evidence file appear in the **Exports** view alongside the MRU replay, demonstrating how sanitized payloads and timeline entries stay in sync for audits.
-
-### Manual run evidence
-- `artifacts/manual-runs/2025-10-24-multi-server-notes.md` documents a six-host walkthrough using the bundled fixtures, including the diff planner MRU capture shown in the Dark+ screenshot above.
-- Pair the notes with the Light+ capture when reviewing accessibility tweaks; each callout references the same sanitized export burst recorded in the activity timeline.
-- Refresh the evidence entry whenever MRU formatting, session cache layout, or activity filters change so this guide always points at the latest screenshots and transcript hashes.
-
-### Virtualization heuristics & fallback toggle
-- The server cards, activity feed, and results catalog all read a shared `PerformanceProfile` that flips between the virtualised `ItemsRepeater` layout and the non-virtualised fallback when host counts are low. The default threshold is **400** entries, keeping memory usage predictable without penalising small scans.
-- Operators can raise or lower the threshold before launching the GUI by exporting `DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD=<count>` (PowerShell: `setx DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD 600` then restart the shell) on machines that regularly plan against hundreds of hosts.
-- Low-memory hosts can force the simpler non-virtualised list by setting `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION=false` before launch. The override applies immediately across all virtualised surfaces, swapping in the existing `ItemsControl` fallback that avoids retaining recycled item containers.
-- Set `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION=true` to keep virtualization enabled even for tiny host counts when you want to minimise viewport footprint or avoid re-layout churn after toggling filters.
-- Overrides are read on startup; update the environment variable, restart the shell, then relaunch the GUI to apply changes. Logged heuristics and the active override value appear in the performance smoke artefact under `artifacts/perf/` for future audits.
-
-## Performance
+### Performance
 
 - Run `scripts/verify_coverage.sh --perf-smoke` to add the perf-smoke suite (`Category=PerfSmoke`); the run log lands in `artifacts/perf/perf-smoke-<timestamp>.log`.
-- Counts below the default **400** virtualization threshold stay on the simpler list layout; at **400+** the views virtualise. The environment overrides above change that behaviour.
+- Lists and grids that can grow large (hosts, files, settings, diff lines, findings) always virtualise. The activity feed and the missing-files list switch to a virtualised layout at **400** entries; set `DRIFTBUSTER_GUI_VIRTUALIZATION_THRESHOLD=<count>` to move that point, or `DRIFTBUSTER_GUI_FORCE_VIRTUALIZATION=true|false` to force it, before launching the GUI.
 - Re-run the suite after tweaking thresholds or toast batching logic and compare the logs to confirm behavioural drift before shipping changes.
 
 ## 8. Backend Bridge
 - `DriftbusterService` instantiates the shared `DriftbusterBackend` class and executes diff, hunt, and run-profile operations in-process.
-- Diff calls load file contents, build the same JSON payload exposed to the UI, and reuse the shared models for plan metadata.
+- Diff calls load file contents, build the same JSON payload exposed to the UI (including the `settings` comparison of the picked files), and reuse the shared models for plan metadata.
 - Hunt scans walk the filesystem locally, apply the default rule set, and surface filtered hits to the view models.
 - Run profile actions persist JSON definitions, copy snapshot files, and emit metadata using the shared library helpers.
-- Multi-server orchestration runs in process through the backend multi-server runner, streams per-host progress back into toasts and the activity timeline, and persists cached diffs under the DriftBuster data root (e.g. `%LOCALAPPDATA%/DriftBuster/cache/diffs/`, `$XDG_DATA_HOME/DriftBuster/cache/diffs/`).
+- Multi-server orchestration runs in process through the backend multi-server runner, returns the setting-by-setting `comparison` and every server's copy of each file (`host_diffs`), streams per-host progress back into toasts and the activity timeline, and persists cached diffs under the DriftBuster data root (e.g. `%LOCALAPPDATA%/DriftBuster/cache/diffs/`, `$XDG_DATA_HOME/DriftBuster/cache/diffs/`).
 - All work runs asynchronously on background tasks so the UI stays responsive; errors surface through the existing status banners.
 
 ## 9. Packaging Options
@@ -216,7 +163,7 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 
 ## 10. Manual Smoke Checklist
 - Located at `notes/checklists/gui-smoke.md`.
-- Covers ping, diff, hunt, error handling, and verifying backend shutdown after closing the window.
+- Walks every page (Setup, Compare, Files, File details, Diff planner, Hunt explorer, Profiles), the right-click menus and Manage choices, in both themes.
 - Record date/operator each time the checklist is executed.
 
 ## 11. Automated & Headless Tests
@@ -231,7 +178,6 @@ The captures above follow the asset naming convention documented in `docs/ux-ref
 ## 12. Troubleshooting
 | Symptom | Suggested Checks |
 |---------|-----------------|
-| “Backend closed unexpectedly” | Run the GUI from a console and inspect logs; verify the selected files are accessible. |
 | Validation won’t clear | Confirm file/directory exists and is accessible; refresh the path using Browse. |
 | Empty hunt results | Check filter string, increase rule coverage, or drop filter to view raw hits. |
 | Clipboard not working | Ensure the app is running in a desktop session (clipboard APIs require a real user session). Use the activity timeline’s copy buttons to verify clipboard access quickly. |

@@ -1,5 +1,3 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # Manual sample checklist
 
 Use this log to coordinate sample retrieval, mutation runs, and hunt/profile
@@ -21,7 +19,7 @@ row links to a concrete test action.
 
 ### 2025-10-14 XML config spot-check
 
-- `python -m driftbuster.cli fixtures/config --json`
+- `driftbuster scan fixtures/config --json`
   - Output archived in `notes/snippets/xml-cli-run-2025-10-14.txt`.
 - Baseline and transform metadata snapshots refreshed in
   `notes/snippets/xml-config-diffs.md` (2025-10-14 run).
@@ -32,18 +30,15 @@ row links to a concrete test action.
    matches include catalog identifiers and `sample_truncated` flags when
    applicable.
 2. Run profile generation for the binary sample and capture metadata deltas.
-   Record whether truncation thresholds align with `_DEFAULT_SAMPLE_SIZE`.
-3. Note manual lint commands executed (`python -m compileall`, `python -m
-   pycodestyle …`) to ensure the sample modifications did not introduce syntax
-   issues in auxiliary scripts.
+   Record whether truncation thresholds align with `Detector.DefaultSampleSize`.
+3. Run `scripts/lint_all.sh` to confirm the sample changes did not break
+   formatting or the PowerShell analyzers.
 4. Attach CLI output snippets directly beneath the relevant table row. Keep
    timestamps and redacted paths where necessary.
-5. Bridge hunt output with profile expectations using `python -m
-   driftbuster.profile_cli hunt-bridge profiles.json hunt-results.json --tag
+5. Bridge hunt output with profile expectations using `driftbuster
+   detection-profile hunt-bridge profiles.json hunt-results.json --tag
    env:prod --tag tier:web --root deployments/prod-web-01 --output
-   hunt-profile-bridge.json`. Log the output path and reference
-   `notes/snippets/profile-hunt-bridge.py` when running the Python helper
-   instead of the CLI.
+   hunt-profile-bridge.json`. Log the output path.
 
 ## Manual fuzz execution log
 
@@ -53,13 +48,12 @@ row links to a concrete test action.
 
 - Use deterministic mutation scripts referenced in the testing strategy doc.
 - If a mutation fails, capture stack traces here and note the remediation task
-  in `CLOUDTASKS.md`.
+  in the issue tracker.
 
 ## GUI research review log
 
 | Date | Reviewer | Notes |
 |------|----------|-------|
-| 2025-10-11 | Internal | Verified GUI status log captures user requirements with links to `docs/windows-gui-notes.md`; see `notes/status/gui-research.md#user-requirements`. |
 
 ## Anomalies & remediation
 

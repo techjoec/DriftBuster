@@ -1,140 +1,41 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # Core detector scan checklist
 
-Use this log when validating the sampling guardrails and error instrumentation.
-Attach timestamps and notes directly in the tables.
+Use this when changing sampling, detection or error handling. Record results in the change's commit message or release
+evidence, not in this file.
 
 ## Fixture runs
 
-| Sample type | Path | Command | Runtime (s) | Return code | Notes |
-|-------------|------|---------|-------------|-------------|-------|
-| Text/XML | fixtures/config | `python -m driftbuster.cli fixtures/config` | 0.6 | 0 | Output archived in `notes/snippets/xml-cli-run-2025-10-14.txt`. |
-| JSON | fixtures/config/appsettings.json | `PYTHONPATH=src python -m driftbuster.cli fixtures/config/appsettings.json` | 0.3 | 0 | Output archived in `notes/snippets/json-cli-run.md`. |
-| Binary | | | | | |
+| Sample type | Command | Expect |
+|-------------|---------|--------|
+| Text/XML | `driftbuster scan fixtures/config --glob "*.config"` | Every `.config` detected as `structured-config-xml` with its variant (`web-config`, `app-config`, `machine-config`, `web-config-transform`). |
+| JSON | `driftbuster scan fixtures/config/appsettings.json --json` | `format: json`, `bytes_sampled` equal to the file size, `sample_truncated: false`. |
+| Truncated sample | `driftbuster scan fixtures/config/web.config --sample-size 64 --json` | `bytes_sampled: 64`, `sample_truncated: true`, no exception. |
+| Directory walk | `driftbuster scan fixtures --json` | One JSON line per file; binary and undetected files reported without failing the run. |
 
-## Metadata snapshot
+In the `--json` output check `metadata.bytes_sampled`, `encoding`, `sample_truncated`, the catalog keys, and that `reasons`
+has no duplicate, padded or multi-line entries.
 
-Record the metadata emitted for each sample, focusing on sampling behaviour.
+## Profiles
 
-| Sample type | bytes_sampled | encoding | sample_truncated | Additional metadata |
-|-------------|---------------|----------|------------------|---------------------|
-| Text/XML | 203-246 | utf-8 | false | Variants `web-config`, `app-config`, `machine-config`, `web-config-transform`; metadata timestamps logged in `notes/snippets/xml-config-diffs.md`. |
-| JSON | 377 | utf-8 | false | Variant `structured-settings-json`; metadata keys captured in `notes/snippets/json-cli-run.md`. |
-| Large text/XML | 65536+ | utf-8 | true | Confirm truncation banner emitted and `DetectionMatch.reasons` remain trimmed/deduplicated; capture run in `notes/snippets/xml-truncation-check.md`. |
-| Binary | | | | |
-
-### Reason normalisation audit
-
-- [ ] Scrub collected `DetectionMatch.reasons` for duplicate, padded, or multi-line entries after each smoke run.
-- [ ] Record any anomalies alongside the fixture path and attach sanitized output snippets.
-
-## Profile scan smoke
-
-Run this snippet when profile helpers change to confirm
-`Detector.scan_with_profiles` resolves configs without raising errors. Record
-the console output and file path alongside the fixture log.
+`Detector.ScanWithProfiles` is covered by `gui/DriftBuster.Backend.Tests/Detection/` (profile matching, ignore review flags,
+store exceptions). For a manual pass, write a detection profile store and summarise it:
 
 ```bash
-PYTHONPATH=src python - <<"PY"
-from pathlib import Path
-from driftbuster import Detector, ProfileStore, ConfigurationProfile, ProfileConfig
-
-store = ProfileStore([
-    ConfigurationProfile(
-        name="docs",
-        tags={"env:test"},
-        configs=(
-            ProfileConfig(
-                identifier="readme-entry",
-                path="README.md",
-            ),
-        ),
-    )
-])
-
-detector = Detector()
-results = detector.scan_with_profiles(
-    Path("README.md"),
-    profile_store=store,
-    tags=["env:test"],
-)
-
-entry = results[0]
-print("profiles", [cfg.config.identifier for cfg in entry.profiles])
-print("detection", entry.detection)
-PY
+driftbuster detection-profile summary profiles.json --output profile-summary.json
 ```
 
-## Manual lint + style results
+See `notes/checklists/profile-summary.md` for the summary and diff workflow.
 
-- [x] `python -m compileall src` (2025-10-24) — succeeded; same Regex SyntaxWarnings as baseline; transcript stored at `artifacts/hold-exit/compile-lint.txt`.
-- [x] `python -m pycodestyle src/driftbuster/core` (2025-10-24) — passes after trimming excess blank lines in `core/types.py` (E303 addressed).
-- [x] `python -m pycodestyle src/driftbuster/formats/registry_live` (2025-10-24) — reports existing W391/E501 items (line-length) awaiting backlog cleanup.
-- [x] `python -m pycodestyle src/driftbuster/registry` (2025-10-24) — reports existing E501 line-length on legacy helper; documented for hold-exit replay.
-- [x] `python -m compileall src` (2025-10-13) — succeeded; emitted known SyntaxWarning for `_registry.py` string escape.
-- [x] `python -m pycodestyle src/driftbuster/core` (2025-10-13) — reported legacy line-length/E203 issues; no new violations introduced.
-- [x] `python -m pycodestyle src/driftbuster/formats/registry.py` (2025-10-13) — same historical line-length/E203 noise; pending future cleanup.
+## Unreadable file
 
-## Profile-assisted smoke
+1. Create a scratch copy of a fixture and remove read access (`chmod 000 <file>`, or deny read in its Windows ACL).
+2. `driftbuster scan <file>` prints `DetectorIOException: <path>: Access to the path '<path>' is denied.` and
+   exits 1.
+3. Restore permissions and delete the copy.
 
-```bash
-PYTHONPATH=src python - <<'PY'
-from driftbuster import Detector, ConfigurationProfile, ProfileConfig, ProfileStore
-from pathlib import Path
+A multi-server or GUI scan reports the same file as unreadable for that server and carries on with the rest.
 
-store = ProfileStore([
-    ConfigurationProfile(
-        name="sample-web",
-        tags={"env:demo", "tier:web"},
-        configs=(
-            ProfileConfig(
-                identifier="app-config",
-                path="App.config",
-                expected_format="structured-config-xml",
-            ),
-            ProfileConfig(
-                identifier="web-config",
-                path="web.config",
-                expected_variant="web-config",
-            ),
-        ),
-    ),
-])
+## Build and lint
 
-detector = Detector()
-results = detector.scan_with_profiles(
-    Path("fixtures/config"),
-    profile_store=store,
-    tags=["env:demo", "tier:web"],
-)
-
-for entry in results[:3]:
-    print(entry.path.name, bool(entry.detection), [cfg.config.identifier for cfg in entry.profiles])
-PY
-```
-
-Output:
-
-```
-App.config True ['app-config']
-machine.config True []
-web.Release.config True []
-```
-
-## Unreadable file simulation
-
-1. Create a temporary fixture, then run ``chmod 000 <file>``.
-2. Attempt to scan the file and capture the raised ``DetectorIOError``.
-3. Restore permissions afterwards.
-
-Expected message template:
-
-```
-DetectorIOError(path='path/to/file', reason='[Errno 13] Permission denied: ...')
-```
-
-Add any deviations or follow-up tasks below.
-
-- Notes:
-  - 2025-10-13: Verified structured-config variants via `Detector().scan_file` against temporary `/tmp/driftbuster-samples/*.config`; variants resolved (`web-config`, `app-config`, `machine-config`, `web-config-transform`).
+- `dotnet build DriftBuster.sln` finishes with zero warnings.
+- `scripts/lint_all.sh` passes (`dotnet format --verify-no-changes` and PSScriptAnalyzer).
