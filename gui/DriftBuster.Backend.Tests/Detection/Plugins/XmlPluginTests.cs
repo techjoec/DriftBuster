@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Plugins;
@@ -20,21 +21,21 @@ public sealed class XmlPluginTests
     /// <summary>The same block after <c>.strip()</c>: the first line bare, the rest still indented.</summary>
     internal static string Stripped(string body) => body.Replace("\n", "\n    ", StringComparison.Ordinal);
 
-    internal static OrderedDictionary<string, object?> Mapping(object? value)
-        => value.Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
+    internal static JsonObject Mapping(JsonNode? value)
+        => value.Should().BeOfType<JsonObject>().Subject;
 
-    internal static List<OrderedDictionary<string, object?>> Entries(object? value)
-        => value.Should().BeOfType<List<OrderedDictionary<string, object?>>>().Subject;
+    internal static List<JsonObject> Entries(JsonNode? value)
+        => [.. value.Should().BeOfType<JsonArray>().Subject.Select(item => item.Should().BeOfType<JsonObject>().Subject)];
 
-    internal static List<string> Strings(object? value) => value.Should().BeOfType<List<string>>().Subject;
+    internal static List<string> Strings(JsonNode? value) => [.. value.Should().BeOfType<JsonArray>().Subject.Select(item => item!.GetValue<string>())];
 
-    internal static void AssertMapping(object? value, params (string Key, object? Value)[] expected)
+    internal static void AssertMapping(JsonNode? value, params (string Key, object? Value)[] expected)
     {
         var mapping = Mapping(value);
         mapping.Keys.Should().Equal(expected.Select(pair => pair.Key));
         foreach (var (key, expectedValue) in expected)
         {
-            mapping[key].Should().Be(expectedValue, "key {0}", key);
+            mapping[key].ShouldBeJson(expectedValue);
         }
     }
 
@@ -80,7 +81,7 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("structured-config-xml");
         match.Variant.Should().Be("web-config");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["config_role"].Should().Be("web");
+        match.Metadata!["config_role"].ShouldBeJson("web");
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -92,7 +93,7 @@ public sealed class XmlPluginTests
             "Filename web.config strongly suggests web-hosted configuration");
         match.Metadata.Keys.Should().Equal("xml_declaration", "root_tag", "root_local_name", "config_original_filename", "config_role");
         AssertMapping(match.Metadata["xml_declaration"], ("version", "1.0"));
-        match.Metadata["config_original_filename"].Should().Be("web.config");
+        match.Metadata["config_original_filename"].ShouldBeJson("web.config");
     }
 
     [Fact]
@@ -103,11 +104,11 @@ public sealed class XmlPluginTests
         match.Should().NotBeNull();
         match!.Variant.Should().Be("web-config-transform");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["config_transform"].Should().Be(true);
-        match.Metadata["config_transform_scope"].Should().Be("web");
+        match.Metadata!["config_transform"].ShouldBeJson(true);
+        match.Metadata["config_transform_scope"].ShouldBeJson("web");
         Strings(match.Metadata["config_transform_stages"]).Should().Equal("Release");
-        match.Metadata["config_transform_primary_stage"].Should().Be("Release");
-        match.Metadata["config_transform_stage_count"].Should().Be(1);
+        match.Metadata["config_transform_primary_stage"].ShouldBeJson("Release");
+        match.Metadata["config_transform_stage_count"].ShouldBeJson(1);
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -144,8 +145,8 @@ public sealed class XmlPluginTests
         match!.Variant.Should().Be("web-config-transform");
         match.Metadata.Should().NotBeNull();
         Strings(match.Metadata!["config_transform_stages"]).Should().Equal("Release", "QA");
-        match.Metadata["config_transform_primary_stage"].Should().Be("QA");
-        match.Metadata["config_transform_stage_count"].Should().Be(2);
+        match.Metadata["config_transform_primary_stage"].ShouldBeJson("QA");
+        match.Metadata["config_transform_stage_count"].ShouldBeJson(2);
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -181,7 +182,7 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("structured-config-xml");
         match.Variant.Should().Be("config-transform");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["config_transform"].Should().Be(true);
+        match.Metadata!["config_transform"].ShouldBeJson(true);
         match.Metadata.Should().NotContainKey("config_transform_scope");
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
@@ -197,7 +198,7 @@ public sealed class XmlPluginTests
         match.Metadata.Keys.Should().Equal(
             "xml_declaration", "root_tag", "root_local_name", "root_attributes", "namespaces", "namespace_provenance",
             "attribute_hints", "config_original_filename", "config_transform", "config_role");
-        match.Metadata["config_role"].Should().Be("generic");
+        match.Metadata["config_role"].ShouldBeJson("generic");
     }
 
     [Fact]
@@ -215,7 +216,7 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("structured-config-xml");
         match.Variant.Should().Be("web-or-app-config");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["config_role"].Should().Be("generic");
+        match.Metadata!["config_role"].ShouldBeJson("generic");
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -241,7 +242,7 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("structured-config-xml");
         match.Variant.Should().Be("custom-config-xml");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["root_tag"].Should().Be("settings");
+        match.Metadata!["root_tag"].ShouldBeJson("settings");
 
         match.Confidence.Should().BeApproximately(0.78, 1e-9);
         match.Reasons.Should().Equal(
@@ -251,7 +252,7 @@ public sealed class XmlPluginTests
             "Treating as vendor-specific .config XML",
             "Detected root element <settings>");
         match.Metadata.Keys.Should().Equal("root_tag", "root_local_name", "xml_well_formed");
-        match.Metadata["xml_well_formed"].Should().Be(true);
+        match.Metadata["xml_well_formed"].ShouldBeJson(true);
     }
 
     [Fact]
@@ -269,13 +270,13 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("xml");
         match.Variant.Should().Be("app-manifest-xml");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["root_local_name"].Should().Be("assembly");
+        match.Metadata!["root_local_name"].ShouldBeJson("assembly");
         var provenance = Entries(match.Metadata["namespace_provenance"]);
         provenance.Should().NotBeEmpty();
         var defaultEntry = provenance[0];
-        defaultEntry["attribute"].Should().Be("xmlns");
-        defaultEntry["uri"].Should().Be("urn:schemas-microsoft-com:asm.v1");
-        defaultEntry["line"].Should().BeOfType<int>().Which.Should().BeGreaterThanOrEqualTo(2);
+        defaultEntry["attribute"].ShouldBeJson("xmlns");
+        defaultEntry["uri"].ShouldBeJson("urn:schemas-microsoft-com:asm.v1");
+        defaultEntry["line"]!.GetValue<int>().Should().BeGreaterThanOrEqualTo(2);
         var namespaceReasons = match.Reasons.Where(reason => reason.Contains("namespace", StringComparison.OrdinalIgnoreCase)).ToList();
         namespaceReasons.Should().Contain(reason => reason.Contains("@L", StringComparison.Ordinal));
 
@@ -295,7 +296,7 @@ public sealed class XmlPluginTests
             "xml_declaration", "encoding", "root_tag", "root_local_name", "root_attributes", "namespaces", "namespace_provenance",
             "root_namespace", "xml_well_formed", "needs_review", "review_reasons");
         AssertMapping(match.Metadata["xml_declaration"], ("version", "1.0"), ("encoding", "utf-8"));
-        match.Metadata["encoding"].Should().Be("utf-8");
+        match.Metadata["encoding"].ShouldBeJson("utf-8");
         AssertMapping(
             defaultEntry,
             ("attribute", "xmlns"),
@@ -305,9 +306,9 @@ public sealed class XmlPluginTests
             ("column", 15),
             ("source", "root-attribute"),
             ("hash", "ed869e795745"));
-        match.Metadata["root_namespace"].Should().Be("urn:schemas-microsoft-com:asm.v1");
-        match.Metadata["xml_well_formed"].Should().Be(false);
-        match.Metadata["needs_review"].Should().Be(true);
+        match.Metadata["root_namespace"].ShouldBeJson("urn:schemas-microsoft-com:asm.v1");
+        match.Metadata["xml_well_formed"].ShouldBeJson(false);
+        match.Metadata["needs_review"].ShouldBeJson(true);
         Strings(match.Metadata["review_reasons"]).Should().Equal("XML not well-formed");
     }
 
@@ -331,7 +332,7 @@ public sealed class XmlPluginTests
         Strings(match.Metadata!["resource_keys"]).Should().Equal("Sample");
         var provenance = Entries(match.Metadata["namespace_provenance"]);
         provenance.Should().NotBeEmpty();
-        provenance[0]["attribute"].Should().Be("xmlns");
+        provenance[0]["attribute"].ShouldBeJson("xmlns");
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -348,9 +349,9 @@ public sealed class XmlPluginTests
         match.Metadata.Keys.Should().Equal(
             "xml_declaration", "encoding", "root_tag", "root_local_name", "root_attributes", "namespaces", "namespace_provenance",
             "root_namespace", "resource_keys", "resource_keys_preview", "xml_well_formed", "needs_review", "review_reasons");
-        match.Metadata["resource_keys_preview"].Should().Be("Sample");
-        provenance[0]["hash"].Should().Be("169993406bf6");
-        provenance[0]["column"].Should().Be(11);
+        match.Metadata["resource_keys_preview"].ShouldBeJson("Sample");
+        provenance[0]["hash"].ShouldBeJson("169993406bf6");
+        provenance[0]["column"].ShouldBeJson(11);
     }
 
     [Fact]
@@ -388,8 +389,8 @@ public sealed class XmlPluginTests
             ("x", "http://schemas.microsoft.com/winfx/2006/xaml"));
         var provenance = Entries(match.Metadata["namespace_provenance"]);
         provenance.Should().HaveCount(2);
-        provenance[1]["column"].Should().Be(18);
-        provenance[1]["hash"].Should().Be("c64c2a0c1c56");
+        provenance[1]["column"].ShouldBeJson(18);
+        provenance[1]["hash"].ShouldBeJson("c64c2a0c1c56");
     }
 
     [Fact]
@@ -408,7 +409,7 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("xml");
         match.Variant.Should().Be("xslt-xml");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["xslt_stylesheet"].Should().Be(true);
+        match.Metadata!["xslt_stylesheet"].ShouldBeJson(true);
 
         match.Confidence.Should().BeApproximately(0.93, 1e-9);
         match.Reasons.Should().Equal(
@@ -422,11 +423,11 @@ public sealed class XmlPluginTests
         match.Metadata.Keys.Should().Equal(
             "root_tag", "root_prefix", "root_local_name", "root_attributes", "namespaces", "namespace_provenance",
             "root_namespace", "xslt_stylesheet", "xml_well_formed");
-        match.Metadata["root_tag"].Should().Be("xsl:stylesheet");
-        match.Metadata["root_prefix"].Should().Be("xsl");
-        match.Metadata["root_local_name"].Should().Be("stylesheet");
-        match.Metadata["root_namespace"].Should().Be("http://www.w3.org/1999/XSL/Transform");
-        match.Metadata["xml_well_formed"].Should().Be(true);
+        match.Metadata["root_tag"].ShouldBeJson("xsl:stylesheet");
+        match.Metadata["root_prefix"].ShouldBeJson("xsl");
+        match.Metadata["root_local_name"].ShouldBeJson("stylesheet");
+        match.Metadata["root_namespace"].ShouldBeJson("http://www.w3.org/1999/XSL/Transform");
+        match.Metadata["xml_well_formed"].ShouldBeJson(true);
     }
 
     [Theory]
@@ -532,7 +533,7 @@ public sealed class XmlPluginTests
         AssertAttributeHintEntries(hints);
     }
 
-    private static void AssertAttributeHintEntries(OrderedDictionary<string, object?> hints)
+    private static void AssertAttributeHintEntries(JsonObject hints)
     {
         hints.Keys.Should().Equal("connection_strings", "service_endpoints", "feature_flags");
         var endpointHints = Entries(hints["service_endpoints"]);
@@ -590,11 +591,11 @@ public sealed class XmlPluginTests
         match.Variant.Should().Be("msbuild-targets");
         match.Metadata.Should().NotBeNull();
         Strings(match.Metadata!["msbuild_default_targets"]).Should().Equal("Build", "Publish");
-        match.Metadata["msbuild_tools_version"].Should().Be("Current");
+        match.Metadata["msbuild_tools_version"].ShouldBeJson("Current");
         Strings(match.Metadata["msbuild_targets"]).Should().Equal("Publish");
         var importHints = Entries(match.Metadata["msbuild_import_hints"]);
         importHints.Should().NotBeEmpty();
-        importHints[0]["attribute"].Should().Be("Project");
+        importHints[0]["attribute"].ShouldBeJson("Project");
 
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -623,7 +624,7 @@ public sealed class XmlPluginTests
             ("length", 37),
             ("condition_hash", "c88773d6c79c34497258f7f7432f9b5d05c326c9f2ded6c60b6c51652da05785"),
             ("condition_length", 24));
-        match.Metadata["xml_well_formed"].Should().Be(true);
+        match.Metadata["xml_well_formed"].ShouldBeJson(true);
     }
 
     [Fact]
@@ -640,8 +641,8 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("xml");
         match.Variant.Should().Be("msbuild-props");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["msbuild_kind"].Should().Be("props");
-        match.Metadata["msbuild_detected"].Should().Be(true);
+        match.Metadata!["msbuild_kind"].ShouldBeJson("props");
+        match.Metadata["msbuild_detected"].ShouldBeJson(true);
 
         match.Confidence.Should().BeApproximately(0.94, 1e-9);
         match.Reasons.Should().Equal(
@@ -676,8 +677,8 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("xml");
         match.Variant.Should().Be("msbuild-project");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["msbuild_detected"].Should().Be(true);
-        match.Metadata["doctype"].Should().Be("Project");
+        match.Metadata!["msbuild_detected"].ShouldBeJson(true);
+        match.Metadata["doctype"].ShouldBeJson("Project");
 
         // The reader skips the DOCTYPE, so the tree walk still captures targets; the probe fails on the indented declaration.
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
@@ -693,7 +694,7 @@ public sealed class XmlPluginTests
             "Captured MSBuild target declarations (Pack)",
             "Document declares DOCTYPE Project");
         XmlPluginTests.Strings(match.Metadata["msbuild_targets"]).Should().Equal("Pack");
-        match.Metadata["msbuild_kind"].Should().Be("project");
+        match.Metadata["msbuild_kind"].ShouldBeJson("project");
     }
 
     [Fact]
@@ -714,11 +715,11 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("xml");
         match.Variant.Should().Be("msbuild-project");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["msbuild_sdk"].Should().Be("Microsoft.NET.Sdk");
+        match.Metadata!["msbuild_sdk"].ShouldBeJson("Microsoft.NET.Sdk");
         Strings(match.Metadata["msbuild_targets"]).Should().Equal("Pack");
         var importHints = Entries(match.Metadata["msbuild_import_hints"]);
         importHints.Should().NotBeEmpty();
-        importHints[0]["attribute"].Should().Be("Sdk");
+        importHints[0]["attribute"].ShouldBeJson("Sdk");
 
         match.Confidence.Should().BeApproximately(0.945, 1e-9);
         match.Reasons.Should().Equal(
@@ -752,7 +753,7 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("xml");
         match.Variant.Should().Be("generic");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["root_tag"].Should().Be("notes");
+        match.Metadata!["root_tag"].ShouldBeJson("notes");
 
         match.Confidence.Should().BeApproximately(0.73, 1e-9);
         match.Reasons.Should().Equal(
@@ -794,10 +795,10 @@ public sealed class XmlPluginTests
             "xml_well_formed");
         // The namespace map is sorted by prefix; the root namespace follows the root prefix, not the default declaration.
         AssertMapping(match.Metadata["namespaces"], ("asm", "urn:custom"), ("default", "urn:schemas-microsoft-com:asm.v1"));
-        match.Metadata["root_namespace"].Should().Be("urn:custom");
+        match.Metadata["root_namespace"].ShouldBeJson("urn:custom");
         var provenance = Entries(match.Metadata["namespace_provenance"]);
-        provenance.Select(entry => entry["column"]).Should().Equal(19, 60);
-        provenance.Select(entry => entry["hash"]).Should().Equal("ed869e795745", "a06c00825067");
+        provenance.Select(entry => entry.Int("column")).Should().Equal(19, 60);
+        provenance.Select(entry => entry.Text("hash")).Should().Equal("ed869e795745", "a06c00825067");
     }
 
     [Fact]
@@ -832,7 +833,7 @@ public sealed class XmlPluginTests
 
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["config_role"].Should().Be("app");
+        match.Metadata!["config_role"].ShouldBeJson("app");
 
         match.Variant.Should().Be("app-config");
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
@@ -901,7 +902,7 @@ public sealed class XmlPluginTests
     {
         var plugin = new XmlPlugin { MaxSafeParseChars = 10 };
         var metadata = plugin.CollectMetadata("<root>" + new string('a', 50) + "</root>", ".xml");
-        metadata["root_tag"].Should().Be("root");
+        metadata["root_tag"].ShouldBeJson("root");
         metadata.Keys.Should().Equal("root_tag", "root_local_name");
     }
 
@@ -975,11 +976,11 @@ public sealed class XmlPluginTests
             ("default", "urn:example:driftbuster:manifest"),
             ("provenance", "urn:example:driftbuster:provenance"));
         var provenance = Entries(match.Metadata["namespace_provenance"]);
-        provenance.Select(entry => entry["attribute"]).Should().Equal("xmlns", "xmlns:compat", "xmlns:provenance");
-        provenance.Select(entry => entry["line"]).Should().Equal(2, 3, 4);
-        provenance.Select(entry => entry["column"]).Should().Equal(11, 11, 11);
-        provenance.Select(entry => entry["hash"]).Should().Equal("161b031d0c0c", "8ac5816bc880", "7fc8c7ffaee8");
-        match.Metadata["xml_well_formed"].Should().Be(true);
+        provenance.Select(entry => entry.Text("attribute")).Should().Equal("xmlns", "xmlns:compat", "xmlns:provenance");
+        provenance.Select(entry => entry.Int("line")).Should().Equal(2, 3, 4);
+        provenance.Select(entry => entry.Int("column")).Should().Equal(11, 11, 11);
+        provenance.Select(entry => entry.Text("hash")).Should().Equal("161b031d0c0c", "8ac5816bc880", "7fc8c7ffaee8");
+        match.Metadata["xml_well_formed"].ShouldBeJson(true);
     }
 
     [Theory]
@@ -994,8 +995,8 @@ public sealed class XmlPluginTests
         match!.FormatName.Should().Be("structured-config-xml");
         match.Variant.Should().Be(variant);
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Metadata!["config_role"].Should().Be(role);
-        match.Metadata["config_original_filename"].Should().Be(name);
+        match.Metadata!["config_role"].ShouldBeJson(role);
+        match.Metadata["config_original_filename"].ShouldBeJson(name);
         match.Reasons.Should().EndWith(filenameReason);
         match.Metadata.Keys.Should().Equal("xml_declaration", "encoding", "root_tag", "root_local_name", "config_original_filename", "config_role");
     }

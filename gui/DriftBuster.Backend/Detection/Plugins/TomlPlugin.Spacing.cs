@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -52,7 +55,7 @@ public sealed partial class TomlPlugin
     private static List<int> AllowedAround(int baseline)
         => new HashSet<int> { baseline, Math.Max(0, baseline - 1), baseline + 1 }.Order().ToList();
 
-    private static OrderedDictionary<string, object?>? AnalyseSpacing(IReadOnlyList<string> lines)
+    private static JsonObject? AnalyseSpacing(IReadOnlyList<string> lines)
     {
         var beforeCounter = new OrderedDictionary<int, int>();
         var afterCounter = new OrderedDictionary<int, int>();
@@ -89,24 +92,24 @@ public sealed partial class TomlPlugin
             return null;
         }
 
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
         if (beforeCounter.Count > 0)
         {
             var beforeBase = MostCommon(beforeCounter);
             metadata["before"] = beforeBase;
-            metadata["allowed_before"] = AllowedAround(beforeBase);
+            metadata["allowed_before"] = JsonNodes.Numbers(AllowedAround(beforeBase));
         }
 
         if (afterCounter.Count > 0)
         {
             var afterBase = MostCommon(afterCounter);
             metadata["after"] = afterBase;
-            metadata["allowed_after"] = AllowedAround(afterBase);
+            metadata["allowed_after"] = JsonNodes.Numbers(AllowedAround(afterBase));
         }
 
         if (tabLines.Count > 0)
         {
-            metadata["tab_lines"] = tabLines.Take(SpacingTabLineCap).ToList();
+            metadata["tab_lines"] = JsonNodes.Numbers(tabLines.Take(SpacingTabLineCap).ToList());
         }
 
         return metadata.Count > 0 ? metadata : null;

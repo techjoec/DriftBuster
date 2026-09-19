@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection;
@@ -43,7 +44,7 @@ public sealed class DetectorTests : IDisposable
                 return null;
             }
 
-            var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["sample_length"] = sample.Length };
+            var metadata = new JsonObject { ["sample_length"] = sample.Length };
             return new DetectionMatch(Name, "xml", "generic", 0.6, ["matched fixture"], metadata);
         }
     }
@@ -114,7 +115,7 @@ public sealed class DetectorTests : IDisposable
                 return null;
             }
 
-            var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+            var metadata = new JsonObject()
             {
                 ["catalog_format"] = "structured-config-xml",
                 ["catalog_variant"] = "sample",
@@ -242,12 +243,12 @@ public sealed class DetectorTests : IDisposable
         match.Should().NotBeNull();
         match!.PluginName.Should().Be("test-xml-recorder");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["catalog_version"].Should().Be("0.0.4");
-        match.Metadata["catalog_format"].Should().Be("xml");
-        match.Metadata["catalog_variant"].Should().Be("generic");
-        match.Metadata["bytes_sampled"].Should().Be(4);
-        match.Metadata["encoding"].Should().Be("utf-8");
-        match.Metadata["sample_truncated"].Should().Be(true);
+        match.Metadata!["catalog_version"].ShouldBeJson("0.0.4");
+        match.Metadata["catalog_format"].ShouldBeJson("xml");
+        match.Metadata["catalog_variant"].ShouldBeJson("generic");
+        match.Metadata["bytes_sampled"].ShouldBeJson(4);
+        match.Metadata["encoding"].ShouldBeJson("utf-8");
+        match.Metadata["sample_truncated"].ShouldBeJson(true);
         match.Reasons.Should().Contain("Decoded Content Using Utf-8 Encoding");
         match.Reasons.Should().Contain("Truncated Sample To 4B");
     }
@@ -264,9 +265,9 @@ public sealed class DetectorTests : IDisposable
 
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["bytes_sampled"].Should().Be(512 * 1024);
-        match.Metadata["sample_truncated"].Should().Be(true);
-        match.Metadata["sample_length"].Should().Be(512 * 1024);
+        match.Metadata!["bytes_sampled"].ShouldBeJson(512 * 1024);
+        match.Metadata["sample_truncated"].ShouldBeJson(true);
+        match.Metadata["sample_length"].ShouldBeJson(512 * 1024);
         warnings.Should().ContainSingle().Which.Should().Be("Sample size 600000 exceeds 524288 bytes; clamping to guardrail.");
     }
 
@@ -461,7 +462,7 @@ public sealed class DetectorTests : IDisposable
         var finalMatch = results[^1].Match;
         finalMatch.Should().NotBeNull();
         finalMatch!.Metadata.Should().NotBeNull();
-        finalMatch.Metadata!["sample_budget_exhausted"].Should().Be(true);
+        finalMatch.Metadata!["sample_budget_exhausted"].ShouldBeJson(true);
         finalMatch.Reasons.Should().Contain(reason => reason.ToLowerInvariant().Contains("sampling budget exhausted", StringComparison.Ordinal));
         finalMatch.Reasons.Should().Contain("Sampling Budget Exhausted After 512B");
     }

@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Detection;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
@@ -13,7 +15,7 @@ public sealed class YamlFlagsAndGatingTests
         var match = Detect("config.yaml", "apiVersion: v1\n\tkind: ConfigMap\nmetadata:\n  name: app\n");
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
+        match.Metadata!["needs_review"].ShouldBeJson(true);
         var reviewReasons = YamlPluginTests.Strings(match.Metadata["review_reasons"]);
         reviewReasons.Should().Contain(reason => reason.Contains("Tab indentation", StringComparison.Ordinal));
 
@@ -22,8 +24,8 @@ public sealed class YamlFlagsAndGatingTests
         match.Confidence.Should().BeApproximately(0.9, 1e-9);
         var indentation = YamlPluginTests.Indentation(match);
         indentation.Keys.Should().Equal("style", "baseline", "allowed_widths", "tab_lines");
-        indentation["style"].Should().Be("mixed");
-        indentation["baseline"].Should().Be(2);
+        indentation["style"].ShouldBeJson("mixed");
+        indentation["baseline"].ShouldBeJson(2);
         YamlPluginTests.Ints(indentation["tab_lines"]).Should().Equal(2);
         YamlPluginTests.Strings(match.Metadata["top_level_keys_preview"]).Should().Equal("apiVersion", "kind", "metadata");
     }
@@ -67,7 +69,7 @@ public sealed class YamlFlagsAndGatingTests
         var match = Detect("indent.yaml", "root:\n  good: value\n     bad: indent\n");
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
+        match.Metadata!["needs_review"].ShouldBeJson(true);
         var reasons = YamlPluginTests.Strings(match.Metadata["review_reasons"]);
         reasons.Should().Contain(reason => reason.Contains("Indentation widths outside tolerated range", StringComparison.Ordinal));
 

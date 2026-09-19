@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Detection.Plugins;
@@ -66,7 +68,7 @@ public sealed class ScriptPlugin : IFormatPlugin
             ScriptText.Language.VbScript => "vbscript",
             _ => string.Equals(suffix, ".cmd", StringComparison.Ordinal) ? "cmd-shell" : "batch-script",
         };
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var metadata = new JsonObject()
         {
             ["script_language"] = Describe(best.Key),
             ["signal_count"] = (long)best.Value,

@@ -58,7 +58,7 @@ public sealed class ContentTypeResolverTests : IDisposable
     {
         var baseline = Write("appsettings.json", AppSettingsJson);
 
-        new Detector().ScanFile(baseline)!.Metadata!["catalog_format"].Should().Be("json");
+        new Detector().ScanFile(baseline)!.Metadata!["catalog_format"].ShouldBeJson("json");
         ContentTypeResolver.ResolveFile(baseline).Should().Be("json");
         ContentTypeResolver.ResolvePair(baseline, baseline).Should().Be("json");
         DiffBuilder.BuildUnifiedDiff(AppSettingsJson, AppSettingsJson, ContentTypeResolver.ResolvePair(baseline, baseline))

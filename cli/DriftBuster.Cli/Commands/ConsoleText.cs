@@ -2,9 +2,7 @@ using System.Globalization;
 using System.Numerics;
 
 using DriftBuster.Backend.Detection;
-using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Cli.Commands;
 
@@ -16,15 +14,6 @@ internal static class ConsoleText
 
     /// <summary>The line plus LF.</summary>
     public static void Print(TextWriter writer, string line) => Write(writer, line + "\n");
-
-    /// <summary>
-    /// JSON on one line with ", " and ": " when <paramref name="indent"/> is null, otherwise items on their own lines indented by that many
-    /// spaces per level; keys optionally sorted, optionally ASCII-escaped.
-    /// </summary>
-    public static string Dumps(object? value, int? indent, bool sortKeys, bool ensureAscii = true)
-        => indent is { } width
-            ? ReportValues.DumpsIndented(value, width, ensureAscii, sortKeys)
-            : Canonicaliser.Dumps(ReportValues.ToJsonValue(value), indent: false, ensureAscii, sortKeys);
 
     /// <summary>Length in code points.</summary>
     public static int Len(string text) => EngineBuiltins.Len(text);

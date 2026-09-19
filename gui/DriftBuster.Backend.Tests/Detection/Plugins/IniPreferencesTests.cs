@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection.Plugins;
 
@@ -17,10 +18,10 @@ public sealed class IniPreferencesTests
         match!.FormatName.Should().Be("ini");
         match.Variant.Should().Be("sectionless-ini");
         match.Metadata.Should().NotBeNullOrEmpty();
-        var lineage = match.Metadata!["detector_lineage"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
-        lineage["variant"].Should().Be("sectionless-ini");
-        lineage["signal_score"].Should().Be(2);
+        var lineage = match.Metadata!["detector_lineage"].Should().BeOfType<JsonObject>().Subject;
+        lineage["variant"].ShouldBeJson("sectionless-ini");
+        lineage["signal_score"].ShouldBeJson(2);
         match.Confidence.Should().BeApproximately(0.525, 1e-9);
-        match.Metadata["key_value_pairs"].Should().Be(2);
+        match.Metadata["key_value_pairs"].ShouldBeJson(2);
     }
 }

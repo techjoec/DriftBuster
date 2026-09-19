@@ -1,6 +1,8 @@
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -57,7 +59,7 @@ public sealed partial class IniPlugin
         public int SignalScore { get; set; }
     }
 
-    private static void RecordEncoding(byte[] sample, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private static void RecordEncoding(byte[] sample, List<string> reasons, JsonObject metadata)
     {
         string? detectedCodec = null;
         var bomPresent = false;
@@ -73,7 +75,7 @@ public sealed partial class IniPlugin
 
         detectedCodec ??= FormatRegistry.DecodeText(sample).Encoding;
 
-        metadata["encoding_info"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        metadata["encoding_info"] = new JsonObject()
         {
             ["codec"] = detectedCodec,
             ["bom_present"] = bomPresent,
@@ -82,7 +84,7 @@ public sealed partial class IniPlugin
         reasons.Add($"Detected {detectedCodec} codec{(bomPresent ? " with BOM" : string.Empty)}");
     }
 
-    private static void CollectSections(Scan scan, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private static void CollectSections(Scan scan, List<string> reasons, JsonObject metadata)
     {
         foreach (var match in LineStartMatcher.Matches(SectionPattern, scan.Text))
         {
@@ -109,11 +111,11 @@ public sealed partial class IniPlugin
             }
         }
 
-        metadata["sections"] = uniqueSections.Take(MaxSectionSnapshot).ToList();
+        metadata["sections"] = JsonNodes.Strings(uniqueSections.Take(MaxSectionSnapshot).ToList());
         metadata["section_count"] = uniqueSections.Count;
     }
 
-    private static void CollectKeyValues(Scan scan, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private static void CollectKeyValues(Scan scan, List<string> reasons, JsonObject metadata)
     {
         scan.KeyMatches.AddRange(LineStartMatcher.Matches(KeyValuePattern, scan.Text));
 
@@ -162,7 +164,7 @@ public sealed partial class IniPlugin
         scan.ExportLines = scan.KeyMatches.Count(match => match.Groups["export"].Success);
     }
 
-    private static void CollectCommentStyle(Scan scan, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private static void CollectCommentStyle(Scan scan, List<string> reasons, JsonObject metadata)
     {
         var commentMarkers = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var line in scan.CommentLines)
@@ -202,9 +204,9 @@ public sealed partial class IniPlugin
 
         var supportsInlineComments = inlineCommentMarkers.Count > 0;
         commentMarkers.UnionWith(inlineCommentMarkers);
-        metadata["comment_style"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        metadata["comment_style"] = new JsonObject()
         {
-            ["markers"] = commentMarkers.ToList(),
+            ["markers"] = JsonNodes.Strings(commentMarkers.ToList()),
             ["supports_inline_comments"] = supportsInlineComments,
             ["uses_export_prefix"] = scan.ExportLines > 0,
         };
@@ -214,7 +216,7 @@ public sealed partial class IniPlugin
         }
     }
 
-    private void CollectNameAndDirectiveHints(Scan scan, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private void CollectNameAndDirectiveHints(Scan scan, List<string> reasons, JsonObject metadata)
     {
         if (scan.DirectiveSignal)
         {
@@ -252,7 +254,7 @@ public sealed partial class IniPlugin
         scan.ExtensionHint = registeredExtension || scan.LowerName.EndsWith(".ini", StringComparison.Ordinal);
     }
 
-    private static OrderedDictionary<string, object?> BuildSignals(Scan scan) => new(StringComparer.Ordinal)
+    private static JsonObject BuildSignals(Scan scan) => new()
     {
         ["section_count"] = scan.Sections.Count,
         ["key_value_pairs"] = scan.KeyPairCount,

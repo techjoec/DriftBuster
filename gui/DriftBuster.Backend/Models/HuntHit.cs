@@ -21,6 +21,7 @@ namespace DriftBuster.Backend.Models
 
         /// <summary>The plan transform the hit suggests, when its rule names a token; omitted otherwise.</summary>
         [JsonPropertyName("metadata")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public HuntHitMetadata? Metadata { get; set; }
     }
 }

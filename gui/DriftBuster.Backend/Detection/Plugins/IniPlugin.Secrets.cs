@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -45,9 +48,9 @@ public sealed partial class IniPlugin
 
     private static Regex Sensitive(string pattern) => new(pattern, RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2));
 
-    private static void CollectSensitiveHints(Scan scan, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private static void CollectSensitiveHints(Scan scan, List<string> reasons, JsonObject metadata)
     {
-        var sensitiveHints = new List<OrderedDictionary<string, object?>>();
+        var sensitiveHints = new List<JsonObject>();
         var seenSensitive = new HashSet<(string Key, string Keyword)>();
         foreach (var match in scan.KeyMatches)
         {
@@ -60,7 +63,7 @@ public sealed partial class IniPlugin
                     continue;
                 }
 
-                sensitiveHints.Add(new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+                sensitiveHints.Add(new JsonObject()
                 {
                     ["key"] = keyName,
                     ["keyword"] = keyword,
@@ -74,27 +77,27 @@ public sealed partial class IniPlugin
             return;
         }
 
-        metadata["sensitive_key_hints"] = sensitiveHints;
+        metadata["sensitive_key_hints"] = JsonNodes.Array(sensitiveHints);
         var (classification, remediations, classifiedKeys) = BuildSecretMetadata(sensitiveHints);
         metadata["secret_classification"] = classification;
-        metadata["remediations"] = remediations;
+        metadata["remediations"] = JsonNodes.Array(remediations);
         if (classifiedKeys.Count > 0)
         {
-            metadata.TryAdd("security_focus_keys", classifiedKeys.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList());
+            metadata.TryAdd("security_focus_keys", JsonNodes.Strings(classifiedKeys.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList()));
         }
     }
 
-    private static (OrderedDictionary<string, object?> Classification, List<OrderedDictionary<string, object?>> Remediations, List<string> ClassifiedKeys)
-        BuildSecretMetadata(List<OrderedDictionary<string, object?>> sensitiveHints)
+    private static (JsonObject Classification, List<JsonObject> Remediations, List<string> ClassifiedKeys)
+        BuildSecretMetadata(List<JsonObject> sensitiveHints)
     {
-        var entries = new List<OrderedDictionary<string, object?>>();
+        var entries = new List<JsonObject>();
         var categoryCounter = new SortedDictionary<string, int>(StringComparer.Ordinal);
         foreach (var hint in sensitiveHints)
         {
             var keyword = (string)hint["keyword"]!;
             var keyName = (string)hint["key"]!;
             var category = SecretCategoryMap.GetValueOrDefault(keyword, "credential");
-            entries.Add(new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+            entries.Add(new JsonObject()
             {
                 ["key"] = keyName,
                 ["keyword"] = keyword,
@@ -103,19 +106,19 @@ public sealed partial class IniPlugin
             categoryCounter[category] = categoryCounter.GetValueOrDefault(category) + 1;
         }
 
-        var categoryCounts = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var categoryCounts = new JsonObject();
         foreach (var (category, count) in categoryCounter)
         {
             categoryCounts[category] = count;
         }
 
-        var classification = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var classification = new JsonObject()
         {
-            ["entries"] = entries,
+            ["entries"] = JsonNodes.Array(entries),
             ["category_counts"] = categoryCounts,
         };
 
-        var remediations = new List<OrderedDictionary<string, object?>>();
+        var remediations = new List<JsonObject>();
         foreach (var (category, count) in categoryCounter)
         {
             var relatedKeys = entries
@@ -133,12 +136,12 @@ public sealed partial class IniPlugin
                 summary += $" ({string.Join(", ", relatedKeys)})";
             }
 
-            remediations.Add(new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+            remediations.Add(new JsonObject()
             {
                 ["id"] = $"ini-{category}-remediation",
                 ["category"] = category,
                 ["summary"] = summary,
-                ["related_keys"] = relatedKeys,
+                ["related_keys"] = JsonNodes.Strings(relatedKeys),
                 ["hint_count"] = count,
             });
         }

@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Xml.Linq;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -27,12 +29,12 @@ public sealed partial class XmlPlugin
     }
 
     /// <summary>Collects the metadata; internal so the parse-cap test can call it directly.</summary>
-    internal OrderedDictionary<string, object?> CollectMetadata(string text, string extension)
+    internal JsonObject CollectMetadata(string text, string extension)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(extension);
         var snippet = text[..PrefixLength(text, SnippetChars)];
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
 
         var rootElement = ParseTree(text);
 
@@ -63,27 +65,27 @@ public sealed partial class XmlPlugin
         return metadata;
     }
 
-    private static void CollectDeclaration(string snippet, OrderedDictionary<string, object?> metadata)
+    private static void CollectDeclaration(string snippet, JsonObject metadata)
     {
         if (!TryXmlDeclaration(snippet, out var attrsSegment))
         {
             return;
         }
 
-        var declAttrs = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var declAttrs = new JsonObject();
         foreach (var (name, value) in AttributeMatches(attrsSegment))
         {
             declAttrs[EngineText.Lower(name)] = value;
         }
 
         metadata["xml_declaration"] = declAttrs;
-        if (declAttrs.TryGetValue("encoding", out var encoding) && encoding is string encodingText && encodingText.Length > 0)
+        if (declAttrs.Text("encoding") is { } encodingText && encodingText.Length > 0)
         {
             metadata.TryAdd("encoding", encodingText);
         }
     }
 
-    private static void CollectRootTag(string snippet, OrderedDictionary<string, object?> metadata)
+    private static void CollectRootTag(string snippet, JsonObject metadata)
     {
         var startTag = FindStartTag(snippet);
         if (startTag is null)
@@ -123,10 +125,10 @@ public sealed partial class XmlPlugin
         return (null, name);
     }
 
-    private static void CollectNamespaces(string snippet, OrderedDictionary<string, object?> metadata)
+    private static void CollectNamespaces(string snippet, JsonObject metadata)
     {
         var pairs = new List<(string Key, string Value)>();
-        var provenance = new List<OrderedDictionary<string, object?>>();
+        var provenance = new List<JsonObject>();
         foreach (var match in XmlnsMatches(snippet))
         {
             var prefix = match.Prefix ?? "default";
@@ -140,7 +142,7 @@ public sealed partial class XmlPlugin
             return;
         }
 
-        var namespaces = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var namespaces = new JsonObject();
         foreach (var (prefix, uri) in pairs.OrderBy(pair => pair, EngineKeyOrder.Instance))
         {
             namespaces[prefix] = uri;
@@ -149,23 +151,23 @@ public sealed partial class XmlPlugin
         metadata["namespaces"] = namespaces;
         if (provenance.Count > 0)
         {
-            metadata["namespace_provenance"] = provenance;
+            metadata["namespace_provenance"] = JsonNodes.Array(provenance);
         }
 
-        if (metadata.TryGetValue("root_prefix", out var rootPrefix) && rootPrefix is string prefixText)
+        if (metadata.Text("root_prefix") is { } prefixText)
         {
-            if (namespaces.TryGetValue(prefixText, out var ns) && ns is string nsText && nsText.Length > 0)
+            if (namespaces.Text(prefixText) is { } nsText && nsText.Length > 0)
             {
                 metadata["root_namespace"] = nsText;
             }
         }
-        else if (namespaces.TryGetValue("default", out var defaultNs) && defaultNs is string defaultText && defaultText.Length > 0)
+        else if (namespaces.Text("default") is { } defaultText && defaultText.Length > 0)
         {
             metadata["root_namespace"] = defaultText;
         }
     }
 
-    private static OrderedDictionary<string, object?> ProvenanceEntry(string snippet, XmlnsMatch match, string uri)
+    private static JsonObject ProvenanceEntry(string snippet, XmlnsMatch match, string uri)
     {
         var attrStart = match.Start;
         var lineNumber = snippet.AsSpan(0, attrStart).Count('\n') + 1;
@@ -175,7 +177,7 @@ public sealed partial class XmlPlugin
         var columnNumber = CodePointCount(snippet[(lastNewline + 1)..attrStart]) + 1;
         var attributeName = match.Prefix is null ? "xmlns" : $"xmlns:{match.Prefix}";
         var digest = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{attributeName}|{uri}")))[..12];
-        return new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        return new JsonObject()
         {
             ["attribute"] = attributeName,
             ["prefix"] = match.Prefix,
@@ -187,9 +189,9 @@ public sealed partial class XmlPlugin
         };
     }
 
-    private static OrderedDictionary<string, object?> ExtractRootAttributes(string snippet, int startIndex)
+    private static JsonObject ExtractRootAttributes(string snippet, int startIndex)
     {
-        var result = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var result = new JsonObject();
         if (snippet.IndexOf('>', startIndex) < 0)
         {
             return result;
@@ -246,19 +248,18 @@ public sealed partial class XmlPlugin
         return result;
     }
 
-    private static void ExtractSchemaLocations(OrderedDictionary<string, object?> metadata)
+    private static void ExtractSchemaLocations(JsonObject metadata)
     {
-        if (!metadata.TryGetValue("root_attributes", out var attributesObject)
-            || attributesObject is not OrderedDictionary<string, object?> attributes
+        if (metadata.Object("root_attributes") is not { } attributes
             || attributes.Count == 0)
         {
             return;
         }
 
-        var entries = new List<OrderedDictionary<string, object?>>();
+        var entries = new List<JsonObject>();
         foreach (var (attrName, rawValue) in attributes)
         {
-            if (rawValue is not string rawText)
+            if (rawValue is not JsonValue value || !value.TryGetValue<string>(out var rawText))
             {
                 continue;
             }
@@ -291,12 +292,12 @@ public sealed partial class XmlPlugin
 
         if (entries.Count > 0)
         {
-            metadata["schema_locations"] = entries;
+            metadata["schema_locations"] = JsonNodes.Array(entries);
         }
     }
 
-    private static OrderedDictionary<string, object?> SchemaEntry(string? ns, string location)
-        => new(StringComparer.Ordinal)
+    private static JsonObject SchemaEntry(string? ns, string location)
+        => new()
         {
             ["namespace"] = ns,
             ["location"] = location,

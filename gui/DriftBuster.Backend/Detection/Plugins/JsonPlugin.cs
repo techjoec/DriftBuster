@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -64,7 +67,7 @@ public sealed partial class JsonPlugin : IFormatPlugin
         var lowerName = PathText.NameLower(path);
         var extension = PathText.SuffixLower(path);
         var reasons = new List<string>();
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
         var reviewReasons = new List<string>();
 
         var isJsonExtension = extension is ".json" or ".jsonc" || lowerName.EndsWith(".json", StringComparison.Ordinal);
@@ -114,7 +117,7 @@ public sealed partial class JsonPlugin : IFormatPlugin
         return ApplyGates(signals, metadata) ? BuildMatch(signals, reasons, metadata, reviewReasons) : null;
     }
 
-    private static void CollectSignals(Signals signals, string lowerName, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private static void CollectSignals(Signals signals, string lowerName, List<string> reasons, JsonObject metadata)
     {
         var analysisText = signals.AnalysisText;
         if (signals.HasComments)
@@ -149,7 +152,7 @@ public sealed partial class JsonPlugin : IFormatPlugin
         }
     }
 
-    private static void AttemptParseInto(Signals signals, List<string> reasons, OrderedDictionary<string, object?> metadata, List<string> reviewReasons)
+    private static void AttemptParseInto(Signals signals, List<string> reasons, JsonObject metadata, List<string> reviewReasons)
     {
         var parseCandidate = signals.AnalysisText;
         if (signals.HasComments)
@@ -168,7 +171,7 @@ public sealed partial class JsonPlugin : IFormatPlugin
         {
             foreach (var pair in signals.Parse.Metadata)
             {
-                metadata[pair.Key] = pair.Value;
+                metadata[pair.Key] = pair.Value?.DeepClone();
             }
 
             reasons.Add("Parsed JSON payload without errors within sample");
@@ -187,10 +190,10 @@ public sealed partial class JsonPlugin : IFormatPlugin
         }
     }
 
-    private static bool HasContainerTopLevel(OrderedDictionary<string, object?> metadata)
-        => metadata.TryGetValue("top_level_type", out var value) && value is "object" or "array";
+    private static bool HasContainerTopLevel(JsonObject metadata)
+        => metadata.Text("top_level_type") is "object" or "array";
 
-    private static bool ApplyGates(Signals signals, OrderedDictionary<string, object?> metadata)
+    private static bool ApplyGates(Signals signals, JsonObject metadata)
     {
         // Gate detection on content signals only; extension is a confidence hint, not a gate.
         var contentSignals = 0;
@@ -213,7 +216,7 @@ public sealed partial class JsonPlugin : IFormatPlugin
         return signals.IsJsonExtension || signals.Parse.Success || signals.KeySignal;
     }
 
-    private DetectionMatch BuildMatch(Signals signals, List<string> reasons, OrderedDictionary<string, object?> metadata, List<string> reviewReasons)
+    private DetectionMatch BuildMatch(Signals signals, List<string> reasons, JsonObject metadata, List<string> reviewReasons)
     {
         string variant;
         if (signals.StructuredHint is not null)
@@ -240,13 +243,13 @@ public sealed partial class JsonPlugin : IFormatPlugin
         if (reviewReasons.Count > 0)
         {
             metadata["needs_review"] = true;
-            metadata["review_reasons"] = reviewReasons;
+            metadata["review_reasons"] = JsonNodes.Strings(reviewReasons);
         }
 
         return new DetectionMatch(Name, "json", variant, confidence, reasons, metadata);
     }
 
-    private static double ComputeConfidence(Signals signals, OrderedDictionary<string, object?> metadata, string variant)
+    private static double ComputeConfidence(Signals signals, JsonObject metadata, string variant)
     {
         var confidence = 0.55;
         if (signals.IsJsonExtension)

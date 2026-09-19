@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Plugins;
@@ -11,12 +12,12 @@ public sealed class YamlPluginTests
     internal static DetectionMatch? Detect(string name, string content)
         => new YamlPlugin().Detect(name, Encoding.UTF8.GetBytes(content), content);
 
-    internal static OrderedDictionary<string, object?> Indentation(DetectionMatch match)
-        => match.Metadata!["indentation"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
+    internal static JsonObject Indentation(DetectionMatch match)
+        => match.Metadata!["indentation"].Should().BeOfType<JsonObject>().Subject;
 
-    internal static IEnumerable<int> Ints(object? value) => value.Should().BeAssignableTo<IEnumerable<int>>().Subject;
+    internal static IEnumerable<int> Ints(JsonNode? value) => [.. value.Should().BeOfType<JsonArray>().Subject.Select(item => item!.GetValue<int>())];
 
-    internal static IEnumerable<string> Strings(object? value) => value.Should().BeAssignableTo<IEnumerable<string>>().Subject;
+    internal static IEnumerable<string> Strings(JsonNode? value) => BinaryPluginTests.Strings(value);
 
     [Fact]
     public void YamlGenericDetection()
@@ -45,8 +46,8 @@ public sealed class YamlPluginTests
         match.Metadata!.Keys.Should().Equal("indentation", "top_level_keys_preview");
         var indentation = Indentation(match);
         indentation.Keys.Should().Equal("style", "baseline", "allowed_widths");
-        indentation["style"].Should().Be("spaces");
-        indentation["baseline"].Should().Be(4);
+        indentation["style"].ShouldBeJson("spaces");
+        indentation["baseline"].ShouldBeJson(4);
         Ints(indentation["allowed_widths"]).Should().Equal(4, 6);
         // "servers:" swallows the next line's first character, so "- host1" cannot anchor and "key" is never seen.
         Strings(match.Metadata["top_level_keys_preview"]).Should().Equal("title", "enabled", "servers", "nested");
@@ -123,7 +124,7 @@ public sealed class YamlPluginTests
         match.Variant.Should().Be("generic");
         match.Confidence.Should().BeApproximately(0.56, 1e-9);
         match.Reasons.Should().Equal("Found numerous commented YAML key: value examples");
-        match.Metadata.Should().BeNull();
+        match.Metadata.Should().BeEmpty();
     }
 
     [Fact]
@@ -160,8 +161,8 @@ public sealed class YamlPluginTests
             "Found key: value pairs indicative of YAML",
             "Found indented nested key: value blocks",
             "Detected apiVersion and kind keys typical of Kubernetes");
-        indentation["style"].Should().Be("spaces");
-        indentation["baseline"].Should().Be(2);
+        indentation["style"].ShouldBeJson("spaces");
+        indentation["baseline"].ShouldBeJson(2);
         Ints(indentation["allowed_widths"]).Should().Equal(2, 4, 6, 8);
         Strings(match.Metadata!["top_level_keys_preview"]).Should().Equal("kind", "metadata", "apiVersion", "spec", "image");
         match.Metadata.Should().NotContainKey("needs_review");
@@ -185,6 +186,6 @@ public sealed class YamlPluginTests
         match!.Variant.Should().Be("generic");
         match.Confidence.Should().BeApproximately(0.75, 1e-9);
         match.Reasons.Should().Equal("File extension .yml suggests YAML content", "Found key: value pairs indicative of YAML");
-        match.Metadata!["top_level_keys_preview"].Should().BeAssignableTo<IEnumerable<string>>().Subject.Should().Equal("a", "b", "c");
+        BinaryPluginTests.Strings(match.Metadata!["top_level_keys_preview"]).Should().Equal("a", "b", "c");
     }
 }

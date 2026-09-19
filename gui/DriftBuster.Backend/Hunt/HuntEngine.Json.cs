@@ -1,54 +1,50 @@
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.Hunt;
 
-/// <summary>The <c>return_json=True</c> shape of <c>hunt_path</c>.</summary>
 public static partial class HuntEngine
 {
     /// <summary>
-    /// <c>hunt_path(..., return_json=True)</c> entries: <c>rule</c> (name, description, token_name, keywords, patterns),
-    /// <c>path</c>, <c>relative_path</c> (posix, relative to the root directory, or the file name when that fails),
-    /// <c>line_number</c>, <c>excerpt</c> and, when the hit yields a plan transform, <c>metadata.plan_transform</c>
-    /// (token_name, value, placeholder, rule_name).
+    /// The hits as written out: rule (name, description, token name, keywords, pattern sources), path, <c>relative_path</c> (forward
+    /// slashes, relative to the root directory, or the file name when that fails), line number, excerpt and, when the rule names a
+    /// token, <c>metadata.plan_transform</c>.
     /// </summary>
-    public static IReadOnlyList<OrderedDictionary<string, object?>> ToJson(HuntScanResult result, string placeholderTemplate = DefaultPlaceholderTemplate)
+    public static HuntHit[] ToHits(HuntScanResult result, string placeholderTemplate = DefaultPlaceholderTemplate)
     {
         ArgumentNullException.ThrowIfNull(result);
-        var entries = new List<OrderedDictionary<string, object?>>(result.Hits.Count);
-        foreach (var hit in result.Hits)
+        return [.. result.Hits.Select(hit => ToHit(hit, result.RootDirectory, placeholderTemplate))];
+    }
+
+    private static HuntHit ToHit(HuntFinding hit, string rootDirectory, string placeholderTemplate)
+    {
+        var transform = PlanTransformForHit(hit, placeholderTemplate);
+        return new HuntHit
         {
-            var entry = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+            Rule = new HuntRuleSummary
             {
-                ["rule"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+                Name = hit.Rule.Name,
+                Description = hit.Rule.Description,
+                TokenName = hit.Rule.TokenName,
+                Keywords = [.. hit.Rule.Keywords],
+                Patterns = [.. hit.Rule.Patterns.Select(pattern => pattern.ToString())],
+            },
+            Path = hit.Path,
+            RelativePath = RelativeTo(hit.Path, rootDirectory) ?? PathText.Name(hit.Path),
+            LineNumber = hit.LineNumber,
+            Excerpt = hit.Excerpt,
+            Metadata = transform is null
+                ? null
+                : new HuntHitMetadata
                 {
-                    ["name"] = hit.Rule.Name,
-                    ["description"] = hit.Rule.Description,
-                    ["token_name"] = hit.Rule.TokenName,
-                    ["keywords"] = hit.Rule.Keywords.Cast<object?>().ToList(),
-                    ["patterns"] = hit.Rule.Patterns.Select(pattern => (object?)pattern.ToString()).ToList(),
-                },
-                ["path"] = hit.Path,
-                ["relative_path"] = RelativeTo(hit.Path, result.RootDirectory) ?? PathText.Name(hit.Path),
-                ["line_number"] = hit.LineNumber,
-                ["excerpt"] = hit.Excerpt,
-            };
-            if (PlanTransformForHit(hit, placeholderTemplate) is { } transform)
-            {
-                entry["metadata"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-                {
-                    ["plan_transform"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+                    PlanTransform = new HuntPlanTransform
                     {
-                        ["token_name"] = transform.TokenName,
-                        ["value"] = transform.Value,
-                        ["placeholder"] = transform.Placeholder,
-                        ["rule_name"] = transform.RuleName,
+                        TokenName = transform.TokenName,
+                        Value = transform.Value,
+                        Placeholder = transform.Placeholder,
+                        RuleName = transform.RuleName,
                     },
-                };
-            }
-
-            entries.Add(entry);
-        }
-
-        return entries;
+                },
+        };
     }
 }

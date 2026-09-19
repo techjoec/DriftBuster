@@ -146,10 +146,8 @@ public sealed partial class MultiServerRunner
         var relative = RegistryRelativePath(root);
         var match = new RegistryExportPlugin().Detect(relative, Encoding.UTF8.GetBytes(text), text)
             ?? throw new InvalidOperationException("A rendered registry export was not recognised.");
-        match.Metadata = DetectionMetadata.ValidateDetectionMetadata(match, DetectionCatalog.Default);
-        match.Metadata["registry_key"] = root.View is null ? $"{root.Hive}\\{root.Path}" : $"{root.Hive}\\{root.Path},view={root.View}";
-        match.Metadata["registry_computer"] = plan.Registry?.Computer;
-        var contentType = ContentTypeResolver.FromCatalogFormat(match.Metadata.TryGetValue("catalog_format", out var format) ? format as string : null);
+        DetectionMetadata.ValidateDetectionMetadata(match, DetectionCatalog.Default);
+        var contentType = ContentTypeResolver.FromMatch(match);
         var configId = ConfigIdentity.Disambiguate(ConfigIdentity.NormaliseConfigId(match, relative), position, configs.ContainsKey);
         var computer = plan.Registry?.Computer;
         return new ConfigRecord
@@ -160,7 +158,6 @@ public sealed partial class MultiServerRunner
             ContentType = contentType,
             Canonical = Canonicaliser.Canonicalise(text, contentType),
             Raw = text,
-            Metadata = match.Metadata,
             FileHash = Sha256Hex(text),
             Secrets = ContainsSecret(text, cancellationToken),
             SourcePath = computer is null ? $"{root.Hive}\\{root.Path}" : $"\\\\{computer}\\{root.Hive}\\{root.Path}",

@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -61,7 +64,7 @@ public sealed partial class YamlPlugin : IFormatPlugin
             HasDoc: HasMarkerLine(scanText, "---"),
             HasDocEnd: HasMarkerLine(scanText, "..."));
 
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
         var reviewReasons = ReviewIndentation(text, lines, metadata);
 
         // Guard against common false positives like inline URLs with ':' by requiring either indentation-based
@@ -110,7 +113,7 @@ public sealed partial class YamlPlugin : IFormatPlugin
     }
 
     // The tab oddity is judged on the full text; the indentation profile is stored before gating.
-    private static List<string> ReviewIndentation(string text, IReadOnlyList<string> lines, OrderedDictionary<string, object?> metadata)
+    private static List<string> ReviewIndentation(string text, IReadOnlyList<string> lines, JsonObject metadata)
     {
         var reviewReasons = new List<string>();
         if (text.Contains('\t', StringComparison.Ordinal))
@@ -186,7 +189,7 @@ public sealed partial class YamlPlugin : IFormatPlugin
         List<string> keys,
         Signals signals,
         List<string> reasons,
-        OrderedDictionary<string, object?> metadata,
+        JsonObject metadata,
         List<string> reviewReasons)
     {
         string variant;
@@ -205,13 +208,13 @@ public sealed partial class YamlPlugin : IFormatPlugin
         var tops = TopLevelKeyPreview(keys);
         if (tops.Count > 0)
         {
-            metadata["top_level_keys_preview"] = tops;
+            metadata["top_level_keys_preview"] = JsonNodes.Strings(tops);
         }
 
         if (reviewReasons.Count > 0)
         {
             metadata["needs_review"] = true;
-            metadata["review_reasons"] = reviewReasons;
+            metadata["review_reasons"] = JsonNodes.Strings(reviewReasons);
         }
 
         return new DetectionMatch(
@@ -220,7 +223,7 @@ public sealed partial class YamlPlugin : IFormatPlugin
             variant,
             confidence,
             reasons.Count > 0 ? reasons : ["YAML structure detected"],
-            metadata.Count > 0 ? metadata : null);
+            metadata);
     }
 
     private static double Confidence(Signals signals, string variant)

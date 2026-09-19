@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -26,7 +29,7 @@ public sealed partial class XmlPlugin
         string? path,
         string text,
         List<string> reasons,
-        OrderedDictionary<string, object?> metadata)
+        JsonObject metadata)
     {
         if (path is not null)
         {
@@ -85,7 +88,7 @@ public sealed partial class XmlPlugin
         }, confidence);
     }
 
-    private static void RecordTransformStages(List<string> transformStages, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private static void RecordTransformStages(List<string> transformStages, List<string> reasons, JsonObject metadata)
     {
         if (transformStages.Count == 0)
         {
@@ -98,7 +101,7 @@ public sealed partial class XmlPlugin
             return;
         }
 
-        metadata["config_transform_stages"] = cleanedStages;
+        metadata["config_transform_stages"] = JsonNodes.Strings(cleanedStages);
         metadata["config_transform_primary_stage"] = cleanedStages[^1];
         metadata["config_transform_stage_count"] = cleanedStages.Count;
         if (cleanedStages.Count == 1)

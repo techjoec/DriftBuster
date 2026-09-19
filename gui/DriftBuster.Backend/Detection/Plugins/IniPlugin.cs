@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
@@ -93,7 +94,7 @@ public sealed partial class IniPlugin : IFormatPlugin
 
         var scan = new Scan(PathText.NameLower(path), PathText.SuffixLower(path), text);
         var reasons = new List<string>();
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
         var reviewReasons = new List<string>();
 
         RecordEncoding(sample, reasons, metadata);

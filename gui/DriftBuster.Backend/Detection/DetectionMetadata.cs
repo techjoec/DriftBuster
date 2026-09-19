@@ -1,199 +1,15 @@
-using System.Collections;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Numerics;
-using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection.Catalog;
-using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Detection;
 
-/// <summary>Metadata validation, catalog enrichment and JSON-safe conversion for detection matches.</summary>
+/// <summary>Metadata validation and catalog enrichment for detection matches.</summary>
 public static partial class DetectionMetadata
 {
     [GeneratedRegex("^[a-z0-9][a-z0-9_-]*$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex ValidIdentifier();
-
-    internal static OrderedDictionary<string, object?> EnsureMapping(IEnumerable<KeyValuePair<string, object?>>? metadata)
-    {
-        var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        if (metadata is null)
-        {
-            return copy;
-        }
-
-        foreach (var pair in metadata)
-        {
-            copy[pair.Key] = pair.Value;
-        }
-
-        return copy;
-    }
-
-    private static OrderedDictionary<string, object?> JsonSafeMapping(IEnumerable<KeyValuePair<string, object?>>? metadata)
-    {
-        var result = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var pair in EnsureMapping(metadata))
-        {
-            result[pair.Key] = JsonSafe(pair.Value);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Converts a value to JSON-safe primitives: strings, integers, floats, bools and null pass through; byte arrays decode as UTF-8
-    /// with replacement; dictionaries become ordered dictionaries with string keys (<see cref="EngineStr"/>); other enumerables
-    /// become lists; anything else becomes <see cref="EngineStr"/>. Uses an explicit stack, so nesting depth is safe.
-    /// </summary>
-    public static object? JsonSafe(object? value)
-    {
-        if (!TryOpen(value, out var root))
-        {
-            return Scalar(value);
-        }
-
-        var open = new Stack<SafeContainer>();
-        open.Push(root);
-        while (open.Count > 0)
-        {
-            var container = open.Peek();
-            if (!container.TryNext(out var key, out var item))
-            {
-                open.Pop();
-                continue;
-            }
-
-            if (TryOpen(item, out var child))
-            {
-                container.Add(key, child.Result);
-                open.Push(child);
-            }
-            else
-            {
-                container.Add(key, Scalar(item));
-            }
-        }
-
-        return root.Result;
-    }
-
-    private static object? Scalar(object? value) => value switch
-    {
-        null or string or bool or byte or sbyte or short or ushort or int or uint or long or ulong or BigInteger or float or double or decimal => value,
-        byte[] bytes => Encoding.UTF8.GetString(bytes),
-        _ => EngineStr(value),
-    };
-
-    // Strings and byte arrays are scalars; any other dictionary or enumerable is a container.
-    private static bool TryOpen(object? value, [NotNullWhen(true)] out SafeContainer? container)
-    {
-        container = value switch
-        {
-            null or string or byte[] => null,
-            IDictionary dictionary => SafeContainer.ForDictionary(dictionary),
-            IEnumerable enumerable when IsReadOnlyDictionary(enumerable) => SafeContainer.ForReadOnlyDictionary(enumerable),
-            IEnumerable enumerable => SafeContainer.ForList(enumerable),
-            _ => null,
-        };
-        return container is not null;
-    }
-
-    private static bool IsReadOnlyDictionary(IEnumerable enumerable)
-        => enumerable.GetType().GetInterfaces()
-            .Any(candidate => candidate.IsGenericType && candidate.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>));
-
-    /// <summary>A container being converted: the source entries still to visit and the JSON-safe result being filled.</summary>
-    private sealed class SafeContainer
-    {
-        private readonly IEnumerator _source;
-        private readonly Func<object?, (string? Key, object? Item)> _split;
-        private readonly OrderedDictionary<string, object?>? _dict;
-        private readonly List<object?>? _list;
-
-        private SafeContainer(IEnumerator source, Func<object?, (string? Key, object? Item)> split, bool isDictionary)
-        {
-            _source = source;
-            _split = split;
-            if (isDictionary)
-            {
-                _dict = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-            }
-            else
-            {
-                _list = [];
-            }
-        }
-
-        public object Result => (object?)_dict ?? _list!;
-
-        public static SafeContainer ForDictionary(IDictionary dictionary)
-            => new(dictionary.GetEnumerator(), entry => (KeyText(((DictionaryEntry)entry!).Key), ((DictionaryEntry)entry!).Value), isDictionary: true);
-
-        public static SafeContainer ForReadOnlyDictionary(IEnumerable pairs)
-            => new(pairs.GetEnumerator(), SplitPair, isDictionary: true);
-
-        public static SafeContainer ForList(IEnumerable items)
-            => new(items.GetEnumerator(), item => (null, item), isDictionary: false);
-
-        public bool TryNext(out string? key, out object? item)
-        {
-            (key, item) = (null, null);
-            if (!_source.MoveNext())
-            {
-                return false;
-            }
-
-            (key, item) = _split(_source.Current);
-            return true;
-        }
-
-        // A repeated key keeps its first slot with the last value.
-        public void Add(string? key, object? converted)
-        {
-            if (_dict is not null)
-            {
-                _dict[key!] = converted;
-            }
-            else
-            {
-                _list!.Add(converted);
-            }
-        }
-
-        private static (string? Key, object? Item) SplitPair(object? pair)
-        {
-            var itemType = pair!.GetType();
-            return (KeyText(itemType.GetProperty("Key")!.GetValue(pair)), itemType.GetProperty("Value")!.GetValue(pair));
-        }
-    }
-
-    private static string KeyText(object? key) => key is string text ? text : EngineStr(key);
-
-    /// <summary>
-    /// Text for the values plugins store: <c>null</c>, <c>true</c>/<c>false</c>, integers, floats as
-    /// <c>repr</c>, a <see cref="DateTime"/> as <c>YYYY-MM-DD HH:MM:SS</c> with <c>.ffffff</c> only when there are
-    /// microseconds, and any other object through its own <see cref="object.ToString"/>.
-    /// </summary>
-    internal static string EngineStr(object? value) => value switch
-    {
-        null => "null",
-        string text => text,
-        bool flag => flag ? "true" : "false",
-        double number => EngineRepr.Float(number),
-        float number => EngineRepr.Float(number),
-        DateTime date => EngineDateTime(date),
-        _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
-    };
-
-    private static string EngineDateTime(DateTime date)
-    {
-        var seconds = date.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        var microseconds = date.Ticks % TimeSpan.TicksPerSecond / 10;
-        return microseconds == 0 ? seconds : seconds + "." + microseconds.ToString("D6", CultureInfo.InvariantCulture);
-    }
 
     private static string Slugify(string value) => value.Trim().ToLowerInvariant();
 
@@ -320,16 +136,17 @@ public static partial class DetectionMetadata
     }
 
     /// <summary>
-    /// Validates and enriches <c>match.Metadata</c> against <paramref name="catalog"/>, returning a sanitised copy.
+    /// Validates the match's format and variant against <paramref name="catalog"/> and adds the catalog keys to <c>match.Metadata</c>
+    /// in place, returning it.
     /// With <paramref name="strict"/> the format and variant must be slugs known to the catalog; otherwise unknown
     /// formats pass through and the variant is only trimmed and lowered.
     /// </summary>
-    public static OrderedDictionary<string, object?> ValidateDetectionMetadata(DetectionMatch match, DetectionCatalog catalog, bool strict = true)
+    public static JsonObject ValidateDetectionMetadata(DetectionMatch match, DetectionCatalog catalog, bool strict = true)
     {
         ArgumentNullException.ThrowIfNull(match);
         ArgumentNullException.ThrowIfNull(catalog);
 
-        var metadata = JsonSafeMapping(match.Metadata);
+        var metadata = match.Metadata;
 
         var formatName = match.FormatName;
         if (formatName is null)
@@ -372,7 +189,7 @@ public static partial class DetectionMetadata
 
     private static void ApplyVariant(
         string? variant,
-        OrderedDictionary<string, object?> metadata,
+        JsonObject metadata,
         string canonicalFormat,
         HashSet<string> allowedVariants,
         bool strict)
@@ -413,13 +230,13 @@ public static partial class DetectionMetadata
         return null;
     }
 
-    private static void EnrichFromCatalog(OrderedDictionary<string, object?> metadata, FormatClass formatEntry)
+    private static void EnrichFromCatalog(JsonObject metadata, FormatClass formatEntry)
     {
         var severityValue = formatEntry.DefaultSeverity;
         var severityHintValue = formatEntry.SeverityHint;
         var remediationSources = new List<RemediationHint>(formatEntry.RemediationHints);
 
-        if (metadata.TryGetValue("catalog_variant", out var variantObject) && variantObject is string variantKey && variantKey.Length > 0)
+        if (metadata["catalog_variant"]?.GetValue<string>() is { Length: > 0 } variantKey)
         {
             var subtype = FindSubtype(formatEntry, variantKey);
             if (subtype is not null)
@@ -457,13 +274,13 @@ public static partial class DetectionMetadata
         {
             metadata.TryAdd(
                 "catalog_references",
-                formatEntry.References.Where(reference => !string.IsNullOrEmpty(reference)).Cast<object?>().ToList());
+                new JsonArray([.. formatEntry.References.Where(reference => !string.IsNullOrEmpty(reference)).Select(reference => (JsonNode?)reference)]));
         }
     }
 
-    private static List<object?> RemediationPayload(IEnumerable<RemediationHint> sources)
+    private static JsonArray RemediationPayload(IEnumerable<RemediationHint> sources)
     {
-        var payload = new List<object?>();
+        var payload = new JsonArray();
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var hint in sources)
         {
@@ -472,7 +289,7 @@ public static partial class DetectionMetadata
                 continue;
             }
 
-            var hintEntry = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+            var hintEntry = new JsonObject
             {
                 ["id"] = hint.Id,
                 ["category"] = hint.Category,
@@ -487,21 +304,5 @@ public static partial class DetectionMetadata
         }
 
         return payload;
-    }
-
-    /// <summary>A JSON-ready mapping describing <paramref name="match"/> and its normalised metadata.</summary>
-    public static OrderedDictionary<string, object?> SummariseMetadata(DetectionMatch match)
-    {
-        ArgumentNullException.ThrowIfNull(match);
-
-        return new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["plugin"] = match.PluginName,
-            ["format"] = match.FormatName,
-            ["variant"] = match.Variant,
-            ["confidence"] = match.Confidence,
-            ["reasons"] = new List<string>(match.Reasons),
-            ["metadata"] = JsonSafeMapping(match.Metadata),
-        };
     }
 }

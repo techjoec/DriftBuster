@@ -1,60 +1,63 @@
+using System.Text.Json.Nodes;
+
+using DriftBuster.Backend.Json;
+
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>Reason strings derived from collected metadata, deduplicated in emission order.</summary>
 public sealed partial class XmlPlugin
 {
-    private static void AppendDeclarationReasons(OrderedDictionary<string, object?> metadata, List<string> reasons)
+    private static void AppendDeclarationReasons(JsonObject metadata, List<string> reasons)
     {
-        if (!metadata.TryGetValue("xml_declaration", out var declaration))
+        if (!metadata.ContainsKey("xml_declaration"))
         {
             return;
         }
 
         AddReason(reasons, "Detected XML declaration");
-        if (declaration is not OrderedDictionary<string, object?> attributes)
+        if (metadata.Object("xml_declaration") is not { } attributes)
         {
             return;
         }
 
-        if (attributes.TryGetValue("version", out var version) && version is string versionText && versionText.Length > 0)
+        if (attributes.Text("version") is { } versionText && versionText.Length > 0)
         {
             AddReason(reasons, $"XML version declared as {versionText}");
         }
 
-        if (attributes.TryGetValue("encoding", out var encoding) && encoding is string encodingText && encodingText.Length > 0)
+        if (attributes.Text("encoding") is { } encodingText && encodingText.Length > 0)
         {
             AddReason(reasons, $"XML declared encoding {encodingText}");
         }
 
-        if (attributes.TryGetValue("standalone", out var standalone) && standalone is string standaloneText && standaloneText.Length > 0)
+        if (attributes.Text("standalone") is { } standaloneText && standaloneText.Length > 0)
         {
             AddReason(reasons, $"XML standalone flag is {standaloneText}");
         }
     }
 
-    private static void AppendNamespaceReason(OrderedDictionary<string, object?> metadata, List<string> reasons)
+    private static void AppendNamespaceReason(JsonObject metadata, List<string> reasons)
     {
-        if (!metadata.TryGetValue("namespaces", out var namespacesObject)
-            || namespacesObject is not OrderedDictionary<string, object?> namespaces
+        if (metadata.Object("namespaces") is not { } namespaces
             || namespaces.Count == 0)
         {
             return;
         }
 
         var previewEntries = new List<string>();
-        if (metadata.TryGetValue("namespace_provenance", out var provenance) && provenance is List<OrderedDictionary<string, object?>> entries)
+        if (metadata.Array("namespace_provenance") is { } entries)
         {
-            foreach (var entry in entries)
+            foreach (var entry in entries.OfType<JsonObject>())
             {
-                if (!entry.TryGetValue("uri", out var uriObject) || uriObject is not string uri || uri.Length == 0)
+                if (entry.Text("uri") is not { } uri || uri.Length == 0)
                 {
                     continue;
                 }
 
-                var prefixLabel = entry.TryGetValue("prefix", out var prefix) && prefix is string prefixText && prefixText.Length > 0
+                var prefixLabel = entry.Text("prefix") is { } prefixText && prefixText.Length > 0
                     ? prefixText
                     : "default";
-                previewEntries.Add(entry.TryGetValue("line", out var line) && line is int lineNumber && lineNumber > 0
+                previewEntries.Add(entry.Int("line") is { } lineNumber && lineNumber > 0
                     ? $"{prefixLabel}→{uri} @L{lineNumber}"
                     : $"{prefixLabel}→{uri}");
                 if (previewEntries.Count == 3)
@@ -70,7 +73,7 @@ public sealed partial class XmlPlugin
             return;
         }
 
-        if (namespaces.TryGetValue("default", out var defaultNs) && defaultNs is string defaultText && defaultText.Length > 0)
+        if (namespaces.Text("default") is { } defaultText && defaultText.Length > 0)
         {
             AddReason(reasons, $"Detected XML namespace declarations (default namespace {defaultText})");
         }
@@ -80,17 +83,17 @@ public sealed partial class XmlPlugin
         }
     }
 
-    private static void AppendSchemaReason(OrderedDictionary<string, object?> metadata, List<string> reasons)
+    private static void AppendSchemaReason(JsonObject metadata, List<string> reasons)
     {
-        if (!metadata.TryGetValue("schema_locations", out var locations) || locations is not List<OrderedDictionary<string, object?>> entries)
+        if (metadata.Array("schema_locations") is not { } entries)
         {
             return;
         }
 
-        foreach (var entry in entries)
+        foreach (var entry in entries.OfType<JsonObject>())
         {
-            var location = entry.TryGetValue("location", out var locationObject) ? locationObject as string : null;
-            var ns = entry.TryGetValue("namespace", out var namespaceObject) ? namespaceObject as string : null;
+            var location = entry.Text("location");
+            var ns = entry.Text("namespace");
             if (!string.IsNullOrEmpty(location) && !string.IsNullOrEmpty(ns))
             {
                 AddReason(reasons, $"Schema {location} declared for namespace {ns}");
@@ -102,14 +105,14 @@ public sealed partial class XmlPlugin
         }
     }
 
-    private static void AppendResxReason(OrderedDictionary<string, object?> metadata, List<string> reasons)
+    private static void AppendResxReason(JsonObject metadata, List<string> reasons)
     {
-        if (!metadata.TryGetValue("resource_keys", out var keys) || keys is not List<string> resourceKeys || resourceKeys.Count == 0)
+        if (metadata.Strings("resource_keys").Count == 0)
         {
             return;
         }
 
-        if (metadata.TryGetValue("resource_keys_preview", out var preview) && preview is string previewText && previewText.Length > 0)
+        if (metadata.Text("resource_keys_preview") is { } previewText && previewText.Length > 0)
         {
             AddReason(reasons, $"Captured resource keys from .resx payload (e.g., {previewText})");
         }
@@ -119,42 +122,42 @@ public sealed partial class XmlPlugin
         }
     }
 
-    private static void AppendMsbuildReasons(OrderedDictionary<string, object?> metadata, List<string> reasons)
+    private static void AppendMsbuildReasons(JsonObject metadata, List<string> reasons)
     {
-        if (!IsTruthy(metadata, "msbuild_detected"))
+        if (!metadata.HasContent("msbuild_detected"))
         {
             return;
         }
 
-        if (metadata.TryGetValue("msbuild_default_targets", out var defaults) && defaults is List<string> defaultTargets && defaultTargets.Count > 0)
+        if (metadata.Strings("msbuild_default_targets") is { Count: > 0 } defaultTargets)
         {
             AddReason(reasons, $"MSBuild default targets declared ({string.Join(", ", defaultTargets.Take(3))})");
         }
 
-        if (metadata.TryGetValue("msbuild_tools_version", out var tools) && tools is string toolsVersion && toolsVersion.Length > 0)
+        if (metadata.Text("msbuild_tools_version") is { } toolsVersion && toolsVersion.Length > 0)
         {
             AddReason(reasons, $"MSBuild ToolsVersion set to {toolsVersion}");
         }
 
-        if (metadata.TryGetValue("msbuild_sdk", out var sdkObject) && sdkObject is string sdk && sdk.Length > 0)
+        if (metadata.Text("msbuild_sdk") is { } sdk && sdk.Length > 0)
         {
             AddReason(reasons, $"MSBuild SDK specified ({sdk})");
         }
 
-        if (metadata.TryGetValue("msbuild_targets", out var targetsObject) && targetsObject is List<string> targets && targets.Count > 0)
+        if (metadata.Strings("msbuild_targets") is { Count: > 0 } targets)
         {
             AddReason(reasons, $"Captured MSBuild target declarations ({string.Join(", ", targets.Take(3))})");
         }
 
-        if (metadata.TryGetValue("msbuild_import_hints", out var imports) && imports is List<OrderedDictionary<string, object?>> importHints && importHints.Count > 0)
+        if (metadata.Array("msbuild_import_hints") is { Count: > 0 })
         {
             AddReason(reasons, "Captured MSBuild import references");
         }
     }
 
-    private static void AppendAttributeHintReasons(OrderedDictionary<string, object?> metadata, List<string> reasons)
+    private static void AppendAttributeHintReasons(JsonObject metadata, List<string> reasons)
     {
-        if (!metadata.TryGetValue("attribute_hints", out var hintsObject) || hintsObject is not OrderedDictionary<string, object?> hints || hints.Count == 0)
+        if (metadata.Object("attribute_hints") is not { } hints || hints.Count == 0)
         {
             return;
         }
@@ -166,16 +169,16 @@ public sealed partial class XmlPlugin
             ("feature_flags", "Captured feature flag attribute hints"),
         })
         {
-            if (hints.TryGetValue(key, out var entries) && entries is List<OrderedDictionary<string, object?>> list && list.Count > 0)
+            if (hints.Array(key) is { Count: > 0 })
             {
                 AddReason(reasons, message);
             }
         }
     }
 
-    private static void AppendDoctypeReason(OrderedDictionary<string, object?> metadata, List<string> reasons)
+    private static void AppendDoctypeReason(JsonObject metadata, List<string> reasons)
     {
-        if (metadata.TryGetValue("doctype", out var doctype) && doctype is string doctypeText && doctypeText.Length > 0)
+        if (metadata.Text("doctype") is { } doctypeText && doctypeText.Length > 0)
         {
             AddReason(reasons, $"Document declares DOCTYPE {doctypeText}");
         }

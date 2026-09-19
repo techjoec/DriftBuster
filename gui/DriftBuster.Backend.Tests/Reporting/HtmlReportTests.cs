@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Hunt;
@@ -5,154 +7,48 @@ using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Backend.Tests.Reporting;
 
-/// <summary><see cref="HtmlReport"/>.</summary>
-public sealed class HtmlReportTests : IDisposable
+/// <summary>The HTML page: sections, escaping, redaction and the empty page.</summary>
+public sealed class HtmlReportTests
 {
-    private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-html-report-");
+    private static readonly DateTimeOffset Generated = new(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
 
-    public void Dispose() => _tmp.Delete(recursive: true);
+    internal static DetectionPayload Detection(string path, string format, string? variant, double confidence, JsonObject? metadata = null)
+        => new(path, "plugin", format, variant, confidence, ["found <it>"], metadata ?? []);
 
-    private static DetectionMatch Match() => new(
-        "xml",
-        "xml",
-        "resource",
-        0.75,
-        ["demo"],
-        new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["token"] = "SECRET", ["format"] = "xml" });
-
-    private static OrderedDictionary<string, object?> Map(params (string Key, object? Value)[] items)
-    {
-        var map = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var (key, value) in items)
-        {
-            map[key] = value;
-        }
-
-        return map;
-    }
+    internal static HuntHitResult Hit(string excerpt, string? token = "server_name")
+        => new(new HuntRuleResult("server-name", "Server names", token, ["server"], ["pattern"]), "/root/app.config", "app.config", 3, excerpt);
 
     [Fact]
-    public void RenderHtmlReportIncludesSections()
+    public void A_page_has_the_summary_every_detection_the_hunt_hits_and_a_redaction_summary()
     {
-        var redactor = new RedactionFilter(["SECRET", "token"], placeholder: "***");
-        var diff = new DiffArtifact
+        var redactor = new RedactionFilter(["SECRET"], placeholder: "***");
+        var detections = new[]
         {
-            CanonicalBefore = "a",
-            CanonicalAfter = "b",
-            Diff = "-a\n+b",
-            Stats = new DiffStats(1, 0, 0),
-            ContentType = "text",
-            FromLabel = "before",
-            ToLabel = "after",
-            Label = "config",
+            Detection("/root/a.json", "json", "generic", 0.5, new JsonObject { ["token"] = "SECRET", ["count"] = 2 }),
+            Detection("/root/b.json", "json", "generic", 0.915),
+            Detection("/root/c.xml", "xml", null, 0.7),
         };
 
-        var rule = new HuntRule("rule", string.Empty);
-        var hit = new HuntFinding(rule, "/tmp/file.txt", 3, "SECRET value", []);
+        var html = HtmlReport.Render("Drift <report>", detections, [Hit("host SECRET here")], redactor, Generated);
 
-        var html = HtmlReport.Render(
-            [Match()],
-            title: "Example",
-            diffs: [diff],
-            profileSummary: Map(
-                ("total_profiles", 1),
-                ("profiles", new List<object?> { Map(("name", "default"), ("config_count", 1), ("config_ids", new List<object?> { "cfg1" })) })),
-            huntHits: [hit],
-            redactor: redactor,
-            extraMetadata: Map(("run_id", "XYZ")),
-            warnings: ["Check manually"],
-            legalNotice: "Handle with care");
-
-        html.Should().Contain("Example");
-        html.Should().Contain("Detection Summary");
-        html.Should().Contain("***"); // redacted token
-        html.Should().NotContain("Run saved"); // ensure we didn't accidentally leak other strings
-        html.Should().Contain("Profile Summary");
-        html.Should().Contain("Configuration Diffs");
-        html.Should().Contain("Hunt Highlights");
-        html.Should().Contain("Redaction Summary");
-        html.Should().Contain("Handle with care");
+        html.Should().StartWith("<!doctype html>").And.EndWith("</body></html>");
+        html.Should().Contain("<title>Drift &lt;report&gt;</title>").And.Contain("Generated at 2026-01-02T03:04:05Z");
+        html.Should().Contain("<tr><td>json</td><td>generic</td><td>2</td><td>0.92</td></tr>");
+        html.Should().Contain("<tr><td>xml</td><td>—</td><td>1</td><td>0.70</td></tr>");
+        html.Should().Contain("<h3>Match 1: json</h3>").And.Contain("<strong>File:</strong> /root/a.json");
+        html.Should().Contain("<li>found &lt;it&gt;</li>");
+        html.Should().Contain("<tr><th>count</th><td>2</td></tr><tr><th>token</th><td>***</td></tr>");
+        html.Should().Contain("<strong>app.config</strong> — line 3").And.Contain("<code>host *** here</code>").And.Contain("token: server_name");
+        html.Should().Contain("Redaction active").And.Contain("<li>SECRET → *** (occurrences: 2)</li>");
+        html.Should().NotContain("SECRET value").And.NotContain(">SECRET<");
     }
 
     [Fact]
-    public void RenderHtmlReportHandlesNoRedactionHits()
+    public void A_page_without_detections_hits_or_tokens_says_so()
     {
-        var html = HtmlReport.Render([Match()], warnings: ["Only sample"]);
-        html.Should().Contain("Derived data only");
-        html.Should().Contain("No configured tokens were encountered");
-    }
+        var html = HtmlReport.Render(HtmlReport.DefaultTitle, [], [], redactor: null, Generated);
 
-    [Fact]
-    public void WriteHtmlReportAcceptsStreamAndPath()
-    {
-        using var buffer = new StringWriter();
-        HtmlReport.Write([Match()], buffer, title: "Stream Output");
-        var contents = buffer.ToString();
-        contents.Should().Contain("Stream Output");
-        contents.Trim().Should().StartWith("<!doctype html>");
-
-        var target = Path.Combine(_tmp.FullName, "report.html");
-        HtmlReport.Write([Match()], target, title: "Disk Output");
-        var written = File.ReadAllText(target, System.Text.Encoding.UTF8);
-        written.Should().Contain("Disk Output");
-        Path.GetFileName(target).Should().NotContain("DriftBuster"); // ensure file naming left to caller
-    }
-
-    [Fact]
-    public void RenderHtmlReportToleratesMappingInputsAndCorruptEntries()
-    {
-        var diff = new DiffArtifact
-        {
-            CanonicalBefore = "old",
-            CanonicalAfter = "new",
-            Diff = "@@\n-old\n+new",
-            Stats = new DiffStats(1, 1, 0),
-            ContentType = "text",
-            FromLabel = "before",
-            ToLabel = "after",
-            Label = "Config",
-        };
-        // NaN is the corrupt confidence a typed match can hold; a text confidence is covered by RenderDetectionSummaryToleratesInvalidConfidence.
-        var corrupted = new DetectionMatch("json", "json", "generic", double.NaN, [], new OrderedDictionary<string, object?>(StringComparer.Ordinal));
-
-        var html = HtmlReport.Render(
-            matches: [Match(), corrupted],
-            diffs: [Map(("label", "Direct"), ("diff", string.Empty)), diff],
-            huntHits:
-            [
-                Map(
-                    ("rule", Map(("name", "token"), ("description", "desc"), ("token_name", "secret"))),
-                    ("path", "sample"),
-                    ("line_number", 1),
-                    ("excerpt", "value")),
-            ],
-            profileSummary: Map(
-                ("total_profiles", 1),
-                ("profiles", new List<object?> { Map(("name", "demo"), ("config_count", 1), ("config_ids", new object?[] { "cfg" })), "invalid" })));
-
-        html.Should().Contain("Detection Summary");
-        html.Should().Contain("Configuration Diffs");
-        html.Should().Contain("Hunt Highlights");
-        html.Should().Contain("Profile Summary");
-    }
-
-    [Fact]
-    public void RenderHtmlReportShowsDiffSafetyNotice()
-    {
-        var html = HtmlReport.Render(
-            [Match()],
-            diffs:
-            [
-                Map(
-                    ("label", "Large"),
-                    ("diff", "-old\n+new"),
-                    ("stats", Map(("added_lines", 1))),
-                    ("safety_limits", Map(
-                        ("diff", Map(("total_lines", 6), ("total_bytes", 120), ("truncated_lines", 2), ("truncated_bytes", 16), ("digest", "sha256:abc"))),
-                        ("thresholds", Map(("canonical_bytes", 10), ("diff_bytes", 20), ("diff_lines", 2)))))),
-            ]);
-
-        html.Should().Contain("Diff output truncated for safety");
-        html.Should().Contain("diff truncated 2 lines");
+        html.Should().NotContain("Detection Summary").And.NotContain("Hunt Highlights").And.NotContain("Redaction active");
+        html.Should().Contain("No configured tokens were encountered in this report.");
     }
 }

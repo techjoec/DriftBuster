@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 
 namespace DriftBuster.Cli.Commands;
@@ -17,4 +18,6 @@ namespace DriftBuster.Cli.Commands;
 [JsonSerializable(typeof(MultiServerRequest))]
 [JsonSerializable(typeof(MultiServerLine))]
 [JsonSerializable(typeof(SelfcheckReport))]
+[JsonSerializable(typeof(ScanLine))]
+[JsonSerializable(typeof(HuntHit[]))]
 internal sealed partial class CliJsonContext : JsonSerializerContext;

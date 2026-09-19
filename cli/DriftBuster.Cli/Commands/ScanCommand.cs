@@ -1,10 +1,11 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Numerics;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Profiles.Run;
-using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Cli.Commands;
 
@@ -126,11 +127,9 @@ internal static class ScanCommand
         var metadataKeys = Missing;
         if (match?.Metadata is { Count: > 0 } metadata)
         {
-            var keys = metadata.Keys.ToList();
-            keys.Sort(PathText.CompareCodePoints);
-            metadataKeys = string.Join(", ", keys);
-            severity = TextOrMissing(metadata.GetValueOrDefault("catalog_severity"));
-            severityHint = TextOrMissing(metadata.GetValueOrDefault("catalog_severity_hint"));
+            metadataKeys = string.Join(", ", metadata.Select(pair => pair.Key).Order(StringComparer.Ordinal));
+            severity = metadata.Text("catalog_severity") is { Length: > 0 } text ? text : Missing;
+            severityHint = metadata.Text("catalog_severity_hint") is { Length: > 0 } hint ? hint : Missing;
         }
 
         return
@@ -138,37 +137,29 @@ internal static class ScanCommand
             RelativePath(root, path),
             match?.FormatName ?? Missing,
             string.IsNullOrEmpty(match?.Variant) ? Missing : match.Variant,
-            match is null ? Missing : ReportValues.FormatFixed(match.Confidence, 2),
+            match is null ? Missing : match.Confidence.ToString("0.00", CultureInfo.InvariantCulture),
             severity,
             severityHint,
             metadataKeys,
         ];
     }
 
-    // The value's text, or "—" when falsy.
-    private static string TextOrMissing(object? value) => EngineBuiltins.IsTruthy(value) ? EngineRepr.Str(value) : Missing;
-
     private static void EmitJson(string root, IReadOnlyList<(string Path, DetectionMatch? Match)> results, TextWriter stdout)
     {
         foreach (var (path, match) in results)
         {
-            var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["path"] = RelativePath(root, path),
-                ["detected"] = match is not null,
-            };
-            if (match is not null)
-            {
-                var metadata = match.Metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-                payload["format"] = match.FormatName;
-                payload["variant"] = match.Variant;
-                payload["confidence"] = match.Confidence;
-                payload["severity"] = metadata.GetValueOrDefault("catalog_severity");
-                payload["severity_hint"] = metadata.GetValueOrDefault("catalog_severity_hint");
-                payload["metadata"] = metadata;
-            }
-
-            ConsoleText.Print(stdout, ConsoleText.Dumps(payload, indent: null, sortKeys: true));
+            var line = match is null
+                ? new ScanLine(RelativePath(root, path), Detected: false)
+                : new ScanLine(
+                    RelativePath(root, path),
+                    Detected: true,
+                    match.FormatName,
+                    match.Variant,
+                    match.Confidence,
+                    match.Metadata.Text("catalog_severity"),
+                    match.Metadata.Text("catalog_severity_hint"),
+                    match.Metadata);
+            ConsoleText.Print(stdout, CliJson.Line(line));
         }
     }
 }

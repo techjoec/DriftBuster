@@ -1,7 +1,9 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -140,7 +142,7 @@ public sealed class HclPlugin : IFormatPlugin
 
         var hasExtension = string.Equals(PathText.SuffixLower(path), Extension, StringComparison.Ordinal);
         var reasons = new List<string>();
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
 
         if (hasExtension)
         {
@@ -152,7 +154,7 @@ public sealed class HclPlugin : IFormatPlugin
         if (blocks.Count > 0)
         {
             reasons.Add("Found HCL-style block declarations (e.g., job/server)");
-            metadata["blocks_preview"] = blocks.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(BlocksPreviewLimit).ToList();
+            metadata["blocks_preview"] = JsonNodes.Strings(blocks.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(BlocksPreviewLimit).ToList());
         }
 
         if (hasKeyValues)
@@ -190,6 +192,6 @@ public sealed class HclPlugin : IFormatPlugin
             reasons.Add("HCL structure detected");
         }
 
-        return new DetectionMatch(Name, "hcl", variant, confidence, reasons, metadata.Count > 0 ? metadata : null);
+        return new DetectionMatch(Name, "hcl", variant, confidence, reasons, metadata);
     }
 }

@@ -3,6 +3,7 @@ using System.Globalization;
 using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 
@@ -304,7 +305,7 @@ public static class SettingsComparisonBuilder
                 // Undetectable files are still compared, line by line.
             }
 
-            var format = match?.Metadata is { } metadata && metadata.TryGetValue("catalog_format", out var value) && value is string catalog ? catalog : match?.FormatName ?? "text";
+            var format = match?.Metadata.Text("catalog_format") ?? match?.FormatName ?? "text";
             var record = new ConfigRecord
             {
                 ConfigId = hostId,

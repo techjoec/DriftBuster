@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -45,10 +48,10 @@ public sealed class RegistryExportPlugin : IFormatPlugin
             confidence += 0.1;
         }
 
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var metadata = new JsonObject()
         {
             ["registry_editor_version"] = version,
-            ["hives"] = counts.Hives.Take(HivesPreviewLimit).ToList(),
+            ["hives"] = JsonNodes.Strings(counts.Hives.Take(HivesPreviewLimit).ToList()),
             ["key_count"] = (long)counts.Keys,
             ["value_count"] = (long)counts.Values,
         };

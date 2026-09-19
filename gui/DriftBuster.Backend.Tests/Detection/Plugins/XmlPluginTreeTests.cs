@@ -12,8 +12,8 @@ public sealed class XmlPluginTreeTests
     {
         var md = new XmlPlugin().CollectMetadata($"<!DOCTYPE root><root xmlns=\"{ResxNamespace}\"><data name=\"Key\" /></root>", ".resx");
 
-        md["doctype"].Should().Be("root");
-        md["resource_keys"].Should().BeEquivalentTo(new[] { "Key" });
+        md["doctype"].ShouldBeJson("root");
+        md["resource_keys"].ShouldBeJson(new[] { "Key" });
     }
 
     [Theory]
@@ -26,7 +26,7 @@ public sealed class XmlPluginTreeTests
 
         md.Should().NotContainKey("resource_keys");
         md.Should().NotContainKey("attribute_hints");
-        md["root_local_name"].Should().Be("root");
-        md["root_namespace"].Should().Be(ResxNamespace);
+        md["root_local_name"].ShouldBeJson("root");
+        md["root_namespace"].ShouldBeJson(ResxNamespace);
     }
 }

@@ -1,7 +1,9 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -60,7 +62,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
         var lower = PathText.NameLower(path);
         var extension = PathText.SuffixLower(path);
         var reasons = new List<string>();
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
 
         // Quick filename/extension hints ("registry" contains "reg", so the hint list reduces to reg or scan).
         if (lower.EndsWith(".regscan.json", StringComparison.Ordinal) || lower.EndsWith(".registry.json", StringComparison.Ordinal))
@@ -99,7 +101,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
         return null;
     }
 
-    private DetectionMatch BuildJsonMatch(JsonElement spec, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private DetectionMatch BuildJsonMatch(JsonElement spec, List<string> reasons, JsonObject metadata)
     {
         if (spec.TryGetProperty("token", out var token) && token.ValueKind == JsonValueKind.String && token.GetString()!.Trim().Length > 0)
         {
@@ -109,13 +111,13 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
 
         if (NonBlankItems(spec, "keywords") is { Count: > 0 } keywords)
         {
-            metadata["keywords"] = keywords;
+            metadata["keywords"] = JsonNodes.Strings(keywords);
             reasons.Add("Keyword list provided");
         }
 
         if (NonBlankItems(spec, "patterns") is { Count: > 0 } patterns)
         {
-            metadata["patterns"] = patterns;
+            metadata["patterns"] = JsonNodes.Strings(patterns);
             reasons.Add("Pattern list provided");
         }
 
@@ -140,11 +142,11 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             "scan-definition",
             confidence,
             reasons.Count > 0 ? reasons : ["JSON manifest indicates registry live scan"],
-            metadata.Count > 0 ? metadata : null);
+            metadata);
     }
 
     // Numbers stay numbers (integral as long); anything else as its text.
-    private static object OptionValue(JsonElement value) => value.ValueKind != JsonValueKind.Number
+    private static JsonNode OptionValue(JsonElement value) => value.ValueKind != JsonValueKind.Number
         ? ScannedJson.ScalarText(value)
         : value.TryGetInt64(out var integral) ? integral : value.GetDouble();
 
@@ -154,7 +156,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             ? items.EnumerateArray().Select(ScannedJson.ScalarText).Where(item => item.Trim().Length > 0).ToList()
             : null;
 
-    private DetectionMatch BuildYamlMatch(string text, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private DetectionMatch BuildYamlMatch(string text, List<string> reasons, JsonObject metadata)
     {
         reasons.Add("Detected 'registry_scan:' key in YAML content");
 
@@ -179,7 +181,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             reasons.Add("Pattern list present");
         }
 
-        if (metadata.TryGetValue("token", out var provided))
+        if (metadata.Text("token") is { } provided)
         {
             reasons.Add($"Token provided: {provided}");
         }
@@ -190,6 +192,6 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             "scan-definition",
             metadata.ContainsKey("token") ? 0.7 : 0.62,
             reasons,
-            metadata.Count > 0 ? metadata : null);
+            metadata);
     }
 }

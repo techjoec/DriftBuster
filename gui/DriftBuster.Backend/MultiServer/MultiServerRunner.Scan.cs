@@ -4,6 +4,7 @@ using System.Text;
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.MultiServer;
@@ -126,12 +127,10 @@ public sealed partial class MultiServerRunner
         CancellationToken cancellationToken)
     {
         var relative = LexicalPath.RelativeTo(EnginePath.Absolute(path), EnginePath.Absolute(root)) ?? PathText.Name(path);
-        var metadata = match.Metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        var catalogFormat = metadata.TryGetValue("catalog_format", out var format) ? format : null;
-        var formatId = ConfigIdentity.IsTruthy(catalogFormat)
-            ? EngineRepr.Str(catalogFormat)
+        var catalogFormat = match.Metadata.Text("catalog_format");
+        var formatId = !string.IsNullOrEmpty(catalogFormat) ? catalogFormat
             : string.IsNullOrEmpty(match.FormatName) ? "unknown" : match.FormatName;
-        var contentType = ContentTypeResolver.FromCatalogFormat(catalogFormat as string);
+        var contentType = ContentTypeResolver.FromCatalogFormat(catalogFormat);
         var configId = ConfigIdentity.Disambiguate(ConfigIdentity.NormaliseConfigId(match, relative), rootPosition, configs.ContainsKey);
         string rawText;
         try
@@ -161,10 +160,9 @@ public sealed partial class MultiServerRunner
             ContentType = contentType,
             Canonical = canonical,
             Raw = rawText,
-            Metadata = metadata,
             FileHash = fileHash,
             Secrets = ContainsSecret(rawText, cancellationToken),
-            Masked = metadata.TryGetValue("has_masked_tokens", out var maskedValue) && ConfigIdentity.IsTruthy(maskedValue),
+            Masked = match.Metadata.HasContent("has_masked_tokens"),
             SourcePath = path,
             PluginName = string.IsNullOrEmpty(match.PluginName) ? "unknown" : match.PluginName,
             RelativePath = relative,

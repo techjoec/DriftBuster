@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
@@ -29,10 +31,10 @@ public sealed class MultiServerUnitTests : IDisposable
 
     private static DetectionMatch Match(string format, string plugin, params (string Key, object? Value)[] metadata)
     {
-        var values = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var values = new JsonObject();
         foreach (var (key, value) in metadata)
         {
-            values[key] = value;
+            values[key] = JsonSerializer.SerializeToNode(value);
         }
 
         return new DetectionMatch(plugin, format, null, 0.9, [], values);

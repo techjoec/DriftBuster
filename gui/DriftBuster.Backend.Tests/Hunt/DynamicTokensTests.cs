@@ -53,14 +53,11 @@ public sealed class DynamicTokensTests : IDisposable
     {
         var target = Write("config.txt", "Server host: app.local");
 
-        var payload = HuntEngine.ToJson(HuntEngine.HuntPath(target, HuntRules.Default, cancellationToken: TestContext.Current.CancellationToken));
-        var serverEntry = payload.First(entry => string.Equals(
-            (string?)((OrderedDictionary<string, object?>)entry["rule"]!)["name"], "server-name", StringComparison.Ordinal));
+        var hits = HuntEngine.ToHits(HuntEngine.HuntPath(target, HuntRules.Default, cancellationToken: TestContext.Current.CancellationToken));
+        var transform = hits.First(hit => string.Equals(hit.Rule.Name, "server-name", StringComparison.Ordinal)).Metadata!.PlanTransform!;
 
-        serverEntry.Should().ContainKey("metadata");
-        var transform = (OrderedDictionary<string, object?>)((OrderedDictionary<string, object?>)serverEntry["metadata"]!)["plan_transform"]!;
-        transform["token_name"].Should().Be("server_name");
-        transform["value"].Should().Be("app.local");
-        transform["placeholder"].Should().Be("{{ server_name }}");
+        transform.TokenName.Should().Be("server_name");
+        transform.Value.Should().Be("app.local");
+        transform.Placeholder.Should().Be("{{ server_name }}");
     }
 }

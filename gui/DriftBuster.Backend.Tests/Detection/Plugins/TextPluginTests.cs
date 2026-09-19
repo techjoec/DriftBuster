@@ -37,8 +37,8 @@ public sealed class TextPluginTests
             "Matched OpenSSH markers (sshd_config or Subsystem sftp)");
         match.Metadata.Should().NotBeNull();
         // The Subsystem line carries ':' in its path, so it counts as an assignment, not a directive.
-        match.Metadata!["directive_lines"].Should().Be(3);
-        match.Metadata["comment_lines"].Should().Be(1);
+        match.Metadata!["directive_lines"].ShouldBeJson(3);
+        match.Metadata["comment_lines"].ShouldBeJson(1);
         match.Metadata.Should().NotContainKey("needs_review");
     }
 
@@ -61,7 +61,7 @@ public sealed class TextPluginTests
         match.Should().NotBeNull();
         match!.Variant.Should().Be("openvpn-conf");
         match.Confidence.Should().BeApproximately(0.8, 1e-9);
-        match.Metadata!["directive_lines"].Should().Be(8);
+        match.Metadata!["directive_lines"].ShouldBeJson(8);
         match.Metadata.Should().NotContainKey("comment_lines");
     }
 
@@ -92,8 +92,8 @@ public sealed class TextPluginTests
         var match = Detect("client.conf", content);
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
-        var reviewReasons = match.Metadata["review_reasons"].Should().BeAssignableTo<IEnumerable<string>>().Subject;
+        match.Metadata!["needs_review"].ShouldBeJson(true);
+        var reviewReasons = BinaryPluginTests.Strings(match.Metadata["review_reasons"]);
         reviewReasons.Should().Contain(reason => reason.Contains("Nonstandard marker", StringComparison.Ordinal));
     }
 
@@ -116,6 +116,6 @@ public sealed class TextPluginTests
         var match = Detect("custom.conf", content);
         match.Should().NotBeNull();
         match!.Variant.Should().Be("openssh-conf");
-        match.Metadata!["directive_lines"].Should().Be(3);
+        match.Metadata!["directive_lines"].ShouldBeJson(3);
     }
 }

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Catalog;
@@ -12,7 +13,7 @@ public sealed class RegistryLivePluginTests
     private static DetectionMatch? Detect(string name, string content)
         => new RegistryLivePlugin().Detect(name, Encoding.UTF8.GetBytes(content), content);
 
-    private static List<string> Strings(object? value) => BinaryPluginTests.Strings(value);
+    private static List<string> Strings(JsonNode? value) => BinaryPluginTests.Strings(value);
 
     [Fact]
     public void RegistryLiveJsonAndYamlPaths()
@@ -31,7 +32,7 @@ public sealed class RegistryLivePluginTests
             "Keyword list provided",
             "Pattern list provided");
         mJson.Metadata!.Keys.Should().Equal("token", "keywords", "patterns");
-        mJson.Metadata["token"].Should().Be("App");
+        mJson.Metadata["token"].ShouldBeJson("App");
         Strings(mJson.Metadata["keywords"]).Should().Equal("k");
         Strings(mJson.Metadata["patterns"]).Should().Equal("p");
 
@@ -49,7 +50,7 @@ public sealed class RegistryLivePluginTests
             "Pattern list present",
             "Token provided: App");
         mYaml.Metadata!.Keys.Should().Equal("token");
-        mYaml.Metadata["token"].Should().Be("App");
+        mYaml.Metadata["token"].ShouldBeJson("App");
     }
 
     [Fact]
@@ -70,7 +71,7 @@ public sealed class RegistryLivePluginTests
         // Filename hint reason and options captured
         m!.Reasons.Should().Contain(reason => reason.Contains("Filename suggests a registry scan JSON manifest", StringComparison.Ordinal));
         m.Metadata.Should().NotBeNull();
-        m.Metadata!["max_depth"].Should().Be(5L);
+        m.Metadata!["max_depth"].ShouldBeJson(5L);
 
         m.Confidence.Should().BeApproximately(0.7000000000000001, 1e-9);
         m.Reasons.Should().Equal(

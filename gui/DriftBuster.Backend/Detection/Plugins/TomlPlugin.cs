@@ -1,6 +1,8 @@
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -208,7 +210,7 @@ public sealed partial class TomlPlugin : IFormatPlugin
     private DetectionMatch BuildMatch(string path, string text, bool isTomlExtension, Signals signals, List<string> reasons)
     {
         var variant = ChooseVariant(path, text, signals, reasons);
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
         var reviewReasons = new List<string>();
 
         // Oddities: suspect trailing commas in arrays or lines missing '=' where expected.
@@ -238,7 +240,7 @@ public sealed partial class TomlPlugin : IFormatPlugin
         if (reviewReasons.Count > 0)
         {
             metadata["needs_review"] = true;
-            metadata["review_reasons"] = reviewReasons;
+            metadata["review_reasons"] = JsonNodes.Strings(reviewReasons);
         }
 
         return new DetectionMatch(
@@ -247,7 +249,7 @@ public sealed partial class TomlPlugin : IFormatPlugin
             variant,
             confidence,
             reasons.Count > 0 ? reasons : ["Heuristics indicate TOML"],
-            metadata.Count > 0 ? metadata : null);
+            metadata);
     }
 
     private static double Confidence(bool isTomlExtension, Signals signals)

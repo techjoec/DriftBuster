@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection;
@@ -43,13 +44,13 @@ public sealed class IniPluginTests
 
     private static DetectionMatch? Detect(string filename, string content, byte[]? raw = null) => Detect(new IniPlugin(), filename, content, raw);
 
-    private static OrderedDictionary<string, object?> Mapping(object? value)
-        => value.Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
+    private static JsonObject Mapping(JsonNode? value)
+        => value.Should().BeOfType<JsonObject>().Subject;
 
-    private static List<OrderedDictionary<string, object?>> Entries(object? value)
-        => value.Should().BeOfType<List<OrderedDictionary<string, object?>>>().Subject;
+    private static List<JsonObject> Entries(JsonNode? value)
+        => [.. value.Should().BeOfType<JsonArray>().Subject.Select(item => item.Should().BeOfType<JsonObject>().Subject)];
 
-    private static List<string> Strings(object? value) => value.Should().BeOfType<List<string>>().Subject;
+    private static List<string> Strings(JsonNode? value) => [.. value.Should().BeOfType<JsonArray>().Subject.Select(item => item!.GetValue<string>())];
 
     [Fact]
     public void IniPluginDetectsSectionsAndKeys()
@@ -60,14 +61,14 @@ public sealed class IniPluginTests
         match!.FormatName.Should().Be("ini");
         match.Variant.Should().Be("sectioned-ini");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["section_count"].Should().Be(2);
-        match.Metadata["key_value_pairs"].Should().BeOfType<int>().Which.Should().BeGreaterThanOrEqualTo(3);
-        Mapping(match.Metadata["encoding_info"])["codec"].Should().Be("utf-8");
-        match.Metadata["encoding"].Should().Be("utf-8");
+        match.Metadata!["section_count"].ShouldBeJson(2);
+        match.Metadata["key_value_pairs"]!.GetValue<int>().Should().BeGreaterThanOrEqualTo(3);
+        Mapping(match.Metadata["encoding_info"])["codec"].ShouldBeJson("utf-8");
+        match.Metadata["encoding"].ShouldBeJson("utf-8");
         var commentStyle = Mapping(match.Metadata["comment_style"]);
         Strings(commentStyle["markers"]).Should().Equal(";");
-        commentStyle["supports_inline_comments"].Should().Be(false);
-        commentStyle["uses_export_prefix"].Should().Be(false);
+        commentStyle["supports_inline_comments"].ShouldBeJson(false);
+        commentStyle["uses_export_prefix"].ShouldBeJson(false);
 
         match.Confidence.Should().BeApproximately(0.9, 1e-9);
         match.Reasons.Should().Equal(
@@ -80,9 +81,9 @@ public sealed class IniPluginTests
         match.Metadata.Keys.Should().Equal(
             "encoding_info", "encoding", "sections", "section_count", "key_value_pairs", "equals_separator_pairs",
             "comment_style", "key_density", "detector_lineage");
-        match.Metadata["key_density"].Should().Be(0.6);
+        match.Metadata["key_density"].ShouldBeJson(0.6);
         var lineage = Mapping(match.Metadata["detector_lineage"]);
-        lineage["signal_score"].Should().Be(5);
+        lineage["signal_score"].ShouldBeJson(5);
         Mapping(lineage["signals"]).Keys.Should().Equal(
             "section_count", "key_value_pairs", "directive_lines", "export_assignments", "comment_lines", "continuations",
             "has_sections", "has_directives", "has_export_prefix", "dotenv_hint", "extension_hint");
@@ -97,9 +98,9 @@ public sealed class IniPluginTests
         match!.Variant.Should().Be("desktop-ini");
         match.Metadata.Should().NotBeNull();
         Strings(match.Metadata!["sections"]).Should().Contain(".ShellClassInfo");
-        match.Metadata["profile_hint"].Should().Be("desktop.ini");
+        match.Metadata["profile_hint"].ShouldBeJson("desktop.ini");
         match.Confidence.Should().BeApproximately(0.85, 1e-9);
-        match.Metadata["key_density"].Should().Be(0.667);
+        match.Metadata["key_density"].ShouldBeJson(0.667);
         match.Reasons.Should().EndWith(new[] { "Section headers confirm classic INI layout", "Recognized Windows desktop.ini profile file name" });
     }
 
@@ -113,15 +114,15 @@ public sealed class IniPluginTests
         match.Variant.Should().Be("dotenv");
         match.Metadata.Should().NotBeNull();
         var commentStyle = Mapping(match.Metadata!["comment_style"]);
-        commentStyle["uses_export_prefix"].Should().Be(true);
-        match.Metadata["export_assignments"].Should().Be(1);
+        commentStyle["uses_export_prefix"].ShouldBeJson(true);
+        match.Metadata["export_assignments"].ShouldBeJson(1);
         match.Reasons.Should().Contain(reason => reason.Contains("dotenv", StringComparison.OrdinalIgnoreCase));
         var remediations = Entries(match.Metadata["remediations"]);
         remediations.Should().Contain(entry =>
-            Equals(entry["id"], "env-sanitisation-workflow") && Equals(entry["documentation"], "scripts/fixtures/README.md"));
+            string.Equals(entry.Text("id"), "env-sanitisation-workflow", StringComparison.Ordinal) && string.Equals(entry.Text("documentation"), "scripts/fixtures/README.md", StringComparison.Ordinal));
         remediations.Should().HaveCount(1);
         remediations[0].Keys.Should().Equal("id", "category", "summary", "documentation");
-        remediations[0]["summary"].Should().Be("Sanitise dotenv fixtures via scripts/fixtures/README.md before sharing samples.");
+        remediations[0]["summary"].ShouldBeJson("Sanitise dotenv fixtures via scripts/fixtures/README.md before sharing samples.");
         match.Confidence.Should().BeApproximately(0.7300000000000001, 1e-9);
     }
 
@@ -135,9 +136,9 @@ public sealed class IniPluginTests
         match.Variant.Should().Be("java-properties");
         match.Reasons.Should().Contain(reason => reason.Contains("java properties", StringComparison.OrdinalIgnoreCase));
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["colon_separator_pairs"].Should().Be(1);
-        match.Metadata["continuations"].Should().Be(1);
-        match.Metadata["equals_separator_pairs"].Should().Be(2);
+        match.Metadata!["colon_separator_pairs"].ShouldBeJson(1);
+        match.Metadata["continuations"].ShouldBeJson(1);
+        match.Metadata["equals_separator_pairs"].ShouldBeJson(2);
         match.Confidence.Should().BeApproximately(0.65, 1e-9);
         match.Metadata.Should().NotContainKey("needs_review");
     }
@@ -154,8 +155,8 @@ public sealed class IniPluginTests
         match.Variant.Should().Be("apache-conf");
         match.Reasons.Should().Contain(reason => reason.Contains("apache", StringComparison.OrdinalIgnoreCase));
         match.Confidence.Should().BeApproximately(0.6, 1e-9);
-        match.Metadata!["key_density"].Should().Be(0.0);
-        match.Metadata["directive_line_count"].Should().Be(1);
+        match.Metadata!["key_density"].ShouldBeJson(0.0);
+        match.Metadata["directive_line_count"].ShouldBeJson(1);
     }
 
     [Fact]
@@ -167,7 +168,7 @@ public sealed class IniPluginTests
         match!.FormatName.Should().Be("ini");
         match.Variant.Should().Be("sectionless-ini");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["colon_separator_pairs"].Should().Be(2);
+        match.Metadata!["colon_separator_pairs"].ShouldBeJson(2);
         match.Reasons.Should().Contain(reason => reason.Contains("sectionless", StringComparison.OrdinalIgnoreCase));
         Strings(match.Metadata["review_reasons"]).Should().Equal("Colon-only assignments outside .properties context");
         match.Confidence.Should().BeApproximately(0.65, 1e-9);
@@ -183,7 +184,7 @@ public sealed class IniPluginTests
         match.Variant.Should().Be("section-json-hybrid");
         match.Reasons.Should().Contain(reason => reason.Contains("hybrid", StringComparison.OrdinalIgnoreCase));
         match.Confidence.Should().BeApproximately(0.75, 1e-9);
-        match.Metadata!["key_density"].Should().Be(0.2);
+        match.Metadata!["key_density"].ShouldBeJson(0.2);
     }
 
     [Fact]
@@ -207,7 +208,7 @@ public sealed class IniPluginTests
         match!.FormatName.Should().Be("unix-conf");
         match.Variant.Should().Be("directive-conf");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["directive_line_count"].Should().Be(3);
+        match.Metadata!["directive_line_count"].ShouldBeJson(3);
         match.Reasons.Should().Equal(
             "Detected utf-8 codec",
             "Found directive keywords common in INI/conf files",
@@ -227,7 +228,7 @@ public sealed class IniPluginTests
         match!.FormatName.Should().Be("unix-conf");
         match.Variant.Should().Be("nginx-conf");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["directive_line_count"].Should().Be(1);
+        match.Metadata!["directive_line_count"].ShouldBeJson(1);
         match.Reasons.Should().Contain(reason => reason.Contains("nginx", StringComparison.OrdinalIgnoreCase));
         match.Reasons.Should().EndWith("Detected nginx-style server/location blocks");
     }
@@ -243,24 +244,24 @@ public sealed class IniPluginTests
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
         var encodingInfo = Mapping(match.Metadata!["encoding_info"]);
-        encodingInfo["bom_present"].Should().Be(true);
-        encodingInfo["codec"].Should().Be("utf-8-sig");
+        encodingInfo["bom_present"].ShouldBeJson(true);
+        encodingInfo["codec"].ShouldBeJson("utf-8-sig");
         var commentStyle = Mapping(match.Metadata["comment_style"]);
         Strings(commentStyle["markers"]).Should().BeEquivalentTo("#", ";");
-        commentStyle["supports_inline_comments"].Should().Be(true);
+        commentStyle["supports_inline_comments"].ShouldBeJson(true);
         var sensitiveHints = Entries(match.Metadata["sensitive_key_hints"]);
         var hintPairs = sensitiveHints.Select(hint => ((string)hint["key"]!, (string)hint["keyword"]!)).ToHashSet();
         hintPairs.Should().Contain(("db_password", "password"));
         hintPairs.Should().Contain(("api_token", "token"));
         var classification = Mapping(match.Metadata["secret_classification"]);
-        Mapping(classification["category_counts"])["credential"].Should().BeOfType<int>().Which.Should().BeGreaterThanOrEqualTo(1);
+        Mapping(classification["category_counts"])["credential"]!.GetValue<int>().Should().BeGreaterThanOrEqualTo(1);
         var classificationEntries = Entries(classification["entries"]);
-        classificationEntries.Should().Contain(entry => Equals(entry["key"], "db_password"));
-        classificationEntries.Should().Contain(entry => Equals(entry["key"], "api_token"));
+        classificationEntries.Should().Contain(entry => string.Equals(entry.Text("key"), "db_password", StringComparison.Ordinal));
+        classificationEntries.Should().Contain(entry => string.Equals(entry.Text("key"), "api_token", StringComparison.Ordinal));
         var focusKeys = Strings(match.Metadata["security_focus_keys"]);
         focusKeys.Should().Contain(["api_token", "db_password"]);
         var remediations = Entries(match.Metadata["remediations"]);
-        var credentialEntry = remediations.First(entry => Equals(entry["category"], "credential"));
+        var credentialEntry = remediations.First(entry => string.Equals(entry.Text("category"), "credential", StringComparison.Ordinal));
         ((string)credentialEntry["summary"]!).Should().ContainEquivalentOf("rotate");
 
         match.Reasons.Should().Equal(
@@ -275,13 +276,13 @@ public sealed class IniPluginTests
             "Section headers confirm classic INI layout");
         Strings(commentStyle["markers"]).Should().Equal("#", ";");
         Mapping(classification["category_counts"]).Keys.Should().Equal("credential", "key-material", "token");
-        remediations.Select(entry => entry["id"]).Should().Equal("ini-credential-remediation", "ini-key-material-remediation", "ini-token-remediation");
-        credentialEntry["summary"].Should().Be("Rotate or scrub credential values referenced in configuration (db_password)");
+        remediations.Select(entry => entry.Text("id")).Should().Equal("ini-credential-remediation", "ini-key-material-remediation", "ini-token-remediation");
+        credentialEntry["summary"].ShouldBeJson("Rotate or scrub credential values referenced in configuration (db_password)");
         Strings(credentialEntry["related_keys"]).Should().Equal("db_password");
-        credentialEntry["hint_count"].Should().Be(1);
-        remediations[1]["summary"].Should().Be("Rotate or scrub key material values referenced in configuration (plain_key)");
+        credentialEntry["hint_count"].ShouldBeJson(1);
+        remediations[1]["summary"].ShouldBeJson("Rotate or scrub key material values referenced in configuration (plain_key)");
         focusKeys.Should().Equal("api_token", "db_password", "plain_key");
-        match.Metadata["encoding"].Should().Be("utf-8-sig");
+        match.Metadata["encoding"].ShouldBeJson("utf-8-sig");
     }
 
     [Fact]
@@ -311,20 +312,20 @@ public sealed class IniPluginTests
 
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["section_count"].Should().Be(1);
+        match.Metadata!["section_count"].ShouldBeJson(1);
         var hints = Entries(match.Metadata["sensitive_key_hints"]);
         hints.Should().Contain(hint => string.Equals((string)hint["key"]!, "client-secret", StringComparison.OrdinalIgnoreCase));
         var commentStyle = Mapping(match.Metadata["comment_style"]);
-        commentStyle["supports_inline_comments"].Should().Be(true);
+        commentStyle["supports_inline_comments"].ShouldBeJson(true);
 
         // Duplicate (key, keyword) pairs collapse; a key matching two keywords is listed twice.
         hints.Select(hint => ((string)hint["key"]!, (string)hint["keyword"]!)).Should().Equal(
             ("password", "password"), ("client-secret", "secret"), ("client-secret", "client-secret"), ("key", "key"));
         Strings(match.Metadata["sections"]).Should().Equal("General");
-        Mapping(match.Metadata["detector_lineage"])["signal_score"].Should().Be(6);
-        Mapping(Mapping(match.Metadata["detector_lineage"])["signals"])["section_count"].Should().Be(2);
+        Mapping(match.Metadata["detector_lineage"])["signal_score"].ShouldBeJson(6);
+        Mapping(Mapping(match.Metadata["detector_lineage"])["signals"])["section_count"].ShouldBeJson(2);
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Metadata["export_assignments"].Should().Be(1);
+        match.Metadata["export_assignments"].ShouldBeJson(1);
     }
 
     [Fact]

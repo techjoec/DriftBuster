@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection.Plugins;
 

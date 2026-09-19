@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -93,10 +96,10 @@ public sealed partial class IniPlugin
 
     private DetectionMatch? Classify(
         Scan scan,
-        OrderedDictionary<string, object?> signals,
+        JsonObject signals,
         double confidence,
         List<string> reasons,
-        OrderedDictionary<string, object?> metadata,
+        JsonObject metadata,
         List<string> reviewReasons)
     {
         var classification = ClassifyLadder(scan);
@@ -113,7 +116,7 @@ public sealed partial class IniPlugin
 
         reasons.AddRange(classification.Reasons);
 
-        metadata["detector_lineage"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        metadata["detector_lineage"] = new JsonObject()
         {
             ["family"] = "ini-lineage",
             ["format"] = classification.FormatName,
@@ -130,7 +133,7 @@ public sealed partial class IniPlugin
         if (reviewReasons.Count > 0)
         {
             metadata["needs_review"] = true;
-            metadata["review_reasons"] = reviewReasons;
+            metadata["review_reasons"] = JsonNodes.Strings(reviewReasons);
         }
 
         return new DetectionMatch(Name, classification.FormatName, classification.Variant, confidence, reasons, metadata);
@@ -216,31 +219,24 @@ public sealed partial class IniPlugin
         }
     }
 
-    private static void AppendEnvRemediation(OrderedDictionary<string, object?> metadata)
+    private static void AppendEnvRemediation(JsonObject metadata)
     {
-        var existing = new List<OrderedDictionary<string, object?>>();
-        if (metadata.TryGetValue("remediations", out var current) && current is List<OrderedDictionary<string, object?>> entries)
+        if (metadata.Array("remediations") is not { } existing)
         {
-            existing.AddRange(entries);
+            existing = [];
+            metadata["remediations"] = existing;
         }
 
-        var envEntry = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var envEntry = new JsonObject()
         {
             ["id"] = "env-sanitisation-workflow",
             ["category"] = "handling",
             ["summary"] = "Sanitise dotenv fixtures via scripts/fixtures/README.md before sharing samples.",
             ["documentation"] = "scripts/fixtures/README.md",
         };
-        if (!existing.Any(entry => SameEntries(entry, envEntry)))
+        if (!existing.Any(entry => JsonNode.DeepEquals(entry, envEntry)))
         {
             existing.Add(envEntry);
         }
-
-        metadata["remediations"] = existing;
     }
-
-    // Same keys with equal values.
-    private static bool SameEntries(OrderedDictionary<string, object?> left, OrderedDictionary<string, object?> right)
-        => left.Count == right.Count
-            && left.All(pair => right.TryGetValue(pair.Key, out var value) && Equals(pair.Value, value));
 }

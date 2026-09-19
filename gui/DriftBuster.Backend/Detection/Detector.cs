@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection.Catalog;
@@ -244,11 +245,8 @@ public class Detector
 
     private DetectionMatch Enrich(DetectionMatch match, byte[] sample, string? encoding, bool truncated)
     {
-        var metadata = DetectionMetadata.EnsureMapping(match.Metadata);
-        if (!metadata.ContainsKey("bytes_sampled"))
-        {
-            metadata["bytes_sampled"] = sample.Length;
-        }
+        var metadata = match.Metadata;
+        metadata.TryAdd("bytes_sampled", sample.Length);
 
         if (encoding is not null && !metadata.ContainsKey("encoding"))
         {
@@ -268,8 +266,7 @@ public class Detector
             AppendReason(match, string.Format(CultureInfo.InvariantCulture, "Sampling budget exhausted after {0}B", sample.Length));
         }
 
-        match.Metadata = metadata.Count > 0 ? metadata : null;
-        match.Metadata = DetectionMetadata.ValidateDetectionMetadata(match, DetectionCatalog.Default);
+        DetectionMetadata.ValidateDetectionMetadata(match, DetectionCatalog.Default);
         match.Reasons = NormaliseReasons(match.Reasons);
         return match;
     }
@@ -395,9 +392,9 @@ public class Detector
         {
             var relative = rootIsDir ? LexicalPath.RelativeTo(path, root) ?? PathText.Name(path) : PathText.Name(path);
             var applied = profileStore.MatchingConfigs(normalizedTags, relative);
-            if (detection?.Metadata is { Count: > 0 } metadata && applied.Any(cfg => cfg.Config.IgnoreReviewFlags))
+            if (detection?.Metadata is { } metadata && applied.Any(cfg => cfg.Config.IgnoreReviewFlags))
             {
-                if (metadata.TryGetValue("needs_review", out var needsReview) && needsReview is true)
+                if (metadata["needs_review"]?.GetValueKind() == JsonValueKind.True)
                 {
                     metadata["review_ignored"] = true;
                     metadata["needs_review"] = false;

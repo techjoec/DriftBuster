@@ -4,6 +4,7 @@ using System.Text;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.MultiServer;
 
@@ -63,12 +64,13 @@ public static class ConfigIdentity
         ArgumentNullException.ThrowIfNull(match);
         ArgumentNullException.ThrowIfNull(relativePosix);
         var metadata = match.Metadata;
-        var formatId = FirstTruthy(Get(metadata, "catalog_format"), match.FormatName) ?? "config";
+        var formatId = metadata.Text("catalog_format") is { Length: > 0 } catalogFormat ? catalogFormat
+            : string.IsNullOrEmpty(match.FormatName) ? "config" : match.FormatName;
         var slug = Slugify(relativePosix);
         if (slug.Length > 0)
         {
             var parts = new List<string> { Slugify(formatId) };
-            if (Get(metadata, "catalog_variant") is string variant && EngineText.Strip(variant).Length > 0)
+            if (metadata.Text("catalog_variant") is { } variant && variant.Trim().Length > 0)
             {
                 parts.Add(Slugify(variant));
             }
@@ -103,32 +105,6 @@ public static class ConfigIdentity
 
         return candidate;
     }
-
-    private static object? Get(IReadOnlyDictionary<string, object?>? metadata, string key)
-        => metadata is not null && metadata.TryGetValue(key, out var value) ? value : null;
-
-    // The first truthy value as text.
-    private static string? FirstTruthy(object? first, string? second)
-    {
-        if (IsTruthy(first))
-        {
-            return EngineRepr.Str(first);
-        }
-
-        return string.IsNullOrEmpty(second) ? null : second;
-    }
-
-    internal static bool IsTruthy(object? value) => value switch
-    {
-        null => false,
-        bool flag => flag,
-        string text => text.Length > 0,
-        int number => number != 0,
-        long number => number != 0,
-        double number => number != 0,
-        System.Collections.ICollection collection => collection.Count > 0,
-        _ => true,
-    };
 
     // UTF-8 with unpaired surrogates dropped.
     private static byte[] EncodeIgnoringErrors(string text)

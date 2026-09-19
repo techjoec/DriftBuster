@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Plugins;
@@ -11,16 +12,16 @@ public sealed class TomlPluginTests
     internal static DetectionMatch? Detect(string name, string content)
         => new TomlPlugin().Detect(name, Encoding.UTF8.GetBytes(content), content);
 
-    internal static OrderedDictionary<string, object?> Spacing(DetectionMatch match)
-        => match.Metadata!["key_value_spacing"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
+    internal static JsonObject Spacing(DetectionMatch match)
+        => match.Metadata!["key_value_spacing"].Should().BeOfType<JsonObject>().Subject;
 
     internal static void AssertOneSpaceProfile(DetectionMatch match)
     {
         var spacing = Spacing(match);
         spacing.Keys.Should().Equal("before", "allowed_before", "after", "allowed_after");
-        spacing["before"].Should().Be(1);
+        spacing["before"].ShouldBeJson(1);
         YamlPluginTests.Ints(spacing["allowed_before"]).Should().Equal(0, 1, 2);
-        spacing["after"].Should().Be(1);
+        spacing["after"].ShouldBeJson(1);
         YamlPluginTests.Ints(spacing["allowed_after"]).Should().Equal(0, 1, 2);
     }
 
@@ -141,8 +142,8 @@ public sealed class TomlPluginTests
             "Detected key = value assignments",
             "Found quoted value assignments",
             "Found array value assignments");
-        Spacing(match)["before"].Should().Be(1);
-        Spacing(match)["after"].Should().Be(1);
+        Spacing(match)["before"].ShouldBeJson(1);
+        Spacing(match)["after"].ShouldBeJson(1);
     }
 
     [Theory]

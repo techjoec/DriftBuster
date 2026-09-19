@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Plugins;
@@ -11,8 +12,8 @@ public sealed class IniFlagsTests
     private static DetectionMatch? Detect(string name, string content)
         => new IniPlugin().Detect(name, Encoding.UTF8.GetBytes(content), content);
 
-    private static OrderedDictionary<string, object?> Mapping(object? value)
-        => value.Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
+    private static JsonObject Mapping(JsonNode? value)
+        => value.Should().BeOfType<JsonObject>().Subject;
 
     [Fact]
     public void IniMalformedSectionFlag()
@@ -22,11 +23,11 @@ public sealed class IniFlagsTests
         // Depending on signals, may detect as ini or none; assert the flag whenever detected (it is, here).
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
-        var reviewReasons = match.Metadata["review_reasons"].Should().BeAssignableTo<IEnumerable<string>>().Subject;
+        match.Metadata!["needs_review"].ShouldBeJson(true);
+        var reviewReasons = BinaryPluginTests.Strings(match.Metadata["review_reasons"]);
         reviewReasons.Should().Contain(reason => reason.Contains("Malformed section", StringComparison.Ordinal));
         var lineage = Mapping(match.Metadata["detector_lineage"]);
-        Mapping(lineage["signals"])["has_sections"].Should().Be(true);
+        Mapping(lineage["signals"])["has_sections"].ShouldBeJson(true);
         reviewReasons.Should().Equal("Malformed section header without closing bracket");
         match.Confidence.Should().BeApproximately(0.8250000000000001, 1e-9);
     }

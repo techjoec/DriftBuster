@@ -41,7 +41,7 @@ public sealed class ConfPluginTests : IDisposable
         match.Reasons.Should().Equal(
             "Detected Logstash pipeline block(s): filter, input, output",
             "Found nested plugin stanza inside pipeline block");
-        match.Metadata.Should().BeNull();
+        match.Metadata.Should().BeEmpty();
     }
 
     // The catalog lists a logstash-pipeline variant under unix-conf, so strict validation accepts this input.
@@ -57,8 +57,8 @@ public sealed class ConfPluginTests : IDisposable
         match.Should().NotBeNull();
         match!.PluginName.Should().Be("conf");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["catalog_format"].Should().Be("unix-conf");
-        match.Metadata["catalog_variant"].Should().Be("logstash-pipeline");
+        match.Metadata!["catalog_format"].ShouldBeJson("unix-conf");
+        match.Metadata["catalog_variant"].ShouldBeJson("logstash-pipeline");
     }
 
     [Theory]

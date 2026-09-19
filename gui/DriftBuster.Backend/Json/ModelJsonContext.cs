@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 
 using DriftBuster.Backend.Curation;
+using DriftBuster.Backend.Detection;
+using DriftBuster.Backend.Hunt;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Profiles.Detection;
@@ -24,6 +26,8 @@ namespace DriftBuster.Backend.Json;
     RespectNullableAnnotations = true,
     RespectRequiredConstructorParameters = true)]
 [JsonSerializable(typeof(CurationDocument))]
+[JsonSerializable(typeof(DetectionPayload))]
+[JsonSerializable(typeof(HuntHitResult))]
 [JsonSerializable(typeof(RunProfileDefinition))]
 [JsonSerializable(typeof(RunProfileListResult))]
 [JsonSerializable(typeof(RunProfileRunResult))]

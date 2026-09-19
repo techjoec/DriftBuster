@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Catalog;
 
@@ -8,27 +10,16 @@ public sealed class TypesTests
 {
     private static readonly DetectionCatalog Catalog = DetectionCatalog.Default;
 
-    private static OrderedDictionary<string, object?> Meta(params (string Key, object? Value)[] pairs)
-    {
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var (key, value) in pairs)
-        {
-            metadata[key] = value;
-        }
-
-        return metadata;
-    }
-
     [Fact]
     public void ValidateDetectionMetadataAddsCatalogFields()
     {
-        var match = new DetectionMatch("xml", "xml", "generic", 0.7, ["detected xml"], Meta(("bytes_sampled", 32)));
+        var match = new DetectionMatch("xml", "xml", "generic", 0.7, ["detected xml"], new JsonObject { ["bytes_sampled"] = 32 });
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        metadata["catalog_version"].Should().Be(Catalog.Version);
-        metadata["catalog_format"].Should().Be("xml");
-        metadata["catalog_variant"].Should().Be("generic");
+        metadata["catalog_version"].ShouldBeJson(Catalog.Version);
+        metadata["catalog_format"].ShouldBeJson("xml");
+        metadata["catalog_variant"].ShouldBeJson("generic");
     }
 
     [Fact]
@@ -42,26 +33,18 @@ public sealed class TypesTests
     }
 
     [Fact]
-    public void SummariseMetadataSerialisesValues()
+    public void Validation_enriches_the_match_in_place_and_a_payload_is_a_copy()
     {
-        var values = new Dictionary<string, object?>(StringComparer.Ordinal) { ["key"] = new HashSet<string>(StringComparer.Ordinal) { "nested" } };
-        var match = new DetectionMatch(
-            "xml",
-            "xml",
-            "generic",
-            0.9,
-            ["detected"],
-            Meta(("path", new FileInfo("/tmp/config.xml")), ("values", values)));
-        match.Metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
+        var match = new DetectionMatch("xml", "xml", "generic", 0.9, ["detected"], new JsonObject { ["values"] = new JsonArray("nested") });
 
-        var summary = DetectionMetadata.SummariseMetadata(match);
+        var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
+        var payload = match.ToPayload("/tmp/config.xml");
+        match.Metadata["values"]!.AsArray().Add("later");
 
-        summary["plugin"].Should().Be("xml");
-        var metadata = summary["metadata"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
-        metadata["catalog_format"].Should().Be("xml");
-        metadata["path"].Should().Be("/tmp/config.xml");
-        var nested = metadata["values"].Should().BeOfType<OrderedDictionary<string, object?>>().Subject;
-        nested["key"].Should().BeOfType<List<object?>>().Which.Should().Equal("nested");
+        metadata.Should().BeSameAs(match.Metadata);
+        payload.Should().BeEquivalentTo(new { Path = "/tmp/config.xml", Plugin = "xml", Format = "xml", Variant = "generic", Confidence = 0.9, Reasons = new[] { "detected" } });
+        payload.Metadata.Text("catalog_format").Should().Be("xml");
+        payload.Metadata["values"].ShouldBeJson(new[] { "nested" });
     }
 
     [Fact]
@@ -72,16 +55,13 @@ public sealed class TypesTests
             "Custom-Format",
             " CustomVariant ",
             0.5,
-            [],
-            Meta(("bytes", "data"u8.ToArray()), ("path", new FileInfo("/tmp/obj"))));
+            []);
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog, strict: false);
 
-        // Variant is lowercased when strict is disabled and bytes become text.
-        metadata["catalog_format"].Should().Be("custom-format");
-        metadata["catalog_variant"].Should().Be("customvariant");
-        metadata["bytes"].Should().Be("data");
-        metadata["path"].Should().Be("/tmp/obj");
+        // Variant is lowercased when strict is disabled.
+        metadata["catalog_format"].ShouldBeJson("custom-format");
+        metadata["catalog_variant"].ShouldBeJson("customvariant");
     }
 
     [Fact]
@@ -91,8 +71,8 @@ public sealed class TypesTests
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        metadata["catalog_format"].Should().Be("script-config");
-        metadata["catalog_variant"].Should().Be("generic");
+        metadata["catalog_format"].ShouldBeJson("script-config");
+        metadata["catalog_variant"].ShouldBeJson("generic");
     }
 
     [Fact]
@@ -113,8 +93,8 @@ public sealed class TypesTests
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        metadata["catalog_format"].Should().Be("structured-config-xml");
-        metadata["catalog_variant"].Should().Be(variant);
+        metadata["catalog_format"].ShouldBeJson("structured-config-xml");
+        metadata["catalog_variant"].ShouldBeJson(variant);
     }
 
     private static FormatClass Format(string name, string slug) => new(name, slug, 0, "low");
@@ -135,7 +115,7 @@ public sealed class TypesTests
         strictAct.Should().Throw<MetadataValidationException>();
 
         var relaxed = DetectionMetadata.ValidateDetectionMetadata(match, catalog, strict: false);
-        relaxed["catalog_format"].Should().Be("unknown-format");
+        relaxed["catalog_format"].ShouldBeJson("unknown-format");
 
         var badFormat = new DetectionMatch("plugin", null!, null, 0.1, [], null);
 

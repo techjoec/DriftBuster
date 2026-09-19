@@ -1,48 +1,29 @@
+using System.Text.Json.Nodes;
+
 namespace DriftBuster.Backend.Detection;
 
 /// <summary>Result produced by a format plugin for a sampled file.</summary>
-public sealed class DetectionMatch
+public sealed class DetectionMatch(
+    string pluginName,
+    string formatName,
+    string? variant,
+    double confidence,
+    IEnumerable<string> reasons,
+    JsonObject? metadata = null)
 {
-    public DetectionMatch(
-        string pluginName,
-        string formatName,
-        string? variant,
-        double confidence,
-        IEnumerable<string> reasons,
-        OrderedDictionary<string, object?>? metadata = null)
-    {
-        PluginName = pluginName;
-        FormatName = formatName;
-        Variant = variant;
-        Confidence = confidence;
-        Reasons = reasons as List<string> ?? new List<string>(reasons);
-        Metadata = metadata;
-    }
+    public string PluginName { get; set; } = pluginName;
 
-    public string PluginName { get; set; }
+    public string FormatName { get; set; } = formatName;
 
-    public string FormatName { get; set; }
+    public string? Variant { get; set; } = variant;
 
-    public string? Variant { get; set; }
+    public double Confidence { get; set; } = confidence;
 
-    public double Confidence { get; set; }
+    public IList<string> Reasons { get; set; } = reasons as List<string> ?? [.. reasons];
 
-    public IList<string> Reasons { get; set; }
+    /// <summary>What the plugin found, in the order it was added, plus the detector's sampling notes and the catalog enrichment.</summary>
+    public JsonObject Metadata { get; set; } = metadata ?? [];
 
-    /// <summary>Insertion-ordered metadata with ordinal keys.</summary>
-    public OrderedDictionary<string, object?>? Metadata { get; set; }
-
-    /// <summary>A copy of the match with plugin, format, variant, confidence, reasons and metadata keys.</summary>
-    public OrderedDictionary<string, object?> ToDictionary()
-    {
-        return new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["plugin"] = PluginName,
-            ["format"] = FormatName,
-            ["variant"] = Variant,
-            ["confidence"] = Confidence,
-            ["reasons"] = new List<string>(Reasons),
-            ["metadata"] = Metadata is null ? null : new OrderedDictionary<string, object?>(Metadata, StringComparer.Ordinal),
-        };
-    }
+    /// <summary>A copy for output: the file, plugin, format, variant, confidence, reasons and metadata.</summary>
+    public DetectionPayload ToPayload(string path) => new(path, PluginName, FormatName, Variant, Confidence, [.. Reasons], (JsonObject)Metadata.DeepClone());
 }

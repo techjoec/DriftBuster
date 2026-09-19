@@ -53,12 +53,11 @@ public sealed class HuntTests : IDisposable
         var target = TmpPath("config.txt");
         WriteText(target, "Server host: infra.corp.net");
 
-        var payload = HuntEngine.ToJson(HuntEngine.HuntPath(target, HuntRules.Default, cancellationToken: TestContext.Current.CancellationToken));
+        var hits = HuntEngine.ToHits(HuntEngine.HuntPath(target, HuntRules.Default, cancellationToken: TestContext.Current.CancellationToken));
 
-        payload.Should().NotBeEmpty();
-        var entry = payload[0];
-        ((OrderedDictionary<string, object?>)entry["rule"]!)["name"].Should().Be("server-name");
-        ((string)entry["relative_path"]!).Should().EndWith("config.txt");
+        hits.Should().NotBeEmpty();
+        hits[0].Rule.Name.Should().Be("server-name");
+        hits[0].RelativePath.Should().EndWith("config.txt");
     }
 
     [Fact]

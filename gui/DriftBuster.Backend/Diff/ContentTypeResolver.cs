@@ -1,4 +1,5 @@
 using DriftBuster.Backend.Detection;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Diff;
 
@@ -26,12 +27,7 @@ public static class ContentTypeResolver
     /// <summary>The content type of a detection match: its <c>catalog_format</c> metadata, <c>text</c> when there is none.</summary>
     public static string FromMatch(DetectionMatch? match)
     {
-        if (match?.Metadata is { } metadata && metadata.TryGetValue("catalog_format", out var format) && format is string text)
-        {
-            return FromCatalogFormat(text);
-        }
-
-        return Text;
+        return match?.Metadata.Text("catalog_format") is { } format ? FromCatalogFormat(format) : Text;
     }
 
     /// <summary>

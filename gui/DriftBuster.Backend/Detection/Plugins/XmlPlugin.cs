@@ -1,6 +1,8 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -63,7 +65,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         return DetectGeneral(extension, text, reasons, metadata);
     }
 
-    private DetectionMatch? DetectConfig(string path, string text, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private DetectionMatch? DetectConfig(string path, string text, List<string> reasons, JsonObject metadata)
     {
         var configRoot = false;
         if (HasConfigurationElement(text))
@@ -71,8 +73,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
             reasons.Add("Found <configuration> root element");
             configRoot = true;
         }
-        else if (metadata.TryGetValue("root_local_name", out var rootLocal)
-            && rootLocal is string local
+        else if (metadata.Text("root_local_name") is { } local
             && string.Equals(EngineText.Lower(local), "configuration", StringComparison.Ordinal))
         {
             reasons.Add("Root element indicates framework configuration layout");
@@ -89,7 +90,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
             reasons.Add("Matched known configuration section tags used by web frameworks");
         }
 
-        if (metadata.TryGetValue("root_tag", out var root) && root is string rootTag && rootTag.Length > 0)
+        if (metadata.Text("root_tag") is { } rootTag && rootTag.Length > 0)
         {
             AddReason(reasons, $"Detected root element <{rootTag}>");
         }
@@ -106,7 +107,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         return new DetectionMatch(Name, "structured-config-xml", variant, confidence, reasons, metadata.Count == 0 ? null : metadata);
     }
 
-    private DetectionMatch? DetectGeneral(string extension, string text, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private DetectionMatch? DetectGeneral(string extension, string text, List<string> reasons, JsonObject metadata)
     {
         var elementMatch = HasGenericElement(text);
         var hasXmlDeclaration = TryXmlDeclaration(text, out _);
@@ -129,7 +130,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
 
         var (formatName, variant, baseConfidence) = GuessVariant(extension, text, reasons, metadata);
         ProbeWellFormed(text, reasons, metadata);
-        if (metadata.TryGetValue("root_tag", out var root) && root is string rootTag && rootTag.Length > 0)
+        if (metadata.Text("root_tag") is { } rootTag && rootTag.Length > 0)
         {
             reasons.Add($"Detected root element <{rootTag}>");
         }
@@ -140,7 +141,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         AppendMsbuildReasons(metadata, reasons);
         AppendAttributeHintReasons(metadata, reasons);
         AppendDoctypeReason(metadata, reasons);
-        var bonus = ConfidenceBonus(metadata, foundElements: elementMatch || IsTruthy(metadata, "root_tag"));
+        var bonus = ConfidenceBonus(metadata, foundElements: elementMatch || metadata.HasContent("root_tag"));
         return new DetectionMatch(
             Name,
             formatName,
@@ -150,7 +151,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
             metadata.Count == 0 ? null : metadata);
     }
 
-    private void ProbeWellFormed(string text, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private void ProbeWellFormed(string text, List<string> reasons, JsonObject metadata)
     {
         var sampleText = text[..PrefixLength(text, MaxSafeParseChars)];
         if (IsWellFormed(sampleText))
@@ -162,16 +163,13 @@ public sealed partial class XmlPlugin : IFormatPlugin
         metadata["xml_well_formed"] = false;
         reasons.Add("XML appears not well-formed within sampled content");
         metadata.TryAdd("needs_review", true);
-        if (!metadata.TryGetValue("review_reasons", out var existing))
+        if (metadata.Array("review_reasons") is not { } reviewReasons)
         {
-            existing = new List<string>();
-            metadata["review_reasons"] = existing;
+            reviewReasons = [];
+            metadata["review_reasons"] = reviewReasons;
         }
 
-        if (existing is List<string> reviewReasons)
-        {
-            reviewReasons.Add("XML not well-formed");
-        }
+        reviewReasons.Add("XML not well-formed");
     }
 
     private static void AddReason(List<string> reasons, string message)
@@ -182,7 +180,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         }
     }
 
-    private static double ConfidenceBonus(OrderedDictionary<string, object?> metadata, bool foundElements)
+    private static double ConfidenceBonus(JsonObject metadata, bool foundElements)
     {
         var bonus = 0.0;
         if (metadata.ContainsKey("xml_declaration"))
@@ -195,44 +193,43 @@ public sealed partial class XmlPlugin : IFormatPlugin
             bonus += 0.05;
         }
 
-        if (IsTruthy(metadata, "root_tag"))
+        if (metadata.HasContent("root_tag"))
         {
             bonus += 0.03;
         }
 
-        if (IsTruthy(metadata, "namespaces"))
+        if (metadata.HasContent("namespaces"))
         {
             bonus += 0.02;
         }
 
-        if (IsTruthy(metadata, "doctype"))
+        if (metadata.HasContent("doctype"))
         {
             bonus += 0.02;
         }
 
-        if (IsTruthy(metadata, "root_attributes"))
+        if (metadata.HasContent("root_attributes"))
         {
             bonus += 0.01;
         }
 
-        if (IsTruthy(metadata, "config_transform"))
+        if (metadata.HasContent("config_transform"))
         {
             bonus += 0.01;
         }
 
-        if (IsTruthy(metadata, "schema_locations"))
+        if (metadata.HasContent("schema_locations"))
         {
             bonus += 0.02;
         }
 
-        if (IsTruthy(metadata, "resource_keys"))
+        if (metadata.HasContent("resource_keys"))
         {
             bonus += 0.01;
         }
 
-        if (metadata.TryGetValue("attribute_hints", out var hints)
-            && hints is OrderedDictionary<string, object?> hintMap
-            && hintMap.Values.Any(IsTruthyValue))
+        if (metadata.Object("attribute_hints") is { } hintMap
+            && hintMap.Any(hint => JsonObjectReading.HasContent(hint.Value)))
         {
             bonus += 0.01;
         }
@@ -241,49 +238,35 @@ public sealed partial class XmlPlugin : IFormatPlugin
     }
 
     /// <summary>Adds each MSBuild increment to the running <paramref name="bonus"/> in a fixed order; doubles are not associative.</summary>
-    private static double MsbuildBonus(OrderedDictionary<string, object?> metadata, double bonus)
+    private static double MsbuildBonus(JsonObject metadata, double bonus)
     {
-        if (!IsTruthy(metadata, "msbuild_detected"))
+        if (!metadata.HasContent("msbuild_detected"))
         {
             return bonus;
         }
 
-        if (IsTruthy(metadata, "msbuild_default_targets"))
+        if (metadata.HasContent("msbuild_default_targets"))
         {
             bonus += 0.01;
         }
 
-        if (IsTruthy(metadata, "msbuild_sdk"))
+        if (metadata.HasContent("msbuild_sdk"))
         {
             bonus += 0.005;
         }
 
-        if (IsTruthy(metadata, "msbuild_import_hints"))
+        if (metadata.HasContent("msbuild_import_hints"))
         {
             bonus += 0.01;
         }
 
-        if (IsTruthy(metadata, "msbuild_targets"))
+        if (metadata.HasContent("msbuild_targets"))
         {
             bonus += 0.01;
         }
 
         return bonus;
     }
-
-    /// <summary>Truthiness of a stored metadata value (see <see cref="Infrastructure.EngineBuiltins.IsTruthy"/>).</summary>
-    private static bool IsTruthy(OrderedDictionary<string, object?> metadata, string key)
-        => metadata.TryGetValue(key, out var value) && IsTruthyValue(value);
-
-    private static bool IsTruthyValue(object? value) => value switch
-    {
-        null => false,
-        bool flag => flag,
-        string text => text.Length > 0,
-        int number => number != 0,
-        System.Collections.ICollection collection => collection.Count > 0,
-        _ => true,
-    };
 
     /// <summary>Number of code points in <paramref name="text"/>.</summary>
     private static int CodePointCount(string text)

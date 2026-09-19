@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Plugins;
@@ -10,7 +11,7 @@ public sealed class BinaryPluginTests
 {
     private static string Fixture(string name) => RepoPaths.Fixtures("binary", name);
 
-    internal static List<string> Strings(object? value) => ((IEnumerable<object?>)value!).Select(item => (string)item!).ToList();
+    internal static List<string> Strings(JsonNode? value) => [.. value.Should().BeOfType<JsonArray>().Subject.Select(item => item!.GetValue<string>())];
 
     [Fact]
     public void DetectsSqliteDatabase()
@@ -22,7 +23,7 @@ public sealed class BinaryPluginTests
         match.Should().NotBeNull();
         match!.FormatName.Should().Be("embedded-sql-db");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["signature"].Should().Be("sqlite-format-3");
+        match.Metadata!["signature"].ShouldBeJson("sqlite-format-3");
         match.Reasons[0].Should().Contain("SQLite database");
 
         match.Variant.Should().Be("generic");
@@ -31,8 +32,8 @@ public sealed class BinaryPluginTests
             "Detected SQLite database header (SQLite format 3)",
             "Enumerated 1 table(s) via sqlite3 pragma");
         match.Metadata.Keys.Should().Equal("signature", "table_count", "catalog_hint");
-        match.Metadata["table_count"].Should().Be(1);
-        match.Metadata["catalog_hint"].Should().Be("sqlite");
+        match.Metadata["table_count"].ShouldBeJson(1);
+        match.Metadata["catalog_hint"].ShouldBeJson("sqlite");
     }
 
     [Fact]
@@ -46,7 +47,7 @@ public sealed class BinaryPluginTests
         match!.FormatName.Should().Be("plist");
         match.Variant.Should().Be("xml-or-binary");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["signature"].Should().Be("bplist00");
+        match.Metadata!["signature"].ShouldBeJson("bplist00");
 
         match.Confidence.Should().BeApproximately(0.92, 1e-9);
         match.Reasons.Should().Equal(
@@ -77,7 +78,7 @@ public sealed class BinaryPluginTests
             "Extracted keys: environment, retention_hours, title");
         match.Metadata.Keys.Should().Equal("front_matter_keys", "has_body");
         Strings(match.Metadata["front_matter_keys"]).Should().Equal("environment", "retention_hours", "title");
-        match.Metadata["has_body"].Should().Be(true);
+        match.Metadata["has_body"].ShouldBeJson(true);
     }
 
     [Fact]
@@ -112,7 +113,7 @@ public sealed class BinaryPluginTests
         match.Reasons.Should().Equal(reasons);
         match.Metadata!.Keys.Should().Equal("front_matter_keys", "has_body");
         Strings(match.Metadata["front_matter_keys"]).Should().Equal(keys);
-        match.Metadata["has_body"].Should().Be(hasBody);
+        match.Metadata["has_body"].ShouldBeJson(hasBody);
     }
 
     [Fact]
@@ -140,13 +141,13 @@ public sealed class BinaryPluginTests
             "Detected binary property list header (bplist00)",
             "Binary plist payload could not be decoded; recorded error metadata");
         match.Metadata!.Keys.Should().Equal("signature", "decode_error");
-        var error = (OrderedDictionary<string, object?>)match.Metadata["decode_error"]!;
+        var error = match.Metadata.Object("decode_error")!;
         error.Keys.Should().Equal("type", "message");
-        error["type"].Should().Be("InvalidDataException");
-        error["message"].Should().Be("The binary property list is not valid.");
+        error["type"].ShouldBeJson("InvalidDataException");
+        error["message"].ShouldBeJson("The binary property list is not valid.");
 
         var headerOnly = plugin.Detect("x.plist", "bplist00"u8.ToArray(), null);
-        ((OrderedDictionary<string, object?>)headerOnly!.Metadata!["decode_error"]!)["type"].Should().Be("InvalidDataException");
+        headerOnly!.Metadata.Object("decode_error")!.Text("type").Should().Be("InvalidDataException");
     }
 
     [Fact]
@@ -159,10 +160,10 @@ public sealed class BinaryPluginTests
         match!.Reasons.Should().Equal("Detected SQLite database header (SQLite format 3)");
         match.Metadata!.Keys.Should().Equal("signature", "table_count", "catalog_hint");
         match.Metadata["table_count"].Should().BeNull();
-        match.Metadata["catalog_hint"].Should().Be("sqlite");
+        match.Metadata["catalog_hint"].ShouldBeJson("sqlite");
 
         var noSuffix = plugin.Detect("nope", "SQLite format 3\0"u8.ToArray(), null);
-        noSuffix!.Metadata!["catalog_hint"].Should().Be("");
+        noSuffix!.Metadata!["catalog_hint"].ShouldBeJson("");
     }
 
     // An unpooled connection releases the file as soon as it is disposed, so a scanned database is neither held open (Linux) nor

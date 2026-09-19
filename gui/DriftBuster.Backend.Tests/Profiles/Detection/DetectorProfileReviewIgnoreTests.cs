@@ -28,8 +28,8 @@ public sealed class DetectorProfileReviewIgnoreTests : IDisposable
         var results = detector.ScanWithProfiles(_tmp.FullName, store);
         results.Should().NotBeEmpty();
         results[0].Detection.Should().NotBeNull();
-        var md = results[0].Detection!.Metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        md.GetValueOrDefault("review_ignored").Should().Be(true);
-        md.GetValueOrDefault("needs_review").Should().Be(false);
+        var md = results[0].Detection!.Metadata;
+        md.Flag("review_ignored").Should().BeTrue();
+        md["needs_review"].ShouldBeJson(false);
     }
 }

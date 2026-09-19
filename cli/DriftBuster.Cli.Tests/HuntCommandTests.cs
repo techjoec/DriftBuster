@@ -11,7 +11,7 @@ public sealed class HuntCommandTests : IDisposable
     public void Dispose() => _tmp.Delete(recursive: true);
 
     [Fact]
-    public void HitsArePrintedAsOneSortedJsonArray()
+    public void HitsArePrintedAsOneJsonArray()
     {
         var app = Directory.CreateDirectory(Path.Combine(_tmp.FullName, "app")).FullName;
         File.WriteAllText(Path.Combine(app, "appsettings.json"), "{\"Server\": \"db.corp.local\", \"Host\": \"café\"}\n", Utf8);
@@ -20,8 +20,8 @@ public sealed class HuntCommandTests : IDisposable
         var run = CliInvocation.Invoke("hunt", _tmp.FullName, "--exclude", "*.txt");
 
         run.ExitCode.Should().Be(0, run.Err);
-        run.Out.Should().StartWith("[{\"excerpt\": \"{\\\"Server\\\": \\\"db.corp.local\\\", \\\"Host\\\": \\\"café\\\"}\", \"line_number\": 1, \"metadata\": ");
-        run.Out.Should().EndWith("]" + Environment.NewLine);
+        run.Out.Should().StartWith("[{\"rule\":{").And.EndWith("]" + Environment.NewLine).And.Contain("café", "non-ASCII is written as is");
+        run.Out.TrimEnd().Should().NotContain("\n", "the hits are one line");
         var hits = run.Json();
         hits.GetArrayLength().Should().Be(1);
         hits[0].GetProperty("relative_path").GetString().Should().Be("app/appsettings.json");

@@ -1,6 +1,8 @@
+using System.Text.Json.Nodes;
 using System.Xml.Linq;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -18,7 +20,7 @@ public sealed partial class XmlPlugin
 
     private static bool IsWellFormed(string sampleText) => SafeXml.IsWellFormed(sampleText);
 
-    private static void ExtractResxKeys(XElement root, OrderedDictionary<string, object?> metadata)
+    private static void ExtractResxKeys(XElement root, JsonObject metadata)
     {
         if (!string.Equals(EngineText.Lower(root.Name.LocalName), "root", StringComparison.Ordinal))
         {
@@ -26,13 +28,13 @@ public sealed partial class XmlPlugin
         }
 
         string? namespaceHint = null;
-        if (metadata.TryGetValue("root_namespace", out var rootNamespace) && rootNamespace is string rootNamespaceText)
+        if (metadata.Text("root_namespace") is { } rootNamespaceText)
         {
             namespaceHint = rootNamespaceText;
         }
-        else if (metadata.TryGetValue("namespaces", out var namespaces) && namespaces is OrderedDictionary<string, object?> namespaceMap)
+        else if (metadata.Object("namespaces") is { } namespaceMap)
         {
-            namespaceHint = namespaceMap.TryGetValue("default", out var defaultNs) ? defaultNs as string : null;
+            namespaceHint = namespaceMap.Text("default");
         }
 
         if (string.IsNullOrEmpty(namespaceHint) || !HasResxSchema(namespaceHint))
@@ -63,7 +65,7 @@ public sealed partial class XmlPlugin
 
         if (resourceKeys.Count > 0)
         {
-            metadata["resource_keys"] = resourceKeys;
+            metadata["resource_keys"] = JsonNodes.Strings(resourceKeys);
             metadata.TryAdd("resource_keys_preview", string.Join(", ", resourceKeys.Take(3)));
         }
     }
@@ -108,14 +110,14 @@ public sealed partial class XmlPlugin
     {
         private static readonly string[] Categories = ["connection_strings", "service_endpoints", "feature_flags"];
 
-        public OrderedDictionary<string, List<OrderedDictionary<string, object?>>> Hints { get; } = Create();
+        public OrderedDictionary<string, List<JsonObject>> Hints { get; } = Create();
 
         public Dictionary<string, HashSet<(string, string, string, string)>> Seen { get; } =
             Categories.ToDictionary(category => category, _ => new HashSet<(string, string, string, string)>(), StringComparer.Ordinal);
 
-        private static OrderedDictionary<string, List<OrderedDictionary<string, object?>>> Create()
+        private static OrderedDictionary<string, List<JsonObject>> Create()
         {
-            var hints = new OrderedDictionary<string, List<OrderedDictionary<string, object?>>>(StringComparer.Ordinal);
+            var hints = new OrderedDictionary<string, List<JsonObject>>(StringComparer.Ordinal);
             foreach (var category in Categories)
             {
                 hints[category] = [];
@@ -125,7 +127,7 @@ public sealed partial class XmlPlugin
         }
     }
 
-    private static void ExtractAttributeHints(XElement root, OrderedDictionary<string, object?> metadata)
+    private static void ExtractAttributeHints(XElement root, JsonObject metadata)
     {
         var buckets = new HintBuckets();
         foreach (var element in root.DescendantsAndSelf())
@@ -142,12 +144,12 @@ public sealed partial class XmlPlugin
             CollectFeatureHint(buckets, view);
         }
 
-        var filtered = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var filtered = new JsonObject();
         foreach (var (category, entries) in buckets.Hints)
         {
             if (entries.Count > 0)
             {
-                filtered[category] = entries;
+                filtered[category] = JsonNodes.Array(entries);
             }
         }
 
@@ -281,7 +283,7 @@ public sealed partial class XmlPlugin
             return;
         }
 
-        var entry = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var entry = new JsonObject()
         {
             ["element"] = view.ElementName,
             ["attribute"] = attributeName,
@@ -347,7 +349,7 @@ public sealed partial class XmlPlugin
         return false;
     }
 
-    private static void ExtractMsbuildMetadata(XElement root, OrderedDictionary<string, object?> metadata, string extension)
+    private static void ExtractMsbuildMetadata(XElement root, JsonObject metadata, string extension)
     {
         if (!LooksLikeMsbuild(extension, metadata))
         {
@@ -372,7 +374,7 @@ public sealed partial class XmlPlugin
             var targets = defaultTargets.Split(';').Select(EngineText.Strip).Where(token => token.Length > 0).ToList();
             if (targets.Count > 0)
             {
-                metadata["msbuild_default_targets"] = targets;
+                metadata["msbuild_default_targets"] = JsonNodes.Strings(targets);
             }
         }
 
@@ -389,20 +391,20 @@ public sealed partial class XmlPlugin
         var (targetNames, importHints) = CollectMsbuildElements(root);
         if (targetNames.Count > 0)
         {
-            metadata["msbuild_targets"] = targetNames;
+            metadata["msbuild_targets"] = JsonNodes.Strings(targetNames);
         }
 
         if (importHints.Count > 0)
         {
-            metadata["msbuild_import_hints"] = importHints;
+            metadata["msbuild_import_hints"] = JsonNodes.Array(importHints);
         }
     }
 
-    private static (List<string> Targets, List<OrderedDictionary<string, object?>> Imports) CollectMsbuildElements(XElement root)
+    private static (List<string> Targets, List<JsonObject> Imports) CollectMsbuildElements(XElement root)
     {
         var targetNames = new List<string>();
         var seenTargetNames = new HashSet<string>(StringComparer.Ordinal);
-        var importHints = new List<OrderedDictionary<string, object?>>();
+        var importHints = new List<JsonObject>();
         var seenImports = new HashSet<(string, string)>();
 
         foreach (var element in root.DescendantsAndSelf())
@@ -430,7 +432,7 @@ public sealed partial class XmlPlugin
         return (targetNames, importHints);
     }
 
-    private static void CollectImportHint(XElement element, List<OrderedDictionary<string, object?>> importHints, HashSet<(string, string)> seenImports)
+    private static void CollectImportHint(XElement element, List<JsonObject> importHints, HashSet<(string, string)> seenImports)
     {
         foreach (var attribute in new[] { "Project", "Sdk" })
         {
@@ -452,7 +454,7 @@ public sealed partial class XmlPlugin
                 continue;
             }
 
-            var entry = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+            var entry = new JsonObject()
             {
                 ["attribute"] = attribute,
                 ["hash"] = digest,

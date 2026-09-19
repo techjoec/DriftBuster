@@ -37,7 +37,7 @@ public sealed class DockerfilePluginTests : IDisposable
             "Filename suggests a Dockerfile",
             "First non-comment line starts with FROM",
             "Found common Dockerfile directives (RUN/COPY/ARG)");
-        match.Metadata.Should().BeNull();
+        match.Metadata.Should().BeEmpty();
     }
 
     // The catalog resolves "dockerfile" through the script-config alias; strict validation accepts it through a real Detector.
@@ -53,8 +53,8 @@ public sealed class DockerfilePluginTests : IDisposable
         match.Should().NotBeNull();
         match!.PluginName.Should().Be("dockerfile");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["catalog_format"].Should().Be("script-config");
-        match.Metadata["catalog_variant"].Should().Be("generic");
+        match.Metadata!["catalog_format"].ShouldBeJson("script-config");
+        match.Metadata["catalog_variant"].ShouldBeJson("generic");
     }
 
     [Theory]

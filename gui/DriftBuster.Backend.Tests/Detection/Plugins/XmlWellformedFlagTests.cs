@@ -20,13 +20,13 @@ public sealed class XmlWellformedFlagTests
         var mOk = Detect("file.xml", ok);
         mOk.Should().NotBeNull();
         mOk!.Metadata.Should().NotBeNull();
-        mOk.Metadata!["xml_well_formed"].Should().Be(true);
+        mOk.Metadata!["xml_well_formed"].ShouldBeJson(true);
 
         var mBad = Detect("file.xml", bad);
         mBad.Should().NotBeNull();
         mBad!.Metadata.Should().NotBeNull();
-        mBad.Metadata!["xml_well_formed"].Should().Be(false);
-        mBad.Metadata["needs_review"].Should().Be(true);
+        mBad.Metadata!["xml_well_formed"].ShouldBeJson(false);
+        mBad.Metadata["needs_review"].ShouldBeJson(true);
         XmlPluginTests.Strings(mBad.Metadata["review_reasons"]).Should().NotBeEmpty();
 
         mOk.Confidence.Should().BeApproximately(0.73, 1e-9);
@@ -59,7 +59,7 @@ public sealed class XmlWellformedFlagTests
     {
         var match = Detect("probe.xml", content);
         match.Should().NotBeNull();
-        match!.Metadata!["xml_well_formed"].Should().Be(expected);
+        match!.Metadata!["xml_well_formed"].ShouldBeJson(expected);
         match.Metadata.ContainsKey("needs_review").Should().Be(!expected);
     }
 }

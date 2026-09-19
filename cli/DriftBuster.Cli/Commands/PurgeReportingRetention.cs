@@ -98,7 +98,7 @@ internal static partial class PurgeReportingRetention
         ConsoleText.Print(stdout, "Candidates:");
         foreach (var candidate in candidates)
         {
-            ConsoleText.Print(stdout, $" - {candidate.Path} (age={ReportValues.FormatFixed(candidate.AgeDays, 1)}d)");
+            ConsoleText.Print(stdout, $" - {candidate.Path} (age={candidate.AgeDays.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}d)");
         }
 
         ConsoleText.Print(

@@ -7,6 +7,15 @@ namespace DriftBuster.Backend.Json;
 /// <summary>Plain CLR values (detection metadata: strings, numbers, booleans, lists, string-keyed maps) as JSON nodes.</summary>
 internal static class JsonNodes
 {
+    /// <summary>The strings as a JSON array, in order.</summary>
+    public static JsonArray Strings(IEnumerable<string> items) => new([.. items.Select(item => (JsonNode?)item)]);
+
+    /// <summary>The numbers as a JSON array, in order.</summary>
+    public static JsonArray Numbers(IEnumerable<int> items) => new([.. items.Select(item => (JsonNode?)item)]);
+
+    /// <summary>The nodes as a JSON array, in order.</summary>
+    public static JsonArray Array(IEnumerable<JsonNode?> items) => new([.. items]);
+
     public static JsonNode? From(object? value) => value switch
     {
         null => null,

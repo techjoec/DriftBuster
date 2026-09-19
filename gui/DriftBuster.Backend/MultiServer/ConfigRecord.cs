@@ -17,8 +17,6 @@ public sealed record ConfigRecord
     /// <summary>The whole file decoded as UTF-8 with replacement and universal newlines.</summary>
     public required string Raw { get; init; }
 
-    public IReadOnlyDictionary<string, object?> Metadata { get; init; } = new Dictionary<string, object?>(StringComparer.Ordinal);
-
     public required string FileHash { get; init; }
 
     public bool Secrets { get; init; }

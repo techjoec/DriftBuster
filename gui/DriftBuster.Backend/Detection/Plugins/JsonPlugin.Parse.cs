@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -8,9 +10,9 @@ namespace DriftBuster.Backend.Detection.Plugins;
 public sealed partial class JsonPlugin
 {
     /// <summary>Outcome of <see cref="AttemptParse"/>: whether the snippet parsed and the metadata it contributes.</summary>
-    internal sealed record ParseResult(bool Success, OrderedDictionary<string, object?> Metadata)
+    internal sealed record ParseResult(bool Success, JsonObject Metadata)
     {
-        internal static ParseResult Failure { get; } = new(false, new OrderedDictionary<string, object?>(StringComparer.Ordinal));
+        internal static ParseResult Failure { get; } = new(false, new JsonObject());
     }
 
     /// <summary>
@@ -33,11 +35,11 @@ public sealed partial class JsonPlugin
         }
 
         var root = document.RootElement;
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
         if (root.ValueKind == JsonValueKind.Object)
         {
             metadata["top_level_type"] = "object";
-            metadata["top_level_keys"] = root.EnumerateObject().Select(property => property.Name).Distinct(StringComparer.Ordinal).Take(TopLevelKeyLimit).ToList();
+            metadata["top_level_keys"] = JsonNodes.Strings(root.EnumerateObject().Select(property => property.Name).Distinct(StringComparer.Ordinal).Take(TopLevelKeyLimit).ToList());
         }
         else if (root.ValueKind == JsonValueKind.Array)
         {
@@ -45,7 +47,7 @@ public sealed partial class JsonPlugin
             var names = root.EnumerateArray().Take(TopLevelKeyLimit).Select(TypeName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
             if (names.Count > 0)
             {
-                metadata["top_level_sample_types"] = names;
+                metadata["top_level_sample_types"] = JsonNodes.Strings(names);
             }
         }
 

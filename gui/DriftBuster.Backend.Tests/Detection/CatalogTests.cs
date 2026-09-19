@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Detection.Catalog;
 
@@ -8,10 +10,8 @@ public sealed class CatalogTests
 {
     private static readonly DetectionCatalog Catalog = DetectionCatalog.Default;
 
-    private static List<OrderedDictionary<string, object?>> Remediations(OrderedDictionary<string, object?> metadata)
-        => metadata["catalog_remediations"].Should().BeOfType<List<object?>>().Subject
-            .Select(entry => entry.Should().BeOfType<OrderedDictionary<string, object?>>().Subject)
-            .ToList();
+    private static List<JsonObject> Remediations(JsonObject metadata)
+        => [.. metadata.Array("catalog_remediations").Should().NotBeNull().And.Subject.Should().AllBeOfType<JsonObject>().Subject.Cast<JsonObject>()];
 
     [Fact]
     public void CatalogInjectsSeverityHintAndRemediations()
@@ -20,14 +20,12 @@ public sealed class CatalogTests
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        metadata["catalog_severity"].Should().Be("high");
-        metadata["catalog_severity_hint"].Should().BeOfType<string>().Which.Should().StartWith("Registry exports capture");
+        metadata["catalog_severity"].ShouldBeJson("high");
+        metadata.Text("catalog_severity_hint").Should().StartWith("Registry exports capture");
         var remediations = Remediations(metadata);
         remediations.Should().NotBeEmpty();
-        var references = metadata["catalog_references"].Should().BeOfType<List<object?>>().Subject;
-        references.Should().Contain("docs/detection-types.md#registryexport");
-        remediations.Should().Contain(entry =>
-            Equals(entry["id"], "registry-export-lockdown") && Equals(entry["category"], "secrets"));
+        metadata.Strings("catalog_references").Should().Contain("docs/detection-types.md#registryexport");
+        remediations.Should().Contain(entry => string.Equals(entry.Text("id"), "registry-export-lockdown", StringComparison.Ordinal) && string.Equals(entry.Text("category"), "secrets", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -37,14 +35,13 @@ public sealed class CatalogTests
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        metadata["catalog_format"].Should().Be("unix-conf");
-        metadata["catalog_variant"].Should().Be("generic-directive-text");
-        metadata["catalog_severity"].Should().Be("medium");
-        metadata["catalog_severity_hint"].Should().BeOfType<string>().Which.Should().StartWith("Unix configuration files");
+        metadata["catalog_format"].ShouldBeJson("unix-conf");
+        metadata["catalog_variant"].ShouldBeJson("generic-directive-text");
+        metadata["catalog_severity"].ShouldBeJson("medium");
+        metadata.Text("catalog_severity_hint").Should().StartWith("Unix configuration files");
         var catalogRemediations = Remediations(metadata);
-        var references = metadata["catalog_references"].Should().BeOfType<List<object?>>().Subject;
-        references.Should().Contain("docs/detection-types.md#unixconf");
-        catalogRemediations.Should().Contain(entry => Equals(entry["id"], "unix-conf-hardening"));
+        metadata.Strings("catalog_references").Should().Contain("docs/detection-types.md#unixconf");
+        catalogRemediations.Should().Contain(entry => string.Equals(entry.Text("id"), "unix-conf-hardening", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -54,14 +51,14 @@ public sealed class CatalogTests
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        metadata["catalog_severity"].Should().Be("high");
-        metadata["catalog_severity_hint"].Should().BeOfType<string>().Which.Should().StartWith("Dotenv environment files");
+        metadata["catalog_severity"].ShouldBeJson("high");
+        metadata.Text("catalog_severity_hint").Should().StartWith("Dotenv environment files");
         var remediations = Remediations(metadata);
-        var remediationIds = remediations.Select(entry => entry["id"]).ToHashSet();
+        var remediationIds = remediations.Select(entry => entry.Text("id")).ToHashSet(StringComparer.Ordinal);
         remediationIds.Should().Contain("ini-secret-rotation");
         remediationIds.Should().Contain("ini-dotenv-rotate-secrets");
         remediations.Should().Contain(entry =>
-            entry.ContainsKey("documentation") && Equals(entry["documentation"], "docs/detection-types.md#ini-dotenv"));
+            string.Equals(entry.Text("documentation"), "docs/detection-types.md#ini-dotenv", StringComparison.Ordinal));
     }
 
     // Plugin outputs validate under strict validation.
@@ -80,8 +77,8 @@ public sealed class CatalogTests
 
         var metadata = DetectionMetadata.ValidateDetectionMetadata(match, Catalog);
 
-        metadata["catalog_format"].Should().Be(expectedFormat);
-        metadata["catalog_variant"].Should().Be(variant);
+        metadata["catalog_format"].ShouldBeJson(expectedFormat);
+        metadata["catalog_variant"].ShouldBeJson(variant);
         metadata.Should().ContainKey("catalog_severity");
         if (hasReferences)
         {

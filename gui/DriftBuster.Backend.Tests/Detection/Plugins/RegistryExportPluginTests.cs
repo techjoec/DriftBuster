@@ -50,12 +50,12 @@ public sealed class RegistryExportPluginTests : IDisposable
             "Found registry key sections under HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE",
             "File extension .reg suggests a Registry Editor export",
             "Export deletes registry keys or values when imported");
-        match.Metadata!["registry_editor_version"].Should().Be("5.00");
+        match.Metadata!["registry_editor_version"].ShouldBeJson("5.00");
         YamlPluginTests.Strings(match.Metadata["hives"]).Should().Equal("HKEY_CURRENT_USER", "HKEY_LOCAL_MACHINE");
-        match.Metadata["key_count"].Should().Be(2L);
-        match.Metadata["value_count"].Should().Be(9L);
-        match.Metadata["deleted_keys"].Should().Be(1L);
-        match.Metadata["deleted_values"].Should().Be(1L);
+        match.Metadata["key_count"].ShouldBeJson(2L);
+        match.Metadata["value_count"].ShouldBeJson(9L);
+        match.Metadata["deleted_keys"].ShouldBeJson(1L);
+        match.Metadata["deleted_values"].ShouldBeJson(1L);
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class RegistryExportPluginTests : IDisposable
         var match = new RegistryExportPlugin().Detect("empty.dat", Encoding.ASCII.GetBytes(text), text);
 
         match!.Confidence.Should().BeApproximately(0.7, 1e-9);
-        match.Metadata!["key_count"].Should().Be(0L);
+        match.Metadata!["key_count"].ShouldBeJson(0L);
     }
 
     [Theory]
@@ -103,8 +103,8 @@ public sealed class RegistryExportPluginTests : IDisposable
         var match = Detector.ScanFileWithDefaults(path);
 
         match!.PluginName.Should().Be("registry-export");
-        match.Metadata!["catalog_format"].Should().Be("registry-export");
-        match.Metadata["catalog_variant"].Should().Be("regedit5");
+        match.Metadata!["catalog_format"].ShouldBeJson("registry-export");
+        match.Metadata["catalog_variant"].ShouldBeJson("regedit5");
     }
 
     [Fact]

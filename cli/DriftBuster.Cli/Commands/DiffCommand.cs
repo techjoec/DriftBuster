@@ -138,7 +138,7 @@ internal static class DiffCommand
         {
             var destination = LexicalPath.Join(outputDir, PatchName(baselinePath, candidatePath));
             var text = result.Diff.EndsWith('\n') ? result.Diff : result.Diff + "\n";
-            EngineTextFile.WriteText(destination, ReportValues.TextModeNewLines(text));
+            EngineTextFile.WriteText(destination, text.ReplaceLineEndings());
             ConsoleText.Write(stdout, $"Wrote diff for {PathText.Name(candidatePath)} to {destination}\n");
         }
         else

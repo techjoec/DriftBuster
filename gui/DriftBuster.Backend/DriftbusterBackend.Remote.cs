@@ -125,28 +125,29 @@ public sealed partial class DriftbusterBackend
             "html" or "jsonl" => request.Format,
             _ => throw new ArgumentException($"Unsupported report format: {request.Format} (expected html or jsonl).", nameof(request)),
         };
-        var matches = new Detector().ScanPath(request.Root, request.Glob)
+        var detections = new Detector().ScanPath(request.Root, request.Glob)
             .Where(result => result.Match is not null)
-            .Select(result => result.Match!)
+            .Select(result => result.Match!.ToPayload(result.Path))
             .ToList();
-        var huntHits = request.IncludeHunt
-            ? HuntEngine.HuntPath(request.Root, HuntRules.Default, request.Glob, cancellationToken: cancellationToken).Hits.Cast<object>().ToList()
+        var root = Directory.Exists(request.Root) ? request.Root : null;
+        List<HuntHitResult> huntHits = request.IncludeHunt
+            ? [.. HuntEngine.HuntPath(request.Root, HuntRules.Default, request.Glob, cancellationToken: cancellationToken).Hits.Select(hit => HuntHitResult.From(hit, root))]
             : [];
-        var maskTokens = request.MaskTokens.ToList();
+        var redactor = RedactionFilter.Resolve(maskTokens: request.MaskTokens, placeholder: request.Placeholder);
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         if (string.Equals(format, "html", StringComparison.Ordinal))
         {
-            HtmlReport.Write(matches, writer, request.Title, huntHits: huntHits, maskTokens: maskTokens, placeholder: request.Placeholder);
+            writer.Write(HtmlReport.Render(request.Title, detections, huntHits, redactor, TimeProvider.System.GetUtcNow()));
         }
         else
         {
-            JsonLinesReport.WriteJsonLines(matches, writer, huntHits: huntHits, maskTokens: maskTokens, placeholder: request.Placeholder);
+            JsonLinesReport.Write(writer, detections, huntHits, redactor);
         }
 
         var content = writer.ToString();
         if (!string.IsNullOrWhiteSpace(request.OutputPath))
         {
-            EngineTextFile.WriteBytes(request.OutputPath, ReportEncoding.GetBytes(ReportValues.TextModeNewLines(content)));
+            EngineTextFile.WriteBytes(request.OutputPath, ReportEncoding.GetBytes(content.ReplaceLineEndings()));
         }
 
         return new ReportResult
@@ -154,7 +155,7 @@ public sealed partial class DriftbusterBackend
             Format = format,
             Content = content,
             OutputPath = string.IsNullOrWhiteSpace(request.OutputPath) ? null : request.OutputPath,
-            DetectionCount = matches.Count,
+            DetectionCount = detections.Count,
             HuntHitCount = huntHits.Count,
         };
     }

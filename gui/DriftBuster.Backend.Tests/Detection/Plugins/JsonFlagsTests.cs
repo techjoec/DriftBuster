@@ -18,9 +18,9 @@ public sealed class JsonFlagsTests
         var match = Detect("config.json", content);
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
-        match.Metadata["parse_failed"].Should().Be(true);
-        var reviewReasons = match.Metadata["review_reasons"].Should().BeAssignableTo<IEnumerable<string>>().Subject;
+        match.Metadata!["needs_review"].ShouldBeJson(true);
+        match.Metadata["parse_failed"].ShouldBeJson(true);
+        var reviewReasons = BinaryPluginTests.Strings(match.Metadata["review_reasons"]);
         reviewReasons.Should().Contain(reason => reason.Contains("parse failed", StringComparison.OrdinalIgnoreCase));
         reviewReasons.Should().Equal("JSON parse failed under sample");
         match.Confidence.Should().BeApproximately(0.8500000000000001, 1e-9);

@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Detection;
 
 namespace DriftBuster.Backend.Tests.Detection.Plugins;
@@ -19,7 +21,7 @@ public sealed class TomlFlagsTests
         var match = Detect("config.toml", content);
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
+        match.Metadata!["needs_review"].ShouldBeJson(true);
         var reviewReasons = YamlPluginTests.Strings(match.Metadata["review_reasons"]);
         reviewReasons.Should().Contain(reason => reason.Contains("trailing comma", StringComparison.Ordinal));
 
@@ -48,7 +50,7 @@ public sealed class TomlFlagsTests
         var match = Detect("plain.toml", content);
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
+        match.Metadata!["needs_review"].ShouldBeJson(true);
         var reviewReasons = YamlPluginTests.Strings(match.Metadata["review_reasons"]);
         reviewReasons.Should().Contain(reason => reason.Contains("bare key", StringComparison.Ordinal));
 
@@ -77,7 +79,7 @@ public sealed class TomlFlagsTests
         var match = Detect("spacing.toml", content);
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["needs_review"].Should().Be(true);
+        match.Metadata!["needs_review"].ShouldBeJson(true);
         var reviewReasons = YamlPluginTests.Strings(match.Metadata["review_reasons"]);
         reviewReasons.Should().Contain(reason => reason.Contains("Tab characters around '='", StringComparison.Ordinal));
 
@@ -86,9 +88,9 @@ public sealed class TomlFlagsTests
         var spacing = TomlPluginTests.Spacing(match);
         spacing.Keys.Should().Equal("before", "allowed_before", "after", "allowed_after", "tab_lines");
         // Two assignment lines tie at 0 and 1 spaces; the first seen (the tab line, 0) wins.
-        spacing["before"].Should().Be(0);
+        spacing["before"].ShouldBeJson(0);
         YamlPluginTests.Ints(spacing["allowed_before"]).Should().Equal(0, 1);
-        spacing["after"].Should().Be(0);
+        spacing["after"].ShouldBeJson(0);
         YamlPluginTests.Ints(spacing["allowed_after"]).Should().Equal(0, 1);
         YamlPluginTests.Ints(spacing["tab_lines"]).Should().Equal(2);
     }

@@ -1,6 +1,8 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -221,7 +223,7 @@ public sealed class TextPlugin : IFormatPlugin
 
         confidence = Math.Min(0.9, confidence);
 
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var metadata = new JsonObject()
         {
             ["directive_lines"] = Math.Min(directiveCount, CountCap),
         };
@@ -240,7 +242,7 @@ public sealed class TextPlugin : IFormatPlugin
         if (reviewReasons.Count > 0)
         {
             metadata["needs_review"] = true;
-            metadata["review_reasons"] = reviewReasons;
+            metadata["review_reasons"] = JsonNodes.Strings(reviewReasons);
         }
 
         return new DetectionMatch(Name, "unix-conf", variant, confidence, reasons, metadata);

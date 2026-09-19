@@ -16,6 +16,9 @@ public static class ModelJson
 {
     public static JsonSerializerOptions Options { get; } = CreateOptions(ModelJsonContext.Default);
 
+    /// <summary>The same contracts written on one line, for JSON lines records.</summary>
+    public static JsonSerializerOptions LineOptions { get; } = CreateOptions(ModelJsonContext.Default, indented: false);
+
     /// <summary>The value as indented JSON with a trailing new line.</summary>
     public static string Serialize<T>(T value) => Serialize(value, TypeInfo<T>());
 
@@ -25,12 +28,12 @@ public static class ModelJson
 
     /// <summary>
     /// Read-only options over another source-generated context declared with the same <see cref="JsonSourceGenerationOptionsAttribute"/>
-    /// settings as <see cref="ModelJsonContext"/>, with the same encoder.
+    /// settings as <see cref="ModelJsonContext"/>, with the same encoder; <paramref name="indented"/> false writes one line.
     /// </summary>
-    public static JsonSerializerOptions CreateOptions(JsonSerializerContext context)
+    public static JsonSerializerOptions CreateOptions(JsonSerializerContext context, bool indented = true)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var options = new JsonSerializerOptions(context.Options) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        var options = new JsonSerializerOptions(context.Options) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = indented };
         options.MakeReadOnly();
         return options;
     }

@@ -16,6 +16,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Hunt;
 using DriftBuster.Backend.Infrastructure;
@@ -338,7 +339,7 @@ namespace DriftBuster.Backend
             }
 
             var scan = HuntEngine.HuntPath(rootPath, Hunt.HuntRules.Default, cancellationToken: cancellationToken);
-            var hits = scan.Hits.Select(hit => ToModelHit(hit, scan.RootDirectory));
+            IEnumerable<HuntHit> hits = HuntEngine.ToHits(scan);
 
             var trimmedPattern = string.IsNullOrWhiteSpace(pattern) ? null : pattern.Trim();
             if (!string.IsNullOrEmpty(trimmedPattern))
@@ -358,38 +359,6 @@ namespace DriftBuster.Backend
 
             result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
             return result;
-        }
-
-        private static HuntHit ToModelHit(HuntFinding hit, string rootDirectory)
-        {
-            var transform = HuntEngine.PlanTransformForHit(hit, HuntEngine.DefaultPlaceholderTemplate);
-            return new HuntHit
-            {
-                Rule = new HuntRuleSummary
-                {
-                    Name = hit.Rule.Name,
-                    Description = hit.Rule.Description,
-                    TokenName = hit.Rule.TokenName,
-                    Keywords = hit.Rule.Keywords.ToArray(),
-                    Patterns = hit.Rule.Patterns.Select(rulePattern => rulePattern.ToString()).ToArray(),
-                },
-                Path = hit.Path,
-                RelativePath = HuntEngine.RelativeTo(hit.Path, rootDirectory) ?? PathText.Name(hit.Path),
-                LineNumber = hit.LineNumber,
-                Excerpt = hit.Excerpt,
-                Metadata = transform is null
-                    ? null
-                    : new HuntHitMetadata
-                    {
-                        PlanTransform = new HuntPlanTransform
-                        {
-                            TokenName = transform.TokenName,
-                            Value = transform.Value,
-                            Placeholder = transform.Placeholder,
-                            RuleName = transform.RuleName,
-                        },
-                    },
-            };
         }
 
         internal static string ResolvePath(string? value)

@@ -43,8 +43,7 @@ internal static class HuntCommand
             ConsoleText.Print(stderr, $"warning: unreadable file: {unreadable}");
         }
 
-        var hits = HuntEngine.ToJson(result, placeholderTemplate).Cast<object?>().ToList();
-        ConsoleText.Print(stdout, ConsoleText.Dumps(hits, indent: null, sortKeys: true, ensureAscii: false));
+        ConsoleText.Print(stdout, CliJson.Line(HuntEngine.ToHits(result, placeholderTemplate)));
         return 0;
     }
 }

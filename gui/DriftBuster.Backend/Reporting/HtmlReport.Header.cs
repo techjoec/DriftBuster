@@ -2,7 +2,7 @@ namespace DriftBuster.Backend.Reporting;
 
 public static partial class HtmlReport
 {
-    // _HTML_HEADER with its doubled braces collapsed, split around {title}; every line ends with LF on every platform.
+    // The page head, split around the title; every line ends with LF on every platform.
     private const string HeaderBeforeTitle = "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>";
 
     private static readonly string HeaderAfterTitle = string.Join(
@@ -23,8 +23,6 @@ public static partial class HtmlReport
         "      color: #111;",
         "    }",
         "    .match,",
-        "    .diff-block,",
-        "    .profile-summary,",
         "    .hunt-section {",
         "      border: 1px solid #333;",
         "      padding: 1rem;",
@@ -35,10 +33,6 @@ public static partial class HtmlReport
         "    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }",
         "    th, td { border: 1px solid #333; padding: 0.5rem; text-align: left; }",
         "    .summary-table { margin-bottom: 1rem; }",
-        "    .diff-block pre { background: #000; color: #f6f6f6; padding: 1rem; overflow-x: auto; border: 1px solid #333; }",
-        "    .diff-stats { list-style: none; padding: 0; margin: 0.5rem 0 0.5rem 0; display: flex; gap: 1.5rem; }",
-        "    .diff-stats li { font-size: 0.85rem; color: #ccc; }",
-        "    .diff-safety { font-size: 0.85rem; color: #f6c744; margin: 0.5rem 0 0; }",
         "    .hunt-section ul { margin: 0.5rem 0 0 1rem; }",
         "    .redaction-summary { margin-top: 1.5rem; padding: 1rem; background: #1f1f1f; border: 1px solid #444; }",
         "  </style>",

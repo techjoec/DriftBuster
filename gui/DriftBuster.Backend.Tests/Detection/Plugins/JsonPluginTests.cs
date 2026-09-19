@@ -26,7 +26,7 @@ public sealed class JsonPluginTests
         match!.FormatName.Should().Be("json");
         match.Variant.Should().Be("structured-settings-json");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["settings_hint"].Should().Be("filename");
+        match.Metadata!["settings_hint"].ShouldBeJson("filename");
         match.Metadata.Should().NotContainKey("settings_environment");
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -37,7 +37,7 @@ public sealed class JsonPluginTests
             "Matched appsettings-style configuration cues",
             "Parsed JSON payload without errors within sample");
         match.Metadata.Keys.Should().Equal("top_level_type", "settings_hint", "top_level_keys");
-        match.Metadata["top_level_keys"].Should().BeEquivalentTo(new[] { "Logging", "ConnectionStrings" }, options => options.WithStrictOrdering());
+        match.Metadata["top_level_keys"].ShouldBeJson(new[] { "Logging", "ConnectionStrings" });
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class JsonPluginTests
         match.Should().NotBeNull();
         match!.Variant.Should().Be("structured-settings-json");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["settings_environment"].Should().Be("staging");
+        match.Metadata!["settings_environment"].ShouldBeJson("staging");
     }
 
     [Fact]
@@ -59,8 +59,8 @@ public sealed class JsonPluginTests
         match.Should().NotBeNull();
         match!.Variant.Should().Be("jsonc");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["has_comments"].Should().Be(true);
-        match.Metadata["parsed_with_comment_stripping"].Should().Be(true);
+        match.Metadata!["has_comments"].ShouldBeJson(true);
+        match.Metadata["parsed_with_comment_stripping"].ShouldBeJson(true);
         match.Metadata.Should().ContainKey("top_level_keys");
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
@@ -70,7 +70,7 @@ public sealed class JsonPluginTests
             "Found key/value signature indicative of JSON objects",
             "Curly/array delimiters appear balanced in sampled content",
             "Parsed JSON payload without errors within sample");
-        match.Metadata["top_level_keys"].Should().BeEquivalentTo(new[] { "key", "enabled" }, options => options.WithStrictOrdering());
+        match.Metadata["top_level_keys"].ShouldBeJson(new[] { "key", "enabled" });
     }
 
     [Fact]
@@ -108,8 +108,8 @@ public sealed class JsonPluginTests
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
         match.Metadata.Should().ContainKey("top_level_sample_types");
-        match.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "object" });
-        match.Metadata["top_level_type"].Should().Be("array");
+        match.Metadata!["top_level_sample_types"].ShouldBeJson(new[] { "object" });
+        match.Metadata["top_level_type"].ShouldBeJson("array");
     }
 
     [Fact]
@@ -169,8 +169,8 @@ public sealed class JsonPluginTests
 
         match.Should().NotBeNull();
         match!.Metadata.Should().NotBeNull();
-        match.Metadata!["analysis_window_truncated"].Should().Be(true);
-        match.Metadata["analysis_window_chars"].Should().Be(200_000);
+        match.Metadata!["analysis_window_truncated"].ShouldBeJson(true);
+        match.Metadata["analysis_window_chars"].ShouldBeJson(200_000);
         match.Confidence.Should().BeApproximately(0.8500000000000001, 1e-9);
         match.Metadata.Should().NotContainKey("parse_failed");
     }
@@ -187,8 +187,8 @@ public sealed class JsonPluginTests
 
         match!.Variant.Should().Be("generic");
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Metadata!["top_level_keys"].Should().BeAssignableTo<IEnumerable<string>>().Subject.Should().Equal("a");
-        match.Metadata["top_level_type"].Should().Be("object");
+        BinaryPluginTests.Strings(match.Metadata!["top_level_keys"]).Should().Equal("a");
+        match.Metadata["top_level_type"].ShouldBeJson("object");
     }
 
     [Fact]
@@ -203,11 +203,9 @@ public sealed class JsonPluginTests
     public void ScannerReportsValueTypeNames()
     {
         var match = Detect("mix.json", "[1, 1.5, \"s\", true, null, {}, [], -0, 1e5]");
-        match!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(
-            new[] { "boolean", "integer", "null", "number", "string" },
-            options => options.WithStrictOrdering());
+        match!.Metadata!["top_level_sample_types"].ShouldBeJson(new[] { "boolean", "integer", "null", "number", "string" });
 
-        Detect("num5.json", "[1.5e+3, 2E-1, -0.0]")!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "number" });
+        Detect("num5.json", "[1.5e+3, 2E-1, -0.0]")!.Metadata!["top_level_sample_types"].ShouldBeJson(new[] { "number" });
     }
 
     [Fact]
@@ -215,9 +213,9 @@ public sealed class JsonPluginTests
     {
         Detect("lone.json", """{"k": "\ud83d"}""")!.Metadata.Should().NotContainKey("parse_failed");
         var pair = Detect("pair.json", "{\"k\": \"\\ud83d\\ude00\", \"j\": \"\\ud83d\\u0041\"}");
-        pair!.Metadata!["top_level_keys"].Should().BeEquivalentTo(new[] { "k", "j" }, options => options.WithStrictOrdering());
-        Detect("bad-u.json", """{"a": "\u12G4"}""")!.Metadata!["parse_failed"].Should().Be(true);
-        Detect("bad-esc.json", """{"a": "\x"}""")!.Metadata!["parse_failed"].Should().Be(true);
+        pair!.Metadata!["top_level_keys"].ShouldBeJson(new[] { "k", "j" });
+        Detect("bad-u.json", """{"a": "\u12G4"}""")!.Metadata!["parse_failed"].ShouldBeJson(true);
+        Detect("bad-esc.json", """{"a": "\x"}""")!.Metadata!["parse_failed"].ShouldBeJson(true);
     }
 
     [Fact]
@@ -227,7 +225,7 @@ public sealed class JsonPluginTests
         {
             var match = Detect("case.json", payload);
             match.Should().NotBeNull(payload);
-            match!.Metadata!["parse_failed"].Should().Be(true, payload);
+            match!.Metadata.Flag("parse_failed").Should().BeTrue(payload);
         }
 
         Detect("del-char.json", "{\"a\": \"\x7f\"}")!.Metadata.Should().NotContainKey("parse_failed");

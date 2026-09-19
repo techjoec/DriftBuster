@@ -78,8 +78,8 @@ public sealed class HclPluginTests : IDisposable
         match.Should().NotBeNull();
         match!.PluginName.Should().Be("hcl");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["catalog_format"].Should().Be("hcl");
-        match.Metadata["catalog_variant"].Should().Be("hashicorp-nomad");
+        match.Metadata!["catalog_format"].ShouldBeJson("hcl");
+        match.Metadata["catalog_variant"].ShouldBeJson("hashicorp-nomad");
     }
 
     [Theory]
@@ -97,6 +97,6 @@ public sealed class HclPluginTests : IDisposable
             "File extension .hcl suggests HashiCorp HCL",
             "Found HCL-style block declarations (e.g., job/server)",
             "Detected key = value assignments");
-        match.Metadata!["blocks_preview"].Should().BeAssignableTo<IEnumerable<string>>().Subject.Should().Equal("server");
+        BinaryPluginTests.Strings(match.Metadata!["blocks_preview"]).Should().Equal("server");
     }
 }

@@ -67,7 +67,7 @@ public sealed class ScriptPluginTests : IDisposable
         match!.FormatName.Should().Be("script-config");
         match.Variant.Should().Be(variant);
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
-        match.Metadata!["script_language"].Should().Be(language);
+        match.Metadata!["script_language"].ShouldBeJson(language);
         match.Reasons[^1].Should().StartWith("File extension");
     }
 
@@ -102,7 +102,7 @@ public sealed class ScriptPluginTests : IDisposable
         var match = Detector.ScanFileWithDefaults(path);
 
         match!.PluginName.Should().Be("script");
-        match.Metadata!["catalog_variant"].Should().Be("ps1-shell");
+        match.Metadata!["catalog_variant"].ShouldBeJson("ps1-shell");
     }
 
     [Fact]

@@ -1,4 +1,7 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
@@ -65,7 +68,7 @@ public sealed partial class YamlPlugin
         return tally;
     }
 
-    private static OrderedDictionary<string, object?>? AnalyseIndentation(IReadOnlyList<string> lines)
+    private static JsonObject? AnalyseIndentation(IReadOnlyList<string> lines)
     {
         var tally = TallyIndentation(lines);
         if (tally.Stats.Count == 0 && tally.TabLines.Count == 0 && tally.MixedLines.Count == 0)
@@ -73,11 +76,11 @@ public sealed partial class YamlPlugin
             return null;
         }
 
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+        var metadata = new JsonObject();
         if (tally.TabLines.Count > 0 && tally.Stats.Count == 0)
         {
             metadata["style"] = "tabs";
-            metadata["tab_lines"] = tally.TabLines.Take(IndentLineCap).ToList();
+            metadata["tab_lines"] = JsonNodes.Numbers(tally.TabLines.Take(IndentLineCap).ToList());
             return metadata;
         }
 
@@ -89,20 +92,20 @@ public sealed partial class YamlPlugin
 
         if (tally.TabLines.Count > 0)
         {
-            metadata["tab_lines"] = tally.TabLines.Take(IndentLineCap).ToList();
+            metadata["tab_lines"] = JsonNodes.Numbers(tally.TabLines.Take(IndentLineCap).ToList());
             metadata["style"] = tally.Stats.Count > 0 ? "mixed" : "tabs";
         }
 
         if (tally.MixedLines.Count > 0)
         {
-            metadata["mixed_indent_lines"] = tally.MixedLines.Take(IndentLineCap).ToList();
+            metadata["mixed_indent_lines"] = JsonNodes.Numbers(tally.MixedLines.Take(IndentLineCap).ToList());
             metadata["style"] = "mixed";
         }
 
         return metadata.Count > 0 ? metadata : null;
     }
 
-    private static void AddSpaceProfile(OrderedDictionary<string, object?> metadata, IndentTally tally)
+    private static void AddSpaceProfile(JsonObject metadata, IndentTally tally)
     {
         var baseline = 0;
         var best = -1;
@@ -135,10 +138,10 @@ public sealed partial class YamlPlugin
         }
 
         metadata["baseline"] = baseline;
-        metadata["allowed_widths"] = allowed.Order().ToList();
+        metadata["allowed_widths"] = JsonNodes.Numbers(allowed.Order().ToList());
         if (outliers.Count > 0)
         {
-            metadata["outlier_lines"] = outliers.Distinct().Order().ToList();
+            metadata["outlier_lines"] = JsonNodes.Numbers(outliers.Distinct().Order().ToList());
         }
     }
 }
