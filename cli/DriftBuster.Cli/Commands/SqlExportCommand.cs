@@ -14,7 +14,7 @@ internal static class SqlExportCommand
     {
         var command = new Command("sql-export", "Export anonymised SQL snapshots for portable review.");
         var arguments = new SqlExportArguments(command);
-        var manifestName = EngineArguments.Text("--manifest-name", "sql-manifest.json", "Filename for the manifest written to the output directory.");
+        var manifestName = CliOptions.Text("--manifest-name", "sql-manifest.json", "Filename for the manifest written to the output directory.");
         command.Options.Add(manifestName);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) =>
         {

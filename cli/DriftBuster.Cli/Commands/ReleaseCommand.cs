@@ -12,15 +12,15 @@ internal static class ReleaseCommand
 {
     public static Command Build()
     {
-        var skipTests = EngineArguments.Flag("--skip-tests", "Skip running dotnet test before building artifacts.");
-        var runtime = EngineArguments.OptionalText("--runtime", "Optional runtime identifier for dotnet publish (e.g., win-x64).");
-        var frameworkDependent = EngineArguments.Flag(
+        var skipTests = CliOptions.Flag("--skip-tests", "Skip running dotnet test before building artifacts.");
+        var runtime = CliOptions.OptionalText("--runtime", "Optional runtime identifier for dotnet publish (e.g., win-x64).");
+        var frameworkDependent = CliOptions.Flag(
             "--framework-dependent", "Publish without the .NET runtime when a runtime is specified (default: self-contained).");
-        var noInstaller = EngineArguments.Flag("--no-installer", "Do not build a Velopack installer (default builds installer).");
-        var installerRid = EngineArguments.Text("--installer-rid", "win-x64", "RID for installer packaging (default: win-x64).");
-        var releaseNotes = EngineArguments.OptionalText("--release-notes", "Path to release notes markdown (required for installer packaging).");
-        var channel = EngineArguments.OptionalText("--channel", "Optional installer update channel label.");
-        var packId = EngineArguments.OptionalText("--pack-id", "Override installer pack id (defaults to com.driftbuster.gui).");
+        var noInstaller = CliOptions.Flag("--no-installer", "Do not build a Velopack installer (default builds installer).");
+        var installerRid = CliOptions.Text("--installer-rid", "win-x64", "RID for installer packaging (default: win-x64).");
+        var releaseNotes = CliOptions.OptionalText("--release-notes", "Path to release notes markdown (required for installer packaging).");
+        var channel = CliOptions.OptionalText("--channel", "Optional installer update channel label.");
+        var packId = CliOptions.OptionalText("--pack-id", "Override installer pack id (defaults to com.driftbuster.gui).");
         var command = new Command("release", "Prepare DriftBuster release artifacts.")
         {
             skipTests, runtime, frameworkDependent, noInstaller, installerRid, releaseNotes, channel, packId, BuildStagePortable(),
@@ -46,10 +46,10 @@ internal static class ReleaseCommand
 
     private static Command BuildStagePortable()
     {
-        var stageDir = EngineArguments.Text("--stage-dir", StagePortable.DefaultStageDir, $"Local stage directory (default: {StagePortable.DefaultStageDir}).");
-        var rid = EngineArguments.Text("--rid", "win-x64", "dotnet publish runtime identifier (default: win-x64).");
-        var configuration = EngineArguments.Text("--configuration", "Release", "dotnet publish configuration (default: Release).");
-        var timestamp = EngineArguments.OptionalText("--timestamp", "Optional UTC timestamp override (format: YYYYMMDD-HHMMSSZ).");
+        var stageDir = CliOptions.Text("--stage-dir", StagePortable.DefaultStageDir, $"Local stage directory (default: {StagePortable.DefaultStageDir}).");
+        var rid = CliOptions.Text("--rid", "win-x64", "dotnet publish runtime identifier (default: win-x64).");
+        var configuration = CliOptions.Text("--configuration", "Release", "dotnet publish configuration (default: Release).");
+        var timestamp = CliOptions.OptionalText("--timestamp", "Optional UTC timestamp override (format: YYYYMMDD-HHMMSSZ).");
         var command = new Command("stage-portable", "Build a portable debug bundle and stage it for a Windows test run.")
         {
             stageDir, rid, configuration, timestamp,

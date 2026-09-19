@@ -115,30 +115,16 @@ public static partial class RegistryScan
         return MultiServerRunner.TruncateCodePoints(text, PreviewLength);
     }
 
-    // Text of a value: a string as is, bytes as UTF-8 with replacement, numbers and bools as text, lists joined by ", "; else null.
-    internal static string? ValueText(object? value)
+    /// <summary>
+    /// Text of a decoded value (<see cref="RegistryValueDecoder.Convert"/>): a string as is, bytes as UTF-8 with replacement, a number
+    /// in decimal, a string list joined by ", "; null for no data.
+    /// </summary>
+    internal static string? ValueText(object? value) => value switch
     {
-        switch (value)
-        {
-            case string text:
-                return text;
-            case byte[] bytes:
-                return ReplacingUtf8.GetString(bytes);
-            case bool or int or long or System.Numerics.BigInteger or double:
-                return EngineRepr.Str(value);
-            case var list when RegistryText.IsList(list):
-                try
-                {
-                    // Items joined by ", ": bytes as b'...', nested containers in display form.
-                    return string.Join(", ", ((System.Collections.IList)list!).Cast<object?>().Select(EngineRepr.Str));
-                }
-                catch (ArgumentException)
-                {
-                    return null;
-                }
-
-            default:
-                return null;
-        }
-    }
+        string text => text,
+        byte[] bytes => ReplacingUtf8.GetString(bytes),
+        ulong number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        IEnumerable<string> items => string.Join(", ", items),
+        _ => null,
+    };
 }

@@ -1,12 +1,6 @@
-using System.Globalization;
-using System.Numerics;
-
-using DriftBuster.Backend.Detection;
-using DriftBuster.Backend.Infrastructure;
-
 namespace DriftBuster.Cli.Commands;
 
-/// <summary>Console writes and the JSON and code-point text helpers the commands share.</summary>
+/// <summary>Console writes and the code-point text helpers the commands share.</summary>
 internal static class ConsoleText
 {
     /// <summary>Writes the text as is; the console streams translate line breaks (<see cref="TextModeWriter"/>).</summary>
@@ -16,7 +10,7 @@ internal static class ConsoleText
     public static void Print(TextWriter writer, string line) => Write(writer, line + "\n");
 
     /// <summary>Length in code points.</summary>
-    public static int Len(string text) => EngineBuiltins.Len(text);
+    public static int Len(string text) => text.EnumerateRunes().Count();
 
     /// <summary>The first <paramref name="count"/> code points.</summary>
     public static string Head(string text, int count)
@@ -32,26 +26,4 @@ internal static class ConsoleText
 
     /// <summary>Right-padded with spaces to <paramref name="width"/> code points.</summary>
     public static string LeftJustify(string text, int width) => text + new string(' ', Math.Max(0, width - Len(text)));
-
-    /// <summary>
-    /// A <c>--sample-size</c> of any integer size for the detector: a value past <see cref="int"/> is clamped with the detector's own
-    /// guardrail warning, one below it raises as any non-positive size does.
-    /// </summary>
-    public static int? DetectorSampleSize(BigInteger? sampleSize, Action<string> warn)
-    {
-        if (sampleSize is not { } size)
-        {
-            return null;
-        }
-
-        if (size > int.MaxValue)
-        {
-            warn(string.Create(
-                CultureInfo.InvariantCulture,
-                $"Sample size {size} exceeds {Detector.MaxSampleSize} bytes; clamping to guardrail."));
-            return Detector.MaxSampleSize;
-        }
-
-        return (int)BigInteger.Max(size, int.MinValue);
-    }
 }

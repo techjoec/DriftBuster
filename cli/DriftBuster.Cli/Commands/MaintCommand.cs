@@ -14,11 +14,11 @@ internal static class MaintCommand
 
     private static Command BuildSelfcheck()
     {
-        var portableRoot = EngineArguments.Text(
+        var portableRoot = CliOptions.Text(
             "--portable-root",
             SelfcheckMultiServerPaths.DefaultPortableRoot,
             $"Portable root whose Samples/MultiServer is used (default: {SelfcheckMultiServerPaths.DefaultPortableRoot}).");
-        var output = EngineArguments.OptionalText("--output", "Path to write JSON report (default: artifacts/selfcheck/multi_server_paths_report.json).");
+        var output = CliOptions.OptionalText("--output", "Path to write JSON report (default: artifacts/selfcheck/multi_server_paths_report.json).");
         var command = new Command("selfcheck-multi-server-paths", "Run multi-server end-to-end self-checks against sample configs.") { portableRoot, output };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
@@ -35,8 +35,8 @@ internal static class MaintCommand
     private static Command BuildPurge()
     {
         var paths = new Argument<string[]>("PATH") { Arity = ArgumentArity.OneOrMore, Description = "Directories or files to evaluate for retention purge" };
-        var retentionDays = EngineArguments.Int("--retention-days", 30, "Retention window in days (default: 30)");
-        var confirm = EngineArguments.Flag("--confirm", "Actually delete candidates; otherwise prints a dry-run report");
+        var retentionDays = CliOptions.Int("--retention-days", 30, "Retention window in days (default: 30)");
+        var confirm = CliOptions.Flag("--confirm", "Actually delete candidates; otherwise prints a dry-run report");
         var command = new Command("purge-reporting-retention", "Delete reporting artefacts older than the retention window.") { paths, retentionDays, confirm };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) => PurgeReportingRetention.Run(
             parseResult.GetValue(paths)!,

@@ -9,15 +9,15 @@ namespace DriftBuster.Cli.Commands;
 internal sealed class SqlExportArguments
 {
     private readonly Argument<string[]> _database = new("database") { Arity = ArgumentArity.OneOrMore, Description = "Path(s) to SQLite databases." };
-    private readonly Option<string> _outputDir = EngineArguments.Text("--output-dir", "sql-exports", "Directory to store exported SQL snapshots.");
-    private readonly Option<string[]> _table = EngineArguments.Append("--table", "Restrict export to a specific table (repeatable).");
-    private readonly Option<string[]> _excludeTable = EngineArguments.Append("--exclude-table", "Exclude a specific table from export (repeatable).");
-    private readonly Option<string[]> _maskColumn = EngineArguments.Append("--mask-column", "Mask sensitive column data using placeholder (table.column).");
-    private readonly Option<string[]> _hashColumn = EngineArguments.Append("--hash-column", "Deterministically hash column data (table.column).");
-    private readonly Option<string> _placeholder = EngineArguments.Text("--placeholder", "[REDACTED]", "Placeholder used when masking columns.");
-    private readonly Option<string> _hashSalt = EngineArguments.Text("--hash-salt", string.Empty, "Salt applied when hashing column data.");
+    private readonly Option<string> _outputDir = CliOptions.Text("--output-dir", "sql-exports", "Directory to store exported SQL snapshots.");
+    private readonly Option<string[]> _table = CliOptions.Append("--table", "Restrict export to a specific table (repeatable).");
+    private readonly Option<string[]> _excludeTable = CliOptions.Append("--exclude-table", "Exclude a specific table from export (repeatable).");
+    private readonly Option<string[]> _maskColumn = CliOptions.Append("--mask-column", "Mask sensitive column data using placeholder (table.column).");
+    private readonly Option<string[]> _hashColumn = CliOptions.Append("--hash-column", "Deterministically hash column data (table.column).");
+    private readonly Option<string> _placeholder = CliOptions.Text("--placeholder", "[REDACTED]", "Placeholder used when masking columns.");
+    private readonly Option<string> _hashSalt = CliOptions.Text("--hash-salt", string.Empty, "Salt applied when hashing column data.");
     private readonly Option<int?> _limit = new("--limit") { Description = "Optional maximum rows to export per table." };
-    private readonly Option<string> _prefix = EngineArguments.Text("--prefix", string.Empty, "Optional prefix to apply to exported snapshot filenames.");
+    private readonly Option<string> _prefix = CliOptions.Text("--prefix", string.Empty, "Optional prefix to apply to exported snapshot filenames.");
 
     public SqlExportArguments(Command command)
     {

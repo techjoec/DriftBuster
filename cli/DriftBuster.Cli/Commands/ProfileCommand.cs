@@ -33,12 +33,12 @@ internal static class ProfileCommand
     private static Command BuildCreate(Option<string?> baseDir)
     {
         var name = new Option<string>("--name") { Required = true };
-        var description = EngineArguments.OptionalText("--description", "Profile description.");
-        var source = EngineArguments.Append("--source", "File, directory, or glob to include (repeatable).");
-        var baseline = EngineArguments.OptionalText("--baseline", "Source path that should act as the baseline (defaults to first source).");
-        var option = EngineArguments.Append("--option", "Custom option in key=value format (repeatable).");
-        var ignoreRule = EngineArguments.Append("--secret-ignore-rule", "Secret scanner rule names to ignore (repeatable).");
-        var ignorePattern = EngineArguments.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings (repeatable).");
+        var description = CliOptions.OptionalText("--description", "Profile description.");
+        var source = CliOptions.Append("--source", "File, directory, or glob to include (repeatable).");
+        var baseline = CliOptions.OptionalText("--baseline", "Source path that should act as the baseline (defaults to first source).");
+        var option = CliOptions.Append("--option", "Custom option in key=value format (repeatable).");
+        var ignoreRule = CliOptions.Append("--secret-ignore-rule", "Secret scanner rule names to ignore (repeatable).");
+        var ignorePattern = CliOptions.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings (repeatable).");
         var command = new Command("create", "Create or update a run profile.") { name, description, source, baseline, option, ignoreRule, ignorePattern };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
@@ -74,7 +74,7 @@ internal static class ProfileCommand
 
     private static Command BuildShow(Option<string?> baseDir)
     {
-        var name = EngineArguments.Positional("name", "Profile name.");
+        var name = CliOptions.Positional("name", "Profile name.");
         var command = new Command("show", "Show profile configuration.") { name };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
@@ -86,12 +86,12 @@ internal static class ProfileCommand
 
     private static Command BuildRun(Option<string?> baseDir)
     {
-        var name = EngineArguments.OptionalText("--name", "Name of a saved profile.");
-        var profile = EngineArguments.OptionalText("--profile", "Path to a profile JSON file.");
-        var timestamp = EngineArguments.OptionalText("--timestamp", "Override run timestamp (UTC).");
-        var save = EngineArguments.Flag("--save", "Persist the supplied profile before running.");
-        var ignoreRule = EngineArguments.Append("--secret-ignore-rule", "Secret scanner rule names to ignore for this run (repeatable).");
-        var ignorePattern = EngineArguments.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings for this run (repeatable).");
+        var name = CliOptions.OptionalText("--name", "Name of a saved profile.");
+        var profile = CliOptions.OptionalText("--profile", "Path to a profile JSON file.");
+        var timestamp = CliOptions.OptionalText("--timestamp", "Override run timestamp (UTC).");
+        var save = CliOptions.Flag("--save", "Persist the supplied profile before running.");
+        var ignoreRule = CliOptions.Append("--secret-ignore-rule", "Secret scanner rule names to ignore for this run (repeatable).");
+        var ignorePattern = CliOptions.Append("--secret-ignore-pattern", "Regular expressions to suppress secret findings for this run (repeatable).");
         var command = new Command("run", "Execute a profile run.") { name, profile, timestamp, save, ignoreRule, ignorePattern };
         // add_mutually_exclusive_group(required=True): exactly one of --name and --profile.
         command.Validators.Add(result =>

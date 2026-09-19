@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Numerics;
 using System.Text;
 
 using DriftBuster.Backend.Diff;
@@ -25,21 +24,21 @@ internal static class DiffCommand
         string Baseline,
         IReadOnlyList<string> Comparisons,
         string ContentType,
-        BigInteger ContextLines,
+        int ContextLines,
         IReadOnlyList<string> MaskTokens,
         string Placeholder,
         string? OutputDir);
 
     public static Command Build()
     {
-        var baseline = EngineArguments.Positional("baseline", "Baseline file to diff against.");
+        var baseline = CliOptions.Positional("baseline", "Baseline file to diff against.");
         var comparisons = new Argument<string[]>("comparisons") { Arity = ArgumentArity.OneOrMore, Description = "One or more files to compare with the baseline." };
-        var contentType = EngineArguments.Text("--content-type", "auto", "Canonicalisation strategy applied before diffing (default: auto).");
+        var contentType = CliOptions.Text("--content-type", "auto", "Canonicalisation strategy applied before diffing (default: auto).");
         contentType.AcceptOnlyFromAmong("auto", "text", "xml");
-        var contextLines = EngineArguments.Int("--context-lines", 3, "Context lines to include around each diff hunk (default: 3).");
-        var maskTokens = EngineArguments.Append("--mask-token", "Token to redact before diffing (repeatable).");
-        var placeholder = EngineArguments.Text("--placeholder", RedactionFilter.DefaultPlaceholder, "Placeholder shown for masked tokens (default: [REDACTED]).");
-        var outputDir = EngineArguments.OptionalText("--output-dir", "Directory where unified diff patches will be written.");
+        var contextLines = CliOptions.Int("--context-lines", 3, "Context lines to include around each diff hunk (default: 3).");
+        var maskTokens = CliOptions.Append("--mask-token", "Token to redact before diffing (repeatable).");
+        var placeholder = CliOptions.Text("--placeholder", RedactionFilter.DefaultPlaceholder, "Placeholder shown for masked tokens (default: [REDACTED]).");
+        var outputDir = CliOptions.OptionalText("--output-dir", "Directory where unified diff patches will be written.");
         var command = new Command("diff", "Generate unified diffs for configuration snapshots.")
         {
             baseline, comparisons, contentType, contextLines, maskTokens, placeholder, outputDir,
@@ -133,7 +132,7 @@ internal static class DiffCommand
             toLabel: toLabel,
             maskTokens: tokens.Count > 0 ? tokens : null,
             placeholder: args.Placeholder,
-            contextLines: (int)BigInteger.Min(args.ContextLines, int.MaxValue));
+            contextLines: args.ContextLines);
         if (outputDir is not null)
         {
             var destination = LexicalPath.Join(outputDir, PatchName(baselinePath, candidatePath));

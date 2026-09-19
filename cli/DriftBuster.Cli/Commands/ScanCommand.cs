@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Globalization;
-using System.Numerics;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
@@ -24,10 +23,10 @@ internal static class ScanCommand
 
     public static Command Build()
     {
-        var path = EngineArguments.Positional("path", "File or directory to scan.");
-        var glob = EngineArguments.Text("--glob", "**/*", "Glob used when scanning directories (default: **/*).");
-        var sampleSize = EngineArguments.OptionalInt("--sample-size", "Bytes to sample from each file (defaults to detector setting).");
-        var json = EngineArguments.Flag("--json", "Emit JSON lines instead of a table.");
+        var path = CliOptions.Positional("path", "File or directory to scan.");
+        var glob = CliOptions.Text("--glob", "**/*", "Glob used when scanning directories (default: **/*).");
+        var sampleSize = CliOptions.OptionalInt("--sample-size", "Bytes to sample from each file (defaults to detector setting).");
+        var json = CliOptions.Flag("--json", "Emit JSON lines instead of a table.");
         var command = new Command("scan", "Scan files for DriftBuster formats.") { path, glob, sampleSize, json };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Execute(
             parseResult.GetValue(path)!,
@@ -40,12 +39,12 @@ internal static class ScanCommand
     }
 
     /// <summary>Exit code 2 with <c>Path does not exist: {path}</c> for a missing path.</summary>
-    internal static int Execute(string path, string glob, BigInteger? sampleSize, bool json, TextWriter stdout, TextWriter stderr)
+    internal static int Execute(string path, string glob, int? sampleSize, bool json, TextWriter stdout, TextWriter stderr)
     {
         var root = LexicalPath.Str(path);
         IReadOnlyList<(string Path, DetectionMatch? Match)> results;
         // A tree scan reports an unreadable file and carries on; a single file, or a root that cannot be listed, still fails.
-        var detector = new SkippingDetector(ConsoleText.DetectorSampleSize(sampleSize, Warn), Detector.DefaultTotalSampleBudget, Warn)
+        var detector = new SkippingDetector(sampleSize, Detector.DefaultTotalSampleBudget, Warn)
         {
             OnSkipped = (_, error) => Warn($"Skipped unreadable file: {error.Message}"),
         };

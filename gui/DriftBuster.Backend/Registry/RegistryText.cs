@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Collections;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -36,7 +35,4 @@ internal static class RegistryText
     /// parse throws <see cref="RegexParseException"/> with the .NET message.
     /// </summary>
     public static Regex Compile(string pattern) => PatternRegex.Create(pattern);
-
-    /// <summary>A list or array that is not a string, bytes or a dictionary.</summary>
-    public static bool IsList(object? value) => value is IList and not byte[] and not IDictionary && value is not IReadOnlyDictionary<string, object?>;
 }

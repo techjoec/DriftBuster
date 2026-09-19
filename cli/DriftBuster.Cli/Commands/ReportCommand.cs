@@ -16,14 +16,14 @@ internal static class ReportCommand
     public static Command Build()
     {
         var root = new Argument<string>("root") { Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => ".", Description = "File or directory to scan." };
-        var format = EngineArguments.Text("--format", "html", "Report format: html or jsonl (default: html).");
+        var format = CliOptions.Text("--format", "html", "Report format: html or jsonl (default: html).");
         format.AcceptOnlyFromAmong("html", "jsonl");
-        var glob = EngineArguments.Text("--glob", "**/*", "Glob used when scanning and hunting directories (default: **/*).");
-        var skipHunt = EngineArguments.Flag("--skip-hunt", "Leave hunt hits out of the report.");
-        var title = EngineArguments.Text("--title", "DriftBuster Report", "HTML report title.");
-        var maskToken = EngineArguments.Append("--mask-token", "Sensitive token to redact (repeatable).");
-        var placeholder = EngineArguments.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
-        var output = EngineArguments.OptionalText("--output", "File the report is written to (defaults to stdout).");
+        var glob = CliOptions.Text("--glob", "**/*", "Glob used when scanning and hunting directories (default: **/*).");
+        var skipHunt = CliOptions.Flag("--skip-hunt", "Leave hunt hits out of the report.");
+        var title = CliOptions.Text("--title", "DriftBuster Report", "HTML report title.");
+        var maskToken = CliOptions.Append("--mask-token", "Sensitive token to redact (repeatable).");
+        var placeholder = CliOptions.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
+        var output = CliOptions.OptionalText("--output", "File the report is written to (defaults to stdout).");
         var command = new Command("report", "Render an HTML or JSON lines report of a scanned tree.")
         {
             root, format, glob, skipHunt, title, maskToken, placeholder, output,

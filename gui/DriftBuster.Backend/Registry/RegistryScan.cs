@@ -89,9 +89,9 @@ public static partial class RegistryScan
             .AsReadOnly();
     }
 
-    // The value as text when truthy, else null.
+    // The value's text when it has any (not missing, empty or zero), else null.
     private static string? TruthyText(Dictionary<string, object?> values, string name)
-        => values.TryGetValue(name, out var value) && EngineBuiltins.IsTruthy(value) ? EngineRepr.Str(value) : null;
+        => values.TryGetValue(name, out var value) && value is not 0UL && ValueText(value) is { Length: > 0 } text ? text : null;
 
     /// <summary>
     /// (first word, remaining words joined by " ") when the name splits on whitespace, "_" and "-" into two or more words, then

@@ -22,22 +22,22 @@ internal static class CaptureCommand
     private static Command BuildRun()
     {
         var root = new Argument<string>("root") { Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => ".", Description = "Directory to scan." };
-        var profiles = EngineArguments.OptionalText("--profiles", "Path to ProfileStore JSON payload.");
-        var profileTag = EngineArguments.Append("--profile-tag", "Optional profile tags to activate.");
-        var glob = EngineArguments.Text("--glob", "**/*", "Glob used for scanning (defaults to **/*).");
-        var huntGlob = EngineArguments.Text("--hunt-glob", "**/*", "Glob pattern for hunt traversal.");
-        var huntExclude = EngineArguments.Append("--hunt-exclude", "Glob patterns to skip during hunt traversal.");
-        var skipHunt = EngineArguments.Flag("--skip-hunt", "Skip hunt scan step.");
+        var profiles = CliOptions.OptionalText("--profiles", "Path to ProfileStore JSON payload.");
+        var profileTag = CliOptions.Append("--profile-tag", "Optional profile tags to activate.");
+        var glob = CliOptions.Text("--glob", "**/*", "Glob used for scanning (defaults to **/*).");
+        var huntGlob = CliOptions.Text("--hunt-glob", "**/*", "Glob pattern for hunt traversal.");
+        var huntExclude = CliOptions.Append("--hunt-exclude", "Glob patterns to skip during hunt traversal.");
+        var skipHunt = CliOptions.Flag("--skip-hunt", "Skip hunt scan step.");
         var sampleSize = new Option<int>("--sample-size") { DefaultValueFactory = _ => 128 * 1024, Description = "Sample size in bytes for detection and hunt scans." };
-        var outputDir = EngineArguments.Text("--output-dir", "captures", "Directory to store snapshot + manifest.");
-        var captureId = EngineArguments.OptionalText("--capture-id", "Optional capture identifier (defaults to UTC timestamp).");
-        var @operator = EngineArguments.OptionalText("--operator", "Operator name recorded in manifest.");
-        var environment = EngineArguments.OptionalText("--environment", "Environment label (prod/test/etc).");
-        var reason = EngineArguments.OptionalText("--reason", "Reason for this capture run.");
-        var maskToken = EngineArguments.Append("--mask-token", "Sensitive token to redact (repeatable).");
-        var placeholder = EngineArguments.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
-        var allowUnmasked = EngineArguments.Flag("--allow-unmasked", "Skip the redaction guard when no mask tokens are required.");
-        var registryScan = EngineArguments.Append("--registry-scan", "Path to registry_scan.json outputs to embed in the manifest (repeatable).");
+        var outputDir = CliOptions.Text("--output-dir", "captures", "Directory to store snapshot + manifest.");
+        var captureId = CliOptions.OptionalText("--capture-id", "Optional capture identifier (defaults to UTC timestamp).");
+        var @operator = CliOptions.OptionalText("--operator", "Operator name recorded in manifest.");
+        var environment = CliOptions.OptionalText("--environment", "Environment label (prod/test/etc).");
+        var reason = CliOptions.OptionalText("--reason", "Reason for this capture run.");
+        var maskToken = CliOptions.Append("--mask-token", "Sensitive token to redact (repeatable).");
+        var placeholder = CliOptions.Text("--placeholder", "[REDACTED]", "Placeholder string used for redaction.");
+        var allowUnmasked = CliOptions.Flag("--allow-unmasked", "Skip the redaction guard when no mask tokens are required.");
+        var registryScan = CliOptions.Append("--registry-scan", "Path to registry_scan.json outputs to embed in the manifest (repeatable).");
         var command = new Command("run", "Capture a snapshot and manifest.")
         {
             root, profiles, profileTag, glob, huntGlob, huntExclude, skipHunt, sampleSize, outputDir, captureId, @operator, environment, reason,
@@ -71,8 +71,8 @@ internal static class CaptureCommand
 
     private static Command BuildCompare()
     {
-        var baseline = EngineArguments.Positional("baseline", "Baseline snapshot JSON path.");
-        var current = EngineArguments.Positional("current", "Current snapshot JSON path.");
+        var baseline = CliOptions.Positional("baseline", "Baseline snapshot JSON path.");
+        var current = CliOptions.Positional("current", "Current snapshot JSON path.");
         var command = new Command("compare", "Compare two capture snapshots.") { baseline, current };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => new CaptureRunner().Compare(
             parseResult.GetValue(baseline)!, parseResult.GetValue(current)!, stdout, stderr)));

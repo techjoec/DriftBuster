@@ -1,4 +1,3 @@
-using System.Numerics;
 
 using DriftBuster.Backend.Registry;
 
@@ -26,11 +25,11 @@ public sealed class RegistryValueDecoderTests
     [Fact]
     public void QwordIsLittleEndianUnsigned()
     {
-        RegistryValueDecoder.Convert([], RegistryValueDecoder.RegQword).Should().Be(0);
-        RegistryValueDecoder.Convert(Convert.FromHexString("0100000000000000"), RegistryValueDecoder.RegQword).Should().Be(1);
-        RegistryValueDecoder.Convert(Convert.FromHexString("0000000001000000"), RegistryValueDecoder.RegQword).Should().Be(4294967296L);
+        RegistryValueDecoder.Convert([], RegistryValueDecoder.RegQword).Should().Be(0UL);
+        RegistryValueDecoder.Convert(Convert.FromHexString("0100000000000000"), RegistryValueDecoder.RegQword).Should().Be(1UL);
+        RegistryValueDecoder.Convert(Convert.FromHexString("0000000001000000"), RegistryValueDecoder.RegQword).Should().Be(4294967296UL);
         RegistryValueDecoder.Convert(Convert.FromHexString("ffffffffffffffff"), RegistryValueDecoder.RegQword)
-            .Should().Be(BigInteger.Parse("18446744073709551615", System.Globalization.CultureInfo.InvariantCulture));
+            .Should().Be(ulong.MaxValue);
     }
 
     [Theory]
@@ -59,14 +58,14 @@ public sealed class RegistryValueDecoderTests
     public void MultiStringsSplitAtEveryNulLessOneTrailing(string data, string[] expected)
     {
         RegistryValueDecoder.Convert(Utf16(data), RegistryValueDecoder.RegMultiSz)
-            .Should().BeOfType<List<object?>>().Which.Should().Equal(expected);
+            .Should().BeOfType<List<string>>().Which.Should().Equal(expected);
     }
 
     [Fact]
     public void EmptyMultiStringIsEmptyList()
     {
-        RegistryValueDecoder.Convert([], RegistryValueDecoder.RegMultiSz).Should().BeOfType<List<object?>>().Which.Should().BeEmpty();
-        RegistryValueDecoder.Convert([0x61], RegistryValueDecoder.RegMultiSz).Should().BeOfType<List<object?>>().Which.Should().BeEmpty();
+        RegistryValueDecoder.Convert([], RegistryValueDecoder.RegMultiSz).Should().BeOfType<List<string>>().Which.Should().BeEmpty();
+        RegistryValueDecoder.Convert([0x61], RegistryValueDecoder.RegMultiSz).Should().BeOfType<List<string>>().Which.Should().BeEmpty();
     }
 
     [Theory]

@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Numerics;
 
 using DriftBuster.Backend.Hunt;
 
@@ -14,11 +13,11 @@ internal static class HuntCommand
 {
     public static Command Build()
     {
-        var path = EngineArguments.Positional("path", "File or directory to hunt.");
-        var glob = EngineArguments.Text("--glob", "**/*", "Glob used when walking directories (default: **/*).");
-        var sampleSize = EngineArguments.Int("--sample-size", HuntEngine.DefaultSampleSize, "Maximum bytes read from each file (default: 131072).");
-        var exclude = EngineArguments.Append("--exclude", "Glob pattern matched against absolute and relative paths to skip (repeatable).");
-        var template = EngineArguments.Text(
+        var path = CliOptions.Positional("path", "File or directory to hunt.");
+        var glob = CliOptions.Text("--glob", "**/*", "Glob used when walking directories (default: **/*).");
+        var sampleSize = CliOptions.Int("--sample-size", HuntEngine.DefaultSampleSize, "Maximum bytes read from each file (default: 131072).");
+        var exclude = CliOptions.Append("--exclude", "Glob pattern matched against absolute and relative paths to skip (repeatable).");
+        var template = CliOptions.Text(
             "--placeholder-template", HuntEngine.DefaultPlaceholderTemplate, "Plan transform placeholder template, a .NET composite format string with one {token_name} field (default: {{{{ {token_name} }}}}, which renders as {{ name }}).");
         var command = new Command("hunt", "Hunt a file or directory for dynamic configuration values and print the hits as JSON.")
         {
@@ -35,9 +34,9 @@ internal static class HuntCommand
         return command;
     }
 
-    internal static int Execute(string path, string glob, BigInteger sampleSize, IReadOnlyList<string> exclude, string placeholderTemplate, TextWriter stdout, TextWriter stderr)
+    internal static int Execute(string path, string glob, int sampleSize, IReadOnlyList<string> exclude, string placeholderTemplate, TextWriter stdout, TextWriter stderr)
     {
-        var result = HuntEngine.HuntPath(path, HuntRules.Default, glob, (long)BigInteger.Clamp(sampleSize, long.MinValue, long.MaxValue), exclude);
+        var result = HuntEngine.HuntPath(path, HuntRules.Default, glob, sampleSize, exclude);
         foreach (var unreadable in result.UnreadableFiles)
         {
             ConsoleText.Print(stderr, $"warning: unreadable file: {unreadable}");

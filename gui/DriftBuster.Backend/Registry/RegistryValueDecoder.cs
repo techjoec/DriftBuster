@@ -1,13 +1,10 @@
 using System.Buffers.Binary;
-using System.Numerics;
-
-using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
 /// Turns the raw data of a registry value into the value DriftBuster reports, following the value types Microsoft documents for
-/// <c>RegEnumValueW</c>. Integers are unsigned little-endian and narrowed by <see cref="EngineValues.Narrow"/>; strings are
+/// <c>RegEnumValueW</c>. Integers are unsigned little-endian <see cref="ulong"/> values; strings are
 /// UTF-16LE code units kept as they are (unpaired surrogates included, environment references not expanded); every other type is
 /// a copy of its bytes.
 /// </summary>
@@ -28,15 +25,15 @@ public static class RegistryValueDecoder
     /// <list type="bullet">
     /// <item><c>REG_DWORD</c>/<c>REG_QWORD</c>: the leading 4 or 8 bytes (zero-padded when shorter) as an unsigned integer.</item>
     /// <item><c>REG_SZ</c>/<c>REG_EXPAND_SZ</c>: the text up to the first NUL (<c>""</c> for no data).</item>
-    /// <item><c>REG_MULTI_SZ</c>: a <see cref="List{T}"/> of the NUL-separated strings, without the terminating empty entries.</item>
+    /// <item><c>REG_MULTI_SZ</c>: the NUL-separated strings, without the terminating empty entries.</item>
     /// <item>Anything else: a <see cref="byte"/> array, or null for no data.</item>
     /// </list>
     /// A trailing odd byte of string data is ignored.
     /// </summary>
     public static object? Convert(ReadOnlySpan<byte> data, int type) => type switch
     {
-        RegDword => EngineValues.Narrow(new BigInteger(BinaryPrimitives.ReadUInt32LittleEndian(Padded(data, sizeof(uint))))),
-        RegQword => EngineValues.Narrow(new BigInteger(BinaryPrimitives.ReadUInt64LittleEndian(Padded(data, sizeof(ulong))))),
+        RegDword => (ulong)BinaryPrimitives.ReadUInt32LittleEndian(Padded(data, sizeof(uint))),
+        RegQword => BinaryPrimitives.ReadUInt64LittleEndian(Padded(data, sizeof(ulong))),
         RegSz or RegExpandSz => FirstString(Units(data)),
         RegMultiSz => StringList(Units(data)),
         _ => data.IsEmpty ? null : data.ToArray(),
@@ -71,9 +68,9 @@ public static class RegistryValueDecoder
         return new string(units, 0, end < 0 ? units.Length : end);
     }
 
-    private static List<object?> StringList(char[] units)
+    private static List<string> StringList(char[] units)
     {
-        var result = new List<object?>();
+        var result = new List<string>();
         if (units.Length == 0)
         {
             return result;
@@ -93,7 +90,7 @@ public static class RegistryValueDecoder
         if (units[^1] == '\0')
         {
             result.RemoveAt(result.Count - 1);
-            if (result.Count > 0 && result[^1] is "")
+            if (result.Count > 0 && result[^1].Length == 0)
             {
                 result.RemoveAt(result.Count - 1);
             }

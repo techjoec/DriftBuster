@@ -1,83 +1,62 @@
-using System.Numerics;
+using System.Globalization;
 
-using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Reporting;
+using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster maint purge-reporting-retention PATH...</c>: lists the entries of each
-/// directory (or the file itself) last modified at or before the retention window, and deletes them only with <c>--confirm</c>.
+/// <c>driftbuster maint purge-reporting-retention PATH...</c>: lists the entries of each directory (or the file itself) last modified at
+/// or before the retention window, and deletes them only with <c>--confirm</c>.
 /// </summary>
-internal static partial class PurgeReportingRetention
+internal static class PurgeReportingRetention
 {
-    private const long MicrosecondsPerDay = 86_400_000_000;
+    private static readonly StringComparer PathOrder = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
-    // DateTime.MinValue (0001-01-01T00:00:00) in microseconds from the Unix epoch.
-    private static readonly BigInteger MinMicroseconds = (DateTime.MinValue.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerMicrosecond;
-
-    /// <summary><c>discover_candidates(roots, retention_days=..., now=...)</c>, sorted by path.</summary>
-    public static List<PurgeCandidate> DiscoverCandidates(IReadOnlyList<string> roots, BigInteger retentionDays, DateTimeOffset? now = null)
+    /// <summary>The entries modified at or before <paramref name="now"/> minus the retention days, sorted by path.</summary>
+    public static List<PurgeCandidate> DiscoverCandidates(IReadOnlyList<string> roots, int retentionDays, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(roots);
-        if (retentionDays.Sign < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(retentionDays), "retention_days must be non-negative.");
-        }
-
-        var clock = MicrosecondsOf((now ?? DateTimeOffset.UtcNow).UtcTicks);
-        var threshold = clock - (retentionDays * MicrosecondsPerDay);
-        if (threshold < MinMicroseconds)
-        {
-            throw new OverflowException("date value out of range");
-        }
-
+        ArgumentOutOfRangeException.ThrowIfNegative(retentionDays);
+        var threshold = now - TimeSpan.FromDays(retentionDays);
         var candidates = new List<PurgeCandidate>();
         foreach (var given in roots)
         {
-            var root = EnginePath.Resolve(EnginePath.ExpandUser(LexicalPath.Str(given)));
-            if (!TextModeFile.Exists(root))
-            {
-                continue;
-            }
-
-            var entries = Directory.Exists(root)
-                ? Directory.EnumerateFileSystemEntries(root).Select(entry => LexicalPath.Join(root, Path.GetFileName(entry)))
-                : [root];
+            var root = Path.GetFullPath(RunProfileStore.Expand(given));
+            IEnumerable<string> entries = Directory.Exists(root) ? Directory.EnumerateFileSystemEntries(root)
+                : File.Exists(root) ? [root]
+                : [];
             foreach (var entry in entries)
             {
-                if (ModifiedMicroseconds(entry) is { } modified && modified <= threshold)
+                if (Modified(entry) is { } modified && modified <= threshold)
                 {
-                    var age = (double)(clock - modified) / MicrosecondsPerDay;
-                    candidates.Add(new PurgeCandidate(entry, age));
+                    candidates.Add(new PurgeCandidate(entry, (now - modified).TotalDays));
                 }
             }
         }
 
-        candidates.Sort((left, right) => ComparePaths(left.Path, right.Path));
-        return candidates;
+        return [.. candidates.OrderBy(candidate => candidate.Path, PathOrder)];
     }
 
-    /// <summary><c>purge(candidates, confirm=...)</c>: the deleted paths, none unless <paramref name="confirm"/>.</summary>
+    /// <summary>The deleted paths, none unless <paramref name="confirm"/>. A link is removed itself, never what it points to.</summary>
     public static List<string> Purge(IEnumerable<PurgeCandidate> candidates, bool confirm)
     {
         ArgumentNullException.ThrowIfNull(candidates);
+        if (!confirm)
+        {
+            return [];
+        }
+
         var deleted = new List<string>();
         foreach (var candidate in candidates)
         {
-            if (!confirm)
+            FileSystemInfo info = Directory.Exists(candidate.Path) ? new DirectoryInfo(candidate.Path) : new FileInfo(candidate.Path);
+            if (info is DirectoryInfo directory && info.LinkTarget is null)
             {
-                continue;
-            }
-
-            if (Directory.Exists(candidate.Path))
-            {
-                DeleteContents(candidate.Path);
-                RemoveDirectory(candidate.Path);
+                directory.Delete(recursive: true);
             }
             else
             {
-                File.Delete(candidate.Path);
+                info.Delete();
             }
 
             deleted.Add(candidate.Path);
@@ -86,9 +65,9 @@ internal static partial class PurgeReportingRetention
         return deleted;
     }
 
-    public static int Run(IReadOnlyList<string> paths, BigInteger retentionDays, bool confirm, TextWriter stdout)
+    public static int Run(IReadOnlyList<string> paths, int retentionDays, bool confirm, TextWriter stdout, TimeProvider? time = null)
     {
-        var candidates = DiscoverCandidates(paths, retentionDays);
+        var candidates = DiscoverCandidates(paths, retentionDays, (time ?? TimeProvider.System).GetUtcNow());
         if (candidates.Count == 0)
         {
             ConsoleText.Print(stdout, "No purge candidates found within retention policy.");
@@ -98,12 +77,24 @@ internal static partial class PurgeReportingRetention
         ConsoleText.Print(stdout, "Candidates:");
         foreach (var candidate in candidates)
         {
-            ConsoleText.Print(stdout, $" - {candidate.Path} (age={candidate.AgeDays.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}d)");
+            ConsoleText.Print(stdout, string.Create(CultureInfo.InvariantCulture, $" - {candidate.Path} (age={candidate.AgeDays:0.0}d)"));
         }
 
         ConsoleText.Print(
             stdout,
             confirm ? $"Deleted {Purge(candidates, confirm: true).Count} item(s)." : "Dry run complete. Re-run with --confirm to delete candidates.");
         return 0;
+    }
+
+    // The last write time, of the target for a link; null when the entry (or the link's target) is gone.
+    private static DateTimeOffset? Modified(string entry)
+    {
+        FileSystemInfo info = Directory.Exists(entry) ? new DirectoryInfo(entry) : new FileInfo(entry);
+        if (info.LinkTarget is not null)
+        {
+            info = info.ResolveLinkTarget(returnFinalTarget: true) ?? info;
+        }
+
+        return info.Exists ? new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero) : null;
     }
 }
