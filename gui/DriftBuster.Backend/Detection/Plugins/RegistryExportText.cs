@@ -152,7 +152,8 @@ internal static class RegistryExportText
                 line = line.TrimStart('﻿').Trim();
             }
 
-            if (line.EndsWith('\\') && IsWrappedHex(pending.Length > 0 ? pending + line : line))
+            // Only a value's first line decides whether it wraps; the lines after it continue the same hex data.
+            if (line.EndsWith('\\') && (pending.Length > 0 || IsWrappedHex(line)))
             {
                 pending.Append(line.AsSpan(0, line.Length - 1));
                 continue;
