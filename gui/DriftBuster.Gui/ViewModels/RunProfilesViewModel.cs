@@ -506,9 +506,9 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
     // The profile as edited. Sources keep their declared order (a structured profile collects in that order and names an aliasless source
     // by its position). The baseline is the saved spelling of its source, or none when the loaded profile had none and the baseline is
-    // still the first source (the run then reads the first source as the baseline, as it did). A name, description, option key or secret
-    // scanner list that is unedited since the load saves as loaded; an edited name or option key is stripped as Python's str.strip strips
-    // it, and option keys are compared exactly (a later row with the same key wins).
+    // still the first source (the run then reads the first source as the baseline anyway). A name, description, option key or secret
+    // scanner list unedited since the load saves as loaded; an edited name or option key is stripped (EngineText.Strip), and option keys
+    // are compared exactly (a later row with the same key wins).
     private RunProfileDefinition BuildCurrentProfile()
     {
         var sources = Sources.Where(entry => !string.IsNullOrWhiteSpace(entry.Path)).ToList();
@@ -909,7 +909,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         var hasWindowEnd = !string.IsNullOrWhiteSpace(entry.WindowEnd);
         var hasWindowTimezone = !string.IsNullOrWhiteSpace(entry.WindowTimezone);
 
-        // A window without a time zone is a UTC window, as ScheduleWindow.from_dict reads it.
+        // A window without a time zone is a UTC window (ScheduleWindow.FromDict).
         if ((hasWindowStart || hasWindowEnd || hasWindowTimezone) && (!hasWindowStart || !hasWindowEnd))
         {
             return "Specify both window start and end times.";
@@ -1067,7 +1067,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
         public RunProfilesViewModel? Parent { get; set; }
 
-        /// <summary>The run directory the alias names (<c>_safe_name</c>), or null when the source has no alias.</summary>
+        /// <summary>The run directory the alias names, or null when the source has no alias.</summary>
         internal string? AliasDirectory => ToSource().Alias is { } alias ? RunProfileStore.SafeName(alias) : null;
 
         /// <summary>Shows a loaded source's alias, optional flag and exclude patterns, and remembers its path and alias as loaded.</summary>
@@ -1095,12 +1095,12 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             Exclude = ExcludePatterns(),
         };
 
-        // The loaded path while unedited; an edited path stripped as Python's str.strip strips it.
+        // The loaded path while unedited; an edited path stripped (EngineText.Strip).
         private string SavedPath()
             => _loadedPath is not null && string.Equals(Path, _loadedPath, StringComparison.Ordinal) ? _loadedPath : EngineText.Strip(Path ?? string.Empty);
 
-        // The loaded alias while unedited; an edited alias stripped as Python's str.strip strips it, none when that leaves it empty (the
-        // backend drops an alias str.strip empties).
+        // The loaded alias while unedited; an edited alias stripped (EngineText.Strip), none when that leaves it empty, as the backend
+        // drops it.
         private string? SavedAlias()
         {
             if (_loadedAlias is not null && string.Equals(Alias, _loadedAlias, StringComparison.Ordinal))

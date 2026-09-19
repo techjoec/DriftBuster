@@ -7,9 +7,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// Options and arguments spelled and converted as <c>argparse</c> declares them: <c>type=int</c> is <c>int()</c> of any size,
-/// <c>type=float</c> is <c>float()</c>, <c>action="append"</c> repeats the option once per value. A value the conversion refuses is a
-/// parse error (exit code 2), as <c>argparse</c> reports it.
+/// Option and argument builders: integers of any size, floats, and options repeated once per value. A value the conversion refuses is
+/// a parse error (exit code 2).
 /// </summary>
 internal static class EngineArguments
 {
@@ -20,23 +19,23 @@ internal static class EngineArguments
 
     public static Option<bool> Flag(string name, string description) => new(name) { Description = description };
 
-    /// <summary><c>action="append"</c>: every occurrence adds one value.</summary>
+    /// <summary>Every occurrence adds one value.</summary>
     public static Option<string[]> Append(string name, string description)
         => new(name) { DefaultValueFactory = _ => [], Description = description, Arity = ArgumentArity.OneOrMore, AllowMultipleArgumentsPerToken = false };
 
-    /// <summary><c>type=int</c> without a default: null when absent.</summary>
+    /// <summary>An integer without a default: null when absent.</summary>
     public static Option<BigInteger?> OptionalInt(string name, string description)
         => new(name) { Description = description, CustomParser = result => ParseInt(result, name) };
 
-    /// <summary><c>type=int</c> with a default.</summary>
+    /// <summary>An integer with a default.</summary>
     public static Option<BigInteger> Int(string name, BigInteger defaultValue, string description)
         => new(name) { Description = description, DefaultValueFactory = _ => defaultValue, CustomParser = result => ParseInt(result, name) ?? defaultValue };
 
-    /// <summary><c>type=float</c> with a default.</summary>
+    /// <summary>A float with a default.</summary>
     public static Option<double> Float(string name, double defaultValue, string description)
         => new(name) { Description = description, DefaultValueFactory = _ => defaultValue, CustomParser = result => ParseFloat(result, name) ?? defaultValue };
 
-    /// <summary>A positional value; one that starts with "-" is an unknown option, not a path (as argparse reads it).</summary>
+    /// <summary>A positional value; one that starts with "-" is an unknown option, not a path.</summary>
     public static Argument<string> Positional(string name, string description)
     {
         var argument = new Argument<string>(name) { Description = description };

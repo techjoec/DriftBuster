@@ -3,8 +3,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>Path.read_text(encoding="utf-8")</c> and <c>Path.write_text(text, encoding="utf-8")</c> in text mode: a read turns CRLF and CR into
-/// LF, a write turns LF into the platform's line break; a byte order mark is kept as the character it decodes to.
+/// UTF-8 text files: a read turns CRLF and CR into LF, a write turns LF into the platform's line break; a byte order mark is kept as
+/// the character it decodes to.
 /// </summary>
 internal static class TextModeFile
 {
@@ -17,10 +17,10 @@ internal static class TextModeFile
         EngineTextFile.WriteText(path, OperatingSystem.IsWindows() ? text.Replace("\n", "\r\n", StringComparison.Ordinal) : text);
     }
 
-    /// <summary><c>path.exists()</c>: the entry, followed through links, is a file or a directory.</summary>
+    /// <summary>The entry, followed through links, is a file or a directory.</summary>
     public static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
 
-    /// <summary><c>Path.cwd() != root</c> as <c>Path</c> equality compares them (case-insensitively on Windows).</summary>
+    /// <summary>Path equality, case-insensitive on Windows.</summary>
     public static bool SamePath(string left, string right)
         => string.Equals(
             LexicalPath.Str(left),

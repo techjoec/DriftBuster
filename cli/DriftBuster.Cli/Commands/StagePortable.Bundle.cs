@@ -9,7 +9,7 @@ internal static partial class StagePortable
     private const string GuiExecutable = "DriftBuster.Gui.exe";
     private const string NextExecutable = "DriftBuster.Gui.next.exe";
 
-    /// <summary><c>write_debug_launchers(bundle_dir)</c>: the .cmd and .ps1 launchers that set <c>DRIFTBUSTER_DEBUG=1</c>, and the readme.</summary>
+    /// <summary>The .cmd and .ps1 launchers that set <c>DRIFTBUSTER_DEBUG=1</c>, and the readme.</summary>
     public static void WriteDebugLaunchers(string bundleDir)
     {
         WriteLaunchers(bundleDir, GuiExecutable);
@@ -30,7 +30,7 @@ internal static partial class StagePortable
             $"$env:DRIFTBUSTER_DEBUG = \"1\"\nStart-Process -FilePath (Join-Path $PSScriptRoot \"{executable}\") -ArgumentList $args\n");
     }
 
-    /// <summary><c>shutil.copytree(source, destination)</c>: files copied with their modification times, then each directory's time.</summary>
+    /// <summary>Files copied with their modification times, then each directory's time.</summary>
     public static void CopyTree(string source, string destination)
     {
         if (TextModeFile.Exists(destination))
@@ -56,8 +56,7 @@ internal static partial class StagePortable
     }
 
     /// <summary>
-    /// <c>zip_bundle(bundle_dir)</c>: <c>{bundle_dir}.zip</c> replaced by a deflated archive of the bundle under its own name, a directory
-    /// entry for every directory as <c>shutil.make_archive</c> writes one.
+    /// <c>{bundle_dir}.zip</c> replaced by a deflated archive of the bundle under its own name, with an entry for every directory.
     /// </summary>
     public static string ZipBundle(string bundleDir)
     {
@@ -70,7 +69,7 @@ internal static partial class StagePortable
         return zipPath;
     }
 
-    // os.walk from the top: each directory's subdirectory entries in sorted order, then its files, then the subdirectories' contents.
+    // Top-down: each directory's subdirectory entries in sorted order, then its files, then the subdirectories' contents.
     private static void AddContents(ZipArchive archive, string directory, string name)
     {
         var children = Directory.EnumerateFileSystemEntries(directory).Order(StringComparer.Ordinal).ToList();
@@ -99,9 +98,9 @@ internal static partial class StagePortable
     }
 
     /// <summary>
-    /// <c>stage_bundle(bundle_dir, stage_dir)</c>: replaces the stage directory with a copy of the bundle. When the old stage cannot be
-    /// removed (a running GUI holds its executable), the bundle is copied over it instead, and an executable that cannot be replaced is
-    /// written beside it as <c>DriftBuster.Gui.next.exe</c> with the launchers pointed at that copy.
+    /// Replaces the stage directory with a copy of the bundle. When the old stage cannot be removed (a running GUI holds its executable),
+    /// the bundle is copied over it instead, and an executable that cannot be replaced is written beside it as
+    /// <c>DriftBuster.Gui.next.exe</c> with the launchers pointed at that copy.
     /// </summary>
     public static void StageBundle(string bundleDir, string stageDir, PortableFileOps? ops = null)
     {

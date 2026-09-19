@@ -8,12 +8,12 @@ using DriftBuster.Backend.Reporting;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster detection-profile summary|diff|hunt-bridge</c> over <see cref="DetectionProfileCommands"/>. Every command writes its payload with <c>_write_json</c>; an exception from the command is
-/// written as <c>error: {exc}</c> on stderr with exit code 1.
+/// <c>driftbuster detection-profile summary|diff|hunt-bridge</c> over <see cref="DetectionProfileCommands"/>. Every command writes its
+/// payload with <see cref="WriteJson"/>; an exception from the command is written as <c>error: {exc}</c> on stderr with exit code 1.
 /// </summary>
 internal static class DetectionProfileCommand
 {
-    /// <summary>The <c>--indent</c>, <c>--sort-keys</c> and <c>--output</c> values of <c>_add_output_options</c>.</summary>
+    /// <summary>The <c>--indent</c>, <c>--sort-keys</c> and <c>--output</c> values every subcommand takes.</summary>
     internal sealed record OutputOptions(BigInteger Indent, bool SortKeys, string? Output);
 
     public static Command Build()
@@ -83,7 +83,7 @@ internal static class DetectionProfileCommand
         return command;
     }
 
-    /// <summary><c>main</c>'s handler call: the payload written with <see cref="WriteJson"/>, or <c>error: {exc}</c> and exit code 1.</summary>
+    /// <summary>The payload written with <see cref="WriteJson"/>, or <c>error: {exc}</c> and exit code 1.</summary>
     internal static int Handle(Func<object?> produce, OutputOptions options, TextWriter stdout, TextWriter stderr)
     {
         try
@@ -99,8 +99,8 @@ internal static class DetectionProfileCommand
     }
 
     /// <summary>
-    /// <c>_write_json(payload, output, indent, sort_keys)</c>: <c>json.dumps</c> with <c>indent=None</c> when <c>indent &lt;= 0</c>, a new line
-    /// appended unless the text ends with one, written to stdout or to <c>output</c>.
+    /// JSON, on one line when <c>indent &lt;= 0</c>, a new line appended unless the text ends with one, written to stdout or to
+    /// <c>output</c>.
     /// </summary>
     internal static void WriteJson(object? payload, OutputOptions options, TextWriter stdout)
     {

@@ -7,9 +7,9 @@ namespace DriftBuster.Cli.Commands;
 
 /// <summary>
 /// <c>driftbuster report [ROOT]</c>: the detections of a file or directory, with the default hunt rules' hits unless <c>--skip-hunt</c>,
-/// rendered through <see cref="IDriftbusterBackend.BuildReportAsync"/> as an HTML page (<c>write_html_report</c>) or JSON lines
-/// (<c>--format jsonl</c>, <c>write_json_lines</c>). Without <c>--output</c> the report is written to stdout; with it the file is written
-/// in text mode and <c>Report written to {path}</c> is printed.
+/// rendered through <see cref="IDriftbusterBackend.BuildReportAsync"/> as an HTML page or JSON lines (<c>--format jsonl</c>). Without
+/// <c>--output</c> the report goes to stdout; with it the file is written with platform line breaks and <c>Report written to {path}</c>
+/// is printed.
 /// </summary>
 internal static class ReportCommand
 {

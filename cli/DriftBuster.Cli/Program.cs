@@ -46,8 +46,7 @@ public static class Program
 
     /// <summary>
     /// Parses and runs <paramref name="args"/> with text-mode <paramref name="stdout"/> and <paramref name="stderr"/>. Response files are not
-    /// expanded (an argument starting with "@" is a value). A parse error writes each error on stderr and exits 2, as <c>argparse</c>
-    /// exits; the wording and help text are System.CommandLine's.
+    /// expanded (an argument starting with "@" is a value). A parse error writes each error on stderr and exits 2.
     /// </summary>
     public static int Run(IReadOnlyList<string> args, TextWriter stdout, TextWriter stderr, TextReader? stdin = null)
     {

@@ -61,7 +61,7 @@ internal static partial class SelfcheckMultiServerPaths
     private static OrderedDictionary<string, object?> SchemaRequest(string cacheDir)
         => new(StringComparer.Ordinal) { ["schema_version"] = "multi-server.v0", ["cache_dir"] = cacheDir, ["plans"] = new List<object?>() };
 
-    // d["returncode"] == 1 and d["error_message"] and "Unsupported schema version" in d["error_message"]
+    // Passes when returncode is 1 and error_message contains "Unsupported schema version".
     private static object? SchemaJudge(OrderedDictionary<string, object?> details)
     {
         if (Number(details, "returncode") != 1)

@@ -9,8 +9,8 @@ using DriftBuster.Backend.Reporting;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster scan PATH</c>: detects a file or every file under a directory and prints a
-/// table (<c>_emit_table</c>) or one JSON object per file (<c>--json</c>, <c>_emit_json</c>).
+/// <c>driftbuster scan PATH</c>: detects a file or every file under a directory and prints a table, or one JSON object per file
+/// (<c>--json</c>).
 /// </summary>
 internal static class ScanCommand
 {
@@ -38,7 +38,7 @@ internal static class ScanCommand
         return command;
     }
 
-    /// <summary><c>main(argv)</c> after parsing: exit code 2 with <c>Path does not exist: {path}</c> for a missing path.</summary>
+    /// <summary>Exit code 2 with <c>Path does not exist: {path}</c> for a missing path.</summary>
     internal static int Execute(string path, string glob, BigInteger? sampleSize, bool json, TextWriter stdout, TextWriter stderr)
     {
         var root = LexicalPath.Str(path);
@@ -76,15 +76,15 @@ internal static class ScanCommand
     }
 
     /// <summary>
-    /// <c>_relative_path(root, path)</c>: <c>path.relative_to(root).as_posix()</c>, or <c>path.as_posix()</c> outside the root. The walk
-    /// reports absolute paths, so a relative root is also tried in its absolute form.
+    /// The path relative to the root with forward slashes, or the whole path with forward slashes outside it. The walk reports absolute
+    /// paths, so a relative root is also tried in its absolute form.
     /// </summary>
     internal static string RelativePath(string root, string path)
         => LexicalPath.RelativeTo(path, root)
             ?? (LexicalPath.IsAbsolute(path) && !LexicalPath.IsAbsolute(root) ? LexicalPath.RelativeTo(path, EnginePath.Absolute(root)) : null)
             ?? PathText.ToPosix(LexicalPath.Str(path));
 
-    /// <summary><c>_ellipsize(value, limit)</c> over code points.</summary>
+    /// <summary>Truncated with an ellipsis to <paramref name="limit"/> code points.</summary>
     internal static string Ellipsize(string value, int limit)
     {
         if (ConsoleText.Len(value) <= limit)
@@ -145,7 +145,7 @@ internal static class ScanCommand
         ];
     }
 
-    // str(value or "—")
+    // The value's text, or "—" when falsy.
     private static string TextOrMissing(object? value) => EngineBuiltins.IsTruthy(value) ? EngineRepr.Str(value) : Missing;
 
     private static void EmitJson(string root, IReadOnlyList<(string Path, DetectionMatch? Match)> results, TextWriter stdout)

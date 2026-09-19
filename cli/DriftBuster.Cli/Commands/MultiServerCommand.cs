@@ -13,10 +13,9 @@ using DriftBuster.Backend.MultiServer;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster multi-server</c>: reads the request JSON from stdin, runs
-/// <see cref="MultiServerRunner"/> and writes newline-delimited JSON (<c>json.dumps(record, ensure_ascii=True)</c>): a
-/// <c>{"type": "progress", "payload": {...}}</c> line per progress update, then <c>{"type": "result", "payload": response}</c> with exit
-/// code 0, or <c>{"type": "error", "message": ...}</c> with exit code 1.
+/// <c>driftbuster multi-server</c>: reads the request JSON from stdin, runs <see cref="MultiServerRunner"/> and writes ASCII-escaped
+/// newline-delimited JSON: a <c>{"type": "progress", "payload": {...}}</c> line per progress update, then
+/// <c>{"type": "result", "payload": response}</c> with exit code 0, or <c>{"type": "error", "message": ...}</c> with exit code 1.
 /// </summary>
 internal static class MultiServerCommand
 {
@@ -28,7 +27,7 @@ internal static class MultiServerCommand
         Converters = { new JsonStringEnumMemberConverter(), new TimestampConverter(), new EscapedStringConverter() },
     };
 
-    /// <summary><c>datetime.now(UTC).isoformat()</c> for every model timestamp.</summary>
+    /// <summary>Every model timestamp as <see cref="DiffBuilder.IsoFormat"/>.</summary>
     private sealed class TimestampConverter : JsonConverter<DateTimeOffset>
     {
         public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetDateTimeOffset();
@@ -38,7 +37,8 @@ internal static class MultiServerCommand
 
     /// <summary>
     /// Writes each string with "\" doubled and every unpaired surrogate as the text <c>\uXXXX</c>, which <see cref="Unescape"/> reverses once
-    /// the document is read back (except inside <c>diff_summary</c>, a JSON element written as it is held), so a surrogate the serializer would replace with U+FFFD reaches <c>ensure_ascii</c> intact.
+    /// the document is read back (except inside <c>diff_summary</c>, written as it is held), so a surrogate the serializer would replace
+    /// with U+FFFD reaches the ASCII escaping intact.
     /// </summary>
     private sealed class EscapedStringConverter : JsonConverter<string>
     {
@@ -74,7 +74,6 @@ internal static class MultiServerCommand
         return command;
     }
 
-    /// <summary><c>main()</c>.</summary>
     internal static int Execute(TextReader stdin, TextWriter stdout)
     {
         try
@@ -114,7 +113,7 @@ internal static class MultiServerCommand
         return new MultiServerRunner(cacheDir).Run(plans, new LineProgress(stdout));
     }
 
-    // `if cache_dir: Path(cache_dir)`: a truthy value that is not a str is refused.
+    // A truthy value that is not a string is refused.
     private static string? CacheDirText(object? value) => value switch
     {
         _ when !EngineBuiltins.IsTruthy(value) => null,
@@ -133,7 +132,7 @@ internal static class MultiServerCommand
         stdout.Flush();
     }
 
-    /// <summary>The response as the JSON value <c>MultiServerRunner.run</c> returns: the model serialised with Python's spellings, keys in model order.</summary>
+    /// <summary>The response as a JSON value: the model serialised with its JSON names, keys in model order.</summary>
     internal static object? ResponsePayload(ServerScanResponse response)
     {
         var text = JsonSerializer.Serialize(response, ModelJson);

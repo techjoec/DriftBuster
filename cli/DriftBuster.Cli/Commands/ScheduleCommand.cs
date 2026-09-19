@@ -6,7 +6,8 @@ using DriftBuster.Backend.Scheduling;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster schedule list|due|mark-complete|skip-until</c> over <see cref="ScheduleCommands"/>, each payload printed as <c>json.dumps(payload, indent=2, sort_keys=True)</c> and a new line.
+/// <c>driftbuster schedule list|due|mark-complete|skip-until</c> over <see cref="ScheduleCommands"/>, each payload printed as sorted JSON
+/// indented 2 and a new line.
 /// </summary>
 internal static class ScheduleCommand
 {

@@ -18,10 +18,9 @@ internal static class DiffCommand
 {
     private const string Prog = "driftbuster diff";
 
-    // path.read_text(encoding="utf-8", errors="ignore"): invalid sequences dropped.
+    // UTF-8 with invalid sequences dropped.
     private static readonly Encoding Utf8Ignore = Encoding.GetEncoding("utf-8", EncoderFallback.ExceptionFallback, new DecoderReplacementFallback(string.Empty));
 
-    /// <summary>The parsed arguments of <c>_build_diff_parser</c>.</summary>
     internal sealed record Arguments(
         string Baseline,
         IReadOnlyList<string> Comparisons,
@@ -59,7 +58,6 @@ internal static class DiffCommand
         return command;
     }
 
-    /// <summary><c>_run_diff(argv)</c> after parsing.</summary>
     internal static int Execute(Arguments args, TextWriter stdout, TextWriter stderr)
     {
         if (args.ContextLines < 0)
@@ -153,7 +151,7 @@ internal static class DiffCommand
         return 0;
     }
 
-    // _ensure_file: path.expanduser().resolve(), which must exist and be a file.
+    // Home expanded and resolved; must exist and be a file.
     private static string EnsureFile(string path, string role, out string? refusal)
     {
         var resolved = EnginePath.Resolve(EnginePath.ExpandUser(path));
@@ -164,8 +162,8 @@ internal static class DiffCommand
     }
 
     /// <summary>
-    /// <c>_read_text(path)</c>: the file decoded as UTF-8 with invalid bytes dropped and universal newlines translated; a read failure
-    /// becomes <see cref="FileNotFoundException"/> (<c>Unable to read {path}: {reason}</c>).
+    /// The file decoded as UTF-8 with invalid bytes dropped and CRLF/CR read as LF; a read failure becomes
+    /// <see cref="FileNotFoundException"/> (<c>Unable to read {path}: {reason}</c>).
     /// </summary>
     internal static string ReadText(string path)
     {
@@ -182,7 +180,7 @@ internal static class DiffCommand
         return TextDecoding.Decode(raw, Utf8Ignore).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
     }
 
-    /// <summary><c>_build_patch_name(baseline, candidate)</c>: <c>{left}--{right}.patch</c> from the stems with spaces as hyphens.</summary>
+    /// <summary><c>{left}--{right}.patch</c> from the file stems, spaces as hyphens.</summary>
     internal static string PatchName(string baseline, string candidate)
     {
         var left = Stem(baseline).Replace(' ', '-');

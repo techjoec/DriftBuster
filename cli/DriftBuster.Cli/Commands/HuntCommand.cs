@@ -6,9 +6,9 @@ using DriftBuster.Backend.Hunt;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster hunt PATH</c>: the hits for the default rules printed as one JSON array, <c>json.dumps(hits, ensure_ascii=False, sort_keys=True)</c>: the serialisation the
-/// reporting JSON lines adapter gives each record. The array is the hunt file <c>detection-profile hunt-bridge</c> reads. A file the hunt
-/// could not read is skipped and named on stderr as <c>warning: unreadable file: {path}</c>.
+/// <c>driftbuster hunt PATH</c>: the hits for the default rules printed as one JSON array (non-ASCII kept, keys sorted), each hit as the
+/// JSON lines report writes it. The array is the hunt file <c>detection-profile hunt-bridge</c> reads. A file the hunt could not read
+/// is skipped and named on stderr as <c>warning: unreadable file: {path}</c>.
 /// </summary>
 internal static class HuntCommand
 {
