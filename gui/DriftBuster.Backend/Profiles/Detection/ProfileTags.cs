@@ -5,7 +5,7 @@ namespace DriftBuster.Backend.Profiles.Detection;
 /// <summary>Tag helpers shared by profile stores and profile-aware scans.</summary>
 public static class ProfileTags
 {
-    /// <summary><c>normalize_tags</c>: stripped, non-empty, deduplicated.</summary>
+    /// <summary>Trimmed, non-empty, de-duplicated tags.</summary>
     public static IReadOnlySet<string> Normalize(IEnumerable<string?>? tags)
     {
         var cleaned = new HashSet<string>(StringComparer.Ordinal);
@@ -32,9 +32,8 @@ public static class ProfileTags
     }
 
     /// <summary>
-    /// <c>normalize_tags</c> over a JSON value: None is empty; a str yields its code points, a list its items and a dict its keys
-    /// (anything else raises <see cref="InvalidDataException"/>); falsy items are skipped and any other item that is not a str raises
-    /// <see cref="InvalidDataException"/>.
+    /// <see cref="Normalize"/> over a JSON value: null is empty; a string yields its characters, a list its items, a dict its keys
+    /// (anything else throws <see cref="InvalidDataException"/>); falsy items are skipped and other non-string items throw.
     /// </summary>
     public static IReadOnlySet<string> NormalizeValue(object? tags)
     {

@@ -3,8 +3,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Profiles.Detection;
 
 /// <summary>
-/// A named set of configuration expectations. Construction and <c>with</c> apply
-/// <c>__post_init__</c>: tags normalised, configs copied, metadata frozen. Equality is the dataclass's, field by field.
+/// A named set of configuration expectations. Construction and <c>with</c> normalise tags, copy configs and freeze metadata;
+/// equality compares field by field.
 /// </summary>
 public sealed record DetectionProfile
 {
@@ -53,14 +53,14 @@ public sealed record DetectionProfile
         init => _metadata = ProfileMetadata.Freeze(value);
     }
 
-    /// <summary><c>applies_to</c>: a profile without tags applies to every tag set, otherwise its tags must all be provided.</summary>
+    /// <summary>A profile without tags applies to every tag set; otherwise all its tags must be provided.</summary>
     public bool AppliesTo(IReadOnlySet<string> providedTags)
     {
         ArgumentNullException.ThrowIfNull(providedTags);
         return Tags.Count == 0 || Tags.IsSubsetOf(providedTags);
     }
 
-    /// <summary><c>matching_configs</c>: the configs that match <paramref name="relativePath"/> under <paramref name="providedTags"/>, in order.</summary>
+    /// <summary>The configs matching <paramref name="relativePath"/> under <paramref name="providedTags"/>, in order.</summary>
     public IReadOnlyList<DetectionProfileConfig> MatchingConfigs(IReadOnlySet<string> providedTags, string? relativePath)
         => Configs.Where(config => config.Matches(relativePath, providedTags)).ToArray();
 

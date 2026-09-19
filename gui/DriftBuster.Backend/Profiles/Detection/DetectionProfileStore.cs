@@ -17,7 +17,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
     private readonly OrderedDictionary<string, DetectionProfile> _profiles = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AppliedProfileConfig> _configIndex = new(StringComparer.Ordinal);
 
-    // FromDict only: profiles and configs whose JSON name or id is a list or dict, with the error hashing it raises.
+    // Profiles and configs whose JSON name or id is a list or dict, with the error registration will throw (FromDict only).
     private Dictionary<object, InvalidDataException>? _unhashable;
 
     public DetectionProfileStore(IEnumerable<DetectionProfile>? profiles = null)
@@ -79,7 +79,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
         }
     }
 
-    /// <summary><c>register_profile</c>: registers <paramref name="profile"/> after enforcing unique names and config identifiers.</summary>
+    /// <summary>Registers <paramref name="profile"/>, enforcing unique names and config identifiers.</summary>
     public void RegisterProfile(DetectionProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -89,8 +89,8 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
     }
 
     /// <summary>
-    /// <c>update_profile</c>: replaces the profile called <paramref name="name"/> with what <paramref name="mutator"/> returns for
-    /// it, keeping the indexes intact; when the replacement fails validation the original is restored and the error re-raised.
+    /// Replaces the named profile with <paramref name="mutator"/>'s result, keeping indexes intact; a replacement that fails
+    /// validation restores the original and rethrows.
     /// </summary>
     public DetectionProfile UpdateProfile(string name, Func<DetectionProfile, DetectionProfile>? mutator)
     {
@@ -132,7 +132,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
         return candidate;
     }
 
-    /// <summary><c>remove_profile</c>: <see cref="KeyNotFoundException"/> when <paramref name="name"/> is not registered.</summary>
+    /// <summary><see cref="KeyNotFoundException"/> when <paramref name="name"/> is not registered.</summary>
     public void RemoveProfile(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -145,8 +145,8 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
     }
 
     /// <summary>
-    /// <c>remove_config</c>: the profile without <paramref name="configId"/>; <see cref="InvalidOperationException"/> when the
-    /// profile has no such config, <see cref="KeyNotFoundException"/> when the profile is not registered.
+    /// The profile without <paramref name="configId"/>; <see cref="InvalidOperationException"/> when it has no such config,
+    /// <see cref="KeyNotFoundException"/> when the profile is not registered.
     /// </summary>
     public DetectionProfile RemoveConfig(string profileName, string configId)
     {
@@ -175,7 +175,7 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
         }
     }
 
-    /// <summary><c>get_profile</c>: <see cref="KeyNotFoundException"/> when <paramref name="name"/> is not registered.</summary>
+    /// <summary><see cref="KeyNotFoundException"/> when <paramref name="name"/> is not registered.</summary>
     public DetectionProfile GetProfile(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -184,24 +184,23 @@ public sealed partial class DetectionProfileStore : IProfileMatcher
 
     private static KeyNotFoundException NotRegistered(string name) => new($"Profile {EngineRepr.StrRepr(name)} is not registered.");
 
-    /// <summary><c>profiles</c>: every registered profile in registration order.</summary>
     public IReadOnlyList<DetectionProfile> Profiles() => _profiles.Values.ToArray();
 
-    /// <summary><c>applicable_profiles</c>: the profiles that apply to the normalised <paramref name="tags"/>.</summary>
+    /// <summary>Profiles that apply to the normalised <paramref name="tags"/>.</summary>
     public IReadOnlyList<DetectionProfile> ApplicableProfiles(IEnumerable<string?>? tags)
     {
         var tagSet = ProfileTags.Normalize(tags);
         return _profiles.Values.Where(profile => profile.AppliesTo(tagSet)).ToArray();
     }
 
-    /// <summary><c>find_config</c>: the profile/config pair registered under <paramref name="identifier"/>, or nothing.</summary>
+    /// <summary>The profile/config pair registered under <paramref name="identifier"/>, or nothing.</summary>
     public IReadOnlyList<AppliedProfileConfig> FindConfig(string identifier)
     {
         ArgumentNullException.ThrowIfNull(identifier);
         return _configIndex.TryGetValue(identifier, out var match) ? [match] : [];
     }
 
-    /// <summary><c>matching_configs</c>: every config of every applicable profile that matches <paramref name="relativePath"/>.</summary>
+    /// <summary>Every config of every applicable profile that matches <paramref name="relativePath"/>.</summary>
     public IReadOnlyList<AppliedProfileConfig> MatchingConfigs(IEnumerable<string?>? tags, string? relativePath)
     {
         var tagSet = ProfileTags.Normalize(tags);

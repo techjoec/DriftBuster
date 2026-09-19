@@ -7,10 +7,7 @@ public static partial class RunProfileExecutor
 {
     private static readonly Comparer<string> CodePointOrder = Comparer<string>.Create(PathText.CompareCodePoints);
 
-    /// <summary>
-    /// <c>offline_runner._expand_path(text)</c> as <c>_iter_source_matches</c> expands it:
-    /// <c>os.path.expanduser(os.path.expandvars(text))</c>, left relative to the working directory.
-    /// </summary>
+    /// <summary>Expands environment variables and <c>~</c>; relative paths stay relative to the working directory.</summary>
     internal static string ExpandStructuredPath(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -18,10 +15,9 @@ public static partial class RunProfileExecutor
     }
 
     /// <summary>
-    /// <c>_iter_source_matches(path_text)</c> without a base directory: when the unexpanded text holds no glob character, the expanded
-    /// path if it exists; otherwise the distinct <see cref="FileTreeGlob.GlobPathname"/> matches. Nothing found raises
-    /// <see cref="FileNotFoundException"/> (<c>Path does not exist: {path_text}</c>), and so does a path whose every match <paramref name="isOwnOutput"/>
-    /// names: the offline runner writes its output elsewhere, so there the run's own output does not exist to be matched.
+    /// For wildcard-free text, the expanded path when it exists; otherwise the distinct glob matches. Nothing found (or only matches
+    /// <paramref name="isOwnOutput"/> names) throws <see cref="FileNotFoundException"/> (<c>Path does not exist: {path_text}</c>), since
+    /// the offline runner writes its output elsewhere.
     /// </summary>
     internal static IReadOnlyList<string> CollectStructuredMatches(
         string pathText,
@@ -50,11 +46,9 @@ public static partial class RunProfileExecutor
 
     internal static FileNotFoundException MissingSource(string pathText) => new($"Path does not exist: {pathText}");
 
-    // One source of a structured profile, as execute_config collects an OfflineCollectionSource: an optional source that is missing or
-    // matches nothing is skipped; the matches in posix order, each symlink skipped and each match inside a directory collected before
-    // skipped; a directory's files (rglob("*"), is_file()) copied in posix order under their path relative to it, a file under its name,
-    // and any of them matching an exclude pattern left out. Nothing inside the run's own profile directory (its profile.json
-    // and raw/ tree, which the offline runner writes elsewhere) is collected, whether a match names it or lies above it.
+    // One structured source, collected like the offline runner: a missing or empty optional source is skipped; matches in posix
+    // order, symlinks and matches inside an already collected directory skipped; a directory's files copied in posix order under
+    // their relative path, a file under its name; excludes left out. Nothing inside the run's own profile directory is collected.
     private static ProfileRunSource CollectStructuredSource(
         RunProfileSource source,
         string destinationName,
@@ -113,7 +107,7 @@ public static partial class RunProfileExecutor
     // The path is the directory or lies below it (both physical paths).
     private static bool IsInside(string path, string directory) => LexicalPath.RelativeTo(path, directory) is not null;
 
-    // Path.is_symlink(): an lstat that reports a link; a path that cannot be looked up is not one.
+    // A path that cannot be looked up is not a link.
     private static bool IsSymlink(string path)
     {
         try

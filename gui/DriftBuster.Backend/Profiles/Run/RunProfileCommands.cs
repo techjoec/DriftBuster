@@ -4,13 +4,12 @@ using DriftBuster.Backend.Models;
 namespace DriftBuster.Backend.Profiles.Run;
 
 /// <summary>
-/// The profile half of <c>run_profiles_cli</c> (<c>driftbuster-run</c>): <c>--option</c> and secret ignore argument handling, and the
-/// <c>create</c>, <c>list</c>, <c>show</c> and <c>run</c> commands as library calls. Argument parsing, printing and exit codes belong to the
-/// console tool.
+/// Run-profile commands for the console tool: <c>--option</c> and secret-ignore handling, and <c>create</c>, <c>list</c>, <c>show</c>,
+/// <c>run</c>. Parsing, printing and exit codes stay in the CLI.
 /// </summary>
 public static class RunProfileCommands
 {
-    /// <summary><c>_parse_options(pairs)</c>: <c>key=value</c> split at the first "=", both sides stripped; a pair without "=" raises <see cref="CommandExitException"/>.</summary>
+    /// <summary><c>key=value</c> split at the first "=", both sides trimmed; a pair without "=" throws <see cref="CommandExitException"/>.</summary>
     public static OrderedDictionary<string, object?> ParseOptions(IEnumerable<string> pairs)
     {
         ArgumentNullException.ThrowIfNull(pairs);
@@ -29,7 +28,7 @@ public static class RunProfileCommands
         return options;
     }
 
-    /// <summary><c>_clean_secret_values(values)</c>: stripped values, blanks and repeats dropped, first occurrence order.</summary>
+    /// <summary>Trimmed values, blanks and repeats dropped, first-occurrence order.</summary>
     public static IReadOnlyList<string> CleanSecretValues(IEnumerable<string?>? values) => CleanedValues(values);
 
     private static List<string> CleanedValues(IEnumerable<string?>? values)
@@ -52,7 +51,7 @@ public static class RunProfileCommands
         return cleaned;
     }
 
-    /// <summary><c>_build_secret_scanner_payload(rules, patterns)</c>: <c>ignore_rules</c> and <c>ignore_patterns</c>, each only when not empty after cleaning.</summary>
+    /// <summary><c>ignore_rules</c> and <c>ignore_patterns</c>, each only when non-empty after cleaning.</summary>
     public static OrderedDictionary<string, object?> BuildSecretScannerPayload(IEnumerable<string?>? ignoreRules, IEnumerable<string?>? ignorePatterns)
     {
         var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -72,10 +71,9 @@ public static class RunProfileCommands
     }
 
     /// <summary>
-    /// <c>_apply_secret_overrides(profile, rules, patterns)</c>: the profile unchanged without overrides; otherwise its dict with each
-    /// override list appended to the cleaned existing list (repeats skipped), read back through <see cref="RunProfile.FromDict"/>. The
-    /// profile read back keeps the options <c>build_context</c> gets (<see cref="RunProfile.SecretOptions"/>): a structured profile's raw
-    /// option values do not survive <see cref="RunProfile.ToDict"/>, which writes their <c>str()</c> text.
+    /// The profile unchanged without overrides; otherwise each override list appended to the cleaned existing list (repeats skipped)
+    /// and read back through <see cref="RunProfile.FromDict"/>, keeping the original <see cref="RunProfile.SecretOptions"/> (a structured
+    /// profile's raw option values do not survive <see cref="RunProfile.ToDict"/>).
     /// </summary>
     public static RunProfile ApplySecretOverrides(RunProfile profile, IEnumerable<string?>? ignoreRules, IEnumerable<string?>? ignorePatterns)
     {
@@ -108,7 +106,7 @@ public static class RunProfileCommands
         return RunProfile.FromDict(payload).WithSecretOptions(profile.SecretOptions);
     }
 
-    /// <summary><c>_create(args)</c>: a profile from the arguments (string sources, parsed options, the secret scanner payload), saved; returns it.</summary>
+    /// <summary>A profile from the arguments (string sources, parsed options, secret scanner payload), saved and returned.</summary>
     public static RunProfile Create(
         string name,
         string? description,
@@ -130,7 +128,7 @@ public static class RunProfileCommands
         return profile;
     }
 
-    /// <summary><c>_list_profiles(args)</c>: the lines the command prints, "- name description" right-stripped, or "No profiles found.".</summary>
+    /// <summary>Lines for <c>list</c>: "- name description" right-trimmed, or "No profiles found.".</summary>
     public static IReadOnlyList<string> ListProfileLines(string? baseDir, CancellationToken cancellationToken = default)
     {
         var profiles = RunProfileStore.ListProfiles(baseDir, cancellationToken);
@@ -139,12 +137,11 @@ public static class RunProfileCommands
             : profiles.Select(profile => EngineText.StripEnd($"- {profile.Name} {profile.Description ?? string.Empty}")).ToList();
     }
 
-    /// <summary><c>_show(args)</c>: the saved profile's dict.</summary>
     public static OrderedDictionary<string, object?> Show(string name, string? baseDir) => RunProfileStore.LoadProfile(name, baseDir).ToDict();
 
     /// <summary>
-    /// <c>_run(args)</c>: the profile read from <paramref name="profilePath"/> or loaded by <paramref name="name"/>, with the secret overrides
-    /// applied, saved when <paramref name="save"/> is set, then executed.
+    /// The profile from <paramref name="profilePath"/> or by <paramref name="name"/>, with secret overrides applied, saved when
+    /// <paramref name="save"/> is set, then executed.
     /// </summary>
     public static ProfileRunResult Run(
         string? profilePath,

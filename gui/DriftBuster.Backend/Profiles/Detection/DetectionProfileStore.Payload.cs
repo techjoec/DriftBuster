@@ -4,22 +4,18 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Profiles.Detection;
 
-/// <summary><c>ProfileStore.from_dict</c>, <c>to_dict</c> and <c>summary</c> over Python-shaped JSON values.</summary>
+/// <summary>Store payload reading, writing and summary.</summary>
 public sealed partial class DetectionProfileStore
 {
     /// <summary>
-    /// <c>ProfileStore.from_dict(payload)</c> over a <see cref="EngineJson"/> value: <c>profiles</c> (default empty) holds entries
-    /// with <c>name</c>, <c>description</c>, <c>tags</c>, <c>configs</c> and <c>metadata</c>; each config has <c>id</c>,
-    /// <c>path</c>, <c>path_glob</c>, <c>application</c>, <c>version</c>, <c>branch</c>, <c>tags</c>, <c>expected_format</c>,
-    /// <c>expected_variant</c> and <c>metadata</c>. A payload, entry or config that is not a dict, a <c>path</c> or
-    /// <c>path_glob</c> that is not a str, and tags and metadata that cannot be converted raise <see cref="InvalidDataException"/>; a
-    /// missing <c>id</c> or <c>name</c> raises <see cref="KeyNotFoundException"/>, and the store's duplicate checks
-    /// <see cref="InvalidOperationException"/>.
+    /// Reads a store payload: <c>profiles</c> entries with <c>name</c>, <c>description</c>, <c>tags</c>, <c>configs</c>, <c>metadata</c>;
+    /// configs with <c>id</c>, <c>path</c>, <c>path_glob</c>, <c>application</c>, <c>version</c>, <c>branch</c>, <c>tags</c>,
+    /// <c>expected_format</c>, <c>expected_variant</c>, <c>metadata</c>. Wrong shapes throw <see cref="InvalidDataException"/>, a missing
+    /// <c>id</c> or <c>name</c> <see cref="KeyNotFoundException"/>, duplicates <see cref="InvalidOperationException"/>.
     /// </summary>
     /// <remarks>
-    /// The typed profile holds str fields. A list or dict <c>id</c> or <c>name</c> raises <see cref="InvalidDataException"/> at the
-    /// point registration first hashes it, as in Python; any other value that is not a str (a number, a bool, None, or a list or dict in the other
-    /// text fields) is stored as its <c>str()</c> text, which is what Python compares and formats it as.
+    /// Text fields hold other scalar values as their text. A list or dict <c>id</c> or <c>name</c> throws
+    /// <see cref="InvalidDataException"/> when the store registers it.
     /// </remarks>
     public static DetectionProfileStore FromDict(object? payload)
     {
@@ -52,7 +48,7 @@ public sealed partial class DetectionProfileStore
         return store;
     }
 
-    // A list or dict name or id is kept as its str() text and raises where registration first hashes it.
+    // A list or dict name or id is kept as text and throws when registration reaches it.
     private static void NoteUnhashable(Dictionary<object, InvalidDataException> unhashable, object owner, object? value)
     {
         if (value is IList or IReadOnlyDictionary<string, object?>)
@@ -63,10 +59,7 @@ public sealed partial class DetectionProfileStore
 
     private static readonly List<object?> EmptyList = [];
 
-    /// <summary>
-    /// <c>ConfigurationProfile(name=..., description=entry.get("description"), tags=entry.get("tags"), configs=...,
-    /// metadata=entry.get("metadata", {}))</c> for a dict entry whose name has been read.
-    /// </summary>
+    /// <summary>A profile from an object entry whose name has been read.</summary>
     internal static DetectionProfile ProfileFromDict(object? entry, string name, IEnumerable<DetectionProfileConfig> configs)
     {
         var description = OptionalText(EngineBuiltins.Get(entry, "description"));
@@ -80,10 +73,7 @@ public sealed partial class DetectionProfileStore
             metadata: ProfileMetadata.FromValue(metadataValue));
     }
 
-    /// <summary>
-    /// <c>ProfileConfig(identifier=..., path=cfg.get("path"), ...)</c> for a dict config whose id has been read, with
-    /// <c>__post_init__</c>'s checks in its order: tags, metadata, path, path_glob.
-    /// </summary>
+    /// <summary>A config from an object entry whose id has been read; checks run in order: tags, metadata, path, path_glob.</summary>
     internal static DetectionProfileConfig ConfigFromDict(object? cfg, string identifier)
     {
         var path = EngineBuiltins.Get(cfg, "path");
@@ -111,17 +101,14 @@ public sealed partial class DetectionProfileStore
             metadata: metadata);
     }
 
-    /// <summary><c>mapping.get(key, default)</c>: <see cref="InvalidDataException"/> when <paramref name="value"/> is not a dict.</summary>
+    /// <summary>A key's value or <paramref name="fallback"/>; <see cref="InvalidDataException"/> when <paramref name="value"/> is not a dict.</summary>
     internal static object? GetOrDefault(object? value, string key, object? fallback)
     {
         _ = EngineBuiltins.Get(value, key);
         return ((IReadOnlyDictionary<string, object?>)value!).TryGetValue(key, out var item) ? item : fallback;
     }
 
-    /// <summary>
-    /// <c>value[key]</c> for a str key: <see cref="KeyNotFoundException"/> on a dict without it, <see cref="InvalidDataException"/> on
-    /// anything else.
-    /// </summary>
+    /// <summary>A required key: <see cref="KeyNotFoundException"/> when absent, <see cref="InvalidDataException"/> when not a dict.</summary>
     internal static object? Subscript(object? value, string key)
     {
         return value switch
@@ -135,7 +122,7 @@ public sealed partial class DetectionProfileStore
 
     internal static string? OptionalText(object? value) => value is null ? null : EngineRepr.Str(value);
 
-    // PurePosixPath(value) accepts only str (or None, which the dataclass never normalises).
+    // Only strings (or null) are paths.
     internal static string? PurePosixPathText(object? value) => value switch
     {
         null => null,
@@ -144,7 +131,7 @@ public sealed partial class DetectionProfileStore
             $"expected a path string, not '{EngineBuiltins.TypeName(value)}'"),
     };
 
-    /// <summary><c>to_dict()</c>: every profile in registration order with its configs, tags sorted by code point.</summary>
+    /// <summary>Every profile in registration order with its configs; tags sorted by code point.</summary>
     public OrderedDictionary<string, object?> ToDict()
     {
         var profiles = new List<object?>();
@@ -178,8 +165,8 @@ public sealed partial class DetectionProfileStore
     }
 
     /// <summary>
-    /// <c>summary()</c>: <c>total_profiles</c>, <c>total_configs</c> and one entry per profile in name order (by code point) with
-    /// <c>name</c>, <c>description</c>, sorted <c>tags</c>, <c>config_count</c> and <c>config_ids</c> in config order.
+    /// <c>total_profiles</c>, <c>total_configs</c> and per profile (by name, code-point order): <c>name</c>, <c>description</c>,
+    /// sorted <c>tags</c>, <c>config_count</c>, <c>config_ids</c>.
     /// </summary>
     public OrderedDictionary<string, object?> Summary()
     {

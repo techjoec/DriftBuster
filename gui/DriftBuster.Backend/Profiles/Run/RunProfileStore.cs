@@ -6,25 +6,23 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Profiles.Run;
 
 /// <summary>
-/// The storage half of <c>run_profiles</c>: path expansion, profile validation, <c>profiles_root</c>, <c>profile_directory</c>,
-/// <c>load_profile</c>, <c>save_profile</c> and <c>list_profiles</c>. A profile lives in <c>&lt;base&gt;/Profiles/&lt;safe name&gt;/profile.json</c>,
-/// written as <c>json.dumps(profile.to_dict(), indent=2, sort_keys=True)</c> in UTF-8 without a trailing newline.
+/// Run profile storage: path expansion, validation, and load/save/list. A profile lives in
+/// <c>&lt;base&gt;/Profiles/&lt;safe name&gt;/profile.json</c> (indented, sorted keys, UTF-8, no trailing newline).
 /// </summary>
 public static class RunProfileStore
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
-    /// <summary><c>_expand_path(text)</c>: <c>os.path.abspath(os.path.expandvars(os.path.expanduser(text)))</c>.</summary>
+    /// <summary>Expands <c>~</c> and environment variables, then makes the path absolute (lexically).</summary>
     public static string ExpandPath(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
         return EngineOsPath.AbsPath(EngineOsPath.ExpandVars(EngineOsPath.ExpandUser(text)));
     }
 
-    /// <summary>The text holds a wildcard character, <c>*</c> or <c>?</c> (<see cref="PathWildcard.HasWildcards"/>).</summary>
     public static bool HasMagic(string pattern) => PathWildcard.HasWildcards(pattern);
 
-    /// <summary><c>_safe_name(text)</c>: every code point that is not <c>str.isalnum()</c>, "-" or "_" becomes "-".</summary>
+    /// <summary>Replaces every code point that is not a letter, digit, "-" or "_" with "-".</summary>
     public static string SafeName(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -44,10 +42,7 @@ public static class RunProfileStore
         return builder.ToString();
     }
 
-    /// <summary>
-    /// The leading parts of <see cref="LexicalPath.Parts"/> that hold no <see cref="HasMagic"/> character,
-    /// joined, against the working directory when relative; the working directory when there are none.
-    /// </summary>
+    /// <summary>The leading wildcard-free parts of a pattern (against the working directory when relative), or the working directory.</summary>
     public static string GlobBaseDirectory(string pattern)
     {
         ArgumentNullException.ThrowIfNull(pattern);
@@ -67,17 +62,14 @@ public static class RunProfileStore
     }
 
     /// <summary>
-    /// <c>_validate_profile(profile)</c>: at least one source, no blank source path, every source's expanded path (or its glob base
-    /// directory) existing, and a baseline that is one of the source paths and exists.
+    /// At least one source, no blank source path, every source (or its glob base) existing, and a baseline that is an existing source.
     /// </summary>
     /// <remarks>
-    /// A structured profile (<see cref="RunProfile.IsStructured"/>) is checked as the offline runner finds its sources instead: a source
-    /// that is not optional and holds no glob character must exist once expanded (<see cref="FileNotFoundException"/>, <c>Path does not exist: {path}</c>
-    /// with the path as written); a glob that matches nothing raises the same error when the run collects it; and the baseline need not
-    /// exist (an optional baseline source may be missing).
+    /// A structured profile (<see cref="RunProfile.IsStructured"/>) is checked as the offline runner collects: a non-optional,
+    /// wildcard-free source must exist; an empty glob fails when the run collects it; the baseline need not exist.
     /// </remarks>
     /// <exception cref="ArgumentException">No sources, a blank source path, or a baseline that is not a source path.</exception>
-    /// <exception cref="FileNotFoundException">A required source path, a glob base directory or the baseline path is missing.</exception>
+    /// <exception cref="FileNotFoundException">A required source, glob base directory or the baseline is missing.</exception>
     public static void ValidateProfile(RunProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -135,7 +127,7 @@ public static class RunProfileStore
         }
     }
 
-    /// <summary><c>profiles_root(base_dir)</c>: <c>(base_dir or cwd) / "Profiles"</c>, created with its parents.</summary>
+    /// <summary><c>&lt;base or cwd&gt;/Profiles</c>, created with its parents.</summary>
     public static string ProfilesRoot(string? baseDir = null)
     {
         var root = LexicalPath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
@@ -143,15 +135,13 @@ public static class RunProfileStore
         return root;
     }
 
-    /// <summary><c>profile_directory(profile_name, base_dir)</c>: <see cref="ProfilesRoot"/> joined with <see cref="SafeName"/>.</summary>
     public static string ProfileDirectory(string profileName, string? baseDir = null)
     {
         ArgumentNullException.ThrowIfNull(profileName);
         return JoinName(ProfilesRoot(baseDir), SafeName(profileName));
     }
 
-    /// <summary><c>load_profile(profile_name, base_dir=...)</c>.</summary>
-    /// <exception cref="FileNotFoundException"><c>Profile not found: {profile_name}</c>.</exception>
+    /// <exception cref="FileNotFoundException"><c>Profile not found: {name}</c>.</exception>
     public static RunProfile LoadProfile(string profileName, string? baseDir = null)
     {
         var configPath = JoinName(ProfileDirectory(profileName, baseDir), "profile.json");
@@ -163,10 +153,7 @@ public static class RunProfileStore
         return RunProfile.FromDict(ReadJson(configPath));
     }
 
-    /// <summary>
-    /// The profile stored under <paramref name="profileName"/> as <see cref="LoadProfile"/> reads it, or null when there is no
-    /// <c>profile.json</c> or it cannot be read as a profile. Nothing is created.
-    /// </summary>
+    /// <summary>The stored profile, or null when there is no readable <c>profile.json</c>. Creates nothing.</summary>
     internal static RunProfile? TryLoadStoredProfile(string profileName, string? baseDir)
     {
         ArgumentNullException.ThrowIfNull(profileName);
@@ -183,7 +170,7 @@ public static class RunProfileStore
         }
     }
 
-    /// <summary><c>save_profile(profile, base_dir=...)</c>: validates, writes <c>profile.json</c> and returns the profile directory.</summary>
+    /// <summary>Validates, writes <c>profile.json</c> and returns the profile directory.</summary>
     public static string SaveProfile(RunProfile profile, string? baseDir = null)
     {
         ValidateProfile(profile);
@@ -193,7 +180,7 @@ public static class RunProfileStore
         return profileDirectory;
     }
 
-    /// <summary><c>list_profiles(base_dir=...)</c>: every <c>*/profile.json</c> under the root, in <c>sorted()</c> path order.</summary>
+    /// <summary>Every <c>*/profile.json</c> under the root, sorted by path.</summary>
     public static IReadOnlyList<RunProfile> ListProfiles(string? baseDir = null, CancellationToken cancellationToken = default)
     {
         var profiles = new List<RunProfile>();
@@ -207,10 +194,8 @@ public static class RunProfileStore
     }
 
     /// <summary>
-    /// <c>Path.exists()</c>: a <c>stat</c> that follows links succeeds; on Linux a lookup error other than <c>ENOENT</c>, <c>ENOTDIR</c>,
-    /// <c>EBADF</c> or <c>ELOOP</c> raises. Elsewhere the runtime's existence checks answer and never raise, including for an access-denied
-    /// lookup on Windows. A path holding an unpaired surrogate or a NUL does not exist: the runtime would look the former up under its U+FFFD
-    /// spelling, a different entry.
+    /// Existence after following links. On Linux, lookup errors other than ENOENT, ENOTDIR, EBADF and ELOOP throw; elsewhere the
+    /// runtime's checks never throw. A path with an unpaired surrogate or NUL does not exist.
     /// </summary>
     internal static bool Exists(string path)
     {
@@ -228,10 +213,7 @@ public static class RunProfileStore
         return File.Exists(kernel) || Directory.Exists(kernel);
     }
 
-    /// <summary>
-    /// <c>Path.is_dir()</c>: a <c>stat</c> that follows links reports a directory; raises as <see cref="Exists"/> raises, and is false
-    /// for a path holding an unpaired surrogate as <see cref="Exists"/> is.
-    /// </summary>
+    /// <summary>Is a directory after following links; throws and handles surrogates as <see cref="Exists"/> does.</summary>
     internal static bool IsDirectory(string path)
     {
         if (EngineUtf8.HasUnpairedSurrogate(path))
@@ -247,13 +229,9 @@ public static class RunProfileStore
         return Directory.Exists(EnginePath.KernelPath(path));
     }
 
-    /// <summary><c>path / name</c> for a single name.</summary>
     internal static string JoinName(string path, string name) => LexicalPath.Join(path, name);
 
-    /// <summary>
-    /// <c>path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")</c>: ASCII-escaped JSON, each line
-    /// break written as the platform's (text mode), no trailing newline.
-    /// </summary>
+    /// <summary>Writes ASCII-escaped JSON (indent 2, sorted keys) with platform line breaks and no trailing newline.</summary>
     internal static void WriteJson(string path, OrderedDictionary<string, object?> payload)
     {
         var text = Canonicaliser.DumpsSorted(payload, indent: true, ensureAscii: true);
@@ -265,11 +243,10 @@ public static class RunProfileStore
         File.WriteAllText(EnginePath.KernelPath(path), text, Utf8);
     }
 
-    /// <summary><c>json.loads(path.read_text(encoding="utf-8"))</c>.</summary>
+    /// <summary>Reads a UTF-8 JSON file.</summary>
     /// <exception cref="IOException">The path cannot be opened or read.</exception>
-    /// <exception cref="UnauthorizedAccessException">The path is a directory, or access to it is refused.</exception>
-    /// <exception cref="InvalidDataException">The bytes are not UTF-8, the text is not a JSON document, or it holds an integer or a
-    /// nesting past the decoder's limits.</exception>
+    /// <exception cref="UnauthorizedAccessException">A directory, or access refused.</exception>
+    /// <exception cref="InvalidDataException">Not UTF-8, not JSON, or past the decoder's limits.</exception>
     internal static object? ReadJson(string path)
     {
         var text = EngineUtf8.DecodeFile(EngineTextFile.ReadBytes(path, LexicalPath.Str(path)));

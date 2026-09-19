@@ -4,13 +4,13 @@ using System.Xml.Linq;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// A clean-room XML well-formedness check and tree builder that accepts exactly the documents expat accepts in namespace mode
-/// with entity declarations refused (the defusedxml guard): DOCTYPE allowed, nothing external read, a skipped entity reference
-/// fails. <see cref="IsWellFormed"/> gives the verdict; <see cref="ParseTree"/> also builds elements and attributes.
+/// XML well-formedness check and tree builder with entity declarations refused: namespace-aware, DOCTYPE allowed, nothing external
+/// read, a reference to an undeclared entity fails. <see cref="IsWellFormed"/> gives the verdict; <see cref="ParseTree"/> also builds
+/// elements and attributes.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Prolog: tokenizer and declaration state machine matching expat, including where whitespace is required. A parameter-entity
+/// Prolog: a tokenizer and declaration state machine following XML 1.0, including where whitespace is required. A parameter-entity
 /// reference in a non-standalone document stops processing of later internal-subset declarations; a DOCTYPE with an external id
 /// or such a reference lets undeclared entity references in attribute values drop. Processed ENTITY declarations fail, except
 /// redeclarations of the five predefined entities.

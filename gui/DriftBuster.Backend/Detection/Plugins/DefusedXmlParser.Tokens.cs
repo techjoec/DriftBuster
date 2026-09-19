@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
-/// <summary>The prolog tokenizer, following expat's rules for which tokens may follow each other.</summary>
+/// <summary>The prolog tokenizer, with the XML 1.0 rules for which tokens may follow each other.</summary>
 internal sealed partial class DefusedXmlParser
 {
     private enum Tok

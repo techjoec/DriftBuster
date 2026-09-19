@@ -3,10 +3,9 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Profiles.Detection;
 
 /// <summary>
-/// A configuration expectation inside a detection profile. Construction and <c>with</c>
-/// apply <c>__post_init__</c>: tags normalised (<see cref="ProfileTags.Normalize"/>), metadata frozen as a read-only shallow
-/// copy, and <see cref="Path"/> and <see cref="PathGlob"/> spelled as <c>str(PurePosixPath(value))</c>. Equality is the
-/// dataclass's: every field by value, tags as sets and metadata with Python <c>==</c>.
+/// A configuration expectation inside a detection profile. Construction and <c>with</c> normalise tags
+/// (<see cref="ProfileTags.Normalize"/>), freeze metadata as a read-only copy, and normalise <see cref="Path"/> and
+/// <see cref="PathGlob"/> as posix paths. Equality compares every field by value, tags as sets.
 /// </summary>
 public sealed record DetectionProfileConfig
 {
@@ -81,10 +80,9 @@ public sealed record DetectionProfileConfig
     }
 
     /// <summary>
-    /// <c>matches</c>: every config tag and each <c>application:</c>, <c>version:</c> and <c>branch:</c> tag the config names
-    /// must be provided; a config without <see cref="Path"/> and <see cref="PathGlob"/> then applies everywhere, otherwise the
-    /// posix-normalised <paramref name="relativePath"/> must equal <see cref="Path"/> or match <see cref="PathGlob"/>
-    /// (<see cref="PathWildcard"/> syntax, where <c>*</c> also crosses <c>/</c>).
+    /// Every config tag and each <c>application:</c>, <c>version:</c>, <c>branch:</c> tag it names must be provided; then a config with no
+    /// <see cref="Path"/> or <see cref="PathGlob"/> applies everywhere, otherwise the posix <paramref name="relativePath"/> must equal
+    /// <see cref="Path"/> or match <see cref="PathGlob"/> (<see cref="PathWildcard"/> syntax, <c>*</c> crosses <c>/</c>).
     /// </summary>
     public bool Matches(string? relativePath, IReadOnlySet<string> providedTags)
     {

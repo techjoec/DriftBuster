@@ -87,7 +87,7 @@ public sealed partial class XmlPlugin
         };
     }
 
-    // [A-Za-z_] under IGNORECASE.
+    // [A-Za-z_], case-insensitive.
     private static bool IsAsciiLetterIgnoreCase(Rune rune)
         => rune.Value is '_' or 0x0130 or 0x0131 or 0x017F or 0x212A || (rune.IsAscii && char.IsAsciiLetter((char)rune.Value));
 

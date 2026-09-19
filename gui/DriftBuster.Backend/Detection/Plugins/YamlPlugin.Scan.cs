@@ -5,9 +5,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Hand-matched equivalents of the YAML rule regexes. "Anchor" means a MULTILINE <c>^</c> position: offset 0 or
-/// the position after a <c>\n</c> (never after <c>\r</c> or any other line break). <c>\s</c> runs are walked with
-/// <see cref="EngineText.IsSpace"/> and may cross line breaks, exactly as the patterns allow.
+/// Hand-written matchers for the YAML patterns. An anchor is a multiline <c>^</c> position: offset 0 or just after a <c>\n</c>
+/// (never after <c>\r</c>). Whitespace runs use <see cref="EngineText.IsSpace"/> and may cross line breaks, as the patterns allow.
 /// </summary>
 public sealed partial class YamlPlugin
 {
@@ -21,7 +20,7 @@ public sealed partial class YamlPlugin
         return offset;
     }
 
-    // The first MULTILINE ^ position at or after "from"; s.Length when there is none left.
+    // The first anchor at or after "from"; s.Length when none is left.
     private static int NextAnchor(string s, int from)
     {
         if (from <= 0)

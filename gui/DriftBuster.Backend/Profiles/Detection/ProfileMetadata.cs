@@ -4,12 +4,12 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Profiles.Detection;
 
-/// <summary><c>_freeze_mapping</c> and the <c>dict(data or {})</c> it applies to JSON values.</summary>
+/// <summary>Read-only profile metadata built from JSON values.</summary>
 internal static class ProfileMetadata
 {
     public static IReadOnlyDictionary<string, object?> Empty { get; } = Freeze(null);
 
-    /// <summary><c>MappingProxyType(dict(data or {}))</c>: a read-only view over a shallow, order-preserving copy.</summary>
+    /// <summary>A read-only view over an order-preserving shallow copy.</summary>
     public static IReadOnlyDictionary<string, object?> Freeze(IEnumerable<KeyValuePair<string, object?>>? data)
     {
         var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -22,10 +22,9 @@ internal static class ProfileMetadata
     }
 
     /// <summary>
-    /// <c>dict(data or {})</c> over a JSON value: a falsy value is empty, a dict is copied, a list is read as key/value pairs
-    /// (each item an iterable of exactly two elements), and any other value raises <see cref="InvalidDataException"/>.
+    /// Metadata from a JSON value: falsy is empty, a dict is copied, a list is read as two-item pairs; anything else, or a non-string
+    /// key, throws <see cref="InvalidDataException"/>.
     /// </summary>
-    /// <remarks>A pair whose key is not a str raises <see cref="InvalidDataException"/> (<see cref="EngineBuiltins.Dict"/>): the typed metadata holds str keys only.</remarks>
     public static IReadOnlyDictionary<string, object?> FromValue(object? data)
     {
         if (!EngineBuiltins.IsTruthy(data))

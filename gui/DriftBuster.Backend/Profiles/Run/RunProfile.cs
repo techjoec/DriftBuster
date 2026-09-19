@@ -8,15 +8,12 @@ using DriftBuster.Backend.Secrets;
 namespace DriftBuster.Backend.Profiles.Run;
 
 /// <summary>
-/// <c>run_profiles.RunProfile</c>: a name, a description, the sources, the baseline source path, the options (every value
-/// <c>str()</c>-ed, <c>None</c> as "") and the secret scanner mapping (<c>ignore_rules</c> and <c>ignore_patterns</c> read with
-/// <c>secret_option_values</c>, a <c>ruleset</c> mapping copied, anything else kept). Values are in the <see cref="EngineJson"/>
-/// domain.
+/// A run profile: name, description, sources, baseline source path, options (stored as text, null as "") and the secret scanner
+/// mapping (<c>ignore_rules</c>, <c>ignore_patterns</c>, an optional <c>ruleset</c>). Values are <see cref="EngineJson"/> values.
 /// </summary>
 /// <remarks>
-/// A source is a <see cref="RunProfileSource"/>. A string entry is a source with only its path and
-/// behaves exactly as a plain string source; an object entry is read as <c>OfflineCollectionSource.from_dict</c> reads it
-/// (<see cref="SourceFromDict"/>), and <see cref="ToDict"/> writes a path-only source back as a string.
+/// A string source entry is a path-only <see cref="RunProfileSource"/>; an object entry is read by <see cref="SourceFromDict"/>.
+/// <see cref="ToDict"/> writes path-only sources back as strings.
 /// </remarks>
 public sealed partial class RunProfile
 {
@@ -51,16 +48,12 @@ public sealed partial class RunProfile
     public IReadOnlyDictionary<string, string> Options { get; }
 
     /// <summary>
-    /// The options a run hands <c>build_context</c>: <see cref="Options"/>, except for a profile read with
-    /// <c>OfflineRunnerProfile.from_dict</c>, where <c>execute_config</c> hands it the values as the payload holds them (a number, bool or
-    /// list is not <c>str()</c>-ed, so <c>secret_option_values</c> reads a list's items and no pattern from a scalar).
+    /// The options the secret filter reads: <see cref="Options"/>, except for a structured profile, whose option values stay as the
+    /// payload holds them (a list stays a list, so each item is a pattern).
     /// </summary>
     internal IReadOnlyDictionary<string, object?> SecretOptions { get; private set; }
 
-    /// <summary>
-    /// This profile holding <paramref name="secretOptions"/> as its <see cref="SecretOptions"/>, for a profile read back from another's
-    /// <see cref="ToDict"/>, whose options are <c>str()</c> text there.
-    /// </summary>
+    /// <summary>A copy holding <paramref name="secretOptions"/>, for a profile read back from another's <see cref="ToDict"/>.</summary>
     internal RunProfile WithSecretOptions(IReadOnlyDictionary<string, object?> secretOptions)
     {
         ArgumentNullException.ThrowIfNull(secretOptions);
@@ -70,17 +63,12 @@ public sealed partial class RunProfile
 
     public IReadOnlyDictionary<string, object?> SecretScanner { get; }
 
-    /// <summary>
-    /// True when a source sets an alias, optional or exclude patterns: every source of such a profile is collected and validated as the
-    /// offline runner collects it.
-    /// </summary>
+    /// <summary>True when any source sets an alias, optional or exclude; the whole profile is then collected like the offline runner.</summary>
     public bool IsStructured => Sources.Any(source => !source.IsPathOnly);
 
     /// <summary>
-    /// <c>RunProfile.from_dict(payload)</c>: <c>payload["name"]</c> (<see cref="KeyNotFoundException"/> when absent), and
-    /// <c>description</c>, <c>sources</c>, <c>baseline</c>, <c>options</c> and <c>secret_scanner</c> when present. A payload holding a
-    /// structured source (<see cref="IsStructuredPayload"/>) is read as <c>OfflineRunnerProfile.from_dict</c> reads it instead
-    /// (<see cref="FromOfflineRunnerDict"/>).
+    /// Reads a profile payload: <c>name</c> required (<see cref="KeyNotFoundException"/>), others optional. A payload with a
+    /// structured source (<see cref="IsStructuredPayload"/>) is read by <see cref="FromOfflineRunnerDict"/>.
     /// </summary>
     public static RunProfile FromDict(object? payload)
     {
@@ -105,8 +93,8 @@ public sealed partial class RunProfile
     }
 
     /// <summary>
-    /// <c>OfflineCollectionSource.from_dict(payload)</c>: a non-empty <c>path</c> (<see cref="InvalidDataException"/> otherwise), an <c>alias</c> that
-    /// is dropped when blank or falsy, <c>bool(optional)</c>, and <c>exclude</c> as one pattern for a str or each item's <c>str()</c>.
+    /// A structured source: non-empty <c>path</c> (<see cref="InvalidDataException"/> otherwise), <c>alias</c> dropped when blank,
+    /// <c>optional</c> as a bool, <c>exclude</c> as one pattern or a list.
     /// </summary>
     public static RunProfileSource SourceFromDict(IReadOnlyDictionary<string, object?> payload)
     {
@@ -135,7 +123,7 @@ public sealed partial class RunProfile
         };
     }
 
-    /// <summary>A source as <see cref="ToDict"/> writes it: the path alone as a str, otherwise a mapping of the keys that are set.</summary>
+    /// <summary>A source for <see cref="ToDict"/>: the path alone as a string, otherwise the set keys.</summary>
     public static object SourceToDict(RunProfileSource source)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -163,7 +151,6 @@ public sealed partial class RunProfile
         return entry;
     }
 
-    /// <summary><c>RunProfile.to_dict()</c>.</summary>
     public OrderedDictionary<string, object?> ToDict() => new(StringComparer.Ordinal)
     {
         ["name"] = Name,
@@ -174,7 +161,7 @@ public sealed partial class RunProfile
         ["secret_scanner"] = SerialiseSecretScanner(SecretScanner),
     };
 
-    /// <summary>The GUI model as a profile: an empty baseline is no baseline, and the secret scanner holds each ignore list that is not empty.</summary>
+    /// <summary>The GUI model as a profile: an empty baseline is none, and only non-empty ignore lists are kept.</summary>
     public static RunProfile FromDefinition(RunProfileDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
@@ -199,7 +186,6 @@ public sealed partial class RunProfile
         return new RunProfile(definition.Name, definition.Description, definition.Sources ?? [], baseline, options, secretScanner);
     }
 
-    /// <summary>The profile as the GUI model.</summary>
     public RunProfileDefinition ToDefinition() => new()
     {
         Name = Name,
@@ -217,8 +203,7 @@ public sealed partial class RunProfile
     private string[] IgnoreValues(string key)
         => SecretScanner.TryGetValue(key, out var values) && values is List<object?> list ? list.Select(EngineRepr.Str).ToArray() : [];
 
-    // A copy of a model source; a blank alias is dropped, as SourceFromDict drops it, so the directory name and profile.json agree with a
-    // reload.
+    // A blank alias is dropped, as SourceFromDict drops it, so a reload names the same directory.
     private static RunProfileSource CopySource(RunProfileSource source)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -230,12 +215,11 @@ public sealed partial class RunProfile
         };
     }
 
-    // An entry of payload["sources"]: a mapping is a structured source, anything else str()-ed into a path.
+    // A mapping entry is a structured source; anything else is its text as a path.
     private static RunProfileSource SourceFromEntry(object? entry)
         => entry is IReadOnlyDictionary<string, object?> mapping ? SourceFromDict(mapping) : new RunProfileSource(EngineRepr.Str(entry));
 
-    // The argument _normalise_options and _normalise_secret_scanner call .items() on: falsy is empty, a dict is itself, anything else
-    // is refused.
+    // Falsy is empty, a dict is itself, anything else is refused.
     private static IReadOnlyDictionary<string, object?>? Mapping(object? value)
     {
         if (!EngineBuiltins.IsTruthy(value))
@@ -247,7 +231,6 @@ public sealed partial class RunProfile
             ?? throw new InvalidDataException($"expected a JSON object, not '{EngineBuiltins.TypeName(value)}'");
     }
 
-    // _normalise_options.
     private static ReadOnlyDictionary<string, string> NormaliseOptions(IReadOnlyDictionary<string, object?>? options)
     {
         var normalised = new OrderedDictionary<string, string>(StringComparer.Ordinal);
@@ -259,7 +242,6 @@ public sealed partial class RunProfile
         return new ReadOnlyDictionary<string, string>(normalised);
     }
 
-    // _normalise_secret_scanner.
     private static ReadOnlyDictionary<string, object?> NormaliseSecretScanner(IReadOnlyDictionary<string, object?>? secretScanner)
     {
         var normalised = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -282,7 +264,6 @@ public sealed partial class RunProfile
         return new ReadOnlyDictionary<string, object?>(normalised);
     }
 
-    // _serialise_secret_scanner.
     private static OrderedDictionary<string, object?> SerialiseSecretScanner(IReadOnlyDictionary<string, object?> secretScanner)
     {
         var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal);

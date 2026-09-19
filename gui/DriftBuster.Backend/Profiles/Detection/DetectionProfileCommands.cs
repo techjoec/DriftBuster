@@ -5,23 +5,17 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Profiles.Detection;
 
 /// <summary>
-/// The library half of <c>profile_cli</c> (<c>driftbuster-profile</c>): JSON loading with friendly errors, the store builder with its
-/// lenient fallback, and the <c>summary</c>, <c>diff</c> and <c>hunt-bridge</c> commands, each returning the payload the command
-/// writes as JSON. Argument parsing, output files and exit codes belong to the console tool.
+/// Detection-profile commands for the console tool: JSON loading with friendly errors, the store builder with a lenient fallback,
+/// and <c>summary</c>, <c>diff</c> and <c>hunt-bridge</c>, each returning the payload to write. Parsing and exit codes stay in the CLI.
 /// </summary>
 public static class DetectionProfileCommands
 {
-    /// <summary>
-    /// The <c>ProfileStore.from_dict</c> lookup <see cref="StoreFromPayload"/> makes (<c>getattr(ProfileStore, "from_dict", None)</c>);
-    /// tests swap it, and null stands for the attribute being absent.
-    /// </summary>
+    /// <summary>The strict store builder <see cref="StoreFromPayload"/> tries first (test seam; null skips it).</summary>
     internal static Func<object?, DetectionProfileStore>? FromDict { get; set; } = DetectionProfileStore.FromDict;
 
     /// <summary>
-    /// <c>_load_json(path)</c>: the JSON value stored at <paramref name="path"/>, decoded as UTF-8. A read failure raises
-    /// <see cref="IOException"/> (<c>Unable to read JSON payload from {path}: {reason}</c>), invalid JSON
-    /// <see cref="InvalidDataException"/> (<c>Failed to parse JSON from {path}: ...</c>); bytes that are not UTF-8
-    /// (<see cref="EngineUtf8.Decode"/>) and the decoder's limits (<see cref="EngineJson.TryLoadsOrRaiseLimits"/>) raise their own
+    /// The UTF-8 JSON value at <paramref name="path"/>. Read failures throw <see cref="IOException"/>
+    /// (<c>Unable to read JSON payload from {path}: {reason}</c>); invalid JSON, non-UTF-8 bytes and decoder limits throw
     /// <see cref="InvalidDataException"/>.
     /// </summary>
     public static object? LoadJson(string path)
@@ -44,8 +38,8 @@ public static class DetectionProfileCommands
     }
 
     /// <summary>
-    /// <c>_store_from_payload(payload)</c>: <see cref="DetectionProfileStore.FromDict"/>, or, when that raises, a lenient build that
-    /// skips profile entries and configs that are not dicts and takes <c>str()</c> of each <c>id</c> and <c>name</c>.
+    /// <see cref="DetectionProfileStore.FromDict"/>, or when that throws, a lenient build that skips non-object entries and configs
+    /// and uses each <c>id</c> and <c>name</c> as text.
     /// </summary>
     public static DetectionProfileStore StoreFromPayload(object? payload)
     {
@@ -85,11 +79,11 @@ public static class DetectionProfileCommands
         return new DetectionProfileStore(profiles);
     }
 
-    /// <summary><c>_handle_summary</c>: the <see cref="DetectionProfileStore.Summary"/> of the store payload at <paramref name="storePath"/>.</summary>
+    /// <summary>The <see cref="DetectionProfileStore.Summary"/> of the store at <paramref name="storePath"/>.</summary>
     public static OrderedDictionary<string, object?> Summary(string storePath)
         => StoreFromPayload(LoadJson(storePath)).Summary();
 
-    /// <summary><c>_handle_diff</c>: <see cref="DetectionProfileStore.DiffSummarySnapshots"/> of the two summary files.</summary>
+    /// <summary><see cref="DetectionProfileStore.DiffSummarySnapshots"/> of two summary files.</summary>
     public static OrderedDictionary<string, object?> Diff(string baselinePath, string currentPath)
     {
         var baseline = LoadJson(baselinePath);
@@ -98,15 +92,14 @@ public static class DetectionProfileCommands
     }
 
     /// <summary>
-    /// <c>_handle_hunt_bridge</c>: attaches the matching profile configs to each hunt hit. The hunt payload must be a JSON array
-    /// (or a str, which Python also accepts as a sequence); anything else raises
-    /// <see cref="InvalidDataException"/> (<c>Hunt payload must be a JSON array of hunt hits.</c>). Items that are not dicts are skipped.
+    /// Attaches matching profile configs to each hunt hit. The hunt payload must be a JSON array (a string is also accepted);
+    /// otherwise <see cref="InvalidDataException"/> (<c>Hunt payload must be a JSON array of hunt hits.</c>). Non-object items are skipped.
     /// </summary>
     public static OrderedDictionary<string, object?> HuntBridge(string storePath, string huntPath, IEnumerable<string?>? tags, string? root)
     {
         var storePayload = LoadJson(storePath);
         var huntsPayload = LoadJson(huntPath);
-        // isinstance(payload, Sequence): a list or a str; a dict (which OrderedDictionary also exposes as IList) is not one.
+        // A list or a string is accepted; a dict is not (OrderedDictionary also implements IList).
         if (huntsPayload is IReadOnlyDictionary<string, object?> or not (IList or string))
         {
             throw new InvalidDataException("Hunt payload must be a JSON array of hunt hits.");
@@ -118,8 +111,8 @@ public static class DetectionProfileCommands
     }
 
     /// <summary>
-    /// <c>_resolve_relative_path(entry, root)</c>: a non-empty str <c>relative_path</c>; otherwise, from a non-empty str
-    /// <c>path</c>, its name when there is no root or the path is not under it, else the posix path relative to the root.
+    /// A non-empty <c>relative_path</c>; otherwise from <c>path</c>: its name when there is no root or it is outside it, else the posix
+    /// path relative to the root.
     /// </summary>
     public static string? ResolveRelativePath(IReadOnlyDictionary<string, object?> entry, string? root)
     {
@@ -143,9 +136,8 @@ public static class DetectionProfileCommands
     }
 
     /// <summary>
-    /// <c>_build_bridge_payload</c>: <c>{"items": [...]}</c>, one item per hunt hit with <c>hunt</c> (the hit itself),
-    /// <c>relative_path</c> and <c>profiles</c>, each match giving <c>profile</c>, <c>config</c>, sorted <c>profile_tags</c>,
-    /// <c>expected_format</c> and <c>expected_variant</c>.
+    /// <c>{"items": [...]}</c>: per hit, <c>hunt</c> (the hit), <c>relative_path</c> and <c>profiles</c>, each match with <c>profile</c>,
+    /// <c>config</c>, sorted <c>profile_tags</c>, <c>expected_format</c> and <c>expected_variant</c>.
     /// </summary>
     public static OrderedDictionary<string, object?> BuildBridgePayload(
         DetectionProfileStore store,

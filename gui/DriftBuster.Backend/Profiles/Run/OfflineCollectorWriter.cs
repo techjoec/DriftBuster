@@ -15,7 +15,6 @@ namespace DriftBuster.Backend.Profiles.Run;
 /// </summary>
 public static class OfflineCollectorWriter
 {
-    /// <summary>The runner script packaged beside the config.</summary>
     public const string ScriptFileName = "driftbuster-offline-runner.ps1";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()

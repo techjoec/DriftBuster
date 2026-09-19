@@ -4,23 +4,19 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Profiles.Detection;
 
-/// <summary><c>diff_summary_snapshots</c>.</summary>
+/// <summary>Diffing two store summaries.</summary>
 public sealed partial class DetectionProfileStore
 {
     private sealed record SummaryEntry(HashSet<object?> ConfigSet, BigInteger ConfigCount);
 
     /// <summary>
-    /// <c>diff_summary_snapshots(baseline, current)</c> over two summary payloads (a <see cref="Summary"/> result or its JSON):
-    /// <c>totals</c> (<c>baseline</c> and <c>current</c>, each <c>profiles</c> and <c>configs</c>), <c>added_profiles</c> and
-    /// <c>removed_profiles</c> sorted, and <c>changed_profiles</c>, in name order, for each profile on both sides whose config ids
-    /// or config count differ, with <c>name</c>, <c>baseline_config_count</c>, <c>current_config_count</c> and the sorted
-    /// <c>added_config_ids</c> and <c>removed_config_ids</c>.
+    /// Compares two summary payloads (a <see cref="Summary"/> result or its JSON): <c>totals</c> (baseline/current profiles and configs),
+    /// sorted <c>added_profiles</c> and <c>removed_profiles</c>, and <c>changed_profiles</c> in name order for profiles whose config ids or
+    /// counts differ (<c>name</c>, both counts, sorted <c>added_config_ids</c> and <c>removed_config_ids</c>).
     /// </summary>
     /// <remarks>
-    /// Values are read as Python reads them: counts through <c>int()</c> with the fallback where the value is not an
-    /// integer, totals of zero replaced by the computed ones, entries without a truthy <c>name</c> skipped, names and
-    /// ids compared with Python <c>==</c> and hashing (<see cref="EngineValues"/>) and sorted with Python's <c>&lt;</c>, so a
-    /// payload Python rejects raises the same error type.
+    /// Counts that are not integers fall back to the computed ones, zero totals are replaced by computed totals, entries without a name
+    /// are skipped; names and ids compare and sort with <see cref="EngineValues"/>, so mixed kinds throw.
     /// </remarks>
     public static OrderedDictionary<string, object?> DiffSummarySnapshots(object? baseline, object? current)
     {
@@ -31,7 +27,7 @@ public sealed partial class DetectionProfileStore
         var removedProfiles = EngineValues.Sorted(baselineProfiles.Keys.Where(name => !currentProfiles.ContainsKey(name)));
 
         var changedProfiles = new List<object?>();
-        // set & set iterates the smaller set (the right operand on a tie) and keeps its keys.
+        // The intersection iterates the smaller set (the current side on a tie).
         var common = currentProfiles.Count <= baselineProfiles.Count
             ? currentProfiles.Keys.Where(baselineProfiles.ContainsKey)
             : baselineProfiles.Keys.Where(currentProfiles.ContainsKey);
@@ -67,7 +63,7 @@ public sealed partial class DetectionProfileStore
         };
     }
 
-    // _profile_map: the entries by name (a repeated name keeps its first key and takes the last entry) and the totals.
+    // Entries by name (a repeated name keeps its first slot and takes the last entry) and the totals.
     private static (Dictionary<object, SummaryEntry> Entries, OrderedDictionary<string, object?> Totals) ProfileMap(object? summary)
     {
         var entries = new Dictionary<object, SummaryEntry>(EngineValues.HashKeys!);
@@ -112,7 +108,7 @@ public sealed partial class DetectionProfileStore
         return (entries, totals);
     }
 
-    // _as_int: int(value), or the fallback where the value is not an integer.
+    // The value as an integer, or the fallback.
     private static BigInteger AsInt(object? value, BigInteger fallback)
     {
         try

@@ -7,34 +7,29 @@ using DriftBuster.Backend.Secrets;
 namespace DriftBuster.Backend.Profiles.Run;
 
 /// <summary>
-/// <c>run_profiles.execute_profile</c>: saves the profile, copies every source's files through the secret filter into
+/// Runs a profile: saves it, copies every source's files through the secret filter into
 /// <c>&lt;profile&gt;/raw/&lt;timestamp&gt;/&lt;source dir&gt;</c>, and writes <c>metadata.json</c> beside them.
 /// </summary>
 /// <remarks>
-/// A profile whose sources all hold only a path runs as a plain profile. A profile with a structured source
-/// (<see cref="RunProfile.IsStructured"/>) collects every source as <c>offline_runner.execute_config</c> does: in declared
-/// order (the baseline is not moved to the front), with the options as the payload holds them (<see cref="RunProfile.SecretOptions"/>); an
-/// <see cref="RunProfileSource.Alias"/> names the source's directory (<c>_safe_name(alias)</c>) in place of <c>source_NN</c>; an
-/// <see cref="RunProfileSource.Optional"/> source that is missing or matches nothing is skipped; matches are expanded, globbed, sorted
-/// and de-duplicated as <c>_iter_source_matches</c> does, a match that is a symlink is skipped, a match inside a directory already
-/// collected is skipped; and a file whose relative path or name matches one of the <see cref="RunProfileSource.Exclude"/> patterns
-/// (<c>fnmatch.fnmatch</c>) is not copied.
+/// Path-only profiles put the baseline source first. A structured profile (<see cref="RunProfile.IsStructured"/>) collects like the
+/// offline runner: declared order; an <see cref="RunProfileSource.Alias"/> names the directory instead of <c>source_NN</c>;
+/// optional sources that are missing or empty are skipped; matches are globbed, sorted and de-duplicated, symlinks and matches
+/// inside an already collected directory skipped; files matching <see cref="RunProfileSource.Exclude"/> are not copied.
 /// </remarks>
 public static partial class RunProfileExecutor
 {
-    /// <summary>The clock <c>_timestamp()</c> reads; tests swap it.</summary>
+    /// <summary>Clock for run timestamps (test seam).</summary>
     internal static Func<DateTime> UtcNow { get; set; } = () => DateTime.UtcNow;
 
-    /// <summary><c>_timestamp()</c>: <c>datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")</c>.</summary>
+    /// <summary>UTC run timestamp, <c>yyyyMMddTHHmmssZ</c>.</summary>
     public static string Timestamp() => UtcNow().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 
-    /// <summary><c>execute_profile(profile, base_dir=..., timestamp=...)</c>.</summary>
     public static ProfileRunResult ExecuteProfile(RunProfile profile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default)
         => ExecuteProfile(profile, baseDir, timestamp, saveProfile: true, cancellationToken);
 
     /// <summary>
-    /// <see cref="ExecuteProfile(RunProfile, string?, string?, CancellationToken)"/>; with <paramref name="saveProfile"/> false the
-    /// profile is validated as <c>save_profile</c> validates it but <c>profile.json</c> is not written (the GUI facade's choice).
+    /// As the public overload; with <paramref name="saveProfile"/> false the profile is validated but <c>profile.json</c> is not
+    /// written (the GUI's choice).
     /// </summary>
     internal static ProfileRunResult ExecuteProfile(RunProfile profile, string? baseDir, string? timestamp, bool saveProfile, CancellationToken cancellationToken)
     {
@@ -91,8 +86,7 @@ public static partial class RunProfileExecutor
         };
     }
 
-    // The sources with the first one whose path is the baseline moved to the front (source_strings.remove / insert(0, ...)). A structured
-    // profile keeps the declared order, as execute_config iterates it.
+    // Path-only profiles move the first source whose path is the baseline to the front; structured profiles keep declared order.
     private static List<RunProfileSource> BaselineFirst(RunProfile profile)
     {
         var sources = profile.Sources.ToList();
@@ -109,10 +103,7 @@ public static partial class RunProfileExecutor
         return sources;
     }
 
-    /// <summary>
-    /// The directory a source's files are copied under: <c>_safe_name(alias)</c> for a source with an alias, otherwise
-    /// <c>source_{index:02d}</c> as <c>execute_profile</c> names it.
-    /// </summary>
+    /// <summary>A source's directory: its alias made safe, else <c>source_NN</c>.</summary>
     public static string DestinationName(RunProfileSource source, int fallbackIndex)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -121,15 +112,14 @@ public static partial class RunProfileExecutor
             : RunProfileStore.SafeName(source.Alias);
     }
 
-    // Where the files of a run go: the file list, the secret context and log every copy goes through, and the run's own output (physical
-    // paths), which a structured source never collects: the profile directory the run writes into, and each directory above it that the
-    // run created (the Profiles root, or the base directory, when it did not exist before the run).
+    // Where a run's files go: the file list, secret context and log, and the run's own output directories (the profile directory and
+    // any directories above it the run created), which a structured source must never collect.
     private sealed record CopyTarget(List<ProfileFile> Files, SecretDetectionContext Context, Action<string> Log, IReadOnlyList<string> OwnOutput)
     {
         public bool IsOwnOutput(string physicalPath) => OwnOutput.Any(directory => IsInside(physicalPath, directory));
     }
 
-    // The Profiles root and each directory above it that does not exist yet, nearest first: the directories profiles_root creates.
+    // The Profiles root and each missing directory above it, nearest first.
     private static List<string> MissingProfilesAncestors(string? baseDir)
     {
         var missing = new List<string>();
@@ -149,7 +139,7 @@ public static partial class RunProfileExecutor
         return missing;
     }
 
-    // Path.exists(), with a lookup that raises counted as existing (the run then fails creating the directory).
+    // Existence, with a lookup that throws counted as existing (creating the directory then fails).
     private static bool ExistsOrUnknown(string path)
     {
         try
@@ -162,11 +152,10 @@ public static partial class RunProfileExecutor
         }
     }
 
-    // The absolute path with every symlink the kernel would follow resolved, or the absolute path when it cannot be resolved.
+    // Absolute path with links resolved, or the absolute path when resolution fails.
     private static string PhysicalPath(string path) => EnginePath.ResolvePhysicalPath(EnginePath.Absolute(path)) ?? EnginePath.Absolute(path);
 
-    // One source of a profile without structured sources (execute_profile): its matches, each directory walked with rglob("*") and each
-    // file copied.
+    // One path-only source: its matches, directories walked recursively, each file copied.
     private static ProfileRunSource CollectSource(RunProfileSource source, string destinationName, string destinationRoot, CopyTarget target, CancellationToken cancellationToken)
     {
         var matched = new List<string>();
@@ -191,9 +180,8 @@ public static partial class RunProfileExecutor
         return new ProfileRunSource(source.Path, destinationName, source.Optional, Skipped: false, Reason: null, matched, source.Exclude ?? []);
     }
 
-    // Every entry below a directory (FileTreeGlob with "**/*"), less each path whose name the runtime decoded with U+FFFD that names no entry
-    // (a Linux name that is not UTF-8), and less every repeat of a path holding U+FFFD, so an entry whose name really holds U+FFFD is read
-    // once and never in place of an undecodable sibling (platform limit, decision R).
+    // Every entry below a directory, minus paths whose names only exist as a U+FFFD decoding of non-UTF-8 bytes (and repeats of a
+    // U+FFFD path), so a real U+FFFD name is read once and never in place of an undecodable sibling.
     private static IEnumerable<string> WalkFiles(string directory, CancellationToken cancellationToken)
     {
         var replaced = new HashSet<string>(StringComparer.Ordinal);
@@ -237,8 +225,8 @@ public static partial class RunProfileExecutor
     }
 
     /// <summary>
-    /// The path itself when it exists; the <see cref="FileTreeGlob.GlobPathname"/> matches (sorted by code point over their posix form)
-    /// when it holds a wildcard; otherwise <see cref="FileNotFoundException"/> (<c>Path does not exist: ...</c>).
+    /// The path itself when it exists; its glob matches (sorted by posix path) when it holds a wildcard; otherwise
+    /// <see cref="FileNotFoundException"/> (<c>Path does not exist: ...</c>).
     /// </summary>
     internal static IReadOnlyList<string> CollectMatches(string pathText, CancellationToken cancellationToken = default)
     {
@@ -258,9 +246,8 @@ public static partial class RunProfileExecutor
     }
 
     /// <summary>
-    /// <c>_copy_file(source=..., file=..., base=..., destination_root=..., secret_context=..., secret_log=...)</c>: the file is copied to
-    /// <c>destination_root / file.relative_to(base)</c> (its name alone when it is not under <paramref name="basePath"/>), through
-    /// <c>copy_with_secret_filter</c> when a context and log are given, otherwise with <c>shutil.copy2</c>.
+    /// Copies a file to <paramref name="destinationRoot"/> at its path relative to <paramref name="basePath"/> (its name when not
+    /// under it), through the secret filter when a context and log are given, else as a plain copy keeping timestamps.
     /// </summary>
     internal static ProfileFile CopyFile(
         string source,
@@ -280,6 +267,6 @@ public static partial class RunProfileExecutor
         return new ProfileFile(source, destination, size, digest);
     }
 
-    // file.relative_to(base) if file.is_relative_to(base) else Path(file.name), in posix form.
+    // Relative posix path under the base, or the file name.
     private static string RelativePath(string file, string basePath) => LexicalPath.RelativeTo(file, basePath) ?? PathText.Name(file);
 }
