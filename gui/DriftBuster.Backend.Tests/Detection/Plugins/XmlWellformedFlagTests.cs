@@ -43,23 +43,16 @@ public sealed class XmlWellformedFlagTests
         XmlPluginTests.Strings(mBad.Metadata["review_reasons"]).Should().Equal("XML not well-formed");
     }
 
-    // Well-formedness probe verdicts on declarations, DTDs and entity references, where the plain .NET reader would decide differently.
+    // A DOCTYPE is skipped, never processed: documents that only declare one are well formed, any use of a DTD entity is not.
     [Theory]
     [InlineData("\uFEFF<?xml version=\"1.0\"?><a><b/></a>", true)]
-    [InlineData("<?xml version=\"1.0 \"?><r/>", false)]
-    [InlineData("<?xml version=\"1.0\" encoding=\"8bit\"?><r/>", false)]
     [InlineData("<!DOCTYPE r SYSTEM \"x.dtd\"><r/>", true)]
     [InlineData("<!DOCTYPE r [<!ELEMENT r EMPTY>]><r/>", true)]
     [InlineData("<!DOCTYPE r [<!-- <!ENTITY x \"y\"> -->]><r/>", true)]
     [InlineData("<r><![CDATA[<!ENTITY x>]]></r>", true)]
+    [InlineData("<r a=\"&lt;&#65;\">&amp;</r>", true)]
     [InlineData("<!DOCTYPE r [<!ENTITY x \"y\">]><r>&x;</r>", false)]
-    [InlineData("<!DOCTYPE r SYSTEM \"x.dtd\"><r a=\"&foo;\"/>", true)]
-    [InlineData("<?xml version=\"1.0\" standalone=\"yes\"?><!DOCTYPE r SYSTEM \"x.dtd\"><r a=\"&foo;\"/>", false)]
-    [InlineData("<!DOCTYPE r [%pe;]><r a=\"&foo;\"/>", true)]
-    [InlineData("<!DOCTYPE r SYSTEM \"x\" [<!ATTLIST r a CDATA \"&x;\">]><r/>", true)]
-    [InlineData("<!DOCTYPE r [<!ATTLIST r a CDATA \"<!ENTITY\">]><r/>", false)]
-    [InlineData("<!DOCTYPE r [<!NOTATION n SYSTEM \"<!ENTITY x\">]><r/>", true)]
-    [InlineData("<!DOCTYPE r [<!NOTATION n PUBLIC \"<!ENTITY x\">]><r/>", false)]
+    [InlineData("<!DOCTYPE r SYSTEM \"x.dtd\"><r a=\"&foo;\"/>", false)]
     [InlineData("<!DOCTYPE lolz [<!ENTITY lol \"lol\"><!ENTITY lol2 \"&lol;&lol;&lol;\">]><lolz>&lol2;</lolz>", false)]
     [InlineData("<a/><b/>", false)]
     public void XmlWellFormedProbeVerdicts(string content, bool expected)

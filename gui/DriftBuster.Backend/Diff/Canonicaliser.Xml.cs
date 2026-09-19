@@ -1,7 +1,3 @@
-using System.Text;
-using System.Xml.Linq;
-
-using DriftBuster.Backend.Detection.Plugins;
 using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Diff;
@@ -21,8 +17,8 @@ public static partial class Canonicaliser
     /// so QNames inside attribute values keep pointing at a real prefix. Attributes order by <c>{uri}local</c>.
     /// </para>
     /// <para>
-    /// A DOCTYPE that reaches the parser and declares entities is refused, so such a document canonicalises as text and no entity is
-    /// expanded. An unpaired surrogate counts as a parse failure. Serialisation uses an explicit stack.
+    /// Parsed with <see cref="SafeXml"/>: a document using an entity its DOCTYPE declares canonicalises as text and no entity is
+    /// expanded. Serialisation uses an explicit stack.
     /// </para>
     /// </remarks>
     public static string CanonicaliseXml(string payload)
@@ -36,22 +32,22 @@ public static partial class Canonicaliser
         payload = payload.TrimStart(Bom);
         var xmlDeclaration = string.Empty;
         var doctype = string.Empty;
-        var working = EngineText.StripStart(payload);
+        var working = payload.TrimStart();
 
         var declarationEnd = MatchXmlDeclaration(working);
         if (declarationEnd > 0)
         {
             xmlDeclaration = working[..declarationEnd];
-            working = EngineText.StripStart(working[declarationEnd..]);
+            working = working[declarationEnd..].TrimStart();
         }
 
-        if (UpperStartsWithDoctype(working))
+        if (working.StartsWith(DoctypeKeyword, StringComparison.OrdinalIgnoreCase))
         {
             var end = DoctypeEnd(working);
             if (end > 0)
             {
                 doctype = working[..end];
-                working = EngineText.StripStart(working[end..]);
+                working = working[end..].TrimStart();
             }
             else
             {
@@ -61,7 +57,7 @@ public static partial class Canonicaliser
             }
         }
 
-        var root = DefusedXmlParser.ParseCanonicalTree(working);
+        var root = SafeXml.TryLoadRoot(working, keepComments: true);
         if (root is null)
         {
             return CanonicaliseText(payload);
@@ -82,27 +78,6 @@ public static partial class Canonicaliser
 
         var close = text.IndexOf('>', 5);
         return close > 5 && text[close - 1] == '?' ? close + 1 : 0;
-    }
-
-    // Upper-cased (full mapping) text starts with "<!DOCTYPE".
-    private static bool UpperStartsWithDoctype(string text)
-    {
-        var upper = new StringBuilder();
-        var offset = 0;
-        while (upper.Length < DoctypeKeyword.Length && offset < text.Length)
-        {
-            if (Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out var consumed) != System.Buffers.OperationStatus.Done)
-            {
-                upper.Append(text[offset]);
-                offset++;
-                continue;
-            }
-
-            upper.Append(EngineText.Upper(rune));
-            offset += consumed;
-        }
-
-        return upper.ToString().StartsWith(DoctypeKeyword, StringComparison.Ordinal);
     }
 
     // The DOCTYPE scan: '[' opens, ']' closes when open, and the first '>' outside brackets ends it. 0 when none does.

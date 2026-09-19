@@ -36,9 +36,9 @@ Recommended test cases:
     YAML tabs, TOML trailing commas, INI malformed sections).
 
 - Security‑safe parsing
-  - If a hardened parser is used (e.g. the XML plugin's `DefusedXmlParser`), cover the
-    secure branch and the fallback branch, including cases that disable parsing
-    (e.g. inputs with DOCTYPE/ENTITY declarations).
+  - Parsers read scanned files with external resolution and entity expansion off (XML goes
+    through `SafeXml`); cover inputs that must not expand or fetch anything (a DOCTYPE that
+    declares entities, an external DTD reference).
 
 - Error handling and resilience
   - Gracefully handles empty input, binary garbage, and truncated documents.

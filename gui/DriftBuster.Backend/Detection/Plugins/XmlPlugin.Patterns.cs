@@ -137,9 +137,6 @@ public sealed partial class XmlPlugin
     // http://schemas.microsoft.com/developer/msbuild/2003, case-insensitive.
     private static bool HasMsbuildNamespace(string s) => ContainsIgnoreCase(s, "http://schemas.microsoft.com/developer/msbuild/2003");
 
-    // <!ENTITY, case-insensitive.
-    private static bool HasEntityDeclaration(string s) => ContainsIgnoreCase(s, "<!entity");
-
     // http://schemas.microsoft.com/.*resx, case-insensitive: the prefix followed by "resx" on the same line. Only a line's
     // first prefix occurrence is tried, keeping the scan linear.
     private static bool HasResxSchema(string s)

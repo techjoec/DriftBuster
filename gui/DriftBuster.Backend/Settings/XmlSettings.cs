@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Xml.Linq;
 
-using DriftBuster.Backend.Detection.Plugins;
+using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Settings;
 
@@ -18,7 +18,7 @@ internal static class XmlSettings
 
     public static ExtractedSettings? Extract(string text)
     {
-        var root = DefusedXmlParser.ParseCanonicalTree(StripProlog(text));
+        var root = SafeXml.TryLoadRoot(text);
         if (root is null)
         {
             return null;
@@ -27,24 +27,6 @@ internal static class XmlSettings
         var builder = new SettingsBuilder();
         Walk(root, string.Empty, builder);
         return builder.Build(SettingsMode.Parsed);
-    }
-
-    // The declaration and DOCTYPE sit outside the document element and carry no settings.
-    private static string StripProlog(string text)
-    {
-        var start = text.IndexOf('<', StringComparison.Ordinal);
-        while (start >= 0 && start + 1 < text.Length && (text[start + 1] == '?' || text[start + 1] == '!') && !text.AsSpan(start).StartsWith("<!--", StringComparison.Ordinal))
-        {
-            var end = text.IndexOf('>', start);
-            if (end < 0)
-            {
-                return text;
-            }
-
-            start = text.IndexOf('<', end);
-        }
-
-        return start > 0 ? text[start..] : text;
     }
 
     private static void Walk(XElement element, string path, SettingsBuilder builder)

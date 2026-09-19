@@ -679,7 +679,7 @@ public sealed class XmlPluginTests
         match.Metadata!["msbuild_detected"].Should().Be(true);
         match.Metadata["doctype"].Should().Be("Project");
 
-        // The DOCTYPE guard blocks the tree parse, so no targets are captured; the probe fails on the indented declaration.
+        // The reader skips the DOCTYPE, so the tree walk still captures targets; the probe fails on the indented declaration.
         match.Confidence.Should().BeApproximately(0.95, 1e-9);
         match.Reasons.Should().Equal(
             "Detected XML declaration",
@@ -688,10 +688,11 @@ public sealed class XmlPluginTests
             "Root element <Project> indicates an MSBuild project definition",
             "XML appears not well-formed within sampled content",
             "Detected root element <Project>",
+            "MSBuild default targets declared (Build)",
+            "MSBuild ToolsVersion set to Current",
+            "Captured MSBuild target declarations (Pack)",
             "Document declares DOCTYPE Project");
-        match.Metadata.Keys.Should().Equal(
-            "xml_declaration", "doctype", "root_tag", "root_local_name", "root_attributes", "msbuild_detected", "msbuild_kind",
-            "xml_well_formed", "needs_review", "review_reasons");
+        XmlPluginTests.Strings(match.Metadata["msbuild_targets"]).Should().Equal("Pack");
         match.Metadata["msbuild_kind"].Should().Be("project");
     }
 

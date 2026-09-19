@@ -5,63 +5,18 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Tree parsing and walks. Tree and well-formedness come from <see cref="DefusedXmlParser"/>; the plugin skips the tree parse for
-/// any payload with a DOCTYPE or ENTITY declaration and for payloads over the size cap. Only the fallback branch keeps comment
-/// nodes, which the resx and MSBuild walks reject.
+/// Tree walks over <see cref="SafeXml.TryLoadRoot"/>. Payloads over the size cap are not parsed; a DOCTYPE is skipped by the
+/// reader, and a reference to an entity it declares leaves the document unparsed.
 /// </summary>
 public sealed partial class XmlPlugin
 {
-    /// <summary>Test seam: false takes the fallback parser branch, whose tree keeps comment nodes.</summary>
-    internal bool DefusedAvailable { get; set; } = true;
-
-    /// <summary>Test seam for the defused parse: the root element, or null when the parse fails.</summary>
-    internal Func<string, XElement?> DefusedFromString { get; set; } = static text => DefusedXmlParser.ParseTree(text);
-
-    /// <summary>Test seam for the fallback parse: the root element, or null when the parse fails.</summary>
-    internal Func<string, FallbackParserOptions, XElement?> FallbackFromString { get; set; } =
-        (text, parser) => DefusedXmlParser.ParseTree(text, parser.InsertComments);
-
-    /// <summary>Options for the fallback parse (whether comments are kept).</summary>
-    internal sealed record FallbackParserOptions(bool InsertComments);
-
     private XElement? ParseTree(string text)
     {
-        var stripped = EngineText.StripStart(text);
-        if (stripped.Length == 0 || CodePointCount(stripped) > MaxSafeParseChars)
-        {
-            return null;
-        }
-
-        if (FindDoctypeName(stripped) is not null || HasEntityDeclaration(stripped))
-        {
-            return null;
-        }
-
-        return DefusedAvailable ? DefusedFromString(stripped) : FallbackFromString(stripped, new FallbackParserOptions(InsertComments: true));
+        var stripped = text.TrimStart();
+        return stripped.Length == 0 || CodePointCount(stripped) > MaxSafeParseChars ? null : SafeXml.TryLoadRoot(stripped);
     }
 
-    private static bool IsWellFormed(string sampleText) => DefusedXmlParser.IsWellFormed(sampleText);
-
-    /// <summary>
-    /// Elements in document order, root first, each one read through its tag name.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// A comment node is reached (fallback branch only): it has no tag name to read, and the plugin does not catch it.
-    /// </exception>
-    private static IEnumerable<XElement> IterTree(XElement root)
-    {
-        foreach (var node in root.DescendantNodesAndSelf())
-        {
-            switch (node)
-            {
-                case XElement element:
-                    yield return element;
-                    break;
-                case XComment:
-                    throw new InvalidOperationException("An XML comment node has no tag name.");
-            }
-        }
-    }
+    private static bool IsWellFormed(string sampleText) => SafeXml.IsWellFormed(sampleText);
 
     private static void ExtractResxKeys(XElement root, OrderedDictionary<string, object?> metadata)
     {
@@ -86,7 +41,7 @@ public sealed partial class XmlPlugin
         }
 
         var resourceKeys = new List<string>();
-        foreach (var element in IterTree(root))
+        foreach (var element in root.DescendantsAndSelf())
         {
             if (!string.Equals(EngineText.Lower(element.Name.LocalName), "data", StringComparison.Ordinal))
             {
@@ -450,7 +405,7 @@ public sealed partial class XmlPlugin
         var importHints = new List<OrderedDictionary<string, object?>>();
         var seenImports = new HashSet<(string, string)>();
 
-        foreach (var element in IterTree(root))
+        foreach (var element in root.DescendantsAndSelf())
         {
             var localName = element.Name.LocalName;
             if (string.Equals(localName, "Target", StringComparison.Ordinal))

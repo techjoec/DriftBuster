@@ -1,7 +1,6 @@
 using System.Text;
 using System.Xml.Linq;
 
-using DriftBuster.Backend.Detection.Plugins;
 using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Diff;
@@ -62,22 +61,22 @@ public static partial class Canonicaliser
 
     private static void OpenElement(StringBuilder builder, Stack<(XNode Node, bool Closing, int Depth)> stack, XElement element, int depth)
     {
-        var written = element.Annotation<XmlWrittenName>()!;
-        builder.Append('<').Append(written.QualifiedName);
-        foreach (var declaration in written.Declarations.OrderBy(declaration => declaration.Prefix, CodePointOrder))
+        builder.Append('<').Append(WrittenName(element));
+        foreach (var declaration in element.Attributes().Where(attribute => attribute.IsNamespaceDeclaration).OrderBy(DeclaredPrefix, CodePointOrder))
         {
             builder.Append(" xmlns");
-            if (declaration.Prefix.Length > 0)
+            var prefix = DeclaredPrefix(declaration);
+            if (prefix.Length > 0)
             {
-                builder.Append(':').Append(declaration.Prefix);
+                builder.Append(':').Append(prefix);
             }
 
             builder.Append("=\"");
-            AppendEscapedAttribute(builder, declaration.Uri).Append('"');
+            AppendEscapedAttribute(builder, declaration.Value).Append('"');
         }
 
         // Keys are unique expanded names ("{uri}local" or "local").
-        foreach (var attribute in element.Attributes().OrderBy(attribute => attribute.Name.ToString(), CodePointOrder))
+        foreach (var attribute in element.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration).OrderBy(attribute => attribute.Name.ToString(), CodePointOrder))
         {
             builder.Append(' ').Append(WrittenName(attribute)).Append("=\"");
             AppendEscapedAttribute(builder, CollapseWhitespace(attribute.Value)).Append('"');
@@ -101,7 +100,17 @@ public static partial class Canonicaliser
         }
     }
 
-    private static string WrittenName(XObject node) => node.Annotation<XmlWrittenName>()!.QualifiedName;
+    // "xmlns" declares the default namespace; "xmlns:p" declares p.
+    private static string DeclaredPrefix(XAttribute declaration) => declaration.Name.Namespace == XNamespace.None ? string.Empty : declaration.Name.LocalName;
+
+    // The name with the prefix in scope for its namespace (the element's own, or none for an unqualified attribute).
+    private static string WrittenName(XElement element) => Qualified(element.GetPrefixOfNamespace(element.Name.Namespace), element.Name.LocalName);
+
+    private static string WrittenName(XAttribute attribute) => attribute.Name.Namespace == XNamespace.None
+        ? attribute.Name.LocalName
+        : Qualified(attribute.Parent!.GetPrefixOfNamespace(attribute.Name.Namespace), attribute.Name.LocalName);
+
+    private static string Qualified(string? prefix, string localName) => string.IsNullOrEmpty(prefix) ? localName : prefix + ":" + localName;
 
     // Only whitespace-only values collapse; others keep their padding.
     private static string CollapseWhitespace(string value) => EngineText.Strip(value).Length == 0 ? string.Empty : value;
