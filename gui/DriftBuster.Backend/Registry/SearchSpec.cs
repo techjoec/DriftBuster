@@ -4,9 +4,8 @@ using System.Text.RegularExpressions;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// <c>registry.scan.SearchSpec</c>: keywords every one of which must appear in <c>"{name} {text}"</c> (lower-cased), patterns one of
-/// which must find the text or the name, the deepest subkey level walked below a root, the hit limit and the time budget in seconds.
-/// The two limits are Python <c>int</c>s of any size (<c>argparse</c> and <c>int()</c> take any), clamped by the search itself.
+/// Keywords that must all occur in the lower-cased "{name} {text}", patterns one of which must find the text or the name, the
+/// deepest subkey level, the hit limit and the time budget in seconds. The limits are arbitrary-size integers the search clamps.
 /// </summary>
 public sealed record SearchSpec
 {

@@ -7,13 +7,10 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Registry;
 
-/// <summary>
-/// Built-ins the registry code needs that the shared helpers do not cover: <c>str.upper()</c> over a whole string,
-/// and registry search pattern compilation.
-/// </summary>
+/// <summary>Registry text helpers: full-string uppercase and search pattern compilation.</summary>
 internal static class RegistryText
 {
-    /// <summary><c>text.upper()</c>: <see cref="EngineText.Upper(Rune)"/> per code point, an unpaired surrogate passed through.</summary>
+    /// <summary>Full uppercase per code point (<see cref="EngineText.Upper(Rune)"/>); unpaired surrogates pass through.</summary>
     public static string Upper(string text)
     {
         var builder = new StringBuilder(text.Length);
@@ -40,6 +37,6 @@ internal static class RegistryText
     /// </summary>
     public static Regex Compile(string pattern) => PatternRegex.Create(pattern);
 
-    /// <summary>True for a value <c>isinstance(value, (list, tuple))</c> accepts: any list that is neither a str nor bytes nor a dict.</summary>
+    /// <summary>A list or array that is not a string, bytes or a dictionary.</summary>
     public static bool IsList(object? value) => value is IList and not byte[] and not IDictionary && value is not IReadOnlyDictionary<string, object?>;
 }

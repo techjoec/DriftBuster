@@ -7,16 +7,13 @@ using Microsoft.Win32.SafeHandles;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// <c>registry.scan._WinRegBackend</c>: the calls <c>winreg</c> makes, in its order. A key is opened with <c>RegOpenKeyExW</c> and
-/// <c>KEY_READ</c>, plus <c>KEY_WOW64_64KEY</c> for view "64" or <c>KEY_WOW64_32KEY</c> for view "32"; a key that fails to open lists
-/// nothing. Subkeys are <c>RegEnumKeyExW</c> by index into a 257-unit buffer and values <c>RegQueryInfoKeyW</c> then
-/// <c>RegEnumValueW</c> by index (the data buffer doubled on <c>ERROR_MORE_DATA</c>), each list ending at the first failing call. Value
-/// data is converted by <see cref="RegistryValueDecoder"/>.
+/// Registry reads through advapi32: <c>RegOpenKeyExW</c> with <c>KEY_READ</c> (plus <c>KEY_WOW64_64KEY</c>/<c>KEY_WOW64_32KEY</c> for
+/// views "64"/"32"); a key that fails to open lists nothing. Subkeys via <c>RegEnumKeyExW</c>, values via <c>RegQueryInfoKeyW</c> and
+/// <c>RegEnumValueW</c> (buffer doubled on <c>ERROR_MORE_DATA</c>); each list ends at the first failing call.
 /// </summary>
 /// <remarks>
-/// The raw advapi32 calls are used instead of <see cref="Microsoft.Win32.RegistryKey"/>, whose name normalisation (collapsed and
-/// trailing backslashes), name length checks and value conversion (signed <c>REG_DWORD</c>, empty <c>REG_MULTI_SZ</c> strings dropped)
-/// would change the names and values the scan reports.
+/// Raw calls instead of <see cref="Microsoft.Win32.RegistryKey"/>, whose name normalisation, length checks and value conversion
+/// (signed DWORD, empty MULTI_SZ strings dropped) would change what the scan reports.
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed partial class WinRegistryBackend : IRegistryBackend
@@ -83,7 +80,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         return handle is not null;
     }
 
-    // _open: None where the key cannot be opened. A path holding NUL raises ArgumentException.
+    // Null when the key cannot be opened; a path holding NUL throws ArgumentException.
     private static SafeRegistryHandle? Open(string hive, string path, string? view)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -103,7 +100,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         return null;
     }
 
-    // winreg.EnumKey: None where the call fails.
+    // Null when the call fails.
     private static unsafe string? EnumKey(SafeRegistryHandle handle, int index)
     {
         var buffer = stackalloc char[KeyNameBufferLength];
@@ -112,7 +109,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
         return rc == 0 ? new string(buffer, 0, length) : null;
     }
 
-    // winreg.EnumValue: None where the call fails.
+    // Null when the call fails.
     private static unsafe RegistryRawValue? EnumValue(SafeRegistryHandle handle, int index)
     {
         int maxNameLength;
@@ -143,7 +140,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
                 break;
             }
 
-            // PyMem_Realloc to twice the size: an allocation the runtime cannot make raises OutOfMemoryException.
+            // Double the buffer; an allocation the runtime cannot make throws OutOfMemoryException.
             var grown = new byte[(long)bufDataSize * 2];
             data.CopyTo(grown, 0);
             data = grown;

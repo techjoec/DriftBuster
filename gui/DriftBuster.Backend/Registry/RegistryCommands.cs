@@ -6,11 +6,9 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// The library half of <c>registry_cli</c> (<c>driftbuster-registry</c>): the Windows gate, <c>--root</c> and
-/// <c>--remote-target</c> parsing, and the <c>list-apps</c>, <c>suggest-roots</c>, <c>search</c> and <c>emit-config</c> commands, each
-/// returning the lines or payload the command prints. Every command checks the gate first and, except <c>list-apps</c>, enumerates
-/// the installed applications before anything else, as <c>main</c> does. Argument parsing and exit codes belong to the console tool.
-/// The registry calls are settable seams, so tests can replace them.
+/// <c>driftbuster registry-scan</c> as library calls: the Windows gate, <c>--root</c> and <c>--remote-target</c> parsing, and
+/// <c>list-apps</c>, <c>suggest-roots</c>, <c>search</c>, <c>emit-config</c>, each returning the lines or payload to print. Every command
+/// checks the gate first; all but <c>list-apps</c> then enumerate installed apps. The registry calls are test seams.
 /// </summary>
 public static class RegistryCommands
 {
@@ -30,7 +28,7 @@ public static class RegistryCommands
     internal static Func<RegistryRoot, bool> RootExists { get; set; }
         = root => !OperatingSystem.IsWindows() || WinRegistryBackend.KeyExists(root.Hive, root.Path, root.View);
 
-    /// <summary><c>main</c>'s gate: <c>Registry scanning requires Windows.</c> off Windows.</summary>
+    /// <summary>Throws <c>Registry scanning requires Windows.</c> off Windows.</summary>
     /// <exception cref="CommandExitException">Not on Windows.</exception>
     public static void RequireWindows()
     {
@@ -40,7 +38,7 @@ public static class RegistryCommands
         }
     }
 
-    /// <summary><c>list-apps</c>: <c>"{display_name}[ {version}]  [{hive} {view}]  {key_path}"</c> per installed application.</summary>
+    /// <summary>One line per installed app: <c>"{display_name}[ {version}]  [{hive} {view}]  {key_path}"</c>.</summary>
     public static IReadOnlyList<string> ListApps()
     {
         RequireWindows();
@@ -50,7 +48,7 @@ public static class RegistryCommands
             .AsReadOnly();
     }
 
-    /// <summary><c>suggest-roots TOKEN</c>: <c>"{hive} \ {path}[ ({view}-bit)]"</c> per suggested root.</summary>
+    /// <summary>One line per suggested root: <c>"{hive} \ {path}[ ({view}-bit)]"</c>.</summary>
     public static IReadOnlyList<string> SuggestRoots(string token)
     {
         RequireWindows();
@@ -62,9 +60,9 @@ public static class RegistryCommands
     }
 
     /// <summary>
-    /// <c>search TOKEN</c> (<c>--max-depth</c> and <c>--max-hits</c> are <c>argparse</c> <c>int</c>s of any size, default 12 and 200): the explicit <c>--root</c> values (<see cref="ParseRootArgument"/>, a refusal becoming
-    /// <see cref="CommandExitException"/> <c>invalid --root value: ...</c>) or the roots suggested for the token, searched with the keywords, the patterns
-    /// compiled in order and the limits; <c>"{hive} \ {path} :: {value_name} = {data_preview}"</c> per hit.
+    /// Searches the explicit <c>--root</c> values (a bad one throws <see cref="CommandExitException"/> <c>invalid --root value: ...</c>) or
+    /// the roots suggested for the token (defaults: depth 12, 200 hits); one line per hit:
+    /// <c>"{hive} \ {path} :: {value_name} = {data_preview}"</c>.
     /// </summary>
     /// <exception cref="System.Text.RegularExpressions.RegexParseException">A pattern is not a valid .NET regular expression.</exception>
     public static IReadOnlyList<string> Search(
@@ -102,13 +100,11 @@ public static class RegistryCommands
     }
 
     /// <summary>
-    /// <c>emit-config TOKEN</c>: <c>{"registry_scan": {...}}</c> with the token, the non-empty keywords and patterns (each list left
-    /// out when empty), the limits, the explicit roots as <c>{"hive", "path"[, "view"]}</c> when given, and the first parsed
-    /// <c>--remote-target</c> as <c>remote</c> with the rest as <c>remote_batch</c>; <c>alias</c> beside it when truthy. The command
-    /// prints <see cref="EmitConfigJson"/> of it.
+    /// <c>{"registry_scan": {...}}</c>: token, non-empty keywords and patterns, limits, explicit roots (<c>{"hive","path"[,"view"]}</c>),
+    /// the first <c>--remote-target</c> as <c>remote</c> and the rest as <c>remote_batch</c>, and <c>alias</c> when set.
     /// </summary>
     /// <exception cref="CommandExitException">A <c>--root</c> value is refused.</exception>
-    /// <exception cref="FormatException">A <c>--remote-target</c> value is refused (not converted to <see cref="CommandExitException"/>).</exception>
+    /// <exception cref="FormatException">A <c>--remote-target</c> value is refused.</exception>
     public static OrderedDictionary<string, object?> EmitConfig(
         string token,
         string? alias = null,
@@ -164,7 +160,7 @@ public static class RegistryCommands
         return snippet;
     }
 
-    /// <summary><c>json.dumps(snippet, indent=2, sort_keys=True)</c>.</summary>
+    /// <summary>Indented JSON with sorted keys.</summary>
     public static string EmitConfigJson(OrderedDictionary<string, object?> snippet)
         => Canonicaliser.DumpsSorted(snippet, indent: true, ensureAscii: true);
 
@@ -191,15 +187,14 @@ public static class RegistryCommands
         }
     }
 
-    /// <summary><c>_parse_root_argument(value)</c>: <see cref="RegistryRoot.Parse"/>.</summary>
     public static RegistryRoot ParseRootArgument(string value) => RegistryRoot.Parse(value);
 
     /// <summary>
-    /// <c>_parse_remote_target_arg(value)</c>: <c>HOST[,key=value]...</c> into <c>{"host": ...}</c> plus <c>port</c> (<c>int()</c>),
-    /// <c>use_ssl</c> (1/true/yes/on or 0/false/no/off), <c>username</c> (also <c>user</c>), <c>password_env</c>,
-    /// <c>credential_profile</c>, <c>transport</c> and <c>alias</c>; keys are stripped, lower-cased and read with "-" as "_".
+    /// <c>HOST[,key=value]...</c> into <c>{"host": ...}</c> plus <c>port</c> (integer), <c>use_ssl</c> (1/true/yes/on or 0/false/no/off),
+    /// <c>username</c> (or <c>user</c>), <c>password_env</c>, <c>credential_profile</c>, <c>transport</c>, <c>alias</c>; keys are trimmed,
+    /// lower-cased and read with "-" as "_".
     /// </summary>
-    /// <exception cref="FormatException">Each refusal, or a port that is not an integer.</exception>
+    /// <exception cref="FormatException">A refused key or value, or a non-integer port.</exception>
     public static OrderedDictionary<string, object?> ParseRemoteTargetArg(string value)
     {
         ArgumentNullException.ThrowIfNull(value);

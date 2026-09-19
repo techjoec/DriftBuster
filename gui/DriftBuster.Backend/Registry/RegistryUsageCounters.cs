@@ -4,8 +4,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// <c>registry._UsageCounters</c>: calls, successes, errors, the summed and last durations in seconds, the last error text and the
-/// first and last invocation times in seconds since the epoch.
+/// Per-operation counters: calls, successes, errors, summed and last durations in seconds, last error, and first and last
+/// invocation times.
 /// </summary>
 internal sealed class RegistryUsageCounters
 {
@@ -26,9 +26,8 @@ internal sealed class RegistryUsageCounters
     public double? LastInvocation { get; set; }
 
     /// <summary>
-    /// <c>counters.snapshot(name)</c>: <c>operation</c>, <c>calls</c>, <c>successes</c>, <c>errors</c>, the total, average (over
-    /// successes, 0.0 without one) and last durations in milliseconds rounded to three places, the invocation times as
-    /// <see cref="RegistryOperations.FormatTimestamp"/> spells them, and <c>last_error</c>.
+    /// <c>operation</c>, <c>calls</c>, <c>successes</c>, <c>errors</c>, total/average (over successes)/last durations in milliseconds to
+    /// three places, invocation times (<see cref="RegistryOperations.FormatTimestamp"/>) and <c>last_error</c>.
     /// </summary>
     public OrderedDictionary<string, object?> Snapshot(string name)
     {
@@ -48,7 +47,6 @@ internal sealed class RegistryUsageCounters
         };
     }
 
-    /// <summary><c>counters.reset()</c>.</summary>
     public void Reset()
     {
         Calls = 0;

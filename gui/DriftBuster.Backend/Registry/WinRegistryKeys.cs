@@ -2,16 +2,13 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Registry;
 
-/// <summary>The hive handles and access masks <c>_WinRegBackend._open</c> passes to <c>winreg.OpenKeyEx</c>.</summary>
+/// <summary>Hive handles and access masks for opening registry keys.</summary>
 public static class WinRegistryKeys
 {
-    /// <summary><c>winreg.KEY_READ</c>.</summary>
     public const int KeyRead = 0x20019;
 
-    /// <summary><c>winreg.KEY_WOW64_64KEY</c>.</summary>
     public const int KeyWow64With64Key = 0x0100;
 
-    /// <summary><c>winreg.KEY_WOW64_32KEY</c>.</summary>
     public const int KeyWow64With32Key = 0x0200;
 
     /// <summary><c>HKEY_LOCAL_MACHINE</c> as the sign-extended predefined handle.</summary>
@@ -28,7 +25,7 @@ public static class WinRegistryKeys
         _ => KeyRead,
     };
 
-    /// <summary><c>self._hives[hive]</c>: the handle for <c>HKLM</c> or <c>HKCU</c>.</summary>
+    /// <summary>The handle for <c>HKLM</c> or <c>HKCU</c>.</summary>
     /// <exception cref="KeyNotFoundException">The hive is neither.</exception>
     public static nint HiveHandle(string hive) => hive switch
     {

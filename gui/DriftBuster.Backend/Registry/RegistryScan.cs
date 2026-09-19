@@ -5,9 +5,9 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// <c>registry.scan</c>: installed application enumeration from the Uninstall keys, registry root suggestions for an application
-/// token, and the breadth-first value search. Every function takes an <see cref="IRegistryBackend"/>; without one the Windows
-/// backend is used, and off Windows <see cref="DefaultBackend"/> raises <see cref="PlatformNotSupportedException"/>.
+/// Installed-app enumeration from the Uninstall keys, registry root suggestions for an app token, and the breadth-first value
+/// search. Each takes an <see cref="IRegistryBackend"/>; without one the Windows backend is used, which throws
+/// <see cref="PlatformNotSupportedException"/> off Windows.
 /// </summary>
 public static partial class RegistryScan
 {
@@ -24,18 +24,13 @@ public static partial class RegistryScan
         ("HKCU", UninstallPath, null),
     ];
 
-    /// <summary>
-    /// <c>scan.is_windows</c> as <see cref="DefaultBackend"/> looks it up; tests swap it.
-    /// </summary>
+    /// <summary>Platform check <see cref="DefaultBackend"/> uses (test seam).</summary>
     internal static Func<bool> IsWindowsProbe { get; set; } = PlatformIsWindows;
 
-    /// <summary><c>is_windows()</c>: the process runs on Windows (<c>sys.platform</c> <c>win32</c> or <c>cygwin</c>).</summary>
     public static bool PlatformIsWindows() => OperatingSystem.IsWindows();
 
-    /// <summary><c>is_windows()</c> through <see cref="IsWindowsProbe"/>.</summary>
     public static bool IsWindows() => IsWindowsProbe();
 
-    /// <summary><c>_default_backend()</c>: the Windows backend.</summary>
     /// <exception cref="PlatformNotSupportedException"><c>Windows Registry scanning requires Windows platform</c>.</exception>
     public static IRegistryBackend DefaultBackend()
     {
@@ -48,8 +43,8 @@ public static partial class RegistryScan
     }
 
     /// <summary>
-    /// <c>enumerate_installed_apps(backend=backend)</c>: every Uninstall subkey with a non-blank <c>DisplayName</c> from HKLM 64-bit,
-    /// HKLM Wow6432Node 32-bit and HKCU, the first of each <c>(hive, key_path)</c> kept, sorted by lower-cased display name then hive.
+    /// Uninstall subkeys with a non-blank <c>DisplayName</c> from HKLM 64-bit, HKLM Wow6432Node 32-bit and HKCU; the first of each
+    /// (hive, key path) kept; sorted by lower-cased name, then hive.
     /// </summary>
     public static IReadOnlyList<RegistryApp> EnumerateInstalledApps(IRegistryBackend? backend = null)
     {
@@ -94,13 +89,13 @@ public static partial class RegistryScan
             .AsReadOnly();
     }
 
-    // str(values.get(name)) when the value is truthy, else None.
+    // The value as text when truthy, else null.
     private static string? TruthyText(Dictionary<string, object?> values, string name)
         => values.TryGetValue(name, out var value) && EngineBuiltins.IsTruthy(value) ? EngineRepr.Str(value) : null;
 
     /// <summary>
-    /// <c>_candidate_vendor_app_pairs(app_name)</c>: <c>(first word, remaining words joined by " ")</c> when the name splits on runs of
-    /// whitespace, "_" and "-" into two or more words, then <c>("", app_name)</c>.
+    /// (first word, remaining words joined by " ") when the name splits on whitespace, "_" and "-" into two or more words, then
+    /// ("", name).
     /// </summary>
     internal static IReadOnlyList<(string Vendor, string Product)> CandidateVendorAppPairs(string appName)
     {
@@ -116,10 +111,9 @@ public static partial class RegistryScan
     }
 
     /// <summary>
-    /// <c>find_app_registry_roots(app_token, installed=installed)</c>: for each installed app whose lower-cased display name or
-    /// publisher holds the stripped, lower-cased token, the HKCU, HKLM (in the app's view) and HKLM Wow6432Node (32-bit) software
-    /// keys of each vendor/product pair and the app's Uninstall key; then the same three software keys built from the stripped token;
-    /// duplicates dropped in order.
+    /// For each installed app whose lower-cased name or publisher contains the token: HKCU, HKLM (the app's view) and HKLM
+    /// Wow6432Node (32-bit) software keys for each vendor/product pair, plus its Uninstall key; then the same three keys from the
+    /// token itself; duplicates dropped in order.
     /// </summary>
     public static IReadOnlyList<RegistryRoot> FindAppRegistryRoots(string appToken, IReadOnlyList<RegistryApp>? installed = null)
     {

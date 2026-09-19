@@ -5,10 +5,8 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
-/// The registry operations surface: <see cref="RegistryScan"/>'s three operations wrapped by <c>_instrument</c>, which
-/// counts every call, success and error with its duration (a failing call records <c>"{type}: {message}"</c> and rethrows, a
-/// succeeding one clears the last error), and <see cref="RegistrySummary"/> over those counters. The counters are process-wide, as
-/// the module-level <c>_USAGE</c> is.
+/// <see cref="RegistryScan"/>'s operations with process-wide usage counters (calls, successes, errors, durations; a failure records
+/// <c>"{type}: {message}"</c> and rethrows, a success clears the last error), and <see cref="RegistrySummary"/> over them.
 /// </summary>
 public static class RegistryOperations
 {
@@ -36,10 +34,7 @@ public static class RegistryOperations
         => Instrument(SearchOperation, () => RegistryScan.SearchRegistry(roots, spec, backend));
 
     /// <summary>
-    /// Instrumented <see cref="RegistryScan.SearchRegistry"/> over a spec built inside the instrumented call: Python's
-    /// <c>search_registry</c> coerces <c>int(spec.max_depth)</c>, <c>int(spec.max_hits)</c> and <c>float(spec.time_budget_s)</c> itself,
-    /// so a limit that does not convert counts as a call and an error; the typed <see cref="SearchSpec"/> holds the coerced values, and a
-    /// caller holding raw ones hands their conversion in as <paramref name="spec"/>.
+    /// Instrumented search whose spec is built inside the instrumented call, so a limit that fails to convert counts as an error.
     /// </summary>
     internal static IReadOnlyList<RegistryHit> SearchRegistry(IEnumerable<RegistryRoot> roots, Func<SearchSpec> spec, IRegistryBackend? backend = null)
     {
@@ -47,10 +42,7 @@ public static class RegistryOperations
         return Instrument(SearchOperation, () => RegistryScan.SearchRegistry(roots, spec(), backend));
     }
 
-    /// <summary>
-    /// <c>registry_summary(reset=reset)</c>: one <see cref="RegistryUsageCounters.Snapshot"/> per operation in the order enumerate,
-    /// find roots, search; with <paramref name="reset"/> every counter is cleared after the snapshot is taken.
-    /// </summary>
+    /// <summary>One counter snapshot per operation (enumerate, find roots, search); <paramref name="reset"/> clears them afterwards.</summary>
     public static IReadOnlyList<OrderedDictionary<string, object?>> RegistrySummary(bool reset = false)
     {
         lock (Gate)
@@ -69,8 +61,7 @@ public static class RegistryOperations
     }
 
     /// <summary>
-    /// Null for null, otherwise the Unix time in seconds as a UTC ISO 8601 timestamp (<see cref="IsoTimestamp.Format"/> with "Z" for
-    /// "+00:00"). The fraction is rounded to whole microseconds, ties to even, and left out when it is zero.
+    /// Null for null, otherwise the Unix time as a UTC ISO 8601 timestamp ending "Z"; microseconds rounded ties-to-even, omitted when zero.
     /// </summary>
     public static string? FormatTimestamp(double? value)
     {
@@ -85,7 +76,7 @@ public static class RegistryOperations
         return IsoTimestamp.Format(instant).Replace("+00:00", "Z", StringComparison.Ordinal);
     }
 
-    // time.time(): seconds since the epoch.
+    // Seconds since the Unix epoch.
     private static double WallClock() => (DateTime.UtcNow - DateTime.UnixEpoch).Ticks / (double)TimeSpan.TicksPerSecond;
 
     private static T Instrument<T>(string name, Func<T> operation)
