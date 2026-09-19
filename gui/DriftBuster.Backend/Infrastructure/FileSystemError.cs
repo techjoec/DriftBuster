@@ -4,7 +4,7 @@ namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
 /// File-system failures as the .NET exceptions the runtime raises for them, with the runtime's message wording. The native calls
-/// (<see cref="UnixMkdir"/>, <see cref="UnixFileType"/>) report a POSIX <c>errno</c>; <see cref="Create"/> turns one into the exception
+/// (<see cref="UnixFileType"/>) report a POSIX <c>errno</c>; <see cref="Create"/> turns one into the exception
 /// the runtime would have raised, and <see cref="Errno"/> classifies a runtime exception back into the constants below.
 /// </summary>
 public static class FileSystemError

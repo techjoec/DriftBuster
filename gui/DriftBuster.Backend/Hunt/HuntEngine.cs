@@ -17,14 +17,14 @@ public static partial class HuntEngine
 
     /// <summary>
     /// Searches a root for the given rules. A file root is scanned alone; a directory root is walked with
-    /// <paramref name="glob"/> (<see cref="EnginePath.SortedGlob"/>, symlinked directories not followed). A file is
+    /// <paramref name="glob"/> (<see cref="FilePaths.SortedGlob"/>, symlinked directories not followed). A file is
     /// excluded when an exclusion pattern matches it (<see cref="ShouldExclude"/>).
     /// </summary>
     /// <remarks>
     /// A file that cannot be opened, read or looked up (as for a file inside a directory that cannot be searched) is
-    /// skipped and listed in <see cref="HuntScanResult.UnreadableFiles"/>, as is an entry whose file name the runtime
-    /// cannot decode (<see cref="EnginePath.IsUndecodableName"/>). Only regular files are read
-    /// (<see cref="EnginePath.IsFile"/>): a FIFO, socket or device is skipped.
+    /// skipped and listed in <see cref="HuntScanResult.UnreadableFiles"/>, as is an entry whose name is not valid UTF-8
+    /// (<see cref="FilePaths.IsUndecodableName"/>). Only regular files are read
+    /// (<see cref="FilePaths.IsFile"/>): a FIFO, socket or device is skipped.
     /// <paramref name="cancellationToken"/> is honoured while the tree is walked, between files and between pattern match
     /// attempts; one attempt is bounded by <see cref="PatternRegex.AttemptTimeout"/>, so cancellation is observed within
     /// that limit even for a pattern that backtracks badly, and such a pattern is abandoned rather than counted as an
@@ -60,7 +60,7 @@ public static partial class HuntEngine
 
             try
             {
-                if (!EnginePath.IsFile(candidate))
+                if (!FilePaths.IsFile(candidate))
                 {
                     // An entry whose name the runtime cannot decode (Targets keeps it): it cannot be opened.
                     unreadable.Add(candidate);
@@ -105,13 +105,13 @@ public static partial class HuntEngine
     // nothing. Entries whose names the runtime cannot decode are kept, in walk order, so HuntPath reports them.
     private static (IReadOnlyList<string> Targets, string RootDirectory) Targets(string root, string glob, CancellationToken cancellationToken)
     {
-        if (EnginePath.IsFile(root))
+        if (FilePaths.IsFile(root))
         {
             return ([root], LexicalPath.Parent(root));
         }
 
-        var targets = EnginePath.SortedGlob(root, glob, cancellationToken).Where(IsTarget).ToList();
-        return (targets, Directory.Exists(EnginePath.KernelPath(root)) ? LexicalPath.Str(root) : LexicalPath.Parent(root));
+        var targets = FilePaths.SortedGlob(root, glob, cancellationToken).Where(IsTarget).ToList();
+        return (targets, Directory.Exists(root) ? LexicalPath.Str(root) : LexicalPath.Parent(root));
     }
 
     // c.is_file(), keeping an entry whose name the runtime cannot decode and one whose stat raises (a file inside a directory
@@ -120,7 +120,7 @@ public static partial class HuntEngine
     {
         try
         {
-            return EnginePath.IsFile(candidate) || EnginePath.IsUndecodableName(candidate);
+            return FilePaths.IsFile(candidate) || FilePaths.IsUndecodableName(candidate);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
@@ -135,7 +135,7 @@ public static partial class HuntEngine
     /// </summary>
     internal static string? ReadText(string path, long sampleSize)
     {
-        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var sample = new MemoryStream();
         var buffer = new byte[81920];
         var remaining = sampleSize < 0 ? long.MaxValue : sampleSize;

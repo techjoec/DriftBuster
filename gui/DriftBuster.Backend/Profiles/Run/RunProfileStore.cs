@@ -39,14 +39,8 @@ public static class RunProfileStore
         return builder.ToString();
     }
 
-    /// <summary>A leading <c>~</c> as the home directory, then <c>%VAR%</c> environment variables.</summary>
-    public static string Expand(string path)
-    {
-        ArgumentNullException.ThrowIfNull(path);
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var withHome = string.Equals(path, "~", StringComparison.Ordinal) ? home : path.StartsWith("~/", StringComparison.Ordinal) || path.StartsWith(@"~\", StringComparison.Ordinal) ? home + path[1..] : path;
-        return Environment.ExpandEnvironmentVariables(withHome);
-    }
+    /// <inheritdoc cref="PathExpansion.Expand"/>
+    public static string Expand(string path) => PathExpansion.Expand(path);
 
     public static RunProfileDefinition Load(string profileName, string? baseDir = null)
     {

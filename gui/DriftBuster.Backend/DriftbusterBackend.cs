@@ -294,9 +294,9 @@ namespace DriftBuster.Backend
 
         private static string EnsureFile(string path, bool isBaseline)
         {
-            if (File.Exists(path) && !EnginePath.IsFile(path))
+            if (File.Exists(path) && !FilePaths.IsFile(path))
             {
-                // A FIFO, socket or device: reading it could block forever (EnginePath.IsFile never opens it).
+                // A FIFO, socket or device: reading it could block forever (FilePaths.IsFile never opens it).
                 throw new InvalidOperationException(isBaseline
                     ? $"Baseline path is not a regular file: {path}"
                     : $"Comparison path is not a regular file: {path}");

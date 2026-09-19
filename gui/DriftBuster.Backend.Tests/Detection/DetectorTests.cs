@@ -643,8 +643,6 @@ public sealed class DetectorTests : IDisposable
         detector.IsFile(Path.Combine(root, "rel.conf")).Should().BeTrue();
         detector.IsFile(Path.Combine(root, "loop")).Should().BeFalse();
         detector.IsFile(Path.Combine(root, "ping")).Should().BeFalse();
-        Detector.ResolvePhysicalPath(Path.Combine(root, "rel.conf")).Should().Be(shared);
-        Detector.ResolvePhysicalPath(Path.Combine(root, "loop")).Should().BeNull();
 
         detector.ScanPath(root).Select(entry => Path.GetRelativePath(root, entry.Path).Replace('\\', '/'))
             .Should().Equal("plain.conf", "rel.conf");

@@ -126,7 +126,7 @@ public sealed partial class MultiServerRunner
         OrderedDictionary<string, ConfigRecord> configs,
         CancellationToken cancellationToken)
     {
-        var relative = LexicalPath.RelativeTo(EnginePath.Absolute(path), EnginePath.Absolute(root)) ?? PathText.Name(path);
+        var relative = LexicalPath.RelativeTo(Path.GetFullPath(path), Path.GetFullPath(root)) ?? PathText.Name(path);
         var catalogFormat = match.Metadata.Text("catalog_format");
         var formatId = !string.IsNullOrEmpty(catalogFormat) ? catalogFormat
             : string.IsNullOrEmpty(match.FormatName) ? "unknown" : match.FormatName;
@@ -183,7 +183,7 @@ public sealed partial class MultiServerRunner
     {
         try
         {
-            return EnginePath.IsFile(path);
+            return FilePaths.IsFile(path);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {
@@ -191,10 +191,10 @@ public sealed partial class MultiServerRunner
         }
     }
 
-    /// <summary>SHA-1 of the sorted, physically resolved roots joined by "|" (a ".." after a symlink steps to the target's parent).</summary>
+    /// <summary>SHA-1 of the sorted full roots (a root that is a link as its target) joined by "|".</summary>
     internal static string RootFingerprint(IReadOnlyList<string> roots)
     {
-        var resolved = roots.Select(root => EnginePath.ResolvePhysicalPath(EnginePath.Absolute(root)) ?? Path.GetFullPath(root)).ToList();
+        var resolved = roots.Select(FilePaths.ResolveLinks).ToList();
         resolved.Sort(PathText.CompareCodePoints);
         return MultiServerPlan.Sha1Hex(string.Join('|', resolved));
     }
@@ -205,7 +205,7 @@ public sealed partial class MultiServerRunner
     /// </summary>
     internal static string ReadText(string path, long maxBytes = DefaultMaxTextBytes)
     {
-        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         if (stream.Length > maxBytes)
         {
             throw new IOException($"File is larger than the {maxBytes} bytes the scan reads whole: '{path}'");

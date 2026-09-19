@@ -9,12 +9,12 @@ namespace DriftBuster.Cli.Commands;
 internal static class TextModeFile
 {
     public static string ReadText(string path)
-        => EngineTextFile.ReadUtf8Text(path).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 
     public static void WriteText(string path, string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        EngineTextFile.WriteText(path, OperatingSystem.IsWindows() ? text.Replace("\n", "\r\n", StringComparison.Ordinal) : text);
+        File.WriteAllText(path, OperatingSystem.IsWindows() ? text.Replace("\n", "\r\n", StringComparison.Ordinal) : text);
     }
 
     /// <summary>The entry, followed through links, is a file or a directory.</summary>

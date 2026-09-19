@@ -48,7 +48,7 @@ internal static class ScanCommand
         {
             OnSkipped = (_, error) => Warn($"Skipped unreadable file: {error.Message}"),
         };
-        if (EnginePath.IsFile(root))
+        if (FilePaths.IsFile(root))
         {
             results = [(root, detector.ScanFile(root))];
         }
@@ -81,7 +81,7 @@ internal static class ScanCommand
     /// </summary>
     internal static string RelativePath(string root, string path)
         => LexicalPath.RelativeTo(path, root)
-            ?? (LexicalPath.IsAbsolute(path) && !LexicalPath.IsAbsolute(root) ? LexicalPath.RelativeTo(path, EnginePath.Absolute(root)) : null)
+            ?? (LexicalPath.IsAbsolute(path) && !LexicalPath.IsAbsolute(root) ? LexicalPath.RelativeTo(path, Path.GetFullPath(root)) : null)
             ?? PathText.ToPosix(LexicalPath.Str(path));
 
     /// <summary>Truncated with an ellipsis to <paramref name="limit"/> code points.</summary>

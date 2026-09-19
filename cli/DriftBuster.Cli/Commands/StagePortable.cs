@@ -47,7 +47,7 @@ internal static partial class StagePortable
         var zipPath = ZipBundle(bundleDir);
         var shaPath = WriteSha256(zipPath);
 
-        var stageDir = EnginePath.ExpandUser(LexicalPath.Str(options.StageDir));
+        var stageDir = PathExpansion.Expand(LexicalPath.Str(options.StageDir));
         StageBundle(bundleDir, stageDir);
 
         ConsoleText.Print(stdout, "\nPortable debug bundle ready:");

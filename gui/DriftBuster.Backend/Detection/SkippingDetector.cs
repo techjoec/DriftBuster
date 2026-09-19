@@ -51,5 +51,5 @@ public sealed class SkippingDetector(int? sampleSize, long maxTotalSampleBytes, 
     }
 
     protected internal override IReadOnlyList<string> EnumerateFiles(string root, string glob)
-        => EnginePath.SortedGlob(root, glob, CancellationToken).Select(EnginePath.Absolute).ToList();
+        => FilePaths.SortedGlob(root, glob, CancellationToken).Select(Path.GetFullPath).ToList();
 }

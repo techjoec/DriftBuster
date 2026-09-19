@@ -93,8 +93,8 @@ internal static class DiffCommand
         string? outputDir = null;
         if (args.OutputDir is not null)
         {
-            outputDir = EnginePath.Resolve(EnginePath.ExpandUser(args.OutputDir));
-            EnginePath.MakeDirectories(outputDir);
+            outputDir = Path.GetFullPath(PathExpansion.Expand(args.OutputDir));
+            Directory.CreateDirectory(outputDir);
         }
 
         var exitCode = 0;
@@ -137,7 +137,7 @@ internal static class DiffCommand
         {
             var destination = LexicalPath.Join(outputDir, PatchName(baselinePath, candidatePath));
             var text = result.Diff.EndsWith('\n') ? result.Diff : result.Diff + "\n";
-            EngineTextFile.WriteText(destination, text.ReplaceLineEndings());
+            File.WriteAllText(destination, text.ReplaceLineEndings());
             ConsoleText.Write(stdout, $"Wrote diff for {PathText.Name(candidatePath)} to {destination}\n");
         }
         else
@@ -153,10 +153,10 @@ internal static class DiffCommand
     // Home expanded and resolved; must exist and be a file.
     private static string EnsureFile(string path, string role, out string? refusal)
     {
-        var resolved = EnginePath.Resolve(EnginePath.ExpandUser(path));
+        var resolved = Path.GetFullPath(PathExpansion.Expand(path));
         refusal = !RunProfileStore.Exists(resolved)
             ? $"{role} does not exist: {resolved}"
-            : !EnginePath.IsFile(resolved) ? $"{role} must be a file: {resolved}" : null;
+            : !FilePaths.IsFile(resolved) ? $"{role} must be a file: {resolved}" : null;
         return resolved;
     }
 
@@ -169,7 +169,7 @@ internal static class DiffCommand
         byte[] raw;
         try
         {
-            raw = EngineTextFile.ReadBytes(path, LexicalPath.Str(path));
+            raw = File.ReadAllBytes(path);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {

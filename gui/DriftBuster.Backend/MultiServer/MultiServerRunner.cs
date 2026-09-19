@@ -167,7 +167,7 @@ public sealed partial class MultiServerRunner
 
     // Skipped files as paths relative to the root that holds them, the form records use.
     private static string[] RelativeToRoots(IReadOnlyList<string> paths, IReadOnlyList<string> roots) =>
-        paths.Select(path => roots.Select(root => LexicalPath.RelativeTo(EnginePath.Absolute(path), EnginePath.Absolute(root))).FirstOrDefault(relative => relative is not null) ?? PathText.Name(path))
+        paths.Select(path => roots.Select(root => LexicalPath.RelativeTo(Path.GetFullPath(path), Path.GetFullPath(root))).FirstOrDefault(relative => relative is not null) ?? PathText.Name(path))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -194,15 +194,9 @@ public sealed partial class MultiServerRunner
         return TimeSpan.FromTicks((timeout + 99) / 100);
     }
 
-    // Exists after following links. A refused lookup counts as existing, so the scan reports permission_denied. A root with an unpaired
-    // surrogate is not found, since the runtime would look up its U+FFFD spelling.
+    // Exists after following links. A refused lookup counts as existing, so the scan reports permission_denied.
     private static bool RootExists(string root)
     {
-        if (EngineUtf8.HasUnpairedSurrogate(root))
-        {
-            return false;
-        }
-
         try
         {
             if (UnixFileType.Stat(root, followSymlinks: true) is { } kind)
@@ -210,7 +204,7 @@ public sealed partial class MultiServerRunner
                 return kind != UnixFileType.Kind.Missing;
             }
 
-            return File.Exists(EnginePath.KernelPath(root)) || Directory.Exists(EnginePath.KernelPath(root));
+            return File.Exists(root) || Directory.Exists(root);
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {

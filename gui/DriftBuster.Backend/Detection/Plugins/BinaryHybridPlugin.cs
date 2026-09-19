@@ -61,7 +61,6 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
     /// </summary>
     internal static int? CountSqliteTables(string path)
     {
-        path = EnginePath.KernelPath(path);
         if (!File.Exists(path))
         {
             return null;

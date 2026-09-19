@@ -16,7 +16,7 @@ public static partial class SecretScanner
     {
         try
         {
-            using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var buffer = new byte[1024];
             var total = 0;
             int read;
@@ -36,7 +36,7 @@ public static partial class SecretScanner
     /// <summary>The SHA-256 of the file as lower-case hex.</summary>
     public static string HashFile(string path)
     {
-        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
@@ -268,7 +268,7 @@ public static partial class SecretScanner
     // keeping its \n.
     private static IEnumerable<string> ReadUniversalLines(string path)
     {
-        using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new StreamReader(stream, ReplacingUtf8, detectEncodingFromByteOrderMarks: false, bufferSize: 1 << 16);
         var buffer = new char[1 << 16];
         var line = new StringBuilder();
@@ -327,7 +327,7 @@ public static partial class SecretScanner
     /// <summary>A verbatim copy with timestamps and permissions, then the destination's size and SHA-256.</summary>
     internal static (long Size, string Sha256) CopyVerbatim(string source, string destination)
     {
-        File.Copy(EnginePath.KernelPath(source), destination, overwrite: true);
+        File.Copy(source, destination, overwrite: true);
         CopyStat(source, destination);
         return (new FileInfo(destination).Length, HashFile(destination));
     }
@@ -339,11 +339,11 @@ public static partial class SecretScanner
         {
             if (!OperatingSystem.IsWindows())
             {
-                File.SetUnixFileMode(destination, File.GetUnixFileMode(EnginePath.KernelPath(source)));
+                File.SetUnixFileMode(destination, File.GetUnixFileMode(source));
             }
 
-            File.SetLastAccessTimeUtc(destination, File.GetLastAccessTimeUtc(EnginePath.KernelPath(source)));
-            File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(EnginePath.KernelPath(source)));
+            File.SetLastAccessTimeUtc(destination, File.GetLastAccessTimeUtc(source));
+            File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(source));
         }
         catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
         {

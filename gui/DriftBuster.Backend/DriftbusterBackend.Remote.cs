@@ -147,7 +147,7 @@ public sealed partial class DriftbusterBackend
         var content = writer.ToString();
         if (!string.IsNullOrWhiteSpace(request.OutputPath))
         {
-            EngineTextFile.WriteBytes(request.OutputPath, ReportEncoding.GetBytes(content.ReplaceLineEndings()));
+            File.WriteAllBytes(request.OutputPath, ReportEncoding.GetBytes(content.ReplaceLineEndings()));
         }
 
         return new ReportResult

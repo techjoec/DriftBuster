@@ -134,16 +134,14 @@ public class Detector
     }
 
     /// <summary>Opens the file whose first bytes are sampled; overridable for fault injection.</summary>
-    protected internal virtual Stream OpenFile(string path) => new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+    protected internal virtual Stream OpenFile(string path) => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
 
-    /// <summary><see cref="EnginePath.IsFile"/>; overridable for fault injection.</summary>
-    protected internal virtual bool IsFile(string path) => EnginePath.IsFile(path);
-
-    internal static string? ResolvePhysicalPath(string fullPath) => EnginePath.ResolvePhysicalPath(fullPath);
+    /// <summary><see cref="FilePaths.IsFile"/>; overridable for fault injection.</summary>
+    protected internal virtual bool IsFile(string path) => FilePaths.IsFile(path);
 
     /// <summary>Absolute paths (".." kept) of the sorted glob matches under <paramref name="root"/>; overridable for fault injection.</summary>
     protected internal virtual IReadOnlyList<string> EnumerateFiles(string root, string glob)
-        => EnginePath.SortedGlob(root, glob).Select(EnginePath.Absolute).ToList();
+        => FilePaths.SortedGlob(root, glob).Select(Path.GetFullPath).ToList();
 
     private byte[] ReadSample(string path, int readSize)
     {
@@ -303,7 +301,7 @@ public class Detector
                 return results;
             }
 
-            if (!Directory.Exists(EnginePath.KernelPath(root)))
+            if (!Directory.Exists(root))
             {
                 throw new FileNotFoundException($"Path does not exist: {root}", root);
             }
@@ -343,9 +341,8 @@ public class Detector
             {
                 if (!IsFile(path))
                 {
-                    if (EnginePath.IsUndecodableName(path))
+                    if (FilePaths.IsUndecodableName(path))
                     {
-                        // The runtime cannot name the file, so the entry is reported.
                         HandleError(path, new DetectorIOException(path, "File name is not valid UTF-8; the entry cannot be opened"));
                     }
 
@@ -386,7 +383,7 @@ public class Detector
         var normalizedTags = (tags ?? []).OfType<string>().Select(tag => tag.Trim()).Where(tag => tag.Length > 0).ToHashSet(StringComparer.Ordinal);
         var scanResults = ScanPath(root, glob);
         var profiled = new List<ProfiledDetection>();
-        var rootIsDir = Directory.Exists(EnginePath.KernelPath(root));
+        var rootIsDir = Directory.Exists(root);
 
         foreach (var (path, detection) in scanResults)
         {

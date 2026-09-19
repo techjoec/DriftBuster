@@ -66,7 +66,7 @@ public sealed record MultiServerPlan
             var text = entry.Trim();
             if (text.Length > 0)
             {
-                roots.Add(EngineOsPath.ExpandUser(EngineOsPath.ExpandVars(text)));
+                roots.Add(PathExpansion.Expand(text));
             }
         }
 

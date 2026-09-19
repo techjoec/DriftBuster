@@ -132,7 +132,7 @@ public sealed class RunProfileExecutor(string? baseDir = null, TimeProvider? tim
             return [.. found.Select(Path.GetFullPath).Where(path => !IsInside(path, profilesRoot)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
         }
 
-        private bool IsCollectable(string path) => EnginePath.IsFile(path) && !IsLink(path) && !IsInside(Path.GetFullPath(path), profilesRoot);
+        private bool IsCollectable(string path) => FilePaths.IsFile(path) && !IsLink(path) && !IsInside(Path.GetFullPath(path), profilesRoot);
 
         private void Copy(string file, string basePath, CancellationToken cancellationToken)
         {
