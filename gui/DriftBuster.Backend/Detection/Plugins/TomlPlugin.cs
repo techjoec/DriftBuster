@@ -65,7 +65,7 @@ public sealed partial class TomlPlugin : IFormatPlugin
 
     public int Priority => 165;
 
-    public string Version => "0.0.3";
+    public string Version => "0.0.4";
 
     private sealed record Signals(
         bool HasArrayTables,
@@ -116,7 +116,7 @@ public sealed partial class TomlPlugin : IFormatPlugin
             return null;
         }
 
-        return BuildMatch(text, isTomlExtension, signals, reasons);
+        return BuildMatch(path, text, isTomlExtension, signals, reasons);
     }
 
     private static void AddSignalReasons(List<string> reasons, Signals signals)
@@ -152,9 +152,69 @@ public sealed partial class TomlPlugin : IFormatPlugin
         }
     }
 
-    private DetectionMatch BuildMatch(string text, bool isTomlExtension, Signals signals, List<string> reasons)
+    private static readonly HashSet<string> ManifestTables = new(StringComparer.Ordinal) { "package", "project", "build-system", "tool.poetry" };
+
+    // Tool configuration files named by their tool's documentation.
+    private static readonly HashSet<string> SettingsFileNames = new(StringComparer.Ordinal)
     {
-        var variant = signals.HasArrayTables ? "array-of-tables" : "generic";
+        "rustfmt.toml", ".rustfmt.toml", "ruff.toml", ".ruff.toml", "netlify.toml", "taplo.toml", ".taplo.toml",
+        "clippy.toml", ".clippy.toml", "deny.toml", "rust-toolchain.toml", "typos.toml", "_typos.toml",
+    };
+
+    /// <summary>
+    /// <c>package-manifest-toml</c> for Cargo.toml or a file with <c>[package]</c>, <c>[project]</c>, <c>[build-system]</c> or
+    /// <c>[tool.poetry]</c> (or <c>[tool.poetry.*]</c>) tables; <c>project-settings-toml</c> for a known tool configuration file name, <c>.cargo/config.toml</c>,
+    /// or a file whose tables are all <c>[tool.*]</c>; otherwise <c>array-of-tables</c> or <c>generic</c>.
+    /// </summary>
+    private static string ChooseVariant(string path, string text, Signals signals, List<string> reasons)
+    {
+        var tables = TableNames(text);
+        var name = PathText.NameLower(path);
+        if (string.Equals(name, "cargo.toml", StringComparison.Ordinal)
+            || tables.Any(table => ManifestTables.Contains(table) || table.StartsWith("tool.poetry.", StringComparison.Ordinal)))
+        {
+            reasons.Add("Found package manifest tables or file name");
+            return "package-manifest-toml";
+        }
+
+        var inCargoFolder = string.Equals(EngineText.Lower(PathText.Name(LexicalPath.Parent(path))), ".cargo", StringComparison.Ordinal);
+        var toolTablesOnly = tables.Count > 0 && tables.All(table => table.StartsWith("tool.", StringComparison.Ordinal));
+        if (SettingsFileNames.Contains(name) || (inCargoFolder && string.Equals(name, "config.toml", StringComparison.Ordinal)) || toolTablesOnly)
+        {
+            reasons.Add("Found tool settings tables or file name");
+            return "project-settings-toml";
+        }
+
+        return signals.HasArrayTables ? "array-of-tables" : "generic";
+    }
+
+    // The [table] and [[table]] names, in file order, read line by line.
+    private static List<string> TableNames(string text)
+    {
+        var names = new List<string>();
+        foreach (var raw in TextLines.SplitLines(text))
+        {
+            var line = raw.Trim();
+            if (line.Length < 3 || line[0] != '[')
+            {
+                continue;
+            }
+
+            var inner = line.StartsWith("[[", StringComparison.Ordinal) && line.EndsWith("]]", StringComparison.Ordinal)
+                ? line[2..^2]
+                : line.EndsWith(']') ? line[1..^1] : null;
+            if (inner is not null && inner.Trim().Length > 0)
+            {
+                names.Add(inner.Trim().Trim('"'));
+            }
+        }
+
+        return names;
+    }
+
+    private DetectionMatch BuildMatch(string path, string text, bool isTomlExtension, Signals signals, List<string> reasons)
+    {
+        var variant = ChooseVariant(path, text, signals, reasons);
         var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
         var reviewReasons = new List<string>();
 

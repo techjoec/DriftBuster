@@ -100,7 +100,9 @@ public sealed class TomlPluginTests
             "Detected key = value assignments",
             "Found quoted value assignments",
             "Found array value assignments",
-            "Found inline table assignments");
+            "Found inline table assignments",
+            "Found package manifest tables or file name");
+        match.Variant.Should().Be("package-manifest-toml");
         AssertOneSpaceProfile(match);
         match.Metadata!.Keys.Should().Equal("key_value_spacing");
     }
@@ -141,5 +143,19 @@ public sealed class TomlPluginTests
             "Found array value assignments");
         Spacing(match)["before"].Should().Be(1);
         Spacing(match)["after"].Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("Cargo.toml", "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[dependencies]\nserde = \"1\"\n", "package-manifest-toml")]
+    [InlineData("pyproject.toml", "[project]\nname = \"app\"\ndependencies = [\"requests\"]\n", "package-manifest-toml")]
+    [InlineData("pyproject.toml", "[build-system]\nrequires = [\"hatchling\"]\n", "package-manifest-toml")]
+    [InlineData("pyproject.toml", "[tool.ruff]\nline-length = 120\n\n[tool.ruff.lint]\nselect = [\"E\"]\n", "project-settings-toml")]
+    [InlineData("rustfmt.toml", "max_width = 100\nedition = \"2021\"\n", "project-settings-toml")]
+    [InlineData(".cargo/config.toml", "[build]\ntarget = \"x86_64\"\n", "project-settings-toml")]
+    [InlineData("app.toml", "[server]\nhost = \"a\"\n\n[[plugin]]\nname = \"x\"\n", "array-of-tables")]
+    [InlineData("app.toml", "[server]\nhost = \"a\"\nports = [1, 2]\n", "generic")]
+    public void VariantFollowsTheManifestOrToolTables(string name, string content, string variant)
+    {
+        Detect(name, content)!.Variant.Should().Be(variant);
     }
 }
