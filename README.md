@@ -22,7 +22,9 @@ plus a standalone offline collector script for Windows hosts.
   setting, what each server has that the baseline does not: one plain line per
   server, then a table per file with a column per server.
 - **Windows Registry live scans** – enumerate apps, suggest likely registry
-  roots, and search values by keyword/regex (see `docs/registry.md`).
+  roots, and search values by keyword/regex, locally or on remote hosts over
+  WinRM from the offline runner (see `docs/registry.md`). Registry Editor
+  exports (`.reg`) are detected and compared value by value.
 - **Self-contained releases** – published builds carry the .NET runtime, so
   nothing has to be installed on the target machine.
 
@@ -205,8 +207,8 @@ as above and re-import with `Import-Module ./cli/DriftBuster.PowerShell/DriftBus
 
 ### Offline runner
 
-`scripts/driftbuster-offline-runner.ps1` collects files, registry scans and
-SQLite snapshots on a host with no network access and nothing installed. It runs
+`scripts/driftbuster-offline-runner.ps1` collects files, registry scans (local, or
+remote hosts over WinRM) and SQLite snapshots with nothing installed. It runs
 on Windows PowerShell 5.1 (and PowerShell 7), scrubs secret candidates, writes a
 manifest and log, zips the result and can encrypt it (`docs/encryption.md`).
 

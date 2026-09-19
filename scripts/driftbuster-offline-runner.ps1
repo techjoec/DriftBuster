@@ -6385,10 +6385,30 @@ function Open-DbRegistryKey {
     }
 }
 
+# A remote host's registry as read over WinRM (Get-DbRemoteRegistrySnapshot); while set, the registry readers below answer from
+# it instead of the local registry, so root discovery and the search run unchanged against a remote host.
+$script:DbRegistrySnapshot = $null
+
+function Get-DbRegistrySnapshotKey {
+    [CmdletBinding()]
+    param([string] $Hive, [string] $Path, $View)
+
+    return "$Hive`n$Path`n$([string]$View)"
+}
+
 function Get-DbRegistrySubkey {
     # backend.enum_subkeys(hive, path, view)
     [CmdletBinding()]
     param([string] $Hive, [string] $Path, $View)
+
+    if ($null -ne $script:DbRegistrySnapshot) {
+        $node = $null
+        if ($script:DbRegistrySnapshot.TryGetValue((Get-DbRegistrySnapshotKey -Hive $Hive -Path $Path -View $View), [ref]$node)) {
+            return , @($node.subkeys)
+        }
+
+        return , @()
+    }
 
     $key = Open-DbRegistryKey -Hive $Hive -Path $Path -View $View
     if ($null -eq $key) {
@@ -6444,6 +6464,17 @@ function Get-DbRegistryValue {
     param([string] $Hive, [string] $Path, $View)
 
     $values = [System.Collections.Generic.List[object]]::new()
+    if ($null -ne $script:DbRegistrySnapshot) {
+        $node = $null
+        if ($script:DbRegistrySnapshot.TryGetValue((Get-DbRegistrySnapshotKey -Hive $Hive -Path $Path -View $View), [ref]$node)) {
+            foreach ($value in $node.values) {
+                $values.Add($value)
+            }
+        }
+
+        return , $values
+    }
+
     $key = Open-DbRegistryKey -Hive $Hive -Path $Path -View $View
     if ($null -eq $key) {
         return , $values
@@ -6491,24 +6522,29 @@ function Get-DbRegistryTruthyText {
     return $null
 }
 
+function Get-DbInstalledAppProbe {
+    # The uninstall keys enumerate_installed_apps reads, as registry roots.
+    [CmdletBinding()]
+    param()
+
+    $uninstall = 'Software\Microsoft\Windows\CurrentVersion\Uninstall'
+    return , @(
+        [pscustomobject]@{ hive = 'HKLM'; path = $uninstall; view = '64' },
+        [pscustomobject]@{ hive = 'HKLM'; path = 'Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'; view = '32' },
+        [pscustomobject]@{ hive = 'HKCU'; path = $uninstall; view = $null }
+    )
+}
+
 function Get-DbInstalledApp {
     # enumerate_installed_apps()
     [CmdletBinding()]
     param()
 
-    $uninstall = 'Software\Microsoft\Windows\CurrentVersion\Uninstall'
-    $uninstallWow = 'Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
-    $probes = @(
-        @('HKLM', $uninstall, '64'),
-        @('HKLM', $uninstallWow, '32'),
-        @('HKCU', $uninstall, $null)
-    )
-
     $apps = [System.Collections.Generic.List[object]]::new()
-    foreach ($probe in $probes) {
-        $hive = $probe[0]
-        $base = $probe[1]
-        $view = $probe[2]
+    foreach ($probe in (Get-DbInstalledAppProbe)) {
+        $hive = $probe.hive
+        $base = $probe.path
+        $view = $probe.view
         foreach ($subkey in (Get-DbRegistrySubkey -Hive $hive -Path $base -View $view)) {
             $keyPath = "$base\$subkey"
             $values = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
@@ -6670,6 +6706,9 @@ function Search-DbRegistry {
     }
 
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    # Roots that differ only in view can reach the same key twice; a hit with the same hive, path, name and data is reported
+    # once. Path and name compare case-insensitively, as the registry does.
+    $reported = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     while ($queue.Count -gt 0 -and [long]$hits.Count -lt $maxHits -and $clock.Elapsed.TotalSeconds -lt $budget) {
         $key = $queue.Dequeue()
         if (-not $seen.Add("$($key.hive)`n$($key.path)`n$([Engine]::Repr($key.view))")) {
@@ -6719,11 +6758,16 @@ function Search-DbRegistry {
                 }
             }
 
+            $preview = [EngineText]::CodePointPrefix($text, 120)
+            if (-not $reported.Add("$($key.hive)`n$($key.path.ToUpperInvariant())`n$($name.ToUpperInvariant())`n$preview")) {
+                continue
+            }
+
             $hits.Add([pscustomobject]@{
                     path         = $key.path
                     hive         = $key.hive
                     value_name   = $name
-                    data_preview = [EngineText]::CodePointPrefix($text, 120)
+                    data_preview = $preview
                     reason       = 'keyword/pattern match'
                 })
             if ([long]$hits.Count -ge $maxHits) {
@@ -6760,54 +6804,254 @@ function ConvertTo-DbRegistryPattern {
     }
 }
 
-function Invoke-DbRegistryScanSource {
-    # The registry_scan branch of a config run: the manifest summary, and the collected file when one was written.
+# Runs on the remote host in its Windows PowerShell 5.1 endpoint: reads the keys under each root breadth first, the way
+# Search-DbRegistry walks them, within the depth, time and key limits, and returns each key's subkey names and raw values.
+# Matching happens locally against the returned snapshot. Only .NET Framework and core cmdlets are used, so nothing is
+# installed on the remote host.
+$script:DbRemoteRegistryDump = {
+    param($Request)
+
+    $clock = [System.Diagnostics.Stopwatch]::StartNew()
+    $queue = [System.Collections.Generic.Queue[object]]::new()
+    foreach ($root in @($Request.roots)) {
+        $queue.Enqueue(@{ hive = $root.hive; path = $root.path; view = $root.view; depth = 0 })
+    }
+
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $nodes = [System.Collections.Generic.List[object]]::new()
+    $truncated = $false
+    while ($queue.Count -gt 0) {
+        if ($clock.Elapsed.TotalSeconds -ge $Request.budget_s -or $nodes.Count -ge $Request.max_keys) {
+            $truncated = $true
+            break
+        }
+
+        $item = $queue.Dequeue()
+        if (-not $seen.Add("$($item.hive)`n$($item.path)`n$([string]$item.view)")) {
+            continue
+        }
+
+        $hive = $(if ($item.hive -ceq 'HKCU') { [Microsoft.Win32.RegistryHive]::CurrentUser } else { [Microsoft.Win32.RegistryHive]::LocalMachine })
+        $view = [Microsoft.Win32.RegistryView]::Default
+        if ($item.view -ceq '64') { $view = [Microsoft.Win32.RegistryView]::Registry64 }
+        elseif ($item.view -ceq '32') { $view = [Microsoft.Win32.RegistryView]::Registry32 }
+
+        $subkeys = @()
+        $values = [System.Collections.Generic.List[object]]::new()
+        $key = $null
+        try {
+            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey($hive, $view)
+            $key = $(if ($item.path.Length -eq 0) { $base } else { $base.OpenSubKey($item.path, $false) })
+        }
+        catch {
+            $key = $null
+        }
+
+        if ($null -ne $key) {
+            try {
+                $subkeys = @($key.GetSubKeyNames())
+                foreach ($name in $key.GetValueNames()) {
+                    try {
+                        $kind = $key.GetValueKind($name)
+                        $data = $key.GetValue($name, $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+                    }
+                    catch {
+                        break
+                    }
+
+                    if ($kind -eq [Microsoft.Win32.RegistryValueKind]::Unknown -or $kind -eq [Microsoft.Win32.RegistryValueKind]::None) {
+                        $kind = [Microsoft.Win32.RegistryValueKind]::Binary
+                        if ($data -isnot [byte[]]) { $data = $null }
+                    }
+
+                    $values.Add(@{ name = $name; kind = [string]$kind; data = $data })
+                }
+            }
+            catch {
+                $subkeys = @()
+            }
+            finally {
+                $key.Dispose()
+            }
+        }
+
+        $nodes.Add(@{ hive = $item.hive; path = $item.path; view = $item.view; subkeys = [string[]]$subkeys; values = $values.ToArray() })
+        if ($item.depth -lt $Request.max_depth) {
+            foreach ($child in $subkeys) {
+                $queue.Enqueue(@{ hive = $item.hive; path = "$($item.path)\$child"; view = $item.view; depth = $item.depth + 1 })
+            }
+        }
+    }
+
+    return @{ nodes = $nodes.ToArray(); truncated = $truncated }
+}
+
+# The most keys one remote read returns; a larger tree is cut short and the manifest says so.
+$script:DbRemoteRegistryMaxKeys = 20000
+
+function Get-DbRemoteRegistryCredential {
+    # The credential a remote target connects with: username plus the password in the password_env variable, or a
+    # PSCredential saved with Export-Clixml (DPAPI, readable only by the same user on the same machine) at credential_profile,
+    # relative to the base directory. $null connects as the current user.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] $Target, $BaseDir)
+
+    if ($null -ne $Target.password_env -and $null -ne $Target.credential_profile) {
+        throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): use password_env or credential_profile, not both")
+    }
+
+    if ($null -ne $Target.credential_profile) {
+        $profilePath = $Target.credential_profile
+        if ($null -ne $BaseDir -and -not [EnginePath]::IsAbsolute($profilePath)) {
+            $profilePath = [EnginePath]::Join($BaseDir, $profilePath)
+        }
+
+        $profilePath = [EngineOs]::Abs($profilePath)
+        $credential = Import-Clixml -LiteralPath $profilePath
+        if ($credential -isnot [System.Management.Automation.PSCredential]) {
+            throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): credential_profile '$($Target.credential_profile)' does not hold a PSCredential")
+        }
+
+        return $credential
+    }
+
+    if ($null -ne $Target.password_env) {
+        if ($null -eq $Target.username) {
+            throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): password_env needs a username")
+        }
+
+        $password = [System.Environment]::GetEnvironmentVariable($Target.password_env)
+        if ([string]::IsNullOrEmpty($password)) {
+            throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): environment variable $($Target.password_env) is not set")
+        }
+
+        $secure = [System.Security.SecureString]::new()
+        foreach ($character in $password.ToCharArray()) {
+            $secure.AppendChar($character)
+        }
+
+        $secure.MakeReadOnly()
+        return [System.Management.Automation.PSCredential]::new($Target.username, $secure)
+    }
+
+    if ($null -ne $Target.username) {
+        throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): username needs password_env or credential_profile")
+    }
+
+    return $null
+}
+
+function Open-DbRemoteRegistrySession {
+    # A WinRM session to the target's default Windows PowerShell endpoint.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] $Target, $BaseDir)
+
+    if ($Target.transport -cne 'winrm') {
+        throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): transport '$($Target.transport)' is not supported; use winrm")
+    }
+
+    $parameters = @{ ComputerName = $Target.host; ErrorAction = 'Stop' }
+    if ($null -ne $Target.port) {
+        $parameters.Port = [int]$Target.port
+    }
+
+    if ($Target.use_ssl -eq $true) {
+        $parameters.UseSSL = $true
+    }
+
+    $credential = Get-DbRemoteRegistryCredential -Target $Target -BaseDir $BaseDir
+    if ($null -ne $credential) {
+        $parameters.Credential = $credential
+    }
+
+    return New-PSSession @parameters
+}
+
+function Invoke-DbRemoteRegistryDump {
+    # Runs the registry dump on the session's host.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] $Session, [Parameter(Mandatory = $true)] $Request)
+
+    return Invoke-Command -Session $Session -ScriptBlock $script:DbRemoteRegistryDump -ArgumentList $Request -ErrorAction Stop
+}
+
+function Close-DbRemoteRegistrySession {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] $Session)
+
+    Remove-PSSession -Session $Session -ErrorAction SilentlyContinue
+}
+
+function Get-DbRemoteRegistrySnapshot {
+    # Reads Roots on the session's host and returns them keyed for the registry readers, merged into Snapshot when given.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] $Session,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()] $Roots,
+        [Parameter(Mandatory = $true)] $MaxDepth,
+        [Parameter(Mandatory = $true)][double] $BudgetSeconds,
+        $Snapshot
+    )
+
+    $request = @{
+        roots     = @($Roots | ForEach-Object { @{ hive = $_.hive; path = $_.path; view = $_.view } })
+        max_depth = [long][System.Numerics.BigInteger]::Min([System.Numerics.BigInteger]::new([long]::MaxValue), [System.Numerics.BigInteger]::Max([System.Numerics.BigInteger]::Zero, [Engine]::Int($MaxDepth)))
+        budget_s  = [Math]::Max(0.1, $BudgetSeconds)
+        max_keys  = $script:DbRemoteRegistryMaxKeys
+    }
+    $reply = Invoke-DbRemoteRegistryDump -Session $Session -Request $request
+    if ($null -eq $Snapshot) {
+        $Snapshot = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
+    }
+
+    foreach ($node in @($reply.nodes)) {
+        $values = [System.Collections.Generic.List[object]]::new()
+        foreach ($value in @($node.values)) {
+            $kind = [Microsoft.Win32.RegistryValueKind]([string]$value.kind)
+            $values.Add([pscustomobject]@{ Name = [string]$value.name; Data = (ConvertFrom-DbRegistryData -Data $value.data -Kind $kind) })
+        }
+
+        $key = Get-DbRegistrySnapshotKey -Hive $node.hive -Path $node.path -View $node.view
+        $Snapshot[$key] = [pscustomobject]@{ subkeys = [string[]]@($node.subkeys); values = $values.ToArray() }
+    }
+
+    return [pscustomobject]@{ Snapshot = $Snapshot; Truncated = [bool]$reply.truncated }
+}
+
+function Get-DbRegistryScanTargetLabel {
+    # The target's alias, or its host, with anything that cannot sit in a file name replaced by "_".
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] $Target)
+
+    $label = $(if ($null -ne $Target.alias) { $Target.alias } else { $Target.host })
+    return [regex]::Replace($label, '[^A-Za-z0-9._-]', '_')
+}
+
+function Write-DbRegistryScanResult {
+    # Writes one registry_scan result file and returns the manifest file entry for it.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)] $Source,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()] $Roots,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()] $Hits,
+        [Parameter(Mandatory = $true)][string] $Path,
         [Parameter(Mandatory = $true)][string] $Alias,
-        [Parameter(Mandatory = $true)][string] $DestinationRoot,
-        [Parameter(Mandatory = $true)] $Log
+        $Target
     )
-
-    $summary = Get-DbOrderedMap
-    $summary['type'] = 'registry_scan'
-    $summary['token'] = $Source.token
-    $summary['keywords'] = [string[]]@($Source.keywords)
-    $summary['patterns'] = [string[]]@($Source.patterns)
-    if (-not (Test-DbWindowsPlatform)) {
-        $Log.Write('registry scan skipped: non-Windows platform')
-        $summary['skipped'] = $true
-        $summary['reason'] = 'not-windows'
-        return [pscustomobject]@{ Summary = $summary; File = $null }
-    }
-
-    $Log.Write("registry scan started for token: $($Source.token)")
-    if (@($Source.roots).Count -gt 0) {
-        $roots = @($Source.roots)
-    }
-    else {
-        $apps = Get-DbInstalledApp
-        $roots = Get-DbAppRegistryRoot -Token $Source.token -Installed $apps
-    }
-
-    $spec = [pscustomobject]@{
-        keywords      = @($Source.keywords)
-        patterns      = @($Source.patterns | ForEach-Object { ConvertTo-DbRegistryPattern $_ })
-        max_depth     = $Source.max_depth
-        max_hits      = $Source.max_hits
-        time_budget_s = $Source.time_budget_s
-    }
-    $hits = Search-DbRegistry -Roots $roots -Spec $spec
 
     $rootPayload = { param($root) $entry = Get-DbOrderedMap; $entry['hive'] = $root.hive; $entry['path'] = $root.path; $entry['view'] = $root.view; , $entry }
     $payload = Get-DbOrderedMap
     $payload['token'] = $Source.token
+    if ($null -ne $Target) {
+        $payload['host'] = $Target.host
+        $payload['alias'] = $Target.alias
+    }
+
     $payload['keywords'] = [string[]]@($Source.keywords)
     $payload['patterns'] = [string[]]@($Source.patterns)
-    $payload['roots'] = [object[]]@($roots | ForEach-Object { & $rootPayload $_ })
+    $payload['roots'] = [object[]]@($Roots | ForEach-Object { & $rootPayload $_ })
     $hitList = [System.Collections.Generic.List[object]]::new()
-    foreach ($hit in $hits) {
+    foreach ($hit in $Hits) {
         $entry = Get-DbOrderedMap
         $entry['hive'] = $hit.hive
         $entry['path'] = $hit.path
@@ -6822,28 +7066,173 @@ function Invoke-DbRegistryScanSource {
         $payload['requested_roots'] = [object[]]@($Source.roots | ForEach-Object { & $rootPayload $_ })
     }
 
-    $resultPath = [EnginePath]::Join($DestinationRoot, 'registry_scan.json')
-    [EngineFile]::WriteText($resultPath, [EngineJson]::Dumps($payload, 2, $false))
-
-    $summary['roots'] = [string[]]@($roots | ForEach-Object { '{0} \ {1}' -f $_.hive, $_.path })
-    $summary['hits'] = $hits.Count
-    $summary['output'] = [EnginePath]::AsPosix($resultPath)
-    if (@($Source.roots).Count -gt 0) {
-        $summary['requested_roots'] = [string[]]@($Source.roots | ForEach-Object {
-                if ($null -eq $_.view) { '{0} \ {1}' -f $_.hive, $_.path } else { '{0} \ {1} (view {2})' -f $_.hive, $_.path, $_.view }
-            })
-    }
-
-    $file = [pscustomobject]@{
+    [EngineFile]::WriteText($Path, [EngineJson]::Dumps($payload, 2, $false))
+    return [pscustomobject]@{
         alias         = $Alias
-        source        = "registry:$($Source.token)"
-        destination   = $resultPath
-        relative_path = 'registry_scan.json'
-        size          = [System.IO.FileInfo]::new([EngineOs]::Abs($resultPath)).Length
-        sha256        = [EngineFile]::HashFile($resultPath)
+        source        = $(if ($null -ne $Target) { "registry:$($Source.token)@$($Target.host)" } else { "registry:$($Source.token)" })
+        destination   = $Path
+        relative_path = [EnginePath]::Name($Path)
+        size          = [System.IO.FileInfo]::new([EngineOs]::Abs($Path)).Length
+        sha256        = [EngineFile]::HashFile($Path)
+    }
+}
+
+function Get-DbRegistryRootText {
+    [CmdletBinding()]
+    param([AllowEmptyCollection()] $Roots, [switch] $WithView)
+
+    # The leading comma keeps a one-root list a list when the function returns it.
+    return , [string[]]@($Roots | ForEach-Object {
+            if (-not $WithView -or $null -eq $_.view) { '{0} \ {1}' -f $_.hive, $_.path } else { '{0} \ {1} (view {2})' -f $_.hive, $_.path, $_.view }
+        })
+}
+
+function Invoke-DbRemoteRegistryScanTarget {
+    # One remote target of a registry_scan source: roots discovered from the remote host's installed applications unless the
+    # source names them, the remote keys read over WinRM, and the search run locally against that snapshot.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] $Source,
+        [Parameter(Mandatory = $true)] $Target,
+        [Parameter(Mandatory = $true)] $Spec,
+        $BaseDir
+    )
+
+    $session = Open-DbRemoteRegistrySession -Target $Target -BaseDir $BaseDir
+    try {
+        if (@($Source.roots).Count -gt 0) {
+            $roots = @($Source.roots)
+        }
+        else {
+            $probe = Get-DbRemoteRegistrySnapshot -Session $session -Roots (Get-DbInstalledAppProbe) -MaxDepth 1 -BudgetSeconds $Source.time_budget_s
+            $script:DbRegistrySnapshot = $probe.Snapshot
+            try {
+                $apps = Get-DbInstalledApp
+            }
+            finally {
+                $script:DbRegistrySnapshot = $null
+            }
+
+            $roots = Get-DbAppRegistryRoot -Token $Source.token -Installed $apps
+        }
+
+        $read = Get-DbRemoteRegistrySnapshot -Session $session -Roots $roots -MaxDepth $Source.max_depth -BudgetSeconds $Source.time_budget_s
+        $script:DbRegistrySnapshot = $read.Snapshot
+        try {
+            $hits = Search-DbRegistry -Roots $roots -Spec $Spec
+        }
+        finally {
+            $script:DbRegistrySnapshot = $null
+        }
+
+        return [pscustomobject]@{ Roots = $roots; Hits = $hits; Truncated = $read.Truncated }
+    }
+    finally {
+        Close-DbRemoteRegistrySession -Session $session
+    }
+}
+
+function Invoke-DbRegistryScanSource {
+    # The registry_scan branch of a config run: the manifest summary, and the files written. Without remote targets the local
+    # registry is scanned into registry_scan.json; with them each host is scanned over WinRM into registry_scan-<host>.json,
+    # and a host that fails is recorded with its error while the others still run.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] $Source,
+        [Parameter(Mandatory = $true)][string] $Alias,
+        [Parameter(Mandatory = $true)][string] $DestinationRoot,
+        $BaseDir,
+        [Parameter(Mandatory = $true)] $Log
+    )
+
+    $summary = Get-DbOrderedMap
+    $summary['type'] = 'registry_scan'
+    $summary['token'] = $Source.token
+    $summary['keywords'] = [string[]]@($Source.keywords)
+    $summary['patterns'] = [string[]]@($Source.patterns)
+    if (-not (Test-DbWindowsPlatform)) {
+        $Log.Write('registry scan skipped: non-Windows platform')
+        $summary['skipped'] = $true
+        $summary['reason'] = 'not-windows'
+        return [pscustomobject]@{ Summary = $summary; Files = @() }
     }
 
-    return [pscustomobject]@{ Summary = $summary; File = $file }
+    $spec = [pscustomobject]@{
+        keywords      = @($Source.keywords)
+        patterns      = @($Source.patterns | ForEach-Object { ConvertTo-DbRegistryPattern $_ })
+        max_depth     = $Source.max_depth
+        max_hits      = $Source.max_hits
+        time_budget_s = $Source.time_budget_s
+    }
+    $targets = [System.Collections.Generic.List[object]]::new()
+    if ($null -ne $Source.remote) {
+        $targets.Add($Source.remote)
+    }
+
+    foreach ($target in @($Source.remote_batch)) {
+        $targets.Add($target)
+    }
+
+    if ($targets.Count -eq 0) {
+        $Log.Write("registry scan started for token: $($Source.token)")
+        if (@($Source.roots).Count -gt 0) {
+            $roots = @($Source.roots)
+        }
+        else {
+            $roots = Get-DbAppRegistryRoot -Token $Source.token -Installed (Get-DbInstalledApp)
+        }
+
+        $hits = Search-DbRegistry -Roots $roots -Spec $spec
+        $file = Write-DbRegistryScanResult -Source $Source -Roots $roots -Hits $hits -Path ([EnginePath]::Join($DestinationRoot, 'registry_scan.json')) -Alias $Alias
+        $summary['roots'] = Get-DbRegistryRootText $roots
+        $summary['hits'] = $hits.Count
+        $summary['output'] = [EnginePath]::AsPosix($file.destination)
+        if (@($Source.roots).Count -gt 0) {
+            $summary['requested_roots'] = Get-DbRegistryRootText $Source.roots -WithView
+        }
+
+        return [pscustomobject]@{ Summary = $summary; Files = @($file) }
+    }
+
+    $files = [System.Collections.Generic.List[object]]::new()
+    $results = [System.Collections.Generic.List[object]]::new()
+    $total = 0
+    foreach ($target in $targets) {
+        $entry = Get-DbOrderedMap
+        $entry['host'] = $target.host
+        $entry['alias'] = $target.alias
+        $entry['transport'] = $target.transport
+        $Log.Write("registry scan started for token: $($Source.token) on $($target.host)")
+        try {
+            $scan = Invoke-DbRemoteRegistryScanTarget -Source $Source -Target $target -Spec $spec -BaseDir $BaseDir
+            $path = [EnginePath]::Join($DestinationRoot, "registry_scan-$(Get-DbRegistryScanTargetLabel $target).json")
+            $file = Write-DbRegistryScanResult -Source $Source -Roots $scan.Roots -Hits $scan.Hits -Path $path -Alias $Alias -Target $target
+            $files.Add($file)
+            $entry['roots'] = Get-DbRegistryRootText $scan.Roots
+            $entry['hits'] = $scan.Hits.Count
+            $entry['output'] = [EnginePath]::AsPosix($path)
+            if ($scan.Truncated) {
+                $entry['truncated'] = $true
+                $Log.Write("registry scan on $($target.host) stopped at the key or time limit")
+            }
+
+            $total += $scan.Hits.Count
+        }
+        catch {
+            $entry['error'] = $_.Exception.Message
+            $Log.Write("registry scan failed on $($target.host): $($_.Exception.Message)")
+        }
+
+        $results.Add($entry)
+    }
+
+    $summary['targets'] = $results.ToArray()
+    $summary['hits'] = $total
+    if (@($Source.roots).Count -gt 0) {
+        $summary['requested_roots'] = Get-DbRegistryRootText $Source.roots -WithView
+    }
+
+    return [pscustomobject]@{ Summary = $summary; Files = $files.ToArray() }
 }
 
 # DPAPI/AES package encryption: _dpapi_unprotect, _decode_key_entry, _load_encryption_keyset, _encrypt_package_file and
@@ -7390,10 +7779,10 @@ function Invoke-DbOfflineRunner {
                 }
             }
             'registry_scan' {
-                $outcome = Invoke-DbRegistryScanSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -Log $log
+                $outcome = Invoke-DbRegistryScanSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -BaseDir $effectiveBaseDir -Log $log
                 $sourceSummaries.Add($outcome.Summary)
-                if ($null -ne $outcome.File) {
-                    $files.Add($outcome.File)
+                foreach ($file in $outcome.Files) {
+                    $files.Add($file)
                 }
             }
             default {

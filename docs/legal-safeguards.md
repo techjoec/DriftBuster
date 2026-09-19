@@ -63,8 +63,12 @@ These guardrails cover every feature, note, and capture helper.
 
 ## Registry remoting safeguards
 
-- Store registry remoting credentials in environment variables or credential
-  profiles; never commit inline `password` fields to JSON or PowerShell calls.
+- Store registry remoting credentials in environment variables (`password_env`)
+  or credential profiles; never commit inline `password` fields to JSON or
+  PowerShell calls. A `credential_profile` file is DPAPI-protected for the user
+  and machine that wrote it; keep it out of shared config folders anyway.
+- Registry Editor exports (`.reg`) can hold whole hive snapshots, secrets
+  included; store scanned exports as restricted evidence.
 - Limit explicit hive roots to the minimum scope required for the investigation
   and review manifests for the `requested_roots` trace before sharing evidence.
 - When staging remote captures, keep the WinRM working directory under a

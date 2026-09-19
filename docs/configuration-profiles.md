@@ -185,8 +185,9 @@ and `SkipUntil` operations over `ScheduleSpec` entries.
 
 - `registry_scan` entries live under `profile.sources` in offline runner
   configs. Supply a token plus optional keyword/regex filters. `remote` (single
-  host) and `remote_batch` (additional hosts) objects are validated and kept in
-  the config, but scans read only the local registry.
+  host) and `remote_batch` (additional hosts) scan those hosts over WinRM
+  instead of the local machine; see `docs/registry.md#remote-targets` for
+  credentials, outputs and limits.
 - Supported remote keys: `host` (required), `username`, `password_env`,
   `credential_profile`, `transport`, `port`, `use_ssl`, and `alias`. Raw
   `password` values are rejected – reference environment variables instead.
@@ -208,7 +209,7 @@ and `SkipUntil` operations over `ScheduleSpec` entries.
               "password_env": "DRIFTBUSTER_REMOTE_PASS"
             },
             "remote_batch": [
-              {"host": "branch-01.internal", "username": "DOMAIN\\\\collector"},
+              {"host": "branch-01.internal", "credential_profile": "creds/branch.xml"},
               "branch-02.internal"
             ]
           }

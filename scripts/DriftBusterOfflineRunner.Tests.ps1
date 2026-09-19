@@ -1115,6 +1115,8 @@ Describe 'live registry hives' {
         $manifest = Read-JsonFile $result.manifest_path
         $summary = $manifest['sources'][0]
         $summary['type'] | Should -BeExactly 'registry_scan'
+        $summary['roots'] -is [System.Collections.IList] | Should -BeTrue
+        $summary['requested_roots'] -is [System.Collections.IList] | Should -BeTrue
         @($summary['roots'] | ForEach-Object { $_.Replace('\\', '\') }) | Should -Be @('HKLM \ Software\VendorA')
         @($summary['requested_roots'] | ForEach-Object { $_.Replace('\\', '\') }) | Should -Be @('HKLM \ Software\VendorA (view 64)')
 
@@ -1123,6 +1125,204 @@ Describe 'live registry hives' {
         $dataPath = Join-TestPath $result.staging_dir @($config.settings.data_directory_name, $alias, 'registry_scan.json')
         $payload = Read-JsonFile $dataPath
         $payload['requested_roots'][0]['view'] | Should -BeExactly '64'
+    }
+}
+
+Describe 'remote registry scans' {
+    BeforeAll {
+        function Get-RemoteRegistryTestConfig {
+            param([string] $Tmp, $RegistryScan)
+            return ConvertTo-TestConfig ([ordered]@{
+                    schema   = $script:ConfigSchema
+                    profile  = [ordered]@{
+                        name           = 'registry-remote'
+                        sources        = @([ordered]@{ registry_scan = $RegistryScan })
+                        options        = @{}
+                        secret_scanner = @{}
+                    }
+                    runner   = [ordered]@{ output_directory = (Join-Path $Tmp 'out'); compress = $false; cleanup_staging = $false }
+                    metadata = @{}
+                })
+        }
+
+        # A remote read as the WinRM endpoint returns it: hashtables with kinds as RegistryValueKind names.
+        function Get-RemoteTestNode {
+            param([string] $Hive, [string] $Path, $View, [string[]] $Subkeys, [hashtable[]] $Values)
+            return @{ hive = $Hive; path = $Path; view = $View; subkeys = $Subkeys; values = $Values }
+        }
+
+        function Read-RegistryResult {
+            param($Result, $Config, [string] $Name)
+            $alias = Get-DbDestinationName -Source $Config.profile.sources[0] -FallbackIndex 0
+            return Read-JsonFile (Join-TestPath $Result.staging_dir @($Config.settings.data_directory_name, $alias, $Name))
+        }
+    }
+
+    BeforeEach {
+        Mock Test-DbWindowsPlatform { $true }
+        Mock Close-DbRemoteRegistrySession { }
+    }
+
+    It 'scans each remote host over its own session and writes one result per host' {
+        $tmp = Get-TestDirectory
+        $config = Get-RemoteRegistryTestConfig $tmp ([ordered]@{
+                token       = 'VendorA'
+                keywords    = @('api')
+                roots       = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA'; view = '64' })
+                remote      = [ordered]@{ host = 'app-01.corp.local'; alias = 'app 01' }
+                remote_batch = @('app-02.corp.local')
+            })
+        Mock Open-DbRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
+        Mock Invoke-DbRemoteRegistryDump {
+            $request = $Request
+            $request.roots.Count | Should -Be 1
+            $request.max_depth | Should -Be 12
+            $server = $(if ($Session.ComputerName -ceq 'app-01.corp.local') { 'api.one' } else { 'api.two' })
+            return @{
+                truncated = $false
+                nodes     = @(
+                    (Get-RemoteTestNode 'HKLM' 'Software\VendorA' '64' @('Child') @(@{ name = 'Server'; kind = 'String'; data = $server }, @{ name = 'Port'; kind = 'DWord'; data = 443 })),
+                    (Get-RemoteTestNode 'HKLM' 'Software\VendorA\Child' '64' @() @(@{ name = 'Hosts'; kind = 'MultiString'; data = @('api.a', 'db.b') }))
+                )
+            }
+        }
+
+        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+
+        $summary = (Read-JsonFile $result.manifest_path)['sources'][0]
+        Should -Invoke Open-DbRemoteRegistrySession -Times 2 -Exactly
+        Should -Invoke Close-DbRemoteRegistrySession -Times 2 -Exactly
+        $summary['hits'] | Should -Be 4
+        @($summary['targets']).Count | Should -Be 2
+        $summary['targets'][0]['host'] | Should -BeExactly 'app-01.corp.local'
+        $summary['targets'][0]['hits'] | Should -Be 2
+        $summary['targets'][0]['output'] | Should -BeLike '*registry_scan-app_01.json'
+        $summary['targets'][1]['output'] | Should -BeLike '*registry_scan-app-02.corp.local.json'
+
+        $first = Read-RegistryResult $result $config 'registry_scan-app_01.json'
+        $first['host'] | Should -BeExactly 'app-01.corp.local'
+        $first['alias'] | Should -BeExactly 'app 01'
+        @($first['hits'] | ForEach-Object { $_['value_name'] }) | Should -Be @('Server', 'Hosts')
+        $first['hits'][0]['data_preview'] | Should -BeExactly 'api.one'
+        $first['hits'][1]['data_preview'] | Should -BeExactly 'api.a, db.b'
+        (Read-RegistryResult $result $config 'registry_scan-app-02.corp.local.json')['hits'][0]['data_preview'] | Should -BeExactly 'api.two'
+    }
+
+    It 'discovers roots from the remote host installed applications' {
+        $tmp = Get-TestDirectory
+        $config = Get-RemoteRegistryTestConfig $tmp ([ordered]@{ token = 'VendorA'; remote = 'app-01.corp.local' })
+        $uninstall = 'Software\Microsoft\Windows\CurrentVersion\Uninstall'
+        Mock Open-DbRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
+        Mock Invoke-DbRemoteRegistryDump {
+            $request = $Request
+            if ($request.roots[0].path -ceq $uninstall) {
+                $request.max_depth | Should -Be 1
+                return @{
+                    truncated = $false
+                    nodes     = @(
+                        (Get-RemoteTestNode 'HKLM' $uninstall '64' @('{A}') @()),
+                        (Get-RemoteTestNode 'HKLM' "$uninstall\{A}" '64' @() @(@{ name = 'DisplayName'; kind = 'String'; data = 'VendorA Suite' }, @{ name = 'Publisher'; kind = 'String'; data = 'VendorA' }))
+                    )
+                }
+            }
+
+            return @{
+                truncated = $true
+                nodes     = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA\Suite' '64' @() @(@{ name = 'Url'; kind = 'String'; data = 'https://vendor' })))
+            }
+        }
+
+        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+
+        Should -Invoke Invoke-DbRemoteRegistryDump -Times 2 -Exactly
+        $target = (Read-JsonFile $result.manifest_path)['sources'][0]['targets'][0]
+        $target['hits'] | Should -Be 1
+        $target['truncated'] | Should -BeTrue
+        @($target['roots'] | ForEach-Object { $_.Replace('\\', '\') }) | Should -Contain 'HKLM \ Software\VendorA\Suite'
+    }
+
+    It 'records a host that fails and still scans the rest' {
+        $tmp = Get-TestDirectory
+        $config = Get-RemoteRegistryTestConfig $tmp ([ordered]@{
+                token        = 'VendorA'
+                roots        = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA' })
+                remote_batch = @('down.corp.local', 'up.corp.local')
+            })
+        Mock Open-DbRemoteRegistrySession {
+            if ($Target.host -ceq 'down.corp.local') { throw 'WinRM cannot complete the operation.' }
+            [pscustomobject]@{ ComputerName = $Target.host }
+        }
+        Mock Invoke-DbRemoteRegistryDump { @{ truncated = $false; nodes = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA' $null @() @(@{ name = 'A'; kind = 'String'; data = 'x' }))) } }
+
+        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+
+        $summary = (Read-JsonFile $result.manifest_path)['sources'][0]
+        $summary['targets'][0]['error'] | Should -BeExactly 'WinRM cannot complete the operation.'
+        $summary['targets'][0].Contains('output') | Should -BeFalse
+        $summary['targets'][1]['hits'] | Should -Be 1
+        $summary['hits'] | Should -Be 1
+        $summary['targets'][1]['roots'] -is [System.Collections.IList] | Should -BeTrue
+        $summary['requested_roots'] -is [System.Collections.IList] | Should -BeTrue
+        @($result.manifest_path) | Should -Not -BeNullOrEmpty
+    }
+
+    It 'reports a key reached through two views once' {
+        $snapshot = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
+        foreach ($view in @('64', $null)) {
+            $snapshot[(Get-DbRegistrySnapshotKey -Hive 'HKLM' -Path 'Software\VendorA\Suite' -View $view)] = [pscustomobject]@{
+                subkeys = [string[]]@(); values = @([pscustomobject]@{ Name = 'Server'; Data = 'api.one' })
+            }
+        }
+
+        $snapshot[(Get-DbRegistrySnapshotKey -Hive 'HKLM' -Path 'Software\VendorA' -View $null)] = [pscustomobject]@{ subkeys = [string[]]@('Suite'); values = @() }
+        $script:DbRegistrySnapshot = $snapshot
+        try {
+            $roots = @([pscustomobject]@{ hive = 'HKLM'; path = 'Software\VendorA\Suite'; view = '64' }, [pscustomobject]@{ hive = 'HKLM'; path = 'Software\VendorA'; view = $null })
+            $hits = Search-DbRegistry -Roots $roots -Spec ([pscustomobject]@{ keywords = @('api'); patterns = @(); max_depth = 12; max_hits = 200; time_budget_s = 10.0 })
+        }
+        finally {
+            $script:DbRegistrySnapshot = $null
+        }
+
+        @($hits).Count | Should -Be 1
+    }
+
+    It 'only speaks WinRM' {
+        { Open-DbRemoteRegistrySession -Target ([pscustomobject]@{ host = 'h'; transport = 'ssh' }) -BaseDir $TestDrive } |
+            Should -Throw "*transport 'ssh' is not supported*"
+    }
+
+    It 'builds the credential from username and password_env' {
+        $env:DRIFTBUSTER_TEST_REMOTE_PASS = 's3cret'
+        try {
+            $credential = Get-DbRemoteRegistryCredential -Target ([pscustomobject]@{ host = 'h'; username = 'CORP\collector'; password_env = 'DRIFTBUSTER_TEST_REMOTE_PASS'; credential_profile = $null }) -BaseDir $TestDrive
+            $credential.UserName | Should -BeExactly 'CORP\collector'
+            $credential.GetNetworkCredential().Password | Should -BeExactly 's3cret'
+        }
+        finally {
+            Remove-Item Env:\DRIFTBUSTER_TEST_REMOTE_PASS
+        }
+    }
+
+    It 'rejects incomplete or conflicting credentials: <Case>' -ForEach @(
+        @{ Case = 'unset variable'; Target = @{ username = 'u'; password_env = 'DRIFTBUSTER_TEST_UNSET_VARIABLE'; credential_profile = $null }; Message = '*DRIFTBUSTER_TEST_UNSET_VARIABLE is not set*' }
+        @{ Case = 'no username'; Target = @{ username = $null; password_env = 'X'; credential_profile = $null }; Message = '*password_env needs a username*' }
+        @{ Case = 'username alone'; Target = @{ username = 'u'; password_env = $null; credential_profile = $null }; Message = '*username needs password_env or credential_profile*' }
+        @{ Case = 'both'; Target = @{ username = 'u'; password_env = 'X'; credential_profile = 'p.xml' }; Message = '*not both*' }
+    ) {
+        $target = [pscustomobject]($Target + @{ host = 'h' })
+        { Get-DbRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw $Message
+    }
+
+    It 'reads credential_profile relative to the base directory and requires a PSCredential' {
+        'not a credential' | Export-Clixml -LiteralPath (Join-Path $TestDrive 'profile.xml')
+        $target = [pscustomobject]@{ host = 'h'; username = $null; password_env = $null; credential_profile = 'profile.xml' }
+        { Get-DbRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw '*does not hold a PSCredential*'
+    }
+
+    It 'connects as the current user when no credential is given' {
+        $target = [pscustomobject]@{ host = 'h'; username = $null; password_env = $null; credential_profile = $null }
+        Get-DbRemoteRegistryCredential -Target $target -BaseDir $null | Should -BeNullOrEmpty
     }
 }
 

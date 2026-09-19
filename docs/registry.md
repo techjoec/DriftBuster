@@ -101,7 +101,7 @@ Remote Targets
               "use_ssl": true
             },
             "remote_batch": [
-              {"host": "branch-01.internal", "username": "DOMAIN\\\\collector"},
+              {"host": "branch-01.internal", "credential_profile": "creds/branch.xml"},
               "branch-02.internal"
             ]
           }
@@ -111,14 +111,34 @@ Remote Targets
   }
   ```
 
-- The offline runner validates `remote` (one host) and `remote_batch` (more
-  hosts) and carries them in the config, but no scan connects to remote hosts
-  yet: a `registry_scan` source always reads the local registry. For remote
-  capture use `Invoke-DriftBusterRemoteScan` (below). Each target accepts these keys: `host` (required),
-  `username`, `password_env`, `credential_profile`, `transport`, `port`,
-  `use_ssl`, and `alias`. Inline `password` fields are rejected to prevent
-  accidental leaks. When only a batch is required, skip the `remote` block and
-  populate `remote_batch` with mappings or host strings.
+- With `remote` and/or `remote_batch` the offline runner scans each listed host
+  instead of the local machine, over WinRM to the host's default Windows
+  PowerShell endpoint (nothing is installed there). The remote side only reads
+  keys and values under the roots, within `max_depth`, `time_budget_s` and a
+  20,000-key cap; root discovery (from the host's installed applications when
+  no `roots` are given) and matching run in the runner, so a remote scan finds
+  exactly what a local scan on that host would. `HKCU` is the connecting
+  account's hive.
+- Each target accepts `host` (required), `username`, `password_env`,
+  `credential_profile`, `transport`, `port`, `use_ssl`, and `alias`. Inline
+  `password` fields are rejected. A string entry is just a host name. When
+  only a batch is required, skip the `remote` block.
+  - **Credentials:** `username` plus `password_env` (the name of an environment
+    variable holding the password); or `credential_profile`, a file written by
+    `Get-Credential | Export-Clixml <file>` (protected with DPAPI, so only the
+    same user on the same machine can read it; a relative path resolves
+    against the config's directory); or neither, to connect as the current
+    user (Kerberos in a domain). A `username` without one of the two is an
+    error.
+  - **Transport:** only `winrm`; `port` and `use_ssl` map to `New-PSSession
+    -Port` and `-UseSSL`.
+- Each host writes `registry_scan-<alias or host>.json` beside the other
+  outputs (the same payload as a local scan plus `host` and `alias`). The
+  manifest summary lists every host under `targets` with its roots, hit count
+  and output file; a host that cannot be reached or authenticated is listed
+  with its `error` and the run carries on with the rest. `truncated: true`
+  marks a host whose read stopped at the key or time limit.
+- Remote scans, like local ones, run only on Windows.
 - Generate JSON snippets instead of hand-editing:
   `driftbuster registry-scan emit-config "VendorA" --remote-target "hq-gateway.internal,username=DOMAIN\collector,password-env=DRIFTBUSTER_REMOTE_PASS" --remote-target branch-02.internal`.
   Supported keys: `username`, `password-env`, `credential-profile`, `transport`, `port`, `use-ssl`, `alias`.

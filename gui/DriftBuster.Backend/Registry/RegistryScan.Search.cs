@@ -35,6 +35,9 @@ public static partial class RegistryScan
         var hits = new List<RegistryHit>();
         var queue = new Queue<(RegistryRoot Key, long Depth)>(roots.Select(root => (root, 0L)));
         var seen = new HashSet<RegistryRoot>();
+        // Roots that differ only in view can reach the same key twice (the default view is the 64-bit one in a 64-bit
+        // process); a hit with the same hive, path, name and data is reported once. Names compare case-insensitively.
+        var reported = new HashSet<(string Hive, string Path, string Name, string Preview)>();
         while (queue.Count > 0 && hits.Count < maxHits && Stopwatch.GetElapsedTime(started).TotalSeconds < budget)
         {
             var (key, depth) = queue.Dequeue();
@@ -43,21 +46,7 @@ public static partial class RegistryScan
                 continue;
             }
 
-            foreach (var (name, data) in backend.EnumValues(key.Hive, key.Path, key.View))
-            {
-                var preview = MatchValue(name, data, keywords, spec);
-                if (preview is null)
-                {
-                    continue;
-                }
-
-                hits.Add(new RegistryHit(key.Path, key.Hive, name, preview, "keyword/pattern match"));
-                if (hits.Count >= maxHits)
-                {
-                    break;
-                }
-            }
-
+            CollectHits(backend.EnumValues(key.Hive, key.Path, key.View), key, keywords, spec, hits, reported, maxHits);
             if (hits.Count >= maxHits)
             {
                 break;
@@ -75,6 +64,32 @@ public static partial class RegistryScan
         }
 
         return hits.AsReadOnly();
+    }
+
+    // The key's values that match, skipping any hit already reported, until the hit limit.
+    private static void CollectHits(
+        IReadOnlyList<KeyValuePair<string, object?>> values,
+        RegistryRoot key,
+        List<string> keywords,
+        SearchSpec spec,
+        List<RegistryHit> hits,
+        HashSet<(string Hive, string Path, string Name, string Preview)> reported,
+        long maxHits)
+    {
+        foreach (var (name, data) in values)
+        {
+            var preview = MatchValue(name, data, keywords, spec);
+            if (preview is null || !reported.Add((key.Hive, key.Path.ToUpperInvariant(), name.ToUpperInvariant(), preview)))
+            {
+                continue;
+            }
+
+            hits.Add(new RegistryHit(key.Path, key.Hive, name, preview, "keyword/pattern match"));
+            if (hits.Count >= maxHits)
+            {
+                return;
+            }
+        }
     }
 
     /// <summary>

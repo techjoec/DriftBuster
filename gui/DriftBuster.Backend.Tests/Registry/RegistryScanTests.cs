@@ -84,6 +84,18 @@ public sealed class RegistryScanTests : IDisposable
     }
 
     [Fact]
+    public void SearchRegistryReportsAKeyReachedThroughTwoViewsOnce()
+    {
+        var fb = new FakeRegistryBackend();
+        fb.AddKey("HKLM", @"Software\VendorA\Suite", ("Server", "api.one"));
+        RegistryRoot[] roots = [new("HKLM", @"Software\VendorA\Suite", "64"), new("HKLM", @"Software\VendorA"), new("HKLM", @"SOFTWARE\VENDORA\SUITE")];
+
+        var hits = RegistryScan.SearchRegistry(roots, new SearchSpec { Keywords = ["api"] }, backend: fb);
+
+        hits.Should().ContainSingle().Which.Path.Should().Be(@"Software\VendorA\Suite");
+    }
+
+    [Fact]
     public void SearchRegistryDepthLimit()
     {
         var fb = BuildFakeRegistry();

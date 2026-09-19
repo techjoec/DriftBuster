@@ -17,7 +17,7 @@ $results = $targets | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Recurse -
 
 if ($results) {
     $results | Format-Table
-    throw "PSScriptAnalyzer reported $($results.Count) issue(s)."
+    throw "PSScriptAnalyzer reported $(@($results).Count) issue(s)."
 }
 
 # The offline runner carries the backend's default secret rules inline; keep the copy identical.
