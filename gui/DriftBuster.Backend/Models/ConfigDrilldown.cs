@@ -39,9 +39,9 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("host_diffs")]
         public ConfigHostDiff[] HostDiffs { get; set; } = Array.Empty<ConfigHostDiff>();
 
-        /// <summary>The selected diff's <c>diff_summary_to_payload</c> mapping, keys in a fixed order; null when no host holds a diff.</summary>
+        /// <summary>The selected diff's summary; null when no host holds a diff.</summary>
         [JsonPropertyName("diff_summary")]
-        public JsonElement? DiffSummary { get; set; }
+        public DiffResultSummary? DiffSummary { get; set; }
 
         [JsonPropertyName("has_secrets")]
         public bool HasSecrets { get; set; }

@@ -16,16 +16,9 @@ public sealed class RegistryFacadeTests
         Assert.SkipWhen(OperatingSystem.IsWindows(), "The default registry backend reads the live registry on Windows.");
         var ct = TestContext.Current.CancellationToken;
         IDriftbusterBackend backend = new DriftbusterBackend();
-        try
-        {
-            await FluentActions.Awaiting(() => backend.ListRegistryAppsAsync(ct))
-                .Should().ThrowAsync<PlatformNotSupportedException>().WithMessage("Windows Registry scanning requires Windows platform");
-            await FluentActions.Awaiting(() => backend.SearchRegistryAsync(new RegistrySearchRequest { Token = "Vendor", Roots = ["not a root"], Patterns = ["("] }, ct))
-                .Should().ThrowAsync<PlatformNotSupportedException>().WithMessage("Windows Registry scanning requires Windows platform");
-        }
-        finally
-        {
-            RegistryOperations.RegistrySummary(reset: true);
-        }
+        await FluentActions.Awaiting(() => backend.ListRegistryAppsAsync(ct))
+            .Should().ThrowAsync<PlatformNotSupportedException>().WithMessage("Windows Registry scanning requires Windows platform");
+        await FluentActions.Awaiting(() => backend.SearchRegistryAsync(new RegistrySearchRequest { Token = "Vendor", Roots = ["not a root"], Patterns = ["("] }, ct))
+            .Should().ThrowAsync<PlatformNotSupportedException>().WithMessage("Windows Registry scanning requires Windows platform");
     }
 }

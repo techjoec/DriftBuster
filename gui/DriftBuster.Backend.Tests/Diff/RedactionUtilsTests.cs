@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using DriftBuster.Backend.Diff;
 
 namespace DriftBuster.Backend.Tests.Diff;
@@ -26,34 +28,26 @@ public sealed class RedactionUtilsTests
     }
 
     [Fact]
-    public void RedactDataHandlesNestedStructures()
+    public void Every_string_value_in_a_json_tree_is_redacted_in_place()
     {
         var redactor = new RedactionFilter(["secret"]);
-
-        static IEnumerable<string> Generator()
-        {
-            yield return "value";
-            yield return "secret";
-        }
-
-        var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var payload = new JsonObject
         {
             ["message"] = "this is secret",
-            ["list"] = new List<object?> { "secret", new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["nested"] = "no secret" } },
-            ["tuple"] = new object?[] { "keep", "secret" },
-            ["set"] = new HashSet<object?> { "secret", "visible" },
+            ["list"] = new JsonArray("secret", new JsonObject { ["nested"] = "no secret" }, 3),
+            ["secret"] = true,
         };
-        payload["iterable"] = Generator();
 
-        var redacted = DiffPayloads.Map(RedactionFilter.RedactData(payload, redactor));
+        redactor.ApplyTo(payload).Should().BeSameAs(payload);
 
-        ((string)redacted["message"]!).Should().EndWith("[REDACTED]");
-        var list = DiffPayloads.List(redacted["list"]);
-        list[0].Should().Be("[REDACTED]");
-        DiffPayloads.Map(list[1])["nested"].Should().Be("no [REDACTED]");
-        ((object?[])redacted["tuple"]!)[1].Should().Be("[REDACTED]");
-        ((HashSet<object?>)redacted["set"]!).Should().Contain("[REDACTED]");
-        DiffPayloads.List(redacted["iterable"])[1].Should().Be("[REDACTED]");
+        payload.ShouldBeJson(new JsonObject
+        {
+            ["message"] = "this is [REDACTED]",
+            ["list"] = new JsonArray("[REDACTED]", new JsonObject { ["nested"] = "no [REDACTED]" }, 3),
+            ["secret"] = true,
+        });
+        redactor.ApplyTo(JsonValue.Create("secret")).ShouldBeJson("[REDACTED]");
+        redactor.ApplyTo(null).Should().BeNull();
     }
 
     [Fact]

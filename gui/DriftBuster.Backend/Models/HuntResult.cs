@@ -18,6 +18,7 @@ namespace DriftBuster.Backend.Models
 
         /// <summary>Files skipped because they could not be read; omitted when every file was read.</summary>
         [JsonPropertyName("unreadable_files")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string[]? UnreadableFiles { get; set; }
 
         [JsonIgnore]

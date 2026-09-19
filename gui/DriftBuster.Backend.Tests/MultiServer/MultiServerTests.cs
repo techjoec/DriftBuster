@@ -171,12 +171,9 @@ public sealed class MultiServerTests : IDisposable
 
         var response = runner.Run(plans, cancellationToken: TestContext.Current.CancellationToken);
 
-        var summaries = response.Drilldown.Where(entry => entry.DiffSummary is not null).Select(entry => entry.DiffSummary!.Value).ToList();
-        summaries.Should().NotBeEmpty("expected sanitized diff summary payload");
-        var summary = summaries[0];
-        summary.GetProperty("comparison_count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
-        var comparison = summary.GetProperty("comparisons")[0];
-        comparison.GetProperty("summary").GetProperty("before_digest").GetString().Should().StartWith("sha256:");
+        var summary = response.Drilldown.Select(entry => entry.DiffSummary).OfType<DiffResultSummary>().Should().NotBeEmpty("expected a diff summary").And.Subject.First();
+        summary.ComparisonCount.Should().BeGreaterThanOrEqualTo(1);
+        summary.Comparisons[0].Summary.BeforeDigest.Should().StartWith("sha256:");
     }
 
     [Fact]

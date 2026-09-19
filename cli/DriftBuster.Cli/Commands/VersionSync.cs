@@ -37,7 +37,7 @@ internal static partial class VersionSync
 
         if (applied == 0)
         {
-            throw new CommandExitException($"No replacements made in {LexicalPath.Str(path)} for pattern {EngineRepr.StrRepr(pattern)}");
+            throw new CommandExitException($"No replacements made in {LexicalPath.Str(path)} for pattern '{pattern}'");
         }
 
         TextModeFile.WriteText(path, builder.Append(original, position, original.Length - position).ToString());

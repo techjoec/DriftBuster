@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Diff;
@@ -323,7 +324,7 @@ public sealed class CaptureRunner(TimeProvider? time = null, Func<string>? hostN
             entry.Detection.Variant,
             entry.Detection.Confidence,
             [.. entry.Detection.Reasons],
-            JsonNodes.From(entry.Detection.Metadata),
+            (JsonObject)entry.Detection.Metadata.DeepClone(),
             [.. entry.Profiles.Select(applied => new CaptureProfileMatch(applied.Profile.Name, [.. applied.Profile.Tags.Order(StringComparer.Ordinal)], applied.Config))]))];
     }
 

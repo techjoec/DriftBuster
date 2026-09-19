@@ -31,6 +31,6 @@ public static class WinRegistryKeys
     {
         "HKLM" => LocalMachine,
         "HKCU" => CurrentUser,
-        _ => throw new KeyNotFoundException($"Unknown registry hive {EngineRepr.StrRepr(hive)}."),
+        _ => throw new KeyNotFoundException($"Unknown registry hive '{hive}'."),
     };
 }

@@ -48,29 +48,6 @@ public sealed class FormatRegistry
         }
     }
 
-    /// <summary>An ordered summary of registered plugins for manual auditing.</summary>
-    public IReadOnlyList<OrderedDictionary<string, object?>> RegistrySummary()
-    {
-        var plugins = GetPlugins();
-        var summary = new List<OrderedDictionary<string, object?>>(plugins.Count);
-        for (var index = 0; index < plugins.Count; index++)
-        {
-            var plugin = plugins[index];
-            var type = plugin.GetType();
-            summary.Add(new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["name"] = plugin.Name,
-                ["version"] = plugin.Version,
-                ["priority"] = plugin.Priority,
-                ["order"] = index,
-                ["module"] = type.Namespace ?? string.Empty,
-                ["qualname"] = QualifiedName(type),
-            });
-        }
-
-        return summary;
-    }
-
     public IReadOnlyDictionary<string, string> PluginVersions()
     {
         var versions = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -80,13 +57,6 @@ public sealed class FormatRegistry
         }
 
         return versions;
-    }
-
-    private static string QualifiedName(Type type)
-    {
-        var full = type.FullName ?? type.Name;
-        var ns = type.Namespace;
-        return string.IsNullOrEmpty(ns) ? full : full[(ns.Length + 1)..];
     }
 
     private bool EnsureUnique(IFormatPlugin plugin)

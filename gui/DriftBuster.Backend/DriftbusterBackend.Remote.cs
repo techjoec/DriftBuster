@@ -67,7 +67,7 @@ public sealed partial class DriftbusterBackend
     public Task<RegistryAppListResult> ListRegistryAppsAsync(CancellationToken cancellationToken = default)
     {
         return Task.Run(
-            () => new RegistryAppListResult { Apps = RegistryOperations.EnumerateInstalledApps().Select(ToRegistryApplication).ToArray() },
+            () => new RegistryAppListResult { Apps = RegistryScan.EnumerateInstalledApps().Select(ToRegistryApplication).ToArray() },
             cancellationToken);
     }
 
@@ -82,9 +82,9 @@ public sealed partial class DriftbusterBackend
         return Task.Run(
             () =>
             {
-                var apps = RegistryOperations.EnumerateInstalledApps();
+                var apps = RegistryScan.EnumerateInstalledApps();
                 var explicitRoots = request.Roots.Select(RegistryRoot.Parse).ToList();
-                var roots = explicitRoots.Count > 0 ? explicitRoots : RegistryOperations.FindAppRegistryRoots(request.Token, apps);
+                var roots = explicitRoots.Count > 0 ? explicitRoots : RegistryScan.FindAppRegistryRoots(request.Token, apps);
                 var spec = new SearchSpec
                 {
                     Keywords = request.Keywords.ToList(),
@@ -93,7 +93,7 @@ public sealed partial class DriftbusterBackend
                     MaxHits = request.MaxHits,
                     TimeBudgetS = request.TimeBudgetSeconds,
                 };
-                var hits = RegistryOperations.SearchRegistry(roots, spec);
+                var hits = RegistryScan.SearchRegistry(roots, spec);
                 return new RegistrySearchResult
                 {
                     Roots = roots.Select(root => new RegistryRootEntry { Hive = root.Hive, Path = root.Path, View = root.View }).ToArray(),

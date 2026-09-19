@@ -38,11 +38,7 @@ public sealed class DiffTests
         summary.ComparisonCount.Should().Be(2);
         summary.Comparisons[0].Metadata.BaselineName.Should().Be("baseline.cfg");
         summary.Comparisons[1].Summary.AddedLines.Should().Be(1);
-
-        var payload = DiffBuilder.DiffSummaryToPayload(summary);
-        payload["comparison_count"].Should().Be(2);
-        var comparisons = DiffPayloads.List(payload["comparisons"]);
-        DiffPayloads.Map(DiffPayloads.Map(comparisons[1])["metadata"])["comparison_name"].Should().Be("right.cfg");
+        summary.Comparisons[1].Metadata.ComparisonName.Should().Be("right.cfg");
     }
 
     [Fact]

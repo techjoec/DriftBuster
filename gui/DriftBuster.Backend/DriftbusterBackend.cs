@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Hunt;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Profiles.Run;
@@ -31,13 +32,6 @@ namespace DriftBuster.Backend
     [ExcludeFromCodeCoverage]
     public sealed partial class DriftbusterBackend : IDriftbusterBackend
     {
-        private static readonly JsonSerializerOptions SerializerOptions = new()
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            PropertyNameCaseInsensitive = true,
-            Converters = { new JsonStringEnumConverter() },
-        };
-
         private static readonly Encoding Utf8 = new UTF8Encoding(false, false);
 
         public Task<string> PingAsync(CancellationToken cancellationToken = default)
@@ -213,8 +207,8 @@ namespace DriftBuster.Backend
                 .ToArray();
             var summary = DiffBuilder.SummariseDiffResults(artifacts, fileNames);
             result.Summary = summary;
-            result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
-            result.SanitizedJson = JsonSerializer.Serialize(summary, SerializerOptions);
+            result.RawJson = ModelJson.Serialize(result);
+            result.SanitizedJson = ModelJson.Serialize(summary);
             return result;
         }
 
@@ -357,7 +351,7 @@ namespace DriftBuster.Backend
                 UnreadableFiles = scan.UnreadableFiles.Count > 0 ? scan.UnreadableFiles.ToArray() : null,
             };
 
-            result.RawJson = JsonSerializer.Serialize(result, SerializerOptions);
+            result.RawJson = ModelJson.Serialize(result);
             return result;
         }
 

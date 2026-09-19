@@ -13,13 +13,13 @@ public static class RegistryCommands
 
     internal static Func<bool> IsWindows { get; set; } = RegistryScan.PlatformIsWindows;
 
-    internal static Func<IReadOnlyList<RegistryApp>> EnumerateInstalledApps { get; set; } = () => RegistryOperations.EnumerateInstalledApps();
+    internal static Func<IReadOnlyList<RegistryApp>> EnumerateInstalledApps { get; set; } = () => RegistryScan.EnumerateInstalledApps();
 
     internal static Func<string, IReadOnlyList<RegistryApp>, IReadOnlyList<RegistryRoot>> FindAppRegistryRoots { get; set; }
-        = (token, installed) => RegistryOperations.FindAppRegistryRoots(token, installed);
+        = (token, installed) => RegistryScan.FindAppRegistryRoots(token, installed);
 
     internal static Func<IReadOnlyList<RegistryRoot>, SearchSpec, IReadOnlyList<RegistryHit>> SearchRegistry { get; set; }
-        = (roots, spec) => RegistryOperations.SearchRegistry(roots, spec);
+        = (roots, spec) => RegistryScan.SearchRegistry(roots, spec);
 
     internal static Func<RegistryRoot, bool> RootExists { get; set; }
         = root => !OperatingSystem.IsWindows() || WinRegistryBackend.KeyExists(root.Hive, root.Path, root.View);

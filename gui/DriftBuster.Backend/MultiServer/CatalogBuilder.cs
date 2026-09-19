@@ -9,7 +9,7 @@ namespace DriftBuster.Backend.MultiServer;
 /// <summary>One catalog entry and one drilldown per config id.</summary>
 public static class CatalogBuilder
 {
-    private sealed record HostDiff(string Before, string After, string Diff, JsonElement Summary);
+    private sealed record HostDiff(string Before, string After, string Diff, DiffResultSummary Summary);
 
     private sealed record ConfigView(
         string ConfigId,
@@ -103,12 +103,8 @@ public static class CatalogBuilder
             var hostLabel = $"{hostsById[plan.HostId].Label}:{configId}";
             var diff = DiffBuilder.BuildUnifiedDiff(baseline.Canonical, record.Canonical, baseline.ContentType, baselineLabel, hostLabel);
             driftStats[plan.HostId] = diff.Stats.AddedLines + diff.Stats.RemovedLines + diff.Stats.ChangedLines;
-            var summary = DiffBuilder.DiffSummaryToPayload(DiffBuilder.SummariseDiffResult(
-                diff,
-                [baselineLabel, hostLabel],
-                baseline.DisplayName,
-                record.DisplayName));
-            unifiedDiffs[plan.HostId] = new HostDiff(baseline.Raw, record.Raw, diff.Diff, JsonSerializer.SerializeToElement(summary));
+            var summary = DiffBuilder.SummariseDiffResult(diff, [baselineLabel, hostLabel], baseline.DisplayName, record.DisplayName);
+            unifiedDiffs[plan.HostId] = new HostDiff(baseline.Raw, record.Raw, diff.Diff, summary);
         }
 
         return new ConfigView(configId, perHost, baseline, presentHostIds, driftStats, unifiedDiffs);

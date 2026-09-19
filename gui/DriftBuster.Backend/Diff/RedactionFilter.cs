@@ -129,41 +129,6 @@ public class RedactionFilter
         return hasTokens ? new RedactionFilter(maskTokens, placeholder) : null;
     }
 
-    /// <summary>
-    /// Redacts strings inside any value: dictionaries become ordered dictionaries with string keys, object arrays stay arrays, sets
-    /// stay sets, byte arrays are unchanged, lists and other enumerables become lists, everything else is unchanged.
-    /// </summary>
-    public static object? RedactData(object? data, RedactionFilter redactor)
-    {
-        ArgumentNullException.ThrowIfNull(redactor);
-        switch (data)
-        {
-            case string text:
-                return redactor.Apply(text);
-            case IDictionary mapping:
-                var redacted = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-                foreach (DictionaryEntry entry in mapping)
-                {
-                    redacted[EngineRepr.Str(entry.Key)] = RedactData(entry.Value, redactor);
-                }
-
-                return redacted;
-            case byte[]:
-                return data;
-            case Array tuple:
-                return tuple.Cast<object?>().Select(item => RedactData(item, redactor)).ToArray();
-            case IEnumerable set when IsSet(set.GetType()):
-                return new HashSet<object?>(set.Cast<object?>().Select(item => RedactData(item, redactor)));
-            case IEnumerable items:
-                return items.Cast<object?>().Select(item => RedactData(item, redactor)).ToList();
-            default:
-                return data;
-        }
-    }
-
-    private static bool IsSet(Type type) => type.GetInterfaces().Any(contract => contract.IsGenericType
-        && (contract.GetGenericTypeDefinition() == typeof(ISet<>) || contract.GetGenericTypeDefinition() == typeof(IReadOnlySet<>)));
-
     private static int CodePointLength(string token)
     {
         var length = token.Length;

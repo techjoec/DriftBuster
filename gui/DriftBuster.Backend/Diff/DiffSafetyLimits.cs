@@ -97,52 +97,6 @@ public sealed class DiffSafetyLimits
         public string Digest { get; init; } = string.Empty;
     }
 
-    /// <summary>The mapping in its fixed key order, for JSON payloads.</summary>
-    public OrderedDictionary<string, object?> ToPayload()
-    {
-        var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["thresholds"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["canonical_bytes"] = Thresholds.CanonicalBytes,
-                ["diff_bytes"] = Thresholds.DiffBytes,
-                ["diff_lines"] = Thresholds.DiffLines,
-            },
-        };
-        if (Canonical is not null)
-        {
-            var canonical = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-            foreach (var (label, info) in new[] { ("before", Canonical.Before), ("after", Canonical.After) })
-            {
-                if (info is not null)
-                {
-                    canonical[label] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-                    {
-                        ["size_bytes"] = info.SizeBytes,
-                        ["truncated_bytes"] = info.TruncatedBytes,
-                        ["digest"] = info.Digest,
-                    };
-                }
-            }
-
-            payload["canonical"] = canonical;
-        }
-
-        if (Diff is not null)
-        {
-            payload["diff"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["total_lines"] = Diff.TotalLines,
-                ["total_bytes"] = Diff.TotalBytes,
-                ["truncated_lines"] = Diff.TruncatedLines,
-                ["truncated_bytes"] = Diff.TruncatedBytes,
-                ["digest"] = Diff.Digest,
-            };
-        }
-
-        return payload;
-    }
-
     /// <summary>The inputs and null limits when nothing exceeds a threshold, otherwise the clamped values and the limits.</summary>
     public static (string Before, string After, string Diff, DiffSafetyLimits? Limits) Enforce(string canonicalBefore, string canonicalAfter, string diffText)
     {
