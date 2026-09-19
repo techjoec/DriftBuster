@@ -10,9 +10,8 @@ namespace DriftBuster.Backend.Remote;
 public static partial class CaptureRunner
 {
     /// <summary>
-    /// <c>_build_snapshot_payload(...)</c>: <c>capture</c> (id, root, <c>captured_at</c> from <see cref="UtcNow"/> in ISO format, operator,
-    /// environment, reason, <c>host</c> from <see cref="HostName"/>, placeholder, <c>mask_token_count</c>), <c>detections</c>,
-    /// <c>profile_summary</c> and <c>hunt_hits</c>.
+    /// <c>capture</c> (id, root, ISO <c>captured_at</c> from <see cref="UtcNow"/>, operator, environment, reason, <c>host</c> from
+    /// <see cref="HostName"/>, placeholder, <c>mask_token_count</c>), <c>detections</c>, <c>profile_summary</c> and <c>hunt_hits</c>.
     /// </summary>
     public static OrderedDictionary<string, object?> BuildSnapshotPayload(
         string captureId,
@@ -50,11 +49,10 @@ public static partial class CaptureRunner
     }
 
     /// <summary>
-    /// <c>_build_manifest_payload(...)</c>: <c>schema_version</c>; <c>capture</c> (id, the snapshot and manifest file names, captured_at,
-    /// root, operator, environment, reason, host, each read from <paramref name="capture"/>); <c>durations</c> in seconds rounded to three
-    /// digits as <c>round(x, 3)</c> rounds them; <c>counts</c> (detections, profile matches, hunt hits, registry scans);
-    /// <c>profile_summary</c> totals (0 when absent); <c>redaction</c> (placeholder, mask token count, total redactions); and a copy of
-    /// each registry scan summary.
+    /// <c>schema_version</c>; <c>capture</c> (id, snapshot and manifest file names, captured_at, root, operator, environment, reason,
+    /// host); <c>durations</c> in seconds to three places; <c>counts</c> (detections, profile matches, hunt hits, registry scans);
+    /// <c>profile_summary</c> totals (0 when absent); <c>redaction</c> (placeholder, mask token count, total redactions); and each
+    /// registry scan summary.
     /// </summary>
     /// <exception cref="KeyNotFoundException">A capture field is missing.</exception>
     public static OrderedDictionary<string, object?> BuildManifestPayload(
@@ -110,7 +108,7 @@ public static partial class CaptureRunner
         };
     }
 
-    // The manifest's capture block, the fields read in Python's order so the first missing one is the one reported.
+    // Fields are read in a fixed order so the first missing one is the one reported.
     private static OrderedDictionary<string, object?> ManifestCapture(IReadOnlyDictionary<string, object?> capture, string snapshotPath, string manifestPath)
     {
         var block = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -144,19 +142,14 @@ public static partial class CaptureRunner
             profileSummary,
             huntHits);
 
-    /// <summary>
-    /// <c>path.write_text(json.dumps(payload, indent=2, sort_keys=True))</c>: ASCII-escaped JSON with keys in code point order, each line
-    /// break written as the platform's (text mode), no trailing newline. A write failure raises the runtime's exception.
-    /// </summary>
+    /// <summary>ASCII-escaped JSON, indent 2, sorted keys, platform line breaks, no trailing newline; write failures propagate.</summary>
     internal static void WriteJsonText(string path, OrderedDictionary<string, object?> payload)
     {
         var text = Canonicaliser.DumpsSorted(payload, indent: true, ensureAscii: true);
         WriteText(path, string.Equals(Environment.NewLine, "\n", StringComparison.Ordinal) ? text : text.Replace("\n", Environment.NewLine, StringComparison.Ordinal));
     }
 
-    // path.write_text(text, encoding="utf-8") for text already laid out with the platform's line breaks.
     private static void WriteText(string path, string text) => EngineTextFile.WriteText(path, text);
 
-    /// <summary><see cref="EngineTextFile.ReadUtf8Text"/>: <c>path.read_text(encoding="utf-8")</c>.</summary>
     internal static string ReadUtf8Text(string path) => EngineTextFile.ReadUtf8Text(path);
 }

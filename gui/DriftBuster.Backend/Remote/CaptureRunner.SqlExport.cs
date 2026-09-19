@@ -8,16 +8,14 @@ namespace DriftBuster.Backend.Remote;
 public static partial class CaptureRunner
 {
     /// <summary>
-    /// <c>run_sql_export(args)</c>: creates the resolved output directory, exports each database with
-    /// <see cref="SqliteSnapshots.BuildSqliteSnapshot"/> to the first free <c>{stem}-sql-snapshot[-N].json</c> (the stem being the prefix, or
-    /// the database's stem, and <c>{prefix}-{stem}</c> or the stem when several databases are given), reports each file on
-    /// <paramref name="stdout"/>, then writes <c>sql-manifest.json</c> with <c>captured_at</c>, one entry per export and the options.
-    /// A missing database or a failed export is written to <paramref name="stderr"/>, sets exit code 1 and moves on to the next database.
+    /// Creates the output directory, exports each database with <see cref="SqliteSnapshots.BuildSqliteSnapshot"/> to the first free
+    /// <c>{stem}-sql-snapshot[-N].json</c> (stem: the prefix or the database name; <c>{prefix}-{stem}</c> for several databases), reports
+    /// each on <paramref name="stdout"/>, then writes the manifest (<c>captured_at</c>, exports, options). A missing database or failed
+    /// export goes to <paramref name="stderr"/>, sets exit code 1 and moves on.
     /// </summary>
     /// <remarks>
-    /// A table whose schema SQLite stores as a BLOB builds (<see cref="SnapshotTable.SchemaBytes"/>), and <c>json.dumps</c> of the snapshot
-    /// then raises <see cref="NotSupportedException"/> outside the export's error handling, after the destination is chosen
-    /// and before it is written, ending the command without a manifest.
+    /// A table whose schema SQLite stores as a BLOB builds, but serialising it throws <see cref="NotSupportedException"/> outside the
+    /// export's error handling, ending the command without a manifest.
     /// </remarks>
     public static SqlExportOutcome RunSqlExport(SqlExportOptions options, TextWriter stdout, TextWriter stderr)
     {
@@ -94,10 +92,7 @@ public static partial class CaptureRunner
         return true;
     }
 
-    /// <summary>
-    /// <c>_determine_snapshot_path(output_dir, stem)</c>: <c>{stem}-sql-snapshot.json</c>, or the first <c>{stem}-sql-snapshot-{n}.json</c>
-    /// (n from 1) that does not exist.
-    /// </summary>
+    /// <summary><c>{stem}-sql-snapshot.json</c>, or the first <c>{stem}-sql-snapshot-{n}.json</c> (n from 1) that does not exist.</summary>
     public static string DetermineSnapshotPath(string outputDir, string stem)
     {
         ArgumentNullException.ThrowIfNull(outputDir);
@@ -111,8 +106,8 @@ public static partial class CaptureRunner
     }
 
     /// <summary>
-    /// <c>_parse_column_arguments(values)</c>: each non-empty entry holding a "." split at its first dot into a table and a column, both
-    /// stripped; entries with an empty table or column are skipped. Tables keep their first-seen order and their columns in order.
+    /// Non-empty <c>table.column</c> entries split at the first dot and trimmed; entries with an empty side skipped. Tables keep
+    /// first-seen order, columns their order.
     /// </summary>
     public static OrderedDictionary<string, IReadOnlyList<string>> ParseColumnArguments(IEnumerable<string?>? values)
     {
@@ -149,7 +144,7 @@ public static partial class CaptureRunner
         return result;
     }
 
-    // stem = args.prefix or db_path.stem, then f"{stem}-{db_path.stem}" if args.prefix else db_path.stem when several databases are given.
+    // The prefix or the database stem; with several databases, "{prefix}-{stem}" (or the stem without a prefix).
     private static string SnapshotStem(SqlExportOptions options, string dbPath)
     {
         var name = PathText.Name(dbPath);

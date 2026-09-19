@@ -8,20 +8,17 @@ using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Remote;
 
-/// <summary><c>driftbuster capture compare</c>.</summary>
 public static partial class CaptureRunner
 {
     /// <summary>
-    /// <c>compare_snapshots(args)</c>: refuses a missing current snapshot (exit code 1), reports a missing baseline as the first capture
-    /// (exit code 0), loads both snapshots (a load failure written to <paramref name="stderr"/>, exit code 1), then writes the comparison
-    /// summary to <paramref name="stdout"/>: added, removed and changed detection counts, the profile summary diff, the expected hunt tokens
-    /// of the current snapshot against the baseline, the unexpected hits, and the added, removed and changed detection keys.
+    /// Refuses a missing current snapshot (exit 1), reports a missing baseline as the first capture (exit 0), loads both (a failure
+    /// goes to <paramref name="stderr"/>, exit 1), then writes to <paramref name="stdout"/>: added/removed/changed detection counts, the
+    /// profile summary diff, expected hunt tokens against the baseline, unexpected hits, and the detection keys.
     /// </summary>
     /// <remarks>
-    /// Detections are keyed by <c>(relative_path or path, format, variant)</c> tuples in dicts and sets with Python's equality and hashing
-    /// (<see cref="EngineValues"/>), so <c>1</c>, <c>1.0</c> and <c>true</c> are one key and a list in a key raises <see cref="InvalidDataException"/>;
-    /// keys sort with Python's tuple ordering. A snapshot that is not a mapping raises <see cref="InvalidDataException"/>, and an error
-    /// met while the summary is written (a profile name that is not a str) escapes after the lines already written.
+    /// Detections are keyed by (relative_path or path, format, variant) with <see cref="EngineValues"/> equality, so 1, 1.0 and true are
+    /// one key and a list in a key throws <see cref="InvalidDataException"/>. A non-object snapshot throws; an error while writing (a
+    /// non-string profile name) escapes after the lines already written.
     /// </remarks>
     public static CaptureComparison CompareSnapshots(CaptureCompareOptions options, TextWriter stdout, TextWriter stderr)
     {
@@ -61,10 +58,8 @@ public static partial class CaptureRunner
     }
 
     /// <summary>
-    /// <c>_load_snapshot(path)</c>: <c>json.loads(path.read_text())</c>. Text that is not a JSON document raises
-    /// <see cref="InvalidDataException"/> (<c>Failed to parse snapshot {path}: invalid JSON document</c>; <see cref="EngineJson"/> reports no
-    /// decoder reason);
-    /// read, decode and limit errors are raised as they are.
+    /// The snapshot's JSON. Invalid JSON throws <see cref="InvalidDataException"/> (<c>Failed to parse snapshot {path}: invalid JSON
+    /// document</c>); read, decode and limit errors propagate.
     /// </summary>
     public static object? LoadSnapshot(string path)
     {
@@ -74,10 +69,7 @@ public static partial class CaptureRunner
             : throw new InvalidDataException($"Failed to parse snapshot {path}: invalid JSON document");
     }
 
-    /// <summary>
-    /// <c>_detection_key(entry)</c>: <c>(relative_path or path, detection.format, detection.variant)</c> as a three-item tuple
-    /// (<see cref="object"/> array), a missing <c>detection</c> reading as an empty mapping.
-    /// </summary>
+    /// <summary>(relative_path or path, detection.format, detection.variant) as an object array; a missing detection reads as empty.</summary>
     public static object?[] DetectionKey(object? entry)
     {
         var detection = DetectionProfileStore.GetOrDefault(entry, "detection", new OrderedDictionary<string, object?>(StringComparer.Ordinal));
@@ -86,17 +78,14 @@ public static partial class CaptureRunner
         return [location, EngineBuiltins.Get(detection, "format"), EngineBuiltins.Get(detection, "variant")];
     }
 
-    /// <summary><c>_detection_signature(entry)</c>: <c>json.dumps(detection, sort_keys=True)</c> of the entry's detection.</summary>
+    /// <summary>The entry's detection as JSON with sorted keys.</summary>
     public static string DetectionSignature(object? entry)
     {
         var detection = DetectionProfileStore.GetOrDefault(entry, "detection", new OrderedDictionary<string, object?>(StringComparer.Ordinal));
         return Canonicaliser.Dumps(detection, indent: false, ensureAscii: true, sortKeys: true);
     }
 
-    /// <summary>
-    /// <c>_hunt_token_summary(hits)</c>: the count of hits per truthy <c>rule.token_name</c>, keyed with Python's dict semantics in first-seen
-    /// order, and the count of hits without one.
-    /// </summary>
+    /// <summary>Hit counts per non-empty <c>rule.token_name</c> in first-seen order, and the count of hits without one.</summary>
     public static (IReadOnlyList<KeyValuePair<object, long>> Expected, long Unexpected) HuntTokenSummary(object? hits)
     {
         var counts = new Dictionary<object, long>(EngineValues.HashKeys!);
@@ -136,7 +125,7 @@ public static partial class CaptureRunner
         IReadOnlyList<KeyValuePair<object, long>> CurrentExpected,
         long CurrentUnexpected);
 
-    // Everything compare_snapshots computes before it writes the first line, in its order.
+    // Everything computed before the first line is written.
     private static ComparisonState BuildComparison(object? baseline, object? current)
     {
         var baselineMap = DetectionMap(DetectionProfileStore.GetOrDefault(baseline, "detections", new List<object?>()));
@@ -144,7 +133,7 @@ public static partial class CaptureRunner
 
         var added = EngineValues.Sorted(currentMap.Keys.Where(key => !baselineMap.Entries.ContainsKey(key)));
         var removed = EngineValues.Sorted(baselineMap.Keys.Where(key => !currentMap.Entries.ContainsKey(key)));
-        // set(baseline) & set(current) iterates the smaller set (the current one on a tie) and keeps its key objects.
+        // The intersection iterates the smaller map (the current one on a tie) and keeps its key objects.
         var (smaller, larger) = currentMap.Keys.Count <= baselineMap.Keys.Count ? (currentMap, baselineMap) : (baselineMap, currentMap);
         var changed = EngineValues.Sorted(smaller.Keys
             .Where(key => larger.Entries.ContainsKey(key))
@@ -204,7 +193,7 @@ public static partial class CaptureRunner
         return tokens;
     }
 
-    // for token, count in sorted(current_expected.items()): each written with its baseline count and the signed delta.
+    // Tokens in sorted order, each with its baseline count and signed delta.
     private static List<object?> WriteExpectedTokens(ComparisonState state, TextWriter stdout)
     {
         var baselineCounts = new Dictionary<object, long>(EngineValues.HashKeys!);
@@ -243,7 +232,7 @@ public static partial class CaptureRunner
         }
     }
 
-    // ', '.join(items) or 'none': every item must be a str.
+    // Items joined by ", ", or "none"; every item must be a string.
     private static string JoinOrNone(IEnumerable<object?> items)
     {
         var builder = new StringBuilder();
@@ -262,7 +251,6 @@ public static partial class CaptureRunner
         return builder.Length == 0 ? "none" : builder.ToString();
     }
 
-    // format(value, "+d").
     private static string Signed(long value) => value.ToString("+0;-0;+0", CultureInfo.InvariantCulture);
 
     private static OrderedDictionary<string, object?> ComparisonPayload(ComparisonState state, List<object?> expectedTokens) => new(StringComparer.Ordinal)
@@ -291,7 +279,7 @@ public static partial class CaptureRunner
         public List<object> Keys { get; } = [];
     }
 
-    // { _detection_key(entry): entry for entry in detections }: the first key object of equal keys is kept, the last entry wins.
+    // Entries by key: the first key object of equal keys is kept, the last entry wins.
     private static DetectionEntries DetectionMap(object? detections)
     {
         var map = new DetectionEntries();

@@ -33,7 +33,7 @@ public sealed record CaptureRunOptions
     /// <summary><c>--output-dir</c>.</summary>
     public string OutputDir { get; init; } = "captures";
 
-    /// <summary><c>--capture-id</c>; null or empty uses the UTC time as <c>%Y%m%dT%H%M%SZ</c>.</summary>
+    /// <summary><c>--capture-id</c>; null or empty uses the UTC time as <c>yyyyMMddTHHmmssZ</c>.</summary>
     public string? CaptureId { get; init; }
 
     /// <summary><c>--operator</c>.</summary>

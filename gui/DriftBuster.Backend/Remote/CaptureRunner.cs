@@ -11,39 +11,32 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Remote;
 
 /// <summary>
-/// <c>driftbuster capture</c> as library calls: <c>run</c> (<see cref="RunCapture"/>), <c>export-sql</c> (<see cref="RunSqlExport"/>) and
-/// <c>compare</c> (<see cref="CompareSnapshots"/>). Each takes the command's arguments as an options record and writes the command's
-/// stdout and stderr text to the writers it is given; an exception the command lets escape escapes here too. The clock, the monotonic
-/// timer, the host name and the environment are settable seams.
+/// <c>driftbuster capture</c> as library calls: <see cref="RunCapture"/>, <see cref="RunSqlExport"/>, <see cref="CompareSnapshots"/>.
+/// Each takes an options record and writes stdout/stderr text to the given writers. Clock, timer, host name and environment are seams.
 /// </summary>
 public static partial class CaptureRunner
 {
-    /// <summary><c>CAPTURE_MANIFEST_SCHEMA_VERSION</c>.</summary>
     public const string CaptureManifestSchemaVersion = "1.0";
 
-    /// <summary><c>datetime.now(UTC)</c>.</summary>
+    /// <summary>UTC clock (test seam).</summary>
     internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
 
-    /// <summary><c>time.monotonic()</c> in seconds.</summary>
+    /// <summary>Monotonic seconds (test seam).</summary>
     internal static Func<double> Monotonic { get; set; } = () => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
 
-    /// <summary><c>socket.gethostname()</c> (<see cref="CaptureHostName"/>): the host name as the platform reports it, domain part included.</summary>
+    /// <summary>Host name, domain included where the platform reports it (test seam).</summary>
     internal static Func<string> HostName { get; set; } = CaptureHostName.Get;
 
-    /// <summary><c>os.getenv(name)</c>.</summary>
+    /// <summary>Environment variable lookup (test seam).</summary>
     internal static Func<string, string?> GetEnvironmentVariable { get; set; } = Environment.GetEnvironmentVariable;
 
     /// <summary>
-    /// <c>run_capture(args)</c>: validates the root, the redaction opt-in, the operator, environment and reason (each refusal written to
-    /// <paramref name="stderr"/> as <c>error: ...</c> with exit code 1), loads the optional profile store, scans the root with the detector
-    /// (with profiles when a store is given) and, unless skipped, with the default hunt rules, summarises the registry scan files, then writes
-    /// <c>{capture_id}-snapshot.json</c> (redacted) and <c>{capture_id}-manifest.json</c> as <c>json.dumps(..., indent=2, sort_keys=True)</c>
-    /// under the output directory, reports both paths on <paramref name="stdout"/> and warns when a redaction filter replaced nothing.
+    /// Validates the root, the redaction opt-in, operator, environment and reason (each refusal written to <paramref name="stderr"/>
+    /// as <c>error: ...</c>, exit 1); loads the optional profile store; scans with the detector (with profiles when given) and, unless
+    /// skipped, the default hunt rules; summarises registry scan files; writes <c>{capture_id}-snapshot.json</c> (redacted) and
+    /// <c>{capture_id}-manifest.json</c>; reports both paths and warns when a redaction filter replaced nothing.
     /// </summary>
-    /// <remarks>
-    /// Detector guardrail warnings go to <paramref name="stderr"/> as a last-resort logging handler writes them. A file the
-    /// hunt cannot read is skipped. Directory creation and file writes raise the runtime's exceptions.
-    /// </remarks>
+    /// <remarks>Detector guardrail warnings go to <paramref name="stderr"/>. Unreadable files are skipped by the hunt.</remarks>
     public static CaptureRunOutcome RunCapture(CaptureRunOptions options, TextWriter stdout, TextWriter stderr)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -98,7 +91,7 @@ public static partial class CaptureRunner
         double HuntDuration,
         double TotalDuration);
 
-    // The checks run_capture makes before anything is loaded or created, in its order; the first refusal is written to stderr.
+    // The checks made before anything is loaded or created; the first refusal goes to stderr.
     private static bool TryValidateRun(CaptureRunOptions options, TextWriter stderr, out string root, out CaptureIdentity identity)
     {
         root = EnginePath.Resolve(options.Root);
@@ -143,8 +136,7 @@ public static partial class CaptureRunner
         return reason.Length == 0 ? "error: --reason is required for capture manifests" : null;
     }
 
-    // Detector(sample_size=args.sample_size), its guardrail warnings written as logging's last-resort handler writes them. A size past the
-    // detector's int parameter is clamped here with the detector's own warning text, as the detector clamps any size past its guardrail.
+    // A detector whose guardrail warnings go to stderr; a size past its int parameter is clamped here with the detector's warning text.
     private static Detector BuildDetector(long sampleSize, TextWriter stderr)
     {
         void Warn(string message) => stderr.Write(message + "\n");
@@ -157,7 +149,7 @@ public static partial class CaptureRunner
         return new Detector(sampleSize: (int)Math.Max(sampleSize, int.MinValue), onWarning: Warn);
     }
 
-    // The detection scan, then the hunt, timed with time.monotonic() at the points run_capture reads it.
+    // Detection scan, then hunt, each timed.
     private static CaptureScan Scan(CaptureRunOptions options, string root, Detector detector, DetectionProfileStore? profileStore)
     {
         var startTime = Monotonic();
@@ -231,8 +223,8 @@ public static partial class CaptureRunner
     }
 
     /// <summary>
-    /// <c>_resolve_operator(value)</c>: the first of <paramref name="value"/>, <c>DRIFTBUSTER_CAPTURE_OPERATOR</c>, <c>USER</c> and
-    /// <c>USERNAME</c> that is not blank, stripped; null when all are blank. The three variables are read before any is tested.
+    /// The first non-blank of <paramref name="value"/>, <c>DRIFTBUSTER_CAPTURE_OPERATOR</c>, <c>USER</c>, <c>USERNAME</c>, trimmed; null
+    /// when all are blank.
     /// </summary>
     public static string? ResolveOperator(string? value)
     {
@@ -246,16 +238,11 @@ public static partial class CaptureRunner
         return candidates.Select(candidate => EngineText.Strip(candidate ?? string.Empty)).FirstOrDefault(candidate => candidate.Length > 0);
     }
 
-    /// <summary>
-    /// A capture identifier from the UTC clock: <c>yyyyMMddTHHmmssZ</c> (invariant culture).
-    /// </summary>
+    /// <summary>A capture id from the UTC clock: <c>yyyyMMddTHHmmssZ</c>.</summary>
     internal static string CaptureTimestamp(DateTimeOffset now)
         => now.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 
-    /// <summary>
-    /// <c>_prepare_output_paths(directory, capture_id)</c>: creates the directory (<c>mkdir(parents=True, exist_ok=True)</c>) and returns
-    /// <c>{capture_id}-snapshot.json</c> and <c>{capture_id}-manifest.json</c> under it, as <c>str(directory / name)</c> spells them.
-    /// </summary>
+    /// <summary>Creates the directory and returns the snapshot and manifest paths under it.</summary>
     public static (string SnapshotPath, string ManifestPath) PrepareOutputPaths(string directory, string captureId)
     {
         ArgumentNullException.ThrowIfNull(directory);

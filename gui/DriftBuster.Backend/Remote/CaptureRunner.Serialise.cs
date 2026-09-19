@@ -11,9 +11,8 @@ namespace DriftBuster.Backend.Remote;
 public static partial class CaptureRunner
 {
     /// <summary>
-    /// <c>_serialise_profile_config(binding)</c>: <c>profile</c> (name, description, sorted tags, a copy of its metadata) and
-    /// <c>config</c> (id, path, path_glob, application, version, branch, sorted tags, expected_format, expected_variant, a copy of its
-    /// metadata). Tags sort by code point.
+    /// <c>profile</c> (name, description, sorted tags, metadata copy) and <c>config</c> (id, path, path_glob, application, version,
+    /// branch, sorted tags, expected_format, expected_variant, metadata copy). Tags sort by code point.
     /// </summary>
     public static OrderedDictionary<string, object?> SerialiseProfileConfig(AppliedProfileConfig binding)
     {
@@ -45,7 +44,7 @@ public static partial class CaptureRunner
         };
     }
 
-    /// <summary><c>_relative_path(path, root)</c>: <c>path.relative_to(root).as_posix()</c> (<c>.</c> for the root itself), or the file name.</summary>
+    /// <summary>The posix path relative to <paramref name="root"/> (<c>.</c> for the root itself), or the file name.</summary>
     public static string RelativePath(string path, string root)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -54,10 +53,10 @@ public static partial class CaptureRunner
     }
 
     /// <summary>
-    /// <c>_serialise_detection(entry, root)</c>: <see cref="DetectionMetadata.SummariseMetadata"/> of the match plus <c>path</c>,
-    /// <c>relative_path</c> and one <see cref="SerialiseProfileConfig"/> entry per applied profile config.
+    /// <see cref="DetectionMetadata.SummariseMetadata"/> of the match plus <c>path</c>, <c>relative_path</c> and one
+    /// <see cref="SerialiseProfileConfig"/> entry per applied config.
     /// </summary>
-    /// <exception cref="ArgumentException">The entry has no match (<c>Cannot serialise detection for paths without a match.</c>).</exception>
+    /// <exception cref="ArgumentException">No match (<c>Cannot serialise detection for paths without a match.</c>).</exception>
     public static OrderedDictionary<string, object?> SerialiseDetection(ProfiledDetection entry, string root)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -73,7 +72,7 @@ public static partial class CaptureRunner
         return payload;
     }
 
-    /// <summary><c>_serialise_plain_detection(path, match, root)</c>: the match summary with <c>path</c>, <c>relative_path</c> and no profiles.</summary>
+    /// <summary>The match summary with <c>path</c>, <c>relative_path</c> and no profiles.</summary>
     public static OrderedDictionary<string, object?> SerialisePlainDetection(string path, DetectionMatch match, string root)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -86,8 +85,8 @@ public static partial class CaptureRunner
     }
 
     /// <summary>
-    /// <c>_serialise_hunt_hit(hit, root)</c>: <c>rule</c> (name, description, token_name, keywords, pattern texts), <c>path</c>,
-    /// <c>relative_path</c> (relative to the capture root), <c>line_number</c> and <c>excerpt</c>.
+    /// <c>rule</c> (name, description, token_name, keywords, pattern texts), <c>path</c>, <c>relative_path</c> (to the capture root),
+    /// <c>line_number</c> and <c>excerpt</c>.
     /// </summary>
     public static OrderedDictionary<string, object?> SerialiseHuntHit(HuntFinding hit, string root)
     {
@@ -109,10 +108,7 @@ public static partial class CaptureRunner
         };
     }
 
-    /// <summary>
-    /// <c>_normalise_summary(summary)</c>: mappings copied with <c>str()</c> keys, lists, tuples and sets turned into lists, recursively;
-    /// every other value kept.
-    /// </summary>
+    /// <summary>Mappings copied with string keys, lists and sets turned into lists, recursively; other values kept.</summary>
     public static object? NormaliseSummary(object? value) => value switch
     {
         string or byte[] => value,
@@ -140,7 +136,7 @@ public static partial class CaptureRunner
         return copy;
     }
 
-    // dict(summarise_metadata(match)) with reasons as a JSON list.
+    // The match summary with reasons as a JSON list.
     private static OrderedDictionary<string, object?> DetectionPayload(DetectionMatch match)
     {
         var payload = DetectionMetadata.SummariseMetadata(match);
@@ -155,7 +151,7 @@ public static partial class CaptureRunner
         return sorted.Cast<object?>().ToList();
     }
 
-    // _ensure_mapping(data): dict(data or {}).
+    // A copy, empty for null.
     private static OrderedDictionary<string, object?> CopyMapping(IReadOnlyDictionary<string, object?>? mapping)
     {
         var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
