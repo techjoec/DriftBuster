@@ -9,8 +9,8 @@ namespace DriftBuster.Backend.Sql;
 public static partial class SqliteSnapshots
 {
     /// <summary>
-    /// <c>_normalise_value(value)</c> over the values <c>sqlite3</c> returns: bytes become <c>{"type": "base64", "value": ...}</c>
-    /// (standard alphabet, padded); None, int, float and str are returned as they are.
+    /// Bytes become <c>{"type": "base64", "value": ...}</c> (standard alphabet, padded); null, integers, floats and strings are returned
+    /// as they are.
     /// </summary>
     internal static object? NormaliseValue(object? value) => value switch
     {
@@ -23,12 +23,11 @@ public static partial class SqliteSnapshots
     };
 
     /// <summary>
-    /// <c>_hash_text(value, salt=salt)</c>: <c>"sha256:" + sha256(salt.encode("utf-8") + json.dumps(value, sort_keys=True,
-    /// default=str).encode("utf-8")).hexdigest()</c>. The JSON is ASCII-escaped, floats use <c>repr</c> (infinities as
-    /// <c>Infinity</c>), and bytes are dumped as the JSON string of their <c>repr</c> (<c>"b'...'"</c>).
+    /// <c>sha256:</c> plus the lower-case hex SHA-256 of the UTF-8 salt followed by the value as sorted, ASCII-escaped JSON (floats in
+    /// shortest round-trip form, infinities as <c>Infinity</c>; bytes as the JSON string of <see cref="BytesRepr"/>).
     /// </summary>
     /// <remarks>
-    /// An unpaired surrogate in <paramref name="salt"/> is encoded as U+FFFD, where a strict encode would raise; table and column names read from SQLite never hold one.
+    /// An unpaired surrogate in <paramref name="salt"/> is encoded as U+FFFD; table and column names read from SQLite never hold one.
     /// </remarks>
     internal static string HashText(object? value, string salt)
     {
@@ -41,8 +40,8 @@ public static partial class SqliteSnapshots
     }
 
     /// <summary>
-    /// <c>repr(bytes)</c>: <c>b'...'</c>, or <c>b"..."</c> when the bytes hold a single quote and no double quote; the quote in use and
-    /// backslash are escaped, tab, new line and carriage return by name, and every other byte outside space to "~" as <c>\xhh</c>.
+    /// <c>b'...'</c>, or <c>b"..."</c> when the bytes hold a single quote and no double quote; the quote in use and backslash are escaped,
+    /// tab, new line and carriage return by name, every other byte outside space..~ as <c>\xhh</c>. Hashed values must keep this spelling.
     /// </summary>
     internal static string BytesRepr(byte[] bytes)
     {

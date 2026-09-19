@@ -1,14 +1,14 @@
 namespace DriftBuster.Backend.Sql;
 
 /// <summary>A whole database export.</summary>
-/// <param name="Database">The database file's name (<c>Path.name</c>).</param>
+/// <param name="Database">The database file's name.</param>
 /// <param name="Dialect">Always <c>sqlite</c>.</param>
-/// <param name="CapturedAt">The UTC capture time, <c>datetime.isoformat()</c>.</param>
-/// <param name="Path">The path as given, normalised as <c>str(Path(path))</c>.</param>
+/// <param name="CapturedAt">The UTC capture time (<see cref="IsoTimestamp.Format"/>).</param>
+/// <param name="Path">The path as given, lexically normalised.</param>
 /// <param name="Tables">The exported tables in name order.</param>
 public sealed record SqlSnapshot(string Database, string Dialect, string CapturedAt, string Path, IReadOnlyList<SnapshotTable> Tables)
 {
-    /// <summary><c>to_dict()</c>: database, dialect, captured_at, path, tables.</summary>
+    /// <summary>database, dialect, captured_at, path, tables.</summary>
     public OrderedDictionary<string, object?> ToDict() => new(StringComparer.Ordinal)
     {
         ["database"] = Database,

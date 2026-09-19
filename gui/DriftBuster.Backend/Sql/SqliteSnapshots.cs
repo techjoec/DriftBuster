@@ -14,34 +14,27 @@ namespace DriftBuster.Backend.Sql;
 /// <summary>Anonymised SQLite snapshots.</summary>
 public static partial class SqliteSnapshots
 {
-    /// <summary>The default for <c>placeholder</c>.</summary>
     public const string DefaultPlaceholder = "[REDACTED]";
 
     internal static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
-    /// <summary><c>datetime.now(UTC)</c> for <see cref="SqlSnapshot.CapturedAt"/>, swapped by tests that pin the capture time.</summary>
+    /// <summary>The capture clock for <see cref="SqlSnapshot.CapturedAt"/> (test seam).</summary>
     internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
 
     /// <summary>
-    /// <c>build_sqlite_snapshot(path, tables=..., exclude_tables=..., mask_columns=..., hash_columns=..., limit=..., placeholder=...,
-    /// hash_salt=...)</c>. Every table in <c>sqlite_master</c> (name order, names starting <c>sqlite_</c> skipped) that the non-empty
-    /// <paramref name="tables"/> names, and <paramref name="excludeTables"/> does not, is exported: its <c>PRAGMA table_info</c> columns,
-    /// its first <paramref name="limit"/> rows of <c>SELECT *</c> in the order SQLite yields them, and its <c>COUNT(*)</c>. The table name
-    /// is spliced into those statements unquoted, so a name SQL cannot read unquoted raises what SQLite reports. A
-    /// masked column holds <paramref name="placeholder"/> (mask wins over hash), a hashed column <see cref="HashText"/> salted with
-    /// <c>{table}.{column}:{hash_salt}</c>, any other column <see cref="NormaliseValue"/>. <paramref name="limit"/> is the value as the caller
-    /// passes it (null, an integer of any size, a float or a bool): <c>limit &lt;= 0</c> is refused up front with a value comparison
-    /// (a str or list raises <see cref="InvalidDataException"/>), and each exported table splices <c>int(limit)</c> (a NaN raises
-    /// <see cref="InvalidDataException"/>, an infinity <see cref="OverflowException"/>, only once a table is reached).
+    /// Every table in <c>sqlite_master</c> (name order, names starting <c>sqlite_</c> skipped) that the non-empty <paramref name="tables"/>
+    /// names, and <paramref name="excludeTables"/> does not, is exported: its <c>PRAGMA table_info</c> columns, its first
+    /// <paramref name="limit"/> rows of <c>SELECT *</c> in the order SQLite yields them, and its <c>COUNT(*)</c>. The table name is spliced
+    /// in unquoted, so a name SQL cannot read unquoted raises what SQLite reports. A masked column holds <paramref name="placeholder"/>
+    /// (mask wins over hash), a hashed column <see cref="HashText"/> salted with <c>{table}.{column}:{hash_salt}</c>, any other column
+    /// <see cref="NormaliseValue"/>. <paramref name="limit"/> may be null, an integer of any size, a float or a bool: <c>limit &lt;= 0</c> is
+    /// refused up front (a string or list raises <see cref="InvalidDataException"/>); each exported table converts it to an integer (a NaN
+    /// raises <see cref="InvalidDataException"/>, an infinity <see cref="OverflowException"/>, only once a table is reached).
     /// </summary>
     /// <remarks>
-    /// The database is opened read-only through <see cref="SqliteConnectionStringBuilder"/>, never as a file URI.
-    /// Each value keeps its per-row storage class, as <c>sqlite3</c> reads it.
+    /// The database is opened read-only through <see cref="SqliteConnectionStringBuilder"/>, never as a file URI. Each value keeps its
+    /// per-row storage class.
     /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="limit"/> is zero or negative.</exception>
-    /// <exception cref="InvalidDataException"><paramref name="limit"/> has no ordering with 0.</exception>
-    /// <exception cref="FileNotFoundException">The path does not exist (<c>Database not found: {path}</c>).</exception>
-    /// <exception cref="SqliteException">SQLite, or the export's own checks, refuse the database, a statement or a value.</exception>
     public static SqlSnapshot BuildSqliteSnapshot(
         string path,
         IEnumerable<string?>? tables = null,
@@ -94,9 +87,8 @@ public static partial class SqliteSnapshots
     }
 
     /// <summary>
-    /// <c>write_sqlite_snapshot(path, destination, **kwargs)</c>: <see cref="BuildSqliteSnapshot"/>, then
-    /// <c>destination.write_text(json.dumps(snapshot.to_dict(), indent=2, sort_keys=True), encoding="utf-8")</c>: ASCII-escaped JSON with
-    /// keys in code point order, each line break written as the platform's (text mode), no trailing newline.
+    /// <see cref="BuildSqliteSnapshot"/>, then the snapshot written as <see cref="SnapshotJson"/>: indented, ASCII-escaped JSON with keys
+    /// in code point order, the platform's line breaks, no trailing newline.
     /// </summary>
     public static SqlSnapshot WriteSqliteSnapshot(
         string path,
@@ -115,7 +107,7 @@ public static partial class SqliteSnapshots
         return snapshot;
     }
 
-    /// <summary><c>json.dumps(snapshot.to_dict(), indent=2, sort_keys=True)</c> with the platform's line breaks.</summary>
+    /// <summary>The snapshot as indented, sorted, ASCII-escaped JSON with the platform's line breaks.</summary>
     internal static string SnapshotJson(SqlSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
@@ -126,13 +118,10 @@ public static partial class SqliteSnapshots
     }
 
     /// <summary>
-    /// <c>_iter_tables(conn)</c>: <c>SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name</c> (binary collation, so
-    /// UTF-8 byte order), skipping names that start with <c>sqlite_</c> (case-sensitive). Views, indexes and triggers are not tables.
-    /// A schema is the <c>sql</c> value as read: text, or bytes where a writable schema stored a BLOB. SQLite itself refuses a schema
-    /// whose name is not text or a BLOB (<c>malformed database schema</c>). The rows are fetched up front and yielded one at a time, as
-    /// the generator yields them, so every table before a refused row is exported first.
+    /// <c>SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name</c> (binary collation, so UTF-8 byte order), skipping names
+    /// that start with <c>sqlite_</c> (case-sensitive). A schema is the <c>sql</c> value as read: text, or bytes where a writable schema
+    /// stored a BLOB. The rows are fetched up front and yielded one at a time, so every table before a refused row is exported first.
     /// </summary>
-    /// <exception cref="InvalidDataException">A name stored as a BLOB, raised when the iteration reaches that row.</exception>
     internal static IEnumerable<(string Name, object? Schema)> IterTables(sqlite3 db)
     {
         ArgumentNullException.ThrowIfNull(db);
@@ -156,15 +145,15 @@ public static partial class SqliteSnapshots
         }
     }
 
-    // sqlite3.connect opens read-write, and SQLite refuses a directory there with SQLITE_CANTOPEN; opened read-only, the directory
-    // opens and the first read fails with an I/O error instead, so the directory is refused before opening.
-    // The refusal reads the library's text before any connection has loaded the native provider, so the provider is loaded first.
+    // Opened read-only, a directory would open and fail on the first read with an I/O error, so it is refused before opening with
+    // SQLite's own SQLITE_CANTOPEN text. That text is read before any connection has loaded the native provider, so the provider is
+    // loaded first.
     private static SqliteConnection Open(string resolved)
     {
         if (string.Equals(resolved, InMemoryName, StringComparison.Ordinal))
         {
-            // sqlite3.connect(":memory:") opens a new empty in-memory database whatever entry of that name exists (Linux only: Windows
-            // file names cannot hold ":"), so the export lists no tables. str(Path) is the spelling compared.
+            // ":memory:" opens a new empty in-memory database whatever file of that name exists (Linux only: Windows file names cannot hold
+            // ":"), so the export lists no tables.
             return OpenInMemory();
         }
 
@@ -203,12 +192,12 @@ public static partial class SqliteSnapshots
         return connection;
     }
 
-    // A schema stored as a BLOB stays bytes (SnapshotTable.SchemaBytes): only json.dumps of the snapshot refuses it.
+    // A schema stored as a BLOB stays bytes (SnapshotTable.SchemaBytes): only writing the snapshot as JSON refuses it.
     private static SnapshotTable ExportTable(sqlite3 db, string tableName, object? schema, TableExport export)
     {
         var info = Sqlite3Cursor.FetchAll(db, $"PRAGMA table_info({tableName})");
         var columns = info.Rows.Select(row => (string)row[1]!).ToList();
-        // f" LIMIT {int(limit)}": converted for each table, after its PRAGMA.
+        // Converted for each table, after its PRAGMA.
         var limitClause = export.Limit is { } limit ? " LIMIT " + EngineBuiltins.Int(limit).ToString(CultureInfo.InvariantCulture) : string.Empty;
         var fetched = Sqlite3Cursor.FetchAll(db, $"SELECT * FROM {tableName}{limitClause}");
         var masked = export.MaskMap.GetValueOrDefault(tableName, []);

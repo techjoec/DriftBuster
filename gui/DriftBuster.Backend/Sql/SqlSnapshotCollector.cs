@@ -7,23 +7,21 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Sql;
 
 /// <summary>
-/// The <c>sql_snapshot</c> branch of <c>offline_runner.execute_config</c>: runs one <see cref="OfflineSqlSnapshotSource"/> into its
-/// destination directory and returns the manifest source summary, the <c>sql_exports</c> metadata entry and the file it wrote.
+/// Runs one <see cref="OfflineSqlSnapshotSource"/> of an offline runner config into its destination directory and returns the manifest
+/// source summary, the <c>sql_exports</c> metadata entry and the file it wrote.
 /// </summary>
 public static class SqlSnapshotCollector
 {
     internal const string ResultFileName = "sql-snapshot.json";
 
     /// <summary>
-    /// The database is <c>os.path.expanduser(os.path.expandvars(path))</c>, joined under <paramref name="baseDir"/> when relative (the
+    /// The database path has environment variables and <c>~</c> expanded and is joined under <paramref name="baseDir"/> when relative (the
     /// expanded path itself when that does not exist and the expanded path does). A missing database is skipped with reason
-    /// <c>missing</c> when the source is optional, else raises <see cref="FileNotFoundException"/> (<c>SQL snapshot source not found: {path}</c>). Otherwise
-    /// <see cref="SqliteSnapshots.BuildSqliteSnapshot"/> runs with the source's keyword arguments, its payload is written as
-    /// <c>json.dumps(payload, indent=2, sort_keys=True)</c> (bytes, no line-break translation) to <see cref="ResultFileName"/> under
-    /// <paramref name="destinationRoot"/>, and the summary and metadata carry the table names, row counts, column maps, placeholder,
-    /// salt and output name.
+    /// <c>missing</c> when the source is optional, else raises <see cref="FileNotFoundException"/> (<c>SQL snapshot source not found: {path}</c>).
+    /// Otherwise <see cref="SqliteSnapshots.BuildSqliteSnapshot"/> runs with the source's arguments, its payload is written as indented,
+    /// sorted JSON (LF line breaks) to <see cref="ResultFileName"/> under <paramref name="destinationRoot"/>, and the summary and metadata
+    /// carry the table names, row counts, column maps, placeholder, salt and output name.
     /// </summary>
-    /// <exception cref="FileNotFoundException">The database is missing and the source is not optional.</exception>
     public static SqlSnapshotCollection Collect(OfflineSqlSnapshotSource source, string destinationRoot, string alias, string? baseDir = null, Action<string>? log = null)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -83,7 +81,7 @@ public static class SqlSnapshotCollector
             Convert.ToHexStringLower(SHA256.HashData(encoded)));
     }
 
-    // The manifest source summary, or the sql_exports metadata entry, in execute_config's key order.
+    // The manifest source summary, or the sql_exports metadata entry, keys in a fixed order.
     private static OrderedDictionary<string, object?> Describe(OfflineSqlSnapshotSource source, SqlSnapshot snapshot, string alias, bool metadata)
     {
         var entry = new OrderedDictionary<string, object?>(StringComparer.Ordinal);

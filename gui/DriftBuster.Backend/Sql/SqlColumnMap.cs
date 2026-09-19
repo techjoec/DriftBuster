@@ -5,18 +5,15 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Sql;
 
 /// <summary>
-/// The column map parser and its two readers: which columns of which table a snapshot masks or hashes.
-/// Inputs follow the values <see cref="EngineJson"/> produces (dict, list, str, int, float, bool, <c>None</c>); a string array or list
-/// is a Python list, and a dictionary of string lists is a mapping.
+/// Which columns of which table a snapshot masks or hashes. Inputs are <see cref="EngineJson"/> values: a string array or list is a
+/// list, a dictionary of string lists is a mapping.
 /// </summary>
 public static class SqlColumnMap
 {
     /// <summary>
-    /// <c>parse_column_map(values)</c>: a mapping goes through <see cref="NormaliseColumnMap"/>, anything else through
-    /// <see cref="ParseColumnList"/>. Tables keep their first-seen order.
+    /// A mapping goes through <see cref="NormaliseColumnMap"/>, anything else through <see cref="ParseColumnList"/>. Tables keep their
+    /// first-seen order.
     /// </summary>
-    /// <exception cref="InvalidDataException">A list entry that is truthy and not a str, or a truthy value that is neither a mapping nor
-    /// iterable.</exception>
     public static OrderedDictionary<string, IReadOnlyList<string>> ParseColumnMap(object? values) => values switch
     {
         IReadOnlyDictionary<string, object?> mapping => NormaliseColumnMap(mapping),
@@ -26,9 +23,8 @@ public static class SqlColumnMap
     };
 
     /// <summary>
-    /// <c>_normalise_column_map(values)</c>: an empty mapping gives no tables; a table with an empty name is skipped; a sequence of
-    /// columns (a list, or a str, whose code points are its items) keeps <c>str(column)</c> of each item whose <c>str.strip()</c> is not
-    /// empty, unstripped; any other value becomes the single column <c>str(value)</c>.
+    /// An empty mapping gives no tables; a table with an empty name is skipped; a sequence of columns (a list, or a string, whose code
+    /// points are its items) keeps each item's text whose trimmed form is not empty, untrimmed; any other value becomes one column, its text.
     /// </summary>
     internal static OrderedDictionary<string, IReadOnlyList<string>> NormaliseColumnMap(IReadOnlyDictionary<string, object?> values)
     {
@@ -50,9 +46,8 @@ public static class SqlColumnMap
     }
 
     /// <summary>
-    /// <c>_parse_column_list(values)</c>: each truthy entry is stripped and split at its first "." into a table and a column, both
-    /// stripped; an entry without a dot, or with an empty table or column, is skipped. A str is iterated by code point, so it never
-    /// names a column.
+    /// Each truthy entry is stripped and split at its first "." into a table and a column, both stripped; an entry without a dot, or with
+    /// an empty table or column, is skipped. A string is iterated by code point, so it never names a column.
     /// </summary>
     internal static OrderedDictionary<string, IReadOnlyList<string>> ParseColumnList(object? values)
     {

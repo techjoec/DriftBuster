@@ -8,9 +8,9 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Sql;
 
 /// <summary>
-/// <c>offline_runner.OfflineSqlSnapshotSource</c>: a <c>sql_snapshot</c> source of an offline runner profile. The database path, the
-/// manifest alias, whether a missing database is skipped, the table filters, the mask and hash column maps, the row limit, the
-/// placeholder, the salt and the dialect (only <c>sqlite</c>). Values are in the <see cref="EngineJson"/> domain.
+/// A <c>sql_snapshot</c> source of an offline runner config: the database path, the manifest alias, whether a missing database is
+/// skipped, the table filters, the mask and hash column maps, the row limit, the placeholder, the salt and the dialect (only
+/// <c>sqlite</c>). Values are in the <see cref="EngineJson"/> domain.
 /// </summary>
 public sealed record OfflineSqlSnapshotSource(string Path)
 {
@@ -37,14 +37,12 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     public string Dialect { get; init; } = "sqlite";
 
     /// <summary>
-    /// <c>OfflineSqlSnapshotSource.from_dict(payload)</c>: <c>payload["sql_snapshot"]</c> must be a mapping; the path is the first truthy
-    /// of the spec's and the payload's <c>path</c> and must not be blank; the alias the first truthy of the payload's and the spec's,
-    /// stripped, blank dropped; <c>optional</c> from the payload, else the spec, as <c>bool()</c>; <c>tables</c> and <c>exclude_tables</c>
-    /// a str as one name or each non-blank stripped <c>str()</c> of an iterable; the column maps through
-    /// <see cref="NormaliseSnapshotColumns"/>; <c>int(limit)</c> when not null, which must be positive; the placeholder and salt the first
-    /// truthy of the spec's and the payload's as <c>str()</c>; <c>str(dialect).lower()</c>, which must be <c>sqlite</c>.
+    /// <c>payload["sql_snapshot"]</c> must be a mapping (the spec). Path: the first truthy of the spec's and the payload's <c>path</c>, not
+    /// blank. Alias: the first truthy of the payload's and the spec's, stripped, blank dropped. <c>optional</c>: the payload's, else the
+    /// spec's, as a truthiness test. <c>tables</c> / <c>exclude_tables</c>: a string is one name, a list gives each non-blank stripped item
+    /// as text. Column maps through <see cref="NormaliseSnapshotColumns"/>. <c>limit</c>, when not null, an integer that must be positive.
+    /// Placeholder and salt: the first truthy of the spec's and the payload's, as text. <c>dialect</c> lower-cased, must be <c>sqlite</c>.
     /// </summary>
-    /// <exception cref="InvalidDataException">Each refusal.</exception>
     public static OfflineSqlSnapshotSource FromDict(IReadOnlyDictionary<string, object?> payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
@@ -75,7 +73,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
             }
         }
 
-        // str(spec.get(key) or payload.get(key) or default): a falsy payload value falls through to the default too.
+        // A falsy payload value falls through to the default too.
         var placeholder = EngineRepr.Str(FirstTruthy(FirstTruthy(spec.GetValueOrDefault("placeholder"), payload.GetValueOrDefault("placeholder")), DefaultPlaceholder));
         var hashSalt = EngineRepr.Str(FirstTruthy(FirstTruthy(spec.GetValueOrDefault("hash_salt"), payload.GetValueOrDefault("hash_salt")), string.Empty));
         var dialect = EngineText.Lower(EngineRepr.Str(FirstTruthy(spec.GetValueOrDefault("dialect"), "sqlite")));
@@ -99,10 +97,10 @@ public sealed record OfflineSqlSnapshotSource(string Path)
         };
     }
 
-    // a or b: the first truthy operand, else the last.
+    // The first truthy operand, else the last.
     private static object? FirstTruthy(object? first, object? second) => EngineBuiltins.IsTruthy(first) ? first : second;
 
-    // _string_tuple(key): () for a falsy value, (raw,) for a str, else the non-blank stripped str() of each item.
+    // Nothing for a falsy value, one item for a string, else each item's non-blank stripped text.
     private static List<string> StringTuple(object? raw)
     {
         if (!EngineBuiltins.IsTruthy(raw))
@@ -119,11 +117,10 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     }
 
     /// <summary>
-    /// <c>_normalise_snapshot_columns(value)</c>: nothing for a falsy value. A mapping gives, per truthy table key, the non-blank stripped
-    /// <c>str()</c> of each item of a sequence value (a str value is a sequence of its characters), or the stripped <c>str()</c> of any other
-    /// value, under <c>str(table)</c>, tables with no entries dropped. A sequence gives, per truthy entry whose stripped <c>str()</c> holds
-    /// a dot, the column after the first dot under the table before it, both stripped and non-blank, tables in first-seen order.
-    /// Anything else gives nothing.
+    /// Nothing for a falsy value. A mapping gives, per truthy table key, each item's non-blank stripped text of a sequence value (a
+    /// string is a sequence of its characters) or the stripped text of any other value, tables with no entries dropped. A sequence gives,
+    /// per truthy entry whose stripped text holds a dot, the column after the first dot under the table before it, both stripped and
+    /// non-blank, tables in first-seen order. Anything else gives nothing.
     /// </summary>
     public static OrderedDictionary<string, IReadOnlyList<string>> NormaliseSnapshotColumns(object? value)
     {
@@ -201,13 +198,10 @@ public sealed record OfflineSqlSnapshotSource(string Path)
         return grouped;
     }
 
-    // isinstance(value, Sequence) over the JSON domain: a str or a list (a mapping is not a Sequence).
+    // A string or a list; a mapping is not a sequence.
     private static bool IsSequence(object? value) => value is string || (value is IList and not IReadOnlyDictionary<string, object?> and not byte[]);
 
-    /// <summary>
-    /// <c>source.destination_name(fallback_index=fallbackIndex)</c>: the safe alias, else the safe <c>Path(path).stem</c>, else
-    /// <c>sql_snapshot_NN</c>.
-    /// </summary>
+    /// <summary>The safe alias, else the safe file stem of the path, else <c>sql_snapshot_NN</c>.</summary>
     public string DestinationName(int fallbackIndex)
     {
         if (!string.IsNullOrEmpty(Alias))
@@ -221,17 +215,16 @@ public sealed record OfflineSqlSnapshotSource(string Path)
             return RunProfileStore.SafeName(stem);
         }
 
-        // f"{index:02d}": zero-padded to two characters, the sign counted.
+        // Zero-padded to two characters, the sign counted.
         var index = fallbackIndex >= 0
             ? fallbackIndex.ToString("00", CultureInfo.InvariantCulture)
             : fallbackIndex.ToString(CultureInfo.InvariantCulture);
         return $"sql_snapshot_{index}";
     }
 
-    // PurePath(path).stem: the name less its suffix (the last dot that is neither the name's first nor its last character).
+    // The file name less its suffix (the last dot that is neither the name's first nor its last character).
     private static string Stem(string path)
     {
-        // PurePath.name: the last of the parts after the anchor, or "".
         var parts = LexicalPath.Parts(path);
         var name = parts.Count > (LexicalPath.Anchor(path).Length > 0 ? 1 : 0) ? parts[^1] : string.Empty;
         var dot = name.LastIndexOf('.');
@@ -239,8 +232,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
     }
 
     /// <summary>
-    /// <c>source.snapshot_kwargs()</c>: the <c>build_sqlite_snapshot</c> keyword arguments (<c>tables</c> and <c>exclude_tables</c> null
-    /// when empty), in the order the method builds them.
+    /// The <see cref="SqliteSnapshots.BuildSqliteSnapshot"/> arguments by name (<c>tables</c> and <c>exclude_tables</c> null when empty).
     /// </summary>
     public OrderedDictionary<string, object?> SnapshotKwargs() => new(StringComparer.Ordinal)
     {
@@ -253,7 +245,7 @@ public sealed record OfflineSqlSnapshotSource(string Path)
         ["hash_salt"] = HashSalt,
     };
 
-    /// <summary>The column map as a JSON-domain mapping of lists (<c>{table: list(columns)}</c>).</summary>
+    /// <summary>The column map as a JSON-domain mapping of lists.</summary>
     public static OrderedDictionary<string, object?> ColumnMap(OrderedDictionary<string, IReadOnlyList<string>> columns)
     {
         ArgumentNullException.ThrowIfNull(columns);

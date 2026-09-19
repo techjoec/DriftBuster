@@ -18,12 +18,12 @@ public sealed record SnapshotTable(
     IReadOnlyList<string> HashedColumns)
 {
     /// <summary>
-    /// The <c>sql</c> value when a writable schema stored it as a BLOB: the schema is then <c>bytes</c>, which
-    /// <see cref="ToDict"/> carries so that writing the snapshot as JSON raises <see cref="NotSupportedException"/>.
+    /// The <c>sql</c> value when a writable schema stored it as a BLOB; <see cref="ToDict"/> carries it so writing the snapshot as JSON
+    /// raises <see cref="NotSupportedException"/>.
     /// </summary>
     public byte[]? SchemaBytes { get; init; }
 
-    /// <summary><c>to_dict()</c>: name, schema, columns, row_count, rows, masked_columns, hashed_columns, as fresh containers.</summary>
+    /// <summary>name, schema, columns, row_count, rows, masked_columns, hashed_columns, as fresh containers.</summary>
     public OrderedDictionary<string, object?> ToDict() => new(StringComparer.Ordinal)
     {
         ["name"] = Name,
