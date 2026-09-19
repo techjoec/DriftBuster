@@ -24,6 +24,9 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("export")]
         public ServerScanExportOptions Export { get; set; } = new();
 
+        [JsonPropertyName("registry")]
+        public ServerScanRegistryOptions? Registry { get; set; }
+
         [JsonPropertyName("throttle_seconds")]
         public double? ThrottleSeconds { get; set; }
 

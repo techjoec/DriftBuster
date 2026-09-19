@@ -362,12 +362,15 @@ public sealed class DriftbusterBackendTests
                 Label = "Primary",
                 Scope = ServerScanScope.CustomRoots,
                 Roots = new[] { Path.Combine(RepositoryRoot(), "fixtures", "multi-server", "server01") },
+                Registry = new ServerScanRegistryOptions { Keys = new[] { @"HKLM\SOFTWARE\DriftBusterTestMissing" } },
             },
         };
 
         var response = await _backend.RunServerScansAsync(plans, progress: null, TestContext.Current.CancellationToken);
 
-        response.Results.Should().ContainSingle().Which.Status.Should().Be(ServerScanStatus.Succeeded);
+        var result = response.Results.Should().ContainSingle().Subject;
+        result.Status.Should().Be(ServerScanStatus.Succeeded);
+        result.Message.Should().Contain("egistry", "the registry settings reach the runner");
         var cacheDirectory = Path.Combine(_fixture.Root, "cache", "diffs");
         Directory.Exists(cacheDirectory).Should().BeTrue();
         Directory.GetFiles(cacheDirectory, "*.json").Should().NotBeEmpty();

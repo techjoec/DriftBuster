@@ -17,7 +17,7 @@ public static partial class RegistryScan
     [GeneratedRegex(@"[\s_-]+", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
     private static partial Regex VendorSplit();
 
-    private static readonly (string Hive, string Base, string? View)[] UninstallProbes =
+    internal static readonly (string Hive, string Base, string? View)[] UninstallProbes =
     [
         ("HKLM", UninstallPath, "64"),
         ("HKLM", UninstallPathWow64, "32"),

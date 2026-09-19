@@ -23,5 +23,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\secret_rules.json" />
+    <EmbeddedResource Include="Resources\remote_registry_dump.ps1" />
   </ItemGroup>
 </Project>

@@ -124,7 +124,7 @@ public sealed partial class MultiServerRunner
         Emit(ServerScanStatus.Running, $"Scanning {plan.Label}");
         var roots = plan.Roots.Select(LexicalPath.Str).ToList();
         var existingRoots = roots.Where(RootExists).ToList();
-        if (existingRoots.Count == 0)
+        if (existingRoots.Count == 0 && plan.Registry is null)
         {
             const string message = "No accessible roots.";
             Emit(ServerScanStatus.Failed, message);
@@ -136,16 +136,20 @@ public sealed partial class MultiServerRunner
         IReadOnlyList<string> unreadable = [];
         try
         {
-            var scan = ScanPlan(plan, existingRoots, cancellationToken);
+            var scan = existingRoots.Count > 0 ? ScanPlan(plan, existingRoots, cancellationToken) : new PlanScan(Empty(), UsedCache: false, BudgetReached: false, []);
             configs = scan.Configs;
             unreadable = RelativeToRoots(scan.SkippedFiles, existingRoots);
+            var registry = plan.Registry is null ? null : ScanRegistry(plan, configs, cancellationToken);
             var message = string.Create(CultureInfo.InvariantCulture, $"Evaluated {configs.Count} configuration(s).");
             if (scan.BudgetReached)
             {
                 message += " Sample budget reached; additional files skipped.";
             }
 
-            result = Result(plan, ServerScanStatus.Succeeded, ServerAvailabilityStatus.Found, message, existingRoots, scan.UsedCache, scan.BudgetReached);
+            message += registry?.Message ?? string.Empty;
+            result = existingRoots.Count == 0 && registry is { Failed: true }
+                ? Result(plan, ServerScanStatus.Failed, ServerAvailabilityStatus.Offline, message.TrimStart(), roots)
+                : Result(plan, ServerScanStatus.Succeeded, ServerAvailabilityStatus.Found, message, existingRoots, scan.UsedCache && registry is null, scan.BudgetReached);
         }
         catch (DetectorIOException error)
         {

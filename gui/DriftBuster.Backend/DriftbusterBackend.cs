@@ -426,6 +426,14 @@ namespace DriftBuster.Backend
                     },
                 ThrottleSeconds = plan.ThrottleSeconds,
                 CachedAt = plan.CachedAt,
+                Registry = plan.Registry is null
+                    ? null
+                    : new ServerScanRegistryOptions
+                    {
+                        Keys = plan.Registry.Keys?.ToArray() ?? Array.Empty<string>(),
+                        Computer = plan.Registry.Computer,
+                        CredentialFile = plan.Registry.CredentialFile,
+                    },
             };
         }
 

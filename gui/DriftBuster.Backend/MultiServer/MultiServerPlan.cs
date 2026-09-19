@@ -22,6 +22,9 @@ public sealed record MultiServerPlan
     /// <summary><c>BaselinePreference.priority</c>: a Python int, unbounded.</summary>
     public BigInteger Priority { get; init; }
 
+    /// <summary>Registry keys the scan reads besides the roots; null when none.</summary>
+    public MultiServerRegistry? Registry { get; init; }
+
     /// <summary>Seconds to wait after the host is scanned; null, zero or negative waits not at all.</summary>
     public double? ThrottleSeconds { get; init; }
 
@@ -39,7 +42,10 @@ public sealed record MultiServerPlan
             (plan.Roots ?? []).Select(root => root ?? string.Empty),
             plan.Baseline?.IsPreferred ?? false,
             plan.Baseline?.Priority ?? 0,
-            plan.ThrottleSeconds);
+            plan.ThrottleSeconds) with
+        {
+            Registry = MultiServerRegistry.Create(plan.Registry?.Keys, plan.Registry?.Computer, plan.Registry?.CredentialFile),
+        };
     }
 
     /// <summary>
@@ -106,7 +112,25 @@ public sealed record MultiServerPlan
             roots,
             isPreferred,
             priority,
-            Throttle(EngineBuiltins.Get(payload, "throttle_seconds")));
+            Throttle(EngineBuiltins.Get(payload, "throttle_seconds"))) with
+        {
+            Registry = RegistryFromMapping(EngineBuiltins.Get(payload, "registry")),
+        };
+    }
+
+    // "registry": {"keys": [...], "computer": "...", "credential_file": "..."}; anything that is not a mapping reads no registry.
+    private static MultiServerRegistry? RegistryFromMapping(object? value)
+    {
+        if (value is not OrderedDictionary<string, object?> mapping)
+        {
+            return null;
+        }
+
+        string? Text(string key) => mapping.TryGetValue(key, out var raw) && EngineBuiltins.IsTruthy(raw) ? EngineRepr.Str(raw) : null;
+        var keys = mapping.TryGetValue("keys", out var rawKeys) && EngineBuiltins.IsTruthy(rawKeys) && rawKeys is not string
+            ? EngineBuiltins.Iterate(rawKeys).Select(entry => EngineBuiltins.IsTruthy(entry) ? EngineRepr.Str(entry) : null)
+            : [];
+        return MultiServerRegistry.Create(keys, Text("computer"), Text("credential_file"));
     }
 
     // float(throttle_value), None when the value is not a number; an OverflowException propagates.

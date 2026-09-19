@@ -50,9 +50,27 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
             return results;
         }
 
-        for (var index = 0; EnumValue(handle, index) is { } pair; index++)
+        for (var index = 0; EnumValue(handle, index) is { } raw; index++)
         {
-            results.Add(pair);
+            results.Add(new KeyValuePair<string, object?>(raw.Name, RegistryValueDecoder.Convert(raw.Data, raw.Type)));
+        }
+
+        return results;
+    }
+
+    /// <summary>The key's values as stored: name, registry type and data bytes, in the key's order. Empty where the key cannot be opened.</summary>
+    internal static IReadOnlyList<RegistryRawValue> EnumRawValues(string hive, string path, string? view)
+    {
+        using var handle = Open(hive, path, view);
+        var results = new List<RegistryRawValue>();
+        if (handle is null)
+        {
+            return results;
+        }
+
+        for (var index = 0; EnumValue(handle, index) is { } raw; index++)
+        {
+            results.Add(raw);
         }
 
         return results;
@@ -95,7 +113,7 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
     }
 
     // winreg.EnumValue: None where the call fails.
-    private static unsafe KeyValuePair<string, object?>? EnumValue(SafeRegistryHandle handle, int index)
+    private static unsafe RegistryRawValue? EnumValue(SafeRegistryHandle handle, int index)
     {
         int maxNameLength;
         int maxDataLength;
@@ -141,6 +159,6 @@ public sealed partial class WinRegistryBackend : IRegistryBackend
 
         var nameEnd = Array.IndexOf(name, '\0');
         var text = new string(name, 0, nameEnd < 0 ? name.Length : nameEnd);
-        return new KeyValuePair<string, object?>(text, RegistryValueDecoder.Convert(data.AsSpan(0, Math.Min(dataSize, data.Length)), type));
+        return new RegistryRawValue(text, type, data.AsSpan(0, Math.Min(dataSize, data.Length)).ToArray());
     }
 }
