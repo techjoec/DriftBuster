@@ -39,7 +39,7 @@ param(
 # Compiles the C# helpers below once per session. Windows PowerShell 5.1 compiles them with the .NET Framework compiler
 # that ships with Windows; PowerShell 7 with its own. Nothing is installed.
 
-function Import-DbOfflineRunnerNative {
+function Import-DBOfflineRunnerNative {
     [CmdletBinding()]
     param()
 
@@ -4731,7 +4731,7 @@ namespace DriftBusterOfflineRunner
 }
 
 # The engine exception a failed call raised: the EngineException itself or the first one inside the wrapping exceptions.
-function Get-DbEngineException {
+function Get-DBEngineException {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $ErrorRecord)
 
@@ -4751,7 +4751,7 @@ function Get-DbEngineException {
     return $null
 }
 
-function Get-DbEngineError {
+function Get-DBEngineError {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $Type,
@@ -4762,14 +4762,14 @@ function Get-DbEngineError {
 }
 
 # A PowerShell-side list that is never unrolled by the pipeline when returned with the unary comma.
-function Get-DbList {
+function Get-DBList {
     [CmdletBinding()]
     param()
 
     return , ([System.Collections.Generic.List[object]]::new())
 }
 
-function Get-DbOrderedMap {
+function Get-DBOrderedMap {
     [CmdletBinding()]
     param()
 
@@ -4780,14 +4780,14 @@ function Get-DbOrderedMap {
 # OfflineRunnerSettings and OfflineEncryptionSettings. Values stay in the engine's JSON domain (EngineJson.Loads) so truthiness, str() and
 # int() behave consistently.
 
-function Get-DbTimestamp {
+function Get-DBTimestamp {
     [CmdletBinding()]
     param()
 
     return [datetime]::UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'", [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
-function Get-DbStringTuple {
+function Get-DBStringTuple {
     # tuple(str(item) for item in value): the str() of each item.
     [CmdletBinding()]
     param($Value)
@@ -4801,20 +4801,20 @@ function Get-DbStringTuple {
 }
 
 # _expand_path(text): os.path.expanduser(os.path.expandvars(text)) as str(Path(...)).
-function Get-DbExpandedPath {
+function Get-DBExpandedPath {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][AllowEmptyString()][string] $Text)
 
     return [EnginePath]::Normalise([EnginePath]::ExpandUser([EnginePath]::ExpandVars($Text)))
 }
 
-function ConvertFrom-DbOfflineCollectionSource {
+function ConvertFrom-DBOfflineCollectionSource {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
     $path = [Engine]::Get($Payload, 'path', $null)
     if (-not [Engine]::Truthy($path) -or [EngineText]::Strip([Engine]::Str($path)).Length -eq 0) {
-        throw (Get-DbEngineError 'InvalidDataException' "Source entry requires a non-empty 'path'.")
+        throw (Get-DBEngineError 'InvalidDataException' "Source entry requires a non-empty 'path'.")
     }
 
     $alias = [Engine]::Get($Payload, 'alias', $null)
@@ -4828,7 +4828,7 @@ function ConvertFrom-DbOfflineCollectionSource {
         $exclude = @([string]$excludePayload)
     }
     elseif ([Engine]::Truthy($excludePayload)) {
-        $exclude = Get-DbStringTuple $excludePayload
+        $exclude = Get-DBStringTuple $excludePayload
     }
     else {
         $exclude = @()
@@ -4843,14 +4843,14 @@ function ConvertFrom-DbOfflineCollectionSource {
     }
 }
 
-function ConvertFrom-DbRegistryRootDescriptor {
+function ConvertFrom-DBRegistryRootDescriptor {
     # registry.parse_registry_root_descriptor(text)
     [CmdletBinding()]
     param([AllowNull()][AllowEmptyString()][string] $Text)
 
     $value = [EngineText]::Strip([string]$Text)
     if ($value.Length -eq 0) {
-        throw (Get-DbEngineError 'FormatException' 'Registry root descriptor must be non-empty')
+        throw (Get-DBEngineError 'FormatException' 'Registry root descriptor must be non-empty')
     }
 
     $segments = [System.Collections.Generic.List[string]]::new()
@@ -4862,37 +4862,37 @@ function ConvertFrom-DbRegistryRootDescriptor {
     }
 
     if ($segments.Count -eq 0) {
-        throw (Get-DbEngineError 'FormatException' 'Registry root descriptor must be non-empty')
+        throw (Get-DBEngineError 'FormatException' 'Registry root descriptor must be non-empty')
     }
 
     $base = $segments[0].Replace('/', '\')
     $match = [regex]::Match($base, '^(HKLM|HKCU)\\(.+)$', 'IgnoreCase, CultureInvariant')
     if (-not $match.Success) {
-        throw (Get-DbEngineError 'FormatException' 'Registry root descriptor must start with HKLM\ or HKCU\')
+        throw (Get-DBEngineError 'FormatException' 'Registry root descriptor must start with HKLM\ or HKCU\')
     }
 
     $hive = [EngineText]::Upper($match.Groups[1].Value)
     $path = [EngineText]::Strip($match.Groups[2].Value)
     if ($path.Length -eq 0) {
-        throw (Get-DbEngineError 'FormatException' 'Registry root path segment must be non-empty')
+        throw (Get-DBEngineError 'FormatException' 'Registry root path segment must be non-empty')
     }
 
     $view = $null
     for ($index = 1; $index -lt $segments.Count; $index++) {
         $option = $segments[$index]
         if ($option.IndexOf('=') -lt 0) {
-            throw (Get-DbEngineError 'FormatException' "Registry root option '$option' must be formatted as key=value")
+            throw (Get-DBEngineError 'FormatException' "Registry root option '$option' must be formatted as key=value")
         }
 
         $cut = $option.IndexOf('=')
         $key = [EngineText]::Lower([EngineText]::Strip($option.Substring(0, $cut)))
         $rawValue = [EngineText]::Strip($option.Substring($cut + 1))
         if ($key -cne 'view') {
-            throw (Get-DbEngineError 'FormatException' "Unsupported registry root option '$key'")
+            throw (Get-DBEngineError 'FormatException' "Unsupported registry root option '$key'")
         }
 
         if ($rawValue.Length -eq 0) {
-            throw (Get-DbEngineError 'FormatException' 'Registry root view must be non-empty when provided')
+            throw (Get-DBEngineError 'FormatException' 'Registry root view must be non-empty when provided')
         }
 
         $normalised = [EngineText]::Upper($rawValue)
@@ -4903,14 +4903,14 @@ function ConvertFrom-DbRegistryRootDescriptor {
             $view = $normalised
         }
         else {
-            throw (Get-DbEngineError 'FormatException' 'Registry root view must be 32, 64, or auto')
+            throw (Get-DBEngineError 'FormatException' 'Registry root view must be 32, 64, or auto')
         }
     }
 
     return [pscustomobject]@{ hive = $hive; path = $path; view = $view }
 }
 
-function ConvertTo-DbRegistryRootList {
+function ConvertTo-DBRegistryRootList {
     # offline_runner._normalise_registry_roots(value)
     [CmdletBinding()]
     param($Value)
@@ -4929,7 +4929,7 @@ function ConvertTo-DbRegistryRootList {
 
     foreach ($entry in $entries) {
         if ($entry -is [string]) {
-            $roots.Add((ConvertFrom-DbRegistryRootDescriptor $entry))
+            $roots.Add((ConvertFrom-DBRegistryRootDescriptor $entry))
             continue
         }
 
@@ -4937,7 +4937,7 @@ function ConvertTo-DbRegistryRootList {
             $hive = [EngineText]::Strip([Engine]::Str([Engine]::Get($entry, 'hive', '')))
             $path = [EngineText]::Strip([Engine]::Str([Engine]::Get($entry, 'path', '')))
             if ($hive.Length -eq 0 -or $path.Length -eq 0) {
-                throw (Get-DbEngineError 'InvalidDataException' "registry_scan roots entries require 'hive' and 'path'")
+                throw (Get-DBEngineError 'InvalidDataException' "registry_scan roots entries require 'hive' and 'path'")
             }
 
             $viewRaw = [Engine]::Get($entry, 'view', $null)
@@ -4951,7 +4951,7 @@ function ConvertTo-DbRegistryRootList {
                     $view = $candidate
                 }
                 else {
-                    throw (Get-DbEngineError 'InvalidDataException' 'registry_scan root view must be 32, 64, or auto')
+                    throw (Get-DBEngineError 'InvalidDataException' 'registry_scan root view must be 32, 64, or auto')
                 }
             }
 
@@ -4959,13 +4959,13 @@ function ConvertTo-DbRegistryRootList {
             continue
         }
 
-        throw (Get-DbEngineError 'InvalidDataException' 'registry_scan roots entries must be strings or mappings')
+        throw (Get-DBEngineError 'InvalidDataException' 'registry_scan roots entries must be strings or mappings')
     }
 
     return , $roots.ToArray()
 }
 
-function ConvertTo-DbRemoteBool {
+function ConvertTo-DBRemoteBool {
     [CmdletBinding()]
     param($Value)
 
@@ -4982,10 +4982,10 @@ function ConvertTo-DbRemoteBool {
         return $false
     }
 
-    throw (Get-DbEngineError 'InvalidDataException' "Unsupported boolean value '$([Engine]::Str($Value))' for remote target")
+    throw (Get-DBEngineError 'InvalidDataException' "Unsupported boolean value '$([Engine]::Str($Value))' for remote target")
 }
 
-function ConvertFrom-DbRemoteRegistryTarget {
+function ConvertFrom-DBRemoteRegistryTarget {
     # RemoteRegistryTarget.from_payload(payload)
     [CmdletBinding()]
     param($Payload)
@@ -4993,7 +4993,7 @@ function ConvertFrom-DbRemoteRegistryTarget {
     if ($Payload -is [string]) {
         $host_ = [EngineText]::Strip($Payload)
         if ($host_.Length -eq 0) {
-            throw (Get-DbEngineError 'InvalidDataException' 'remote target host must be non-empty')
+            throw (Get-DBEngineError 'InvalidDataException' 'remote target host must be non-empty')
         }
 
         return [pscustomobject]@{
@@ -5003,16 +5003,16 @@ function ConvertFrom-DbRemoteRegistryTarget {
     }
 
     if (-not [Engine]::IsMapping($Payload)) {
-        throw (Get-DbEngineError 'InvalidDataException' 'remote target must be a string host or mapping')
+        throw (Get-DBEngineError 'InvalidDataException' 'remote target must be a string host or mapping')
     }
 
     $hostValue = [Engine]::Or([Engine]::Get($Payload, 'host', $null), [Engine]::Get($Payload, 'hostname', $null))
     if (-not [Engine]::Truthy($hostValue) -or [EngineText]::Strip([Engine]::Str($hostValue)).Length -eq 0) {
-        throw (Get-DbEngineError 'InvalidDataException' "remote target requires 'host'")
+        throw (Get-DBEngineError 'InvalidDataException' "remote target requires 'host'")
     }
 
     if ([Engine]::Has($Payload, 'password')) {
-        throw (Get-DbEngineError 'InvalidDataException' 'remote target must not embed raw passwords; use password_env')
+        throw (Get-DBEngineError 'InvalidDataException' 'remote target must not embed raw passwords; use password_env')
     }
 
     $passwordEnvValue = $null
@@ -5024,7 +5024,7 @@ function ConvertFrom-DbRemoteRegistryTarget {
     }
 
     if ($null -ne $passwordEnvValue -and [EngineText]::Strip([Engine]::Str($passwordEnvValue)).Length -eq 0) {
-        throw (Get-DbEngineError 'InvalidDataException' 'remote target password_env must be non-empty when provided')
+        throw (Get-DBEngineError 'InvalidDataException' 'remote target password_env must be non-empty when provided')
     }
 
     $usernameValue = [Engine]::Or([Engine]::Get($Payload, 'username', $null), [Engine]::Get($Payload, 'user', $null))
@@ -5045,7 +5045,7 @@ function ConvertFrom-DbRemoteRegistryTarget {
     if ($null -ne $portValue) {
         $port = [Engine]::Int($portValue)
         if ($port.Sign -le 0) {
-            throw (Get-DbEngineError 'InvalidDataException' 'remote target port must be positive')
+            throw (Get-DBEngineError 'InvalidDataException' 'remote target port must be positive')
         }
     }
 
@@ -5057,22 +5057,22 @@ function ConvertFrom-DbRemoteRegistryTarget {
         $useSslValue = [Engine]::Get($Payload, 'use-ssl', $null)
     }
 
-    $useSsl = $(if ($null -ne $useSslValue) { ConvertTo-DbRemoteBool $useSslValue } else { $null })
+    $useSsl = $(if ($null -ne $useSslValue) { ConvertTo-DBRemoteBool $useSslValue } else { $null })
 
     return [pscustomobject]@{
         host               = [EngineText]::Strip([Engine]::Str($hostValue))
         transport          = $transport
         port               = $port
         use_ssl            = $useSsl
-        username           = (Get-DbStrippedTruthy $usernameValue)
-        password_env       = (Get-DbStrippedTruthy $passwordEnvValue)
-        credential_profile = (Get-DbStrippedTruthy $credentialProfile)
-        alias              = (Get-DbStrippedTruthy $aliasValue)
+        username           = (Get-DBStrippedTruthy $usernameValue)
+        password_env       = (Get-DBStrippedTruthy $passwordEnvValue)
+        credential_profile = (Get-DBStrippedTruthy $credentialProfile)
+        alias              = (Get-DBStrippedTruthy $aliasValue)
     }
 }
 
 # str(value).strip() if value and str(value).strip() else None
-function Get-DbStrippedTruthy {
+function Get-DBStrippedTruthy {
     [CmdletBinding()]
     param($Value)
 
@@ -5087,7 +5087,7 @@ function Get-DbStrippedTruthy {
 }
 
 # re.split(r"[\s,;]+") parts for a str, stripped non-blank str() items for a list, nothing otherwise.
-function Get-DbNormalisedSequence {
+function Get-DBNormalisedSequence {
     [CmdletBinding()]
     param($Value)
 
@@ -5116,19 +5116,19 @@ function Get-DbNormalisedSequence {
     return , $items.ToArray()
 }
 
-function ConvertFrom-DbOfflineRegistryScanSource {
+function ConvertFrom-DBOfflineRegistryScanSource {
     # OfflineRegistryScanSource.from_dict(payload)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
     $spec = [Engine]::Get($Payload, 'registry_scan', $null)
     if (-not [Engine]::IsMapping($spec)) {
-        throw (Get-DbEngineError 'InvalidDataException' 'registry_scan source requires an object payload')
+        throw (Get-DBEngineError 'InvalidDataException' 'registry_scan source requires an object payload')
     }
 
     $tokenRaw = [Engine]::Get($spec, 'token', $null)
     if (-not [Engine]::Truthy($tokenRaw) -or [EngineText]::Strip([Engine]::Str($tokenRaw)).Length -eq 0) {
-        throw (Get-DbEngineError 'InvalidDataException' "registry_scan requires non-empty 'token'.")
+        throw (Get-DBEngineError 'InvalidDataException' "registry_scan requires non-empty 'token'.")
     }
 
     $alias = [Engine]::Get($Payload, 'alias', $null)
@@ -5142,31 +5142,31 @@ function ConvertFrom-DbOfflineRegistryScanSource {
 
     $remote = $null
     if ($null -ne $remoteSpec) {
-        $remote = ConvertFrom-DbRemoteRegistryTarget $remoteSpec
+        $remote = ConvertFrom-DBRemoteRegistryTarget $remoteSpec
     }
 
     $batch = [System.Collections.Generic.List[object]]::new()
     if ($null -ne $batchSpec) {
         if ([Engine]::IsMapping($batchSpec)) {
-            $batch.Add((ConvertFrom-DbRemoteRegistryTarget $batchSpec))
+            $batch.Add((ConvertFrom-DBRemoteRegistryTarget $batchSpec))
         }
         elseif ([Engine]::IsList($batchSpec)) {
             foreach ($entry in [Engine]::Iterate($batchSpec)) {
-                $batch.Add((ConvertFrom-DbRemoteRegistryTarget $entry))
+                $batch.Add((ConvertFrom-DBRemoteRegistryTarget $entry))
             }
         }
         else {
-            $batch.Add((ConvertFrom-DbRemoteRegistryTarget $batchSpec))
+            $batch.Add((ConvertFrom-DBRemoteRegistryTarget $batchSpec))
         }
     }
 
     $token = [EngineText]::Strip([Engine]::Str($tokenRaw))
-    $keywords = Get-DbNormalisedSequence ([Engine]::Get($spec, 'keywords', $null))
-    $patterns = Get-DbNormalisedSequence ([Engine]::Get($spec, 'patterns', $null))
+    $keywords = Get-DBNormalisedSequence ([Engine]::Get($spec, 'keywords', $null))
+    $patterns = Get-DBNormalisedSequence ([Engine]::Get($spec, 'patterns', $null))
     $maxDepth = [Engine]::Int([Engine]::Get($spec, 'max_depth', 12))
     $maxHits = [Engine]::Int([Engine]::Get($spec, 'max_hits', 200))
     $timeBudget = [Engine]::Float([Engine]::Get($spec, 'time_budget_s', 10.0))
-    $roots = ConvertTo-DbRegistryRootList ([Engine]::Get($spec, 'roots', $null))
+    $roots = ConvertTo-DBRegistryRootList ([Engine]::Get($spec, 'roots', $null))
 
     return [pscustomobject]@{
         kind          = 'registry_scan'
@@ -5183,12 +5183,12 @@ function ConvertFrom-DbOfflineRegistryScanSource {
     }
 }
 
-function ConvertTo-DbSnapshotColumnMap {
+function ConvertTo-DBSnapshotColumnMap {
     # offline_runner._normalise_snapshot_columns(value): table -> string[] in first-seen order.
     [CmdletBinding()]
     param($Value)
 
-    $normalised = Get-DbOrderedMap
+    $normalised = Get-DBOrderedMap
     if (-not [Engine]::Truthy($Value)) {
         return , $normalised
     }
@@ -5222,7 +5222,7 @@ function ConvertTo-DbSnapshotColumnMap {
     }
 
     if ([Engine]::IsSequence($Value)) {
-        $grouped = Get-DbOrderedMap
+        $grouped = Get-DBOrderedMap
         foreach ($entry in [Engine]::Iterate($Value)) {
             if (-not [Engine]::Truthy($entry)) {
                 continue
@@ -5255,22 +5255,22 @@ function ConvertTo-DbSnapshotColumnMap {
     return , $normalised
 }
 
-function ConvertFrom-DbOfflineSqlSnapshotSource {
+function ConvertFrom-DBOfflineSqlSnapshotSource {
     # OfflineSqlSnapshotSource.from_dict(payload)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
     $spec = [Engine]::Get($Payload, 'sql_snapshot', $null)
     if (-not [Engine]::IsMapping($spec)) {
-        throw (Get-DbEngineError 'InvalidDataException' 'sql_snapshot source requires an object payload')
+        throw (Get-DBEngineError 'InvalidDataException' 'sql_snapshot source requires an object payload')
     }
 
     $pathValue = [Engine]::Or([Engine]::Get($spec, 'path', $null), [Engine]::Get($Payload, 'path', $null))
     if (-not [Engine]::Truthy($pathValue) -or [EngineText]::Strip([Engine]::Str($pathValue)).Length -eq 0) {
-        throw (Get-DbEngineError 'InvalidDataException' "sql_snapshot requires a 'path'.")
+        throw (Get-DBEngineError 'InvalidDataException' "sql_snapshot requires a 'path'.")
     }
 
-    $alias = Get-DbStrippedTruthy ([Engine]::Or([Engine]::Get($Payload, 'alias', $null), [Engine]::Get($spec, 'alias', $null)))
+    $alias = Get-DBStrippedTruthy ([Engine]::Or([Engine]::Get($Payload, 'alias', $null), [Engine]::Get($spec, 'alias', $null)))
     $optional = [Engine]::Truthy([Engine]::Get($Payload, 'optional', [Engine]::Get($spec, 'optional', $false)))
 
     $tuples = @{}
@@ -5295,15 +5295,15 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
         }
     }
 
-    $maskColumns = ConvertTo-DbSnapshotColumnMap ([Engine]::Get($spec, 'mask_columns', $null))
-    $hashColumns = ConvertTo-DbSnapshotColumnMap ([Engine]::Get($spec, 'hash_columns', $null))
+    $maskColumns = ConvertTo-DBSnapshotColumnMap ([Engine]::Get($spec, 'mask_columns', $null))
+    $hashColumns = ConvertTo-DBSnapshotColumnMap ([Engine]::Get($spec, 'hash_columns', $null))
 
     $limitValue = [Engine]::Get($spec, 'limit', $null)
     $limit = $null
     if ($null -ne $limitValue) {
         $limit = [Engine]::Int($limitValue)
         if ($limit.Sign -le 0) {
-            throw (Get-DbEngineError 'InvalidDataException' 'sql_snapshot limit must be positive if provided')
+            throw (Get-DBEngineError 'InvalidDataException' 'sql_snapshot limit must be positive if provided')
         }
     }
 
@@ -5311,7 +5311,7 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
     $hashSalt = [Engine]::Str([Engine]::Or([Engine]::Or([Engine]::Get($spec, 'hash_salt', $null), [Engine]::Get($Payload, 'hash_salt', $null)), ''))
     $dialect = [EngineText]::Lower([Engine]::Str([Engine]::Or([Engine]::Get($spec, 'dialect', $null), 'sqlite')))
     if ($dialect -cne 'sqlite') {
-        throw (Get-DbEngineError 'InvalidDataException' "sql_snapshot currently supports only the 'sqlite' dialect")
+        throw (Get-DBEngineError 'InvalidDataException' "sql_snapshot currently supports only the 'sqlite' dialect")
     }
 
     return [pscustomobject]@{
@@ -5330,7 +5330,7 @@ function ConvertFrom-DbOfflineSqlSnapshotSource {
     }
 }
 
-function Get-DbDestinationName {
+function Get-DBDestinationName {
     # source.destination_name(fallback_index=index) for each source kind.
     [CmdletBinding()]
     param(
@@ -5357,7 +5357,7 @@ function Get-DbDestinationName {
             return "sql_snapshot_$index"
         }
         default {
-            $name = [EnginePath]::Name((Get-DbExpandedPath $Source.path))
+            $name = [EnginePath]::Name((Get-DBExpandedPath $Source.path))
             if ($name) {
                 return [EngineText]::SafeName($name)
             }
@@ -5367,7 +5367,7 @@ function Get-DbDestinationName {
     }
 }
 
-function Get-DbSnapshotArgument {
+function Get-DBSnapshotArgument {
     # source.snapshot_kwargs()
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Source)
@@ -5383,38 +5383,38 @@ function Get-DbSnapshotArgument {
     }
 }
 
-function ConvertFrom-DbOfflineRunnerProfile {
+function ConvertFrom-DBOfflineRunnerProfile {
     # OfflineRunnerProfile.from_dict(payload)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
     $name = [Engine]::Get($Payload, 'name', $null)
     if (-not [Engine]::Truthy($name) -or [EngineText]::Strip([Engine]::Str($name)).Length -eq 0) {
-        throw (Get-DbEngineError 'InvalidDataException' "Profile requires a non-empty 'name'.")
+        throw (Get-DBEngineError 'InvalidDataException' "Profile requires a non-empty 'name'.")
     }
 
     $rawSources = [Engine]::Get($Payload, 'sources', $null)
     if (-not [Engine]::Truthy($rawSources)) {
-        throw (Get-DbEngineError 'InvalidDataException' 'Profile must define at least one source.')
+        throw (Get-DBEngineError 'InvalidDataException' 'Profile must define at least one source.')
     }
 
     $sources = [System.Collections.Generic.List[object]]::new()
     foreach ($entry in [Engine]::Iterate($rawSources)) {
         if ([Engine]::IsMapping($entry)) {
             if ($entry.Contains('registry_scan')) {
-                $sources.Add((ConvertFrom-DbOfflineRegistryScanSource $entry))
+                $sources.Add((ConvertFrom-DBOfflineRegistryScanSource $entry))
             }
             elseif ($entry.Contains('sql_snapshot')) {
-                $sources.Add((ConvertFrom-DbOfflineSqlSnapshotSource $entry))
+                $sources.Add((ConvertFrom-DBOfflineSqlSnapshotSource $entry))
             }
             else {
-                $sources.Add((ConvertFrom-DbOfflineCollectionSource $entry))
+                $sources.Add((ConvertFrom-DBOfflineCollectionSource $entry))
             }
         }
         else {
-            $wrapped = Get-DbOrderedMap
+            $wrapped = Get-DBOrderedMap
             $wrapped['path'] = [Engine]::Str($entry)
-            $sources.Add((ConvertFrom-DbOfflineCollectionSource $wrapped))
+            $sources.Add((ConvertFrom-DBOfflineCollectionSource $wrapped))
         }
     }
 
@@ -5423,7 +5423,7 @@ function ConvertFrom-DbOfflineRunnerProfile {
         $baseline = [Engine]::Str($baseline)
         $paths = @($sources | Where-Object { $_.kind -ne 'registry_scan' } | ForEach-Object { $_.path })
         if ($paths -cnotcontains $baseline) {
-            throw (Get-DbEngineError 'InvalidDataException' 'Profile baseline must reference one of the declared sources.')
+            throw (Get-DBEngineError 'InvalidDataException' 'Profile baseline must reference one of the declared sources.')
         }
     }
 
@@ -5432,28 +5432,28 @@ function ConvertFrom-DbOfflineRunnerProfile {
         $tags = @([string]$tagsPayload)
     }
     elseif ([Engine]::Truthy($tagsPayload)) {
-        $tags = Get-DbStringTuple $tagsPayload
+        $tags = Get-DBStringTuple $tagsPayload
     }
     else {
         $tags = @()
     }
 
-    $optionsPayload = [Engine]::Get($Payload, 'options', (Get-DbOrderedMap))
+    $optionsPayload = [Engine]::Get($Payload, 'options', (Get-DBOrderedMap))
     if (-not [Engine]::IsMapping($optionsPayload)) {
-        throw (Get-DbEngineError 'InvalidDataException' "Profile 'options' must be a mapping if provided.")
+        throw (Get-DBEngineError 'InvalidDataException' "Profile 'options' must be a mapping if provided.")
     }
 
-    $options = Get-DbOrderedMap
+    $options = Get-DBOrderedMap
     foreach ($key in @($optionsPayload.Keys)) {
         $options[[Engine]::Str($key)] = $optionsPayload[$key]
     }
 
-    $scannerPayload = [Engine]::Get($Payload, 'secret_scanner', (Get-DbOrderedMap))
+    $scannerPayload = [Engine]::Get($Payload, 'secret_scanner', (Get-DBOrderedMap))
     if ([Engine]::Truthy($scannerPayload) -and -not [Engine]::IsMapping($scannerPayload)) {
-        throw (Get-DbEngineError 'InvalidDataException' "Profile 'secret_scanner' must be a mapping if provided.")
+        throw (Get-DBEngineError 'InvalidDataException' "Profile 'secret_scanner' must be a mapping if provided.")
     }
 
-    $scanner = Get-DbOrderedMap
+    $scanner = Get-DBOrderedMap
     if ([Engine]::IsMapping($scannerPayload)) {
         foreach ($key in @($scannerPayload.Keys)) {
             $scanner[[Engine]::Str($key)] = $scannerPayload[$key]
@@ -5476,7 +5476,7 @@ function ConvertFrom-DbOfflineRunnerProfile {
     }
 }
 
-function ConvertFrom-DbOfflineEncryptionSetting {
+function ConvertFrom-DBOfflineEncryptionSetting {
     # OfflineEncryptionSettings.from_dict(payload)
     [CmdletBinding()]
     param($Payload)
@@ -5486,7 +5486,7 @@ function ConvertFrom-DbOfflineEncryptionSetting {
     }
 
     if (-not [Engine]::IsMapping($Payload)) {
-        throw (Get-DbEngineError 'InvalidDataException' "Runner 'encryption' must be a mapping if provided.")
+        throw (Get-DBEngineError 'InvalidDataException' "Runner 'encryption' must be a mapping if provided.")
     }
 
     $mode = [Engine]::Str([Engine]::Get($Payload, 'mode', 'dpapi-aes'))
@@ -5494,7 +5494,7 @@ function ConvertFrom-DbOfflineEncryptionSetting {
     $keysetPath = $null
     $keysetValue = [Engine]::Or([Engine]::Get($Payload, 'keyset_path', $null), [Engine]::Get($Payload, 'keyset', $null))
     if ([Engine]::Truthy($keysetValue)) {
-        $keysetPath = Get-DbExpandedPath ([Engine]::Str($keysetValue))
+        $keysetPath = Get-DBExpandedPath ([Engine]::Str($keysetValue))
     }
 
     $outputExtension = [Engine]::Str([Engine]::Get($Payload, 'output_extension', '.enc'))
@@ -5513,13 +5513,13 @@ function ConvertFrom-DbOfflineEncryptionSetting {
     }
 
     if ($settings.enabled -and $null -eq $settings.keyset_path) {
-        throw (Get-DbEngineError 'InvalidDataException' "Encryption is enabled but no 'keyset_path' was provided.")
+        throw (Get-DBEngineError 'InvalidDataException' "Encryption is enabled but no 'keyset_path' was provided.")
     }
 
     return $settings
 }
 
-function ConvertFrom-DbOfflineRunnerSetting {
+function ConvertFrom-DBOfflineRunnerSetting {
     # OfflineRunnerSettings.from_dict(payload)
     [CmdletBinding()]
     param($Payload)
@@ -5548,7 +5548,7 @@ function ConvertFrom-DbOfflineRunnerSetting {
     $outputDirectory = $null
     if ([Engine]::Truthy($directory)) {
         if ($directory -isnot [string]) {
-            throw (Get-DbEngineError 'InvalidDataException' "output_directory must be a path string, not '$([Engine]::TypeName($directory))'")
+            throw (Get-DBEngineError 'InvalidDataException' "output_directory must be a path string, not '$([Engine]::TypeName($directory))'")
         }
 
         $outputDirectory = [EnginePath]::PathExpandUser([EnginePath]::Normalise([EnginePath]::ExpandVars($directory)))
@@ -5568,14 +5568,14 @@ function ConvertFrom-DbOfflineRunnerSetting {
     if ($null -ne $maxTotalBytes) {
         $maxTotalBytes = [Engine]::Int($maxTotalBytes)
         if ($maxTotalBytes.Sign -le 0) {
-            throw (Get-DbEngineError 'InvalidDataException' 'max_total_bytes must be positive if provided.')
+            throw (Get-DBEngineError 'InvalidDataException' 'max_total_bytes must be positive if provided.')
         }
     }
 
     $encryptionPayload = [Engine]::Get($Payload, 'encryption', $null)
     $encryption = $null
     if ([Engine]::Truthy($encryptionPayload)) {
-        $encryption = ConvertFrom-DbOfflineEncryptionSetting $encryptionPayload
+        $encryption = ConvertFrom-DBOfflineEncryptionSetting $encryptionPayload
     }
 
     return [pscustomobject]@{
@@ -5595,40 +5595,40 @@ function ConvertFrom-DbOfflineRunnerSetting {
     }
 }
 
-function ConvertFrom-DbOfflineRunnerConfig {
+function ConvertFrom-DBOfflineRunnerConfig {
     # OfflineRunnerConfig.from_dict(payload)
     [CmdletBinding()]
     param($Payload)
 
     if (-not [Engine]::IsMapping($Payload)) {
-        throw (Get-DbEngineError 'InvalidDataException' 'Config payload must be a mapping.')
+        throw (Get-DBEngineError 'InvalidDataException' 'Config payload must be a mapping.')
     }
 
     $schema = [Engine]::Str([Engine]::Get($Payload, 'schema', 'https://driftbuster.dev/offline-runner/config/v1'))
     $version = [Engine]::Str([Engine]::Get($Payload, 'version', '1'))
     $profilePayload = [Engine]::Get($Payload, 'profile', $null)
     if (-not [Engine]::IsMapping($profilePayload)) {
-        throw (Get-DbEngineError 'InvalidDataException' "Config requires a 'profile' object.")
+        throw (Get-DBEngineError 'InvalidDataException' "Config requires a 'profile' object.")
     }
 
     $settingsPayload = [Engine]::Or([Engine]::Get($Payload, 'runner', $null), [Engine]::Get($Payload, 'settings', $null))
-    $metadataPayload = [Engine]::Get($Payload, 'metadata', (Get-DbOrderedMap))
+    $metadataPayload = [Engine]::Get($Payload, 'metadata', (Get-DBOrderedMap))
     if ([Engine]::Truthy($metadataPayload) -and -not [Engine]::IsMapping($metadataPayload)) {
-        throw (Get-DbEngineError 'InvalidDataException' 'Metadata must be a mapping if provided.')
+        throw (Get-DBEngineError 'InvalidDataException' 'Metadata must be a mapping if provided.')
     }
 
-    $profileObject = ConvertFrom-DbOfflineRunnerProfile $profilePayload
-    $settings = ConvertFrom-DbOfflineRunnerSetting $settingsPayload
+    $profileObject = ConvertFrom-DBOfflineRunnerProfile $profilePayload
+    $settings = ConvertFrom-DBOfflineRunnerSetting $settingsPayload
 
     # dict(metadata_payload): a falsy str or list gives {}, a falsy number, bool or None is refused.
-    $metadata = Get-DbOrderedMap
+    $metadata = Get-DBOrderedMap
     if ([Engine]::IsMapping($metadataPayload)) {
         foreach ($key in @($metadataPayload.Keys)) {
             $metadata[$key] = $metadataPayload[$key]
         }
     }
     elseif (-not ($metadataPayload -is [string] -or [Engine]::IsList($metadataPayload))) {
-        throw (Get-DbEngineError 'InvalidDataException' "A value of type '$([Engine]::TypeName($metadataPayload))' cannot be enumerated.")
+        throw (Get-DBEngineError 'InvalidDataException' "A value of type '$([Engine]::TypeName($metadataPayload))' cannot be enumerated.")
     }
 
     return [pscustomobject]@{
@@ -5641,7 +5641,7 @@ function ConvertFrom-DbOfflineRunnerConfig {
     }
 }
 
-function Get-DbDefaultPackageName {
+function Get-DBDefaultPackageName {
     # config.default_package_name(timestamp=timestamp)
     [CmdletBinding()]
     param(
@@ -5649,23 +5649,23 @@ function Get-DbDefaultPackageName {
         [string] $Timestamp
     )
 
-    $stamp = $(if ($Timestamp) { $Timestamp } else { Get-DbTimestamp })
+    $stamp = $(if ($Timestamp) { $Timestamp } else { Get-DBTimestamp })
     return '{0}-{1}' -f [EngineText]::SafeName($Config.profile.name), $stamp
 }
 
-function Import-DbOfflineRunnerConfig {
+function Import-DBOfflineRunnerConfig {
     # load_config(path)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Path)
 
     $payload = [EngineJson]::LoadsFile($Path)
-    return ConvertFrom-DbOfflineRunnerConfig $payload
+    return ConvertFrom-DBOfflineRunnerConfig $payload
 }
 
 # secret_scanning as offline_runner uses it: the ruleset (inline in the config, else the packaged rules file), the ignore lists,
 # the manifest summary and the scrubbing copy.
 
-function ConvertTo-DbCompiledRuleset {
+function ConvertTo-DBCompiledRuleset {
     # _compile_ruleset_from_mapping(payload): $null when nothing compiles.
     [CmdletBinding()]
     param($Payload)
@@ -5673,7 +5673,7 @@ function ConvertTo-DbCompiledRuleset {
     return [SecretScanner]::CompileRuleset($Payload)
 }
 
-function Get-DbSecretOptionValue {
+function Get-DBSecretOptionValue {
     # secret_option_values(value)
     [CmdletBinding()]
     param($Value)
@@ -5681,7 +5681,7 @@ function Get-DbSecretOptionValue {
     return , ([SecretScanner]::OptionValues($Value).ToArray())
 }
 
-function Get-DbSecretRuleFile {
+function Get-DBSecretRuleFile {
     # Rule files that override the embedded rules: secret_rules.json beside the runner, then the repository's backend resource.
     [CmdletBinding()]
     param()
@@ -5692,7 +5692,7 @@ function Get-DbSecretRuleFile {
     )
 }
 
-function Get-DbEmbeddedSecretRuleText {
+function Get-DBEmbeddedSecretRuleText {
     # gui/DriftBuster.Backend/Resources/secret_rules.json, verbatim; scripts/lint_powershell.ps1 fails when the two differ.
     [CmdletBinding()]
     [OutputType([string])]
@@ -5725,7 +5725,7 @@ function Get-DbEmbeddedSecretRuleText {
 '@
 }
 
-function Get-DbPackagedSecretRule {
+function Get-DBPackagedSecretRule {
     # load_secret_rules(): (rules, version, loaded), read once per session.
     [CmdletBinding()]
     param()
@@ -5735,7 +5735,7 @@ function Get-DbPackagedSecretRule {
     }
 
     $payload = $null
-    foreach ($candidate in Get-DbSecretRuleFile) {
+    foreach ($candidate in Get-DBSecretRuleFile) {
         if ([System.IO.File]::Exists($candidate)) {
             $payload = [EngineJson]::LoadsFile($candidate)
             break
@@ -5744,7 +5744,7 @@ function Get-DbPackagedSecretRule {
 
     if ($null -eq $payload) {
         # The runner ships as one file, so the default rules travel inside it.
-        $payload = [EngineJson]::Loads((Get-DbEmbeddedSecretRuleText))
+        $payload = [EngineJson]::Loads((Get-DBEmbeddedSecretRuleText))
     }
 
     $compiled = [SecretScanner]::CompileRuleset($payload)
@@ -5758,7 +5758,7 @@ function Get-DbPackagedSecretRule {
     return [SecretScanner]::PackagedRules
 }
 
-function Get-DbSecretContext {
+function Get-DBSecretContext {
     # build_context(options, secret_scanner)
     [CmdletBinding()]
     param($Options, $SecretScanner)
@@ -5777,13 +5777,13 @@ function Get-DbSecretContext {
         return [SecretScanner]::BuildContext($Options, $SecretScanner, $compiled, $compiled.Rules.Count -gt 0)
     }
 
-    $packaged = Get-DbPackagedSecretRule
+    $packaged = Get-DBPackagedSecretRule
     $context = [SecretScanner]::BuildContext($Options, $SecretScanner, $packaged.ruleset, $packaged.loaded)
     $context.Version = $packaged.version
     return $context
 }
 
-function Get-DbManifestSecretScanner {
+function Get-DBManifestSecretScanner {
     # manifest_secret_scanner(options, secret_scanner, context)
     [CmdletBinding()]
     param($Options, $SecretScanner, [Parameter(Mandatory = $true)] $Context)
@@ -5800,14 +5800,14 @@ function Get-DbManifestSecretScanner {
     $sortedPatterns = [System.Collections.Generic.List[string]]::new($ignorePatterns)
     $sortedPatterns.Sort([System.Comparison[string]] { param($left, $right) [EngineText]::CompareCodePoints($left, $right) })
 
-    $manifest = Get-DbOrderedMap
+    $manifest = Get-DBOrderedMap
     $manifest['ignore_rules'] = $sortedRules
     $manifest['ignore_patterns'] = $sortedPatterns
     $manifest['ruleset_version'] = $Context.Version
     return , $manifest
 }
 
-function Copy-DbFileWithSecretFilter {
+function Copy-DBFileWithSecretFilter {
     # copy_with_secret_filter(source, destination, display_path=..., context=..., log=...): the destination size and SHA-256.
     [CmdletBinding()]
     param(
@@ -5827,7 +5827,7 @@ function Copy-DbFileWithSecretFilter {
 # character, and every other character (brackets, backtick and backslash included) is literal. Case-insensitive on Windows,
 # case-sensitive elsewhere.
 
-function Test-DbPathMagic {
+function Test-DBPathMagic {
     # The text holds a wildcard character: * or ?.
     [CmdletBinding()]
     param([AllowEmptyString()][string] $Text)
@@ -5835,7 +5835,7 @@ function Test-DbPathMagic {
     return $Text.IndexOfAny([char[]]@('*', '?')) -ge 0
 }
 
-function Test-DbWildcardMatch {
+function Test-DBWildcardMatch {
     # The whole text matches the pattern. On Windows \ reads as / in both. An empty pattern never matches, and nothing matches empty text.
     [CmdletBinding()]
     param(
@@ -5858,7 +5858,7 @@ function Test-DbWildcardMatch {
     return [System.Management.Automation.WildcardPattern]::new($escaped, $options).IsMatch($Text)
 }
 
-function Get-DbDirectoryEntry {
+function Get-DBDirectoryEntry {
     # The entries of a directory, hidden and system ones included; none when it cannot be listed.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Directory)
@@ -5871,7 +5871,7 @@ function Get-DbDirectoryEntry {
     }
 }
 
-function Join-DbGlobPath {
+function Join-DBGlobPath {
     # A child name under a directory; the name alone under the working directory (an empty directory text).
     [CmdletBinding()]
     param(
@@ -5886,7 +5886,7 @@ function Join-DbGlobPath {
     return [System.IO.Path]::Combine($Directory, $Name)
 }
 
-function Test-DbWalkableDirectory {
+function Test-DBWalkableDirectory {
     # A directory that is not a symbolic link or junction: the glob walk descends only into these.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Entry)
@@ -5895,7 +5895,7 @@ function Test-DbWalkableDirectory {
     return (($attributes -band [System.IO.FileAttributes]::Directory) -ne 0) -and (($attributes -band [System.IO.FileAttributes]::ReparsePoint) -eq 0)
 }
 
-function Add-DbGlobMatch {
+function Add-DBGlobMatch {
     # Adds to Result the paths below Directory that Segment[Index..] match: a segment without wildcards names an entry, ** stands for
     # zero or more directory levels, and any other segment is matched against entry names. Links are returned, never descended into.
     [CmdletBinding()]
@@ -5911,51 +5911,51 @@ function Add-DbGlobMatch {
     $listing = $(if ($Directory.Length -eq 0) { '.' } else { $Directory })
     if ($current -ceq '**') {
         if (-not $last) {
-            Add-DbGlobMatch -Directory $Directory -Segment $Segment -Index ($Index + 1) -Result $Result
+            Add-DBGlobMatch -Directory $Directory -Segment $Segment -Index ($Index + 1) -Result $Result
         }
         elseif ($Directory.Length -gt 0) {
             [void]$Result.Add($Directory)
         }
 
-        foreach ($entry in @(Get-DbDirectoryEntry -Directory $listing)) {
-            if (Test-DbWalkableDirectory -Entry $entry) {
-                Add-DbGlobMatch -Directory (Join-DbGlobPath -Directory $Directory -Name $entry.Name) -Segment $Segment -Index $Index -Result $Result
+        foreach ($entry in @(Get-DBDirectoryEntry -Directory $listing)) {
+            if (Test-DBWalkableDirectory -Entry $entry) {
+                Add-DBGlobMatch -Directory (Join-DBGlobPath -Directory $Directory -Name $entry.Name) -Segment $Segment -Index $Index -Result $Result
             }
         }
 
         return
     }
 
-    if (-not (Test-DbPathMagic $current)) {
-        $child = Join-DbGlobPath -Directory $Directory -Name $current
+    if (-not (Test-DBPathMagic $current)) {
+        $child = Join-DBGlobPath -Directory $Directory -Name $current
         if ($last) {
             if ([EngineFs]::Exists($child) -or [EngineFs]::IsSymlink($child)) {
                 [void]$Result.Add($child)
             }
         }
         elseif ([System.IO.Directory]::Exists($child)) {
-            Add-DbGlobMatch -Directory $child -Segment $Segment -Index ($Index + 1) -Result $Result
+            Add-DBGlobMatch -Directory $child -Segment $Segment -Index ($Index + 1) -Result $Result
         }
 
         return
     }
 
-    foreach ($entry in @(Get-DbDirectoryEntry -Directory $listing)) {
-        if (-not (Test-DbWildcardMatch -Text $entry.Name -Pattern $current)) {
+    foreach ($entry in @(Get-DBDirectoryEntry -Directory $listing)) {
+        if (-not (Test-DBWildcardMatch -Text $entry.Name -Pattern $current)) {
             continue
         }
 
-        $child = Join-DbGlobPath -Directory $Directory -Name $entry.Name
+        $child = Join-DBGlobPath -Directory $Directory -Name $entry.Name
         if ($last) {
             [void]$Result.Add($child)
         }
-        elseif (Test-DbWalkableDirectory -Entry $entry) {
-            Add-DbGlobMatch -Directory $child -Segment $Segment -Index ($Index + 1) -Result $Result
+        elseif (Test-DBWalkableDirectory -Entry $entry) {
+            Add-DBGlobMatch -Directory $child -Segment $Segment -Index ($Index + 1) -Result $Result
         }
     }
 }
 
-function Get-DbGlobMatch {
+function Get-DBGlobMatch {
     # The distinct paths a pattern carrying its own base directory matches, in no particular order: the root and the leading segments
     # without wildcards name the directory the rest is matched under (the working directory when there are none).
     [CmdletBinding()]
@@ -5969,7 +5969,7 @@ function Get-DbGlobMatch {
     $segments = [string[]]@($tail.Split($separators, [System.StringSplitOptions]::RemoveEmptyEntries) | Where-Object { $_ -cne '.' })
     $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $literal = 0
-    while ($literal -lt $segments.Count -and -not (Test-DbPathMagic $segments[$literal])) {
+    while ($literal -lt $segments.Count -and -not (Test-DBPathMagic $segments[$literal])) {
         $literal++
     }
 
@@ -5985,14 +5985,14 @@ function Get-DbGlobMatch {
         }
 
         if ([System.IO.Directory]::Exists($(if ($base.Length -eq 0) { '.' } else { $base }))) {
-            Add-DbGlobMatch -Directory $base -Segment $segments -Index $literal -Result $result
+            Add-DBGlobMatch -Directory $base -Segment $segments -Index $literal -Result $result
         }
     }
 
     return , [System.Collections.Generic.List[string]]::new($result)
 }
 
-function Get-DbSourceMatch {
+function Get-DBSourceMatch {
     # The paths a source matches, relative to the base directory; FileNotFoundException when there are none.
     [CmdletBinding()]
     param(
@@ -6011,7 +6011,7 @@ function Get-DbSourceMatch {
     }
 
     $found = [System.Collections.Generic.List[string]]::new()
-    if (-not (Test-DbPathMagic $PathText)) {
+    if (-not (Test-DBPathMagic $PathText)) {
         foreach ($pattern in $patterns) {
             if ([EngineFs]::Exists($pattern)) {
                 $found.Add([EnginePath]::Normalise($pattern))
@@ -6019,13 +6019,13 @@ function Get-DbSourceMatch {
             }
         }
 
-        throw (Get-DbEngineError 'FileNotFoundException' "Path does not exist: $PathText")
+        throw (Get-DBEngineError 'FileNotFoundException' "Path does not exist: $PathText")
     }
 
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $matched = $false
     foreach ($pattern in $patterns) {
-        $globbed = Get-DbGlobMatch -Pattern $pattern
+        $globbed = Get-DBGlobMatch -Pattern $pattern
         [EnginePath]::SortByText($globbed)
         foreach ($match in $globbed) {
             $matched = $true
@@ -6036,13 +6036,13 @@ function Get-DbSourceMatch {
     }
 
     if (-not $matched) {
-        throw (Get-DbEngineError 'FileNotFoundException' "Path does not exist: $PathText")
+        throw (Get-DBEngineError 'FileNotFoundException' "Path does not exist: $PathText")
     }
 
     return , $found.ToArray()
 }
 
-function Test-DbExcluded {
+function Test-DBExcluded {
     # A pattern matches the relative path (posix form) or its last segment.
     [CmdletBinding()]
     param(
@@ -6057,7 +6057,7 @@ function Test-DbExcluded {
     $text = [EnginePath]::AsPosix($Relative)
     $name = [EnginePath]::Name($Relative)
     foreach ($candidate in $Pattern) {
-        if ((Test-DbWildcardMatch -Text $text -Pattern $candidate) -or (Test-DbWildcardMatch -Text $name -Pattern $candidate)) {
+        if ((Test-DBWildcardMatch -Text $text -Pattern $candidate) -or (Test-DBWildcardMatch -Text $name -Pattern $candidate)) {
             return $true
         }
     }
@@ -6065,7 +6065,7 @@ function Test-DbExcluded {
     return $false
 }
 
-function Invoke-DbFileSource {
+function Invoke-DBFileSource {
     # The file branch of a config run: collected files, the source summary and the running byte total.
     [CmdletBinding()]
     param(
@@ -6082,24 +6082,24 @@ function Invoke-DbFileSource {
 
     $files = [System.Collections.Generic.List[object]]::new()
     try {
-        $matches_ = Get-DbSourceMatch -PathText $Source.path -BaseDir $BaseDir
+        $matches_ = Get-DBSourceMatch -PathText $Source.path -BaseDir $BaseDir
     }
     catch {
-        $engineError = Get-DbEngineException $_
+        $engineError = Get-DBEngineException $_
         if ($null -eq $engineError -or $engineError.ErrorType -cne 'FileNotFoundException') {
             throw
         }
 
         if ($Source.optional) {
             $Log.Write("optional source skipped: $($Source.path)")
-            $summary = Get-DbOrderedMap
+            $summary = Get-DBOrderedMap
             $summary['type'] = 'file'
             $summary['path'] = $Source.path
             $summary['alias'] = $Alias
             $summary['optional'] = $true
             $summary['matched'] = [string[]]@()
             $summary['skipped'] = $true
-            $summary['reason'] = $(if (Test-DbPathMagic $Source.path) { 'no-matches' } else { 'missing' })
+            $summary['reason'] = $(if (Test-DBPathMagic $Source.path) { 'no-matches' } else { 'missing' })
             $summary['exclude'] = [string[]]@($Source.exclude)
             return [pscustomobject]@{ Files = $files; Summary = $summary; TotalBytes = $TotalBytes }
         }
@@ -6159,14 +6159,14 @@ function Invoke-DbFileSource {
         foreach ($pair in $pairs) {
             $file = $pair[0]
             $relative = $pair[1]
-            if (Test-DbExcluded -Relative $relative -Pattern $Source.exclude) {
+            if (Test-DBExcluded -Relative $relative -Pattern $Source.exclude) {
                 $Log.Write("excluded $file by pattern")
                 continue
             }
 
             $originalSize = [EngineFs]::Size($file)
             if ($null -ne $MaxTotalBytes -and ([System.Numerics.BigInteger]::new($running) + $originalSize) -gt $MaxTotalBytes) {
-                throw (Get-DbEngineError 'InvalidOperationException' 'Collection exceeds configured max_total_bytes limit.')
+                throw (Get-DBEngineError 'InvalidOperationException' 'Collection exceeds configured max_total_bytes limit.')
             }
 
             $destination = [EnginePath]::Join($DestinationRoot, $relative)
@@ -6176,7 +6176,7 @@ function Invoke-DbFileSource {
             }
 
             $display = [EnginePath]::AsPosix($relativeToData)
-            $copy = Copy-DbFileWithSecretFilter -Source $file -Destination $destination -DisplayPath $display -Context $SecretContext -Log $Log
+            $copy = Copy-DBFileWithSecretFilter -Source $file -Destination $destination -DisplayPath $display -Context $SecretContext -Log $Log
             $running += $copy.Size
             $files.Add([pscustomobject]@{
                     alias         = $Alias
@@ -6190,7 +6190,7 @@ function Invoke-DbFileSource {
         }
     }
 
-    $summary = Get-DbOrderedMap
+    $summary = Get-DBOrderedMap
     $summary['path'] = $Source.path
     $summary['alias'] = $Alias
     $summary['optional'] = [bool]$Source.optional
@@ -6203,7 +6203,7 @@ function Invoke-DbFileSource {
 
 # Building a SQLite snapshot, and the sql_snapshot branch of a config run.
 
-function Get-DbSqliteSnapshot {
+function Get-DBSqliteSnapshot {
     # build_sqlite_snapshot(path, **kwargs).to_dict()
     [CmdletBinding()]
     param(
@@ -6226,17 +6226,17 @@ function Get-DbSqliteSnapshot {
     if ($null -ne $ExcludeTables) {
         $excludeList = [System.Collections.ArrayList]@($ExcludeTables)
     }
-    $maskMap = $(if ($MaskColumns -is [System.Collections.IDictionary]) { $MaskColumns } else { ConvertTo-DbSnapshotColumnMap $MaskColumns })
-    $hashMap = $(if ($HashColumns -is [System.Collections.IDictionary]) { $HashColumns } else { ConvertTo-DbSnapshotColumnMap $HashColumns })
+    $maskMap = $(if ($MaskColumns -is [System.Collections.IDictionary]) { $MaskColumns } else { ConvertTo-DBSnapshotColumnMap $MaskColumns })
+    $hashMap = $(if ($HashColumns -is [System.Collections.IDictionary]) { $HashColumns } else { ConvertTo-DBSnapshotColumnMap $HashColumns })
     return [SqlSnapshots]::Build([EnginePath]::Normalise($Path), $tableList, $excludeList, $maskMap, $hashMap, $Limit, $Placeholder, $HashSalt)
 }
 
-function ConvertTo-DbColumnListMap {
+function ConvertTo-DBColumnListMap {
     # {table: list(columns)}
     [CmdletBinding()]
     param($Columns)
 
-    $map = Get-DbOrderedMap
+    $map = Get-DBOrderedMap
     foreach ($table in @($Columns.Keys)) {
         $map[$table] = [string[]]@($Columns[$table])
     }
@@ -6244,7 +6244,7 @@ function ConvertTo-DbColumnListMap {
     return , $map
 }
 
-function Invoke-DbSqlSnapshotSource {
+function Invoke-DBSqlSnapshotSource {
     # The sql_snapshot branch of a config run: the summary, the sql_exports metadata entry and the collected file, or the skipped
     # summary of an optional source whose database is missing.
     [CmdletBinding()]
@@ -6258,7 +6258,7 @@ function Invoke-DbSqlSnapshotSource {
         [Parameter(Mandatory = $true)] $Log
     )
 
-    $candidateRaw = Get-DbExpandedPath $Source.path
+    $candidateRaw = Get-DBExpandedPath $Source.path
     $candidate = $candidateRaw
     if ($BaseDir -and -not [EnginePath]::IsAbsolute($candidateRaw)) {
         $candidate = [EnginePath]::PathExpandUser([EnginePath]::Join($BaseDir, $candidateRaw))
@@ -6271,7 +6271,7 @@ function Invoke-DbSqlSnapshotSource {
     if (-not [EngineFs]::Exists($candidate)) {
         if ($Source.optional) {
             $Log.Write("optional sql snapshot skipped: $($Source.path)")
-            $skipped = Get-DbOrderedMap
+            $skipped = Get-DBOrderedMap
             $skipped['type'] = 'sql_snapshot'
             $skipped['path'] = $Source.path
             $skipped['alias'] = $Alias
@@ -6282,46 +6282,46 @@ function Invoke-DbSqlSnapshotSource {
         }
 
         $Log.Write("sql snapshot source missing: $($Source.path)")
-        throw (Get-DbEngineError 'FileNotFoundException' "SQL snapshot source not found: $($Source.path)")
+        throw (Get-DBEngineError 'FileNotFoundException' "SQL snapshot source not found: $($Source.path)")
     }
 
     $Log.Write("building sql snapshot from $candidate")
-    $arguments = Get-DbSnapshotArgument $Source
-    $payload = Get-DbSqliteSnapshot -Path $candidate -Tables $arguments.tables -ExcludeTables $arguments.exclude_tables `
+    $arguments = Get-DBSnapshotArgument $Source
+    $payload = Get-DBSqliteSnapshot -Path $candidate -Tables $arguments.tables -ExcludeTables $arguments.exclude_tables `
         -MaskColumns $arguments.mask_columns -HashColumns $arguments.hash_columns -Limit $arguments.limit `
         -Placeholder $arguments.placeholder -HashSalt $arguments.hash_salt
     $encoded = [EngineFile]::EncodeUtf8([EngineJson]::Dumps($payload, 2, $true))
     if ($null -ne $MaxTotalBytes -and ([System.Numerics.BigInteger]::new($TotalBytes) + $encoded.Length) -gt $MaxTotalBytes) {
-        throw (Get-DbEngineError 'InvalidOperationException' 'Collection exceeds configured max_total_bytes limit.')
+        throw (Get-DBEngineError 'InvalidOperationException' 'Collection exceeds configured max_total_bytes limit.')
     }
 
     $snapshotPath = [EnginePath]::Join($DestinationRoot, 'sql-snapshot.json')
     [EngineFile]::WriteBytes($snapshotPath, $encoded)
 
     $tableNames = [string[]]@($payload['tables'] | ForEach-Object { $_['name'] })
-    $rowCounts = Get-DbOrderedMap
+    $rowCounts = Get-DBOrderedMap
     foreach ($table in $payload['tables']) {
         $rowCounts[$table['name']] = $table['row_count']
     }
 
-    $summary = Get-DbOrderedMap
+    $summary = Get-DBOrderedMap
     $summary['type'] = 'sql_snapshot'
     $summary['path'] = $Source.path
     $summary['alias'] = $Alias
     $summary['dialect'] = $Source.dialect
     $summary['tables'] = $tableNames
     $summary['row_counts'] = $rowCounts
-    $summary['masked_columns'] = ConvertTo-DbColumnListMap $Source.mask_columns
-    $summary['hashed_columns'] = ConvertTo-DbColumnListMap $Source.hash_columns
+    $summary['masked_columns'] = ConvertTo-DBColumnListMap $Source.mask_columns
+    $summary['hashed_columns'] = ConvertTo-DBColumnListMap $Source.hash_columns
 
-    $metadata = Get-DbOrderedMap
+    $metadata = Get-DBOrderedMap
     $metadata['alias'] = $Alias
     $metadata['source'] = $Source.path
     $metadata['dialect'] = $Source.dialect
     $metadata['tables'] = $tableNames
     $metadata['row_counts'] = $rowCounts
-    $metadata['masked_columns'] = ConvertTo-DbColumnListMap $Source.mask_columns
-    $metadata['hashed_columns'] = ConvertTo-DbColumnListMap $Source.hash_columns
+    $metadata['masked_columns'] = ConvertTo-DBColumnListMap $Source.mask_columns
+    $metadata['hashed_columns'] = ConvertTo-DBColumnListMap $Source.hash_columns
     $metadata['placeholder'] = $Source.placeholder
     $metadata['hash_salt'] = $Source.hash_salt
     $metadata['output'] = 'sql-snapshot.json'
@@ -6343,7 +6343,7 @@ function Invoke-DbSqlSnapshotSource {
 # breadth-first value search, plus the registry_scan branch of a config run. The two backend functions are the only registry
 # calls, so tests replace them.
 
-function Test-DbWindowsPlatform {
+function Test-DBWindowsPlatform {
     # registry.is_windows()
     [CmdletBinding()]
     param()
@@ -6351,7 +6351,7 @@ function Test-DbWindowsPlatform {
     return [EngineOs]::Windows
 }
 
-function Open-DbRegistryKey {
+function Open-DBRegistryKey {
     # _WinRegBackend._open: the key read-only in the requested view, or $null where the key cannot be opened.
     [CmdletBinding()]
     param([string] $Hive, [string] $Path, $View)
@@ -6359,7 +6359,7 @@ function Open-DbRegistryKey {
     switch -CaseSensitive ($Hive) {
         'HKLM' { $baseHive = [Microsoft.Win32.RegistryHive]::LocalMachine }
         'HKCU' { $baseHive = [Microsoft.Win32.RegistryHive]::CurrentUser }
-        default { throw (Get-DbEngineError 'KeyNotFoundException' "Unknown registry hive $([EngineText]::Repr($Hive)).") }
+        default { throw (Get-DBEngineError 'KeyNotFoundException' "Unknown registry hive $([EngineText]::Repr($Hive)).") }
     }
 
     $registryView = [Microsoft.Win32.RegistryView]::Default
@@ -6385,32 +6385,32 @@ function Open-DbRegistryKey {
     }
 }
 
-# A remote host's registry as read over WinRM (Get-DbRemoteRegistrySnapshot); while set, the registry readers below answer from
+# A remote host's registry as read over WinRM (Get-DBRemoteRegistrySnapshot); while set, the registry readers below answer from
 # it instead of the local registry, so root discovery and the search run unchanged against a remote host.
-$script:DbRegistrySnapshot = $null
+$script:DBRegistrySnapshot = $null
 
-function Get-DbRegistrySnapshotKey {
+function Get-DBRegistrySnapshotKey {
     [CmdletBinding()]
     param([string] $Hive, [string] $Path, $View)
 
     return "$Hive`n$Path`n$([string]$View)"
 }
 
-function Get-DbRegistrySubkey {
+function Get-DBRegistrySubkey {
     # backend.enum_subkeys(hive, path, view)
     [CmdletBinding()]
     param([string] $Hive, [string] $Path, $View)
 
-    if ($null -ne $script:DbRegistrySnapshot) {
+    if ($null -ne $script:DBRegistrySnapshot) {
         $node = $null
-        if ($script:DbRegistrySnapshot.TryGetValue((Get-DbRegistrySnapshotKey -Hive $Hive -Path $Path -View $View), [ref]$node)) {
+        if ($script:DBRegistrySnapshot.TryGetValue((Get-DBRegistrySnapshotKey -Hive $Hive -Path $Path -View $View), [ref]$node)) {
             return , @($node.subkeys)
         }
 
         return , @()
     }
 
-    $key = Open-DbRegistryKey -Hive $Hive -Path $Path -View $View
+    $key = Open-DBRegistryKey -Hive $Hive -Path $Path -View $View
     if ($null -eq $key) {
         return , @()
     }
@@ -6426,7 +6426,7 @@ function Get-DbRegistrySubkey {
     }
 }
 
-function ConvertFrom-DbRegistryData {
+function ConvertFrom-DBRegistryData {
     # The Python value winreg.EnumValue returns for a value read through RegistryKey.
     [CmdletBinding()]
     param($Data, [Microsoft.Win32.RegistryValueKind] $Kind)
@@ -6458,15 +6458,15 @@ function ConvertFrom-DbRegistryData {
     }
 }
 
-function Get-DbRegistryValue {
+function Get-DBRegistryValue {
     # backend.enum_values(hive, path, view): (name, data) pairs in the key's order.
     [CmdletBinding()]
     param([string] $Hive, [string] $Path, $View)
 
     $values = [System.Collections.Generic.List[object]]::new()
-    if ($null -ne $script:DbRegistrySnapshot) {
+    if ($null -ne $script:DBRegistrySnapshot) {
         $node = $null
-        if ($script:DbRegistrySnapshot.TryGetValue((Get-DbRegistrySnapshotKey -Hive $Hive -Path $Path -View $View), [ref]$node)) {
+        if ($script:DBRegistrySnapshot.TryGetValue((Get-DBRegistrySnapshotKey -Hive $Hive -Path $Path -View $View), [ref]$node)) {
             foreach ($value in $node.values) {
                 $values.Add($value)
             }
@@ -6475,7 +6475,7 @@ function Get-DbRegistryValue {
         return , $values
     }
 
-    $key = Open-DbRegistryKey -Hive $Hive -Path $Path -View $View
+    $key = Open-DBRegistryKey -Hive $Hive -Path $Path -View $View
     if ($null -eq $key) {
         return , $values
     }
@@ -6498,7 +6498,7 @@ function Get-DbRegistryValue {
                 break
             }
 
-            $values.Add([pscustomobject]@{ Name = $name; Data = (ConvertFrom-DbRegistryData -Data $data -Kind $kind) })
+            $values.Add([pscustomobject]@{ Name = $name; Data = (ConvertFrom-DBRegistryData -Data $data -Kind $kind) })
         }
     }
     catch [System.Security.SecurityException], [System.UnauthorizedAccessException], [System.IO.IOException] {
@@ -6511,7 +6511,7 @@ function Get-DbRegistryValue {
     return , $values
 }
 
-function Get-DbRegistryTruthyText {
+function Get-DBRegistryTruthyText {
     [CmdletBinding()]
     param($Values, [string] $Name)
 
@@ -6522,7 +6522,7 @@ function Get-DbRegistryTruthyText {
     return $null
 }
 
-function Get-DbInstalledAppProbe {
+function Get-DBInstalledAppProbe {
     # The uninstall keys enumerate_installed_apps reads, as registry roots.
     [CmdletBinding()]
     param()
@@ -6535,24 +6535,24 @@ function Get-DbInstalledAppProbe {
     )
 }
 
-function Get-DbInstalledApp {
+function Get-DBInstalledApp {
     # enumerate_installed_apps()
     [CmdletBinding()]
     param()
 
     $apps = [System.Collections.Generic.List[object]]::new()
-    foreach ($probe in (Get-DbInstalledAppProbe)) {
+    foreach ($probe in (Get-DBInstalledAppProbe)) {
         $hive = $probe.hive
         $base = $probe.path
         $view = $probe.view
-        foreach ($subkey in (Get-DbRegistrySubkey -Hive $hive -Path $base -View $view)) {
+        foreach ($subkey in (Get-DBRegistrySubkey -Hive $hive -Path $base -View $view)) {
             $keyPath = "$base\$subkey"
             $values = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
-            foreach ($pair in (Get-DbRegistryValue -Hive $hive -Path $keyPath -View $view)) {
+            foreach ($pair in (Get-DBRegistryValue -Hive $hive -Path $keyPath -View $view)) {
                 $values[$pair.Name] = $pair.Data
             }
 
-            $displayName = [EngineText]::Strip([string](Get-DbRegistryTruthyText $values 'DisplayName'))
+            $displayName = [EngineText]::Strip([string](Get-DBRegistryTruthyText $values 'DisplayName'))
             if ($displayName.Length -eq 0) {
                 continue
             }
@@ -6561,10 +6561,10 @@ function Get-DbInstalledApp {
                     display_name     = $displayName
                     key_path         = $keyPath
                     hive             = $hive
-                    publisher        = (Get-DbRegistryTruthyText $values 'Publisher')
-                    version          = (Get-DbRegistryTruthyText $values 'DisplayVersion')
-                    uninstall_string = (Get-DbRegistryTruthyText $values 'UninstallString')
-                    install_location = (Get-DbRegistryTruthyText $values 'InstallLocation')
+                    publisher        = (Get-DBRegistryTruthyText $values 'Publisher')
+                    version          = (Get-DBRegistryTruthyText $values 'DisplayVersion')
+                    uninstall_string = (Get-DBRegistryTruthyText $values 'UninstallString')
+                    install_location = (Get-DBRegistryTruthyText $values 'InstallLocation')
                     view             = $(if ($null -ne $view) { $view } else { 'auto' })
                 })
         }
@@ -6597,7 +6597,7 @@ function Get-DbInstalledApp {
     return , $sorted.ToArray()
 }
 
-function Get-DbAppRegistryRoot {
+function Get-DBAppRegistryRoot {
     # find_app_registry_roots(app_token, installed=installed): (hive, path, view) roots in order, duplicates dropped.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Token, $Installed)
@@ -6654,7 +6654,7 @@ function Get-DbAppRegistryRoot {
     return , $ordered.ToArray()
 }
 
-function Get-DbRegistryValueText {
+function Get-DBRegistryValueText {
     # The text branch of _match_value: str, bytes decoded as UTF-8 with replacement, int and float str(), lists joined by ", ".
     [CmdletBinding()]
     param($Value)
@@ -6682,7 +6682,7 @@ function Get-DbRegistryValueText {
     return $null
 }
 
-function Search-DbRegistry {
+function Search-DBRegistry {
     # search_registry(roots, spec)
     [CmdletBinding()]
     param(
@@ -6715,8 +6715,8 @@ function Search-DbRegistry {
             continue
         }
 
-        foreach ($pair in (Get-DbRegistryValue -Hive $key.hive -Path $key.path -View $key.view)) {
-            $text = Get-DbRegistryValueText $pair.Data
+        foreach ($pair in (Get-DBRegistryValue -Hive $key.hive -Path $key.path -View $key.view)) {
+            $text = Get-DBRegistryValueText $pair.Data
             if ($null -eq $text) {
                 continue
             }
@@ -6783,7 +6783,7 @@ function Search-DbRegistry {
             continue
         }
 
-        foreach ($child in (Get-DbRegistrySubkey -Hive $key.hive -Path $key.path -View $key.view)) {
+        foreach ($child in (Get-DBRegistrySubkey -Hive $key.hive -Path $key.path -View $key.view)) {
             $queue.Enqueue([pscustomobject]@{ hive = $key.hive; path = "$($key.path)\$child"; view = $key.view; depth = [long]($key.depth + 1) })
         }
     }
@@ -6791,7 +6791,7 @@ function Search-DbRegistry {
     return , $hits.ToArray()
 }
 
-function ConvertTo-DbRegistryPattern {
+function ConvertTo-DBRegistryPattern {
     # re.compile(pattern) for a registry scan pattern.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Pattern)
@@ -6800,15 +6800,15 @@ function ConvertTo-DbRegistryPattern {
         return [regex]::new($Pattern, [System.Text.RegularExpressions.RegexOptions]::CultureInvariant)
     }
     catch [System.ArgumentException] {
-        throw (Get-DbEngineError 'RegexParseException' $_.Exception.Message)
+        throw (Get-DBEngineError 'RegexParseException' $_.Exception.Message)
     }
 }
 
 # Runs on the remote host in its Windows PowerShell 5.1 endpoint: reads the keys under each root breadth first, the way
-# Search-DbRegistry walks them, within the depth, time and key limits, and returns each key's subkey names and raw values.
+# Search-DBRegistry walks them, within the depth, time and key limits, and returns each key's subkey names and raw values.
 # Matching happens locally against the returned snapshot. Only .NET Framework and core cmdlets are used, so nothing is
 # installed on the remote host.
-$script:DbRemoteRegistryDump = {
+$script:DBRemoteRegistryDump = {
     param($Request)
 
     $clock = [System.Diagnostics.Stopwatch]::StartNew()
@@ -6887,9 +6887,9 @@ $script:DbRemoteRegistryDump = {
 }
 
 # The most keys one remote read returns; a larger tree is cut short and the manifest says so.
-$script:DbRemoteRegistryMaxKeys = 20000
+$script:DBRemoteRegistryMaxKeys = 20000
 
-function Get-DbRemoteRegistryCredential {
+function Get-DBRemoteRegistryCredential {
     # The credential a remote target connects with: username plus the password in the password_env variable, or a
     # PSCredential saved with Export-Clixml (DPAPI, readable only by the same user on the same machine) at credential_profile,
     # relative to the base directory. $null connects as the current user.
@@ -6897,7 +6897,7 @@ function Get-DbRemoteRegistryCredential {
     param([Parameter(Mandatory = $true)] $Target, $BaseDir)
 
     if ($null -ne $Target.password_env -and $null -ne $Target.credential_profile) {
-        throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): use password_env or credential_profile, not both")
+        throw (Get-DBEngineError 'InvalidDataException' "remote target $($Target.host): use password_env or credential_profile, not both")
     }
 
     if ($null -ne $Target.credential_profile) {
@@ -6909,7 +6909,7 @@ function Get-DbRemoteRegistryCredential {
         $profilePath = [EngineOs]::Abs($profilePath)
         $credential = Import-Clixml -LiteralPath $profilePath
         if ($credential -isnot [System.Management.Automation.PSCredential]) {
-            throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): credential_profile '$($Target.credential_profile)' does not hold a PSCredential")
+            throw (Get-DBEngineError 'InvalidDataException' "remote target $($Target.host): credential_profile '$($Target.credential_profile)' does not hold a PSCredential")
         }
 
         return $credential
@@ -6917,12 +6917,12 @@ function Get-DbRemoteRegistryCredential {
 
     if ($null -ne $Target.password_env) {
         if ($null -eq $Target.username) {
-            throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): password_env needs a username")
+            throw (Get-DBEngineError 'InvalidDataException' "remote target $($Target.host): password_env needs a username")
         }
 
         $password = [System.Environment]::GetEnvironmentVariable($Target.password_env)
         if ([string]::IsNullOrEmpty($password)) {
-            throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): environment variable $($Target.password_env) is not set")
+            throw (Get-DBEngineError 'InvalidDataException' "remote target $($Target.host): environment variable $($Target.password_env) is not set")
         }
 
         $secure = [System.Security.SecureString]::new()
@@ -6935,19 +6935,19 @@ function Get-DbRemoteRegistryCredential {
     }
 
     if ($null -ne $Target.username) {
-        throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): username needs password_env or credential_profile")
+        throw (Get-DBEngineError 'InvalidDataException' "remote target $($Target.host): username needs password_env or credential_profile")
     }
 
     return $null
 }
 
-function Open-DbRemoteRegistrySession {
+function Open-DBRemoteRegistrySession {
     # A WinRM session to the target's default Windows PowerShell endpoint.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Target, $BaseDir)
 
     if ($Target.transport -cne 'winrm') {
-        throw (Get-DbEngineError 'InvalidDataException' "remote target $($Target.host): transport '$($Target.transport)' is not supported; use winrm")
+        throw (Get-DBEngineError 'InvalidDataException' "remote target $($Target.host): transport '$($Target.transport)' is not supported; use winrm")
     }
 
     $parameters = @{ ComputerName = $Target.host; ErrorAction = 'Stop' }
@@ -6959,7 +6959,7 @@ function Open-DbRemoteRegistrySession {
         $parameters.UseSSL = $true
     }
 
-    $credential = Get-DbRemoteRegistryCredential -Target $Target -BaseDir $BaseDir
+    $credential = Get-DBRemoteRegistryCredential -Target $Target -BaseDir $BaseDir
     if ($null -ne $credential) {
         $parameters.Credential = $credential
     }
@@ -6967,22 +6967,22 @@ function Open-DbRemoteRegistrySession {
     return New-PSSession @parameters
 }
 
-function Invoke-DbRemoteRegistryDump {
+function Invoke-DBRemoteRegistryDump {
     # Runs the registry dump on the session's host.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Session, [Parameter(Mandatory = $true)] $Request)
 
-    return Invoke-Command -Session $Session -ScriptBlock $script:DbRemoteRegistryDump -ArgumentList $Request -ErrorAction Stop
+    return Invoke-Command -Session $Session -ScriptBlock $script:DBRemoteRegistryDump -ArgumentList $Request -ErrorAction Stop
 }
 
-function Close-DbRemoteRegistrySession {
+function Close-DBRemoteRegistrySession {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Session)
 
     Remove-PSSession -Session $Session -ErrorAction SilentlyContinue
 }
 
-function Get-DbRemoteRegistrySnapshot {
+function Get-DBRemoteRegistrySnapshot {
     # Reads Roots on the session's host and returns them keyed for the registry readers, merged into Snapshot when given.
     [CmdletBinding()]
     param(
@@ -6997,9 +6997,9 @@ function Get-DbRemoteRegistrySnapshot {
         roots     = @($Roots | ForEach-Object { @{ hive = $_.hive; path = $_.path; view = $_.view } })
         max_depth = [long][System.Numerics.BigInteger]::Min([System.Numerics.BigInteger]::new([long]::MaxValue), [System.Numerics.BigInteger]::Max([System.Numerics.BigInteger]::Zero, [Engine]::Int($MaxDepth)))
         budget_s  = [Math]::Max(0.1, $BudgetSeconds)
-        max_keys  = $script:DbRemoteRegistryMaxKeys
+        max_keys  = $script:DBRemoteRegistryMaxKeys
     }
-    $reply = Invoke-DbRemoteRegistryDump -Session $Session -Request $request
+    $reply = Invoke-DBRemoteRegistryDump -Session $Session -Request $request
     if ($null -eq $Snapshot) {
         $Snapshot = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
     }
@@ -7008,17 +7008,17 @@ function Get-DbRemoteRegistrySnapshot {
         $values = [System.Collections.Generic.List[object]]::new()
         foreach ($value in @($node.values)) {
             $kind = [Microsoft.Win32.RegistryValueKind]([string]$value.kind)
-            $values.Add([pscustomobject]@{ Name = [string]$value.name; Data = (ConvertFrom-DbRegistryData -Data $value.data -Kind $kind) })
+            $values.Add([pscustomobject]@{ Name = [string]$value.name; Data = (ConvertFrom-DBRegistryData -Data $value.data -Kind $kind) })
         }
 
-        $key = Get-DbRegistrySnapshotKey -Hive $node.hive -Path $node.path -View $node.view
+        $key = Get-DBRegistrySnapshotKey -Hive $node.hive -Path $node.path -View $node.view
         $Snapshot[$key] = [pscustomobject]@{ subkeys = [string[]]@($node.subkeys); values = $values.ToArray() }
     }
 
     return [pscustomobject]@{ Snapshot = $Snapshot; Truncated = [bool]$reply.truncated }
 }
 
-function Get-DbRegistryScanTargetLabel {
+function Get-DBRegistryScanTargetLabel {
     # The target's alias, or its host, with anything that cannot sit in a file name replaced by "_".
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Target)
@@ -7027,7 +7027,7 @@ function Get-DbRegistryScanTargetLabel {
     return [regex]::Replace($label, '[^A-Za-z0-9._-]', '_')
 }
 
-function Write-DbRegistryScanResult {
+function Write-DBRegistryScanResult {
     # Writes one registry_scan result file and returns the manifest file entry for it.
     [CmdletBinding()]
     param(
@@ -7039,8 +7039,8 @@ function Write-DbRegistryScanResult {
         $Target
     )
 
-    $rootPayload = { param($root) $entry = Get-DbOrderedMap; $entry['hive'] = $root.hive; $entry['path'] = $root.path; $entry['view'] = $root.view; , $entry }
-    $payload = Get-DbOrderedMap
+    $rootPayload = { param($root) $entry = Get-DBOrderedMap; $entry['hive'] = $root.hive; $entry['path'] = $root.path; $entry['view'] = $root.view; , $entry }
+    $payload = Get-DBOrderedMap
     $payload['token'] = $Source.token
     if ($null -ne $Target) {
         $payload['host'] = $Target.host
@@ -7052,7 +7052,7 @@ function Write-DbRegistryScanResult {
     $payload['roots'] = [object[]]@($Roots | ForEach-Object { & $rootPayload $_ })
     $hitList = [System.Collections.Generic.List[object]]::new()
     foreach ($hit in $Hits) {
-        $entry = Get-DbOrderedMap
+        $entry = Get-DBOrderedMap
         $entry['hive'] = $hit.hive
         $entry['path'] = $hit.path
         $entry['value_name'] = $hit.value_name
@@ -7077,7 +7077,7 @@ function Write-DbRegistryScanResult {
     }
 }
 
-function Get-DbRegistryRootText {
+function Get-DBRegistryRootText {
     [CmdletBinding()]
     param([AllowEmptyCollection()] $Roots, [switch] $WithView)
 
@@ -7087,7 +7087,7 @@ function Get-DbRegistryRootText {
         })
 }
 
-function Invoke-DbRemoteRegistryScanTarget {
+function Invoke-DBRemoteRegistryScanTarget {
     # One remote target of a registry_scan source: roots discovered from the remote host's installed applications unless the
     # source names them, the remote keys read over WinRM, and the search run locally against that snapshot.
     [CmdletBinding()]
@@ -7098,41 +7098,41 @@ function Invoke-DbRemoteRegistryScanTarget {
         $BaseDir
     )
 
-    $session = Open-DbRemoteRegistrySession -Target $Target -BaseDir $BaseDir
+    $session = Open-DBRemoteRegistrySession -Target $Target -BaseDir $BaseDir
     try {
         if (@($Source.roots).Count -gt 0) {
             $roots = @($Source.roots)
         }
         else {
-            $probe = Get-DbRemoteRegistrySnapshot -Session $session -Roots (Get-DbInstalledAppProbe) -MaxDepth 1 -BudgetSeconds $Source.time_budget_s
-            $script:DbRegistrySnapshot = $probe.Snapshot
+            $probe = Get-DBRemoteRegistrySnapshot -Session $session -Roots (Get-DBInstalledAppProbe) -MaxDepth 1 -BudgetSeconds $Source.time_budget_s
+            $script:DBRegistrySnapshot = $probe.Snapshot
             try {
-                $apps = Get-DbInstalledApp
+                $apps = Get-DBInstalledApp
             }
             finally {
-                $script:DbRegistrySnapshot = $null
+                $script:DBRegistrySnapshot = $null
             }
 
-            $roots = Get-DbAppRegistryRoot -Token $Source.token -Installed $apps
+            $roots = Get-DBAppRegistryRoot -Token $Source.token -Installed $apps
         }
 
-        $read = Get-DbRemoteRegistrySnapshot -Session $session -Roots $roots -MaxDepth $Source.max_depth -BudgetSeconds $Source.time_budget_s
-        $script:DbRegistrySnapshot = $read.Snapshot
+        $read = Get-DBRemoteRegistrySnapshot -Session $session -Roots $roots -MaxDepth $Source.max_depth -BudgetSeconds $Source.time_budget_s
+        $script:DBRegistrySnapshot = $read.Snapshot
         try {
-            $hits = Search-DbRegistry -Roots $roots -Spec $Spec
+            $hits = Search-DBRegistry -Roots $roots -Spec $Spec
         }
         finally {
-            $script:DbRegistrySnapshot = $null
+            $script:DBRegistrySnapshot = $null
         }
 
         return [pscustomobject]@{ Roots = $roots; Hits = $hits; Truncated = $read.Truncated }
     }
     finally {
-        Close-DbRemoteRegistrySession -Session $session
+        Close-DBRemoteRegistrySession -Session $session
     }
 }
 
-function Invoke-DbRegistryScanSource {
+function Invoke-DBRegistryScanSource {
     # The registry_scan branch of a config run: the manifest summary, and the files written. Without remote targets the local
     # registry is scanned into registry_scan.json; with them each host is scanned over WinRM into registry_scan-<host>.json,
     # and a host that fails is recorded with its error while the others still run.
@@ -7145,12 +7145,12 @@ function Invoke-DbRegistryScanSource {
         [Parameter(Mandatory = $true)] $Log
     )
 
-    $summary = Get-DbOrderedMap
+    $summary = Get-DBOrderedMap
     $summary['type'] = 'registry_scan'
     $summary['token'] = $Source.token
     $summary['keywords'] = [string[]]@($Source.keywords)
     $summary['patterns'] = [string[]]@($Source.patterns)
-    if (-not (Test-DbWindowsPlatform)) {
+    if (-not (Test-DBWindowsPlatform)) {
         $Log.Write('registry scan skipped: non-Windows platform')
         $summary['skipped'] = $true
         $summary['reason'] = 'not-windows'
@@ -7159,7 +7159,7 @@ function Invoke-DbRegistryScanSource {
 
     $spec = [pscustomobject]@{
         keywords      = @($Source.keywords)
-        patterns      = @($Source.patterns | ForEach-Object { ConvertTo-DbRegistryPattern $_ })
+        patterns      = @($Source.patterns | ForEach-Object { ConvertTo-DBRegistryPattern $_ })
         max_depth     = $Source.max_depth
         max_hits      = $Source.max_hits
         time_budget_s = $Source.time_budget_s
@@ -7179,16 +7179,16 @@ function Invoke-DbRegistryScanSource {
             $roots = @($Source.roots)
         }
         else {
-            $roots = Get-DbAppRegistryRoot -Token $Source.token -Installed (Get-DbInstalledApp)
+            $roots = Get-DBAppRegistryRoot -Token $Source.token -Installed (Get-DBInstalledApp)
         }
 
-        $hits = Search-DbRegistry -Roots $roots -Spec $spec
-        $file = Write-DbRegistryScanResult -Source $Source -Roots $roots -Hits $hits -Path ([EnginePath]::Join($DestinationRoot, 'registry_scan.json')) -Alias $Alias
-        $summary['roots'] = Get-DbRegistryRootText $roots
+        $hits = Search-DBRegistry -Roots $roots -Spec $spec
+        $file = Write-DBRegistryScanResult -Source $Source -Roots $roots -Hits $hits -Path ([EnginePath]::Join($DestinationRoot, 'registry_scan.json')) -Alias $Alias
+        $summary['roots'] = Get-DBRegistryRootText $roots
         $summary['hits'] = $hits.Count
         $summary['output'] = [EnginePath]::AsPosix($file.destination)
         if (@($Source.roots).Count -gt 0) {
-            $summary['requested_roots'] = Get-DbRegistryRootText $Source.roots -WithView
+            $summary['requested_roots'] = Get-DBRegistryRootText $Source.roots -WithView
         }
 
         return [pscustomobject]@{ Summary = $summary; Files = @($file) }
@@ -7198,17 +7198,17 @@ function Invoke-DbRegistryScanSource {
     $results = [System.Collections.Generic.List[object]]::new()
     $total = 0
     foreach ($target in $targets) {
-        $entry = Get-DbOrderedMap
+        $entry = Get-DBOrderedMap
         $entry['host'] = $target.host
         $entry['alias'] = $target.alias
         $entry['transport'] = $target.transport
         $Log.Write("registry scan started for token: $($Source.token) on $($target.host)")
         try {
-            $scan = Invoke-DbRemoteRegistryScanTarget -Source $Source -Target $target -Spec $spec -BaseDir $BaseDir
-            $path = [EnginePath]::Join($DestinationRoot, "registry_scan-$(Get-DbRegistryScanTargetLabel $target).json")
-            $file = Write-DbRegistryScanResult -Source $Source -Roots $scan.Roots -Hits $scan.Hits -Path $path -Alias $Alias -Target $target
+            $scan = Invoke-DBRemoteRegistryScanTarget -Source $Source -Target $target -Spec $spec -BaseDir $BaseDir
+            $path = [EnginePath]::Join($DestinationRoot, "registry_scan-$(Get-DBRegistryScanTargetLabel $target).json")
+            $file = Write-DBRegistryScanResult -Source $Source -Roots $scan.Roots -Hits $scan.Hits -Path $path -Alias $Alias -Target $target
             $files.Add($file)
-            $entry['roots'] = Get-DbRegistryRootText $scan.Roots
+            $entry['roots'] = Get-DBRegistryRootText $scan.Roots
             $entry['hits'] = $scan.Hits.Count
             $entry['output'] = [EnginePath]::AsPosix($path)
             if ($scan.Truncated) {
@@ -7229,7 +7229,7 @@ function Invoke-DbRegistryScanSource {
     $summary['targets'] = $results.ToArray()
     $summary['hits'] = $total
     if (@($Source.roots).Count -gt 0) {
-        $summary['requested_roots'] = Get-DbRegistryRootText $Source.roots -WithView
+        $summary['requested_roots'] = Get-DBRegistryRootText $Source.roots -WithView
     }
 
     return [pscustomobject]@{ Summary = $summary; Files = $files.ToArray() }
@@ -7238,7 +7238,7 @@ function Invoke-DbRegistryScanSource {
 # DPAPI/AES package encryption: _dpapi_unprotect, _decode_key_entry, _load_encryption_keyset, _encrypt_package_file and
 # _apply_package_encryption, over System.Security.Cryptography.
 
-function Unprotect-DbDpapiBlob {
+function Unprotect-DBDpapiBlob {
     # _dpapi_unprotect(blob, scope=scope)
     [CmdletBinding()]
     param(
@@ -7247,7 +7247,7 @@ function Unprotect-DbDpapiBlob {
     )
 
     if (-not [EngineOs]::Windows) {
-        throw (Get-DbEngineError 'PlatformNotSupportedException' 'DPAPI key decryption is only supported on Windows.')
+        throw (Get-DBEngineError 'PlatformNotSupportedException' 'DPAPI key decryption is only supported on Windows.')
     }
 
     Add-Type -AssemblyName System.Security
@@ -7260,11 +7260,11 @@ function Unprotect-DbDpapiBlob {
         return , [System.Security.Cryptography.ProtectedData]::Unprotect($Blob, $null, $protectionScope)
     }
     catch [System.Security.Cryptography.CryptographicException] {
-        throw (Get-DbEngineError 'CryptographicException' 'CryptUnprotectData failed to decrypt the key material.')
+        throw (Get-DBEngineError 'CryptographicException' 'CryptUnprotectData failed to decrypt the key material.')
     }
 }
 
-function ConvertFrom-DbBase64Text {
+function ConvertFrom-DBBase64Text {
     # base64.b64decode(text): binascii.a2b_base64 without strict mode (characters outside the alphabet skipped, decoding stops once
     # padding completes a quad).
     [CmdletBinding()]
@@ -7272,7 +7272,7 @@ function ConvertFrom-DbBase64Text {
 
     foreach ($ch in $Text.ToCharArray()) {
         if ([int]$ch -gt 127) {
-            throw (Get-DbEngineError 'FormatException' 'The input is not a valid Base-64 string: it holds a non-ASCII character.')
+            throw (Get-DBEngineError 'FormatException' 'The input is not a valid Base-64 string: it holds a non-ASCII character.')
         }
     }
 
@@ -7309,17 +7309,17 @@ function ConvertFrom-DbBase64Text {
 
     if ($quadPos -eq 1) {
         $count = [long]([math]::Floor($bytes.Count / 3)) * 4 + 1
-        throw (Get-DbEngineError 'FormatException' "The input is not a valid Base-64 string: its $count data characters are one more than a multiple of 4.")
+        throw (Get-DBEngineError 'FormatException' "The input is not a valid Base-64 string: its $count data characters are one more than a multiple of 4.")
     }
 
     if ($quadPos -ne 0) {
-        throw (Get-DbEngineError 'FormatException' 'The input is not a valid Base-64 string: its padding is incorrect.')
+        throw (Get-DBEngineError 'FormatException' 'The input is not a valid Base-64 string: its padding is incorrect.')
     }
 
     return , $bytes.ToArray()
 }
 
-function ConvertFrom-DbHexText {
+function ConvertFrom-DBHexText {
     # bytes.fromhex(text)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][AllowEmptyString()][string] $Text)
@@ -7335,7 +7335,7 @@ function ConvertFrom-DbHexText {
 
         if ($index + 1 -ge $Text.Length -or -not [Uri]::IsHexDigit($ch) -or -not [Uri]::IsHexDigit($Text[$index + 1])) {
             $position = $(if ([Uri]::IsHexDigit($ch)) { $index + 1 } else { $index })
-            throw (Get-DbEngineError 'FormatException' "The input is not a valid hexadecimal string: position $position is not a hexadecimal digit pair.")
+            throw (Get-DBEngineError 'FormatException' "The input is not a valid hexadecimal string: position $position is not a hexadecimal digit pair.")
         }
 
         $bytes.Add([System.Convert]::ToByte($Text.Substring($index, 2), 16))
@@ -7345,7 +7345,7 @@ function ConvertFrom-DbHexText {
     return , $bytes.ToArray()
 }
 
-function ConvertFrom-DbKeyEntry {
+function ConvertFrom-DBKeyEntry {
     # _decode_key_entry(entry, description=description)
     [CmdletBinding()]
     param(
@@ -7354,35 +7354,35 @@ function ConvertFrom-DbKeyEntry {
     )
 
     if (-not [Engine]::IsMapping($Entry)) {
-        throw (Get-DbEngineError 'InvalidDataException' "$Description must be a mapping.")
+        throw (Get-DBEngineError 'InvalidDataException' "$Description must be a mapping.")
     }
 
     $data = [Engine]::Or([Engine]::Or([Engine]::Get($Entry, 'data', $null), [Engine]::Get($Entry, 'value', $null)), [Engine]::Get($Entry, 'key', $null))
     if ($data -isnot [string] -or [EngineText]::Strip($data).Length -eq 0) {
-        throw (Get-DbEngineError 'InvalidDataException' "$Description is missing key material.")
+        throw (Get-DBEngineError 'InvalidDataException' "$Description is missing key material.")
     }
 
     $encoding = [EngineText]::Lower([EngineText]::Strip([Engine]::Str([Engine]::Get($Entry, 'encoding', 'base64'))))
     try {
         if ($encoding -ceq 'base64' -or $encoding -ceq 'b64') {
-            $keyBytes = ConvertFrom-DbBase64Text $data
+            $keyBytes = ConvertFrom-DBBase64Text $data
         }
         elseif ($encoding -ceq 'hex' -or $encoding -ceq 'hexadecimal') {
-            $keyBytes = ConvertFrom-DbHexText ([EngineText]::Strip($data))
+            $keyBytes = ConvertFrom-DBHexText ([EngineText]::Strip($data))
         }
         elseif ($encoding -ceq 'dpapi') {
-            $blob = ConvertFrom-DbBase64Text $data
+            $blob = ConvertFrom-DBBase64Text $data
             $scope = [Engine]::Str([Engine]::Or([Engine]::Get($Entry, 'scope', 'current_user'), 'current_user'))
-            $keyBytes = Unprotect-DbDpapiBlob -Blob $blob -Scope $scope
+            $keyBytes = Unprotect-DBDpapiBlob -Blob $blob -Scope $scope
         }
         else {
-            throw (Get-DbEngineError 'InvalidDataException' "Unsupported encoding '$encoding' for $Description.")
+            throw (Get-DBEngineError 'InvalidDataException' "Unsupported encoding '$encoding' for $Description.")
         }
     }
     catch {
-        $engineError = Get-DbEngineException $_
+        $engineError = Get-DBEngineException $_
         if ($null -ne $engineError -and ($engineError.ErrorType -ceq 'FormatException' -or $engineError.ErrorType -ceq 'InvalidDataException')) {
-            throw (Get-DbEngineError 'InvalidDataException' "Failed to decode ${Description}: $($engineError.Message)")
+            throw (Get-DBEngineError 'InvalidDataException' "Failed to decode ${Description}: $($engineError.Message)")
         }
 
         throw
@@ -7392,52 +7392,52 @@ function ConvertFrom-DbKeyEntry {
     if ($null -ne $minimumLength) {
         $minimum = [Engine]::Int($minimumLength)
         if ([System.Numerics.BigInteger]::new($keyBytes.Length) -lt $minimum) {
-            throw (Get-DbEngineError 'InvalidDataException' "$Description must be at least $minimum bytes.")
+            throw (Get-DBEngineError 'InvalidDataException' "$Description must be at least $minimum bytes.")
         }
     }
 
     return , [byte[]]$keyBytes
 }
 
-function Import-DbEncryptionKeyset {
+function Import-DBEncryptionKeyset {
     # _load_encryption_keyset(path): the AES key and the HMAC key.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Path)
 
     $payload = [EngineJson]::LoadsFile($Path)
     if (-not [Engine]::IsMapping($payload)) {
-        throw (Get-DbEngineError 'InvalidDataException' 'Encryption keyset must be a JSON object.')
+        throw (Get-DBEngineError 'InvalidDataException' 'Encryption keyset must be a JSON object.')
     }
 
     $schema = [Engine]::Get($payload, 'schema', $null)
     if ([Engine]::Truthy($schema) -and -not ($schema -is [string] -and $schema -ceq 'https://driftbuster.dev/offline-runner/encryption/keyset/v1')) {
-        throw (Get-DbEngineError 'InvalidDataException' 'Unsupported encryption keyset schema.')
+        throw (Get-DBEngineError 'InvalidDataException' 'Unsupported encryption keyset schema.')
     }
 
     $aesEntry = [Engine]::Or([Engine]::Get($payload, 'aes_key', $null), [Engine]::Get($payload, 'aes', $null))
     $hmacEntry = [Engine]::Or([Engine]::Or([Engine]::Get($payload, 'hmac_key', $null), [Engine]::Get($payload, 'hmac', $null)), [Engine]::Get($payload, 'mac_key', $null))
     if (-not [Engine]::IsMapping($aesEntry) -or -not [Engine]::IsMapping($hmacEntry)) {
-        throw (Get-DbEngineError 'InvalidDataException' "Encryption keyset must include 'aes_key' and 'hmac_key' mappings.")
+        throw (Get-DBEngineError 'InvalidDataException' "Encryption keyset must include 'aes_key' and 'hmac_key' mappings.")
     }
 
-    $aesKey = ConvertFrom-DbKeyEntry -Entry $aesEntry -Description 'aes_key'
-    $hmacKey = ConvertFrom-DbKeyEntry -Entry $hmacEntry -Description 'hmac_key'
+    $aesKey = ConvertFrom-DBKeyEntry -Entry $aesEntry -Description 'aes_key'
+    $hmacKey = ConvertFrom-DBKeyEntry -Entry $hmacEntry -Description 'hmac_key'
     if (@(16, 24, 32) -notcontains $aesKey.Length) {
-        throw (Get-DbEngineError 'InvalidDataException' 'AES key must be 16, 24, or 32 bytes.')
+        throw (Get-DBEngineError 'InvalidDataException' 'AES key must be 16, 24, or 32 bytes.')
     }
 
     if ($aesKey.Length -ne 32) {
-        throw (Get-DbEngineError 'InvalidDataException' 'AES-256 encryption requires a 32-byte AES key.')
+        throw (Get-DBEngineError 'InvalidDataException' 'AES-256 encryption requires a 32-byte AES key.')
     }
 
     if ($hmacKey.Length -lt 32) {
-        throw (Get-DbEngineError 'InvalidDataException' 'HMAC key must be at least 32 bytes.')
+        throw (Get-DBEngineError 'InvalidDataException' 'HMAC key must be at least 32 bytes.')
     }
 
     return [pscustomobject]@{ AesKey = $aesKey; HmacKey = $hmacKey }
 }
 
-function Protect-DbPackageFile {
+function Protect-DBPackageFile {
     # _encrypt_package_file(source, destination, aes_key=..., hmac_key=...): the payload written to the destination.
     [CmdletBinding()]
     param(
@@ -7486,10 +7486,10 @@ function Protect-DbPackageFile {
         $hmac.Dispose()
     }
 
-    $package = Get-DbOrderedMap
+    $package = Get-DBOrderedMap
     $package['original_name'] = [EnginePath]::Name($Source)
     $package['size'] = [long]$plaintext.Length
-    $payload = Get-DbOrderedMap
+    $payload = Get-DBOrderedMap
     $payload['schema'] = 'https://driftbuster.dev/offline-runner/encryption/dpapi-aes/v1'
     $payload['algorithm'] = 'aes-256-cbc+hmac-sha256'
     $payload['iv'] = [System.Convert]::ToBase64String($iv)
@@ -7501,7 +7501,7 @@ function Protect-DbPackageFile {
     return , $payload
 }
 
-function Invoke-DbPackageEncryption {
+function Invoke-DBPackageEncryption {
     # _apply_package_encryption(package_path, settings, base_dir=..., log=...)
     [CmdletBinding()]
     param(
@@ -7512,7 +7512,7 @@ function Invoke-DbPackageEncryption {
     )
 
     if ($null -eq $Settings.keyset_path) {
-        throw (Get-DbEngineError 'InvalidDataException' 'Encryption is enabled but keyset_path is missing.')
+        throw (Get-DBEngineError 'InvalidDataException' 'Encryption is enabled but keyset_path is missing.')
     }
 
     $resolved = $Settings.keyset_path
@@ -7522,14 +7522,14 @@ function Invoke-DbPackageEncryption {
 
     $resolved = [EnginePath]::PathExpandUser($resolved)
     if (-not [EngineFs]::Exists($resolved)) {
-        throw (Get-DbEngineError 'FileNotFoundException' "Encryption keyset not found: $resolved")
+        throw (Get-DBEngineError 'FileNotFoundException' "Encryption keyset not found: $resolved")
     }
 
-    $keys = Import-DbEncryptionKeyset -Path $resolved
+    $keys = Import-DBEncryptionKeyset -Path $resolved
     $Log.Write("loaded encryption keyset from $resolved")
 
     $encryptedPath = [EnginePath]::WithSuffix($PackagePath, [EnginePath]::Suffix($PackagePath) + $Settings.output_extension)
-    $payload = Protect-DbPackageFile -Source $PackagePath -Destination $encryptedPath -AesKey $keys.AesKey -HmacKey $keys.HmacKey
+    $payload = Protect-DBPackageFile -Source $PackagePath -Destination $encryptedPath -AesKey $keys.AesKey -HmacKey $keys.HmacKey
     $Log.Write("encrypted package -> $([EnginePath]::Name($encryptedPath))")
 
     $removed = $false
@@ -7545,10 +7545,10 @@ function Invoke-DbPackageEncryption {
     return [pscustomobject]@{ EncryptedPath = $encryptedPath; PackagePath = $PackagePath; Payload = $payload; RemovedPlaintext = $removed }
 }
 
-# Invoke-DbOfflineRunner and Invoke-DbOfflineRunnerPath: collect every source into the staging directory, write the log, manifest
+# Invoke-DBOfflineRunner and Invoke-DBOfflineRunnerPath: collect every source into the staging directory, write the log, manifest
 # and config copy, package and optionally encrypt, and clean up.
 
-function Get-DbHostUser {
+function Get-DBHostUser {
     # The user the run is recorded under: LOGNAME, USER, LNAME or USERNAME, else the account name.
     [CmdletBinding()]
     param()
@@ -7563,7 +7563,7 @@ function Get-DbHostUser {
     return [System.Environment]::UserName
 }
 
-function Get-DbHostPlatform {
+function Get-DBHostPlatform {
     # The platform string. On Windows: "Windows-<release>-<version>-<service pack>" from the operating system's WMI record and the
     # release table below. Elsewhere the runtime's operating system description.
     [CmdletBinding()]
@@ -7614,7 +7614,7 @@ function Get-DbHostPlatform {
     }
 }
 
-function New-DbDirectory {
+function New-DBDirectory {
     # Path.mkdir(parents=True, exist_ok=True)
     [CmdletBinding(SupportsShouldProcess = $true)]
     param([Parameter(Mandatory = $true)][string] $Path)
@@ -7624,7 +7624,7 @@ function New-DbDirectory {
     }
 }
 
-function Write-DbZipPackage {
+function Write-DBZipPackage {
     # zipfile.ZipFile(package_path, "w", ZIP_DEFLATED) holding every file under the staging directory in path order.
     [CmdletBinding()]
     param(
@@ -7652,15 +7652,15 @@ function Write-DbZipPackage {
                 # the years 1980 to 2107.
                 $modified = [System.IO.File]::GetLastWriteTime([EngineOs]::Abs($source))
                 if ([EngineOs]::Windows -and $modified.ToUniversalTime() -lt [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)) {
-                    throw (Get-DbEngineError 'ArgumentOutOfRangeException' 'The file timestamp is before 1970 and cannot be stored.')
+                    throw (Get-DBEngineError 'ArgumentOutOfRangeException' 'The file timestamp is before 1970 and cannot be stored.')
                 }
 
                 if ($modified.Year -lt 1980) {
-                    throw (Get-DbEngineError 'ArgumentOutOfRangeException' 'ZIP does not support timestamps before 1980.')
+                    throw (Get-DBEngineError 'ArgumentOutOfRangeException' 'ZIP does not support timestamps before 1980.')
                 }
 
                 if ($modified.Year -gt 2107) {
-                    throw (Get-DbEngineError 'ArgumentOutOfRangeException' 'ZIP does not support timestamps after 2107.')
+                    throw (Get-DBEngineError 'ArgumentOutOfRangeException' 'ZIP does not support timestamps after 2107.')
                 }
 
                 $entry = $archive.CreateEntry([EnginePath]::AsPosix($relative), [System.IO.Compression.CompressionLevel]::Optimal)
@@ -7689,7 +7689,7 @@ function Write-DbZipPackage {
     }
 }
 
-function Invoke-DbOfflineRunner {
+function Invoke-DBOfflineRunner {
     # Runs one already-loaded config.
     [CmdletBinding()]
     param(
@@ -7699,8 +7699,8 @@ function Invoke-DbOfflineRunner {
         [AllowNull()][string] $Timestamp
     )
 
-    Import-DbOfflineRunnerNative
-    $runTimestamp = $(if ($Timestamp) { $Timestamp } else { Get-DbTimestamp })
+    Import-DBOfflineRunnerNative
+    $runTimestamp = $(if ($Timestamp) { $Timestamp } else { Get-DBTimestamp })
     $settings = $Config.settings
 
     if ($ConfigPath) {
@@ -7729,14 +7729,14 @@ function Invoke-DbOfflineRunner {
     }
 
     $outputRoot = [EnginePath]::Normalise($outputRoot)
-    New-DbDirectory $outputRoot
+    New-DBDirectory $outputRoot
 
     $safeName = [EngineText]::SafeName($Config.profile.name)
     $stagingDir = [EnginePath]::Join($outputRoot, "$safeName-$runTimestamp")
     $dataRoot = [EnginePath]::Join($stagingDir, $settings.data_directory_name)
     $logsRoot = [EnginePath]::Join($stagingDir, $settings.logs_directory_name)
-    New-DbDirectory $dataRoot
-    New-DbDirectory $logsRoot
+    New-DBDirectory $dataRoot
+    New-DBDirectory $logsRoot
 
     $log = [RunLog]::new()
     $log.Write('offline collection started')
@@ -7749,7 +7749,7 @@ function Invoke-DbOfflineRunner {
         }
     }
 
-    $secretContext = Get-DbSecretContext -Options $Config.profile.options -SecretScanner $Config.profile.secret_scanner
+    $secretContext = Get-DBSecretContext -Options $Config.profile.options -SecretScanner $Config.profile.secret_scanner
     if (-not $secretContext.RulesLoaded) {
         $log.Write('secret detection rules unavailable; copying files without scrubbing')
     }
@@ -7762,14 +7762,14 @@ function Invoke-DbOfflineRunner {
 
     $index = 0
     foreach ($source in $Config.profile.sources) {
-        $alias = Get-DbDestinationName -Source $source -FallbackIndex $index
+        $alias = Get-DBDestinationName -Source $source -FallbackIndex $index
         $index++
         $destinationRoot = [EnginePath]::Join($dataRoot, $alias)
-        New-DbDirectory $destinationRoot
+        New-DBDirectory $destinationRoot
 
         switch ($source.kind) {
             'sql_snapshot' {
-                $outcome = Invoke-DbSqlSnapshotSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -BaseDir $effectiveBaseDir `
+                $outcome = Invoke-DBSqlSnapshotSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -BaseDir $effectiveBaseDir `
                     -MaxTotalBytes $maxTotalBytes -TotalBytes $totalBytes -Log $log
                 $sourceSummaries.Add($outcome.Summary)
                 if ($null -ne $outcome.File) {
@@ -7779,14 +7779,14 @@ function Invoke-DbOfflineRunner {
                 }
             }
             'registry_scan' {
-                $outcome = Invoke-DbRegistryScanSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -BaseDir $effectiveBaseDir -Log $log
+                $outcome = Invoke-DBRegistryScanSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -BaseDir $effectiveBaseDir -Log $log
                 $sourceSummaries.Add($outcome.Summary)
                 foreach ($file in $outcome.Files) {
                     $files.Add($file)
                 }
             }
             default {
-                $outcome = Invoke-DbFileSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -DataRoot $dataRoot `
+                $outcome = Invoke-DBFileSource -Source $source -Alias $alias -DestinationRoot $destinationRoot -DataRoot $dataRoot `
                     -BaseDir $effectiveBaseDir -MaxTotalBytes $maxTotalBytes -TotalBytes $totalBytes -SecretContext $secretContext -Log $log
                 $sourceSummaries.Add($outcome.Summary)
                 foreach ($file in $outcome.Files) {
@@ -7802,7 +7802,7 @@ function Invoke-DbOfflineRunner {
 
     $logPath = $null
     if ($settings.include_logs) {
-        New-DbDirectory $logsRoot
+        New-DBDirectory $logsRoot
         $logPath = [EnginePath]::Join($logsRoot, $settings.log_name)
         $log.Save($logPath)
     }
@@ -7811,26 +7811,26 @@ function Invoke-DbOfflineRunner {
     $manifest = $null
     $encryption = $settings.encryption
     if ($settings.include_manifest) {
-        $hostInfo = Get-DbOrderedMap
+        $hostInfo = Get-DBOrderedMap
         $hostInfo['computer_name'] = [System.Net.Dns]::GetHostName()
-        $hostInfo['user'] = Get-DbHostUser
-        $hostInfo['platform'] = Get-DbHostPlatform
+        $hostInfo['user'] = Get-DBHostUser
+        $hostInfo['platform'] = Get-DBHostPlatform
 
-        $profileInfo = Get-DbOrderedMap
+        $profileInfo = Get-DBOrderedMap
         $profileInfo['name'] = $Config.profile.name
         $profileInfo['description'] = $Config.profile.description
         $profileInfo['baseline'] = $Config.profile.baseline
         $profileInfo['tags'] = [string[]]@($Config.profile.tags)
         $profileInfo['options'] = $Config.profile.options
-        $profileInfo['secret_scanner'] = Get-DbManifestSecretScanner -Options $Config.profile.options -SecretScanner $Config.profile.secret_scanner -Context $secretContext
+        $profileInfo['secret_scanner'] = Get-DBManifestSecretScanner -Options $Config.profile.options -SecretScanner $Config.profile.secret_scanner -Context $secretContext
 
-        $runnerInfo = Get-DbOrderedMap
+        $runnerInfo = Get-DBOrderedMap
         $runnerInfo['version'] = $Config.version
         $runnerInfo['schema'] = $Config.schema
 
         $fileEntries = [System.Collections.Generic.List[object]]::new()
         foreach ($file in $files) {
-            $entry = Get-DbOrderedMap
+            $entry = Get-DBOrderedMap
             $entry['alias'] = $file.alias
             $entry['source'] = $file.source
             $entry['relative_path'] = $file.relative_path
@@ -7841,7 +7841,7 @@ function Invoke-DbOfflineRunner {
 
         $findings = [System.Collections.Generic.List[object]]::new()
         foreach ($finding in $secretContext.Findings) {
-            $entry = Get-DbOrderedMap
+            $entry = Get-DBOrderedMap
             $entry['path'] = $finding.Path
             $entry['rule'] = $finding.Rule
             $entry['line'] = $finding.Line
@@ -7851,13 +7851,13 @@ function Invoke-DbOfflineRunner {
 
         $ignoredRules = [System.Collections.Generic.List[string]]::new($secretContext.IgnoreRules)
         $ignoredRules.Sort([System.Comparison[string]] { param($left, $right) [EngineText]::CompareCodePoints($left, $right) })
-        $secrets = Get-DbOrderedMap
+        $secrets = Get-DBOrderedMap
         $secrets['ruleset_version'] = $secretContext.Version
         $secrets['findings'] = $findings
         $secrets['ignored_rules'] = $ignoredRules
         $secrets['ignored_patterns'] = $secretContext.IgnorePatternText
 
-        $package = Get-DbOrderedMap
+        $package = Get-DBOrderedMap
         $package['staging_directory'] = $stagingDir
         $package['data_directory'] = $dataRoot
         $package['logs_directory'] = $logsRoot
@@ -7867,7 +7867,7 @@ function Invoke-DbOfflineRunner {
             $package['package_name'] = $packageFilename
         }
 
-        $encryptionInfo = Get-DbOrderedMap
+        $encryptionInfo = Get-DBOrderedMap
         if ($null -ne $encryption -and $encryption.enabled) {
             $encryptedName = $(if ($packageFilename) { $packageFilename } else { "$safeName-$runTimestamp.zip" })
             if (-not $encryptedName.EndsWith($encryption.output_extension, [System.StringComparison]::Ordinal)) {
@@ -7888,7 +7888,7 @@ function Invoke-DbOfflineRunner {
 
         $package['encryption'] = $encryptionInfo
 
-        $metadata = Get-DbOrderedMap
+        $metadata = Get-DBOrderedMap
         foreach ($key in @($Config.metadata.Keys)) {
             $metadata[$key] = $Config.metadata[$key]
         }
@@ -7897,7 +7897,7 @@ function Invoke-DbOfflineRunner {
             $metadata['sql_exports'] = $sqlMetadata
         }
 
-        $manifest = Get-DbOrderedMap
+        $manifest = Get-DBOrderedMap
         $manifest['schema'] = 'https://driftbuster.dev/offline-runner/manifest/v1'
         $manifest['generated_at'] = [RunLog]::Stamp()
         $manifest['timestamp'] = $runTimestamp
@@ -7911,7 +7911,7 @@ function Invoke-DbOfflineRunner {
         $manifest['package'] = $package
 
         if ($ConfigPath -and [EngineFs]::Exists($ConfigPath)) {
-            $configInfo = Get-DbOrderedMap
+            $configInfo = Get-DBOrderedMap
             $configInfo['path'] = $ConfigPath
             $configInfo['sha256'] = [EngineFile]::HashFile($ConfigPath)
             $manifest['config'] = $configInfo
@@ -7936,11 +7936,11 @@ function Invoke-DbOfflineRunner {
     $logOnDisk = $logPath
     if ($settings.compress) {
         $packagePath = [EnginePath]::Join($outputRoot, $packageFilename)
-        Write-DbZipPackage -PackagePath $packagePath -StagingDir $stagingDir
+        Write-DBZipPackage -PackagePath $packagePath -StagingDir $stagingDir
         $unencryptedPackagePath = $packagePath
 
         if ($null -ne $encryption -and $encryption.enabled) {
-            $applied = Invoke-DbPackageEncryption -PackagePath $packagePath -Settings $encryption -BaseDir $effectiveBaseDir -Log $log
+            $applied = Invoke-DBPackageEncryption -PackagePath $packagePath -Settings $encryption -BaseDir $effectiveBaseDir -Log $log
             $encryptedPackagePath = $applied.EncryptedPath
             $packagePath = $applied.EncryptedPath
             $unencryptedPackagePath = $applied.PackagePath
@@ -7970,7 +7970,7 @@ function Invoke-DbOfflineRunner {
         }
     }
     elseif ($null -ne $encryption -and $encryption.enabled) {
-        throw (Get-DbEngineError 'InvalidDataException' 'Encryption requires compression to be enabled.')
+        throw (Get-DBEngineError 'InvalidDataException' 'Encryption requires compression to be enabled.')
     }
 
     return [pscustomobject]@{
@@ -7989,7 +7989,7 @@ function Invoke-DbOfflineRunner {
     }
 }
 
-function Invoke-DbOfflineRunnerPath {
+function Invoke-DBOfflineRunnerPath {
     # Loads a config from disk and runs it.
     [CmdletBinding()]
     param(
@@ -7998,12 +7998,12 @@ function Invoke-DbOfflineRunnerPath {
         [AllowNull()][string] $Timestamp
     )
 
-    Import-DbOfflineRunnerNative
-    $config = Import-DbOfflineRunnerConfig -Path $ConfigPath
-    return Invoke-DbOfflineRunner -Config $config -ConfigPath $ConfigPath -BaseDir $BaseDir -Timestamp $Timestamp
+    Import-DBOfflineRunnerNative
+    $config = Import-DBOfflineRunnerConfig -Path $ConfigPath
+    return Invoke-DBOfflineRunner -Config $config -ConfigPath $ConfigPath -BaseDir $BaseDir -Timestamp $Timestamp
 }
 
-Import-DbOfflineRunnerNative
+Import-DBOfflineRunnerNative
 
 # Dot-sourcing the script (tests) loads the helpers above and stops here.
 if ($MyInvocation.InvocationName -eq '.') {
@@ -8015,16 +8015,16 @@ $ErrorActionPreference = 'Stop'
 try {
     [DriftBusterOfflineRunner.EngineOs]::Cwd = (Get-Location -PSProvider FileSystem).ProviderPath
     $resolvedConfig = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ConfigPath)
-    $config = Import-DbOfflineRunnerConfig -Path $resolvedConfig
+    $config = Import-DBOfflineRunnerConfig -Path $resolvedConfig
     if ($OutputDirectory) {
         $resolvedOutput = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
         $config.settings.output_directory = [DriftBusterOfflineRunner.EnginePath]::Normalise($resolvedOutput)
     }
 
-    $result = Invoke-DbOfflineRunner -Config $config -ConfigPath $resolvedConfig
+    $result = Invoke-DBOfflineRunner -Config $config -ConfigPath $resolvedConfig
 }
 catch {
-    $engineError = Get-DbEngineException $_
+    $engineError = Get-DBEngineException $_
     if ($null -eq $engineError) {
         throw
     }

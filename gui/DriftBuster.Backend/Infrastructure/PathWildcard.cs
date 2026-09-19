@@ -11,7 +11,7 @@ namespace DriftBuster.Backend.Infrastructure;
 /// Built on <see cref="FileSystemName.MatchesSimpleExpression(ReadOnlySpan{char}, ReadOnlySpan{char}, bool)"/>. On Windows every
 /// <c>\</c> in the pattern and the text is read as <c>/</c> first; elsewhere a <c>\</c> is an ordinary character, so there is no
 /// escape and no way to match a <c>*</c> or <c>?</c> literally. An empty pattern never matches, and no pattern matches empty text.
-/// The offline runner's <c>Test-DbWildcardMatch</c> implements the same syntax.
+/// The offline runner's <c>Test-DBWildcardMatch</c> implements the same syntax.
 /// </remarks>
 public static class PathWildcard
 {

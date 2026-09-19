@@ -222,6 +222,6 @@ public sealed class MultiServerRegistryTests : IDisposable
         using var stream = typeof(RemoteRegistryTreeReader).Assembly.GetManifestResourceStream(RemoteRegistryTreeReader.DumpResource)!;
         var dump = new StreamReader(stream).ReadToEnd().ReplaceLineEndings("\n").Trim();
 
-        runner.Should().Contain("$script:DbRemoteRegistryDump = " + dump + "\n");
+        runner.Should().Contain("$script:DBRemoteRegistryDump = " + dump + "\n");
     }
 }

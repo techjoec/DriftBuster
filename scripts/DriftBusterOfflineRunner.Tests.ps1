@@ -62,7 +62,7 @@ BeforeAll {
 
     function ConvertTo-TestConfig {
         param($Payload)
-        return ConvertFrom-DbOfflineRunnerConfig (ConvertTo-EngineValue $Payload)
+        return ConvertFrom-DBOfflineRunnerConfig (ConvertTo-EngineValue $Payload)
     }
 
     # _build_config(tmp_path, profile=..., runner=..., metadata=...)
@@ -207,7 +207,7 @@ BeforeAll {
             & $Script | Out-Null
         }
         catch {
-            $caught = Get-DbEngineException $_
+            $caught = Get-DBEngineException $_
             if ($null -eq $caught) {
                 throw
             }
@@ -277,7 +277,7 @@ Describe 'package encryption' {
                 }
                 metadata = @{}
             })
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z'
 
         $result.package_path | Should -Not -BeNullOrEmpty
         [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
@@ -332,7 +332,7 @@ Describe 'package encryption' {
                 metadata = @{}
             })
 
-        Assert-EngineError { Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z' } 'InvalidDataException'
+        Assert-EngineError { Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z' } 'InvalidDataException'
     }
 
     It 'execute config path supports relative paths' {
@@ -353,7 +353,7 @@ Describe 'package encryption' {
                 metadata = @{}
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath -Timestamp '20240202T120000Z'
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath -Timestamp '20240202T120000Z'
 
         $result.package_path | Should -Not -BeNullOrEmpty
         [DriftBusterOfflineRunner.EnginePath]::Parent($result.package_path) | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($configDir))
@@ -384,28 +384,28 @@ Describe 'config helpers' {
                 }
                 alias         = '  ExampleAlias  '
             })
-        $source = ConvertFrom-DbOfflineRegistryScanSource $payload
+        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
         $source.token | Should -BeExactly 'ExampleApp'
         $source.keywords | Should -Be @('alpha', 'beta')
         $source.patterns | Should -Be @('value1', 'value2')
         $source.max_depth | Should -Be 8
         $source.max_hits | Should -Be 150
         $source.time_budget_s | Should -Be 15.0
-        Get-DbDestinationName -Source $source -FallbackIndex 1 | Should -BeExactly '--ExampleAlias--'
+        Get-DBDestinationName -Source $source -FallbackIndex 1 | Should -BeExactly '--ExampleAlias--'
 
-        $noAlias = ConvertFrom-DbOfflineRegistryScanSource (ConvertTo-EngineValue ([ordered]@{ registry_scan = [ordered]@{ token = 'Example'; keywords = @('one'); patterns = @() } }))
-        (Get-DbDestinationName -Source $noAlias -FallbackIndex 2).StartsWith('registry_') | Should -BeTrue
+        $noAlias = ConvertFrom-DBOfflineRegistryScanSource (ConvertTo-EngineValue ([ordered]@{ registry_scan = [ordered]@{ token = 'Example'; keywords = @('one'); patterns = @() } }))
+        (Get-DBDestinationName -Source $noAlias -FallbackIndex 2).StartsWith('registry_') | Should -BeTrue
     }
 
     It 'normalise snapshot columns handles sequences' {
-        $mapping = ConvertTo-DbSnapshotColumnMap (ConvertTo-EngineValue ([ordered]@{ users = @('id', 'email'); events = @('timestamp', 'severity') }))
+        $mapping = ConvertTo-DBSnapshotColumnMap (ConvertTo-EngineValue ([ordered]@{ users = @('id', 'email'); events = @('timestamp', 'severity') }))
         $mapping['users'] | Should -Be @('id', 'email')
         $mapping['events'] | Should -Be @('timestamp', 'severity')
 
-        $sequence = ConvertTo-DbSnapshotColumnMap (ConvertTo-EngineValue @('audit.id', 'audit.created', 'logs.message', 'invalid', 'logs.'))
+        $sequence = ConvertTo-DBSnapshotColumnMap (ConvertTo-EngineValue @('audit.id', 'audit.created', 'logs.message', 'invalid', 'logs.'))
         $sequence['audit'] | Should -Be @('id', 'created')
         $sequence['logs'] | Should -Be @('message')
-        (ConvertTo-DbSnapshotColumnMap $null).Count | Should -Be 0
+        (ConvertTo-DBSnapshotColumnMap $null).Count | Should -Be 0
     }
 
     It 'offline sql snapshot source from dict and kwargs' {
@@ -418,7 +418,7 @@ Describe 'config helpers' {
                 }
                 alias        = ' database '
             })
-        $source = ConvertFrom-DbOfflineSqlSnapshotSource $payload
+        $source = ConvertFrom-DBOfflineSqlSnapshotSource $payload
         $source.path | Should -BeExactly $dbPath
         $source.tables | Should -Be @('users', 'logs')
         $source.exclude_tables | Should -Be @('audit')
@@ -427,21 +427,21 @@ Describe 'config helpers' {
         $source.limit | Should -Be 25
         $source.placeholder | Should -BeExactly '[MASKED]'
         $source.hash_salt | Should -BeExactly 'pepper'
-        Get-DbDestinationName -Source $source -FallbackIndex 2 | Should -BeExactly 'database'
+        Get-DBDestinationName -Source $source -FallbackIndex 2 | Should -BeExactly 'database'
 
-        $kwargs = Get-DbSnapshotArgument $source
+        $kwargs = Get-DBSnapshotArgument $source
         $kwargs['tables'] | Should -Be @('users', 'logs')
         $kwargs['limit'] | Should -Be 25
     }
 
     It 'offline sql snapshot source limit validation' {
         $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; limit = 0 } })
-        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineSqlSnapshotSource $payload } 'InvalidDataException'
     }
 
     It 'offline sql snapshot source dialect validation' {
         $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; dialect = 'postgres' } })
-        Assert-EngineError { ConvertFrom-DbOfflineSqlSnapshotSource $payload } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineSqlSnapshotSource $payload } 'InvalidDataException'
     }
 
     It 'offline runner profile with registry and sql sources' {
@@ -460,7 +460,7 @@ Describe 'config helpers' {
                 options        = [ordered]@{ secret_ignore_rules = @('PasswordAssignment') }
                 secret_scanner = [ordered]@{ ignore_rules = @('GenericApiToken') }
             })
-        $profileObject = ConvertFrom-DbOfflineRunnerProfile $payload
+        $profileObject = ConvertFrom-DBOfflineRunnerProfile $payload
         $profileObject.sources.Count | Should -Be 3
         @($profileObject.sources | Where-Object { $_.kind -eq 'registry_scan' }).Count | Should -BeGreaterThan 0
         @($profileObject.sources | Where-Object { $_.kind -eq 'sql_snapshot' }).Count | Should -BeGreaterThan 0
@@ -470,7 +470,7 @@ Describe 'config helpers' {
         $tmp = Get-TestDirectory
         $keysetPath = Join-Path $tmp 'key.json'
         Write-TestText -Path $keysetPath -Content '{}'
-        $settings = ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{
+        $settings = ConvertFrom-DBOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{
                     enabled = $true; mode = 'DPAPI-AES'; keyset_path = $keysetPath; output_extension = 'encpkg'; remove_plaintext = $false
                 }))
         $settings.enabled | Should -BeTrue
@@ -478,12 +478,12 @@ Describe 'config helpers' {
         $settings.output_extension | Should -BeExactly '.encpkg'
         $settings.remove_plaintext | Should -BeFalse
 
-        Assert-EngineError { ConvertFrom-DbOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{ enabled = $true })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{ enabled = $true })) } 'InvalidDataException'
     }
 
     It 'offline runner settings from dict handles defaults' {
         $tmp = Get-TestDirectory
-        $settings = ConvertFrom-DbOfflineRunnerSetting (ConvertTo-EngineValue ([ordered]@{
+        $settings = ConvertFrom-DBOfflineRunnerSetting (ConvertTo-EngineValue ([ordered]@{
                     output_directory = $tmp; package_name = ' '; max_total_bytes = '2048'; encryption = [ordered]@{ enabled = $false }
                 }))
         $settings.output_directory | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($tmp))
@@ -495,7 +495,7 @@ Describe 'config helpers' {
 
     It 'execute config skips registry scan on non windows' {
         # The runner is pinned to a host view that is not Windows.
-        Mock Test-DbWindowsPlatform { $false }
+        Mock Test-DBWindowsPlatform { $false }
         $tmp = Get-TestDirectory
         $config = ConvertTo-TestConfig ([ordered]@{
                 schema   = $script:ConfigSchema
@@ -508,7 +508,7 @@ Describe 'config helpers' {
                 runner   = [ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $false; cleanup_staging = $false }
                 metadata = @{}
             })
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20251025T083000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20251025T083000Z'
 
         $result.manifest_path | Should -Not -BeNullOrEmpty
         $manifest = Read-JsonFile $result.manifest_path
@@ -542,7 +542,7 @@ Describe 'secret masking' {
                 }
                 metadata = [ordered]@{ audit = 'secret-masking' }
             })
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20251025T070000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20251025T070000Z'
 
         $result.package_path | Should -Not -BeNullOrEmpty
         [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
@@ -590,7 +590,7 @@ Describe 'runner execution' {
                 }
             })
 
-        $config = Import-DbOfflineRunnerConfig -Path $configPath
+        $config = Import-DBOfflineRunnerConfig -Path $configPath
         $config.profile.name | Should -BeExactly 'demo'
         $config.profile.sources.Count | Should -Be 2
         $first, $second = $config.profile.sources
@@ -622,7 +622,7 @@ Describe 'runner execution' {
                 metadata = [ordered]@{ request_id = 'abc-123' }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
 
         $result.package_path | Should -Not -BeNullOrEmpty
         Test-Path -LiteralPath $result.package_path | Should -BeTrue
@@ -659,7 +659,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
 
         @($result.files | Where-Object { $_.alias -eq 'missing' }).Count | Should -Be 0
         $result.manifest_path | Should -BeNullOrEmpty
@@ -676,7 +676,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
             })
 
-        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'FileNotFoundException'
+        Assert-EngineError { Invoke-DBOfflineRunnerPath -ConfigPath $configPath } 'FileNotFoundException'
     }
 
     It 'execute offline run respects exclude patterns' {
@@ -690,7 +690,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
         $paths = @($result.files | ForEach-Object { $_.relative_path })
         @($paths | Where-Object { $_.Contains('ignore.tmp') }).Count | Should -Be 0
         @($paths | Where-Object { $_.EndsWith('keep.log') }).Count | Should -BeGreaterThan 0
@@ -707,7 +707,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
         $collected = @($result.files | ForEach-Object { $_.relative_path })
         $collected.Count | Should -Be @($collected | Select-Object -Unique).Count
         @($collected | Where-Object { $_.EndsWith('root.log') }).Count | Should -BeGreaterThan 0
@@ -724,7 +724,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ max_total_bytes = 10; output_directory = (Join-Path $tmp 'out') }
             })
 
-        Assert-EngineError { Invoke-DbOfflineRunnerPath -ConfigPath $configPath } 'InvalidOperationException' '*max_total_bytes*'
+        Assert-EngineError { Invoke-DBOfflineRunnerPath -ConfigPath $configPath } 'InvalidOperationException' '*max_total_bytes*'
     }
 
     It 'execute offline run scrubs secret lines' {
@@ -737,7 +737,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); include_logs = $true; include_manifest = $true }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
 
         Read-RunnerLogFromPackage $result.package_path | Should -Match 'secret candidate redacted'
 
@@ -772,7 +772,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); include_logs = $true; include_manifest = $true }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
 
         Read-RunnerLogFromPackage $result.package_path | Should -Not -Match 'secret candidate redacted'
         $collectedFile = @($result.files | Where-Object { $_.source -eq $secretFile })[0]
@@ -802,7 +802,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); include_logs = $true; include_manifest = $true }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
 
         $manifest = Read-ManifestFromPackage $result.package_path
         $secrets = $manifest['secrets']
@@ -823,7 +823,7 @@ Describe 'runner execution' {
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); cleanup_staging = $false; include_manifest = $true; include_logs = $true }
             })
 
-        $result = Invoke-DbOfflineRunnerPath -ConfigPath $configPath
+        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
 
         $result.staging_dir | Should -Not -BeNullOrEmpty
         Test-Path -LiteralPath $result.staging_dir | Should -BeTrue
@@ -834,14 +834,14 @@ Describe 'runner execution' {
     }
 
     It 'compile ruleset from mapping handles invalid entries' {
-        ConvertTo-DbCompiledRuleset $null | Should -BeNullOrEmpty
-        ConvertTo-DbCompiledRuleset (ConvertTo-EngineValue ([ordered]@{ rules = 'invalid' })) | Should -BeNullOrEmpty
+        ConvertTo-DBCompiledRuleset $null | Should -BeNullOrEmpty
+        ConvertTo-DBCompiledRuleset (ConvertTo-EngineValue ([ordered]@{ rules = 'invalid' })) | Should -BeNullOrEmpty
 
         $payload = ConvertTo-EngineValue ([ordered]@{
                 version = 'custom'
                 rules   = @([ordered]@{ name = 'Valid'; pattern = 'secret'; flags = 'i' }, [ordered]@{ name = 'Broken'; pattern = '[' })
             })
-        $compiled = ConvertTo-DbCompiledRuleset $payload
+        $compiled = ConvertTo-DBCompiledRuleset $payload
         $compiled | Should -Not -BeNullOrEmpty
         $compiled.Version | Should -BeExactly 'custom'
         $compiled.Rules.Count | Should -Be 1
@@ -849,9 +849,9 @@ Describe 'runner execution' {
     }
 
     It 'secret option values and manifest helpers' {
-        $values = Get-DbSecretOptionValue 'a, b ; c'
+        $values = Get-DBSecretOptionValue 'a, b ; c'
         $values | Should -Be @('a', 'b', 'c')
-        $values = Get-DbSecretOptionValue (ConvertTo-EngineValue @('x', $null, ' y '))
+        $values = Get-DBSecretOptionValue (ConvertTo-EngineValue @('x', $null, ' y '))
         $values | Should -Be @('x', 'y')
 
         $context = [DriftBusterOfflineRunner.SecretContext]::new()
@@ -861,7 +861,7 @@ Describe 'runner execution' {
         $context.IgnorePatternText.Add('SKIP')
         $context.RulesLoaded = $true
 
-        $manifest = Get-DbManifestSecretScanner -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_rules = 'Skip' })) `
+        $manifest = Get-DBManifestSecretScanner -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_rules = 'Skip' })) `
             -SecretScanner (ConvertTo-EngineValue ([ordered]@{ ignore_patterns = @('SKIP') })) -Context $context
         $manifest['ruleset_version'] | Should -BeExactly 'v1'
         $manifest['ignore_rules'] | Should -Be @('Skip')
@@ -873,7 +873,7 @@ Describe 'runner execution' {
                 ruleset      = [ordered]@{ version = 'inline'; rules = @([ordered]@{ name = 'Token'; pattern = 'VALUE' }) }
                 ignore_rules = @('Token')
             })
-        $context = Get-DbSecretContext -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_patterns = @('ALLOW') })) -SecretScanner $payload
+        $context = Get-DBSecretContext -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_patterns = @('ALLOW') })) -SecretScanner $payload
         $context.Version | Should -BeExactly 'inline'
         $context.RulesLoaded | Should -BeTrue
         @($context.IgnoreRules) | Should -Be @('Token')
@@ -881,35 +881,35 @@ Describe 'runner execution' {
     }
 
     It 'offline collection source validations' {
-        Assert-EngineError { ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue @{}) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineCollectionSource (ConvertTo-EngineValue @{}) } 'InvalidDataException'
 
-        $source = ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '~/data'; alias = '  '; exclude = '*.tmp' }))
+        $source = ConvertFrom-DBOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '~/data'; alias = '  '; exclude = '*.tmp' }))
         $source.alias | Should -BeNullOrEmpty
         $source.exclude | Should -Be @('*.tmp')
 
-        $rootSource = ConvertFrom-DbOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '/' }))
-        Get-DbDestinationName -Source $rootSource -FallbackIndex 7 | Should -BeExactly 'source_07'
+        $rootSource = ConvertFrom-DBOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '/' }))
+        Get-DBDestinationName -Source $rootSource -FallbackIndex 7 | Should -BeExactly 'source_07'
     }
 
     It 'offline runner profile validations' {
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = '' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); baseline = 'missing' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); options = 'invalid' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); secret_scanner = 'invalid' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = '' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); baseline = 'missing' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); options = 'invalid' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); secret_scanner = 'invalid' })) } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo' })) } 'InvalidDataException'
 
-        $profileObject = ConvertFrom-DbOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'tags'; sources = @('/tmp/a'); tags = 'prod' }))
+        $profileObject = ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'tags'; sources = @('/tmp/a'); tags = 'prod' }))
         $profileObject.tags | Should -Be @('prod')
     }
 
     It 'offline runner config default package name' {
-        Mock Get-DbTimestamp { '20230101T000000Z' }
+        Mock Get-DBTimestamp { '20230101T000000Z' }
         $config = ConvertTo-TestConfig ([ordered]@{ profile = [ordered]@{ name = 'Demo'; sources = @('/tmp/a') } })
-        Get-DbDefaultPackageName -Config $config | Should -BeExactly 'Demo-20230101T000000Z'
+        Get-DBDefaultPackageName -Config $config | Should -BeExactly 'Demo-20230101T000000Z'
     }
 
     It 'execute config logs when secret rules missing' {
-        Mock Get-DbSecretContext {
+        Mock Get-DBSecretContext {
             $context = [DriftBusterOfflineRunner.SecretContext]::new()
             $context.Version = 'v'
             $context.RulesLoaded = $false
@@ -922,7 +922,7 @@ Describe 'runner execution' {
         $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'demo'; sources = @($filePath) }) `
             -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); cleanup_staging = $false })
 
-        $result = Invoke-DbOfflineRunner -Config $config -Timestamp '20230101T010101Z'
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20230101T010101Z'
 
         $result.log_path | Should -Not -BeNullOrEmpty
         [System.IO.File]::ReadAllText($result.log_path) | Should -Match 'secret detection rules unavailable'
@@ -937,7 +937,7 @@ Describe 'runner execution' {
 
         $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'symlinks'; sources = @($realFile, $symlink) })
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp
         $paths = @($result.files | ForEach-Object { $_.source })
         @($paths | Where-Object { $_.EndsWith('real.txt') }).Count | Should -BeGreaterThan 0
         $paths | Should -Not -Contain $symlink
@@ -950,7 +950,7 @@ Describe 'runner execution' {
         $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'archive'; sources = @($filePath) }) `
             -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); package_name = 'artifact'; compress = $true; cleanup_staging = $true })
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp
         $result.package_path | Should -Not -BeNullOrEmpty
         [DriftBusterOfflineRunner.EnginePath]::Name($result.package_path).EndsWith('.zip') | Should -BeTrue
     }
@@ -961,7 +961,7 @@ Describe 'SQL snapshots' {
         $tmp = Get-TestDirectory
         $dbPath = Initialize-SampleDatabase (Join-Path $tmp 'sample.sqlite')
 
-        $payload = Get-DbSqliteSnapshot -Path $dbPath -MaskColumns ([ordered]@{ accounts = @('secret') }) -HashColumns ([ordered]@{ accounts = @('email') }) `
+        $payload = Get-DBSqliteSnapshot -Path $dbPath -MaskColumns ([ordered]@{ accounts = @('secret') }) -HashColumns ([ordered]@{ accounts = @('email') }) `
             -Placeholder '[MASK]' -HashSalt 'pepper'
 
         $payload['database'] | Should -BeExactly 'sample.sqlite'
@@ -989,7 +989,7 @@ Describe 'SQL snapshots' {
             ))
 
         $destination = Join-Path $tmp 'out.json'
-        $snapshot = Get-DbSqliteSnapshot -Path $dbPath -Tables @('accounts') -ExcludeTables @('nonexistent') `
+        $snapshot = Get-DBSqliteSnapshot -Path $dbPath -Tables @('accounts') -ExcludeTables @('nonexistent') `
             -MaskColumns (ConvertTo-EngineValue @('accounts.secret')) -HashColumns (ConvertTo-EngineValue @('accounts.email')) -Limit 1
         [DriftBusterOfflineRunner.EngineFile]::WriteText($destination, [DriftBusterOfflineRunner.EngineJson]::Dumps($snapshot, 2, $true))
 
@@ -998,10 +998,10 @@ Describe 'SQL snapshots' {
         $payload['tables'][0]['rows'].Count | Should -Be 1
         $payload['tables'][0]['rows'][0]['secret'] | Should -BeExactly '[REDACTED]'
 
-        $audit = Get-DbSqliteSnapshot -Path $dbPath -Tables @('audit')
+        $audit = Get-DBSqliteSnapshot -Path $dbPath -Tables @('audit')
         $audit['tables'][0]['rows'][0]['payload']['type'] | Should -BeExactly 'base64'
 
-        Assert-EngineError { Get-DbSqliteSnapshot -Path $dbPath -Limit 0 } 'ArgumentOutOfRangeException'
+        Assert-EngineError { Get-DBSqliteSnapshot -Path $dbPath -Limit 0 } 'ArgumentOutOfRangeException'
     }
 
     It 'offline runner sql snapshot source' {
@@ -1027,7 +1027,7 @@ Describe 'SQL snapshots' {
                 metadata = @{}
             })
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20230101T000000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20230101T000000Z'
 
         $result.package_path | Should -BeNullOrEmpty
         $result.files.Count | Should -BeGreaterThan 0 -Because 'expected collected files'
@@ -1066,7 +1066,7 @@ Describe 'SQL snapshots' {
                 metadata = @{}
             })
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20230102T000000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20230102T000000Z'
 
         $result.files.Count | Should -Be 0
         $result.manifest_path | Should -Not -BeNullOrEmpty
@@ -1099,15 +1099,15 @@ Describe 'live registry hives' {
                 metadata = @{}
             })
 
-        Mock Test-DbWindowsPlatform { $true }
-        Mock Get-DbAppRegistryRoot { throw 'find_app_registry_roots should not run when roots are supplied' }
-        Mock Get-DbInstalledApp { throw 'find_app_registry_roots should not run when roots are supplied' }
-        Mock Search-DbRegistry {
+        Mock Test-DBWindowsPlatform { $true }
+        Mock Get-DBAppRegistryRoot { throw 'find_app_registry_roots should not run when roots are supplied' }
+        Mock Get-DBInstalledApp { throw 'find_app_registry_roots should not run when roots are supplied' }
+        Mock Search-DBRegistry {
             return , @([pscustomobject]@{ hive = 'HKLM'; path = 'Software\\VendorA'; value_name = 'Server'; data_preview = 'api.internal'; reason = 'keyword' })
         }
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
-        Should -Invoke Search-DbRegistry -Times 1 -Exactly -ParameterFilter {
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+        Should -Invoke Search-DBRegistry -Times 1 -Exactly -ParameterFilter {
             @($Roots).Count -eq 1 -and $Roots[0].hive -ceq 'HKLM' -and $Roots[0].path -ceq 'Software\\VendorA' -and $Roots[0].view -ceq '64'
         }
 
@@ -1121,7 +1121,7 @@ Describe 'live registry hives' {
         @($summary['requested_roots'] | ForEach-Object { $_.Replace('\\', '\') }) | Should -Be @('HKLM \ Software\VendorA (view 64)')
 
         $result.staging_dir | Should -Not -BeNullOrEmpty
-        $alias = Get-DbDestinationName -Source $config.profile.sources[0] -FallbackIndex 1
+        $alias = Get-DBDestinationName -Source $config.profile.sources[0] -FallbackIndex 1
         $dataPath = Join-TestPath $result.staging_dir @($config.settings.data_directory_name, $alias, 'registry_scan.json')
         $payload = Read-JsonFile $dataPath
         $payload['requested_roots'][0]['view'] | Should -BeExactly '64'
@@ -1153,14 +1153,14 @@ Describe 'remote registry scans' {
 
         function Read-RegistryResult {
             param($Result, $Config, [string] $Name)
-            $alias = Get-DbDestinationName -Source $Config.profile.sources[0] -FallbackIndex 0
+            $alias = Get-DBDestinationName -Source $Config.profile.sources[0] -FallbackIndex 0
             return Read-JsonFile (Join-TestPath $Result.staging_dir @($Config.settings.data_directory_name, $alias, $Name))
         }
     }
 
     BeforeEach {
-        Mock Test-DbWindowsPlatform { $true }
-        Mock Close-DbRemoteRegistrySession { }
+        Mock Test-DBWindowsPlatform { $true }
+        Mock Close-DBRemoteRegistrySession { }
     }
 
     It 'scans each remote host over its own session and writes one result per host' {
@@ -1172,8 +1172,8 @@ Describe 'remote registry scans' {
                 remote      = [ordered]@{ host = 'app-01.corp.local'; alias = 'app 01' }
                 remote_batch = @('app-02.corp.local')
             })
-        Mock Open-DbRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
-        Mock Invoke-DbRemoteRegistryDump {
+        Mock Open-DBRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
+        Mock Invoke-DBRemoteRegistryDump {
             $request = $Request
             $request.roots.Count | Should -Be 1
             $request.max_depth | Should -Be 12
@@ -1187,11 +1187,11 @@ Describe 'remote registry scans' {
             }
         }
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
 
         $summary = (Read-JsonFile $result.manifest_path)['sources'][0]
-        Should -Invoke Open-DbRemoteRegistrySession -Times 2 -Exactly
-        Should -Invoke Close-DbRemoteRegistrySession -Times 2 -Exactly
+        Should -Invoke Open-DBRemoteRegistrySession -Times 2 -Exactly
+        Should -Invoke Close-DBRemoteRegistrySession -Times 2 -Exactly
         $summary['hits'] | Should -Be 4
         @($summary['targets']).Count | Should -Be 2
         $summary['targets'][0]['host'] | Should -BeExactly 'app-01.corp.local'
@@ -1212,8 +1212,8 @@ Describe 'remote registry scans' {
         $tmp = Get-TestDirectory
         $config = Get-RemoteRegistryTestConfig $tmp ([ordered]@{ token = 'VendorA'; remote = 'app-01.corp.local' })
         $uninstall = 'Software\Microsoft\Windows\CurrentVersion\Uninstall'
-        Mock Open-DbRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
-        Mock Invoke-DbRemoteRegistryDump {
+        Mock Open-DBRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
+        Mock Invoke-DBRemoteRegistryDump {
             $request = $Request
             if ($request.roots[0].path -ceq $uninstall) {
                 $request.max_depth | Should -Be 1
@@ -1232,9 +1232,9 @@ Describe 'remote registry scans' {
             }
         }
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
 
-        Should -Invoke Invoke-DbRemoteRegistryDump -Times 2 -Exactly
+        Should -Invoke Invoke-DBRemoteRegistryDump -Times 2 -Exactly
         $target = (Read-JsonFile $result.manifest_path)['sources'][0]['targets'][0]
         $target['hits'] | Should -Be 1
         $target['truncated'] | Should -BeTrue
@@ -1248,13 +1248,13 @@ Describe 'remote registry scans' {
                 roots        = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA' })
                 remote_batch = @('down.corp.local', 'up.corp.local')
             })
-        Mock Open-DbRemoteRegistrySession {
+        Mock Open-DBRemoteRegistrySession {
             if ($Target.host -ceq 'down.corp.local') { throw 'WinRM cannot complete the operation.' }
             [pscustomobject]@{ ComputerName = $Target.host }
         }
-        Mock Invoke-DbRemoteRegistryDump { @{ truncated = $false; nodes = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA' $null @() @(@{ name = 'A'; kind = 'String'; data = 'x' }))) } }
+        Mock Invoke-DBRemoteRegistryDump { @{ truncated = $false; nodes = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA' $null @() @(@{ name = 'A'; kind = 'String'; data = 'x' }))) } }
 
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
 
         $summary = (Read-JsonFile $result.manifest_path)['sources'][0]
         $summary['targets'][0]['error'] | Should -BeExactly 'WinRM cannot complete the operation.'
@@ -1269,33 +1269,33 @@ Describe 'remote registry scans' {
     It 'reports a key reached through two views once' {
         $snapshot = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
         foreach ($view in @('64', $null)) {
-            $snapshot[(Get-DbRegistrySnapshotKey -Hive 'HKLM' -Path 'Software\VendorA\Suite' -View $view)] = [pscustomobject]@{
+            $snapshot[(Get-DBRegistrySnapshotKey -Hive 'HKLM' -Path 'Software\VendorA\Suite' -View $view)] = [pscustomobject]@{
                 subkeys = [string[]]@(); values = @([pscustomobject]@{ Name = 'Server'; Data = 'api.one' })
             }
         }
 
-        $snapshot[(Get-DbRegistrySnapshotKey -Hive 'HKLM' -Path 'Software\VendorA' -View $null)] = [pscustomobject]@{ subkeys = [string[]]@('Suite'); values = @() }
-        $script:DbRegistrySnapshot = $snapshot
+        $snapshot[(Get-DBRegistrySnapshotKey -Hive 'HKLM' -Path 'Software\VendorA' -View $null)] = [pscustomobject]@{ subkeys = [string[]]@('Suite'); values = @() }
+        $script:DBRegistrySnapshot = $snapshot
         try {
             $roots = @([pscustomobject]@{ hive = 'HKLM'; path = 'Software\VendorA\Suite'; view = '64' }, [pscustomobject]@{ hive = 'HKLM'; path = 'Software\VendorA'; view = $null })
-            $hits = Search-DbRegistry -Roots $roots -Spec ([pscustomobject]@{ keywords = @('api'); patterns = @(); max_depth = 12; max_hits = 200; time_budget_s = 10.0 })
+            $hits = Search-DBRegistry -Roots $roots -Spec ([pscustomobject]@{ keywords = @('api'); patterns = @(); max_depth = 12; max_hits = 200; time_budget_s = 10.0 })
         }
         finally {
-            $script:DbRegistrySnapshot = $null
+            $script:DBRegistrySnapshot = $null
         }
 
         @($hits).Count | Should -Be 1
     }
 
     It 'only speaks WinRM' {
-        { Open-DbRemoteRegistrySession -Target ([pscustomobject]@{ host = 'h'; transport = 'ssh' }) -BaseDir $TestDrive } |
+        { Open-DBRemoteRegistrySession -Target ([pscustomobject]@{ host = 'h'; transport = 'ssh' }) -BaseDir $TestDrive } |
             Should -Throw "*transport 'ssh' is not supported*"
     }
 
     It 'builds the credential from username and password_env' {
         $env:DRIFTBUSTER_TEST_REMOTE_PASS = 's3cret'
         try {
-            $credential = Get-DbRemoteRegistryCredential -Target ([pscustomobject]@{ host = 'h'; username = 'CORP\collector'; password_env = 'DRIFTBUSTER_TEST_REMOTE_PASS'; credential_profile = $null }) -BaseDir $TestDrive
+            $credential = Get-DBRemoteRegistryCredential -Target ([pscustomobject]@{ host = 'h'; username = 'CORP\collector'; password_env = 'DRIFTBUSTER_TEST_REMOTE_PASS'; credential_profile = $null }) -BaseDir $TestDrive
             $credential.UserName | Should -BeExactly 'CORP\collector'
             $credential.GetNetworkCredential().Password | Should -BeExactly 's3cret'
         }
@@ -1311,18 +1311,18 @@ Describe 'remote registry scans' {
         @{ Case = 'both'; Target = @{ username = 'u'; password_env = 'X'; credential_profile = 'p.xml' }; Message = '*not both*' }
     ) {
         $target = [pscustomobject]($Target + @{ host = 'h' })
-        { Get-DbRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw $Message
+        { Get-DBRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw $Message
     }
 
     It 'reads credential_profile relative to the base directory and requires a PSCredential' {
         'not a credential' | Export-Clixml -LiteralPath (Join-Path $TestDrive 'profile.xml')
         $target = [pscustomobject]@{ host = 'h'; username = $null; password_env = $null; credential_profile = 'profile.xml' }
-        { Get-DbRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw '*does not hold a PSCredential*'
+        { Get-DBRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw '*does not hold a PSCredential*'
     }
 
     It 'connects as the current user when no credential is given' {
         $target = [pscustomobject]@{ host = 'h'; username = $null; password_env = $null; credential_profile = $null }
-        Get-DbRemoteRegistryCredential -Target $target -BaseDir $null | Should -BeNullOrEmpty
+        Get-DBRemoteRegistryCredential -Target $target -BaseDir $null | Should -BeNullOrEmpty
     }
 }
 
@@ -1339,7 +1339,7 @@ Describe 'OfflineRegistryScanSource' {
                 }
             })
 
-        $source = ConvertFrom-DbOfflineRegistryScanSource $payload
+        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
         $source.remote | Should -Not -BeNullOrEmpty
         $source.remote.host | Should -BeExactly 'hq-gateway'
         $source.remote.username | Should -BeExactly 'DOMAIN\collector'
@@ -1363,7 +1363,7 @@ Describe 'OfflineRegistryScanSource' {
                 }
             })
 
-        $source = ConvertFrom-DbOfflineRegistryScanSource $payload
+        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
         $source.remote | Should -Not -BeNullOrEmpty
         $source.remote.host | Should -BeExactly 'branch-gateway'
         $source.remote_batch.Count | Should -Be 3
@@ -1377,7 +1377,7 @@ Describe 'OfflineRegistryScanSource' {
         $payload = ConvertTo-EngineValue ([ordered]@{
                 registry_scan = [ordered]@{ token = 'VendorA'; remote = [ordered]@{ host = 'forbidden'; password = 'super-secret' } }
             })
-        Assert-EngineError { ConvertFrom-DbOfflineRegistryScanSource $payload } 'InvalidDataException'
+        Assert-EngineError { ConvertFrom-DBOfflineRegistryScanSource $payload } 'InvalidDataException'
     }
 
     It 'remote batch allows mapping payload' {
@@ -1385,7 +1385,7 @@ Describe 'OfflineRegistryScanSource' {
                 registry_scan = [ordered]@{ token = 'VendorA'; remote_batch = [ordered]@{ host = 'branch-unique'; credential_profile = 'branch-profile' } }
             })
 
-        $source = ConvertFrom-DbOfflineRegistryScanSource $payload
+        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
         $source.remote | Should -BeNullOrEmpty
         $source.remote_batch.Count | Should -Be 1
         $target = $source.remote_batch[0]
@@ -1437,7 +1437,7 @@ Describe 'Windows registry scan' -Tag 'Windows' {
                 }
                 runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $false; cleanup_staging = $false }
             })
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250101T000000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250101T000000Z'
 
         $scan = Read-JsonFile $result.files[0].destination
         @($scan['hits'] | ForEach-Object { $_['value_name'] }) | Should -Be @('Server', 'Blob', 'BackupServer')
@@ -1445,13 +1445,13 @@ Describe 'Windows registry scan' -Tag 'Windows' {
         $scan['hits'][2]['path'] | Should -BeExactly "$($script:RegistryTestKey)\Nested"
         $scan['requested_roots'][0]['view'] | Should -BeNullOrEmpty
 
-        $values = Get-DbRegistryValue -Hive 'HKCU' -Path "$($script:RegistryTestKey)\Nested" -View $null
+        $values = Get-DBRegistryValue -Hive 'HKCU' -Path "$($script:RegistryTestKey)\Nested" -View $null
         ($values | Where-Object { $_.Name -eq 'Negative' }).Data | Should -Be 4294967295
-        $rootValues = Get-DbRegistryValue -Hive 'HKCU' -Path $script:RegistryTestKey -View $null
+        $rootValues = Get-DBRegistryValue -Hive 'HKCU' -Path $script:RegistryTestKey -View $null
         $flags = ($rootValues | Where-Object { $_.Name -eq 'Flags' }).Data
-        Get-DbRegistryValueText $flags | Should -BeExactly 'alpha, beta'
+        Get-DBRegistryValueText $flags | Should -BeExactly 'alpha, beta'
 
-        $patterned = (Search-DbRegistry -Roots @([pscustomobject]@{ hive = 'HKCU'; path = $script:RegistryTestKey; view = $null }) -Spec ([pscustomobject]@{
+        $patterned = (Search-DBRegistry -Roots @([pscustomobject]@{ hive = 'HKCU'; path = $script:RegistryTestKey; view = $null }) -Spec ([pscustomobject]@{
                     keywords = @(); patterns = @([regex]::new('^\d+$')); max_depth = 0; max_hits = 200; time_budget_s = 10.0
                 }))
         @($patterned | ForEach-Object { $_.value_name }) | Should -Be @('Port')
@@ -1497,14 +1497,14 @@ namespace DriftBusterOfflineRunnerTests
         }
 
         $r = [string][char]0xFFFD
-        $hits = Search-DbRegistry -Roots @([pscustomobject]@{ hive = 'HKCU'; path = $keyPath; view = $null }) -Spec ([pscustomobject]@{
+        $hits = Search-DBRegistry -Roots @([pscustomobject]@{ hive = 'HKCU'; path = $keyPath; view = $null }) -Spec ([pscustomobject]@{
                 keywords = @('server'); patterns = @(); max_depth = 0; max_hits = 200; time_budget_s = 10.0
             })
         @($hits | ForEach-Object { $_.value_name }) | Should -Be @('ResList', 'FullRes', 'ReqList', 'Link', 'Custom', 'OddSz')
         @($hits | ForEach-Object { $_.data_preview }) | Should -Be @(
             "server-$([char]1)$([char]0)$($r * 3)", "server-$($r * 2)A", "server-$($r * 4)", 'link-server', "server-$r", 'server-odd')
 
-        $read = Get-DbRegistryValue -Hive 'HKCU' -Path $keyPath -View $null
+        $read = Get-DBRegistryValue -Hive 'HKCU' -Path $keyPath -View $null
         ($read | Where-Object { $_.Name -eq 'server-empty-list' }).Data | Should -BeNullOrEmpty
     }
 }
@@ -1532,7 +1532,7 @@ Describe 'DPAPI keysets' -Tag 'Windows' {
                     encryption = [ordered]@{ enabled = $true; keyset_path = $keysetPath }
                 }
             })
-        $result = Invoke-DbOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250101T000000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250101T000000Z'
 
         $payload = Read-JsonFile $result.package_path
         $iv = [System.Convert]::FromBase64String($payload['iv'])

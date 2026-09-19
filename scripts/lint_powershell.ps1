@@ -22,7 +22,7 @@ if ($results) {
 
 # The offline runner carries the backend's default secret rules inline; keep the copy identical.
 $runner = Get-Content -Raw (Join-Path $root 'scripts/driftbuster-offline-runner.ps1')
-$embedded = [regex]::Match($runner, "function Get-DbEmbeddedSecretRuleText \{.*?return @'\r?\n(?<rules>.*?)\r?\n'@", 'Singleline').Groups['rules'].Value
+$embedded = [regex]::Match($runner, "function Get-DBEmbeddedSecretRuleText \{.*?return @'\r?\n(?<rules>.*?)\r?\n'@", 'Singleline').Groups['rules'].Value
 $resource = (Get-Content -Raw (Join-Path $root 'gui/DriftBuster.Backend/Resources/secret_rules.json')).TrimEnd()
 if (($embedded -replace "\r\n", "\n") -ne ($resource -replace "\r\n", "\n")) {
     throw "scripts/driftbuster-offline-runner.ps1 embeds secret rules that differ from gui/DriftBuster.Backend/Resources/secret_rules.json."
