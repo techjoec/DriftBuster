@@ -12,9 +12,8 @@ public sealed partial class JsonPlugin
     private static readonly string[] TypeNames = ["object", "array", "string", "integer", "number", "boolean", "null"];
 
     /// <summary>
-    /// Parses the structurally complete prefix of <paramref name="text"/> with the acceptance rules of Python's
-    /// <c>json.loads</c> and reports the top-level type, the first five object keys, or the JSON type names of the
-    /// first five array items. Comments are never accepted: with <paramref name="allowComments"/> the parse is skipped.
+    /// Parses the structurally complete prefix of <paramref name="text"/> (<see cref="Infrastructure.EngineJson"/> rules) and reports
+    /// the top-level type and the first five object keys or array item types. With <paramref name="allowComments"/> the parse is skipped.
     /// </summary>
     internal static ParseResult AttemptParse(string text, bool allowComments)
     {
@@ -47,7 +46,7 @@ public sealed partial class JsonPlugin
             metadata["top_level_type"] = "array";
             if (parsed.ItemKinds.Count > 0)
             {
-                // sorted({type(item).__name__ ...}): the names are ASCII, so ordinal order is Python's order.
+                // Distinct type names in ordinal order.
                 var names = new SortedSet<string>(StringComparer.Ordinal);
                 foreach (var kind in parsed.ItemKinds.Take(TopLevelKeyLimit))
                 {

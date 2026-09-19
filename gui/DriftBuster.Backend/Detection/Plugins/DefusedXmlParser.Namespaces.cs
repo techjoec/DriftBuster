@@ -138,9 +138,8 @@ internal sealed partial class DefusedXmlParser
     }
 
     /// <summary>
-    /// expat's storeAtts: attributes may not repeat; values are normalised by their declared type; namespace
-    /// declarations bind as they are met, then the element's declared defaults that were not specified apply
-    /// (namespace declarations first bound, others appended); prefixed names then expand, and may not repeat expanded.
+    /// Attributes may not repeat; values normalise by declared type; namespace declarations bind as met, then undeclared defaults
+    /// apply (namespace declarations first); prefixed names expand and may not repeat once expanded.
     /// </summary>
     private XElement? StoreAttributes(string qualifiedName, List<RawAttribute> raw)
     {

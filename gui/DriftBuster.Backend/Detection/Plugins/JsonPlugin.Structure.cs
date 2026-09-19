@@ -7,7 +7,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <summary>Structural scanners and filename heuristics.</summary>
 public sealed partial class JsonPlugin
 {
-    /// <summary>Number of code points in <paramref name="text"/>, matching Python <c>len(str)</c>.</summary>
+    /// <summary>Number of code points in <paramref name="text"/>.</summary>
     private static int CodePointCount(string text)
     {
         var count = 0;
@@ -19,7 +19,7 @@ public sealed partial class JsonPlugin
         return count;
     }
 
-    /// <summary>The UTF-16 length of the first <paramref name="codePoints"/> code points, matching <c>text[:n]</c>.</summary>
+    /// <summary>UTF-16 length of the first <paramref name="codePoints"/> code points.</summary>
     private static int PrefixLength(string text, int codePoints)
     {
         var offset = 0;

@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Detection.Plugins;
 
-/// <summary>ENTITY, ATTLIST and ELEMENT declarations in the internal subset, with the checks expat makes on their values.</summary>
+/// <summary>ENTITY, ATTLIST and ELEMENT declarations in the internal subset, with their value checks.</summary>
 internal sealed partial class DefusedXmlParser
 {
     private static readonly HashSet<string> PredefinedEntities = new(StringComparer.Ordinal) { "lt", "gt", "amp", "quot", "apos" };
@@ -13,10 +13,10 @@ internal sealed partial class DefusedXmlParser
     /// <summary>One declared attribute of an element type, in declaration order; Value is null for #IMPLIED and #REQUIRED.</summary>
     private sealed record AttributeDefault(string Name, bool IsCdata, string? Value);
 
-    // Element type name -> its attribute declarations, as expat's defineAttribute keeps them.
+    // Element type name -> its attribute declarations.
     private readonly Dictionary<string, List<AttributeDefault>> _attributeDefaults = new(StringComparer.Ordinal);
 
-    // The ENTITY declaration being read is one expat reports to defusedxml's handler, which refuses it.
+    // The ENTITY declaration being read will be refused (entity guard).
     private bool _entityReported;
     private string _declElement = string.Empty;
     private string _declAttribute = string.Empty;
@@ -56,7 +56,7 @@ internal sealed partial class DefusedXmlParser
         };
     }
 
-    // Redeclaring a predefined entity is ignored; any other declaration expat processes reaches the handler.
+    // Redeclaring a predefined entity is ignored; any other processed declaration is refused.
     private State GeneralEntityName(Token name)
     {
         _entityReported = _keepProcessing && !PredefinedEntities.Contains(TokenText(name));
@@ -75,7 +75,7 @@ internal sealed partial class DefusedXmlParser
         return next;
     }
 
-    // The value of a processed declaration is checked before the handler sees it.
+    // The value is checked before the declaration is refused.
     private State EntityValue(Token literal)
     {
         if (_keepProcessing)

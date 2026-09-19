@@ -3,15 +3,11 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Detects JSON and JSON-with-comments configuration files from filename cues, structural hints (opening token,
-/// balanced delimiters, key/value markers) and a bounded parse of the sample. Comments outside string literals surface
-/// the <c>jsonc</c> variant; <c>appsettings*.json</c> and ASP.NET configuration keys surface
-/// <c>structured-settings-json</c>; everything else is <c>generic</c>.
+/// Detects JSON and JSONC from filename cues, structure (opening token, balanced delimiters, key/value markers) and a bounded
+/// parse. Comments outside strings give <c>jsonc</c>; <c>appsettings*.json</c> and ASP.NET configuration keys give
+/// <c>structured-settings-json</c>; otherwise <c>generic</c>.
 /// </summary>
-/// <remarks>
-/// Windows are measured in code points like Python <c>str</c> slicing; every scanner compares against ASCII tokens
-/// only, so walking UTF-16 units is otherwise equivalent (a surrogate never equals a quote, slash or brace).
-/// </remarks>
+/// <remarks>Analysis windows are measured in code points.</remarks>
 public sealed partial class JsonPlugin : IFormatPlugin
 {
     internal const int AnalysisWindowClamp = 200_000;
@@ -206,9 +202,7 @@ public sealed partial class JsonPlugin : IFormatPlugin
             }
         }
 
-        // Allow minimal detection for known JSON extensions even if content signals are weak, to align with
-        // real-world appsettings-style files that may be tiny or truncated in samples. (The stripped text is
-        // never empty here, so the check reduces to the extension flag.)
+        // Known JSON extensions may match on weak content, since appsettings-style samples can be tiny or truncated.
         if (contentSignals < 2 && !signals.IsJsonExtension)
         {
             return false;
@@ -255,7 +249,6 @@ public sealed partial class JsonPlugin : IFormatPlugin
     private static double ComputeConfidence(Signals signals, OrderedDictionary<string, object?> metadata, string variant)
     {
         var confidence = 0.55;
-        // Extension contributes as a hint only.
         if (signals.IsJsonExtension)
         {
             confidence += 0.1;

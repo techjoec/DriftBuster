@@ -14,7 +14,7 @@ public sealed partial class XmlPlugin
 {
     private static readonly string[] ConfigSectionKeywords = ["appsettings", "runtime", "system.web"];
 
-    /// <summary>Orders (key, value) pairs by <c>(key.lower(), key)</c> with Python string comparison; used with a stable sort.</summary>
+    /// <summary>Orders (key, value) pairs by lowercased key, then key, by code point; used with a stable sort.</summary>
     private sealed class EngineKeyOrder : IComparer<(string Key, string Value)>
     {
         public static EngineKeyOrder Instance { get; } = new();
@@ -171,7 +171,7 @@ public sealed partial class XmlPlugin
         var lineNumber = snippet.AsSpan(0, attrStart).Count('\n') + 1;
         var lastNewline = attrStart == 0 ? -1 : snippet.LastIndexOf('\n', attrStart - 1);
 
-        // Python offsets count code points; the column is measured from the line start in code points.
+        // Columns are counted in code points from the line start.
         var columnNumber = CodePointCount(snippet[(lastNewline + 1)..attrStart]) + 1;
         var attributeName = match.Prefix is null ? "xmlns" : $"xmlns:{match.Prefix}";
         var digest = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{attributeName}|{uri}")))[..12];
@@ -302,11 +302,11 @@ public sealed partial class XmlPlugin
             ["location"] = location,
         };
 
-    /// <summary>The <c>ElementTree</c> spelling of an attribute name: the local name, or <c>{uri}local</c> when namespaced.</summary>
+    /// <summary>An attribute name as the metadata spells it: the local name, or <c>{uri}local</c> when namespaced.</summary>
     private static string ElementTreeName(XName name)
         => name.NamespaceName.Length == 0 ? name.LocalName : $"{{{name.NamespaceName}}}{name.LocalName}";
 
-    /// <summary><c>dict(element.attrib)</c>: document order, namespace declarations excluded.</summary>
+    /// <summary>An element's attributes in document order, namespace declarations excluded.</summary>
     private static OrderedDictionary<string, string> ElementAttributes(XElement element)
     {
         var attributes = new OrderedDictionary<string, string>(StringComparer.Ordinal);

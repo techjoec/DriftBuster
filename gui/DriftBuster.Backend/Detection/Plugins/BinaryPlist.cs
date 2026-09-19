@@ -6,32 +6,20 @@ using System.Text;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Reader for the <c>bplist00</c> container: the 32-byte trailer (offset size, reference size, object count, top object,
-/// offset table offset), the offset table, and the object table with null, booleans, the empty data marker, integers,
-/// 32- and 64-bit reals, dates, data, ASCII and UTF-16BE strings, UIDs, arrays and dicts. Objects are cached by reference,
-/// so a shared reference yields one object and a container that references itself terminates.
+/// Reader for <c>bplist00</c>: trailer, offset table and object table (null, bools, integers, reals, dates, data, ASCII and
+/// UTF-16BE strings, UIDs, arrays, dicts). Objects are cached by reference, so shared and self-referencing containers terminate.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A payload decodes to null, <see cref="bool"/>, <see cref="BigInteger"/>, <see cref="double"/>, <see cref="DateTime"/>,
-/// <see cref="byte"/>[], <see cref="string"/>, <see cref="Uid"/>, <see cref="List{T}"/> and an
-/// <see cref="OrderedDictionary{TKey, TValue}"/> whose keys compare with <see cref="KeyComparer"/> (<c>true</c>, 1 and 1.0
-/// are one key; a NaN is equal only to itself). Every malformed payload — a short read, an unknown token, an out-of-range
-/// reference, an undecodable string, a key that cannot be hashed, a UID at or above 2**64, a date outside years 1-9999 —
-/// surfaces as a <see cref="DecodeException"/> of type <c>InvalidDataException</c> with one message for every kind of damage.
-/// </para>
-/// <para>
-/// Containers are read recursively, so the reader follows at most <see cref="MaxNestingDepth"/> levels of nesting and
-/// reports a deeper payload as a <see cref="DecodeException"/> of type <c>InvalidDataException</c> rather than running out of
-/// stack. Detection samples are bounded, so only a hand-built payload reaches the limit.
-/// </para>
+/// Values decode to null, bool, BigInteger, double, DateTime, byte[], string, <see cref="Uid"/>, List and OrderedDictionary
+/// (keys compared by <see cref="KeyComparer"/>: true, 1 and 1.0 are one key). Every malformed payload throws one
+/// <see cref="DecodeException"/>; nesting past <see cref="MaxNestingDepth"/> does too, instead of exhausting the stack.
 /// </remarks>
 internal static partial class BinaryPlist
 {
     /// <summary>The deepest chain of nested containers the reader follows before it gives up on a payload.</summary>
     internal const int MaxNestingDepth = 1000;
 
-    /// <summary>A decode failure, named by the kind of failure it stands for.</summary>
+    /// <summary>A decode failure and the exception type it stands for.</summary>
     internal sealed class DecodeException(string errorType, string message) : Exception(message)
     {
         public string ErrorType { get; } = errorType;
@@ -55,7 +43,7 @@ internal static partial class BinaryPlist
     private const long MaxDateMicrosecondsExclusive = 252423993600L * 1_000_000;
     private static readonly DateTime PlistEpoch = new(2001, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
 
-    // Every malformed payload reports the same failure: the reader does not tell one kind of damage from another.
+    // Every kind of damage reports the same failure.
     private static DecodeException InvalidFile() => new(nameof(InvalidDataException), "The binary property list is not valid.");
 
     private static DecodeException TooDeep()
@@ -83,7 +71,6 @@ internal static partial class BinaryPlist
 
         public object? Parse()
         {
-            // A payload too short to hold the trailer is malformed.
             if (_data.Length < 32)
             {
                 throw InvalidFile();
@@ -140,7 +127,6 @@ internal static partial class BinaryPlist
             return span;
         }
 
-        // One byte, or a malformed payload at the end of it.
         private byte ReadByte() => ReadExact(1)[0];
 
         // n big-endian unsigned integers of the given width; a width of 0 is malformed, and a value wider than 8 bytes
@@ -163,7 +149,6 @@ internal static partial class BinaryPlist
             return values;
         }
 
-        // References into the object table, each one reference-size wide.
         private ulong[] ReadRefs(ulong count) => ReadInts(count, _refSize);
 
         private static ulong ReadUnsigned(ReadOnlySpan<byte> bytes)
@@ -206,7 +191,6 @@ internal static partial class BinaryPlist
                 throw TooDeep();
             }
 
-            // A reference past the end of the object table is malformed.
             if (reference >= (ulong)_objects.Length)
             {
                 throw InvalidFile();
@@ -262,9 +246,8 @@ internal static partial class BinaryPlist
             };
         }
 
-        // Seconds from the plist epoch: NaN and infinities are malformed; the integer part is converted exactly and only
-        // the fraction goes through floating-point arithmetic, rounded to whole microseconds half to even; the resulting
-        // instant has to land inside years 1-9999.
+        // Seconds from the plist epoch: NaN and infinities are malformed; the integer part is exact, the fraction rounds to whole
+        // microseconds half to even; the result must fall in years 1-9999.
         private DateTime ReadDate()
         {
             var seconds = BinaryPrimitives.ReadDoubleBigEndian(ReadExact(8));
@@ -284,7 +267,6 @@ internal static partial class BinaryPlist
             return PlistEpoch.AddTicks(microseconds * 10);
         }
 
-        // A sized run of bytes decoded as ASCII.
         private string ReadAscii(ulong size)
         {
             var bytes = Read(size);

@@ -19,7 +19,6 @@ public sealed class FormatRegistry
     private readonly List<IFormatPlugin> _plugins = [];
     private readonly Lock _gate = new();
 
-    /// <summary>The process-wide registry that built-in plugins register into.</summary>
     public static FormatRegistry Default { get; } = new();
 
     /// <summary>
@@ -40,7 +39,6 @@ public sealed class FormatRegistry
         }
     }
 
-    /// <summary>A snapshot of the registered plugins in registration order.</summary>
     public IReadOnlyList<IFormatPlugin> GetPlugins(bool readOnly = true)
     {
         lock (_gate)
@@ -73,7 +71,6 @@ public sealed class FormatRegistry
         return summary;
     }
 
-    /// <summary>Plugin names mapped to their declared versions.</summary>
     public IReadOnlyDictionary<string, string> PluginVersions()
     {
         var versions = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -112,7 +109,6 @@ public sealed class FormatRegistry
         return true;
     }
 
-    // Utility helpers shared across plugins.
 
     private static bool IsAsciiWhitelisted(byte value) => (value >= 32 && value <= 126) || value == 9 || value == 10 || value == 13;
 
@@ -218,16 +214,14 @@ public sealed class FormatRegistry
     }
 
     /// <summary>
-    /// Decodes <paramref name="sample"/> trying, in order, the codec announced by a byte order mark, then strict
-    /// utf-8, utf-16-le and utf-16-be, and finally latin-1; leading U+FEFF characters are stripped. Returns the text
-    /// and the name of the codec that succeeded.
+    /// Decodes with the BOM's codec, else strict UTF-8, UTF-16LE, UTF-16BE, then Latin-1; leading U+FEFF is stripped. Returns the
+    /// text and the codec name.
     /// </summary>
     public static (string Text, string Encoding) DecodeText(ReadOnlyMemory<byte> sample) => DecodeText(sample, Decode);
 
     /// <summary>
-    /// Mirrors <c>bytes.decode(encoding, errors)</c>: with <c>errors</c> "strict" an undecodable input raises
-    /// <see cref="DecoderFallbackException"/>; with "replace" it never does. Only the built-in decoder ships; the seam
-    /// exists so a test can make every strict codec fail and observe the replace-mode latin-1 line.
+    /// Decode seam: "strict" throws <see cref="DecoderFallbackException"/> on bad input, "replace" never does. Tests swap it to make
+    /// every strict codec fail.
     /// </summary>
     internal delegate string TextDecoder(string encoding, string errors, ReadOnlyMemory<byte> data);
 
@@ -282,7 +276,7 @@ public sealed class FormatRegistry
         return DecodeText(sample.AsMemory());
     }
 
-    // Every codec here decodes latin-1 losslessly, so "replace" only ever reaches the latin-1 arm, which cannot fail.
+    // Latin-1 cannot fail, so "replace" only ever reaches the Latin-1 arm.
     private static string Decode(string encoding, string errors, ReadOnlyMemory<byte> data) => encoding switch
     {
         "utf-8-sig" => StrictUtf8.GetString(data.Span[BomUtf8.Length..]),

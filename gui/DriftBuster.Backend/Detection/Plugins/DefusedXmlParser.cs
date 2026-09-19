@@ -4,30 +4,21 @@ using System.Xml.Linq;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// <c>defusedxml.ElementTree.fromstring(text)</c> as the XML plugin runs it: expat in namespace mode (the
-/// ElementTree parser's <c>"}"</c> separator) fed the text as UTF-8, with defusedxml's defaults (a DOCTYPE is allowed,
-/// every entity declaration expat processes raises, nothing external is read) and ElementTree's default handler, which
-/// raises on an entity reference expat reports as skipped. <see cref="IsWellFormed"/> is the verdict;
-/// <see cref="ParseTree"/> also builds the element tree (elements and attributes only) the plugin walks.
+/// A clean-room XML well-formedness check and tree builder that accepts exactly the documents expat accepts in namespace mode
+/// with entity declarations refused (the defusedxml guard): DOCTYPE allowed, nothing external read, a skipped entity reference
+/// fails. <see cref="IsWellFormed"/> gives the verdict; <see cref="ParseTree"/> also builds elements and attributes.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The prolog is read by a tokenizer and a declaration state machine that accept exactly what expat's do, including
-/// which delimiters may follow a name or a literal without white space. Internal-subset declarations are checked in
-/// order with expat's bookkeeping: a parameter-entity reference in a document that is not <c>standalone="yes"</c>
-/// stops the processing of every later declaration (their values are neither checked nor applied), and a DOCTYPE
-/// with an external identifier or such a reference relaxes undeclared entity references in attribute values (they are
-/// dropped). An entity declaration that is processed is refused as defusedxml refuses it, unless it redeclares one of
-/// the five predefined entities, which expat ignores after checking its value.
+/// Prolog: tokenizer and declaration state machine matching expat, including where whitespace is required. A parameter-entity
+/// reference in a non-standalone document stops processing of later internal-subset declarations; a DOCTYPE with an external id
+/// or such a reference lets undeclared entity references in attribute values drop. Processed ENTITY declarations fail, except
+/// redeclarations of the five predefined entities.
 /// </para>
 /// <para>
-/// Content follows expat's tokenizer and namespace processing: names use the XML 1.0 fourth-edition name tables
-/// (<see cref="XmlConvert.IsStartNCNameChar"/> and <see cref="XmlConvert.IsNCNameChar"/> equal expat's over the whole
-/// BMP, and no supplementary character is a name character), prefixes must be bound, <c>xml</c>/<c>xmlns</c> and
-/// their namespace names are reserved, a namespace name may not contain <c>}</c>, an attribute may not repeat by
-/// qualified or expanded name, and attribute defaults declared in the internal subset (namespace declarations
-/// included) apply. Every character must be an XML 1.0 character; an unpaired surrogate fails the UTF-8 encoding
-/// performed first. Parsing is iterative, so nesting depth is bounded only by the text.
+/// Content: XML 1.0 fourth-edition name tables (BMP only), bound prefixes, reserved <c>xml</c>/<c>xmlns</c>, no <c>}</c> in a
+/// namespace name, no duplicate attributes by qualified or expanded name, internal-subset attribute defaults applied. Every
+/// character must be an XML 1.0 character; an unpaired surrogate fails. Parsing is iterative, so depth is unbounded by stack.
 /// </para>
 /// </remarks>
 internal sealed partial class DefusedXmlParser
@@ -49,14 +40,14 @@ internal sealed partial class DefusedXmlParser
         _canonical = canonical;
     }
 
-    /// <summary>Thrown at the first point expat (or defusedxml's handlers) would stop the parse.</summary>
+    /// <summary>Thrown at the first point the parse would stop.</summary>
     private sealed class NotWellFormedException : Exception
     {
     }
 
     private static NotWellFormedException Fail() => new();
 
-    /// <summary>True when <c>defusedxml.ElementTree.fromstring(text)</c> returns without raising.</summary>
+    /// <summary>True when the text is a well-formed document under the rules above.</summary>
     public static bool IsWellFormed(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -71,13 +62,10 @@ internal sealed partial class DefusedXmlParser
         }
     }
 
-    /// <summary>The root element <c>defusedxml.ElementTree.fromstring(text)</c> returns, or null where it raises.</summary>
+    /// <summary>The root element, or null when the document is not well formed.</summary>
     /// <param name="text">The document text.</param>
     /// <param name="insertComments">
-    /// <c>TreeBuilder(insert_comments=True)</c>: every comment inside the document element becomes an <see cref="XComment"/>
-    /// child of the element open around it (comments before or after the document element are dropped, as TreeBuilder
-    /// drops them with no element open). Only the plugin's no-defusedxml fallback branch asks for them; that branch parses
-    /// with plain expat, which accepts the same documents here because the plugin refuses every ENTITY declaration first.
+    /// Keep comments inside the document element as <see cref="XComment"/> children (comments outside it are dropped).
     /// </param>
     public static XElement? ParseTree(string text, bool insertComments = false)
     {
@@ -94,7 +82,7 @@ internal sealed partial class DefusedXmlParser
 
     private XElement? Parse()
     {
-        // expat consumes one leading byte-order mark.
+        // One leading BOM is consumed.
         if (_text.StartsWith('﻿'))
         {
             _pos = 1;
@@ -110,7 +98,7 @@ internal sealed partial class DefusedXmlParser
 
     private char Peek(int offset = 0) => _pos + offset < _text.Length ? _text[_pos + offset] : '\0';
 
-    // The character at index, or a failure when the text ends there (expat's partial token at the final buffer).
+    // The character at index, or a failure when the text ends there.
     private char Require(int index) => index < _text.Length ? _text[index] : throw Fail();
 
     private static bool IsSpace(char ch) => ch is ' ' or '\t' or '\n' or '\r';

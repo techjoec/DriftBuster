@@ -16,7 +16,6 @@ public static partial class DetectionMetadata
     [GeneratedRegex("^[a-z0-9][a-z0-9_-]*$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex ValidIdentifier();
 
-    /// <summary>Copies <paramref name="metadata"/> (or an empty dictionary when null) preserving insertion order.</summary>
     internal static OrderedDictionary<string, object?> EnsureMapping(IEnumerable<KeyValuePair<string, object?>>? metadata)
     {
         var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -45,11 +44,9 @@ public static partial class DetectionMetadata
     }
 
     /// <summary>
-    /// Converts a value into JSON-serialisable primitives as Python's <c>_json_safe</c> does: strings, integers of any
-    /// size, floats, booleans and null pass through, byte arrays decode as UTF-8 with replacement, dictionaries become
-    /// ordered dictionaries keyed by <c>str(key)</c>, other enumerables become lists, and everything else becomes its
-    /// Python <c>str()</c> (a <see cref="DateTime"/> as <c>datetime.__str__</c> spells it). Containers are converted on an
-    /// explicit stack, so nesting depth never reaches the thread's stack.
+    /// Converts a value to JSON-safe primitives: strings, integers, floats, bools and null pass through; byte arrays decode as UTF-8
+    /// with replacement; dictionaries become ordered dictionaries with string keys (<see cref="EngineStr"/>); other enumerables
+    /// become lists; anything else becomes <see cref="EngineStr"/>. Uses an explicit stack, so nesting depth is safe.
     /// </summary>
     public static object? JsonSafe(object? value)
     {
@@ -153,7 +150,7 @@ public static partial class DetectionMetadata
             return true;
         }
 
-        // result[str(key)] = value keeps the first slot of a repeated key with the last value, as a dict comprehension does.
+        // A repeated key keeps its first slot with the last value.
         public void Add(string? key, object? converted)
         {
             if (_dict is not null)

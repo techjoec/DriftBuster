@@ -6,8 +6,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <summary>Sensitive key hints, secret classification and remediation metadata.</summary>
 public sealed partial class IniPlugin
 {
-    // Applied to the lowered key, which is ASCII by construction ([A-Za-z0-9_.-]), so the patterns' lowercase
-    // spelling stands in for Python's IGNORECASE exactly.
+    // Applied to the lowered ASCII key, so lowercase patterns act as case-insensitive.
     private static readonly (string Keyword, Regex Pattern)[] SensitiveKeyPatterns =
     [
         ("password", Sensitive("password")),

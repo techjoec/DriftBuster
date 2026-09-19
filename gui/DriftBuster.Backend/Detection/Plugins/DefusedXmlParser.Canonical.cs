@@ -4,9 +4,8 @@ using System.Xml.Linq;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// The tree <c>ET.fromstring(text, XMLParser(target=TreeBuilder(insert_comments=True)))</c> builds, for the diff
-/// canonicaliser: elements with their attributes, character data, comments inside the document element, and written
-/// names for keeping namespace prefixes.
+/// The full tree for the diff canonicaliser: elements, attributes, character data, comments inside the document element, and
+/// written names so namespace prefixes are kept.
 /// </summary>
 internal sealed partial class DefusedXmlParser
 {
@@ -17,17 +16,11 @@ internal sealed partial class DefusedXmlParser
     private readonly StringBuilder _pendingText = new();
 
     /// <summary>
-    /// The document element with its full content, or null where the parse fails. Character data (text, character
-    /// references, predefined entities and CDATA sections, line ends normalised to LF) becomes <see cref="XText"/> nodes;
-    /// a processing instruction adds nothing but may split the text around it into two adjacent nodes, which a reader
-    /// joins as TreeBuilder does. Comments inside the document element become <see cref="XComment"/> nodes. Every
-    /// element and attribute carries an <see cref="XmlWrittenName"/> annotation.
+    /// The document element with its content, or null when the parse fails. Character data (line ends as LF) becomes
+    /// <see cref="XText"/> (a processing instruction may split it into adjacent nodes); comments inside the root become
+    /// <see cref="XComment"/>; every element and attribute carries an <see cref="XmlWrittenName"/>.
     /// </summary>
-    /// <remarks>
-    /// The acceptance rules are the defused parser's. Plain ElementTree also accepts a DOCTYPE whose processed internal
-    /// subset declares entities (and expands references to them); this parse refuses such a document, so no entity is
-    /// ever resolved.
-    /// </remarks>
+    /// <remarks>Acceptance is the defused parser's: a DOCTYPE that declares entities is refused, so no entity is ever resolved.</remarks>
     public static XElement? ParseCanonicalTree(string text)
     {
         ArgumentNullException.ThrowIfNull(text);

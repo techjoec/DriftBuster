@@ -6,7 +6,7 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
-/// <summary>Hand-matched line tests standing in for the rule regexes whose semantics .NET does not share.</summary>
+/// <summary>Hand-matched line tests for patterns whose .NET regex semantics differ (case folding, word boundaries, whitespace).</summary>
 public sealed partial class IniPlugin
 {
     private static int SkipSpaces(string s, int offset)
@@ -19,8 +19,7 @@ public sealed partial class IniPlugin
         return offset;
     }
 
-    // Python IGNORECASE on an ASCII-letter pattern: the text code point simple-lowercases to the letter, plus the
-    // extra cases re adds (U+0130 and U+0131 for 'i', U+017F for 's', U+212A for 'k'); non-letters match literally.
+    // Case-insensitive ASCII keyword match, also accepting U+0130/U+0131 for 'i', U+017F for 's', U+212A for 'k'.
     private static bool MatchesKeywordIgnoreCase(string s, int offset, string keywordLower, out int end)
     {
         end = offset;
@@ -64,7 +63,7 @@ public sealed partial class IniPlugin
         };
     }
 
-    // Python \b after a letter: the next code point is not [L N _], or the text ends.
+    // Word boundary after a letter: the next code point is not [L N _], or the text ends.
     private static bool AtWordEnd(string s, int offset)
     {
         if (offset >= s.Length)
@@ -76,14 +75,14 @@ public sealed partial class IniPlugin
         return !EngineText.IsWordRune(rune);
     }
 
-    // ^\s*[;#!] via match() on a line.
+    // ^\s*[;#!] on a line.
     private static bool IsCommentLine(string line)
     {
         var offset = SkipSpaces(line, 0);
         return offset < line.Length && line[offset] is ';' or '#' or '!';
     }
 
-    // ^\s*(?:Include|LoadModule|SetEnv|Option|Alias)\s+\S+ with IGNORECASE via match() on a line.
+    // ^\s*(?:Include|LoadModule|SetEnv|Option|Alias)\s+\S+ on a line, case-insensitive.
     private static bool IsDirectiveLine(string line)
     {
         var offset = SkipSpaces(line, 0);
@@ -104,22 +103,21 @@ public sealed partial class IniPlugin
         return false;
     }
 
-    // ^\s*\[[^\]]*$ via match() on a line: '[' is the first non-space character and no ']' follows.
+    // ^\s*\[[^\]]*$ on a line: '[' first and no ']' after it.
     private static bool IsMalformedSectionLine(string line)
     {
         var offset = SkipSpaces(line, 0);
         return offset < line.Length && line[offset] == '[' && !line.AsSpan(offset + 1).Contains(']');
     }
 
-    // ^\s*[{}]+\s*$ via match() on a line.
+    // ^\s*[{}]+\s*$ on a line.
     private static bool IsStandaloneBraceLine(string line)
     {
         var stripped = EngineText.Strip(line);
         return stripped.Length > 0 && stripped.All(ch => ch is '{' or '}');
     }
 
-    // ^\s*(?:LoadModule|SetEnv|<VirtualHost|<Directory|ServerName)\b with IGNORECASE | MULTILINE over the text. Each
-    // whitespace run is skipped once: every line start inside it reaches the same offset (see LineStartMatcher).
+    // ^\s*(?:LoadModule|SetEnv|<VirtualHost|<Directory|ServerName)\b over the text, case-insensitive; whitespace runs skipped once.
     private static bool HasApacheHint(string text)
     {
         var start = 0;
@@ -140,7 +138,7 @@ public sealed partial class IniPlugin
         return false;
     }
 
-    // ^\s*(?:server\s*\{|location\s+|upstream\s+) with IGNORECASE | MULTILINE over the text.
+    // ^\s*(?:server\s*\{|location\s+|upstream\s+) over the text, case-insensitive.
     private static bool HasNginxHint(string text)
     {
         var start = 0;
@@ -171,11 +169,9 @@ public sealed partial class IniPlugin
     }
 
     /// <summary>
-    /// Python <c>round(value, digits)</c> for a non-negative <paramref name="digits"/>: the exact binary value is rounded to the
-    /// nearest multiple of 10^-digits with ties to even, and that decimal is read back as the nearest double, as
-    /// <c>double_round</c> does through <c>_Py_dg_dtoa</c> and <c>_Py_dg_strtod</c>. <see cref="Math.Round(double, int)"/>
-    /// rounds the scaled product instead, which differs whenever the multiplication itself rounds onto a midpoint. NaN and the
-    /// infinities are returned as they are; a negative value rounds as its magnitude does, keeping its sign (so -0.0004 gives -0.0).
+    /// Rounds the exact binary value to the nearest multiple of 10^-digits (ties to even) and reads that decimal back as the nearest
+    /// double. <see cref="Math.Round(double, int)"/> rounds the scaled product instead, which differs when the scaling itself rounds
+    /// onto a midpoint. NaN and infinities pass through; negatives keep their sign (-0.0004 gives -0.0).
     /// </summary>
     internal static double EngineRound(double value, int digits)
     {

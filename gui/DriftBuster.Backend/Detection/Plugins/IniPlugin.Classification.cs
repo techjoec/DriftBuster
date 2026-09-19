@@ -239,7 +239,7 @@ public sealed partial class IniPlugin
         metadata["remediations"] = existing;
     }
 
-    // Python dict equality: the same keys with equal values.
+    // Same keys with equal values.
     private static bool SameEntries(OrderedDictionary<string, object?> left, OrderedDictionary<string, object?> right)
         => left.Count == right.Count
             && left.All(pair => right.TryGetValue(pair.Key, out var value) && Equals(pair.Value, value));

@@ -5,41 +5,36 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Detects registry live-scan definition manifests: a JSON document whose top-level <c>registry_scan</c> object
-/// carries a token, keyword and pattern lists and the depth/hit/time budgets, or a YAML file with a
-/// <c>registry_scan:</c> key read by line heuristics without a YAML parser.
+/// Detects registry live-scan definitions: JSON with a top-level <c>registry_scan</c> object (token, keywords, patterns,
+/// budgets), or YAML with a <c>registry_scan:</c> key read by line heuristics.
 /// </summary>
 /// <remarks>
-/// Every <c>^\s*...</c> MULTILINE pattern is spelled with <c>\G</c> and driven from each line start by
-/// <see cref="LineStartMatcher"/>; <c>\s</c> becomes <c>[\s\x1c-\x1f]</c>, <c>.</c> without DOTALL becomes
-/// <c>[^\n]</c>, and <c>$</c> under <see cref="RegexOptions.Multiline"/> matches before every <c>\n</c> and at the
-/// end on both sides. IGNORECASE on <c>registry_scan</c> is spelled out per letter: a str-pattern letter matches
-/// every code point whose simple lower case is that letter, which for these letters adds U+0130 and U+0131 to
-/// <c>i</c> and U+017F to <c>s</c> and nothing to the others.
+/// The <c>^\s*</c> multiline patterns use <c>\G</c> through <see cref="LineStartMatcher"/>; case-insensitive
+/// <c>registry_scan</c> also accepts U+0130/U+0131 for i and U+017F for s.
 /// </remarks>
 public sealed partial class RegistryLivePlugin : IFormatPlugin
 {
     private const string EngineSpace = @"[\s\x1c-\x1f]";
 
-    // ^\s*registry_scan\s*:\s*$ (IGNORECASE | MULTILINE)
+    // ^\s*registry_scan\s*:\s*$, case-insensitive.
     internal static readonly Regex YamlKeyPattern = new(
         @"\G" + EngineSpace + "*[rR][eE][gG][iIİı][sSſ][tT][rR][yY]_[sSſ][cC][aA][nN]" + EngineSpace + "*:" + EngineSpace + "*$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
-    // ^\s*token\s*:\s*(?P<val>.+)$ (MULTILINE)
+    // ^\s*token\s*:\s*(.+)$
     internal static readonly Regex YamlTokenPattern = new(
         @"\G" + EngineSpace + "*token" + EngineSpace + "*:" + EngineSpace + @"*(?<val>[^\n]+)$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
-    // ^\s*keywords\s*:\s*\[.+\]$ (MULTILINE)
+    // ^\s*keywords\s*:\s*\[.+\]$
     internal static readonly Regex YamlKeywordsPattern = new(
         @"\G" + EngineSpace + "*keywords" + EngineSpace + "*:" + EngineSpace + @"*\[[^\n]+\]$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(2));
 
-    // ^\s*patterns\s*:\s*(\[|-)\s* (MULTILINE)
+    // ^\s*patterns\s*:\s*(\[|-)\s*
     internal static readonly Regex YamlPatternsPattern = new(
         @"\G" + EngineSpace + "*patterns" + EngineSpace + "*:" + EngineSpace + @"*(?:\[|-)" + EngineSpace + "*",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
@@ -77,7 +72,6 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             reasons.Add("Filename contains registry/scan hints");
         }
 
-        // Prefer JSON detection
         object? parsedJson = null;
         if (extension is ".json" or "" || HasJsonKey(text))
         {
@@ -99,7 +93,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             return BuildJsonMatch(specification, reasons, metadata);
         }
 
-        // YAML heuristic (no strict parsing to avoid dependency)
+        // YAML by heuristics only; no YAML parser here.
         if (extension is ".yml" or ".yaml" && LineStartMatcher.IsMatch(YamlKeyPattern, text))
         {
             return BuildYamlMatch(text, reasons, metadata);
@@ -144,7 +138,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             }
         }
 
-        // Sums 0.65 + 0.05 * flag + ... left to right; the order fixes the resulting double.
+        // Summed left to right; the order fixes the resulting double.
         var confidence = 0.65
             + (0.05 * (metadata.ContainsKey("token") ? 1 : 0))
             + (0.05 * (metadata.ContainsKey("keywords") ? 1 : 0))

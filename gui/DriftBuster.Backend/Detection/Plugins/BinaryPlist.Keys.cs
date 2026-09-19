@@ -11,14 +11,11 @@ internal static partial class BinaryPlist
     private static readonly object NoMismatch = new();
 
     /// <summary>
-    /// The keys of a dict payload in ascending order (empty for any other payload); a key of <c>None</c> comes back as null.
-    /// Strings order by code point, numbers by value (bool as 0 or 1, NaN first), bytes by content and dates by instant. The
-    /// sort is stable, so keys that compare equal keep their dictionary order.
+    /// A dict payload's keys in ascending order (empty for other payloads); a null key comes back as null. Strings by code point,
+    /// numbers by value (bools as 0/1, NaN first), bytes by content, dates by instant; stable for equal keys.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Two or more keys that are not all strings, all numbers, all bytes or all dates (or that include None or a UID). The
-    /// message names the type of the first key and of the first later key that cannot be ordered against it. The plugin does
-    /// not catch it, so it escapes <c>detect</c>.
+    /// Keys of mixed kinds (or including null or a UID), naming the first two types that cannot be ordered; the plugin lets it escape.
     /// </exception>
     public static List<object?> SortedKeys(object? payload)
     {

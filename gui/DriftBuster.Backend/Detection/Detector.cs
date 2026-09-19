@@ -138,13 +138,9 @@ public class Detector
     /// <summary><see cref="EnginePath.IsFile"/>; overridable for fault injection.</summary>
     protected internal virtual bool IsFile(string path) => EnginePath.IsFile(path);
 
-    /// <summary><see cref="EnginePath.ResolvePhysicalPath"/>.</summary>
     internal static string? ResolvePhysicalPath(string fullPath) => EnginePath.ResolvePhysicalPath(fullPath);
 
-    /// <summary>
-    /// The absolute paths (<see cref="EnginePath.Absolute"/>, ".." parts kept) of <c>sorted(root.glob(glob))</c>
-    /// (<see cref="EnginePath.SortedGlob"/>); overridable for fault injection.
-    /// </summary>
+    /// <summary>Absolute paths (".." kept) of the sorted glob matches under <paramref name="root"/>; overridable for fault injection.</summary>
     protected internal virtual IReadOnlyList<string> EnumerateFiles(string root, string glob)
         => EnginePath.SortedGlob(root, glob).Select(EnginePath.Absolute).ToList();
 
@@ -287,17 +283,14 @@ public class Detector
     }
 
     /// <summary>
-    /// Scans a file or directory while enforcing the aggregate sampling budget. The root is spelled as <c>Path(root)</c>
-    /// spells it (<see cref="LexicalPath.Str"/>). Only regular files are scanned (<see cref="EnginePath.IsFile"/>); an entry
-    /// whose name the runtime cannot decode is reported through <see cref="HandleError"/>. A file root yields a single entry;
-    /// a missing root raises <see cref="DetectorIOException"/> through <see cref="HandleError"/>; a directory walk
-    /// stops after the first file that exhausts the budget.
+    /// Scans a file or directory within the aggregate sampling budget. Only regular files are scanned; an undecodable name and
+    /// a missing root are reported through <see cref="HandleError"/>. A walk stops after the file that exhausts the budget.
     /// </summary>
-    /// <param name="resetBudget">Reset the aggregate counter before scanning; false continues an existing budget across roots.</param>
+    /// <param name="resetBudget">Reset the aggregate counter first; false continues a budget across roots.</param>
     public virtual IReadOnlyList<(string Path, DetectionMatch? Match)> ScanPath(string root, string glob = "**/*", bool resetBudget = true)
     {
         ArgumentNullException.ThrowIfNull(root);
-        // root = Path(root): a trailing separator, "//" and "." parts are dropped, so "x.config/" names the file.
+        // Normalised so "x.config/" names the file.
         root = LexicalPath.Str(root);
         var results = new List<(string Path, DetectionMatch? Match)>();
         try
@@ -377,11 +370,9 @@ public class Detector
     }
 
     /// <summary>
-    /// <c>scan_with_profiles</c>: scans <paramref name="root"/> and annotates every result with the profile configs that apply to
-    /// its path (<c>path.relative_to(root).as_posix()</c> under a directory root, falling back to the file name when the path is
-    /// not under it; the bare file name for a file root). When any applicable config's metadata sets a truthy
-    /// <c>ignore_review_flags</c>, a detection whose <c>needs_review</c> is truthy gets <c>review_ignored</c> true and
-    /// <c>needs_review</c> false; an exception while reading the applied configs counts as not ignoring.
+    /// Scans <paramref name="root"/> and adds the profile configs that apply to each result (matched on the path relative to the
+    /// root, or the file name). A config whose metadata sets <c>ignore_review_flags</c> clears <c>needs_review</c> and sets
+    /// <c>review_ignored</c>; an error reading the configs counts as not ignoring.
     /// </summary>
     public IReadOnlyList<ProfiledDetection> ScanWithProfiles(
         string root,
@@ -454,7 +445,7 @@ public class Detector
         return detector.ScanPath(root, glob);
     }
 
-    // Upper-cases the first letter (any L* code point, astral included) with Python's full str.upper() mapping.
+    // Upper-cases the first letter (any L* code point, astral included) with full case mapping (EngineText.Upper).
     private static string TitleiseComponent(string component)
     {
         if (component.Length == 0)

@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Detection.Catalog;
 
-/// <summary>The catalog classes in priority order; the catalog version is <c>0.0.3</c>.</summary>
+/// <summary>The catalog classes in priority order and the catalog version (synced from versions.json).</summary>
 internal static class DetectionCatalogData
 {
     private static readonly FormatClass RegistryExport = new FormatClass(

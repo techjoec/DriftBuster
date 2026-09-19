@@ -72,9 +72,8 @@ public sealed partial class YamlPlugin
     }
 
     /// <summary>
-    /// Every non-overlapping match of <c>^\s*[A-Za-z_][\w.-]*\s*:\s*(\S|$)</c> (MULTILINE), as the key token of each.
-    /// The <c>\s*(\S|$)</c> tail always succeeds and swallows the first non-space character after the colon, even on
-    /// a later line, so the search resumes after that character and a key on that line is not counted.
+    /// Key tokens of the non-overlapping matches of <c>^\s*[A-Za-z_][\w.-]*\s*:\s*(\S|$)</c> (multiline). The tail swallows the
+    /// first non-space character after the colon, even on a later line, so a key on that line is not counted.
     /// </summary>
     private static List<string> KeyColonMatches(string s)
     {
@@ -102,7 +101,7 @@ public sealed partial class YamlPlugin
         return keys;
     }
 
-    // ^\s*<marker>\s*$ (MULTILINE): after the marker only whitespace may follow before a "\n" or the end of input.
+    // ^\s*<marker>\s*$ (multiline).
     private static bool HasMarkerLine(string s, string marker)
     {
         var anchor = 0;
@@ -134,7 +133,7 @@ public sealed partial class YamlPlugin
         return false;
     }
 
-    // ^\s*-\s+\S+ (MULTILINE): the "\s+" may cross line breaks, so "-" alone on a line followed by text matches.
+    // ^\s*-\s+\S+ (multiline); "\s+" may cross line breaks, so "-" alone on a line followed by text matches.
     private static bool HasListMarker(string s)
     {
         var anchor = 0;
@@ -156,8 +155,7 @@ public sealed partial class YamlPlugin
         return false;
     }
 
-    // \n\s{2,}[A-Za-z_][\w.-]*\s*:\s*(\S|$) (no MULTILINE): a "\n" followed by at least two whitespace characters
-    // (line breaks included, so three consecutive "\n" before a top-level key count) and a key token with a colon.
+    // \n\s{2,}[A-Za-z_][\w.-]*\s*:\s*(\S|$): at least two whitespace characters (line breaks included) after a "\n", then a key.
     private static bool HasIndentedBlock(string s)
     {
         var index = s.IndexOf('\n', StringComparison.Ordinal);
@@ -179,8 +177,8 @@ public sealed partial class YamlPlugin
         return false;
     }
 
-    // Count of non-overlapping ^\s*#\s*[A-Za-z_][\w.-]*\s*:\s* (MULTILINE) matches. The trailing "\s*" swallows
-    // following line breaks and indentation, so an indented commented key right after another is not counted.
+    // Non-overlapping ^\s*#\s*[A-Za-z_][\w.-]*\s*:\s* matches; the trailing "\s*" swallows following line breaks, so a commented
+    // key right after another is not counted.
     private static int CountCommentedKeys(string s)
     {
         var count = 0;
@@ -205,7 +203,7 @@ public sealed partial class YamlPlugin
         return count;
     }
 
-    // ^\s*<literal>\s*:\s*\S+ (MULTILINE), case-sensitive.
+    // ^\s*<literal>\s*:\s*\S+ (multiline), case-sensitive.
     private static bool HasKeyWithValue(string s, string literal)
     {
         var anchor = 0;

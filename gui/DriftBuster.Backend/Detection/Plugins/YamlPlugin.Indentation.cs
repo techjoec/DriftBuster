@@ -9,7 +9,7 @@ public sealed partial class YamlPlugin
 
     private sealed class IndentTally
     {
-        // Insertion-ordered so the most common width resolves ties like Counter.most_common(1): first seen wins.
+        // Insertion-ordered so ties on the most common width go to the first seen.
         public OrderedDictionary<int, int> Stats { get; } = [];
 
         public OrderedDictionary<int, List<int>> SpaceLines { get; } = [];

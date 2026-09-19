@@ -29,7 +29,7 @@ public sealed class DetectionMatch
 
     public IList<string> Reasons { get; set; }
 
-    /// <summary>Insertion-ordered metadata; keys are compared ordinally, mirroring a Python dict.</summary>
+    /// <summary>Insertion-ordered metadata with ordinal keys.</summary>
     public OrderedDictionary<string, object?>? Metadata { get; set; }
 
     /// <summary>A copy of the match with plugin, format, variant, confidence, reasons and metadata keys.</summary>

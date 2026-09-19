@@ -5,19 +5,12 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Heuristic TOML detector without a TOML parser: <c>.toml</c> extension hint, <c>[[array.of.tables]]</c>,
-/// <c>[table]</c> headers, <c>key = value</c> pairs, quoted, array and inline-table values.
+/// Heuristic TOML detector without a parser: <c>.toml</c> extension hint, <c>[[array.of.tables]]</c>, <c>[table]</c> headers,
+/// <c>key = value</c> pairs, quoted, array and inline-table values.
 /// </summary>
 /// <remarks>
-/// Regexes here are the rule patterns with <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>: .NET's <c>\s</c> is
-/// <c>[\f\n\r\t\v\x85\p{Z}]</c>, which is Python's <c>str.isspace</c> set minus U+001C-U+001F. The three
-/// <c>^\s*</c> MULTILINE patterns are spelled with <c>\G</c> and driven from every line start by
-/// <see cref="LineStartMatcher"/> (linear over blank-line runs). Every other construct
-/// used has the same meaning in both engines for every input: the character classes are ASCII, <c>$</c>
-/// under Multiline matches before <c>\n</c> only, <c>.</c> excludes <c>\n</c> unless Singleline (DOTALL), and
-/// the negated classes and lazy quantifiers see an astral character as two units where Python sees one code point,
-/// which changes neither match existence nor match boundaries because none of those quantifiers has a minimum
-/// above one unit that a single code point could fail. Match counts are non-overlapping in both engines.
+/// Regexes spell <c>\s</c> as <c>[\s\x1c-\x1f]</c> (the engine's whitespace set); the <c>^\s*</c> multiline patterns use
+/// <c>\G</c> and run through <see cref="LineStartMatcher"/> to stay linear over blank-line runs.
 /// </remarks>
 public sealed partial class TomlPlugin : IFormatPlugin
 {
@@ -162,9 +155,9 @@ public sealed partial class TomlPlugin : IFormatPlugin
     };
 
     /// <summary>
-    /// <c>package-manifest-toml</c> for Cargo.toml or a file with <c>[package]</c>, <c>[project]</c>, <c>[build-system]</c> or
-    /// <c>[tool.poetry]</c> (or <c>[tool.poetry.*]</c>) tables; <c>project-settings-toml</c> for a known tool configuration file name, <c>.cargo/config.toml</c>,
-    /// or a file whose tables are all <c>[tool.*]</c>; otherwise <c>array-of-tables</c> or <c>generic</c>.
+    /// <c>package-manifest-toml</c> for Cargo.toml or <c>[package]</c>, <c>[project]</c>, <c>[build-system]</c> or
+    /// <c>[tool.poetry…]</c> tables; <c>project-settings-toml</c> for known tool config names, <c>.cargo/config.toml</c> or files
+    /// whose tables are all <c>[tool.*]</c>; else <c>array-of-tables</c> or <c>generic</c>.
     /// </summary>
     private static string ChooseVariant(string path, string text, Signals signals, List<string> reasons)
     {
@@ -257,7 +250,6 @@ public sealed partial class TomlPlugin : IFormatPlugin
             metadata.Count > 0 ? metadata : null);
     }
 
-    // Extension contributes as a hint only.
     private static double Confidence(bool isTomlExtension, Signals signals)
     {
         var confidence = 0.5;

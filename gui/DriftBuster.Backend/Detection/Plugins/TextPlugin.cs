@@ -5,14 +5,12 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Detects directive-style text configuration files: whitespace-delimited directives without explicit '=' or ':'
-/// separators (OpenSSH sshd_config, OpenVPN client.conf). Runs as the low-priority fallback after structured parsers.
+/// Detects whitespace-delimited directive files (OpenSSH sshd_config, OpenVPN client.conf); the low-priority fallback after
+/// the structured parsers.
 /// </summary>
 /// <remarks>
-/// The plugin's rules are regexes (<c>^\s*[A-Za-z_][\w.-]*(?:\s+.+)?$</c>, <c>^\s*Subsystem\s+sftp\b</c>,
-/// <c>^\s*client\s*$</c>, <c>^\s*(dev|remote|proto)\b</c>). Those are matched here by hand on code points because
-/// .NET regexes differ on exactly the inputs that flip the outcome: <c>\s</c> excludes U+001C-U+001F, <c>\w</c> uses
-/// [L Mn Nd Pc] instead of [L N _], and character classes see UTF-16 units so an astral letter ends a token.
+/// The patterns are matched by hand on code points because .NET regex <c>\s</c>/<c>\w</c> and UTF-16 units give different
+/// answers on the inputs that matter (U+001C-U+001F whitespace, astral letters).
 /// </remarks>
 public sealed class TextPlugin : IFormatPlugin
 {
@@ -63,8 +61,7 @@ public sealed class TextPlugin : IFormatPlugin
         return LineKind.Other;
     }
 
-    // ^[A-Za-z_][\w.-]*(?:\s+.+)?$ on a stripped line: the token runs over [L N _ . -] code points and is followed by
-    // end of line or whitespace (a stripped line ends in a non-space, so "\s+.+" then always has something to match).
+    // ^[A-Za-z_][\w.-]*(?:\s+.+)?$ on a stripped line: a [L N _ . -] token followed by end of line or whitespace.
     private static bool IsDirective(string s)
     {
         if (!(char.IsAsciiLetter(s[0]) || s[0] == '_'))
@@ -88,7 +85,7 @@ public sealed class TextPlugin : IFormatPlugin
         return true;
     }
 
-    // "keyword\b" where \b is Python's: the next code point is not [L N _] (or the line ends there).
+    // "keyword\b": the next code point is not a word character, or the line ends.
     private static bool StartsWithWord(string s, int offset, string keyword)
     {
         if (!s.AsSpan(offset).StartsWith(keyword, StringComparison.Ordinal))
@@ -116,9 +113,8 @@ public sealed class TextPlugin : IFormatPlugin
         return offset;
     }
 
-    // ^\s*Subsystem\s+sftp\b with MULTILINE over "\n".join(lines). "\s+" may consume the joining newlines, so a
-    // line that is "Subsystem" (plus trailing whitespace) followed by whitespace-only lines and then a line whose first
-    // token is "sftp" matches too; the search stops at the end of the window because the join does.
+    // ^\s*Subsystem\s+sftp\b over the joined lines: "\s+" may cross newlines, so "sftp" can start a later line after
+    // whitespace-only lines.
     private static bool HasOpensshSubsystemMarker(List<string> lines)
     {
         for (var index = 0; index < lines.Count; index++)
@@ -142,8 +138,6 @@ public sealed class TextPlugin : IFormatPlugin
                 continue;
             }
 
-            // The rest of the line is whitespace: the "\n" joining the next line satisfies "\s+", as do any
-            // whitespace-only lines after it.
             var next = index + 1;
             while (next < lines.Count && SkipSpaces(lines[next], 0) == lines[next].Length)
             {
@@ -159,10 +153,10 @@ public sealed class TextPlugin : IFormatPlugin
         return false;
     }
 
-    // ^\s*client\s*$ with MULTILINE: a line that is "client" once stripped.
+    // A line that is "client" once stripped.
     private static bool IsOpenvpnClientLine(string line) => string.Equals(EngineText.Strip(line), "client", StringComparison.Ordinal);
 
-    // ^\s*(dev|remote|proto)\b with MULTILINE.
+    // ^\s*(dev|remote|proto)\b.
     private static bool IsOpenvpnDirectiveLine(string line)
     {
         var offset = SkipSpaces(line, 0);

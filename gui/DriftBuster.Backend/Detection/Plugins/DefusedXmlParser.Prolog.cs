@@ -54,7 +54,7 @@ internal sealed partial class DefusedXmlParser
 
     private State _state = State.Prolog0;
 
-    // expat's DTD bookkeeping.
+    // DTD bookkeeping.
     private bool _standalone;
     private bool _hasParamEntityRefs;
     private bool _keepProcessing = true;
@@ -157,8 +157,8 @@ internal sealed partial class DefusedXmlParser
         };
     }
 
-    // An external identifier on the DOCTYPE names an external subset expat does not read: undeclared entity
-    // references in attribute values stop being errors from here on.
+    // An external identifier names a subset that is never read: undeclared entity references in attribute values stop being
+    // errors from here on.
     private State PublicId(Token literal, State next)
     {
         CheckPublicId(literal);

@@ -6,16 +6,12 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Heuristic HCL detector for HashiCorp configs (Nomad, Vault, Consul): the <c>.hcl</c> extension, block forms such
-/// as <c>job {}</c>, <c>server {}</c>, <c>listener {}</c> and <c>seal {}</c>, and <c>key = value</c> assignments.
+/// HCL detector for HashiCorp configs (Nomad, Vault, Consul): <c>.hcl</c> extension, blocks such as <c>job {}</c>,
+/// <c>server {}</c>, <c>listener {}</c>, <c>seal {}</c>, and <c>key = value</c> assignments.
 /// </summary>
 /// <remarks>
-/// The block pattern <c>^\s*(job|server|seal|listener|datacenter|client)\b[^\n{]*\{</c> (MULTILINE) is matched by
-/// hand because Python's <c>\b</c> derives from <c>\w</c> = [L N _] on code points and .NET's from [L Mn Nd Pc] on
-/// UTF-16 units. The assignment pattern <c>^\s*[A-Za-z0-9_.\-]+\s*=\s*\S+</c> (MULTILINE) is the regex with
-/// <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>, <c>\S</c> as its complement and <c>^</c> spelled <c>\G</c>, driven from
-/// every line start by <see cref="LineStartMatcher"/> (linear over blank-line runs); every other construct is
-/// ASCII, and only match existence is consumed.
+/// The block pattern <c>^\s*(job|server|seal|listener|datacenter|client)\b[^\n{]*\{</c> is matched by hand (code-point
+/// <c>\b</c>); the assignment pattern runs as a <c>\G</c> regex through <see cref="LineStartMatcher"/>.
 /// </remarks>
 public sealed class HclPlugin : IFormatPlugin
 {
@@ -46,7 +42,7 @@ public sealed class HclPlugin : IFormatPlugin
         return offset;
     }
 
-    // Python \b after a word character: the next code point is not [L N _], or the text ends.
+    // Word boundary after a word character: the next code point is not [L N _], or the text ends.
     private static bool AtWordEnd(string text, int offset)
     {
         if (offset >= text.Length)
@@ -74,8 +70,7 @@ public sealed class HclPlugin : IFormatPlugin
         return -1;
     }
 
-    // Tries the alternation at offset. The keywords are not prefixes of one another, so at most one can match; the
-    // group value is the literal keyword as the pattern has no IGNORECASE.
+    // The keywords are not prefixes of one another, so at most one matches here.
     private static (string? Keyword, int End) MatchBlockAt(string text, int offset)
     {
         foreach (var keyword in BlockKeywords)
@@ -92,9 +87,7 @@ public sealed class HclPlugin : IFormatPlugin
         return (null, -1);
     }
 
-    // re.findall semantics: leftmost non-overlapping matches, each anchored at the start of the text or after a "\n"
-    // with "\s*" free to cross further newlines. The search resumes at the first line start past a match, and a
-    // failed whitespace run is skipped once: every line start inside it reaches the same offset (see LineStartMatcher).
+    // Leftmost non-overlapping block matches from line starts; whitespace runs are skipped once as in LineStartMatcher.
     internal static List<string> FindBlocks(string text)
     {
         var blocks = new List<string>();

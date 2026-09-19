@@ -5,20 +5,13 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Detects classic INI-style configuration and its relatives: sectioned and sectionless INI, Java properties, dotenv
-/// env files, directive-style Unix conf (Apache, nginx) and INI/JSON hybrids.
+/// Detects INI and relatives: sectioned and sectionless INI, Java properties, dotenv, directive-style Unix conf (Apache,
+/// nginx) and INI/JSON hybrids.
 /// </summary>
 /// <remarks>
-/// Regexes here are the rule patterns with <c>\s</c> spelled <c>[\s\x1c-\x1f]</c>: .NET's <c>\s</c> is
-/// <c>[\f\n\r\t\v\x85\p{Z}]</c>, which is Python's <c>str.isspace</c> set minus U+001C-U+001F. Every other construct
-/// used (<c>^</c>/<c>$</c> under Multiline, <c>.</c>, negated classes, lazy quantifiers) has the same meaning in both
-/// engines for every input; astral characters occupy two UTF-16 units but match the same negated classes as one code
-/// point would. Case-insensitive keyword tests and <c>\b</c> are matched by hand because Python's simple case folding
-/// and <c>\w</c> differ from .NET's. The two <c>^</c>-anchored MULTILINE patterns (section headers and assignments)
-/// are not searched by the engine: <c>^\s*</c> crosses newlines, so a search over a run of blank lines re-scans the
-/// run from every line start and backtracks through it (quadratic, and past the match timeout well inside one
-/// sample); <see cref="LineStartMatcher"/> drives the <c>\G</c>-anchored spelling from each line start and skips the
-/// line starts a failed run has already proven, which yields exactly Python's <c>finditer</c> match set.
+/// Regexes spell <c>\s</c> as <c>[\s\x1c-\x1f]</c>; case-insensitive keywords and <c>\b</c> are matched by hand. The section
+/// and assignment patterns use <c>\G</c> through <see cref="LineStartMatcher"/>, since <c>^\s*</c> searched directly is
+/// quadratic over blank-line runs.
 /// </remarks>
 public sealed partial class IniPlugin : IFormatPlugin
 {
@@ -44,8 +37,6 @@ public sealed partial class IniPlugin : IFormatPlugin
     private static readonly string[] DirectiveKeywords = ["include", "loadmodule", "setenv", "option", "alias"];
     private static readonly string[] ApacheKeywords = ["loadmodule", "setenv", "<virtualhost", "<directory", "servername"];
 
-    // Both line-anchored patterns are spelled with \G instead of ^ and driven from every line start by
-    // LineStartMatcher, which is what keeps them linear.
     internal static readonly Regex SectionPattern = new(
         @"\G" + EngineSpace + @"*\[(?<name>[^\]\n]+)\]" + EngineSpace + "*$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant,
@@ -88,7 +79,7 @@ public sealed partial class IniPlugin : IFormatPlugin
 
     public string Version => "0.0.2";
 
-    /// <summary>Extensions that count as an INI hint; a test seam.</summary>
+    /// <summary>Extensions that count as an INI hint (test seam).</summary>
     internal HashSet<string> IniExtensions { get; set; } = new(DefaultIniExtensions, StringComparer.Ordinal);
 
     public DetectionMatch? Detect(string path, byte[] sample, string? text)
@@ -126,7 +117,6 @@ public sealed partial class IniPlugin : IFormatPlugin
 
         scan.SignalScore = ComputeSignalScore(scan);
 
-        // Initialise confidence early so it can be used in early returns.
         var confidence = 0.4;
         if (scan.SignalScore < 2)
         {

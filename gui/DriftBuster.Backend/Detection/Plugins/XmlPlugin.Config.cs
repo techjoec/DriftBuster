@@ -145,7 +145,7 @@ public sealed partial class XmlPlugin
         return role;
     }
 
-    // The filename branch of _detect_config_role; returns the role it assigned, or null.
+    // Assigns the role from the filename; returns it, or null.
     private static string? ApplyFilenameRole(ConfigRole role, string filename, string lowered, List<string> reasons)
     {
         if (IsFilenameIgnoreCase(filename, "web.config"))

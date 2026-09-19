@@ -85,8 +85,7 @@ internal sealed partial class DefusedXmlParser
         }
     }
 
-    // Only the predefined entities can be referenced: any other name is undeclared (every processed declaration was
-    // refused), which expat reports or hands to ElementTree's default handler, and both raise.
+    // Only the predefined entities can be referenced; any other name is undeclared (every processed declaration was refused) and fails.
     private void RequireContentReference(bool isCharacter, Range nameSpan)
     {
         if (!isCharacter && !PredefinedEntities.Contains(_text[nameSpan]))
@@ -124,7 +123,7 @@ internal sealed partial class DefusedXmlParser
             ScanComment(start);
             if (_insertComments && parent is not null)
             {
-                // expat hands the comment data over with line ends normalised to LF.
+                // Comment data with line ends normalised to LF.
                 parent.Add(new XComment(NormaliseLineEnds(_text[start..(_pos - 3)])));
             }
 
@@ -254,11 +253,10 @@ internal sealed partial class DefusedXmlParser
         => codePoint is 0x9 or 0xA or 0xD || (codePoint >= 0x20 && codePoint < 0xD800) || (codePoint > 0xDFFF && codePoint is not (0xFFFE or 0xFFFF));
 
     /// <summary>
-    /// expat's attribute-value normalisation over [start, end): tab, LF, CR and CRLF become one space; a character
-    /// reference contributes its character and a predefined entity its character; '&lt;' and a malformed reference fail;
-    /// an undeclared entity fails where expat checks declarations (a standalone document, or no external subset or
-    /// parameter-entity reference so far) and is dropped otherwise. A value not declared CDATA also loses leading and
-    /// trailing spaces and collapses runs of them.
+    /// Attribute-value normalisation over [start, end): tab, LF, CR and CRLF become one space; character and predefined entity
+    /// references expand; '&lt;' and malformed references fail; an undeclared entity fails when declarations are checked
+    /// (standalone, or no external subset or parameter-entity reference yet) and is dropped otherwise. Non-CDATA values also trim
+    /// and collapse spaces.
     /// </summary>
     private string NormalizeAttributeValue(int start, int end, bool isCdata)
     {

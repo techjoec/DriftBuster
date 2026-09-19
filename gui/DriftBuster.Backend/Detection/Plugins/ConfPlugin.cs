@@ -6,17 +6,12 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Detects notable .conf DSLs not covered by INI heuristics: Elastic Logstash pipelines with <c>input { }</c>,
-/// <c>filter { }</c> and <c>output { }</c> blocks holding nested plugin stanzas. Detection stays tight so INI-style
-/// .conf files (Splunk and friends) keep going to the INI plugin.
+/// Detects Logstash pipelines (<c>input</c>/<c>filter</c>/<c>output</c> blocks with nested plugin stanzas). Kept tight so
+/// INI-style .conf files stay with the INI plugin.
 /// </summary>
 /// <remarks>
-/// The block pattern is the regex <c>^\s*(input|filter|output)\s*\{</c> (MULTILINE) with <c>\s</c> spelled
-/// <c>[\s\x1c-\x1f]</c>, <c>^</c> spelled <c>\G</c> and driven from every line start by <see cref="LineStartMatcher"/>
-/// (linear over blank-line runs); every other construct is ASCII, so match positions, captures and the
-/// non-overlapping count are identical to <c>finditer</c>. The nested-stanza
-/// pattern <c>^\s*[a-zA-Z_][\w-]*\s*\{</c> uses <c>\w</c>, which .NET defines as [L Mn Nd Pc] on UTF-16 units where
-/// Python uses [L N _] on code points, so it is matched by hand.
+/// The block pattern <c>^\s*(input|filter|output)\s*\{</c> runs as a <c>\G</c> regex through <see cref="LineStartMatcher"/>;
+/// the stanza pattern <c>^\s*[a-zA-Z_][\w-]*\s*\{</c> is matched by hand because .NET's <c>\w</c> differs.
 /// </remarks>
 public sealed class ConfPlugin : IFormatPlugin
 {
@@ -67,10 +62,7 @@ public sealed class ConfPlugin : IFormatPlugin
         return offset;
     }
 
-    // ^\s*[a-zA-Z_][\w-]*\s*\{ (MULTILINE) searched over the text: at the start and after every "\n", skip whitespace
-    // (which may cross further newlines), take the stanza name, skip whitespace again and require "{". The greedy
-    // name never needs to backtrack because the character after it is neither whitespace nor "{". Each whitespace
-    // run is skipped once: every line start inside it reaches the same offset (see LineStartMatcher).
+    // ^\s*[a-zA-Z_][\w-]*\s*\{ over the text; whitespace runs are skipped once as in LineStartMatcher.
     internal static bool HasNestedStanza(string text)
     {
         var lineStart = 0;

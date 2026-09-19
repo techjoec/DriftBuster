@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace DriftBuster.Backend.Detection.Plugins;
 
-/// <summary>The prolog tokenizer: the tokens expat's prolog scanner yields, with its rules for what may follow each.</summary>
+/// <summary>The prolog tokenizer, following expat's rules for which tokens may follow each other.</summary>
 internal sealed partial class DefusedXmlParser
 {
     private enum Tok
@@ -43,7 +43,7 @@ internal sealed partial class DefusedXmlParser
     [StructLayout(LayoutKind.Auto)]
     private readonly record struct Token(Tok Kind, int Start, int End);
 
-    // Every token expat reports as invalid or unfinished fails here: no prolog, DOCTYPE or epilog state accepts one.
+    // Every invalid or unfinished token fails: no prolog, DOCTYPE or epilog state accepts one.
     private Token NextPrologToken()
     {
         if (AtEnd)

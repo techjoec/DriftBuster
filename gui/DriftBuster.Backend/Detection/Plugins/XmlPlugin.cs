@@ -5,17 +5,13 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// XML detection heuristics for configuration-style and generic documents. Detection follows a strict order:
-/// framework configuration payloads by filename and core section hints (transforms surfaced before vendor
-/// fallbacks), then namespace-driven manifest, resx and XAML variants, then extension and structure fallbacks,
-/// capturing the root element and namespace metadata for reporting adapters throughout.
+/// XML heuristics in a fixed order: framework configs by filename and section hints (transforms before vendor fallbacks),
+/// then namespace-driven manifest, resx and XAML variants, then extension and structure fallbacks; root and namespace
+/// metadata are captured throughout.
 /// </summary>
 /// <remarks>
-/// Windows are measured in code points like Python <c>str</c> slicing: the 4096-character metadata snippet and the
-/// 512 KiB parse cap. Every module regex is hand-matched on code points in <c>XmlPlugin.Patterns.cs</c>. The tree
-/// parse and the well-formedness probe are <see cref="DefusedXmlParser"/>, which accepts what defusedxml over expat
-/// accepts and never reads anything external; on any parse failure the tree is absent and the regex-only paths
-/// continue.
+/// The 4096-character metadata snippet and the 512 KiB parse cap are counted in code points. Patterns are hand-matched in
+/// <c>XmlPlugin.Patterns.cs</c>. A tree-parse failure only removes the tree; the pattern-based paths continue.
 /// </remarks>
 public sealed partial class XmlPlugin : IFormatPlugin
 {
@@ -39,7 +35,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
 
     public string Version => "0.0.6";
 
-    /// <summary>Length cap (in code points) for the tree parse and the well-formedness probe; a test seam.</summary>
+    /// <summary>Code-point cap for the tree parse and well-formedness probe (test seam).</summary>
     internal int MaxSafeParseChars { get; set; } = 512 * 1024;
 
     public DetectionMatch? Detect(string path, byte[] sample, string? text)
@@ -53,7 +49,6 @@ public sealed partial class XmlPlugin : IFormatPlugin
         var extension = PathText.SuffixLower(path);
         var reasons = new List<string>();
 
-        // Prefer .config specific detection first.
         var metadata = CollectMetadata(text, extension);
 
         if (string.Equals(extension, ".config", StringComparison.Ordinal))
@@ -155,7 +150,6 @@ public sealed partial class XmlPlugin : IFormatPlugin
             metadata.Count == 0 ? null : metadata);
     }
 
-    // Optional well-formedness check within safe bounds.
     private void ProbeWellFormed(string text, List<string> reasons, OrderedDictionary<string, object?> metadata)
     {
         var sampleText = text[..PrefixLength(text, MaxSafeParseChars)];
@@ -277,7 +271,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         return bonus;
     }
 
-    /// <summary>Python truthiness of <c>metadata.get(key)</c> for the value shapes this plugin stores.</summary>
+    /// <summary>Truthiness of a stored metadata value (see <see cref="Infrastructure.EngineBuiltins.IsTruthy"/>).</summary>
     private static bool IsTruthy(OrderedDictionary<string, object?> metadata, string key)
         => metadata.TryGetValue(key, out var value) && IsTruthyValue(value);
 
@@ -291,7 +285,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         _ => true,
     };
 
-    /// <summary>Number of code points in <paramref name="text"/>, matching Python <c>len(str)</c>.</summary>
+    /// <summary>Number of code points in <paramref name="text"/>.</summary>
     private static int CodePointCount(string text)
     {
         var count = 0;
@@ -303,7 +297,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
         return count;
     }
 
-    /// <summary>The UTF-16 length of the first <paramref name="codePoints"/> code points, matching <c>text[:n]</c>.</summary>
+    /// <summary>UTF-16 length of the first <paramref name="codePoints"/> code points.</summary>
     private static int PrefixLength(string text, int codePoints)
     {
         var offset = 0;

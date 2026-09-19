@@ -3,16 +3,11 @@ using System.Text;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// A JSON acceptor for the dialect DriftBuster reads: RFC 8259 JSON plus the <c>NaN</c>, <c>Infinity</c> and
-/// <c>-Infinity</c> literals. Whitespace is space, tab, LF and CR only; numbers use ASCII digits with no leading
-/// zeros; strings reject raw control characters below U+0020, accept the escapes <c>\" \\ \/ \b \f \n \r \t \uXXXX</c>,
-/// and keep unpaired surrogate escapes; trailing commas, comments and a leading U+FEFF are rejected; anything after
-/// the value but whitespace is "extra data". Nesting is tracked on an explicit stack, so depth is unbounded, and
-/// integer lexemes are never converted, so their length is unbounded too.
+/// Accepts the JSON dialect DriftBuster reads (RFC 8259 plus <c>NaN</c>, <c>Infinity</c>, <c>-Infinity</c>, unpaired surrogate
+/// escapes) with the same rules as <see cref="Infrastructure.EngineJson"/>, but keeps only what the JSON plugin reports: the
+/// top-level kind, object keys in first-occurrence order and top-level array item kinds. No depth or integer-length limit.
 /// </summary>
-/// <remarks>Only what the JSON plugin reports is kept: the top-level kind, object keys in first-occurrence order and
-/// the kinds of the top-level array items. System.Text.Json is not used because it diverges on the NaN/Infinity
-/// literals, on unpaired surrogate escapes and on nesting depth.</remarks>
+/// <remarks>System.Text.Json differs on NaN/Infinity, lone surrogate escapes and depth, so it is not used.</remarks>
 internal static class EngineJsonScanner
 {
     /// <summary>The kinds a decoded value can have, in the order of <c>JsonPlugin.TypeNames</c>.</summary>
@@ -33,7 +28,7 @@ internal static class EngineJsonScanner
 
         public Kind Kind { get; init; }
 
-        /// <summary>Object keys as a Python dict orders them: first occurrence wins, later duplicates keep that slot.</summary>
+        /// <summary>Object keys in first-occurrence order; later duplicates keep that slot.</summary>
         public List<string> Keys { get; } = [];
 
         public List<Kind> ItemKinds { get; } = [];
@@ -298,8 +293,8 @@ internal static class EngineJsonScanner
 
     private static bool IsAsciiDigit(char c) => c is >= '0' and <= '9';
 
-    // _match_number_unicode: -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)? over ASCII digits, where a '.' not followed
-    // by a digit and an exponent without digits end the number instead of failing it.
+    // -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)? over ASCII digits; a '.' or exponent without digits ends the number
+    // rather than failing it.
     private static bool TryMatchNumber(string text, ref int pos, out Kind kind)
     {
         kind = Kind.Int;
@@ -372,7 +367,7 @@ internal static class EngineJsonScanner
         return IsAsciiDigit(text[idx - 1]) ? idx : start;
     }
 
-    // scanstring_unicode with strict=True: "start" is just past the opening quote; "end" lands just past the closing one.
+    // Strict string scan: "start" is just past the opening quote, "end" just past the closing one.
     private static bool TryScanString(string text, int start, out int end, StringBuilder? builder)
     {
         var i = start;

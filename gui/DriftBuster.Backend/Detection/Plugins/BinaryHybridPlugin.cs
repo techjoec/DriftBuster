@@ -53,11 +53,8 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
     }
 
     /// <summary>
-    /// The number of tables in the real database file, opened read-only through a connection string (never a
-    /// file URI, so a name holding <c>%XX</c>, <c>?</c> or <c>#</c> opens that file); null when the
-    /// file is missing or SQLite rejects it. Pooling is off so disposing
-    /// the connection closes the file, instead of holding every scanned
-    /// database open until the process exits.
+    /// Table count of the real database file, opened read-only through a connection string (not a file URI, so names with
+    /// <c>%XX</c>, <c>?</c> or <c>#</c> open correctly) with pooling off so the file is closed on dispose; null when missing or rejected.
     /// </summary>
     internal static int? CountSqliteTables(string path)
     {
@@ -140,7 +137,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
         }
 
         var block = EngineText.Strip(workingText[blockStart..blockEnd]);
-        // sorted({key for key in key_candidates if key}): a set, then code-point order.
+        // Distinct non-empty keys in code-point order.
         var keySet = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in TextLines.SplitLines(block))
         {
@@ -174,12 +171,8 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
     }
 
     /// <summary>
-    /// <c>re.match(r"^---\s*\n(?P&lt;block&gt;.*?\n)---\s*\n", text, re.DOTALL)</c> without backtracking, where <c>\s</c>
-    /// is <see cref="EngineText.IsSpace"/>. The regex tries the opening <c>\s*</c> longest first, so its <c>\n</c> is the
-    /// last newline p of the space run after the opening dashes for which some closer exists, then the lazy block ends
-    /// at the first closer q past it: q follows a newline at q - 1 &gt;= p + 1, starts <c>---</c>, and the space run
-    /// after those dashes holds a newline, the last of which ends the match (the closing <c>\s*</c> is greedy too).
-    /// Every closer owns a distinct space run, so collecting them all is one pass over the text.
+    /// Front matter <c>^---\s*\n(.*?\n)---\s*\n</c> (dot matches newline) in one pass, without backtracking: the opening newline
+    /// is the last one after the dashes that has a closer beyond it, and the block ends at the first such closer.
     /// </summary>
     internal static bool TryMatchFrontMatter(string text, out int blockStart, out int blockEnd, out int matchEnd)
     {

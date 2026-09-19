@@ -5,16 +5,13 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Detects Dockerfiles using directive heuristics: the filename contains "dockerfile" or ends in ".dockerfile", the
-/// first non-comment line starts with FROM, and common directives (RUN, COPY, ADD, ARG, ENV, WORKDIR, ENTRYPOINT,
-/// CMD, EXPOSE, USER, VOLUME) appear at a line start.
+/// Detects Dockerfiles: filename containing "dockerfile" or ending ".dockerfile", a first non-comment line starting with FROM,
+/// and common directives (RUN, COPY, ADD, ARG, ENV, WORKDIR, ENTRYPOINT, CMD, EXPOSE, USER, VOLUME) at line starts.
 /// </summary>
 /// <remarks>
-/// The plugin applies <c>^\s*FROM\s+\S+</c> (IGNORECASE, searched on the first non-comment line) and
-/// <c>^\s*(RUN|COPY|...)\b</c> (IGNORECASE, MULTILINE, searched on the whole text). Both are matched by hand on code
-/// points: Python's <c>\s</c> includes U+001C-U+001F, its <c>\b</c> derives from <c>\w</c> = [L N _], and its
-/// IGNORECASE folds each ASCII letter to the set enumerated from the interpreter in <see cref="FoldsTo"/>
-/// (I also matches U+0130 and U+0131, K matches U+212A, S matches U+017F), none of which .NET reproduces exactly.
+/// <c>^\s*FROM\s+\S+</c> and <c>^\s*(RUN|COPY|...)\b</c> (case-insensitive) are matched by hand on code points: whitespace
+/// includes U+001C-U+001F, <c>\b</c> uses [L N _], and case folding adds U+0130/U+0131 for I, U+212A for K, U+017F for S
+/// (<see cref="FoldsTo"/>).
 /// </remarks>
 public sealed class DockerfilePlugin : IFormatPlugin
 {
@@ -29,8 +26,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
 
     public string Version => "0.0.1";
 
-    // re.IGNORECASE on a str pattern: an ASCII letter matches every code point whose simple lower case is the same
-    // letter plus Python's fixed extra equivalences (i/dotless i, s/long s). Enumerated over all code points.
+    // Case-insensitive ASCII letter match with the extra equivalents listed in the class remarks.
     private static bool FoldsTo(char upper, char actual)
     {
         if (actual == upper || actual == (char)(upper + 32))
@@ -75,7 +71,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
         return offset;
     }
 
-    // Python \b after a word character: the next code point is not [L N _], or the text ends.
+    // Word boundary after a word character: the next code point is not [L N _], or the text ends.
     private static bool AtWordEnd(string text, int offset)
     {
         if (offset >= text.Length)
@@ -87,7 +83,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
         return !EngineText.IsWordRune(rune);
     }
 
-    // ^\s*FROM\s+\S+ (IGNORECASE, no MULTILINE) searched on one line: anchored at the start of the string.
+    // ^\s*FROM\s+\S+ on one line, case-insensitive.
     internal static bool HasFirstFrom(string line)
     {
         var offset = SkipSpaces(line, 0);
@@ -101,9 +97,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
         return afterSpaces > offset && afterSpaces < line.Length;
     }
 
-    // ^\s*(RUN|COPY|...)\b (IGNORECASE, MULTILINE) searched over the text: at the start and after every "\n", skip
-    // whitespace (which may cross further newlines) and test each alternative followed by a Python word boundary.
-    // Each whitespace run is skipped once: every line start inside it reaches the same offset (see LineStartMatcher).
+    // ^\s*(RUN|COPY|...)\b over the text, case-insensitive; whitespace runs are skipped once as in LineStartMatcher.
     internal static bool HasDirectives(string text)
     {
         var lineStart = 0;

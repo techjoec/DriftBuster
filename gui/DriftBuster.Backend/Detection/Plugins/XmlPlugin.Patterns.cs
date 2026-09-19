@@ -6,26 +6,19 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Hand-matched equivalents of the XML rule regexes. Each matcher carries the pattern verbatim and the
-/// argument for why the code-point walk yields the same match set on every input.
+/// Hand-written matchers for the XML detection patterns; each comment gives the pattern it implements. They walk code points
+/// linearly where a regex could backtrack.
 /// </summary>
 /// <remarks>
-/// Python IGNORECASE on a str pattern lowers each pattern literal with the simple case mapping and matches a text
-/// code point when its simple lowercase equals that literal, plus the fixed equivalences sre adds (U+0131 for 'i',
-/// U+017F for 's'); the only non-ASCII code points whose simple lowercase is an ASCII letter are U+0130 (to 'i') and
-/// U+212A (to 'k'). <see cref="MatchesKeywordIgnoreCase"/> spells exactly that rule. A class such as
-/// <c>[A-Za-z_]</c> under IGNORECASE matches a code point whose lowercase or whose lowercase's uppercase falls in the
-/// range: the ASCII letters plus U+0130, U+0131, U+017F and U+212A (<see cref="IsAsciiLetterIgnoreCase"/>).
-/// <c>\w</c> is Python's [L N _] on code points (<see cref="EngineText.IsWordRune"/>), <c>\s</c> is
-/// <see cref="EngineText.IsSpace"/>, and <c>.</c> without DOTALL is any code point except '\n'.
+/// Case-insensitive matching compares simple lowercase, and also accepts U+0130/U+0131 for 'i', U+017F for 's' and U+212A for
+/// 'k' (<see cref="MatchesKeywordIgnoreCase"/>, <see cref="IsAsciiLetterIgnoreCase"/>). <c>\w</c> is
+/// <see cref="EngineText.IsWordRune"/>, <c>\s</c> is <see cref="EngineText.IsSpace"/>.
 /// </remarks>
 public sealed partial class XmlPlugin
 {
     private const string EngineSpace = @"[\s\x1c-\x1f]";
 
-    // _XDT_TRANSFORM_ATTR = xdt:Transform\s*=\s*(?:['"][^'"]+['"])  (case-sensitive). Every construct has the same
-    // meaning in .NET once \s is spelled as the Python set; [^'"]+ matches surrogate halves one unit at a time but
-    // the set of matched strings is identical because the quantifier is unbounded.
+    // xdt:Transform\s*=\s*(?:['"][^'"]+['"]), case-sensitive; \s spelled as the engine's whitespace set.
     private static readonly Regex XdtTransformAttrPattern = new(
         "xdt:Transform" + EngineSpace + "*=" + EngineSpace + @"*(?:['""][^'""]+['""])",
         RegexOptions.CultureInvariant,
@@ -50,8 +43,7 @@ public sealed partial class XmlPlugin
         return rune;
     }
 
-    // Python IGNORECASE on an ASCII-letter pattern: the text code point simple-lowercases to the letter, plus the
-    // extra cases re adds (U+0130 and U+0131 for 'i', U+017F for 's', U+212A for 'k'); non-letters match literally.
+    // Case-insensitive ASCII keyword match (see the class remarks for the extra non-ASCII equivalents).
     private static bool MatchesKeywordIgnoreCase(string s, int offset, string keywordLower, out int end)
     {
         end = offset;
@@ -117,7 +109,7 @@ public sealed partial class XmlPlugin
     private static bool IsSpaceOrGreaterThan(string s, int offset)
         => offset < s.Length && (s[offset] == '>' || EngineText.IsSpace(s[offset]));
 
-    /// <summary><c>pattern.search(text)</c> truthiness for an IGNORECASE literal pattern (no metacharacters).</summary>
+    /// <summary>Case-insensitive search for a literal keyword.</summary>
     private static bool ContainsIgnoreCase(string s, string keywordLower) => IndexOfIgnoreCase(s, keywordLower, 0) >= 0;
 
     private static int IndexOfIgnoreCase(string s, string keywordLower, int start)
@@ -133,24 +125,23 @@ public sealed partial class XmlPlugin
         return -1;
     }
 
-    // _MANIFEST_NAMESPACE = urn:schemas-microsoft-com:asm\.v1 (IGNORECASE)
+    // urn:schemas-microsoft-com:asm.v1, case-insensitive.
     private static bool HasManifestNamespace(string s) => ContainsIgnoreCase(s, "urn:schemas-microsoft-com:asm.v1");
 
-    // _XAML_NAMESPACE = http://schemas\.microsoft\.com/winfx/2006/xaml (IGNORECASE)
+    // http://schemas.microsoft.com/winfx/2006/xaml, case-insensitive.
     private static bool HasXamlNamespace(string s) => ContainsIgnoreCase(s, "http://schemas.microsoft.com/winfx/2006/xaml");
 
-    // _XSLT_NAMESPACE = http://www\.w3\.org/1999/XSL/Transform (IGNORECASE)
+    // http://www.w3.org/1999/XSL/Transform, case-insensitive.
     private static bool HasXsltNamespace(string s) => ContainsIgnoreCase(s, "http://www.w3.org/1999/xsl/transform");
 
-    // _MSBUILD_NAMESPACE = http://schemas\.microsoft\.com/developer/msbuild/2003 (IGNORECASE)
+    // http://schemas.microsoft.com/developer/msbuild/2003, case-insensitive.
     private static bool HasMsbuildNamespace(string s) => ContainsIgnoreCase(s, "http://schemas.microsoft.com/developer/msbuild/2003");
 
-    // _ENTITY_DECL = <!ENTITY (IGNORECASE)
+    // <!ENTITY, case-insensitive.
     private static bool HasEntityDeclaration(string s) => ContainsIgnoreCase(s, "<!entity");
 
-    // _RESX_SCHEMA = http://schemas\.microsoft\.com/.*resx (IGNORECASE). "." excludes only "\n", so a match is a
-    // prefix occurrence followed on the same line by "resx"; a line's first prefix occurrence decides it, which keeps
-    // the scan linear where the regex could backtrack quadratically.
+    // http://schemas.microsoft.com/.*resx, case-insensitive: the prefix followed by "resx" on the same line. Only a line's
+    // first prefix occurrence is tried, keeping the scan linear.
     private static bool HasResxSchema(string s)
     {
         const string prefix = "http://schemas.microsoft.com/";
@@ -184,9 +175,7 @@ public sealed partial class XmlPlugin
         return false;
     }
 
-    // _XML_DECLARATION = ^\s*<\?xml\b(?P<attrs>[^?>]*)\?> (IGNORECASE, no MULTILINE): anchored at the string start
-    // only. \b after "xml" holds when the next code point is not [L N _] or the text ends; [^?>]* stops at the first
-    // '?' or '>' and no shorter run can be followed by '?', so the match is decided without backtracking.
+    // ^\s*<\?xml\b([^?>]*)\?>, case-insensitive, anchored at the start of the text only.
     private static bool TryXmlDeclaration(string s, out string attrs)
     {
         attrs = string.Empty;
@@ -199,7 +188,6 @@ public sealed partial class XmlPlugin
         return true;
     }
 
-    // The attrs group span of _XML_DECLARATION.
     private static bool TryXmlDeclarationSpan(string s, out int attrsStart, out int attrsEnd)
     {
         attrsStart = 0;
@@ -238,15 +226,12 @@ public sealed partial class XmlPlugin
     }
 
     /// <summary>
-    /// <c>_XML_DECLARATION_ATTR.finditer(segment)</c>: <c>(?P&lt;name&gt;[\w:.-]+)\s*=\s*(?P&lt;quote&gt;['"])(?P&lt;value&gt;.*?)(?P=quote)</c>
-    /// with DOTALL. The name run is maximal (a shorter run is followed by a name character, never by \s or '='), the
-    /// lazy value ends at the first matching quote, and every start inside a failed run fails identically, so the
-    /// scan resumes after the run.
+    /// Declaration attributes: <c>([\w:.-]+)\s*=\s*(['"])(.*?)\2</c>. A failed name run is skipped whole, so the scan stays linear.
     /// </summary>
     private static List<(string Name, string Value)> AttributeMatches(string segment)
         => AttributeMatchSpans(segment).Select(match => (match.Name, match.Value)).ToList();
 
-    /// <summary>One <c>_XML_DECLARATION_ATTR</c> match with the UTF-16 span of its value (quotes excluded).</summary>
+    /// <summary>One declaration attribute with the UTF-16 span of its value (quotes excluded).</summary>
     private readonly record struct AttributeMatch(string Name, string Value, int ValueStart, int ValueEnd);
 
     private static List<AttributeMatch> AttributeMatchSpans(string segment)
@@ -304,10 +289,7 @@ public sealed partial class XmlPlugin
         return true;
     }
 
-    // _GENERIC_ELEMENT = ^\s*<[^!?][\w:.-]+(\s|>) (MULTILINE), search truthiness. Driven from each line start the
-    // way LineStartMatcher does: the whitespace run decides every anchor inside it. [^!?] consumes one code point of
-    // any kind; the name run is maximal and cannot be shortened into a match because its characters are neither \s
-    // nor '>'.
+    // ^\s*<[^!?][\w:.-]+(\s|>) at any line start, driven like LineStartMatcher so a whitespace run decides every start inside it.
     private static bool HasGenericElement(string s)
     {
         var position = 0;
@@ -343,10 +325,7 @@ public sealed partial class XmlPlugin
         return nameEnd > nameStart && IsSpaceOrGreaterThan(s, nameEnd);
     }
 
-    // _CONFIG_CONFIGURATION = <(?:[A-Za-z_][\w:.-]*:)?configuration(\s|>) (IGNORECASE), search truthiness. After '<'
-    // either "configuration" follows directly, or a [A-Za-z_] code point starts a maximal [\w:.-]* run that must end
-    // with ":configuration" (the run's characters are never \s or '>', so the keyword has to close the run); in both
-    // cases the next code point must be \s or '>'.
+    // <(?:[A-Za-z_][\w:.-]*:)?configuration(\s|>), case-insensitive: "configuration" directly after '<', or closing a prefixed name.
     private static bool HasConfigurationElement(string s)
     {
         var offset = s.IndexOf('<');
@@ -390,7 +369,7 @@ public sealed partial class XmlPlugin
             && keywordEnd == runEnd;
     }
 
-    // <(kw1|kw2|...)(\s|>) with IGNORECASE, search truthiness: _CONFIG_SECTIONS, _DOTNET_WEB_HINT, _DOTNET_APP_HINT.
+    // <(keyword)(\s|>), case-insensitive, for any of the given keywords.
     private static bool HasElementNamed(string s, string[] keywordsLower)
     {
         var offset = s.IndexOf('<');
@@ -410,8 +389,7 @@ public sealed partial class XmlPlugin
         return false;
     }
 
-    // _DOCTYPE_DECL = <!DOCTYPE\s+(?P<name>[\w:.-]+) (IGNORECASE), search: the first "<!DOCTYPE" followed by at least
-    // one space and one name code point; the name is the maximal run.
+    // <!DOCTYPE\s+([\w:.-]+), case-insensitive: the first DOCTYPE and its maximal name.
     private static string? FindDoctypeName(string s)
     {
         var offset = 0;
@@ -438,10 +416,7 @@ public sealed partial class XmlPlugin
         }
     }
 
-    // _START_TAG = <(?P<name>[A-Za-z_][\w:.-]*)\b, first finditer match. The greedy run is shortened from its end
-    // until a Python word boundary holds: at the run end the next code point is outside [\w:.-] (a non-word), so the
-    // boundary needs the last run code point to be a word; inside the run both neighbours are run characters and
-    // exactly one must be a word.
+    // <([A-Za-z_][\w:.-]*)\b, the first start tag: the name run is shortened from its end until a word boundary holds.
     private static (string Name, int End)? FindStartTag(string s)
     {
         var offset = s.IndexOf('<');
@@ -464,7 +439,7 @@ public sealed partial class XmlPlugin
         return null;
     }
 
-    // The largest position in [minimum, runEnd] where Python \b holds, or -1.
+    // The largest position in [minimum, runEnd] where a word boundary holds, or -1.
     private static int WordBoundaryBefore(string s, int minimum, int runEnd)
     {
         var position = runEnd;
@@ -483,12 +458,10 @@ public sealed partial class XmlPlugin
         return -1;
     }
 
-    /// <summary>One <c>_XMLNS_ATTRIBUTE</c> match: the attribute start offset, the raw prefix (null for a default declaration) and the URI.</summary>
+    /// <summary>One xmlns attribute: its start offset, the prefix (null for a default namespace) and the URI.</summary>
     private readonly record struct XmlnsMatch(int Start, string? Prefix, string Uri);
 
-    // _XMLNS_ATTRIBUTE = xmlns(?::(?P<prefix>[\w.-]+))?\s*=\s*(?P<quote>['"])(?P<uri>.*?)(?P=quote) (DOTALL),
-    // finditer. "xmlns" has no self-overlap, so the next candidate after a failure is the next literal occurrence;
-    // when ':' follows, the prefix run must be non-empty and maximal (skipping the group would need \s*= at the ':').
+    // xmlns(?::([\w.-]+))?\s*=\s*(['"])(.*?)\2: after ':' the prefix must be non-empty and maximal.
     private static List<XmlnsMatch> XmlnsMatches(string s)
     {
         var results = new List<XmlnsMatch>();
@@ -538,8 +511,7 @@ public sealed partial class XmlPlugin
         return offset;
     }
 
-    // _XDT_NAMESPACE_DECL = xmlns:xdt\s*=\s*(?P<quote>['"])(?P<uri>http://schemas\.microsoft\.com/XML-Document-Transform)(?P=quote)
-    // (IGNORECASE), search truthiness.
+    // xmlns:xdt\s*=\s*(['"])http://schemas.microsoft.com/XML-Document-Transform\1, case-insensitive.
     private static bool HasXdtNamespaceDeclaration(string s)
     {
         const string uri = "http://schemas.microsoft.com/xml-document-transform";
@@ -570,11 +542,9 @@ public sealed partial class XmlPlugin
         }
     }
 
-    // _XDT_TRANSFORM_ATTR search truthiness.
     private static bool HasXdtTransformAttribute(string s) => XdtTransformAttrPattern.IsMatch(s);
 
-    // ^<keyword>$ (IGNORECASE) via match(): the whole name, or the whole name less one trailing "\n" ($ also matches
-    // before a final newline).
+    // The whole name equals the keyword case-insensitively, ignoring one trailing "\n".
     private static bool IsFilenameIgnoreCase(string name, string keywordLower)
     {
         if (MatchesKeywordIgnoreCase(name, 0, keywordLower, out var end))
@@ -585,8 +555,7 @@ public sealed partial class XmlPlugin
         return false;
     }
 
-    // _DOTNET_ASSEMBLY_CONFIG = \.(?:exe|dll)\.config$ (IGNORECASE), search: the name (less an optional final "\n")
-    // ends with either suffix.
+    // \.(?:exe|dll)\.config$, case-insensitive (an optional final "\n" ignored).
     private static bool HasAssemblyConfigSuffix(string name)
     {
         foreach (var candidate in EndCandidates(name))
@@ -604,7 +573,7 @@ public sealed partial class XmlPlugin
         return false;
     }
 
-    // Positions where $ can match: the end, and before a final "\n".
+    // Where $ can match: the end, and before a final "\n".
     private static IEnumerable<int> EndCandidates(string name)
     {
         yield return name.Length;
@@ -614,8 +583,7 @@ public sealed partial class XmlPlugin
         }
     }
 
-    // _DOTNET_TRANSFORM_FILENAME = ^(?P<scope>web|app)\.[^/\\]+\.config$ (IGNORECASE), match(): scope, then '.',
-    // then a non-empty middle free of '/' and '\', then ".config" at an end position. Returns the lowered scope.
+    // ^(web|app)\.[^/\\]+\.config$, case-insensitive; returns the lowered scope.
     private static string? MatchTransformFilename(string name)
     {
         string? scope = null;

@@ -3,16 +3,13 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// YAML detection heuristics for configuration payloads: top-level and nested <c>key: value</c> pairs, document
-/// markers, list markers and filename hints. <c>generic</c> is the default variant; <c>kubernetes-manifest</c> is
-/// surfaced when both <c>apiVersion:</c> and <c>kind:</c> keys are present.
+/// YAML heuristics: top-level and nested <c>key: value</c> pairs, document and list markers, filename hints. Variant
+/// <c>kubernetes-manifest</c> when both <c>apiVersion:</c> and <c>kind:</c> keys are present, else <c>generic</c>.
 /// </summary>
 /// <remarks>
-/// The plugin's rules are MULTILINE regexes whose <c>\s*</c> runs may cross line breaks and whose
-/// <c>(\S|$)</c> tails consume the first character of the following line, so a non-overlapping <c>findall</c> skips a
-/// key that directly follows a valueless key. Every pattern is matched here by hand on code points (see
-/// <c>YamlPlugin.Scan.cs</c>) so that <c>\s</c> (Python includes U+001C-U+001F), <c>\w</c> ([L N _] on code points)
-/// and the overlap rules are reproduced exactly.
+/// The patterns are multiline with <c>\s*</c> runs that may cross line breaks and <c>(\S|$)</c> tails that consume the next
+/// line's first character, so a key right after a valueless key is skipped. They are matched by hand on code points in
+/// <c>YamlPlugin.Scan.cs</c> to keep these rules exact.
 /// </remarks>
 public sealed partial class YamlPlugin : IFormatPlugin
 {

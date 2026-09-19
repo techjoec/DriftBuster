@@ -5,33 +5,23 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
-/// Tree parsing and the walks over it. Both the tree and the well-formedness probe come from
-/// <see cref="DefusedXmlParser"/>, which refuses external entities. The plugin's own guard refuses the tree parse for
-/// any payload carrying a DOCTYPE or ENTITY declaration, and a payload longer than the cap is never parsed. The tree
-/// holds elements and attributes only; the fallback branch alone keeps comment nodes, which the resx and MSBuild walks
-/// reject.
+/// Tree parsing and walks. Tree and well-formedness come from <see cref="DefusedXmlParser"/>; the plugin skips the tree parse for
+/// any payload with a DOCTYPE or ENTITY declaration and for payloads over the size cap. Only the fallback branch keeps comment
+/// nodes, which the resx and MSBuild walks reject.
 /// </summary>
 public sealed partial class XmlPlugin
 {
-    /// <summary>
-    /// Test seam choosing the parser: false takes the fallback branch, whose tree keeps comment nodes.
-    /// </summary>
+    /// <summary>Test seam: false takes the fallback parser branch, whose tree keeps comment nodes.</summary>
     internal bool DefusedAvailable { get; set; } = true;
 
-    /// <summary>
-    /// Test seam for the defused parse: called with the stripped text, it returns
-    /// the root element or null where the parse fails.
-    /// </summary>
+    /// <summary>Test seam for the defused parse: the root element, or null when the parse fails.</summary>
     internal Func<string, XElement?> DefusedFromString { get; set; } = static text => DefusedXmlParser.ParseTree(text);
 
-    /// <summary>
-    /// Test seam for the parse on the fallback branch: called with the text and the parser options (comments
-    /// inserted), it returns the root element or null where the parse fails.
-    /// </summary>
+    /// <summary>Test seam for the fallback parse: the root element, or null when the parse fails.</summary>
     internal Func<string, FallbackParserOptions, XElement?> FallbackFromString { get; set; } =
         (text, parser) => DefusedXmlParser.ParseTree(text, parser.InsertComments);
 
-    /// <summary>The fallback branch's <c>XMLParser(target=TreeBuilder(insert_comments=True))</c>.</summary>
+    /// <summary>Options for the fallback parse (whether comments are kept).</summary>
     internal sealed record FallbackParserOptions(bool InsertComments);
 
     private XElement? ParseTree(string text)
@@ -50,7 +40,6 @@ public sealed partial class XmlPlugin
         return DefusedAvailable ? DefusedFromString(stripped) : FallbackFromString(stripped, new FallbackParserOptions(InsertComments: true));
     }
 
-    // DEFUSED_ET.fromstring(sample_text) succeeding.
     private static bool IsWellFormed(string sampleText) => DefusedXmlParser.IsWellFormed(sampleText);
 
     /// <summary>
@@ -124,7 +113,7 @@ public sealed partial class XmlPlugin
         }
     }
 
-    /// <summary>One element's attributes as Python sees them plus the <c>lower_to_actual</c> lookup (last duplicate wins).</summary>
+    /// <summary>One element's attributes plus a lowercase-to-actual name lookup (last duplicate wins).</summary>
     private sealed class ElementView
     {
         public ElementView(XElement element)
@@ -155,10 +144,8 @@ public sealed partial class XmlPlugin
             return lookup;
         }
 
-        /// <summary><c>lower_to_actual.get(candidate)</c>.</summary>
         public string? Actual(string candidate) => LowerToActual.TryGetValue(candidate, out var actual) ? actual : null;
 
-        /// <summary><c>attributes.get(name, "")</c>.</summary>
         public string Value(string name) => Attributes.TryGetValue(name, out var value) ? value : string.Empty;
     }
 
