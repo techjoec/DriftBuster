@@ -79,8 +79,8 @@ public static partial class HuntEngine
                 {
                     if (rule.Keywords.Count > 0)
                     {
-                        lowered ??= EngineText.Lower(text);
-                        if (!rule.Keywords.All(keyword => EngineText.Contains(lowered, keyword)))
+                        lowered ??= text.ToLowerInvariant();
+                        if (!rule.Keywords.All(keyword => lowered.Contains(keyword, StringComparison.Ordinal)))
                         {
                             continue;
                         }
@@ -158,8 +158,8 @@ public static partial class HuntEngine
     /// <summary><c>_matches_keywords</c>: every keyword occurs in the lowered text.</summary>
     internal static bool MatchesKeywords(string text, IReadOnlyList<string> keywords)
     {
-        var lowered = EngineText.Lower(text);
-        return keywords.All(keyword => EngineText.Contains(lowered, keyword));
+        var lowered = text.ToLowerInvariant();
+        return keywords.All(keyword => lowered.Contains(keyword, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -183,7 +183,7 @@ public static partial class HuntEngine
         var ordered = new List<string>();
         foreach (var value in values)
         {
-            var candidate = EngineText.Strip(value);
+            var candidate = value.Trim();
             if (candidate.Length > 0 && seen.Add(candidate))
             {
                 ordered.Add(candidate);
@@ -207,8 +207,8 @@ public static partial class HuntEngine
             var line = lines[index];
             if (rule.Keywords.Count > 0)
             {
-                var lineLower = EngineText.Lower(line);
-                if (!rule.Keywords.Any(keyword => EngineText.Contains(lineLower, keyword)))
+                var lineLower = line.ToLowerInvariant();
+                if (!rule.Keywords.Any(keyword => lineLower.Contains(keyword, StringComparison.Ordinal)))
                 {
                     continue;
                 }
@@ -217,7 +217,7 @@ public static partial class HuntEngine
             var (matched, values) = MatchLine(rule, line, cancellationToken);
             if (matched)
             {
-                hits.Add(new HuntFinding(rule, path, index + 1, EngineText.Strip(line), Deduplicate(values)));
+                hits.Add(new HuntFinding(rule, path, index + 1, line.Trim(), Deduplicate(values)));
             }
         }
 
@@ -229,7 +229,7 @@ public static partial class HuntEngine
         var values = new List<string>();
         if (rule.Patterns.Count == 0)
         {
-            values.Add(EngineText.Strip(line));
+            values.Add(line.Trim());
             return (true, values);
         }
 
@@ -243,20 +243,20 @@ public static partial class HuntEngine
                 {
                     if (match.Groups[group] is { Success: true, Length: > 0 } captured)
                     {
-                        values.Add(EngineText.Strip(captured.Value));
+                        values.Add(captured.Value.Trim());
                     }
                 }
 
                 if (match.Value.Length > 0)
                 {
-                    values.Add(EngineText.Strip(match.Value));
+                    values.Add(match.Value.Trim());
                 }
             }
         }
 
         if (matched && values.Count == 0)
         {
-            values.Add(EngineText.Strip(line));
+            values.Add(line.Trim());
         }
 
         return (matched, values);

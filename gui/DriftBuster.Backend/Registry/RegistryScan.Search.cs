@@ -22,7 +22,7 @@ public static partial class RegistryScan
         ArgumentNullException.ThrowIfNull(roots);
         ArgumentNullException.ThrowIfNull(spec);
         backend ??= DefaultBackend();
-        var keywords = spec.Keywords.Select(EngineText.Lower).ToList();
+        var keywords = spec.Keywords.Select(item => item.ToLowerInvariant()).ToList();
         var maxDepth = Math.Max(0, spec.MaxDepth);
         var maxHits = Math.Max(1, spec.MaxHits);
         var budget = spec.TimeBudgetS > 0.1 ? spec.TimeBudgetS : 0.1;
@@ -100,8 +100,8 @@ public static partial class RegistryScan
             return null;
         }
 
-        var combined = $"{EngineText.Lower(name)} {EngineText.Lower(text)}";
-        if (keywords.Count > 0 && !keywords.All(keyword => EngineText.Contains(combined, keyword)))
+        var combined = $"{name.ToLowerInvariant()} {text.ToLowerInvariant()}";
+        if (keywords.Count > 0 && !keywords.All(keyword => combined.Contains(keyword, StringComparison.Ordinal)))
         {
             return null;
         }

@@ -164,7 +164,7 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
         var tokenMatch = LineStartMatcher.Matches(YamlTokenPattern, text).FirstOrDefault();
         if (tokenMatch is not null)
         {
-            var token = EngineText.Strip(tokenMatch.Groups["val"].Value).Trim('"', '\'');
+            var token = tokenMatch.Groups["val"].Value.Trim().Trim('"', '\'');
             if (token.Length > 0)
             {
                 metadata["token"] = token;

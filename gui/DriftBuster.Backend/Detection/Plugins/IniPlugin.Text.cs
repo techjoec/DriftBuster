@@ -11,7 +11,7 @@ public sealed partial class IniPlugin
 {
     private static int SkipSpaces(string s, int offset)
     {
-        while (offset < s.Length && EngineText.IsSpace(s[offset]))
+        while (offset < s.Length && char.IsWhiteSpace(s[offset]))
         {
             offset++;
         }
@@ -72,7 +72,7 @@ public sealed partial class IniPlugin
         }
 
         Rune.DecodeFromUtf16(s.AsSpan(offset), out var rune, out _);
-        return !EngineText.IsWordRune(rune);
+        return !rune.IsWordCharacter;
     }
 
     // ^\s*[;#!] on a line.
@@ -113,7 +113,7 @@ public sealed partial class IniPlugin
     // ^\s*[{}]+\s*$ on a line.
     private static bool IsStandaloneBraceLine(string line)
     {
-        var stripped = EngineText.Strip(line);
+        var stripped = line.Trim();
         return stripped.Length > 0 && stripped.All(ch => ch is '{' or '}');
     }
 

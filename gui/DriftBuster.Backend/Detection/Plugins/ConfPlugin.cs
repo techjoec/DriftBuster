@@ -30,7 +30,7 @@ public sealed class ConfPlugin : IFormatPlugin
 
     private static int SkipSpaces(string text, int offset)
     {
-        while (offset < text.Length && EngineText.IsSpace(text[offset]))
+        while (offset < text.Length && char.IsWhiteSpace(text[offset]))
         {
             offset++;
         }
@@ -50,7 +50,7 @@ public sealed class ConfPlugin : IFormatPlugin
         while (offset < text.Length)
         {
             Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out var consumed);
-            if (rune.Value == '-' || EngineText.IsWordRune(rune))
+            if (rune.Value == '-' || rune.IsWordCharacter)
             {
                 offset += consumed;
                 continue;

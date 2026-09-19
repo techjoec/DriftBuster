@@ -139,7 +139,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
             return null;
         }
 
-        var block = EngineText.Strip(workingText[blockStart..blockEnd]);
+        var block = workingText[blockStart..blockEnd].Trim();
         // Distinct non-empty keys in code-point order.
         var keySet = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in TextLines.SplitLines(block))
@@ -150,7 +150,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
                 continue;
             }
 
-            var key = EngineText.Strip(line[..colon]);
+            var key = line[..colon].Trim();
             if (key.Length > 0)
             {
                 keySet.Add(key);
@@ -162,7 +162,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
         var metadata = new JsonObject
         {
             ["front_matter_keys"] = JsonNodes.Strings(keys),
-            ["has_body"] = EngineText.Strip(workingText[matchEnd..]).Length > 0,
+            ["has_body"] = workingText[matchEnd..].Trim().Length > 0,
         };
         var reasons = new List<string> { "Detected YAML front matter fenced with '---' markers" };
         if (keys.Count > 0)
@@ -236,7 +236,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
 
     private static int SpaceRunEnd(string text, int offset)
     {
-        while (offset < text.Length && EngineText.IsSpace(text[offset]))
+        while (offset < text.Length && char.IsWhiteSpace(text[offset]))
         {
             offset++;
         }

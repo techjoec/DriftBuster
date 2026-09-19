@@ -23,7 +23,7 @@ public sealed partial class XmlPlugin
 
         public int Compare((string Key, string Value) x, (string Key, string Value) y)
         {
-            var result = PathText.CompareCodePoints(EngineText.Lower(x.Key), EngineText.Lower(y.Key));
+            var result = PathText.CompareCodePoints(x.Key.ToLowerInvariant(), y.Key.ToLowerInvariant());
             return result != 0 ? result : PathText.CompareCodePoints(x.Key, y.Key);
         }
     }
@@ -75,7 +75,7 @@ public sealed partial class XmlPlugin
         var declAttrs = new JsonObject();
         foreach (var (name, value) in AttributeMatches(attrsSegment))
         {
-            declAttrs[EngineText.Lower(name)] = value;
+            declAttrs[name.ToLowerInvariant()] = value;
         }
 
         metadata["xml_declaration"] = declAttrs;
@@ -132,7 +132,7 @@ public sealed partial class XmlPlugin
         foreach (var match in XmlnsMatches(snippet))
         {
             var prefix = match.Prefix ?? "default";
-            var uri = EngineText.Strip(match.Uri);
+            var uri = match.Uri.Trim();
             pairs.Add((prefix, uri));
             provenance.Add(ProvenanceEntry(snippet, match, uri));
         }
@@ -228,7 +228,7 @@ public sealed partial class XmlPlugin
             segment.Append(ch);
         }
 
-        var rawSegment = EngineText.Strip(segment.ToString());
+        var rawSegment = segment.ToString().Trim();
         if (rawSegment.Length == 0)
         {
             return result;
@@ -236,10 +236,10 @@ public sealed partial class XmlPlugin
 
         if (rawSegment.EndsWith('/'))
         {
-            rawSegment = EngineText.Strip(rawSegment[..^1]);
+            rawSegment = (rawSegment[..^1]).Trim();
         }
 
-        var items = AttributeMatches(rawSegment).Select(pair => (pair.Name, EngineText.Strip(pair.Value))).ToList();
+        var items = AttributeMatches(rawSegment).Select(pair => (pair.Name, pair.Value.Trim())).ToList();
         foreach (var (name, value) in items.OrderBy(pair => pair, EngineKeyOrder.Instance))
         {
             result[name] = value;
@@ -266,20 +266,20 @@ public sealed partial class XmlPlugin
 
             var colon = attrName.IndexOf(':', StringComparison.Ordinal);
             var localName = colon < 0 ? attrName : attrName[(colon + 1)..];
-            var tokens = EngineText.Split(rawText);
-            if (tokens.Count == 0)
+            var tokens = rawText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length == 0)
             {
                 continue;
             }
 
             if (string.Equals(localName, "schemaLocation", StringComparison.Ordinal))
             {
-                if (tokens.Count < 2)
+                if (tokens.Length < 2)
                 {
                     continue;
                 }
 
-                for (var index = 0; index < tokens.Count - 1; index += 2)
+                for (var index = 0; index < tokens.Length - 1; index += 2)
                 {
                     entries.Add(SchemaEntry(tokens[index], tokens[index + 1]));
                 }

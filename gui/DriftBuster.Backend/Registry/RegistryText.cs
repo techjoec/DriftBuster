@@ -9,7 +9,7 @@ namespace DriftBuster.Backend.Registry;
 /// <summary>Registry text helpers: full-string uppercase and search pattern compilation.</summary>
 internal static class RegistryText
 {
-    /// <summary>Full uppercase per code point (<see cref="EngineText.Upper(Rune)"/>); unpaired surrogates pass through.</summary>
+    /// <summary>Full uppercase per code point (<see cref="Rune.ToUpperInvariant(Rune).ToString()"/>); unpaired surrogates pass through.</summary>
     public static string Upper(string text)
     {
         var builder = new StringBuilder(text.Length);
@@ -23,7 +23,7 @@ internal static class RegistryText
                 continue;
             }
 
-            builder.Append(EngineText.Upper(rune));
+            builder.Append(Rune.ToUpperInvariant(rune).ToString());
             offset += consumed;
         }
 

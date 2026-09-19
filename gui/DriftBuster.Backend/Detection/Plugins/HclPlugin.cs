@@ -36,7 +36,7 @@ public sealed class HclPlugin : IFormatPlugin
 
     private static int SkipSpaces(string text, int offset)
     {
-        while (offset < text.Length && EngineText.IsSpace(text[offset]))
+        while (offset < text.Length && char.IsWhiteSpace(text[offset]))
         {
             offset++;
         }
@@ -53,7 +53,7 @@ public sealed class HclPlugin : IFormatPlugin
         }
 
         Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out _);
-        return !EngineText.IsWordRune(rune);
+        return !rune.IsWordCharacter;
     }
 
     // "[^\n{]*\{" from offset: the first "{" before the next "\n" ends the match; returns -1 when there is none.
@@ -113,7 +113,7 @@ public sealed class HclPlugin : IFormatPlugin
 
     private static string ChooseVariant(List<string> blocks)
     {
-        var lowered = blocks.Select(EngineText.Lower).ToList();
+        var lowered = blocks.Select(item => item.ToLowerInvariant()).ToList();
         if (lowered.Contains("job", StringComparer.Ordinal))
         {
             return "hashicorp-nomad";

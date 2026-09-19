@@ -175,7 +175,7 @@ public sealed partial class XmlPlugin
         }
 
         if (metadata.Text("root_local_name") is { } local
-            && EngineText.Lower(local) is "stylesheet" or "transform")
+            && local.ToLowerInvariant() is "stylesheet" or "transform")
         {
             AddReason(reasons, $"Root element <{local}> indicates an XSLT stylesheet");
         }
@@ -192,7 +192,7 @@ public sealed partial class XmlPlugin
     {
         if (metadata.Text("root_local_name") is { } rootLocal)
         {
-            var lowered = EngineText.Lower(rootLocal);
+            var lowered = rootLocal.ToLowerInvariant();
             if (string.Equals(lowered, "configuration", StringComparison.Ordinal))
             {
                 AddReason(reasons, "Root element indicates framework configuration layout");
@@ -223,14 +223,14 @@ public sealed partial class XmlPlugin
 
     private static bool LooksLikeMsbuild(string extension, JsonObject metadata)
     {
-        var loweredExtension = EngineText.Lower(extension);
+        var loweredExtension = extension.ToLowerInvariant();
         if (MsbuildExtensions.Contains(loweredExtension))
         {
             return true;
         }
 
         if (metadata.Text("root_local_name") is not { } local
-            || !string.Equals(EngineText.Lower(local), "project", StringComparison.Ordinal))
+            || !string.Equals(local.ToLowerInvariant(), "project", StringComparison.Ordinal))
         {
             return false;
         }
@@ -251,7 +251,7 @@ public sealed partial class XmlPlugin
         {
             foreach (var (name, _) in attributeMap)
             {
-                if (EngineText.Lower(name) is "defaulttargets" or "toolsversion" or "sdk")
+                if (name.ToLowerInvariant() is "defaulttargets" or "toolsversion" or "sdk")
                 {
                     return true;
                 }
@@ -263,7 +263,7 @@ public sealed partial class XmlPlugin
 
     private static string ClassifyMsbuildKind(string extension)
     {
-        var loweredExtension = EngineText.Lower(extension);
+        var loweredExtension = extension.ToLowerInvariant();
         return loweredExtension switch
         {
             ".targets" => "targets",

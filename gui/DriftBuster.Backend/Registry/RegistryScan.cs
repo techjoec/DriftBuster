@@ -61,7 +61,7 @@ public static partial class RegistryScan
                     values[name] = data;
                 }
 
-                var displayName = EngineText.Strip(TruthyText(values, "DisplayName") ?? string.Empty);
+                var displayName = (TruthyText(values, "DisplayName") ?? string.Empty).Trim();
                 if (displayName.Length == 0)
                 {
                     continue;
@@ -83,7 +83,7 @@ public static partial class RegistryScan
         var codePoints = Comparer<string>.Create(PathText.CompareCodePoints);
         return apps
             .Where(app => seen.Add((app.Hive, app.KeyPath)))
-            .OrderBy(app => EngineText.Lower(app.DisplayName), codePoints)
+            .OrderBy(app => app.DisplayName.ToLowerInvariant(), codePoints)
             .ThenBy(app => app.Hive, codePoints)
             .ToList()
             .AsReadOnly();
@@ -118,12 +118,12 @@ public static partial class RegistryScan
     public static IReadOnlyList<RegistryRoot> FindAppRegistryRoots(string appToken, IReadOnlyList<RegistryApp>? installed = null)
     {
         ArgumentNullException.ThrowIfNull(appToken);
-        var token = EngineText.Lower(EngineText.Strip(appToken));
+        var token = appToken.Trim().ToLowerInvariant();
         var candidates = new List<RegistryRoot>();
         foreach (var app in installed ?? [])
         {
-            if (!EngineText.Contains(EngineText.Lower(app.DisplayName), token)
-                && !(!string.IsNullOrEmpty(app.Publisher) && EngineText.Contains(EngineText.Lower(app.Publisher), token)))
+            if (!app.DisplayName.ToLowerInvariant().Contains(token, StringComparison.Ordinal)
+                && !(!string.IsNullOrEmpty(app.Publisher) && app.Publisher.ToLowerInvariant().Contains(token, StringComparison.Ordinal)))
             {
                 continue;
             }
@@ -131,7 +131,7 @@ public static partial class RegistryScan
             var appView = app.View is "32" or "64" ? app.View : null;
             foreach (var (vendor, product) in CandidateVendorAppPairs(app.DisplayName))
             {
-                var suffix = string.Join('\\', new[] { EngineText.Strip(vendor), EngineText.Strip(product) }.Where(segment => segment.Length > 0));
+                var suffix = string.Join('\\', new[] { vendor.Trim(), product.Trim() }.Where(segment => segment.Length > 0));
                 if (suffix.Length > 0)
                 {
                     candidates.Add(new RegistryRoot("HKCU", $"Software\\{suffix}"));
@@ -143,7 +143,7 @@ public static partial class RegistryScan
             candidates.Add(new RegistryRoot(app.Hive, app.KeyPath, appView));
         }
 
-        var baseSuffix = EngineText.Strip(appToken);
+        var baseSuffix = appToken.Trim();
         if (baseSuffix.Length > 0)
         {
             candidates.Add(new RegistryRoot("HKCU", $"Software\\{baseSuffix}"));

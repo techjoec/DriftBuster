@@ -29,7 +29,7 @@ public sealed partial class YamlPlugin
         {
             var raw = lines[index];
             var lineNumber = index + 1;
-            var stripped = EngineText.StripStart(raw);
+            var stripped = raw.TrimStart();
             if (stripped.Length == 0 || stripped[0] == '#')
             {
                 continue;

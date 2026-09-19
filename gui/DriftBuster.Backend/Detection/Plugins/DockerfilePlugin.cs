@@ -63,7 +63,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
 
     private static int SkipSpaces(string text, int offset)
     {
-        while (offset < text.Length && EngineText.IsSpace(text[offset]))
+        while (offset < text.Length && char.IsWhiteSpace(text[offset]))
         {
             offset++;
         }
@@ -80,7 +80,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
         }
 
         Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out _);
-        return !EngineText.IsWordRune(rune);
+        return !rune.IsWordCharacter;
     }
 
     // ^\s*FROM\s+\S+ on one line, case-insensitive.
@@ -123,7 +123,7 @@ public sealed class DockerfilePlugin : IFormatPlugin
         var lines = TextLines.SplitLines(text);
         var index = 0;
         while (index < lines.Count
-            && (EngineText.Strip(lines[index]).Length == 0 || EngineText.StripStart(lines[index]).StartsWith('#')))
+            && (lines[index].Trim().Length == 0 || lines[index].TrimStart().StartsWith('#')))
         {
             index++;
         }

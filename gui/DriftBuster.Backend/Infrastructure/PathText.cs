@@ -35,7 +35,7 @@ public static class PathText
         return (Label(leftParts), Label(rightParts));
     }
 
-    public static string NameLower(string path) => EngineText.Lower(Name(path));
+    public static string NameLower(string path) => Name(path).ToLowerInvariant();
 
     /// <summary>
     /// The final suffix: the last dot must be neither the first nor the last character of the name, so ".env" and "foo." have no
@@ -48,7 +48,7 @@ public static class PathText
         return index > 0 && index < name.Length - 1 ? name[index..] : string.Empty;
     }
 
-    public static string SuffixLower(string path) => EngineText.Lower(Suffix(path));
+    public static string SuffixLower(string path) => Suffix(path).ToLowerInvariant();
 
     public static string ToPosix(string path)
     {

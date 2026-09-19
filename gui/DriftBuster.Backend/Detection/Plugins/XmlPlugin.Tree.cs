@@ -22,7 +22,7 @@ public sealed partial class XmlPlugin
 
     private static void ExtractResxKeys(XElement root, JsonObject metadata)
     {
-        if (!string.Equals(EngineText.Lower(root.Name.LocalName), "root", StringComparison.Ordinal))
+        if (!string.Equals(root.Name.LocalName.ToLowerInvariant(), "root", StringComparison.Ordinal))
         {
             return;
         }
@@ -45,7 +45,7 @@ public sealed partial class XmlPlugin
         var resourceKeys = new List<string>();
         foreach (var element in root.DescendantsAndSelf())
         {
-            if (!string.Equals(EngineText.Lower(element.Name.LocalName), "data", StringComparison.Ordinal))
+            if (!string.Equals(element.Name.LocalName.ToLowerInvariant(), "data", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -95,7 +95,7 @@ public sealed partial class XmlPlugin
             var lookup = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var name in attributes.Keys)
             {
-                lookup[EngineText.Lower(name)] = name;
+                lookup[name.ToLowerInvariant()] = name;
             }
 
             return lookup;
@@ -265,7 +265,7 @@ public sealed partial class XmlPlugin
 
     private static void AddAttributeHint(HintBuckets buckets, string category, ElementView view, string attributeName, string value)
     {
-        var cleaned = EngineText.Strip(value);
+        var cleaned = value.Trim();
         if (cleaned.Length == 0)
         {
             return;
@@ -274,9 +274,9 @@ public sealed partial class XmlPlugin
         var digest = Sha256Hex(cleaned);
         var dedupeKey = (
             digest,
-            EngineText.Lower(EngineText.Strip(view.KeyValue ?? string.Empty)),
-            EngineText.Lower(attributeName),
-            EngineText.Lower(view.ElementName));
+            (view.KeyValue ?? string.Empty).Trim().ToLowerInvariant(),
+            attributeName.ToLowerInvariant(),
+            view.ElementName.ToLowerInvariant());
         var bucket = buckets.Seen[category];
         if (bucket.Contains(dedupeKey))
         {
@@ -307,13 +307,13 @@ public sealed partial class XmlPlugin
     internal static bool LooksLikeEndpoint(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var cleaned = EngineText.Strip(value);
+        var cleaned = value.Trim();
         if (cleaned.Length == 0)
         {
             return false;
         }
 
-        var lowered = EngineText.Lower(cleaned);
+        var lowered = cleaned.ToLowerInvariant();
         if (cleaned.Contains("://", StringComparison.Ordinal))
         {
             return true;
@@ -329,7 +329,7 @@ public sealed partial class XmlPlugin
 
     private static bool ContainsFeatureKeyword(string text)
     {
-        var lowered = EngineText.Lower(text);
+        var lowered = text.ToLowerInvariant();
         return lowered.Contains("feature", StringComparison.Ordinal)
             || lowered.Contains("flag", StringComparison.Ordinal)
             || lowered.Contains("toggle", StringComparison.Ordinal);
@@ -337,7 +337,7 @@ public sealed partial class XmlPlugin
 
     private static bool ContainsEndpointKeyword(string text)
     {
-        var lowered = EngineText.Lower(text);
+        var lowered = text.ToLowerInvariant();
         foreach (var keyword in new[] { "endpoint", "serviceurl", "baseaddress", "callback", "apiurl", "address" })
         {
             if (lowered.Contains(keyword, StringComparison.Ordinal))
@@ -362,16 +362,16 @@ public sealed partial class XmlPlugin
         var attrLookup = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (name, value) in ElementAttributes(root))
         {
-            var cleaned = EngineText.Strip(value);
+            var cleaned = value.Trim();
             if (cleaned.Length > 0)
             {
-                attrLookup[EngineText.Lower(name)] = cleaned;
+                attrLookup[name.ToLowerInvariant()] = cleaned;
             }
         }
 
         if (attrLookup.TryGetValue("defaulttargets", out var defaultTargets))
         {
-            var targets = defaultTargets.Split(';').Select(EngineText.Strip).Where(token => token.Length > 0).ToList();
+            var targets = defaultTargets.Split(';').Select(item => item.Trim()).Where(token => token.Length > 0).ToList();
             if (targets.Count > 0)
             {
                 metadata["msbuild_default_targets"] = JsonNodes.Strings(targets);
@@ -415,8 +415,8 @@ public sealed partial class XmlPlugin
                 var name = element.Attribute("Name")?.Value;
                 if (!string.IsNullOrEmpty(name))
                 {
-                    var cleanedName = EngineText.Strip(name);
-                    if (cleanedName.Length > 0 && seenTargetNames.Add(EngineText.Lower(cleanedName)) && targetNames.Count < 10)
+                    var cleanedName = name.Trim();
+                    if (cleanedName.Length > 0 && seenTargetNames.Add(cleanedName.ToLowerInvariant()) && targetNames.Count < 10)
                     {
                         targetNames.Add(cleanedName);
                     }
@@ -442,14 +442,14 @@ public sealed partial class XmlPlugin
                 continue;
             }
 
-            var cleanedValue = EngineText.Strip(rawValue);
+            var cleanedValue = rawValue.Trim();
             if (cleanedValue.Length == 0)
             {
                 continue;
             }
 
             var digest = Sha256Hex(cleanedValue);
-            if (!seenImports.Add((EngineText.Lower(attribute), digest)))
+            if (!seenImports.Add((attribute.ToLowerInvariant(), digest)))
             {
                 continue;
             }
@@ -463,7 +463,7 @@ public sealed partial class XmlPlugin
             var conditionValue = element.Attribute("Condition")?.Value;
             if (!string.IsNullOrEmpty(conditionValue))
             {
-                var cleanedCondition = EngineText.Strip(conditionValue);
+                var cleanedCondition = conditionValue.Trim();
                 if (cleanedCondition.Length > 0)
                 {
                     entry["condition_hash"] = Sha256Hex(cleanedCondition);

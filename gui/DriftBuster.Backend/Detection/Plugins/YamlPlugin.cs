@@ -99,7 +99,7 @@ public sealed partial class YamlPlugin : IFormatPlugin
         var start = 0;
         while (start < lines.Count)
         {
-            var stripped = EngineText.StripStart(lines[start]);
+            var stripped = lines[start].TrimStart();
             if (stripped.Length == 0 || stripped[0] == '#')
             {
                 start++;

@@ -172,7 +172,7 @@ public sealed partial class TomlPlugin : IFormatPlugin
             return "package-manifest-toml";
         }
 
-        var inCargoFolder = string.Equals(EngineText.Lower(PathText.Name(LexicalPath.Parent(path))), ".cargo", StringComparison.Ordinal);
+        var inCargoFolder = string.Equals((PathText.Name(LexicalPath.Parent(path))).ToLowerInvariant(), ".cargo", StringComparison.Ordinal);
         var toolTablesOnly = tables.Count > 0 && tables.All(table => table.StartsWith("tool.", StringComparison.Ordinal));
         if (SettingsFileNames.Contains(name) || (inCargoFolder && string.Equals(name, "config.toml", StringComparison.Ordinal)) || toolTablesOnly)
         {
@@ -294,8 +294,8 @@ public sealed partial class TomlPlugin : IFormatPlugin
         var count = 0;
         foreach (var line in lines.Take(BareKeyLineWindow))
         {
-            var stripped = EngineText.StripStart(line);
-            if (EngineText.Strip(line).Length == 0
+            var stripped = line.TrimStart();
+            if (line.Trim().Length == 0
                 || stripped[0] is '#' or ';' or '['
                 || line.Contains('=', StringComparison.Ordinal)
                 || line.Contains(':', StringComparison.Ordinal))

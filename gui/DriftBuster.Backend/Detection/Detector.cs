@@ -432,63 +432,21 @@ public class Detector
         return detector.ScanPath(root, glob);
     }
 
-    // Upper-cases the first letter (any L* code point, astral included) with full case mapping (EngineText.Upper).
-    private static string TitleiseComponent(string component)
-    {
-        if (component.Length == 0)
-        {
-            return component;
-        }
-
-        var offset = 0;
-        foreach (var rune in component.EnumerateRunes())
-        {
-            if (EngineUnicode.IsAlpha(rune.Value))
-            {
-                return string.Concat(component.AsSpan(0, offset), EngineText.Upper(rune), component.AsSpan(offset + rune.Utf16SequenceLength));
-            }
-
-            offset += rune.Utf16SequenceLength;
-        }
-
-        return component;
-    }
-
-    private static string NormaliseReasonToken(string token)
-    {
-        var parts = token.Split('-');
-        for (var index = 0; index < parts.Length; index++)
-        {
-            var subparts = parts[index].Split(':');
-            for (var sub = 0; sub < subparts.Length; sub++)
-            {
-                subparts[sub] = TitleiseComponent(subparts[sub]);
-            }
-
-            parts[index] = string.Join(':', subparts);
-        }
-
-        return string.Join('-', parts);
-    }
-
-    /// <summary>
-    /// Trims, collapses whitespace, title-cases the first letter of every '-' and ':' sub-part of each token and
-    /// drops empty or duplicate reasons while preserving order.
-    /// </summary>
+    /// <summary>Each reason with its whitespace runs collapsed to one space; empty and repeated reasons dropped, order kept.</summary>
     internal static IList<string> NormaliseReasons(IEnumerable<string> reasons)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var normalised = new List<string>();
         foreach (var raw in reasons)
         {
-            var text = EngineText.Strip(raw ?? string.Empty);
+            var text = (raw ?? string.Empty).Trim();
             if (text.Length == 0)
             {
                 continue;
             }
 
-            var words = EngineText.Split(text);
-            var formatted = string.Join(' ', words.Select(NormaliseReasonToken));
+            var words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            var formatted = string.Join(' ', words);
             if (seen.Add(formatted))
             {
                 normalised.Add(formatted);

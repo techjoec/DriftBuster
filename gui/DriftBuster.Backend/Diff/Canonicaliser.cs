@@ -41,7 +41,7 @@ public static partial class Canonicaliser
 
     /// <summary>
     /// Leading U+FEFF removed; U+2028, U+2029 and U+0085 become LF; CRLF then CR become LF; trailing whitespace
-    /// (<see cref="EngineText.IsSpace"/>) trimmed per line; lines joined with LF (a trailing break survives as a final empty line).
+    /// (<see cref="char.IsWhiteSpace(char)"/>) trimmed per line; lines joined with LF (a trailing break survives as a final empty line).
     /// </summary>
     public static string CanonicaliseText(string payload)
     {
@@ -57,7 +57,7 @@ public static partial class Canonicaliser
         var lines = normalised.Split('\n');
         for (var index = 0; index < lines.Length; index++)
         {
-            lines[index] = EngineText.StripEnd(lines[index]);
+            lines[index] = lines[index].TrimEnd();
         }
 
         return string.Join("\n", lines);

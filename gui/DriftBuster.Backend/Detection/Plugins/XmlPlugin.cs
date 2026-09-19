@@ -74,7 +74,7 @@ public sealed partial class XmlPlugin : IFormatPlugin
             configRoot = true;
         }
         else if (metadata.Text("root_local_name") is { } local
-            && string.Equals(EngineText.Lower(local), "configuration", StringComparison.Ordinal))
+            && string.Equals(local.ToLowerInvariant(), "configuration", StringComparison.Ordinal))
         {
             reasons.Add("Root element indicates framework configuration layout");
             configRoot = true;

@@ -48,13 +48,13 @@ public sealed record MultiServerPlan
 
     private static MultiServerPlan Create(string? rawHostId, string? rawLabel, IEnumerable<string> rawRoots, bool isPreferred, int priority, double? throttle)
     {
-        var hostId = EngineText.Strip(rawHostId ?? string.Empty);
+        var hostId = (rawHostId ?? string.Empty).Trim();
         if (hostId.Length == 0)
         {
             hostId = Convert.ToHexStringLower(SHA1.HashData(RandomNumberGenerator.GetBytes(16)));
         }
 
-        var label = EngineText.Strip(string.IsNullOrEmpty(rawLabel) ? hostId : rawLabel);
+        var label = (string.IsNullOrEmpty(rawLabel) ? hostId : rawLabel).Trim();
         if (label.Length == 0)
         {
             label = hostId;
@@ -63,7 +63,7 @@ public sealed record MultiServerPlan
         var roots = new List<string>();
         foreach (var entry in rawRoots)
         {
-            var text = EngineText.Strip(entry);
+            var text = entry.Trim();
             if (text.Length > 0)
             {
                 roots.Add(EngineOsPath.ExpandUser(EngineOsPath.ExpandVars(text)));

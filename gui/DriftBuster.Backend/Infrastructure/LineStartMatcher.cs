@@ -55,11 +55,11 @@ public static class LineStartMatcher
         return false;
     }
 
-    /// <summary>End of the whitespace run (<see cref="EngineText.IsSpace"/>) starting at <paramref name="offset"/>.</summary>
+    /// <summary>End of the whitespace run (<see cref="char.IsWhiteSpace(char)"/>) starting at <paramref name="offset"/>.</summary>
     public static int SkipSpaces(string text, int offset)
     {
         ArgumentNullException.ThrowIfNull(text);
-        while (offset < text.Length && EngineText.IsSpace(text[offset]))
+        while (offset < text.Length && char.IsWhiteSpace(text[offset]))
         {
             offset++;
         }

@@ -113,7 +113,7 @@ public static partial class Canonicaliser
     private static string Qualified(string? prefix, string localName) => string.IsNullOrEmpty(prefix) ? localName : prefix + ":" + localName;
 
     // Only whitespace-only values collapse; others keep their padding.
-    private static string CollapseWhitespace(string value) => EngineText.Strip(value).Length == 0 ? string.Empty : value;
+    private static string CollapseWhitespace(string value) => value.Trim().Length == 0 ? string.Empty : value;
 
     // The tail: the character data between this node and the next non-text sibling.
     private static void AppendTail(StringBuilder builder, XNode node)

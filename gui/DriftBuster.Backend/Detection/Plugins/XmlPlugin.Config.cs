@@ -95,7 +95,7 @@ public sealed partial class XmlPlugin
             return;
         }
 
-        var cleanedStages = transformStages.Select(EngineText.Strip).Where(stage => stage.Length > 0).ToList();
+        var cleanedStages = transformStages.Select(item => item.Trim()).Where(stage => stage.Length > 0).ToList();
         if (cleanedStages.Count == 0)
         {
             return;
@@ -123,7 +123,7 @@ public sealed partial class XmlPlugin
     {
         var role = new ConfigRole();
         var filename = path is null ? string.Empty : PathText.Name(path);
-        var lowered = EngineText.Lower(filename);
+        var lowered = filename.ToLowerInvariant();
         string? assigned = null;
         if (filename.Length > 0)
         {

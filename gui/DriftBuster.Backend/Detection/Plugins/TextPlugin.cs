@@ -39,7 +39,7 @@ public sealed class TextPlugin : IFormatPlugin
 
     private static LineKind ClassifyLine(string line)
     {
-        var s = EngineText.Strip(line);
+        var s = line.Trim();
         if (s.Length == 0)
         {
             return LineKind.Blank;
@@ -75,13 +75,13 @@ public sealed class TextPlugin : IFormatPlugin
         while (offset < s.Length)
         {
             Rune.DecodeFromUtf16(s.AsSpan(offset), out var rune, out var consumed);
-            if (rune.Value is '.' or '-' || EngineText.IsWordRune(rune))
+            if (rune.Value is '.' or '-' || rune.IsWordCharacter)
             {
                 offset += consumed;
                 continue;
             }
 
-            return rune.Value <= char.MaxValue && EngineText.IsSpace((char)rune.Value);
+            return rune.Value <= char.MaxValue && char.IsWhiteSpace((char)rune.Value);
         }
 
         return true;
@@ -102,12 +102,12 @@ public sealed class TextPlugin : IFormatPlugin
         }
 
         Rune.DecodeFromUtf16(s.AsSpan(next), out var rune, out _);
-        return !EngineText.IsWordRune(rune);
+        return !rune.IsWordCharacter;
     }
 
     private static int SkipSpaces(string s, int offset)
     {
-        while (offset < s.Length && EngineText.IsSpace(s[offset]))
+        while (offset < s.Length && char.IsWhiteSpace(s[offset]))
         {
             offset++;
         }
@@ -156,7 +156,7 @@ public sealed class TextPlugin : IFormatPlugin
     }
 
     // A line that is "client" once stripped.
-    private static bool IsOpenvpnClientLine(string line) => string.Equals(EngineText.Strip(line), "client", StringComparison.Ordinal);
+    private static bool IsOpenvpnClientLine(string line) => string.Equals(line.Trim(), "client", StringComparison.Ordinal);
 
     // ^\s*(dev|remote|proto)\b.
     private static bool IsOpenvpnDirectiveLine(string line)
@@ -234,7 +234,7 @@ public sealed class TextPlugin : IFormatPlugin
 
         // Oddities: obvious nonstandard marker tokens.
         var reviewReasons = new List<string>();
-        if (lines.Take(MarkerWindow).Any(line => EngineText.StripStart(line).StartsWith("<<<", StringComparison.Ordinal)))
+        if (lines.Take(MarkerWindow).Any(line => line.TrimStart().StartsWith("<<<", StringComparison.Ordinal)))
         {
             reviewReasons.Add("Nonstandard marker tokens present (e.g., '<<<')");
         }

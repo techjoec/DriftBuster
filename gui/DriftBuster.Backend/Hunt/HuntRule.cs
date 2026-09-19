@@ -25,11 +25,11 @@ public sealed class HuntRule
         ArgumentNullException.ThrowIfNull(compiledPatterns);
         Name = name;
         Description = description;
-        Keywords = (keywords ?? []).Select(EngineText.Lower).ToList();
+        Keywords = (keywords ?? []).Select(item => item.ToLowerInvariant()).ToList();
         Patterns = compiledPatterns;
         if (tokenName is not null)
         {
-            var normalised = EngineText.Strip(tokenName);
+            var normalised = tokenName.Trim();
             TokenName = normalised.Length == 0 ? null : normalised;
         }
     }

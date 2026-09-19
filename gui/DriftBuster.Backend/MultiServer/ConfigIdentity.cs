@@ -22,7 +22,7 @@ public static class ConfigIdentity
     public static string Slugify(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var text = EngineText.Lower(EngineText.Strip(value));
+        var text = value.Trim().ToLowerInvariant();
         if (text.Length == 0)
         {
             return string.Empty;
@@ -40,7 +40,7 @@ public static class ConfigIdentity
                 continue;
             }
 
-            if (EngineText.IsAlnum(rune) || rune.Value is '-' or '_' or '/')
+            if (rune.IsLetterOrNumber || rune.Value is '-' or '_' or '/')
             {
                 builder.Append(text, offset, consumed);
             }

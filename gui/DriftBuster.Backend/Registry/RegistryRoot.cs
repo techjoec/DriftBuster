@@ -25,13 +25,13 @@ public sealed partial record RegistryRoot(string Hive, string Path, string? View
     /// <exception cref="FormatException">A malformed descriptor, including one of only commas and whitespace.</exception>
     public static RegistryRoot Parse(string? text)
     {
-        var value = EngineText.Strip(text ?? string.Empty);
+        var value = (text ?? string.Empty).Trim();
         if (value.Length == 0)
         {
             throw new FormatException("Registry root descriptor must be non-empty");
         }
 
-        var segments = value.Split(',').Select(EngineText.Strip).Where(segment => segment.Length > 0).ToList();
+        var segments = value.Split(',').Select(item => item.Trim()).Where(segment => segment.Length > 0).ToList();
         if (segments.Count == 0)
         {
             throw new FormatException("Registry root descriptor must be non-empty");
@@ -44,7 +44,7 @@ public sealed partial record RegistryRoot(string Hive, string Path, string? View
         }
 
         var hive = RegistryText.Upper(match.Groups["hive"].Value);
-        var path = EngineText.Strip(match.Groups["path"].Value);
+        var path = match.Groups["path"].Value.Trim();
         if (path.Length == 0)
         {
             throw new FormatException("Registry root path segment must be non-empty");
@@ -67,8 +67,8 @@ public sealed partial record RegistryRoot(string Hive, string Path, string? View
             throw new FormatException($"Registry root option '{option}' must be formatted as key=value");
         }
 
-        var key = EngineText.Lower(EngineText.Strip(option[..separator]));
-        var rawValue = EngineText.Strip(option[(separator + 1)..]);
+        var key = option[..separator].Trim().ToLowerInvariant();
+        var rawValue = (option[(separator + 1)..]).Trim();
         if (!string.Equals(key, "view", StringComparison.Ordinal))
         {
             throw new FormatException($"Unsupported registry root option '{key}'");

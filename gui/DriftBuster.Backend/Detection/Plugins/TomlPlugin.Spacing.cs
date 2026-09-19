@@ -70,7 +70,7 @@ public sealed partial class TomlPlugin
                 continue;
             }
 
-            var stripped = EngineText.StripStart(raw);
+            var stripped = raw.TrimStart();
             if (stripped.Length == 0 || stripped[0] is '#' or ';' or '[')
             {
                 continue;

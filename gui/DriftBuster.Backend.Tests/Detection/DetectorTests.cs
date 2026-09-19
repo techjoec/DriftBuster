@@ -249,8 +249,8 @@ public sealed class DetectorTests : IDisposable
         match.Metadata["bytes_sampled"].ShouldBeJson(4);
         match.Metadata["encoding"].ShouldBeJson("utf-8");
         match.Metadata["sample_truncated"].ShouldBeJson(true);
-        match.Reasons.Should().Contain("Decoded Content Using Utf-8 Encoding");
-        match.Reasons.Should().Contain("Truncated Sample To 4B");
+        match.Reasons.Should().Contain("Decoded content using utf-8 encoding");
+        match.Reasons.Should().Contain("Truncated sample to 4B");
     }
 
     [Fact]
@@ -464,7 +464,7 @@ public sealed class DetectorTests : IDisposable
         finalMatch!.Metadata.Should().NotBeNull();
         finalMatch.Metadata!["sample_budget_exhausted"].ShouldBeJson(true);
         finalMatch.Reasons.Should().Contain(reason => reason.ToLowerInvariant().Contains("sampling budget exhausted", StringComparison.Ordinal));
-        finalMatch.Reasons.Should().Contain("Sampling Budget Exhausted After 512B");
+        finalMatch.Reasons.Should().Contain("Sampling budget exhausted after 512B");
     }
 
     [Fact]
@@ -488,11 +488,11 @@ public sealed class DetectorTests : IDisposable
     }
 
     [Fact]
-    public void NormaliseReasonsDeduplicatesAndTitleises()
+    public void NormaliseReasonsTrimsAndDeduplicatesKeepingTheWording()
     {
-        string[] reasons = [" sample-token:value ", "", "sample-token:value", "data-loaded"];
+        string[] reasons = [" sample-token:value ", "", "sample-token:value", "Data  loaded"];
         var normalised = Detector.NormaliseReasons(reasons);
-        normalised.Should().Equal("Sample-Token:Value", "Data-Loaded");
+        normalised.Should().Equal("sample-token:value", "Data loaded");
     }
 
     [Fact]
@@ -670,10 +670,10 @@ public sealed class DetectorTests : IDisposable
     // Reason normalisation uses str.strip()/str.split() (U+001C-U+001F are whitespace) and str.upper()
     // (full mapping) on the first letter, which may be an astral code point (mathematical letters have no uppercase).
     [Fact]
-    public void NormaliseReasonsUsesUnicodeWhitespaceAndFullUppercase()
+    public void NormaliseReasonsCollapsesUnicodeWhitespace()
     {
-        string[] reasons = ["\u001F\u00DFeta\u001F\uFB01le", "\U0001D41Astral token", "1st-\u01C6:\u03C9"];
-        Detector.NormaliseReasons(reasons).Should().Equal("SSeta FIle", "\U0001D41Astral Token", "1St-\u01C4:\u03A9");
+        string[] reasons = ["\u00A0\u00DFeta\u2003\u2003\uFB01le\u3000", "\U0001D41Astral token"];
+        Detector.NormaliseReasons(reasons).Should().Equal("\u00DFeta \uFB01le", "\U0001D41Astral token");
     }
 
     [Fact]

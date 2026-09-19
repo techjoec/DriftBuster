@@ -147,7 +147,7 @@ public sealed partial class IniPlugin : IFormatPlugin
         var commentedPairs = 0;
         foreach (var line in scan.Lines.Take(ReviewLineWindow))
         {
-            var s = EngineText.StripStart(line);
+            var s = line.TrimStart();
             if (s.StartsWith('#') || s.StartsWith(';'))
             {
                 if (s.Contains('=', StringComparison.Ordinal) || s.Contains(':', StringComparison.Ordinal))

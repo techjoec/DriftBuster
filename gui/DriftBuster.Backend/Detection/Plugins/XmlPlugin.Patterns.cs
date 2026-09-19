@@ -12,7 +12,7 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <remarks>
 /// Case-insensitive matching compares simple lowercase, and also accepts U+0130/U+0131 for 'i', U+017F for 's' and U+212A for
 /// 'k' (<see cref="MatchesKeywordIgnoreCase"/>, <see cref="IsAsciiLetterIgnoreCase"/>). <c>\w</c> is
-/// <see cref="EngineText.IsWordRune"/>, <c>\s</c> is <see cref="EngineText.IsSpace"/>.
+/// a letter, number or <c>_</c>, <c>\s</c> is <see cref="char.IsWhiteSpace(char)"/>.
 /// </remarks>
 public sealed partial class XmlPlugin
 {
@@ -26,7 +26,7 @@ public sealed partial class XmlPlugin
 
     private static int SkipSpaces(string s, int offset)
     {
-        while (offset < s.Length && EngineText.IsSpace(s[offset]))
+        while (offset < s.Length && char.IsWhiteSpace(s[offset]))
         {
             offset++;
         }
@@ -92,7 +92,7 @@ public sealed partial class XmlPlugin
         => rune.Value is '_' or 0x0130 or 0x0131 or 0x017F or 0x212A || (rune.IsAscii && char.IsAsciiLetter((char)rune.Value));
 
     // [\w:.-] on a code point.
-    private static bool IsNameRune(Rune rune) => rune.Value is ':' or '.' or '-' || EngineText.IsWordRune(rune);
+    private static bool IsNameRune(Rune rune) => rune.Value is ':' or '.' or '-' || rune.IsWordCharacter;
 
     // End of the [\w:.-]* run starting at offset.
     private static int SkipNameRunes(string s, int offset)
@@ -107,7 +107,7 @@ public sealed partial class XmlPlugin
 
     // (\s|>) at offset.
     private static bool IsSpaceOrGreaterThan(string s, int offset)
-        => offset < s.Length && (s[offset] == '>' || EngineText.IsSpace(s[offset]));
+        => offset < s.Length && (s[offset] == '>' || char.IsWhiteSpace(s[offset]));
 
     /// <summary>Case-insensitive search for a literal keyword.</summary>
     private static bool ContainsIgnoreCase(string s, string keywordLower) => IndexOfIgnoreCase(s, keywordLower, 0) >= 0;
@@ -200,7 +200,7 @@ public sealed partial class XmlPlugin
             return false;
         }
 
-        if (afterName < s.Length && EngineText.IsWordRune(RuneAt(s, afterName)))
+        if (afterName < s.Length && RuneAt(s, afterName).IsWordCharacter)
         {
             return false;
         }
@@ -443,8 +443,8 @@ public sealed partial class XmlPlugin
         while (position >= minimum)
         {
             Rune.DecodeLastFromUtf16(s.AsSpan(0, position), out var before, out var consumed);
-            var afterIsWord = position < s.Length && EngineText.IsWordRune(RuneAt(s, position));
-            if (EngineText.IsWordRune(before) != afterIsWord)
+            var afterIsWord = position < s.Length && RuneAt(s, position).IsWordCharacter;
+            if (before.IsWordCharacter != afterIsWord)
             {
                 return position;
             }
@@ -496,7 +496,7 @@ public sealed partial class XmlPlugin
         while (offset < s.Length)
         {
             var rune = RuneAt(s, offset);
-            if (rune.Value is '.' or '-' || EngineText.IsWordRune(rune))
+            if (rune.Value is '.' or '-' || rune.IsWordCharacter)
             {
                 offset += RuneLength(s, offset);
                 continue;

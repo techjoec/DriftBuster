@@ -88,7 +88,7 @@ public sealed partial class IniPlugin
     {
         foreach (var match in LineStartMatcher.Matches(SectionPattern, scan.Text))
         {
-            var section = EngineText.Strip(match.Groups["name"].Value);
+            var section = match.Groups["name"].Value.Trim();
             if (section.Length > 0)
             {
                 scan.Sections.Add(section);
@@ -105,7 +105,7 @@ public sealed partial class IniPlugin
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var section in scan.Sections)
         {
-            if (seen.Add(EngineText.Lower(section)))
+            if (seen.Add(section.ToLowerInvariant()))
             {
                 uniqueSections.Add(section);
             }
@@ -143,7 +143,7 @@ public sealed partial class IniPlugin
         scan.Lines = TextLines.SplitLines(scan.Text);
         foreach (var line in scan.Lines)
         {
-            if (EngineText.Strip(line).Length == 0)
+            if (line.Trim().Length == 0)
             {
                 continue;
             }
@@ -169,7 +169,7 @@ public sealed partial class IniPlugin
         var commentMarkers = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var line in scan.CommentLines)
         {
-            var marker = EngineText.StripStart(line)[0];
+            var marker = line.TrimStart()[0];
             if (marker is ';' or '#' or '!')
             {
                 commentMarkers.Add(marker.ToString());

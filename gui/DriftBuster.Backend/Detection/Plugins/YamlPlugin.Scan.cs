@@ -6,13 +6,13 @@ namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>
 /// Hand-written matchers for the YAML patterns. An anchor is a multiline <c>^</c> position: offset 0 or just after a <c>\n</c>
-/// (never after <c>\r</c>). Whitespace runs use <see cref="EngineText.IsSpace"/> and may cross line breaks, as the patterns allow.
+/// (never after <c>\r</c>). Whitespace runs use <see cref="char.IsWhiteSpace(char)"/> and may cross line breaks, as the patterns allow.
 /// </summary>
 public sealed partial class YamlPlugin
 {
     private static int SkipSpace(string s, int offset)
     {
-        while (offset < s.Length && EngineText.IsSpace(s[offset]))
+        while (offset < s.Length && char.IsWhiteSpace(s[offset]))
         {
             offset++;
         }
@@ -58,7 +58,7 @@ public sealed partial class YamlPlugin
         while (end < s.Length)
         {
             Rune.DecodeFromUtf16(s.AsSpan(end), out var rune, out var consumed);
-            if (rune.Value is '.' or '-' || EngineText.IsWordRune(rune))
+            if (rune.Value is '.' or '-' || rune.IsWordCharacter)
             {
                 end += consumed;
                 continue;
@@ -110,7 +110,7 @@ public sealed partial class YamlPlugin
             if (s.AsSpan(q).StartsWith(marker, StringComparison.Ordinal))
             {
                 var r = q + marker.Length;
-                while (r < s.Length && EngineText.IsSpace(s[r]))
+                while (r < s.Length && char.IsWhiteSpace(s[r]))
                 {
                     if (s[r] == '\n')
                     {
