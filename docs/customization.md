@@ -58,8 +58,9 @@ sealed class MyPlugin : IFormatPlugin
 
 - `FormatRegistry.Register` enforces unique plugin names. Declare a `Version`
   string and record it in `docs/format-support.md`.
-- `sortPlugins: true` orders plugins by `Priority`; `false` keeps the order
-  passed to the detector, which is useful when experimenting with overrides.
+- Every plugin runs and the highest confidence wins. `sortPlugins: true` orders
+  plugins by `Priority`, which breaks ties between equal confidences; `false`
+  keeps the order passed to the detector.
 - `FormatRegistry.RegistrySummary()` reports the final ordering of a registry.
 
 ## Combine with Profiles

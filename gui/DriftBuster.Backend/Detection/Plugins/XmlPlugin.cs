@@ -112,7 +112,9 @@ public sealed partial class XmlPlugin : IFormatPlugin
         var elementMatch = HasGenericElement(text);
         var hasXmlDeclaration = TryXmlDeclaration(text, out _);
         var extensionHint = XmlExtensions.Contains(extension);
-        if (!extensionHint && !hasXmlDeclaration && !elementMatch)
+        // The extension only raises confidence: content that neither opens with markup nor holds element structure is some
+        // other format.
+        if (!hasXmlDeclaration && !elementMatch && !OpensWithMarkup(text))
         {
             return null;
         }

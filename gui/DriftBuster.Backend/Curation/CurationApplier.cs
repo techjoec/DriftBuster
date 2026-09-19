@@ -132,6 +132,8 @@ public static class CurationApplier
             ConfigId = file.ConfigId,
             Path = file.Path,
             Format = file.Format,
+            Confidence = file.Confidence,
+            Candidates = file.Candidates,
             Mode = file.Mode,
             SettingsDiffering = file.SettingsDiffering,
             Differs = file.Differs,

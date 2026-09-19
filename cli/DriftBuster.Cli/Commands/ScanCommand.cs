@@ -157,7 +157,8 @@ internal static class ScanCommand
                     match.Confidence,
                     match.Metadata.Text("catalog_severity"),
                     match.Metadata.Text("catalog_severity_hint"),
-                    match.Metadata);
+                    match.Metadata,
+                    match.Candidates);
             ConsoleText.Print(stdout, CliJson.Line(line));
         }
     }

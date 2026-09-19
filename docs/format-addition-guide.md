@@ -61,8 +61,9 @@ the default registry and `Detector` pick it up.
 ## 4. Detector Implementation Rules
 
 1. **Registration** – Use a unique `Name`, a priority that places the plugin
-   before any broader detector it must win against, and a semantic `Version`
-   string. `FormatRegistry.Register` rejects a second plugin with the same name.
+   before any broader detector it ties with, and a semantic `Version` string.
+   Every plugin runs and the highest confidence wins, so a broad detector must
+   not claim a file on its extension alone. `FormatRegistry.Register` rejects a second plugin with the same name.
 2. **Sampling discipline** – Accept `(path, sample, text)` like the existing
    detectors. `text` is already decoded when the sample looks like text and null
    otherwise. Clamp expensive heuristics to a bounded analysis window (the JSON

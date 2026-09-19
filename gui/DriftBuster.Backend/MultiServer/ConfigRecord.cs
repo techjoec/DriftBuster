@@ -28,4 +28,10 @@ public sealed record ConfigRecord
     public required string PluginName { get; init; }
 
     public required string RelativePath { get; init; }
+
+    /// <summary>The winning detection's confidence; 0 for records not produced by detection (registry reads).</summary>
+    public double Confidence { get; init; }
+
+    /// <summary>Every format the detector's plugins claimed for the file, strongest first.</summary>
+    public IReadOnlyList<Detection.DetectionCandidate> Candidates { get; init; } = [];
 }

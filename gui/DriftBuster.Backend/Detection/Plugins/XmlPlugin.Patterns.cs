@@ -270,6 +270,33 @@ public sealed partial class XmlPlugin
         return true;
     }
 
+    // After an optional byte order mark and whitespace, the text opens with an element (<name), a declaration (<?xml), a
+    // doctype (<!DOCTYPE) or a comment (<!--).
+    private static bool OpensWithMarkup(string s)
+    {
+        var offset = 0;
+        while (offset < s.Length && (s[offset] == '\uFEFF' || char.IsWhiteSpace(s[offset])))
+        {
+            offset++;
+        }
+
+        if (offset + 1 >= s.Length || s[offset] != '<')
+        {
+            return false;
+        }
+
+        var next = s[offset + 1];
+        if (char.IsLetter(next) || next is '_' or ':')
+        {
+            return true;
+        }
+
+        var rest = s.AsSpan(offset + 1);
+        return rest.StartsWith("?xml", StringComparison.OrdinalIgnoreCase)
+            || rest.StartsWith("!DOCTYPE", StringComparison.OrdinalIgnoreCase)
+            || rest.StartsWith("!--", StringComparison.Ordinal);
+    }
+
     // ^\s*<[^!?][\w:.-]+(\s|>) at any line start, driven like LineStartMatcher so a whitespace run decides every start inside it.
     private static bool HasGenericElement(string s)
     {

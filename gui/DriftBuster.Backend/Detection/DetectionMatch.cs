@@ -24,6 +24,12 @@ public sealed class DetectionMatch(
     /// <summary>What the plugin found, in the order it was added, plus the detector's sampling notes and the catalog enrichment.</summary>
     public JsonObject Metadata { get; set; } = metadata ?? [];
 
+    /// <summary>
+    /// Every plugin that claimed the file, strongest first (the winner, this match, leads); ties keep plugin priority order.
+    /// Empty for a match that did not come from a detector run.
+    /// </summary>
+    public IReadOnlyList<DetectionCandidate> Candidates { get; set; } = [];
+
     /// <summary>A copy for output: the file, plugin, format, variant, confidence, reasons and metadata.</summary>
     public DetectionPayload ToPayload(string path) => new(path, PluginName, FormatName, Variant, Confidence, [.. Reasons], (JsonObject)Metadata.DeepClone());
 }

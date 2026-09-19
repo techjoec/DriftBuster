@@ -119,7 +119,9 @@ format-specific exception.
 - Place new detectors in `gui/DriftBuster.Backend/Detection/Plugins/<Name>Plugin.cs`
   implementing `IFormatPlugin`.
 - Register built-ins in one place: `DefaultPlugins.CreateBuiltIns()`, in
-  priority order.
+  priority order. Every plugin runs on every sample and the highest confidence
+  wins, so priority only breaks ties; calibrate confidence so structure beats an
+  extension hint.
 - `FormatRegistry.Register` rejects a different plugin with an already
   registered `Name`, so collisions surface immediately.
 - Prefer lightweight heuristics: filename hints, signatures, sampling-based

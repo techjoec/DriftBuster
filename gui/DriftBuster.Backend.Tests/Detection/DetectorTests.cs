@@ -49,7 +49,7 @@ public sealed class DetectorTests : IDisposable
         }
     }
 
-    private sealed class StaticPlugin : IFormatPlugin
+    private sealed class StaticPlugin(double confidence = 1.0) : IFormatPlugin
     {
         public string Name => "static-fixture";
 
@@ -61,11 +61,11 @@ public sealed class DetectorTests : IDisposable
         {
             using var handle = File.OpenRead(path);
             _ = handle.ReadByte();
-            return new DetectionMatch(Name, "xml", null, 1.0, ["Static match for fixture"]);
+            return new DetectionMatch(Name, "xml", null, confidence, ["Static match for fixture"]);
         }
     }
 
-    private sealed class PriorityPlugin : IFormatPlugin
+    private sealed class PriorityPlugin(double confidence = 0.9) : IFormatPlugin
     {
         public string Name => "priority-fixture";
 
@@ -74,7 +74,7 @@ public sealed class DetectorTests : IDisposable
         public string Version => "0.0.0";
 
         public DetectionMatch? Detect(string path, byte[] sample, string? text)
-            => new(Name, "xml", "generic", 0.9, ["Manual ordering"]);
+            => new(Name, "xml", "generic", confidence, ["Manual ordering"]);
     }
 
     private sealed class UnknownFormatPlugin : IFormatPlugin
@@ -216,11 +216,17 @@ public sealed class DetectorTests : IDisposable
         var result = Detector.ScanFileWithDefaults(self, sampleSize: 64, plugins: [new StaticPlugin()]);
         result!.FormatName.Should().Be("xml");
 
+        // The stronger claim wins whatever the order; every claim is kept as a candidate, strongest first.
         var manual = new Detector(plugins: [new PriorityPlugin(), new StaticPlugin()], sampleSize: 32, sortPlugins: false);
-        manual.ScanFile(self)!.PluginName.Should().Be("priority-fixture");
+        var strongest = manual.ScanFile(self)!;
+        strongest.PluginName.Should().Be("static-fixture");
+        strongest.Candidates.Select(candidate => (candidate.Plugin, candidate.Confidence)).Should().Equal(("static-fixture", 1.0), ("priority-fixture", 0.9));
 
-        var sorted = new Detector(plugins: [new PriorityPlugin(), new StaticPlugin()], sampleSize: 32);
-        sorted.ScanFile(self)!.PluginName.Should().Be("static-fixture");
+        // Equal confidence: plugin order decides (sorted by priority, or as given when unsorted).
+        var tiedManual = new Detector(plugins: [new PriorityPlugin(0.5), new StaticPlugin(0.5)], sampleSize: 32, sortPlugins: false);
+        tiedManual.ScanFile(self)!.PluginName.Should().Be("priority-fixture");
+        var tiedSorted = new Detector(plugins: [new PriorityPlugin(0.5), new StaticPlugin(0.5)], sampleSize: 32);
+        tiedSorted.ScanFile(self)!.PluginName.Should().Be("static-fixture");
     }
 
     // A plugin returning null yields no match.

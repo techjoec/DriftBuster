@@ -210,15 +210,17 @@ public class Detector
             _budgetExhausted = true;
         }
 
-        var first = FirstMatch(path, sample, text);
-        return first is null ? null : Enrich(first, sample, encoding, truncated);
+        var best = StrongestMatch(path, sample, text);
+        return best is null ? null : Enrich(best, sample, encoding, truncated);
     }
 
-    // First plugin match in registry order. A pattern that gives up on this sample must not abort the scan of every
-    // other file, so a match timeout is reported the way an unreadable file is; this never
-    // fires on a sample the engine matches in bounded time.
-    private DetectionMatch? FirstMatch(string path, byte[] sample, string? text)
+    // Every plugin runs; the highest confidence wins and a tie goes to the plugin earlier in priority order (the more specific
+    // one). The winner carries all the claims as its candidates. A pattern that gives up on this sample must not abort the scan
+    // of every other file, so a match timeout is reported the way an unreadable file is; this never fires on a sample the
+    // engine matches in bounded time.
+    private DetectionMatch? StrongestMatch(string path, byte[] sample, string? text)
     {
+        var matches = new List<DetectionMatch>();
         foreach (var plugin in _plugins)
         {
             DetectionMatch? match;
@@ -234,11 +236,20 @@ public class Detector
 
             if (match is not null)
             {
-                return match;
+                matches.Add(match);
             }
         }
 
-        return null;
+        if (matches.Count == 0)
+        {
+            return null;
+        }
+
+        // OrderByDescending is stable, so equal confidences keep priority order.
+        var ranked = matches.OrderByDescending(match => match.Confidence).ToList();
+        var winner = ranked[0];
+        winner.Candidates = [.. ranked.Select(match => new DetectionCandidate(match.PluginName, match.FormatName, match.Variant, match.Confidence))];
+        return winner;
     }
 
     private DetectionMatch Enrich(DetectionMatch match, byte[] sample, string? encoding, bool truncated)

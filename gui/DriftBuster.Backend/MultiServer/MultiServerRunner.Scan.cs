@@ -166,6 +166,8 @@ public sealed partial class MultiServerRunner
             SourcePath = path,
             PluginName = string.IsNullOrEmpty(match.PluginName) ? "unknown" : match.PluginName,
             RelativePath = relative,
+            Confidence = match.Confidence,
+            Candidates = match.Candidates,
         };
         return (record, cached is not null);
     }

@@ -3,8 +3,9 @@
 The detection catalog (`DetectionCatalog.Default`, built in
 `gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`)
 holds the canonical detection metadata consumed by the core detector; the usage
-percentages are survey estimates kept in this document. Detection runs in
-ascending priority order; the first positive match wins. The tables below blend the shipped class definitions from
+percentages are survey estimates kept in this document. Every plugin runs and the
+highest confidence wins; a tie goes to the plugin earlier in priority order. All claims are kept as the match's
+candidates, strongest first (`scan --json` prints them as `candidates`). The tables below blend the shipped class definitions from
 the catalog (v0.0.4) with the usage insights from the format survey data
 (v0.0.4).
 

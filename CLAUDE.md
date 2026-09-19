@@ -131,7 +131,7 @@ gitleaks dir . -v
 
 **Detection flow**:
 1. **Sampling** - Bounded file reads so large trees stay cheap
-2. **Plugin matching** - Plugins run in priority order; the first match wins
+2. **Plugin matching** - Every plugin runs; the highest confidence wins (a tie goes to the earlier plugin in priority order) and every claim is kept as `DetectionMatch.Candidates`, strongest first
 3. **Metadata enrichment** - Each hit carries format, variant, confidence, catalog keys and review flags
 4. **Profile application** - Detection profiles filter and annotate results
 
@@ -194,7 +194,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 - `Detect(path, sample, text)` where `text` is null when the sample did not decode as text
 - Return `DetectionMatch` or `null`
 - Use bounded analysis (e.g., the JSON plugin analyses at most 200,000 characters)
-- Combine filename/extension hints with structural signals; extensions never gate detection alone
+- Combine filename/extension hints with structural signals; extensions never gate detection alone and only raise confidence, since the strongest claim across all plugins wins
 - Start confidence at ~0.5, cap at 0.95
 - Populate metadata with catalog-aligned keys (variant, type hints)
 - Never throw on expected conditions (truncated sample, decode failures)

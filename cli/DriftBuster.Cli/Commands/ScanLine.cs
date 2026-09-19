@@ -11,4 +11,5 @@ internal sealed record ScanLine(
     double? Confidence = null,
     string? Severity = null,
     string? SeverityHint = null,
-    JsonObject? Metadata = null);
+    JsonObject? Metadata = null,
+    IReadOnlyList<DriftBuster.Backend.Detection.DetectionCandidate>? Candidates = null);

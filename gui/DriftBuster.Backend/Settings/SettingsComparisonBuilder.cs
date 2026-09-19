@@ -132,6 +132,8 @@ public static class SettingsComparisonBuilder
             ConfigId = referenceRecord?.ConfigId ?? hosts.Select(hostId => copies[hostId].Record?.ConfigId).FirstOrDefault(id => id is not null) ?? string.Empty,
             Path = path,
             Format = referenceRecord?.FormatId ?? string.Empty,
+            Confidence = referenceRecord?.Confidence ?? 0,
+            Candidates = referenceRecord is null ? [] : [.. referenceRecord.Candidates],
             Mode = reference?.Settings?.Mode switch
             {
                 SettingsMode.Lines => "lines",

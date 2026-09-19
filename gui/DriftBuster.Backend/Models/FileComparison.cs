@@ -17,6 +17,14 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("format")]
         public string Format { get; set; } = string.Empty;
 
+        /// <summary>How sure detection was of <see cref="Format"/> (the reference copy's winning confidence); 0 when not detected.</summary>
+        [JsonPropertyName("confidence")]
+        public double Confidence { get; set; }
+
+        /// <summary>Every format detection considered for the reference copy, strongest first: the choices "Parse as" offers.</summary>
+        [JsonPropertyName("candidates")]
+        public DriftBuster.Backend.Detection.DetectionCandidate[] Candidates { get; set; } = Array.Empty<DriftBuster.Backend.Detection.DetectionCandidate>();
+
         /// <summary><c>settings</c>, <c>lines</c> or <c>binary</c>: how the file's settings were read.</summary>
         [JsonPropertyName("mode")]
         public string Mode { get; set; } = string.Empty;
