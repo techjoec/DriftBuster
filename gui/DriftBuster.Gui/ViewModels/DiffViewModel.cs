@@ -656,36 +656,7 @@ namespace DriftBuster.Gui.ViewModels
 
             public DiffPlannerPayloadKind PayloadKind => Entry.PayloadKind;
 
-            public bool IsEquivalentTo(DiffPlannerMruEntry candidate)
-            {
-                if (candidate is null)
-                {
-                    return false;
-                }
-
-                if (!string.Equals(Entry.BaselinePath, candidate.BaselinePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-
-                if (Entry.ComparisonPaths.Count != candidate.ComparisonPaths.Count)
-                {
-                    return false;
-                }
-
-                for (var index = 0; index < Entry.ComparisonPaths.Count; index++)
-                {
-                    if (!string.Equals(
-                            Entry.ComparisonPaths[index],
-                            candidate.ComparisonPaths[index],
-                            StringComparison.OrdinalIgnoreCase))
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
+            public bool IsEquivalentTo(DiffPlannerMruEntry candidate) => candidate is not null && DiffPlannerMruStore.SameFiles(Entry, candidate);
         }
 
         public sealed class JsonViewOption

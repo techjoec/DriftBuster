@@ -12,7 +12,7 @@ namespace DriftBuster.Gui.Services
 {
     /// <summary>
     /// Curation kept in <c>curation.json</c> and history in <c>history.db</c>, both under the data root unless given other paths.
-    /// A curation file that cannot be read is left alone: the app works on an empty document in memory and says why.
+    /// A curation file that cannot be read raises <see cref="InvalidDataException"/> from the constructor and is never replaced.
     /// </summary>
     public sealed class CurationService : ICurationService
     {
@@ -26,23 +26,13 @@ namespace DriftBuster.Gui.Services
         {
             _curationPath = curationPath ?? throw new ArgumentNullException(nameof(curationPath));
             _history = new HistoryStore(historyPath ?? throw new ArgumentNullException(nameof(historyPath)));
-            try
-            {
-                Document = CurationStore.Load(_curationPath);
-            }
-            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
-            {
-                Document = new CurationDocument();
-                LoadError = ex.Message;
-            }
+            Document = CurationStore.Load(_curationPath);
         }
 
         /// <summary>The service over the data root, shared by every view.</summary>
         public static CurationService Shared => SharedInstance.Value;
 
         public CurationDocument Document { get; private set; }
-
-        public string? LoadError { get; }
 
         public event EventHandler? Changed;
 
@@ -52,10 +42,7 @@ namespace DriftBuster.Gui.Services
             lock (_gate)
             {
                 Document = change(Document);
-                if (LoadError is null)
-                {
-                    CurationStore.Save(Document, _curationPath);
-                }
+                CurationStore.Save(Document, _curationPath);
             }
 
             Changed?.Invoke(this, EventArgs.Empty);

@@ -1,204 +1,86 @@
 using System;
-using System.Collections.Concurrent;
 using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
 using DriftBuster.Backend;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Gui.Services
 {
+    /// <summary>
+    /// The Multi-server session in <c>multi-server.json</c> under the session directory, read strictly: a file that cannot be read
+    /// raises <see cref="InvalidDataException"/> naming the file and JSON path, and is never replaced.
+    /// </summary>
     public sealed class SessionCacheService : ISessionCacheService
     {
-        internal const int CurrentSchemaVersion = 2;
-        private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-        {
-            WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        };
+        internal const int CurrentSchemaVersion = 3;
+        internal const string FileName = "multi-server.json";
 
-        private static readonly ConcurrentDictionary<string, SemaphoreSlim> PathLocks =
-            new(StringComparer.OrdinalIgnoreCase);
-
-        private readonly string _cachePath;
-        private readonly SemaphoreSlim _cacheLock;
-        private readonly Task _migrationTask;
+        private readonly SemaphoreSlim _lock = new(1, 1);
 
         public SessionCacheService(string? rootDirectory = null)
-            : this(
-                rootDirectory,
-                rootDirectory is null ? Path.Combine("artifacts", "cache", "multi-server.json") : null,
-                null)
         {
+            CachePath = Path.GetFullPath(Path.Join(rootDirectory ?? DriftbusterPaths.GetSessionDirectory(), FileName));
         }
 
-        internal SessionCacheService(
-            string? rootDirectory,
-            string? legacyCachePath,
-            Func<string, string, CancellationToken, Task>? migrationHandler)
+        public string CachePath { get; }
+
+        /// <summary>The saved session, or null when there is none.</summary>
+        public ServerSelectionCache? Read()
         {
-            var basePath = rootDirectory ?? DriftbusterPaths.GetSessionDirectory();
-
-            Directory.CreateDirectory(basePath);
-
-            var cachePath = Path.GetFullPath(Path.Combine(basePath, "multi-server.json"));
-            _cachePath = cachePath;
-            _cacheLock = GetLockForPath(cachePath);
-
-            if (legacyCachePath is null)
+            if (!File.Exists(CachePath))
             {
-                _migrationTask = Task.CompletedTask;
-                return;
+                return null;
             }
 
-            var migrate = migrationHandler ?? MigrateLegacyCacheAsync;
-            var legacyPath = Path.GetFullPath(legacyCachePath);
-            _migrationTask = migrate(legacyPath, _cachePath, CancellationToken.None);
+            var snapshot = ModelJson.ReadFile(CachePath, GuiJson.TypeInfo<ServerSelectionCache>());
+            return snapshot.SchemaVersion == CurrentSchemaVersion
+                ? snapshot
+                : throw new InvalidDataException($"{CachePath}: $.schema_version: {snapshot.SchemaVersion} is not the supported version {CurrentSchemaVersion}.");
         }
 
         public async Task<ServerSelectionCache?> LoadAsync(CancellationToken cancellationToken = default)
         {
-            await _migrationTask.ConfigureAwait(false);
-
-            await _cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                if (!File.Exists(_cachePath))
-                {
-                    return null;
-                }
-
-                var stream = new FileStream(
-                    _cachePath,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    bufferSize: 4096,
-                    useAsync: true);
-                await using (stream.ConfigureAwait(false))
-                {
-                    return await JsonSerializer.DeserializeAsync<ServerSelectionCache>(stream, SerializerOptions, cancellationToken)
-                        .ConfigureAwait(false);
-                }
+                return Read();
             }
             finally
             {
-                _cacheLock.Release();
+                _lock.Release();
             }
         }
 
         public async Task SaveAsync(ServerSelectionCache snapshot, CancellationToken cancellationToken = default)
         {
-            if (snapshot is null)
-            {
-                throw new ArgumentNullException(nameof(snapshot));
-            }
-
-            await _migrationTask.ConfigureAwait(false);
-
-            await _cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            ArgumentNullException.ThrowIfNull(snapshot);
+            await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
-                var stream = new FileStream(
-                    _cachePath,
-                    FileMode.Create,
-                    FileAccess.Write,
-                    FileShare.None,
-                    bufferSize: 4096,
-                    useAsync: true);
-                await using (stream.ConfigureAwait(false))
-                {
-                    await JsonSerializer.SerializeAsync(stream, snapshot, SerializerOptions, cancellationToken).ConfigureAwait(false);
-                }
+                ModelJson.WriteFile(CachePath, snapshot, GuiJson.TypeInfo<ServerSelectionCache>());
             }
             finally
             {
-                _cacheLock.Release();
+                _lock.Release();
             }
         }
 
         public void Clear()
         {
-            if (!_migrationTask.IsCompleted)
-            {
-                _migrationTask.GetAwaiter().GetResult();
-            }
-
-            _cacheLock.Wait();
+            _lock.Wait();
             try
             {
-                if (File.Exists(_cachePath))
+                if (File.Exists(CachePath))
                 {
-                    File.Delete(_cachePath);
+                    File.Delete(CachePath);
                 }
             }
             finally
             {
-                _cacheLock.Release();
+                _lock.Release();
             }
-        }
-
-        private static async Task MigrateLegacyCacheAsync(string legacyPath, string destination, CancellationToken cancellationToken)
-        {
-            try
-            {
-                if (!File.Exists(legacyPath))
-                {
-                    return;
-                }
-
-                if (File.Exists(destination))
-                {
-                    return;
-                }
-
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-
-                var cacheLock = GetLockForPath(destination);
-                await cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-                try
-                {
-                    var source = new FileStream(
-                        legacyPath,
-                        FileMode.Open,
-                        FileAccess.Read,
-                        FileShare.Read,
-                        bufferSize: 4096,
-                        useAsync: true);
-                    await using (source.ConfigureAwait(false))
-                    {
-                        var target = new FileStream(
-                            destination,
-                            FileMode.CreateNew,
-                            FileAccess.Write,
-                            FileShare.None,
-                            bufferSize: 4096,
-                            useAsync: true);
-                        await using (target.ConfigureAwait(false))
-                        {
-                            await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-                        }
-                    }
-                    SessionCacheMigrationCounters.RecordSuccess();
-                }
-                finally
-                {
-                    cacheLock.Release();
-                }
-            }
-            catch
-            {
-                SessionCacheMigrationCounters.RecordFailure();
-                // Best-effort migration for developer caches; ignore failures.
-            }
-        }
-
-        private static SemaphoreSlim GetLockForPath(string path)
-        {
-            return PathLocks.GetOrAdd(path, static _ => new SemaphoreSlim(1, 1));
         }
     }
 }

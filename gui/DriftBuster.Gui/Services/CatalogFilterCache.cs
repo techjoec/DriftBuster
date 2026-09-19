@@ -1,22 +1,15 @@
-using System.Text.Json.Serialization;
-
 namespace DriftBuster.Gui.Services
 {
-    public sealed class CatalogFilterCache
+    public sealed record CatalogFilterCache
     {
-        [JsonPropertyName("coverage")]
-        public string? Coverage { get; set; }
+        public string? Coverage { get; init; }
 
-        [JsonPropertyName("severity")]
-        public string? Severity { get; set; }
+        public string? Severity { get; init; }
 
-        [JsonPropertyName("format")]
-        public string? Format { get; set; }
+        public string? Format { get; init; }
 
-        [JsonPropertyName("drift")]
-        public string? Drift { get; set; }
+        public string? Drift { get; init; }
 
-        [JsonPropertyName("search")]
-        public string? Search { get; set; }
+        public string? Search { get; init; }
     }
 }

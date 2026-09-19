@@ -10,8 +10,6 @@ internal sealed class InMemoryCurationService : ICurationService
 {
     public CurationDocument Document { get; private set; } = new();
 
-    public string? LoadError { get; init; }
-
     public int Saves { get; private set; }
 
     public List<(SettingsComparison Comparison, string HostSetId)> Recorded { get; } = [];

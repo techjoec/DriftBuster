@@ -1,13 +1,9 @@
-using System.Text.Json.Serialization;
-
 namespace DriftBuster.Gui.Services
 {
-    public sealed class ActivityTimelineCache
+    public sealed record ActivityTimelineCache
     {
-        [JsonPropertyName("filter")]
-        public string? Filter { get; set; }
+        public string? Filter { get; init; }
 
-        [JsonPropertyName("last_opened_host")]
-        public string? LastOpenedHostId { get; set; }
+        public string? LastOpenedHostId { get; init; }
     }
 }

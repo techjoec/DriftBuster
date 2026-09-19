@@ -237,16 +237,16 @@ public class DiffViewModelTests
         var snapshot = new DiffPlannerMruSnapshot
         {
             Entries =
-            {
+            [
                 new DiffPlannerMruEntry
                 {
                     BaselinePath = baseline,
-                    ComparisonPaths = new List<string> { comparisonA, comparisonB },
+                    ComparisonPaths = [comparisonA, comparisonB],
                     DisplayName = "Example entry",
                     PayloadKind = DiffPlannerPayloadKind.Raw,
                     LastUsedUtc = DateTimeOffset.UtcNow,
                 },
-            },
+            ],
         };
 
         await store.SaveAsync(snapshot, TestContext.Current.CancellationToken);

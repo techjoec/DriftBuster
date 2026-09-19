@@ -23,19 +23,15 @@ public sealed class CurationServiceTests : IDisposable
 
         changes.Should().Be(1);
         CurationStore.Load(PathOf("curation.json")).Groups.Single().Name.Should().Be("g");
-        service.LoadError.Should().BeNull();
     }
 
     [Fact]
-    public void A_damaged_file_is_left_alone()
+    public void A_damaged_file_is_refused_and_left_alone()
     {
         File.WriteAllText(PathOf("curation.json"), "{ broken");
-        var service = new CurationService(PathOf("curation.json"), PathOf("history.db"));
 
-        service.Update(document => document with { Groups = [new CurationGroup { Name = "g" }] });
-
-        service.LoadError.Should().Contain("could not be read");
-        service.Document.Groups.Should().ContainSingle("changes are kept in memory");
+        FluentActions.Invoking(() => new CurationService(PathOf("curation.json"), PathOf("history.db")))
+            .Should().Throw<InvalidDataException>().WithMessage(PathOf("curation.json") + ": $*");
         File.ReadAllText(PathOf("curation.json")).Should().Be("{ broken");
     }
 

@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 
 namespace DriftBuster.Gui.Views;
 
@@ -16,13 +17,20 @@ public partial class TextViewerWindow : Window
         InitializeComponent();
     }
 
-    public TextViewerWindow(string title, string heading, string text, string? note = null)
+    /// <param name="wrap">Wraps the text and sizes the window to it, for a message rather than a file.</param>
+    public TextViewerWindow(string title, string heading, string text, string? note = null, bool wrap = false)
         : this()
     {
         Title = title;
         this.FindControl<TextBlock>("Heading")!.Text = heading;
         var body = this.FindControl<TextBox>("Body")!;
         body.Text = text;
+        if (wrap)
+        {
+            body.TextWrapping = TextWrapping.Wrap;
+            SizeToContent = SizeToContent.Height;
+        }
+
         if (string.IsNullOrEmpty(text))
         {
             // Nothing to show below the heading and note: drop the empty box and size to what is left.

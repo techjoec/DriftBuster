@@ -203,7 +203,7 @@ public sealed class ServerSelectionViewTests
         cache.Snapshot!.CatalogSort.Should().NotBeNull();
         cache.Snapshot!.CatalogSort!.Column.Should().Be(CatalogSortColumns.Drift);
         cache.Snapshot.CatalogSort.Descending.Should().BeFalse();
-        cache.Snapshot.ActivityFilter.Should().Be(ActivityFilterOption.Exports.ToString());
+        cache.Snapshot.Timeline!.Filter.Should().Be(ActivityFilterOption.Exports.ToString());
     }
 
     [AvaloniaFact]
@@ -219,7 +219,7 @@ public sealed class ServerSelectionViewTests
                     Column = CatalogSortColumns.Format,
                     Descending = false,
                 },
-                ActivityFilter = ActivityFilterOption.Warnings.ToString(),
+                Timeline = new ActivityTimelineCache { Filter = ActivityFilterOption.Warnings.ToString() },
             },
         };
 

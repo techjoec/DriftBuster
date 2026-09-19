@@ -1,23 +1,17 @@
 using System;
-using System.Text.Json.Serialization;
 
 namespace DriftBuster.Gui.Services
 {
-    public sealed class ActivityCacheEntry
+    public sealed record ActivityCacheEntry
     {
-        [JsonPropertyName("timestamp")]
-        public DateTimeOffset Timestamp { get; set; }
+        public DateTimeOffset Timestamp { get; init; }
 
-        [JsonPropertyName("severity")]
-        public string Severity { get; set; } = string.Empty;
+        public required string Severity { get; init; }
 
-        [JsonPropertyName("summary")]
-        public string Summary { get; set; } = string.Empty;
+        public required string Summary { get; init; }
 
-        [JsonPropertyName("detail")]
-        public string? Detail { get; set; }
+        public string? Detail { get; init; }
 
-        [JsonPropertyName("category")]
-        public string? Category { get; set; }
+        public string? Category { get; init; }
     }
 }

@@ -92,10 +92,6 @@ namespace DriftBuster.Gui.ViewModels
         public string ReviewToggleText => string.Create(CultureInfo.InvariantCulture, $"Review list ({ReviewCount})");
 
         /// <summary>Why saved curation is not being used, when it could not be read.</summary>
-        public string? CurationWarning => Curation.LoadError is null ? null : $"Saved choices could not be read, so nothing will be saved: {Curation.LoadError}";
-
-        public bool HasCurationWarning => CurationWarning is not null;
-
         partial void OnShowIgnoredChanged(bool value) => ApplyFilters();
 
         partial void OnMarkFilterChanged(CompareMarkFilter value) => ApplyFilters();

@@ -214,16 +214,6 @@ public sealed class CompareCurationTests
     }
 
     [Fact]
-    public void A_curation_file_that_could_not_be_read_is_reported()
-    {
-        var viewModel = new CompareViewModel(new InMemoryCurationService { LoadError = "bad json" });
-
-        viewModel.HasCurationWarning.Should().BeTrue();
-        viewModel.CurationWarning.Should().Contain("bad json");
-        viewModel.Dispose();
-    }
-
-    [Fact]
     public void A_file_from_the_catalog_is_found_and_shown_even_when_filtered_out()
     {
         var (viewModel, _) = Load();

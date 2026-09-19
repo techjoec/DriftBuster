@@ -13,9 +13,6 @@ namespace DriftBuster.Gui.Services
     {
         CurationDocument Document { get; }
 
-        /// <summary>Why the saved curation could not be read; while set, changes are kept in memory and never saved.</summary>
-        string? LoadError { get; }
-
         /// <summary>Raised after every change to <see cref="Document"/>.</summary>
         event EventHandler? Changed;
 

@@ -1,38 +1,27 @@
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
 
 namespace DriftBuster.Gui.Services
 {
-    public sealed class ServerSelectionCache
+    /// <summary>The Multi-server page as it was left: <c>sessions/multi-server.json</c> under the data root.</summary>
+    public sealed record ServerSelectionCache
     {
-        [JsonPropertyName("schema_version")]
-        public int SchemaVersion { get; set; } = SessionCacheService.CurrentSchemaVersion;
+        // Source-generated reads pass default for an absent init-only member, so the setters restore the empty defaults.
+        public int SchemaVersion { get; init; } = SessionCacheService.CurrentSchemaVersion;
 
-        [JsonPropertyName("persist_session")]
-        public bool PersistSession { get; set; }
+        public bool PersistSession { get; init; }
 
-        [JsonPropertyName("servers")]
-        public IList<ServerSelectionCacheEntry> Servers { get; set; } = new List<ServerSelectionCacheEntry>();
+        public IReadOnlyList<ServerSelectionCacheEntry> Servers { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("shared_registry_keys")]
-        public IList<string> SharedRegistryKeys { get; set; } = new List<string>();
+        public IReadOnlyList<string> SharedRegistryKeys { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("activities")]
-        public IList<ActivityCacheEntry> Activities { get; set; } = new List<ActivityCacheEntry>();
+        public IReadOnlyList<ActivityCacheEntry> Activities { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("catalog_sort")]
-        public CatalogSortCache? CatalogSort { get; set; }
+        public CatalogSortCache? CatalogSort { get; init; }
 
-        [JsonPropertyName("activity_filter")]
-        public string? ActivityFilter { get; set; }
+        public CatalogFilterCache? CatalogFilters { get; init; }
 
-        [JsonPropertyName("catalog_filters")]
-        public CatalogFilterCache? CatalogFilters { get; set; }
+        public ActivityTimelineCache? Timeline { get; init; }
 
-        [JsonPropertyName("timeline")]
-        public ActivityTimelineCache? Timeline { get; set; }
-
-        [JsonPropertyName("active_view")]
-        public string? ActiveView { get; set; }
+        public string? ActiveView { get; init; }
     }
 }

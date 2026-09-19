@@ -1,353 +1,56 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
-using AwesomeAssertions;
 using DriftBuster.Backend.Models;
 using DriftBuster.Gui.Services;
-using Xunit;
 
 namespace DriftBuster.Gui.Tests.Services;
 
-public sealed class SessionCacheServiceTests
+/// <summary>The Multi-server session file: round trip, clearing, and strict reads that name the file and JSON path.</summary>
+public sealed class SessionCacheServiceTests : IDisposable
 {
+    private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-session-");
+
+    public void Dispose() => _tmp.Delete(recursive: true);
+
+    private string CachePath => Path.Join(_tmp.FullName, SessionCacheService.FileName);
+
     [Fact]
-    public async Task Save_load_and_clear_roundtrip()
+    public async Task A_session_is_saved_loaded_and_cleared()
     {
-        SessionCacheMigrationCounters.Reset();
-
-        using var temp = new TempDirectory();
-        var service = new SessionCacheService(temp.Path);
-
+        var service = new SessionCacheService(_tmp.FullName);
         var snapshot = new ServerSelectionCache
         {
             PersistSession = true,
-            Servers =
-            {
-                new ServerSelectionCacheEntry
-                {
-                    HostId = "server01",
-                    Label = "Primary",
-                    Enabled = true,
-                    Scope = ServerScanScope.CustomRoots,
-                    Roots = new[] { "C:/Configs" },
-                },
-            },
-            Activities =
-            {
-                new ActivityCacheEntry
-                {
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Severity = "Info",
-                    Summary = "Ran scan",
-                    Detail = "Evaluated 4 configs",
-                    Category = "General",
-                },
-            },
+            Servers = [new ServerSelectionCacheEntry { HostId = "server01", Label = "Primary", Enabled = true, Scope = ServerScanScope.CustomRoots, Roots = ["C:/Configs"] }],
+            Activities = [new ActivityCacheEntry { Timestamp = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero), Severity = "Info", Summary = "Ran scan", Category = "General" }],
+            CatalogSort = new CatalogSortCache { Column = "drift", Descending = true },
+            Timeline = new ActivityTimelineCache { Filter = "All" },
         };
 
         await service.SaveAsync(snapshot, TestContext.Current.CancellationToken);
+
+        service.CachePath.Should().Be(CachePath);
+        File.ReadAllText(CachePath).Should().Contain("\"scope\": \"custom_roots\"").And.Contain("\"host_id\": \"server01\"");
         var loaded = await service.LoadAsync(TestContext.Current.CancellationToken);
+        loaded.Should().BeEquivalentTo(snapshot);
 
-        loaded.Should().NotBeNull();
-        loaded!.PersistSession.Should().BeTrue();
-        loaded.Servers.Should().HaveCount(1);
-
+        service.Clear();
         service.Clear();
         (await service.LoadAsync(TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
-    [Fact]
-    public async Task LoadAsync_waits_for_migration_and_reads_legacy_cache()
+    [Theory]
+    [InlineData("{ broken", "$")]
+    [InlineData("""{"schema_version": 3, "persist_session": true, "extra": 1}""", "$")]
+    [InlineData("""{"schema_version": 3, "servers": [{"host_id": "a"}]}""", "$.servers[0]")]
+    [InlineData("""{"schema_version": 2}""", "$.schema_version")]
+    [InlineData("null", "null")]
+    public void A_file_that_cannot_be_read_is_refused_and_left_alone(string text, string where)
     {
-        SessionCacheMigrationCounters.Reset();
+        File.WriteAllText(CachePath, text);
+        var service = new SessionCacheService(_tmp.FullName);
 
-        using var temp = new TempDirectory();
-        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
+        var refused = FluentActions.Invoking(service.Read).Should().Throw<InvalidDataException>().Which;
 
-        var legacySnapshot = new ServerSelectionCache
-        {
-            PersistSession = true,
-            ActivityFilter = "legacy-filter",
-            Servers =
-            {
-                new ServerSelectionCacheEntry
-                {
-                    HostId = "legacy",
-                    Label = "Legacy Host",
-                    Enabled = true,
-                },
-            },
-        };
-
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions), TestContext.Current.CancellationToken);
-
-        var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        Task ControlledMigration(string legacy, string destination, CancellationToken token)
-            => ControlledMigrationAsync(legacy, destination, migrationStarted, migrationRelease, token);
-
-        var service = new SessionCacheService(temp.Path, legacyPath, ControlledMigration);
-
-        var loadTask = service.LoadAsync(TestContext.Current.CancellationToken);
-
-        await migrationStarted.Task;
-        loadTask.IsCompleted.Should().BeFalse();
-
-        migrationRelease.TrySetResult(true);
-
-        var loaded = await loadTask;
-
-        loaded.Should().NotBeNull();
-        loaded!.ActivityFilter.Should().Be("legacy-filter");
-        SessionCacheMigrationCounters.Successes.Should().Be(1);
-        SessionCacheMigrationCounters.Failures.Should().Be(0);
-
-        File.Exists(Path.Combine(temp.Path, "multi-server.json")).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Concurrent_load_and_save_share_single_migration()
-    {
-        SessionCacheMigrationCounters.Reset();
-
-        using var temp = new TempDirectory();
-        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-
-        var legacySnapshot = new ServerSelectionCache
-        {
-            PersistSession = true,
-        };
-
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions), TestContext.Current.CancellationToken);
-
-        var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var invocationCount = 0;
-
-        Task ControlledMigration(string legacy, string destination, CancellationToken token)
-        {
-            Interlocked.Increment(ref invocationCount);
-            return ControlledMigrationAsync(legacy, destination, migrationStarted, migrationRelease, token);
-        }
-
-        var service = new SessionCacheService(temp.Path, legacyPath, ControlledMigration);
-
-        var loadTask = service.LoadAsync(TestContext.Current.CancellationToken);
-        var saveSnapshot = new ServerSelectionCache
-        {
-            PersistSession = false,
-            ActivityFilter = "after-upgrade",
-        };
-        var saveTask = service.SaveAsync(saveSnapshot, TestContext.Current.CancellationToken);
-
-        await migrationStarted.Task;
-        loadTask.IsCompleted.Should().BeFalse();
-        saveTask.IsCompleted.Should().BeFalse();
-
-        migrationRelease.TrySetResult(true);
-
-        await Task.WhenAll(loadTask, saveTask);
-
-        invocationCount.Should().Be(1);
-        SessionCacheMigrationCounters.Successes.Should().Be(1);
-        SessionCacheMigrationCounters.Failures.Should().Be(0);
-
-        var reloaded = await service.LoadAsync(TestContext.Current.CancellationToken);
-        reloaded.Should().NotBeNull();
-        reloaded!.ActivityFilter.Should().Be("after-upgrade");
-    }
-
-    [Fact]
-    public async Task Migration_failure_is_counted_and_operations_continue()
-    {
-        SessionCacheMigrationCounters.Reset();
-
-        using var temp = new TempDirectory();
-        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        await File.WriteAllTextAsync(legacyPath, "{\"schema_version\":2}", TestContext.Current.CancellationToken);
-
-        Task ControlledMigration(string _, string __, CancellationToken ___)
-        {
-            SessionCacheMigrationCounters.RecordFailure();
-            return Task.CompletedTask;
-        }
-
-        var service = new SessionCacheService(temp.Path, legacyPath, ControlledMigration);
-
-        (await service.LoadAsync(TestContext.Current.CancellationToken)).Should().BeNull();
-        SessionCacheMigrationCounters.Successes.Should().Be(0);
-        SessionCacheMigrationCounters.Failures.Should().Be(1);
-    }
-
-    [Fact]
-    public async Task Concurrent_save_and_load_operations_are_serialised()
-    {
-        SessionCacheMigrationCounters.Reset();
-
-        using var temp = new TempDirectory();
-        var service = new SessionCacheService(temp.Path);
-
-        await service.SaveAsync(new ServerSelectionCache
-        {
-            PersistSession = true,
-            ActivityFilter = "seed",
-        }, TestContext.Current.CancellationToken);
-
-        var tasks = Enumerable.Range(0, 5).SelectMany(i => new Task[]
-        {
-            service.SaveAsync(new ServerSelectionCache
-            {
-                PersistSession = i % 2 == 0,
-                ActivityFilter = $"value-{i}",
-            }),
-            Task.Run(async () =>
-            {
-                var loaded = await service.LoadAsync().ConfigureAwait(false);
-                loaded.Should().NotBeNull();
-            }),
-        }).ToArray();
-
-        await Task.WhenAll(tasks);
-
-        var finalSnapshot = await service.LoadAsync(TestContext.Current.CancellationToken);
-        finalSnapshot.Should().NotBeNull();
-        finalSnapshot!.ActivityFilter.Should().NotBeNull();
-    }
-
-    [Fact]
-    public async Task Default_migration_copies_legacy_cache_when_destination_missing()
-    {
-        SessionCacheMigrationCounters.Reset();
-
-        using var temp = new TempDirectory();
-        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-
-        var legacySnapshot = new ServerSelectionCache
-        {
-            PersistSession = true,
-            ActivityFilter = "legacy",
-        };
-
-        await File.WriteAllTextAsync(legacyPath, JsonSerializer.Serialize(legacySnapshot, SerializerOptions), TestContext.Current.CancellationToken);
-
-        var service = new SessionCacheService(temp.Path, legacyPath, migrationHandler: null);
-        var loaded = await service.LoadAsync(TestContext.Current.CancellationToken);
-
-        loaded.Should().NotBeNull();
-        loaded!.ActivityFilter.Should().Be("legacy");
-        File.Exists(Path.Combine(temp.Path, "multi-server.json")).Should().BeTrue();
-        SessionCacheMigrationCounters.Successes.Should().Be(1);
-        SessionCacheMigrationCounters.Failures.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task Default_migration_is_skipped_when_destination_exists()
-    {
-        SessionCacheMigrationCounters.Reset();
-
-        using var temp = new TempDirectory();
-        var destinationPath = Path.Combine(temp.Path, "multi-server.json");
-        var destinationSnapshot = new ServerSelectionCache
-        {
-            PersistSession = false,
-            ActivityFilter = "current",
-        };
-        await File.WriteAllTextAsync(destinationPath, JsonSerializer.Serialize(destinationSnapshot, SerializerOptions), TestContext.Current.CancellationToken);
-
-        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        await File.WriteAllTextAsync(legacyPath, "{\"activity_filter\":\"legacy\"}", TestContext.Current.CancellationToken);
-
-        var service = new SessionCacheService(temp.Path, legacyPath, migrationHandler: null);
-        var loaded = await service.LoadAsync(TestContext.Current.CancellationToken);
-
-        loaded.Should().NotBeNull();
-        loaded!.ActivityFilter.Should().Be("current");
-        SessionCacheMigrationCounters.Successes.Should().Be(0);
-        SessionCacheMigrationCounters.Failures.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task Clear_waits_for_in_progress_migration()
-    {
-        using var temp = new TempDirectory();
-        var legacyPath = Path.Combine(temp.Path, "legacy", "multi-server.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        await File.WriteAllTextAsync(legacyPath, "{}", TestContext.Current.CancellationToken);
-
-        var migrationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var migrationRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        Task BlockingMigration(string _, string __, CancellationToken ___)
-        {
-            migrationStarted.TrySetResult(true);
-            return migrationRelease.Task;
-        }
-
-        var service = new SessionCacheService(temp.Path, legacyPath, BlockingMigration);
-        var clearTask = Task.Run(service.Clear, TestContext.Current.CancellationToken);
-
-        await migrationStarted.Task;
-        clearTask.IsCompleted.Should().BeFalse();
-
-        migrationRelease.TrySetResult(true);
-        await clearTask;
-    }
-
-    private sealed class TempDirectory : IDisposable
-    {
-        public TempDirectory()
-        {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, recursive: true);
-            }
-        }
-    }
-
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
-
-    private static async Task ControlledMigrationAsync(
-        string legacy,
-        string destination,
-        TaskCompletionSource<bool> started,
-        TaskCompletionSource<bool> release,
-        CancellationToken cancellationToken)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        started.TrySetResult(true);
-        await release.Task.ConfigureAwait(false);
-
-        var source = new FileStream(legacy, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
-        await using (source.ConfigureAwait(false))
-        {
-            var target = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
-            await using (target.ConfigureAwait(false))
-            {
-                await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        SessionCacheMigrationCounters.RecordSuccess();
+        refused.Message.Should().StartWith(CachePath + ": ").And.Contain(where);
+        File.ReadAllText(CachePath).Should().Be(text);
     }
 }

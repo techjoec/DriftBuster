@@ -396,7 +396,7 @@ namespace DriftBuster.Gui.ViewModels
 
         private void RestoreActivityLog(ServerSelectionCache snapshot)
         {
-            var timelineFilter = snapshot.Timeline?.Filter ?? snapshot.ActivityFilter;
+            var timelineFilter = snapshot.Timeline?.Filter;
             if (!string.IsNullOrWhiteSpace(timelineFilter) && Enum.TryParse<ActivityFilterOption>(timelineFilter, true, out var savedFilter))
             {
                 ActivityFilter = savedFilter;
@@ -859,7 +859,6 @@ namespace DriftBuster.Gui.ViewModels
             var sortDescriptor = CatalogViewModel.SortDescriptor;
             return new ServerSelectionCache
             {
-                SchemaVersion = SessionCacheService.CurrentSchemaVersion,
                 PersistSession = true,
                 Servers = Servers
                     .Where(server => server is not null)
@@ -882,7 +881,6 @@ namespace DriftBuster.Gui.ViewModels
                     Column = sortDescriptor?.ColumnKey ?? CatalogSortColumns.Drift,
                     Descending = sortDescriptor?.Descending ?? true,
                 },
-                ActivityFilter = ActivityFilter.ToString(),
                 CatalogFilters = new CatalogFilterCache
                 {
                     Coverage = CatalogViewModel.SelectedCoverageFilter.ToString(),

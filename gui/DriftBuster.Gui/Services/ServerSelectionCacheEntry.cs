@@ -1,34 +1,25 @@
-using System;
-using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Gui.Services
 {
-    public sealed class ServerSelectionCacheEntry
+    public sealed record ServerSelectionCacheEntry
     {
-        [JsonPropertyName("host_id")]
-        public string HostId { get; set; } = string.Empty;
+        public required string HostId { get; init; }
 
-        [JsonPropertyName("label")]
-        public string Label { get; set; } = string.Empty;
+        public required string Label { get; init; }
 
-        [JsonPropertyName("enabled")]
-        public bool Enabled { get; set; }
+        public bool Enabled { get; init; }
 
-        [JsonPropertyName("scope")]
-        public ServerScanScope Scope { get; set; } = ServerScanScope.AllDrives;
+        public ServerScanScope Scope { get; init; }
 
-        [JsonPropertyName("roots")]
-        public string[] Roots { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> Roots { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("registry_keys")]
-        public string[] RegistryKeys { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> RegistryKeys { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("computer")]
-        public string? Computer { get; set; }
+        public string? Computer { get; init; }
 
-        [JsonPropertyName("credential_file")]
-        public string? CredentialFile { get; set; }
+        public string? CredentialFile { get; init; }
     }
 }

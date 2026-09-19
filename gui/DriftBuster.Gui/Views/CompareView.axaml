@@ -147,9 +147,6 @@
                 ToolTip.Tip="Groups, rules, ignore and mask choices, history, import and export"
                 automation:AutomationProperties.AutomationId="Compare.Manage" />
       </WrapPanel>
-      <Border Classes="notice" IsVisible="{Binding HasCurationWarning}">
-        <TextBlock Text="{Binding CurationWarning}" TextWrapping="Wrap" />
-      </Border>
       <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasGroupFilter}">
         <TextBlock Text="{Binding GroupFilterText}" VerticalAlignment="Center" FontWeight="SemiBold" />
         <Button Content="Show every setting"

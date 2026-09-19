@@ -1,13 +1,9 @@
-using System.Text.Json.Serialization;
-
 namespace DriftBuster.Gui.Services
 {
-    public sealed class CatalogSortCache
+    public sealed record CatalogSortCache
     {
-        [JsonPropertyName("column")]
-        public string Column { get; set; } = string.Empty;
+        public required string Column { get; init; }
 
-        [JsonPropertyName("descending")]
-        public bool Descending { get; set; }
+        public bool Descending { get; init; }
     }
 }

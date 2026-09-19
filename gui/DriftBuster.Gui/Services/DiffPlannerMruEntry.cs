@@ -1,27 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
 
 namespace DriftBuster.Gui.Services
 {
-    public sealed class DiffPlannerMruEntry
+    /// <summary>A file set the Diff planner compared: the baseline, the files compared with it, and when.</summary>
+    public sealed record DiffPlannerMruEntry
     {
-        [JsonPropertyName("baseline_path")]
-        public string BaselinePath { get; set; } = string.Empty;
+        public required string BaselinePath { get; init; }
 
-        [JsonPropertyName("comparison_paths")]
-        public IList<string> ComparisonPaths { get; set; } = new List<string>();
+        public IReadOnlyList<string> ComparisonPaths { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("display_name")]
-        public string? DisplayName { get; set; }
+        public string? DisplayName { get; init; }
 
-        [JsonPropertyName("last_used_utc")]
-        public DateTimeOffset LastUsedUtc { get; set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset LastUsedUtc { get; init; }
 
-        [JsonPropertyName("payload_kind")]
-        public DiffPlannerPayloadKind PayloadKind { get; set; } = DiffPlannerPayloadKind.Unknown;
+        public DiffPlannerPayloadKind PayloadKind { get; init; }
 
-        [JsonPropertyName("sanitized_digest")]
-        public string? SanitizedDigest { get; set; }
+        public string? SanitizedDigest { get; init; }
     }
 }

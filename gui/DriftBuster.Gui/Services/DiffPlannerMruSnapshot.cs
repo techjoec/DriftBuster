@@ -1,17 +1,12 @@
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
 
 namespace DriftBuster.Gui.Services
 {
-    public sealed class DiffPlannerMruSnapshot
+    /// <summary>The Diff planner's recent file sets, newest first: <c>cache/diff-planner/mru.json</c> under the data root.</summary>
+    public sealed record DiffPlannerMruSnapshot
     {
-        [JsonPropertyName("schema_version")]
-        public int SchemaVersion { get; set; } = DiffPlannerMruStore.CurrentSchemaVersion;
+        public int SchemaVersion { get; init; } = DiffPlannerMruStore.CurrentSchemaVersion;
 
-        [JsonPropertyName("max_entries")]
-        public int MaxEntries { get; set; } = DiffPlannerMruStore.DefaultEntryLimit;
-
-        [JsonPropertyName("entries")]
-        public IList<DiffPlannerMruEntry> Entries { get; set; } = new List<DiffPlannerMruEntry>();
+        public IReadOnlyList<DiffPlannerMruEntry> Entries { get; init => field = value ?? []; } = [];
     }
 }

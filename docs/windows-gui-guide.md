@@ -18,7 +18,8 @@ How the Avalonia desktop app in `gui/DriftBuster.Gui` is laid out and what each 
 1. Ensure the SDK is installed (`dotnet --list-sdks`).
 2. Build: `dotnet build -c Debug gui/DriftBuster.Gui/DriftBuster.Gui.csproj`.
 3. Run: `dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj`, or run `DriftBuster.Gui.exe` from a release zip.
-4. The window opens on **Multi-server**. The top bar holds the tabs (Multi-server, Diff planner, Hunt explorer, Profiles), a core status dot with **Check core**, and the **Theme** selector (Dark+ / Light+).
+4. Before the window opens, DriftBuster reads its own files: the saved session (`sessions/multi-server.json`), the Diff planner's recent files (`cache/diff-planner/mru.json`) and the saved choices (`curation.json`), all under the data root. When one of them cannot be read, a window names the file, the JSON path and the reason, and the app closes when you close it; nothing is changed or replaced. Fix the file or move it aside and start again.
+5. The window opens on **Multi-server**. The top bar holds the tabs (Multi-server, Diff planner, Hunt explorer, Profiles), a core status dot with **Check core**, and the **Theme** selector (Dark+ / Light+).
 
 ## 4. Multi-server
 The toggles at the top of the page switch between **Setup**, **Compare**, **Files** and **File details**; **Run all** scans every included host. After a run the page lands on Compare.
