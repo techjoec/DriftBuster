@@ -239,6 +239,7 @@ namespace DriftBuster.Gui.ViewModels
         {
             _sessionChoices.Clear();
             Refresh();
+            Say("Forgot this run's ignore and mask choices.");
         }
 
         public void SaveChoices(IReadOnlyList<CurationChoice> choices) => Curation.Update(document => document with { Choices = choices.ToArray() });

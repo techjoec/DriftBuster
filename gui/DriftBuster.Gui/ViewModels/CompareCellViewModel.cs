@@ -21,6 +21,7 @@ namespace DriftBuster.Gui.ViewModels
             Value = value.State == SettingValueState.Value && !value.Masked ? value.Value : null;
             ValueHash = value.ValueHash;
             CanUnmask = value.Masked && value.SecretValue is not null;
+            IsSecret = value.SecretValue is not null;
             AutomationName = $"{hostLabel}: {Text}";
         }
 
@@ -43,6 +44,9 @@ namespace DriftBuster.Gui.ViewModels
         public bool IsAbsent { get; }
 
         public bool IsMasked { get; }
+
+        /// <summary>The value was masked, by detection or by a choice, even if it is shown now.</summary>
+        public bool IsSecret { get; }
 
         /// <summary>The value is masked and its text is at hand, so it can be unmasked.</summary>
         public bool CanUnmask { get; }

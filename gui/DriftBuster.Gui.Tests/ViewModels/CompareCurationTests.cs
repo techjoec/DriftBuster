@@ -39,6 +39,7 @@ public sealed class CompareCurationTests
         viewModel.VisibleFiles[0].VisibleRows.Should().Contain(row => row.Ignored && row.Key == "Cache.Minutes");
 
         viewModel.ClearRunChoices();
+        viewModel.StatusMessage.Should().Be("Forgot this run's ignore and mask choices.");
         viewModel.ShowIgnored = false;
         viewModel.VisibleFiles[0].VisibleRows.Should().HaveCount(2);
     }
@@ -61,6 +62,11 @@ public sealed class CompareCurationTests
         choices[1].Scope.Should().Be("hosts-test");
         viewModel.VisibleFiles.Select(file => file.Path).Should().Equal("inetpub/app/appsettings.json");
         viewModel.StatusMessage.Should().Be("Ignoring legacy.ini whenever these servers are compared.");
+
+        viewModel.ShowIgnored = true;
+        var legacy = viewModel.VisibleFiles.Single(file => string.Equals(file.Path, "legacy.ini", StringComparison.Ordinal));
+        legacy.Summary.Should().Be("ignored: left out of the differences");
+        legacy.AllRows.Should().OnlyContain(row => row.Ignored, "settings in an ignored file show as ignored");
     }
 
     [Fact]

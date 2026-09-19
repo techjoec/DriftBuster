@@ -11,7 +11,8 @@ namespace DriftBuster.Gui.ViewModels
     /// </summary>
     public static class CompareCopy
     {
-        private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+        // Relaxed escaping keeps the masked marker and non-ASCII values readable; the text is shown and copied, never embedded in HTML.
+        private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
         public static string Format(CompareContext context, CompareCopyFormat format, CompareCopyScope scope)
         {

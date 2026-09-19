@@ -113,6 +113,9 @@ namespace DriftBuster.Gui.ViewModels
 
         private void OnCurationChanged(object? sender, EventArgs e) => Refresh();
 
+        /// <summary>Raised after previous/next difference selects a setting, so the view can bring it into view.</summary>
+        public event EventHandler? DifferenceSelected;
+
         /// <summary>Raised with a config id when the user asks for a file's details.</summary>
         public event EventHandler<ValueEventArgs<string>>? DetailsRequested;
 
@@ -384,6 +387,7 @@ namespace DriftBuster.Gui.ViewModels
                 if (rows[index].Differs)
                 {
                     SelectedRow = rows[index];
+                    DifferenceSelected?.Invoke(this, EventArgs.Empty);
                     return true;
                 }
             }

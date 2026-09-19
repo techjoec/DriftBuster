@@ -21,7 +21,14 @@ public partial class TextViewerWindow : Window
     {
         Title = title;
         this.FindControl<TextBlock>("Heading")!.Text = heading;
-        this.FindControl<TextBox>("Body")!.Text = text;
+        var body = this.FindControl<TextBox>("Body")!;
+        body.Text = text;
+        if (string.IsNullOrEmpty(text))
+        {
+            // Nothing to show below the heading and note: drop the empty box and size to what is left.
+            body.IsVisible = false;
+            SizeToContent = SizeToContent.Height;
+        }
         if (!string.IsNullOrWhiteSpace(note))
         {
             this.FindControl<TextBlock>("Note")!.Text = note;

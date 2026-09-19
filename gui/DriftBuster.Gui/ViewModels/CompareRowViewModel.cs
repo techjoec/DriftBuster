@@ -11,7 +11,7 @@ namespace DriftBuster.Gui.ViewModels
     /// <summary>One setting across every server.</summary>
     public sealed partial class CompareRowViewModel : ObservableObject
     {
-        public CompareRowViewModel(string path, SettingRow row, IReadOnlyDictionary<string, string> labels)
+        public CompareRowViewModel(string path, SettingRow row, IReadOnlyDictionary<string, string> labels, bool fileIgnored = false)
         {
             ArgumentNullException.ThrowIfNull(row);
             ArgumentNullException.ThrowIfNull(labels);
@@ -19,7 +19,8 @@ namespace DriftBuster.Gui.ViewModels
             Key = row.Key;
             Differs = row.Differs;
             RawDiffers = row.Values.Any(value => value.DiffersFromBaseline);
-            Ignored = row.Ignored;
+            // A setting in an ignored file is shown as ignored too.
+            Ignored = row.Ignored || fileIgnored;
             InReview = row.InReview;
             Groups = row.Groups;
             Cells = row.Values.Select(value => new CompareCellViewModel(value, labels.TryGetValue(value.HostId, out var label) ? label : value.HostId)).ToArray();

@@ -59,7 +59,10 @@ public sealed class DiffLinesViewModelTests
         var diff = DiffLinesViewModel.FromTexts(before, after);
 
         diff.PositionText.Should().Be("2 changes");
+        var scrolls = 0;
+        diff.ChangeSelected += (_, _) => scrolls++;
         diff.NextChangeCommand.Execute(null);
+        scrolls.Should().Be(1);
         diff.SelectedLine!.LeftText.Should().Be("line 5");
         diff.PositionText.Should().Be("Change 1 of 2");
 

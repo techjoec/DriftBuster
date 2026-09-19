@@ -122,6 +122,8 @@ public sealed class CurationApplierTests
         Row(curated, "Built").Groups.Should().Equal("Web files");
         Row(curated, "Cache.Minutes").InReview.Should().BeTrue();
         Row(curated, "Built").InReview.Should().BeFalse();
+        Apply(new CurationDocument { Review = [new CurationReviewItem { Target = new CurationTarget { File = "apps/web/app.json" } }] })
+            .Files.Single(file => file.Path.EndsWith("app.json", StringComparison.Ordinal)).Settings.Should().OnlyContain(row => row.InReview, "a file on the review list puts all its settings there");
         Row(curated, "Cache.Minutes").Ignored.Should().BeFalse("the ignore belongs to another host set");
     }
 

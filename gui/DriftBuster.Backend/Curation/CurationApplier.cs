@@ -63,7 +63,8 @@ public static class CurationApplier
             row.Ignored = rowRules.Any(rule => rule.Ignore && rule.KeyPattern.Length > 0)
                 || choices.Any(choice => string.Equals(choice.Kind, CurationChoiceKinds.Ignore, StringComparison.Ordinal) && !choice.Target.IsSource && !choice.Target.IsValue
                     && choice.Target.MatchesSetting(file.Path, row.Key));
-            row.InReview = review.Any(item => item.Target.MatchesSetting(file.Path, row.Key));
+            // A file on the review list puts every one of its settings there.
+            row.InReview = review.Any(item => item.Target.IsSource ? item.Target.MatchesFile(file.Path) : item.Target.MatchesSetting(file.Path, row.Key));
 
             foreach (var value in row.Values)
             {

@@ -26,8 +26,8 @@ namespace DriftBuster.Gui.ViewModels
         {
             _file = file ?? throw new ArgumentNullException(nameof(file));
             ArgumentNullException.ThrowIfNull(labels);
-            _rows = file.Settings.Select(row => new CompareRowViewModel(file.Path, row, labels)).ToArray();
-            Summary = SettingsComparisonReport.FileSummaryText(file, labels);
+            _rows = file.Settings.Select(row => new CompareRowViewModel(file.Path, row, labels, file.Ignored)).ToArray();
+            Summary = file.Ignored ? "ignored: left out of the differences" : SettingsComparisonReport.FileSummaryText(file, labels);
             var slash = file.Path.LastIndexOf('/');
             FileName = file.FileLabel.Length > 0 ? file.FileLabel : slash >= 0 ? file.Path[(slash + 1)..] : file.Path;
             Folder = slash >= 0 ? file.Path[..slash] : string.Empty;

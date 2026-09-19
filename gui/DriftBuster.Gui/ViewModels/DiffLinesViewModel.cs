@@ -158,6 +158,9 @@ namespace DriftBuster.Gui.ViewModels
 
         public IRelayCommand NextChangeCommand { get; }
 
+        /// <summary>Raised after previous/next change selects a line, so the view can bring it into view.</summary>
+        public event EventHandler? ChangeSelected;
+
         public IRelayCommand PreviousChangeCommand { get; }
 
         [ObservableProperty]
@@ -319,6 +322,7 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             SelectedLine = Lines[next];
+            ChangeSelected?.Invoke(this, EventArgs.Empty);
         }
 
         private int BlockStart(int position)

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
 using Avalonia.Controls;
@@ -39,20 +38,20 @@ namespace DriftBuster.Gui.Views
 
             if (_viewModel is not null)
             {
-                _viewModel.PropertyChanged -= OnViewModelChanged;
+                _viewModel.ChangeSelected -= OnChangeSelected;
             }
 
             _viewModel = viewModel;
             if (_viewModel is not null)
             {
-                _viewModel.PropertyChanged += OnViewModelChanged;
+                _viewModel.ChangeSelected += OnChangeSelected;
             }
         }
 
-        private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+        // Only navigation scrolls: a line the user clicks is already where they are looking.
+        private void OnChangeSelected(object? sender, System.EventArgs e)
         {
-            if (!string.Equals(e.PropertyName, nameof(DiffLinesViewModel.SelectedLine), System.StringComparison.Ordinal)
-                || _viewModel?.SelectedLine is not { } line)
+            if (_viewModel?.SelectedLine is not { } line)
             {
                 return;
             }

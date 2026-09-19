@@ -91,9 +91,15 @@ public sealed class CompareViewModelTests
         viewModel.VisibleFiles[1].Badge.Should().Be("missing");
         viewModel.VisibleFiles[0].Badge.Should().Be("2");
 
+        var scrolls = 0;
+        viewModel.DifferenceSelected += (_, _) => scrolls++;
         viewModel.NextDifferenceCommand.Execute(null);
         viewModel.SelectedRow!.Key.Should().Be("Cache.Minutes");
         viewModel.PositionText.Should().Be("Difference 1 of 2");
+        scrolls.Should().Be(1, "navigation asks the view to bring the setting into view");
+        viewModel.SelectedRow = viewModel.SelectedFile!.VisibleRows[1];
+        scrolls.Should().Be(1, "a row the user picks is not scrolled");
+        viewModel.SelectedRow = viewModel.SelectedFile.VisibleRows[0];
 
         viewModel.NextDifferenceCommand.Execute(null);
         viewModel.SelectedRow!.Key.Should().Be("db.password");

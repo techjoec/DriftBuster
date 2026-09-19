@@ -42,6 +42,22 @@ public sealed class CompareCopyTests
         var password = Context("db.password");
 
         CompareViewModel.Copy(password, CompareCopyFormat.Text, CompareCopyScope.Values).Should().NotContain("two").And.Contain("•••• (differs)");
+        CompareViewModel.Copy(password, CompareCopyFormat.Json, CompareCopyScope.Values).Should().Contain("\"•••• (differs)\"", "the marker is written as is, not escaped");
+    }
+
+    [Fact]
+    public void A_bug_report_never_carries_a_secret_even_when_it_is_shown()
+    {
+        var viewModel = new CompareViewModel(new InMemoryCurationService());
+        viewModel.Load(SampleComparison.Build());
+        var file = viewModel.VisibleFiles[0];
+        viewModel.SetMasked(new CompareContext(file, file.AllRows.Single(row => string.Equals(row.Key, "db.password", StringComparison.Ordinal))), masked: false, CurationPersistence.ThisRun);
+        var shown = viewModel.VisibleFiles[0].AllRows.Single(row => string.Equals(row.Key, "db.password", StringComparison.Ordinal));
+        shown.Cells[2].Text.Should().Be("two", "the user unmasked it on screen");
+
+        var draft = CompareViewModel.BugReport(new CompareContext(viewModel.VisibleFiles[0], shown));
+
+        draft.Payload.Should().NotContain("\"two\"").And.NotContain("\"one\"").And.Contain("•••• (differs)").And.Contain("\"value_masked\": \"yes\"");
     }
 
     [Fact]

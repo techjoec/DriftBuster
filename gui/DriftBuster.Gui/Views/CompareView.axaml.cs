@@ -51,6 +51,7 @@ namespace DriftBuster.Gui.Views
             {
                 _viewModel.PropertyChanged -= OnViewModelChanged;
                 _viewModel.Columns.CollectionChanged -= OnColumnsChanged;
+                _viewModel.DifferenceSelected -= OnDifferenceSelected;
             }
 
             _viewModel = viewModel;
@@ -58,6 +59,7 @@ namespace DriftBuster.Gui.Views
             {
                 _viewModel.PropertyChanged += OnViewModelChanged;
                 _viewModel.Columns.CollectionChanged += OnColumnsChanged;
+                _viewModel.DifferenceSelected += OnDifferenceSelected;
             }
 
             BuildColumns();
@@ -72,9 +74,6 @@ namespace DriftBuster.Gui.Views
             {
                 case nameof(CompareViewModel.ShowFileList):
                     UpdateFileList();
-                    break;
-                case nameof(CompareViewModel.SelectedRow):
-                    BringSelectedRowIntoView();
                     break;
             }
         }
@@ -98,6 +97,9 @@ namespace DriftBuster.Gui.Views
                 splitter.IsVisible = show;
             }
         }
+
+        // Only navigation scrolls: a row the user clicks or right-clicks is already where they are looking.
+        private void OnDifferenceSelected(object? sender, EventArgs e) => BringSelectedRowIntoView();
 
         private void BringSelectedRowIntoView()
         {
@@ -231,7 +233,7 @@ namespace DriftBuster.Gui.Views
                 var cell = row is not null && column < row.Cells.Count ? row.Cells[column] : null;
                 text.Text = cell?.Text;
                 text.Classes.Set("absent", cell?.IsAbsent == true);
-                border.Classes.Set("differs", cell?.IsDifferent == true && cell.IsIgnored == false && row?.Ignored == false);
+                border.Classes.Set("differs", cell?.IsDifferent == true && !cell.IsIgnored && row?.Ignored == false);
                 border.Classes.Set("ignored", cell?.IsIgnored == true || row?.Ignored == true);
                 AutomationProperties.SetName(text, cell?.AutomationName ?? string.Empty);
             };
@@ -278,8 +280,15 @@ namespace DriftBuster.Gui.Views
             }
         }
 
-        internal async Task ShowManagerAsync(CurationManagerViewModel manager) =>
+        internal async Task ShowManagerAsync(CurationManagerViewModel manager)
+        {
             await ShowAsync(new CurationManagerWindow(manager)).ConfigureAwait(true);
+            if (_viewModel is not null)
+            {
+                // The last action's message no longer describes what is on screen.
+                _viewModel.StatusMessage = string.Empty;
+            }
+        }
 
         /// <summary>Shows a dialog over the window this view is in, or on its own when there is none.</summary>
         internal async Task<T?> ShowAsync<T>(Window dialog)

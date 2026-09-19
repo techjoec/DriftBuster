@@ -21,7 +21,8 @@ namespace DriftBuster.Gui.ViewModels
         /// <summary>GitHub rejects very long prefilled links; longer bodies are cut and say so.</summary>
         internal const int MaxUrlLength = 7500;
 
-        private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+        // Relaxed escaping keeps the masked marker and non-ASCII values readable; the text is shown and copied, never embedded in HTML.
+        private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
         public BugReportDraft(CompareContext context)
         {
@@ -30,7 +31,8 @@ namespace DriftBuster.Gui.ViewModels
             Setting = context.Key ?? string.Empty;
             Format = context.File.Format;
             Mode = context.File.Mode;
-            Values = context.Row?.Cells.ToDictionary(cell => cell.HostLabel, cell => cell.Text, StringComparer.Ordinal)
+            // A secret goes out as its marker even when the user has it unmasked on screen.
+            Values = context.Row?.Cells.ToDictionary(cell => cell.HostLabel, cell => cell.IsSecret ? (cell.IsDifferent ? "•••• (differs)" : "•••• (same)") : cell.Text, StringComparer.Ordinal)
                 ?? new Dictionary<string, string>(StringComparer.Ordinal);
             Metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -40,7 +42,7 @@ namespace DriftBuster.Gui.ViewModels
                 ["groups"] = string.Join(", ", context.Row?.Groups ?? []),
                 ["ignored"] = (context.Row?.Ignored ?? context.File.Ignored) ? "yes" : "no",
                 ["differs"] = (context.Row?.RawDiffers ?? context.File.RawDiffers) ? "yes" : "no",
-                ["value_masked"] = context.Row?.Cells.Any(cell => cell.IsMasked) == true ? "yes" : "no",
+                ["value_masked"] = context.Row?.Cells.Any(cell => cell.IsSecret) == true ? "yes" : "no",
             };
             _payloadText = Payload;
         }
