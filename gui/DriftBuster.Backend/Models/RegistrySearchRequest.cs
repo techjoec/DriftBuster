@@ -13,7 +13,7 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("keywords")]
         public string[] Keywords { get; set; } = [];
 
-        /// <summary>Python regular expressions a value name or its data is matched against.</summary>
+        /// <summary>Regular expressions a value name or its data is matched against.</summary>
         [JsonPropertyName("patterns")]
         public string[] Patterns { get; set; } = [];
 

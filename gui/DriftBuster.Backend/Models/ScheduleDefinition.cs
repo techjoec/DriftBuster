@@ -29,22 +29,22 @@ namespace DriftBuster.Backend.Models
         public IDictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>(System.StringComparer.Ordinal);
 
         /// <summary>
-        /// The manifest's <c>every</c> value when it is not a string (a number of seconds), as <c>json.loads</c> reads it; it is written back
-        /// in place of <see cref="Every"/> while <see cref="Every"/> still shows its <c>str()</c> text.
+        /// The manifest's <c>every</c> when it is not a string (seconds as a JSON number); written back in place of <see cref="Every"/> while
+        /// <see cref="Every"/> still shows its text.
         /// </summary>
         [JsonIgnore]
         public object? EveryValue { get; set; }
 
         /// <summary>
-        /// The manifest's metadata values that are not strings (numbers, booleans, null, lists, objects), by key, as <c>json.loads</c> reads
-        /// them; each is written back in place of its <see cref="Metadata"/> text while that text still shows it.
+        /// The manifest's metadata values that are not strings (numbers, booleans, null, lists, objects), by key; each is written back in place
+        /// of its <see cref="Metadata"/> text while that text still shows it.
         /// </summary>
         [JsonIgnore]
         public IDictionary<string, object?>? MetadataValues { get; set; }
 
         /// <summary>
-        /// The manifest entry the card was read from, as <c>json.loads</c> reads it. Each field whose card text still shows what the entry held
-        /// is written back as the entry held it, and keys the card does not show are kept.
+        /// The manifest entry the card was read from. Each field whose card text still shows what the entry held is written back as the entry
+        /// held it, and keys the card does not show are kept.
         /// </summary>
         [JsonIgnore]
         public IReadOnlyDictionary<string, object?>? ManifestEntry { get; set; }

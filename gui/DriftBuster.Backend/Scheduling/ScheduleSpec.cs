@@ -6,12 +6,12 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
-/// <c>scheduler.ScheduleSpec</c>: a named schedule running a profile every <see cref="Interval"/>, from an optional start, inside an
-/// optional daily window, with tags and metadata (values in the <see cref="EngineJson"/> domain) and an optional profile loader.
+/// A named schedule running a profile every <see cref="Interval"/>, from an optional start, inside an optional daily window, with tags
+/// and metadata (values in the <see cref="EngineJson"/> domain) and an optional profile loader.
 /// </summary>
 public sealed class ScheduleSpec
 {
-    /// <summary>The dataclass constructor with <c>__post_init__</c>: a positive interval, then a name and a profile that are not blank.</summary>
+    /// <summary>Requires a positive interval, then a name and a profile that are not blank.</summary>
     public ScheduleSpec(
         string name,
         string profile,
@@ -67,10 +67,10 @@ public sealed class ScheduleSpec
     public Func<string, RunProfile>? Loader { get; }
 
     /// <summary>
-    /// <c>ScheduleSpec.from_dict(payload, profile_loader=...)</c>: <c>str()</c> of <c>name</c> and <c>profile</c> and the raw <c>every</c>
-    /// (all required), a truthy <c>start_at</c> through <see cref="ScheduleParsing.ParseIsoTimestamp"/> (UTC), a mapping
-    /// <c>window</c>, <c>tags</c> (a list becomes its stripped non-empty <c>str()</c> items sorted by code point, any other truthy value
-    /// one stripped item), a mapping <c>metadata</c> (anything else raises), and finally the interval.
+    /// <c>name</c>, <c>profile</c> (as text) and the raw <c>every</c> are required; a truthy <c>start_at</c> goes through
+    /// <see cref="ScheduleParsing.ParseIsoTimestamp"/> (UTC); <c>window</c> is read from a mapping; <c>tags</c> from a list become its
+    /// stripped non-empty text items sorted by code point, any other truthy value one stripped item; <c>metadata</c> must be a mapping.
+    /// The interval is checked last.
     /// </summary>
     public static ScheduleSpec FromDict(IReadOnlyDictionary<string, object?> payload, Func<string, RunProfile>? profileLoader = null)
     {
@@ -111,7 +111,6 @@ public sealed class ScheduleSpec
     /// <summary>The run after <paramref name="moment"/>: the moment in UTC plus the interval, aligned.</summary>
     public DateTimeOffset NextAfter(DateTimeOffset moment) => AlignTo(moment.ToUniversalTime() + Interval);
 
-    /// <summary><c>spec.load_profile()</c>.</summary>
     public RunProfile LoadProfile()
         => Loader is null ? throw new ScheduleException("Profile loader not configured for this schedule") : Loader(Profile);
 

@@ -7,11 +7,11 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Models
 {
     /// <summary>
-    /// Reads a run profile source from a bare string (the path) or an object, which is read exactly as a <c>profile.json</c> source is
-    /// (<see cref="RunProfile.SourceFromDict"/>: a non-empty <c>path</c>, <c>str()</c> of a value that is not a string, an alias dropped
-    /// when blank or falsy, <c>bool(optional)</c>, and <c>exclude</c> as one pattern for a string or the <c>str()</c> of each item); an
-    /// object <see cref="RunProfile.SourceFromDict"/> refuses raises <see cref="JsonException"/> carrying its message. Writes a bare
-    /// string when only the path is set, otherwise an object holding <c>path</c> and each of the other keys that is set.
+    /// Reads a run profile source from a bare string (the path) or an object read as a <c>profile.json</c> source
+    /// (<see cref="RunProfile.SourceFromDict"/>: a non-empty <c>path</c>, non-string values as their text, an alias dropped when blank or
+    /// falsy, <c>optional</c> by truthiness, <c>exclude</c> one pattern for a string or each item's text); a refusal raises
+    /// <see cref="JsonException"/> with its message. Writes a bare string when only the path is set, otherwise an object with <c>path</c>
+    /// and each other key that is set.
     /// </summary>
     public sealed class RunProfileSourceJsonConverter : JsonConverter<RunProfileSource>
     {

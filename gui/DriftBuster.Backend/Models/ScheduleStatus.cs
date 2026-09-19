@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
 {
-    /// <summary>One entry of <c>run_profiles_cli schedule list</c>: a schedule from the manifest with its scheduler state.</summary>
+    /// <summary>One entry of <c>schedule list</c>: a schedule from the manifest with its scheduler state.</summary>
     public sealed class ScheduleStatus
     {
         [JsonPropertyName("name")]
@@ -17,7 +17,7 @@ namespace DriftBuster.Backend.Models
         [JsonPropertyName("tags")]
         public string[] Tags { get; set; } = [];
 
-        /// <summary>The manifest's metadata values as JSON decoded them (str, bool, int, float, null, list or dict).</summary>
+        /// <summary>The manifest's metadata values as JSON decoded them (string, bool, number, null, list or object).</summary>
         [JsonPropertyName("metadata")]
         public IDictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>(StringComparer.Ordinal);
 

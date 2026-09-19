@@ -7,26 +7,25 @@ using DriftBuster.Backend.Profiles.Run;
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
-/// The schedule files <c>run_profiles_cli</c> keeps under the profiles root: the <c>schedules.json</c> manifest
-/// (<c>{"schedules": [...]}</c> or a bare array) and <c>scheduler-state.json</c> (per schedule <c>next_run</c> and <c>pending</c>,
-/// written as <c>json.dumps(snapshot, indent=2, sort_keys=True)</c> plus a new line). The GUI's lenient manifest reading and its
-/// normalising writer live in <see cref="ScheduleStore"/>'s <c>ListSchedules</c> / <c>SaveSchedules</c> half.
+/// The schedule files under the profiles root: the <c>schedules.json</c> manifest (<c>{"schedules": [...]}</c> or a bare array) and
+/// <c>scheduler-state.json</c> (per schedule <c>next_run</c> and <c>pending</c>, sorted, indented, ASCII-escaped JSON plus a new line).
+/// The GUI's lenient manifest reading and writing is the <c>ListSchedules</c> / <c>SaveSchedules</c> half.
 /// </summary>
 public static partial class ScheduleStore
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
-    /// <summary><c>_default_schedule_config_path(base_dir, override)</c>: the override as given, else <c>profiles_root(base_dir) / "schedules.json"</c> (creating the root).</summary>
+    /// <summary>The override as given, else <c>schedules.json</c> under the profiles root (created).</summary>
     public static string DefaultConfigPath(string? baseDir, string? overridePath)
         => overridePath is not null ? LexicalPath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "schedules.json");
 
-    /// <summary><c>_default_schedule_state_path(base_dir, override)</c>: the override as given, else <c>profiles_root(base_dir) / "scheduler-state.json"</c>.</summary>
+    /// <summary>The override as given, else <c>scheduler-state.json</c> under the profiles root.</summary>
     public static string DefaultStatePath(string? baseDir, string? overridePath)
         => overridePath is not null ? LexicalPath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "scheduler-state.json");
 
     /// <summary>
-    /// <c>_load_schedule_payload(path)</c>: the mapping entries of the manifest's <c>schedules</c> (or of a bare array). A missing file, text
-    /// that is not JSON and a truthy payload that is neither a list nor a str raise <see cref="CommandExitException"/>; a falsy payload is empty.
+    /// The mapping entries of the manifest's <c>schedules</c> (or of a bare array). A missing file, text that is not JSON and a truthy payload
+    /// that is neither an array nor a string raise <see cref="CommandExitException"/>; a falsy payload is empty.
     /// </summary>
     public static IReadOnlyList<IReadOnlyDictionary<string, object?>> LoadSchedulePayload(string path)
     {
@@ -54,8 +53,8 @@ public static partial class ScheduleStore
     }
 
     /// <summary>
-    /// <c>_build_schedule_specs(entries, base_dir=...)</c>: each entry through <see cref="ScheduleSpec.FromDict"/> with a loader over
-    /// <see cref="RunProfileStore.LoadProfile"/>; a <see cref="ScheduleException"/> becomes a <see cref="CommandExitException"/>.
+    /// Each entry through <see cref="ScheduleSpec.FromDict"/> with a loader over <see cref="RunProfileStore.LoadProfile"/>; a
+    /// <see cref="ScheduleException"/> becomes a <see cref="CommandExitException"/>.
     /// </summary>
     public static IReadOnlyList<ScheduleSpec> BuildScheduleSpecs(IEnumerable<IReadOnlyDictionary<string, object?>> entries, string? baseDir)
     {
@@ -78,8 +77,8 @@ public static partial class ScheduleStore
     }
 
     /// <summary>
-    /// <c>_load_schedule_state(path)</c>: empty when the file is missing; each mapping entry reduced to <c>next_run</c> and <c>pending</c>
-    /// (entries that are not mappings skipped). Text that is not JSON, or a payload that is not an object, raises <see cref="CommandExitException"/>.
+    /// Empty when the file is missing; each mapping entry reduced to <c>next_run</c> and <c>pending</c> (other entries skipped). Text that
+    /// is not JSON, or a payload that is not an object, raises <see cref="CommandExitException"/>.
     /// </summary>
     public static OrderedDictionary<string, object?> LoadScheduleState(string path)
     {
@@ -112,9 +111,9 @@ public static partial class ScheduleStore
     }
 
     /// <summary>
-    /// <c>_write_schedule_state(scheduler, path)</c>: the snapshot as sorted, indented, ASCII-escaped JSON with a trailing new line, parents
-    /// created. A state path that cannot be written raises the runtime's exception: the parent directory's
-    /// (<see cref="EnginePath.MakeDirectories"/>), or the file's (<see cref="UnauthorizedAccessException"/> for a directory).
+    /// The snapshot as sorted, indented, ASCII-escaped JSON with a trailing new line, parents created. An unwritable path raises the
+    /// runtime's exception: the parent directory's (<see cref="EnginePath.MakeDirectories"/>), or the file's
+    /// (<see cref="UnauthorizedAccessException"/> for a directory).
     /// </summary>
     public static void WriteScheduleState(ProfileScheduler scheduler, string path)
     {
@@ -135,11 +134,10 @@ public static partial class ScheduleStore
         WriteText(path, text);
     }
 
-    // path.write_text(text, encoding="utf-8").
     private static void WriteText(string path, string text) => EngineTextFile.WriteText(path, text);
 
-    // json.loads(path.read_text(encoding="utf-8")): null when the text is not JSON; a directory raises UnauthorizedAccessException,
-    // bytes that are not UTF-8 and the decoder's limits raise InvalidDataException, all unwrapped.
+    // Null when the text is not JSON; a directory raises UnauthorizedAccessException, non-UTF-8 bytes and the decoder's limits raise
+    // InvalidDataException, all unwrapped.
     private static JsonValue? ReadJson(string path)
     {
         return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.DecodeFile(EngineTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;

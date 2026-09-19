@@ -6,39 +6,33 @@ namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
 /// The GUI's side of <c>Profiles/schedules.json</c>: <see cref="ListSchedules"/> reads the manifest leniently into
-/// <see cref="ScheduleDefinition"/> cards (entries without a name, profile or interval skipped, in manifest order), and
-/// <see cref="SaveSchedules"/> writes trimmed cards as <c>{"schedules": [...]}</c> in card order. A card is saved only when the entry it
-/// writes passes <see cref="ScheduleSpec.FromDict"/> and registers with a <see cref="ProfileScheduler"/> (no repeated name, a first run in
-/// range), as <c>run_profiles_cli</c> requires when it loads the manifest.
+/// <see cref="ScheduleDefinition"/> cards (entries without a name, profile or interval skipped), and <see cref="SaveSchedules"/> writes
+/// trimmed cards as <c>{"schedules": [...]}</c> in card order. A card is saved only when its entry passes
+/// <see cref="ScheduleSpec.FromDict"/> and registers with a <see cref="ProfileScheduler"/> (unique name, first run in range), the same
+/// checks the scheduler applies when it loads the manifest.
 /// </summary>
 /// <remarks>
-/// The manifest is read as <c>_load_schedule_payload</c> reads it (<see cref="LoadSchedulePayload"/>, over <see cref="EngineJson"/>), so every
-/// manifest the scheduler reads loads as cards, whatever its nesting, floats or unpaired surrogates, and it is written as
-/// <c>json.dumps(payload, indent=2)</c> writes it (a container nested 64 levels deep or more on one line, as without indent), which
-/// <c>json.loads</c> reads back to the same values. A card shows each field as the text
-/// <c>ScheduleSpec.from_dict</c> reads (<c>str()</c> of the JSON value, a falsy <c>start_at</c> as no start). A card read from the manifest
-/// keeps its entry (<see cref="ScheduleDefinition.ManifestEntry"/>): every field whose card text still shows what the entry held is written
-/// back as the entry held it (JSON value and type, surrounding whitespace, untrimmed metadata keys), and keys the card does not show are
-/// kept, so a load and save leaves the scheduler reading what it read before. The exception is a manifest that is a bare top-level
-/// array: it is written in the object form, one container deeper, so a bare array nested to the decoder's limit is refused after the save.
+/// Reading goes through <see cref="LoadSchedulePayload"/>, so every manifest the scheduler reads loads as cards. A card keeps the entry
+/// it was read from (<see cref="ScheduleDefinition.ManifestEntry"/>): fields the card still shows unchanged are written back as the entry
+/// held them (JSON type, whitespace, untrimmed metadata keys) and keys the card does not show are kept, so a load and save changes
+/// nothing the scheduler reads. A bare top-level array is written in the object form, one level deeper.
 /// </remarks>
 public static partial class ScheduleStore
 {
     private static readonly char[] CardTagSeparators = [',', ';', '\n'];
 
-    // Containers nested this deep in schedules.json are written on one line: the indented layout of a manifest nested thousands of levels
-    // deep (which json.loads and so the scheduler still read) would grow with the square of the depth on every save.
+    // Containers nested this deep are written on one line: the indented layout grows with the square of the depth.
     private const int ManifestIndentDepth = 64;
 
     private static readonly string[] CardFields = ["name", "profile", "every", "start_at", "window", "tags", "metadata"];
 
     /// <summary>
-    /// The manifest's schedules as GUI cards, in manifest order. The entries are the ones <c>_load_schedule_payload</c> returns: an object's
-    /// <c>schedules</c>, or the document itself; a missing file, a falsy value and a string are no schedules.
+    /// The manifest's schedules as GUI cards, in manifest order: an object's <c>schedules</c>, or the document itself; a missing file, a
+    /// falsy value and a string are no schedules.
     /// </summary>
-    /// <exception cref="CommandExitException">Text that is not JSON, or a truthy value that is neither an array nor a string (Python's messages).</exception>
-    /// <exception cref="ArgumentException">An integer past the decoder's digit limit, which the scheduler cannot read either.</exception>
-    /// <exception cref="InvalidDataException">Containers nested past the decoder's limit, which the scheduler cannot read either.</exception>
+    /// <exception cref="CommandExitException">Text that is not JSON, or a truthy value that is neither an array nor a string.</exception>
+    /// <exception cref="ArgumentException">An integer past the decoder's digit limit.</exception>
+    /// <exception cref="InvalidDataException">Containers nested past the decoder's limit.</exception>
     public static ScheduleListResult ListSchedules(string? baseDir, CancellationToken cancellationToken = default)
     {
         var path = ScheduleManifestPath(baseDir);
@@ -64,8 +58,8 @@ public static partial class ScheduleStore
     /// <summary>Writes the cards to the manifest in their order, creating the profiles directory.</summary>
     /// <exception cref="InvalidOperationException">A card without a name, profile or interval.</exception>
     /// <exception cref="ScheduleException">An entry <see cref="ScheduleSpec.FromDict"/> refuses, or a name used twice.</exception>
-    /// <exception cref="ArgumentException">A start time or window time <c>fromisoformat</c> or <c>int()</c> refuses, or a window time out of range.</exception>
-    /// <exception cref="OverflowException">An interval, window time or start time out of Python's range, or a first run past it.</exception>
+    /// <exception cref="ArgumentException">A start or window time that does not parse, or a window time out of range.</exception>
+    /// <exception cref="OverflowException">An interval, window time or start time out of range, or a first run past it.</exception>
     public static void SaveSchedules(IEnumerable<ScheduleDefinition> schedules, string? baseDir, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(schedules);
@@ -107,7 +101,7 @@ public static partial class ScheduleStore
         }
     }
 
-    // _build_schedule_specs, then ProfileScheduler(specs): every entry through from_dict, then each registered in order.
+    // Every entry through FromDict, then each registered with a ProfileScheduler in order.
     private static List<object?> ValidateAndSerialiseSchedules(IEnumerable<ScheduleDefinition> schedules, CancellationToken cancellationToken)
     {
         var payload = new List<object?>();
@@ -165,7 +159,7 @@ public static partial class ScheduleStore
         };
     }
 
-    // str(value) of the decoded JSON value, the text from_dict reads.
+    // The text FromDict reads for a decoded JSON value.
     private static string EngineText(object? value) => EngineRepr.Str(value);
 
     // The text a card shows for a metadata value: a str as it is, null as nothing, anything else as its JSON text.
@@ -206,7 +200,7 @@ public static partial class ScheduleStore
         return true;
     }
 
-    // from_dict reads a window only from a mapping; each bound and the time zone as str().
+    // A window is read only from a mapping; each bound and the time zone as text.
     private static ScheduleWindowDefinition? ParseScheduleWindow(IReadOnlyDictionary<string, object?> element)
     {
         if (!element.TryGetValue("window", out var windowValue) || windowValue is not IReadOnlyDictionary<string, object?> window)
@@ -343,7 +337,7 @@ public static partial class ScheduleStore
         }
     }
 
-    // The interval read from the manifest while the card still shows its str() text, so a number keeps its JSON type; otherwise the card text.
+    // The manifest's interval while the card still shows its text, so a number keeps its JSON type; otherwise the card text.
     private static object CardEvery(ScheduleDefinition schedule)
         => schedule.EveryValue is { } value && string.Equals(EngineText(value).Trim(), schedule.Every, StringComparison.Ordinal)
             ? value
@@ -448,7 +442,7 @@ public static partial class ScheduleStore
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-    // from_dict's tags: each item's str() of a list, str() of any other truthy value, nothing for a falsy one; blanks dropped.
+    // FromDict's tags: each item's text of a list, the text of any other truthy value, nothing for a falsy one; blanks dropped.
     private static string[] ExtractTags(object? tags)
     {
         if (tags is List<object?> items)

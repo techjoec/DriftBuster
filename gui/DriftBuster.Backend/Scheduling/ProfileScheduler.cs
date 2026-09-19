@@ -3,15 +3,14 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
-/// <c>scheduler.ProfileScheduler</c>: registered schedules in registration order, each with its next run and the run <see cref="Due"/>
-/// handed out, which keeps being returned until <see cref="MarkComplete"/> advances the schedule. Every state time is UTC.
+/// Registered schedules in registration order, each with its next run and the run <see cref="Due"/> handed out, which keeps being
+/// returned until <see cref="MarkComplete"/> advances the schedule. Every state time is UTC.
 /// </summary>
 public sealed class ProfileScheduler
 {
     private readonly OrderedDictionary<string, ScheduleSpec> _specs = new(StringComparer.Ordinal);
     private readonly OrderedDictionary<string, ScheduleState> _state = new(StringComparer.Ordinal);
 
-    /// <summary><c>ProfileScheduler(specs)</c>: registers each spec in order.</summary>
     public ProfileScheduler(IEnumerable<ScheduleSpec>? specs = null)
     {
         foreach (var spec in specs ?? [])
@@ -23,7 +22,7 @@ public sealed class ProfileScheduler
     /// <summary>The clock (UTC, whole microseconds); tests swap it.</summary>
     internal static Func<DateTimeOffset> Now { get; set; } = IsoTimestamp.UtcNow;
 
-    /// <summary><c>scheduler.register(spec)</c>: a new name starts at <c>spec.initial_run(_now())</c>.</summary>
+    /// <summary>A new name starts at <see cref="ScheduleSpec.InitialRun"/> of now.</summary>
     public void Register(ScheduleSpec spec)
     {
         ArgumentNullException.ThrowIfNull(spec);
@@ -37,7 +36,7 @@ public sealed class ProfileScheduler
         _state[spec.Name] = new ScheduleState(start);
     }
 
-    /// <summary><c>scheduler.schedules()</c>: the specs ordered by name code point.</summary>
+    /// <summary>The specs ordered by name code point.</summary>
     public IReadOnlyList<ScheduleSpec> Schedules()
     {
         var names = _specs.Keys.ToList();
@@ -46,8 +45,8 @@ public sealed class ProfileScheduler
     }
 
     /// <summary>
-    /// <c>scheduler.due(reference)</c>: every pending run at or before the reference, and every schedule whose next run is at or before it
-    /// (which becomes pending), ordered by scheduled time (stable, registration order for ties).
+    /// Every pending run at or before the reference, and every schedule whose next run is at or before it (which becomes pending),
+    /// ordered by scheduled time, registration order for ties.
     /// </summary>
     public IReadOnlyList<ScheduledRun> Due(DateTimeOffset? reference = null)
     {
@@ -73,19 +72,18 @@ public sealed class ProfileScheduler
             }
         }
 
-        // Stable: runs due at the same time keep registration order.
         return runs.Order(Comparer<ScheduledRun>.Create(static (left, right) =>
             left.ScheduledFor < right.ScheduledFor ? -1 : (right.ScheduledFor < left.ScheduledFor ? 1 : 0))).ToArray();
     }
 
-    /// <summary><c>scheduler.peek(name)</c>: the pending run, else the next run.</summary>
+    /// <summary>The pending run, else the next run.</summary>
     public DateTimeOffset Peek(string name)
     {
         var state = State(name);
         return state.Pending ?? state.NextRun;
     }
 
-    /// <summary><c>scheduler.mark_complete(name, completed_at)</c>: clears the pending run; the next run follows the completion time (the pending time by default).</summary>
+    /// <summary>Clears the pending run; the next run follows the completion time (the pending time by default).</summary>
     public void MarkComplete(string name, DateTimeOffset? completedAt = null)
     {
         var state = State(name);
@@ -99,7 +97,7 @@ public sealed class ProfileScheduler
         state.NextRun = _specs[name].NextAfter(completed);
     }
 
-    /// <summary><c>scheduler.skip_until(name, resume_at)</c>: clears the pending run and restarts at the resume time, aligned.</summary>
+    /// <summary>Clears the pending run and restarts at the resume time, aligned.</summary>
     public void SkipUntil(string name, DateTimeOffset resumeAt)
     {
         var state = State(name);
@@ -107,7 +105,6 @@ public sealed class ProfileScheduler
         state.NextRun = _specs[name].AlignTo(resumeAt);
     }
 
-    /// <summary><c>scheduler.cancel(name)</c>.</summary>
     public void Cancel(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -119,7 +116,7 @@ public sealed class ProfileScheduler
         _state.Remove(name);
     }
 
-    /// <summary><c>scheduler.snapshot_state()</c>: per schedule in registration order, <c>next_run</c> and <c>pending</c> as ISO strings (pending may be null).</summary>
+    /// <summary>Per schedule in registration order, <c>next_run</c> and <c>pending</c> as ISO strings (pending may be null).</summary>
     public OrderedDictionary<string, object?> SnapshotState()
     {
         var snapshot = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -136,8 +133,8 @@ public sealed class ProfileScheduler
     }
 
     /// <summary>
-    /// <c>scheduler.apply_state(state)</c>: for each registered name in the mapping, a truthy <c>next_run</c> replaces the next run and
-    /// <c>pending</c> is set from a truthy value or cleared; both go through <see cref="ScheduleParsing.ParseTimestamp"/>.
+    /// For each registered name in the mapping, a truthy <c>next_run</c> replaces the next run and <c>pending</c> is set from a truthy
+    /// value or cleared; both go through <see cref="ScheduleParsing.ParseTimestamp"/>.
     /// </summary>
     public void ApplyState(IReadOnlyDictionary<string, object?> state)
     {
