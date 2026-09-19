@@ -219,12 +219,12 @@
                           <TextBlock Text="{Binding RunState}" />
                           <TextBlock Text="{Binding StatusText}" />
                           <Button Grid.Column="3"
-                                  Content="View drilldown"
+                                  Content="File details"
                                   Classes="outline"
                                   Command="{Binding ((vm:ServerSelectionViewModel)DataContext).ShowDrilldownForHostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                   CommandParameter="{Binding HostId}"
                                   ToolTip.Tip="Open the most recent drilldown for this host."
-                                  automation:AutomationProperties.Name="{Binding Label, StringFormat='View drilldown for {0}'}"
+                                  automation:AutomationProperties.Name="{Binding Label, StringFormat='File details for {0}'}"
                                   automation:AutomationProperties.AutomationId="ServerSelection.Execution.ViewDrilldown" />
                         </Grid>
                       </DataTemplate>
