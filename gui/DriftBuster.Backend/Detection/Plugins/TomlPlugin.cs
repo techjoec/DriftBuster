@@ -11,50 +11,34 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// <c>key = value</c> pairs, quoted, array and inline-table values.
 /// </summary>
 /// <remarks>
-/// Regexes spell <c>\s</c> as <c>[\s\x1c-\x1f]</c> (the engine's whitespace set); the <c>^\s*</c> multiline patterns use
-/// <c>\G</c> and run through <see cref="LineStartMatcher"/> to stay linear over blank-line runs.
+/// The <c>^\s*</c> multiline patterns use <c>\G</c> and run through <see cref="LineStartMatcher"/> to stay linear over
+/// blank-line runs.
 /// </remarks>
 public sealed partial class TomlPlugin : IFormatPlugin
 {
     private const string Extension = ".toml";
     private const int BareKeyLineWindow = 500;
     private const int BareKeyThreshold = 3;
-    private const string EngineSpace = @"[\s\x1c-\x1f]";
+    [GeneratedRegex(@"\G\s*\[[A-Za-z0-9_.\-]+\]\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex TableHeaderPattern { get; }
 
-    internal static readonly Regex TableHeaderPattern = new(
-        @"\G" + EngineSpace + @"*\[[A-Za-z0-9_.\-]+\]" + EngineSpace + "*$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*\[\[[A-Za-z0-9_.\-]+\]\]\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex ArrayOfTablesPattern { get; }
 
-    internal static readonly Regex ArrayOfTablesPattern = new(
-        @"\G" + EngineSpace + @"*\[\[[A-Za-z0-9_.\-]+\]\]" + EngineSpace + "*$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*[A-Za-z0-9_.\-]+\s*=\s*.+$", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex KeyEqualsPattern { get; }
 
-    internal static readonly Regex KeyEqualsPattern = new(
-        @"\G" + EngineSpace + @"*[A-Za-z0-9_.\-]+" + EngineSpace + "*=" + EngineSpace + "*.+$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"=\s*(?:""[^""]*""|'[^']*')", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex QuotedValuePattern { get; }
 
-    private static readonly Regex QuotedValuePattern = new(
-        "=" + EngineSpace + @"*(?:""[^""]*""|'[^']*')",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"=\s*\[.*?\]", RegexOptions.Singleline | RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex ArrayValuePattern { get; }
 
-    private static readonly Regex ArrayValuePattern = new(
-        "=" + EngineSpace + @"*\[.*?\]",
-        RegexOptions.Singleline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"=\s*\{.*?\}", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex InlineTablePattern { get; }
 
-    private static readonly Regex InlineTablePattern = new(
-        "=" + EngineSpace + @"*\{.*?\}",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
-
-    private static readonly Regex TrailingCommaPattern = new(
-        "," + EngineSpace + @"*\]",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@",\s*\]", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex TrailingCommaPattern { get; }
 
     public string Name => "toml";
 

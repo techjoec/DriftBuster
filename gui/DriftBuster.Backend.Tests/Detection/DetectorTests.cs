@@ -665,8 +665,7 @@ public sealed class DetectorTests : IDisposable
         calls[0].Error.Message.Should().Be($"{target}: boom");
     }
 
-    // Reason normalisation uses str.strip()/str.split() (U+001C-U+001F are whitespace) and str.upper()
-    // (full mapping) on the first letter, which may be an astral code point (mathematical letters have no uppercase).
+    // Reason normalisation trims and splits on .NET whitespace and keeps each reason's letters as written.
     [Fact]
     public void NormaliseReasonsCollapsesUnicodeWhitespace()
     {

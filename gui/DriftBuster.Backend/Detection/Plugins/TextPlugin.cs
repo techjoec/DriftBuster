@@ -1,5 +1,5 @@
-using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Json;
@@ -11,16 +11,23 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// the structured parsers.
 /// </summary>
 /// <remarks>
-/// The patterns are matched by hand on code points because .NET regex <c>\s</c>/<c>\w</c> and UTF-16 units give different
-/// answers on the inputs that matter (U+001C-U+001F whitespace, astral letters).
+/// The <c>^\s*Subsystem\s+sftp\b</c> marker runs over the sampled lines as a <c>\G</c> regex through
+/// <see cref="LineStartMatcher"/>, so <c>\s+</c> may cross line breaks as it would on the joined text.
 /// </remarks>
-public sealed class TextPlugin : IFormatPlugin
+public sealed partial class TextPlugin : IFormatPlugin
 {
     private const int LineWindow = 500;
     private const int MarkerWindow = 100;
     private const int CountCap = 50;
 
-    private static readonly string[] OpenvpnKeywords = ["dev", "remote", "proto"];
+    [GeneratedRegex(@"^[A-Za-z_][\w.-]*(?:\s+.+)?$", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex DirectivePattern { get; }
+
+    [GeneratedRegex(@"\G\s*Subsystem\s+sftp\b", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex OpensshSubsystemPattern { get; }
+
+    [GeneratedRegex(@"^\s*(?:dev|remote|proto)\b", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex OpenvpnDirectivePattern { get; }
 
     public string Name => "text";
 
@@ -55,7 +62,7 @@ public sealed class TextPlugin : IFormatPlugin
             return LineKind.Assignment;
         }
 
-        if (IsDirective(s))
+        if (DirectivePattern.IsMatch(s))
         {
             return LineKind.Directive;
         }
@@ -63,107 +70,11 @@ public sealed class TextPlugin : IFormatPlugin
         return LineKind.Other;
     }
 
-    // ^[A-Za-z_][\w.-]*(?:\s+.+)?$ on a stripped line: a [L N _ . -] token followed by end of line or whitespace.
-    private static bool IsDirective(string s)
-    {
-        if (!(char.IsAsciiLetter(s[0]) || s[0] == '_'))
-        {
-            return false;
-        }
-
-        var offset = 1;
-        while (offset < s.Length)
-        {
-            Rune.DecodeFromUtf16(s.AsSpan(offset), out var rune, out var consumed);
-            if (rune.Value is '.' or '-' || rune.IsWordCharacter)
-            {
-                offset += consumed;
-                continue;
-            }
-
-            return rune.Value <= char.MaxValue && char.IsWhiteSpace((char)rune.Value);
-        }
-
-        return true;
-    }
-
-    // "keyword\b": the next code point is not a word character, or the line ends.
-    private static bool StartsWithWord(string s, int offset, string keyword)
-    {
-        if (!s.AsSpan(offset).StartsWith(keyword, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        var next = offset + keyword.Length;
-        if (next >= s.Length)
-        {
-            return true;
-        }
-
-        Rune.DecodeFromUtf16(s.AsSpan(next), out var rune, out _);
-        return !rune.IsWordCharacter;
-    }
-
-    private static int SkipSpaces(string s, int offset)
-    {
-        while (offset < s.Length && char.IsWhiteSpace(s[offset]))
-        {
-            offset++;
-        }
-
-        return offset;
-    }
-
-    // ^\s*Subsystem\s+sftp\b over the joined lines: "\s+" may cross newlines, so "sftp" can start a later line after
-    // whitespace-only lines.
-    private static bool HasOpensshSubsystemMarker(List<string> lines)
-    {
-        for (var index = 0; index < lines.Count; index++)
-        {
-            var line = lines[index];
-            var offset = SkipSpaces(line, 0);
-            if (!line.AsSpan(offset).StartsWith("Subsystem", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            offset += "Subsystem".Length;
-            var afterSpaces = SkipSpaces(line, offset);
-            if (afterSpaces < line.Length)
-            {
-                if (afterSpaces > offset && StartsWithWord(line, afterSpaces, "sftp"))
-                {
-                    return true;
-                }
-
-                continue;
-            }
-
-            var next = index + 1;
-            while (next < lines.Count && SkipSpaces(lines[next], 0) == lines[next].Length)
-            {
-                next++;
-            }
-
-            if (next < lines.Count && StartsWithWord(lines[next], SkipSpaces(lines[next], 0), "sftp"))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     // A line that is "client" once stripped.
     private static bool IsOpenvpnClientLine(string line) => string.Equals(line.Trim(), "client", StringComparison.Ordinal);
 
     // ^\s*(dev|remote|proto)\b.
-    private static bool IsOpenvpnDirectiveLine(string line)
-    {
-        var offset = SkipSpaces(line, 0);
-        return OpenvpnKeywords.Any(keyword => StartsWithWord(line, offset, keyword));
-    }
+    private static bool IsOpenvpnDirectiveLine(string line) => OpenvpnDirectivePattern.IsMatch(line);
 
     public DetectionMatch? Detect(string path, byte[] sample, string? text)
     {
@@ -182,7 +93,7 @@ public sealed class TextPlugin : IFormatPlugin
         var lower = PathText.NameLower(path);
 
         // Known subtypes can be recognised with fewer directive lines.
-        var opensshHint = string.Equals(lower, "sshd_config", StringComparison.Ordinal) || HasOpensshSubsystemMarker(lines);
+        var opensshHint = string.Equals(lower, "sshd_config", StringComparison.Ordinal) || LineStartMatcher.IsMatch(OpensshSubsystemPattern, string.Join('\n', lines));
         var openvpnHint = lines.Any(IsOpenvpnClientLine) && lines.Any(IsOpenvpnDirectiveLine);
 
         if ((directiveCount >= 4 && assignmentCount <= 1)

@@ -10,19 +10,14 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// linearly where a regex could backtrack.
 /// </summary>
 /// <remarks>
-/// Case-insensitive matching compares simple lowercase, and also accepts U+0130/U+0131 for 'i', U+017F for 's' and U+212A for
-/// 'k' (<see cref="MatchesKeywordIgnoreCase"/>, <see cref="IsAsciiLetterIgnoreCase"/>). <c>\w</c> is
-/// a letter, number or <c>_</c>, <c>\s</c> is <see cref="char.IsWhiteSpace(char)"/>.
+/// Keywords are ASCII and compared ignoring ASCII case (<see cref="MatchesKeywordIgnoreCase"/>). <c>\w</c> is .NET's regex word
+/// character (<see cref="RuneText"/>), <c>\s</c> is <see cref="char.IsWhiteSpace(char)"/>.
 /// </remarks>
 public sealed partial class XmlPlugin
 {
-    private const string EngineSpace = @"[\s\x1c-\x1f]";
-
-    // xdt:Transform\s*=\s*(?:['"][^'"]+['"]), case-sensitive; \s spelled as the engine's whitespace set.
-    private static readonly Regex XdtTransformAttrPattern = new(
-        "xdt:Transform" + EngineSpace + "*=" + EngineSpace + @"*(?:['""][^'""]+['""])",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    // xdt:Transform\s*=\s*(?:['"][^'"]+['"]), case-sensitive.
+    [GeneratedRegex(@"xdt:Transform\s*=\s*(?:['""][^'""]+['""])", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex XdtTransformAttrPattern { get; }
 
     private static int SkipSpaces(string s, int offset)
     {
@@ -43,7 +38,7 @@ public sealed partial class XmlPlugin
         return rune;
     }
 
-    // Case-insensitive ASCII keyword match (see the class remarks for the extra non-ASCII equivalents).
+    // ASCII keyword match ignoring ASCII case.
     private static bool MatchesKeywordIgnoreCase(string s, int offset, string keywordLower, out int end)
     {
         end = offset;
@@ -73,23 +68,12 @@ public sealed partial class XmlPlugin
             return actual.Value == expected;
         }
 
-        if (actual.Value == expected || actual.Value == char.ToUpperInvariant(expected))
-        {
-            return true;
-        }
-
-        return expected switch
-        {
-            'i' => actual.Value is 0x0130 or 0x0131,
-            's' => actual.Value == 0x017F,
-            'k' => actual.Value == 0x212A,
-            _ => false,
-        };
+        return actual.Value == expected || actual.Value == char.ToUpperInvariant(expected);
     }
 
     // [A-Za-z_], case-insensitive.
     private static bool IsAsciiLetterIgnoreCase(Rune rune)
-        => rune.Value is '_' or 0x0130 or 0x0131 or 0x017F or 0x212A || (rune.IsAscii && char.IsAsciiLetter((char)rune.Value));
+        => rune.Value == '_' || (rune.IsAscii && char.IsAsciiLetter((char)rune.Value));
 
     // [\w:.-] on a code point.
     private static bool IsNameRune(Rune rune) => rune.Value is ':' or '.' or '-' || rune.IsWordCharacter;

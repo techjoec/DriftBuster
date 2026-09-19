@@ -10,9 +10,8 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// nginx) and INI/JSON hybrids.
 /// </summary>
 /// <remarks>
-/// Regexes spell <c>\s</c> as <c>[\s\x1c-\x1f]</c>; case-insensitive keywords and <c>\b</c> are matched by hand. The section
-/// and assignment patterns use <c>\G</c> through <see cref="LineStartMatcher"/>, since <c>^\s*</c> searched directly is
-/// quadratic over blank-line runs.
+/// The section, assignment and Apache/nginx hint patterns use <c>\G</c> through <see cref="LineStartMatcher"/>, since
+/// <c>^\s*</c> searched directly is quadratic over blank-line runs.
 /// </remarks>
 public sealed partial class IniPlugin : IFormatPlugin
 {
@@ -20,8 +19,6 @@ public sealed partial class IniPlugin : IFormatPlugin
     private const int ReviewLineWindow = 1000;
     private const int DirectiveCountCap = 10;
     private const int BlockLookahead = 20;
-    private const string EngineSpace = @"[\s\x1c-\x1f]";
-
     private static readonly string[] DefaultIniExtensions = [".ini", ".cfg", ".cnf", ".conf", ".properties", ".env"];
 
     private static readonly HashSet<string> DotenvFilenames = new(StringComparer.Ordinal)
@@ -35,44 +32,27 @@ public sealed partial class IniPlugin : IFormatPlugin
         ".env.sample",
     };
 
-    private static readonly string[] DirectiveKeywords = ["include", "loadmodule", "setenv", "option", "alias"];
-    private static readonly string[] ApacheKeywords = ["loadmodule", "setenv", "<virtualhost", "<directory", "servername"];
 
-    internal static readonly Regex SectionPattern = new(
-        @"\G" + EngineSpace + @"*\[(?<name>[^\]\n]+)\]" + EngineSpace + "*$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*\[(?<name>[^\]\n]+)\]\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex SectionPattern { get; }
 
-    internal static readonly Regex KeyValuePattern = new(
-        @"\G" + EngineSpace + "*(?<export>export" + EngineSpace + @"+)?(?<key>[A-Za-z0-9_.\-]+)" + EngineSpace
-        + "*(?<separator>=|:)" + EngineSpace + @"*(?<value>.*?)(?<continued>\\" + EngineSpace + "*)?$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*(?<export>export\s+)?(?<key>[A-Za-z0-9_.\-]+)\s*(?<separator>=|:)\s*(?<value>.*?)(?<continued>\\\s*)?$", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex KeyValuePattern { get; }
 
-    private static readonly Regex InlineCommentPattern = new(
-        EngineSpace + "(?<marker>[;#!])",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\s(?<marker>[;#!])", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex InlineCommentPattern { get; }
 
-    private static readonly Regex JsonLikeBracePattern = new(
-        @"\{" + EngineSpace + @"*""[^""]+""" + EngineSpace + "*:",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\{\s*""[^""]+""\s*:", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex JsonLikeBracePattern { get; }
 
-    private static readonly Regex InlineJsonAssignmentPattern = new(
-        "=" + EngineSpace + @"*\{[^{}]*""[^""]+""" + EngineSpace + "*:",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"=\s*\{[^{}]*""[^""]+""\s*:", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex InlineJsonAssignmentPattern { get; }
 
-    private static readonly Regex AssignOpenBracePattern = new(
-        "=" + EngineSpace + @"*\{",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"=\s*\{", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex AssignOpenBracePattern { get; }
 
-    private static readonly Regex QuotedKeyColonPattern = new(
-        @"""[^""\n]+""" + EngineSpace + "*:",
-        RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"""[^""\n]+""\s*:", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex QuotedKeyColonPattern { get; }
 
     public string Name => "ini";
 
@@ -109,7 +89,7 @@ public sealed partial class IniPlugin : IFormatPlugin
 
         var effectiveLines = Math.Max(scan.NonEmptyLines.Count - scan.CommentLines.Count, 1);
         scan.KeyDensity = (double)scan.KeyPairCount / effectiveLines;
-        metadata["key_density"] = EngineRound(scan.KeyDensity, 3);
+        metadata["key_density"] = Math.Round(scan.KeyDensity, 3, MidpointRounding.ToEven);
 
         if (!PassesGates(scan))
         {

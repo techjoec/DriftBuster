@@ -194,7 +194,7 @@ public static partial class HuntEngine
     }
 
     /// <summary>
-    /// <c>_extract_hits</c>: per <c>str.splitlines()</c> line, the line-level keyword gate (any keyword), then every
+    /// Per line (<see cref="TextLines.SplitLines"/>), the line-level keyword gate (any keyword), then every
     /// pattern's successive matches (<see cref="PatternRegex.Matches"/>); each match contributes its captured non-empty groups in
     /// group-number order and its non-empty whole match. A rule without patterns matches every line that passes the gate.
     /// </summary>

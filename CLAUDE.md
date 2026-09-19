@@ -135,6 +135,8 @@ gitleaks dir . -v
 3. **Metadata enrichment** - Each hit carries format, variant, confidence, catalog keys and review flags
 4. **Profile application** - Detection profiles filter and annotate results
 
+**Own files vs scanned files**: DriftBuster's own files (profiles, schedules, runner configs and keysets, `curation.json`, session cache, scheduler state, CLI stdin requests) are read strictly through System.Text.Json source generation (`Json/ModelJsonContext`, `ModelJson.ReadFile`): an unknown key or bad value stops the app or command with an error naming the file and JSON path. Scanned files (the configs being compared) are read leniently and never refused. .NET semantics are the reference (regex `\s`/`\w`, `EnumerateLines`, ordinal ordering); there is no Python parity to preserve.
+
 **Data Root** (OS-specific, resolved by `DriftbusterPaths`):
 - Windows: `%LOCALAPPDATA%/DriftBuster`
 - Linux: `$XDG_DATA_HOME/DriftBuster` (or `~/.local/share/DriftBuster`)

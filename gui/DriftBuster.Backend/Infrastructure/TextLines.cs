@@ -1,52 +1,26 @@
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary>Line splitting on every line boundary .NET's <c>\n</c>-based split misses.</summary>
+/// <summary>Line splitting on the line boundaries .NET recognises (<see cref="MemoryExtensions.EnumerateLines(ReadOnlySpan{char})"/>).</summary>
 public static class TextLines
 {
     /// <summary>
-    /// Splits <paramref name="text"/> on \n, \r, \r\n, \v, \f, \x1c, \x1d, \x1e, \x85, \u2028 and \u2029.
-    /// A trailing line break does not produce an empty final element; an empty string yields no lines.
+    /// Splits <paramref name="text"/> on CR LF, CR, LF, FF, NEL, LS and PS. A trailing line break does not produce an empty final
+    /// element; an empty string yields no lines.
     /// </summary>
-    public static IReadOnlyList<string> SplitLines(string text, bool keepEnds = false)
+    public static IReadOnlyList<string> SplitLines(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-
         var lines = new List<string>();
-        var start = 0;
-        var index = 0;
-        var length = text.Length;
-
-        while (index < length)
+        foreach (var line in text.AsSpan().EnumerateLines())
         {
-            var ch = text[index];
-            if (!IsLineBoundary(ch))
-            {
-                index++;
-                continue;
-            }
-
-            var end = index;
-            index++;
-            if (ch == '\r' && index < length && text[index] == '\n')
-            {
-                index++;
-            }
-
-            lines.Add(keepEnds ? text[start..index] : text[start..end]);
-            start = index;
+            lines.Add(line.ToString());
         }
 
-        if (start < length)
+        if (lines.Count > 0 && lines[^1].Length == 0)
         {
-            lines.Add(text[start..]);
+            lines.RemoveAt(lines.Count - 1);
         }
 
         return lines;
     }
-
-    public static bool IsLineBoundary(char ch) => ch switch
-    {
-        '\n' or '\r' or '\v' or '\f' or '\x1c' or '\x1d' or '\x1e' or '\x85' or '\u2028' or '\u2029' => true,
-        _ => false,
-    };
 }

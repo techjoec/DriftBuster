@@ -16,18 +16,6 @@ public sealed partial class XmlPlugin
 {
     private static readonly string[] ConfigSectionKeywords = ["appsettings", "runtime", "system.web"];
 
-    /// <summary>Orders (key, value) pairs by lowercased key, then key, by code point; used with a stable sort.</summary>
-    private sealed class EngineKeyOrder : IComparer<(string Key, string Value)>
-    {
-        public static EngineKeyOrder Instance { get; } = new();
-
-        public int Compare((string Key, string Value) x, (string Key, string Value) y)
-        {
-            var result = string.CompareOrdinal(x.Key.ToLowerInvariant(), y.Key.ToLowerInvariant());
-            return result != 0 ? result : string.CompareOrdinal(x.Key, y.Key);
-        }
-    }
-
     /// <summary>Collects the metadata; internal so the parse-cap test can call it directly.</summary>
     internal JsonObject CollectMetadata(string text, string extension)
     {
@@ -143,7 +131,7 @@ public sealed partial class XmlPlugin
         }
 
         var namespaces = new JsonObject();
-        foreach (var (prefix, uri) in pairs.OrderBy(pair => pair, EngineKeyOrder.Instance))
+        foreach (var (prefix, uri) in pairs.OrderBy(pair => pair.Key.ToLowerInvariant(), StringComparer.Ordinal).ThenBy(pair => pair.Key, StringComparer.Ordinal))
         {
             namespaces[prefix] = uri;
         }
@@ -240,7 +228,7 @@ public sealed partial class XmlPlugin
         }
 
         var items = AttributeMatches(rawSegment).Select(pair => (pair.Name, pair.Value.Trim())).ToList();
-        foreach (var (name, value) in items.OrderBy(pair => pair, EngineKeyOrder.Instance))
+        foreach (var (name, value) in items.OrderBy(pair => pair.Name.ToLowerInvariant(), StringComparer.Ordinal).ThenBy(pair => pair.Name, StringComparer.Ordinal))
         {
             result[name] = value;
         }

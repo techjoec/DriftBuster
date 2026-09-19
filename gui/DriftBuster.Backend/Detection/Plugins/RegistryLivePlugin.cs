@@ -17,31 +17,21 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// </remarks>
 public sealed partial class RegistryLivePlugin : IFormatPlugin
 {
-    private const string EngineSpace = @"[\s\x1c-\x1f]";
-
     // ^\s*registry_scan\s*:\s*$, case-insensitive.
-    internal static readonly Regex YamlKeyPattern = new(
-        @"\G" + EngineSpace + "*[rR][eE][gG][iIİı][sSſ][tT][rR][yY]_[sSſ][cC][aA][nN]" + EngineSpace + "*:" + EngineSpace + "*$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*registry_scan\s*:\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex YamlKeyPattern { get; }
 
     // ^\s*token\s*:\s*(.+)$
-    internal static readonly Regex YamlTokenPattern = new(
-        @"\G" + EngineSpace + "*token" + EngineSpace + "*:" + EngineSpace + @"*(?<val>[^\n]+)$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*token\s*:\s*(?<val>[^\n]+)$", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex YamlTokenPattern { get; }
 
     // ^\s*keywords\s*:\s*\[.+\]$
-    internal static readonly Regex YamlKeywordsPattern = new(
-        @"\G" + EngineSpace + "*keywords" + EngineSpace + "*:" + EngineSpace + @"*\[[^\n]+\]$",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*keywords\s*:\s*\[[^\n]+\]$", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex YamlKeywordsPattern { get; }
 
     // ^\s*patterns\s*:\s*(\[|-)\s*
-    internal static readonly Regex YamlPatternsPattern = new(
-        @"\G" + EngineSpace + "*patterns" + EngineSpace + "*:" + EngineSpace + @"*(?:\[|-)" + EngineSpace + "*",
-        RegexOptions.Multiline | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"\G\s*patterns\s*:\s*(?:\[|-)\s*", RegexOptions.Multiline | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex YamlPatternsPattern { get; }
 
     private static readonly string[] PassThroughOptions = ["max_depth", "max_hits", "time_budget_s"];
 

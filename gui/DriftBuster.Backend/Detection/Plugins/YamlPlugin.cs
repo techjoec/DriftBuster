@@ -61,8 +61,8 @@ public sealed partial class YamlPlugin : IFormatPlugin
             HasKeyColon: keys.Count > 0,
             HasIndented: HasIndentedBlock(scanText),
             HasList: HasListMarker(scanText),
-            HasDoc: HasMarkerLine(scanText, "---"),
-            HasDocEnd: HasMarkerLine(scanText, "..."));
+            HasDoc: LineStartMatcher.IsMatch(DocumentStartPattern, scanText),
+            HasDocEnd: LineStartMatcher.IsMatch(DocumentEndPattern, scanText));
 
         var metadata = new JsonObject();
         var reviewReasons = ReviewIndentation(text, lines, metadata);

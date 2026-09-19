@@ -32,7 +32,7 @@ public sealed class PathTextTests
     [InlineData("a/.x", ".x", "")]
     [InlineData("a/..", "..", "")]
     [InlineData(".//", "", "")]
-    public void NameAndSuffixMatchPathlib(string path, string expectedName, string expectedSuffix)
+    public void NameAndSuffixFollowTheLastSegment(string path, string expectedName, string expectedSuffix)
     {
         PathText.Name(path).Should().Be(expectedName);
         PathText.Suffix(path).Should().Be(expectedSuffix);

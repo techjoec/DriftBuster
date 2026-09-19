@@ -1,6 +1,6 @@
-using System.Buffers;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Infrastructure;
@@ -16,43 +16,16 @@ namespace DriftBuster.Backend.MultiServer;
 /// so roots coming and going never rename others), then <c>.{n}</c> from 2. Slugs never hold '@' or '.', so suffixed ids never
 /// collide with natural ones.
 /// </remarks>
-public static class ConfigIdentity
+public static partial class ConfigIdentity
 {
-    /// <summary>Trimmed and lowered; every code point that is not a letter, number, '-', '_' or '/' becomes '-'.</summary>
+    [GeneratedRegex(@"[^\p{L}\p{N}_/-]", RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex NonSlugCharacter { get; }
+
+    /// <summary>Trimmed and lowered; every UTF-16 unit that is not a letter, number, '-', '_' or '/' becomes '-'.</summary>
     public static string Slugify(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var text = value.Trim().ToLowerInvariant();
-        if (text.Length == 0)
-        {
-            return string.Empty;
-        }
-
-        var builder = new StringBuilder(text.Length);
-        var offset = 0;
-        while (offset < text.Length)
-        {
-            if (Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out var consumed) != OperationStatus.Done)
-            {
-                // An unpaired surrogate is not alphanumeric.
-                builder.Append('-');
-                offset++;
-                continue;
-            }
-
-            if (rune.IsLetterOrNumber || rune.Value is '-' or '_' or '/')
-            {
-                builder.Append(text, offset, consumed);
-            }
-            else
-            {
-                builder.Append('-');
-            }
-
-            offset += consumed;
-        }
-
-        return builder.ToString();
+        return NonSlugCharacter.Replace(value.Trim().ToLowerInvariant(), "-");
     }
 
     /// <summary>
@@ -80,7 +53,7 @@ public static class ConfigIdentity
         }
 
         var fallback = relativePosix.Length > 0 ? relativePosix : (string.IsNullOrEmpty(match.PluginName) ? "config" : match.PluginName);
-        var digest = Convert.ToHexStringLower(System.Security.Cryptography.SHA1.HashData(EncodeIgnoringErrors(fallback)));
+        var digest = Convert.ToHexStringLower(System.Security.Cryptography.SHA1.HashData(Encoding.UTF8.GetBytes(fallback)));
         return $"{Slugify(formatId)}#{digest[..12]}";
     }
 
@@ -104,23 +77,5 @@ public static class ConfigIdentity
         }
 
         return candidate;
-    }
-
-    // UTF-8 with unpaired surrogates dropped.
-    private static byte[] EncodeIgnoringErrors(string text)
-    {
-        var builder = new StringBuilder(text.Length);
-        var offset = 0;
-        while (offset < text.Length)
-        {
-            if (Rune.DecodeFromUtf16(text.AsSpan(offset), out _, out var consumed) == OperationStatus.Done)
-            {
-                builder.Append(text, offset, consumed);
-            }
-
-            offset += consumed;
-        }
-
-        return Encoding.UTF8.GetBytes(builder.ToString());
     }
 }

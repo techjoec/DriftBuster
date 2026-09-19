@@ -1,4 +1,4 @@
-using System.Text;
+using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
 
@@ -9,16 +9,16 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// and common directives (RUN, COPY, ADD, ARG, ENV, WORKDIR, ENTRYPOINT, CMD, EXPOSE, USER, VOLUME) at line starts.
 /// </summary>
 /// <remarks>
-/// <c>^\s*FROM\s+\S+</c> and <c>^\s*(RUN|COPY|...)\b</c> (case-insensitive) are matched by hand on code points: whitespace
-/// includes U+001C-U+001F, <c>\b</c> uses [L N _], and case folding adds U+0130/U+0131 for I, U+212A for K, U+017F for S
-/// (<see cref="FoldsTo"/>).
+/// <c>^\s*FROM\s+\S+</c> and <c>^\s*(RUN|COPY|...)\b</c> are case-insensitive regexes; the directive pattern runs as a <c>\G</c>
+/// regex through <see cref="LineStartMatcher"/>.
 /// </remarks>
-public sealed class DockerfilePlugin : IFormatPlugin
+public sealed partial class DockerfilePlugin : IFormatPlugin
 {
-    private static readonly string[] Directives =
-    [
-        "RUN", "COPY", "ADD", "ARG", "ENV", "WORKDIR", "ENTRYPOINT", "CMD", "EXPOSE", "USER", "VOLUME",
-    ];
+    [GeneratedRegex(@"^\s*FROM\s+\S", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 2000)]
+    private static partial Regex FirstFromPattern { get; }
+
+    [GeneratedRegex(@"\G\s*(?:RUN|COPY|ADD|ARG|ENV|WORKDIR|ENTRYPOINT|CMD|EXPOSE|USER|VOLUME)\b", RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 2000)]
+    internal static partial Regex DirectivePattern { get; }
 
     public string Name => "dockerfile";
 
@@ -26,97 +26,11 @@ public sealed class DockerfilePlugin : IFormatPlugin
 
     public string Version => "0.0.1";
 
-    // Case-insensitive ASCII letter match with the extra equivalents listed in the class remarks.
-    private static bool FoldsTo(char upper, char actual)
-    {
-        if (actual == upper || actual == (char)(upper + 32))
-        {
-            return true;
-        }
-
-        return upper switch
-        {
-            'I' => actual is 'İ' or 'ı',
-            'K' => actual == 'K',
-            'S' => actual == 'ſ',
-            _ => false,
-        };
-    }
-
-    private static bool StartsWithFolded(string text, int offset, string keyword)
-    {
-        if (offset + keyword.Length > text.Length)
-        {
-            return false;
-        }
-
-        for (var index = 0; index < keyword.Length; index++)
-        {
-            if (!FoldsTo(keyword[index], text[offset + index]))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static int SkipSpaces(string text, int offset)
-    {
-        while (offset < text.Length && char.IsWhiteSpace(text[offset]))
-        {
-            offset++;
-        }
-
-        return offset;
-    }
-
-    // Word boundary after a word character: the next code point is not [L N _], or the text ends.
-    private static bool AtWordEnd(string text, int offset)
-    {
-        if (offset >= text.Length)
-        {
-            return true;
-        }
-
-        Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out _);
-        return !rune.IsWordCharacter;
-    }
-
     // ^\s*FROM\s+\S+ on one line, case-insensitive.
-    internal static bool HasFirstFrom(string line)
-    {
-        var offset = SkipSpaces(line, 0);
-        if (!StartsWithFolded(line, offset, "FROM"))
-        {
-            return false;
-        }
+    internal static bool HasFirstFrom(string line) => FirstFromPattern.IsMatch(line);
 
-        offset += "FROM".Length;
-        var afterSpaces = SkipSpaces(line, offset);
-        return afterSpaces > offset && afterSpaces < line.Length;
-    }
-
-    // ^\s*(RUN|COPY|...)\b over the text, case-insensitive; whitespace runs are skipped once as in LineStartMatcher.
-    internal static bool HasDirectives(string text)
-    {
-        var lineStart = 0;
-        while (lineStart <= text.Length)
-        {
-            var offset = SkipSpaces(text, lineStart);
-            foreach (var directive in Directives)
-            {
-                if (StartsWithFolded(text, offset, directive) && AtWordEnd(text, offset + directive.Length))
-                {
-                    return true;
-                }
-            }
-
-            lineStart = LineStartMatcher.NextLineStart(text, offset + 1);
-        }
-
-        return false;
-    }
+    // ^\s*(RUN|COPY|...)\b over the text, case-insensitive.
+    internal static bool HasDirectives(string text) => LineStartMatcher.IsMatch(DirectivePattern, text);
 
     private static string FirstNonCommentLine(string text)
     {

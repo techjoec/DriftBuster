@@ -10,7 +10,7 @@ namespace DriftBuster.Backend.Infrastructure;
 public static class LineStartMatcher
 {
     /// <summary>
-    /// Non-overlapping matches of a <c>\G[\s\x1c-\x1f]*...</c> pattern tried at each line start. After the whitespace the pattern
+    /// Non-overlapping matches of a <c>\G\s*...</c> pattern tried at each line start. After the whitespace the pattern
     /// must need a non-whitespace character, so every line start inside one whitespace run succeeds or fails the same way and each
     /// character is visited a bounded number of times.
     /// </summary>
