@@ -18,12 +18,12 @@ the catalog (v0.0.4) with the usage insights from the format survey data
 | 30       | XmlGeneric             | xml                   | medium           | generic, msbuild, manifest/resource/XAML | `.xml`, `.manifest`, `.resx`, `.xaml` | 14     | namespace + root metadata     |
 | 40       | Json                   | json                  | medium           | generic / jsonc / structured-settings    | `.json`, `.jsonc`                    | 22      | bracket balance + parse       |
 | 50       | Yaml                   | yaml                  | medium           | generic / kubernetes-manifest            | `.yml`, `.yaml`                      | 8       | key/colon indentation         |
-| 60       | Toml                   | toml                  | medium           | generic / array-of-tables                | `.toml`                              | 4       | bracketed sections + `=`      |
+| 60       | Toml                   | toml                  | medium           | generic, array-of-tables, package-manifest-toml, project-settings-toml | `.toml`                              | 4       | bracketed sections + `=`      |
 | 70       | Ini                    | ini                   | medium           | sectioned-ini, dotenv, hybrid, desktop   | `.ini`, `.cfg`, `.cnf`               | 15      | section headers + key density + extension hints |
 | 75       | Hcl                    | hcl                   | high             | hashicorp-nomad / -vault / -consul, generic | `.hcl`                          | —       | extension + block/attribute structure |
 | 80       | KeyValueProperties     | properties            | medium           | java-properties                          | `.properties`                        | 3       | extension + `=`/`:` pairs + continuations |
 | 90       | UnixConf               | unix-conf             | high             | directive-conf + apache/nginx/SSH/VPN    | `.conf`                              | 2       | directive keywords + comment markers |
-| 100      | ScriptConfig           | script-config         | high             | generic (Dockerfiles); PowerShell/BAT/CMD/VB variants are catalog-only | `.ps1`, `.bat`, `.cmd`, `.vbs`, `Dockerfile` | 4 | shebang/keyword scan |
+| 100      | ScriptConfig           | script-config         | high             | ps1-shell, batch-script, cmd-shell, vbscript; generic (Dockerfiles) | `.ps1`, `.bat`, `.cmd`, `.vbs`, `Dockerfile` | 4 | per-language constructs (`param(`, `set NAME=`, `Dim`, …) |
 | 110      | EmbeddedSqlDb          | embedded-sql-db       | high             | —                                       | `.sqlite`, `.db`                     | 2       | page-structured signature     |
 | 120      | GenericBinaryDat       | binary-dat            | low              | —                                       | `.dat`, `.bin`                       | 3       | entropy threshold             |
 | 130      | Plist                  | plist                 | medium           | xml-or-binary                            | `.plist`                             | 0.5     | `bplist00` header             |
@@ -244,10 +244,15 @@ Some format plugins expose families that normalise to existing catalog classes t
   plugin surfaces `structured-settings-json` for `appsettings*.json` payloads
   (filename or `ConnectionStrings`/`Logging` keys) and promotes `jsonc` when
   inline or block comments are detected outside string literals.
-- **Toml** — `ArrayOfTablesToml` (61) is emitted by the plugin;
-  `PackageManifestToml` (62) and `ProjectSettingsToml` (63) are catalog-only.
-- **ScriptConfig** — the catalog defines `ps1-shell`, `batch-script`,
-  `cmd-shell` and `vbscript` variants; no built-in plugin emits them.
+- **Toml** — `package-manifest-toml` (62) for `Cargo.toml` or files with
+  `[package]`, `[project]`, `[build-system]` or `[tool.poetry…]` tables;
+  `project-settings-toml` (63) for tool configuration files (`rustfmt.toml`,
+  `ruff.toml`, `netlify.toml`, `.cargo/config.toml`, …) or files whose tables
+  are all `[tool.*]`; otherwise `array-of-tables` (61) or `generic`.
+- **ScriptConfig** — the `script` plugin emits `ps1-shell`, `batch-script`,
+  `cmd-shell` and `vbscript` from each language's constructs (two with a
+  script extension, three without); `.cmd` picks `cmd-shell`. Dockerfiles
+  report `generic` through the `dockerfile` alias.
 
 ## Usage Notes
 

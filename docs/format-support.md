@@ -17,8 +17,9 @@ the code.
 | YAML                     | Generic YAML, Kubernetes manifest hints                           | yaml   | 0.0.3          | Preview      | Parser-free heuristics capture document markers, indentation tolerances, review metadata, and `apiVersion`/`kind` hints. |
 | Conf DSL                 | Logstash pipeline configs (`input`/`filter`/`output` blocks)      | conf   | 0.0.1          | Preview      | Tight heuristics avoid stealing `.conf` INI-like files covered by the INI plugin. |
 | Text config              | Directive-style configs (OpenSSH, OpenVPN)                        | text   | 0.0.2          | Preview      | Fallback detector for whitespace-delimited directives; filename/content hints refine variants. |
-| TOML                     | Generic TOML, arrays of tables                                    | toml   | 0.0.3          | Preview      | Detects `[table]`, `[[array-of-tables]]`, inline tables, spacing tolerances, dotted keys, quoted/array values; parser-free. Outside `.toml` files it needs a TOML-only construct, so sectioned `key=value` INI files stay INI. |
+| TOML                     | Generic TOML, arrays of tables, package manifests (Cargo, pyproject), tool settings files | toml   | 0.0.4          | Preview      | Detects `[table]`, `[[array-of-tables]]`, inline tables, spacing tolerances, dotted keys, quoted/array values; parser-free. Outside `.toml` files it needs a TOML-only construct, so sectioned `key=value` INI files stay INI. |
 | HCL                      | HashiCorp configs (Nomad/Vault/Consul)                            | hcl    | 0.0.1          | Preview      | Detects `job {}`, `server {}`, `listener {}`, `seal {}` blocks + `key = value` pairs. |
+| Script config            | PowerShell, batch, CMD and VBScript                               | script | 0.0.1          | Preview      | Counts each language's constructs line by line; runs before XML so a script embedding XML stays a script. |
 | Dockerfile               | Multi-stage builds and directives                                 | dockerfile | 0.0.1       | Preview      | Filename/Dockerfile hint, `FROM` on first non-comment line, and common directives (RUN/COPY/ARG). |
 | Binary hybrid            | SQLite databases, binary property lists, Markdown with YAML front matter | binary-hybrid | 0.1.0 | Preview | Header signatures on the raw sample; SQLite table count and plist top-level keys recorded as metadata. |
 
@@ -35,6 +36,7 @@ settings are named like this:
 | JSON | Dotted paths (`Logging.LogLevel.Default`), array items by position (`Hosts[2]`); comments are tolerated |
 | YAML | Dotted paths, sequence items by position; a second document is prefixed `doc2.` |
 | TOML | `table.key`, arrays of tables by position (`plugin[2].name`) |
+| PowerShell, batch, CMD, VBScript | The assigned variables as written: `$Name`, `$env:NAME`, `NAME` from `set NAME=`, `Const Name` and `Name` in VBScript |
 | Registry exports (`.reg`) | `[key path] value name` (`(Default)` for `@`); strings unescaped, `dword` with its decimal value, expandable and multi-strings decoded, deletions as `(deleted)` |
 | INI, `.env`, `.properties` | `[section] key`, or the bare key before any section |
 | HCL, nginx and other conf, Dockerfile, text | The directive or key, prefixed by the blocks it sits in (`http.server.listen`); repeated names are numbered (`RUN #2`) |

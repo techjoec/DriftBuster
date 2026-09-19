@@ -118,7 +118,7 @@ gitleaks dir . -v
 `DriftbusterBackend` implements `IDriftbusterBackend` (the surface the GUI and the PowerShell module bind to) and delegates to services in these folders:
 
 - `Detection/` - `Detector` (bounded sampling, 128 KiB per file by default, aggregate budget), `FormatRegistry`, `DefaultPlugins`, `Catalog/` (`DetectionCatalogData.cs` holds the catalog and its version)
-- `Detection/Plugins/` - Format plugins implementing `IFormatPlugin`: registry-export (`.reg`), registry-live, XML, Dockerfile, conf, HCL, YAML, TOML, INI, JSON, binary-hybrid, text
+- `Detection/Plugins/` - Format plugins implementing `IFormatPlugin`: registry-export (`.reg`), registry-live, script (PowerShell/batch/CMD/VBScript), XML, Dockerfile, conf, HCL, YAML, TOML, INI, JSON, binary-hybrid, text
 - `Diff/` - Canonicaliser, `LineDiff` (Myers line diff), `UnifiedDiffWriter`, redaction filter
 - `Hunt/`, `Secrets/` - Hunt rules and engine; secret scanner with the embedded `Resources/secret_rules.json`
 - `Settings/` - Per-format settings extraction (`SettingsExtractor`) and the setting-by-setting comparison across servers or picked files (`SettingsComparisonBuilder`, `SettingsComparisonReport`); carried in multi-server responses and diff results
