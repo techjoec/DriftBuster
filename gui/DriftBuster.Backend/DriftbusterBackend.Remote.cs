@@ -17,59 +17,30 @@ public sealed partial class DriftbusterBackend
 {
     private static readonly UTF8Encoding ReportEncoding = new(encoderShouldEmitUTF8Identifier: false);
 
-    public Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportRequest request, CancellationToken cancellationToken = default)
+    public Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportOptions options, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(options);
         return Task.Run(
             () =>
             {
-                var (stdout, stderr) = (new StringWriter(CultureInfo.InvariantCulture), new StringWriter(CultureInfo.InvariantCulture));
-                var outcome = CaptureRunner.RunSqlExport(
-                    new SqlExportOptions
-                    {
-                        Database = request.Databases,
-                        OutputDir = request.OutputDir,
-                        Table = request.Tables,
-                        ExcludeTable = request.ExcludeTables,
-                        MaskColumn = request.MaskColumns,
-                        HashColumn = request.HashColumns,
-                        Placeholder = request.Placeholder,
-                        HashSalt = request.HashSalt,
-                        Limit = request.Limit,
-                        Prefix = request.Prefix,
-                    },
-                    stdout,
-                    stderr);
-                return new SqlExportResult
-                {
-                    ExitCode = outcome.ExitCode,
-                    Output = stdout.ToString(),
-                    Errors = stderr.ToString(),
-                    ManifestPath = outcome.ManifestPath,
-                    ManifestJson = Canonicaliser.DumpsSorted(outcome.Manifest, indent: true, ensureAscii: true),
-                    SnapshotPaths = outcome.SnapshotPaths.ToArray(),
-                };
+                var (stdout, stderr) = Writers();
+                var runner = new CaptureRunner();
+                var exitCode = runner.ExportSql(options, stdout, stderr);
+                return new SqlExportResult(exitCode, stdout.ToString(), stderr.ToString(), runner.LastExport?.ManifestPath, runner.LastExport?.Manifest, runner.LastExport?.SnapshotPaths ?? []);
             },
             cancellationToken);
     }
 
-    public Task<CaptureRunResult> RunCaptureAsync(CaptureRunRequest request, CancellationToken cancellationToken = default)
+    public Task<CaptureRunResult> RunCaptureAsync(CaptureRunOptions options, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(options);
         return Task.Run(
             () =>
             {
-                var (stdout, stderr) = (new StringWriter(CultureInfo.InvariantCulture), new StringWriter(CultureInfo.InvariantCulture));
-                var outcome = CaptureRunner.RunCapture(ToCaptureOptions(request), stdout, stderr);
-                return new CaptureRunResult
-                {
-                    ExitCode = outcome.ExitCode,
-                    Output = stdout.ToString(),
-                    Errors = stderr.ToString(),
-                    SnapshotPath = outcome.SnapshotPath,
-                    ManifestPath = outcome.ManifestPath,
-                    ManifestJson = outcome.Manifest is null ? null : Canonicaliser.DumpsSorted(outcome.Manifest, indent: true, ensureAscii: true),
-                };
+                var (stdout, stderr) = Writers();
+                var runner = new CaptureRunner();
+                var exitCode = runner.Run(options, stdout, stderr);
+                return new CaptureRunResult(exitCode, stdout.ToString(), stderr.ToString(), runner.LastRun?.SnapshotPath, runner.LastRun?.ManifestPath, runner.LastRun?.Manifest);
             },
             cancellationToken);
     }
@@ -81,18 +52,16 @@ public sealed partial class DriftbusterBackend
         return Task.Run(
             () =>
             {
-                var (stdout, stderr) = (new StringWriter(CultureInfo.InvariantCulture), new StringWriter(CultureInfo.InvariantCulture));
-                var comparison = CaptureRunner.CompareSnapshots(new CaptureCompareOptions(baselinePath, currentPath), stdout, stderr);
-                return new CaptureCompareResult
-                {
-                    ExitCode = comparison.ExitCode,
-                    Output = stdout.ToString(),
-                    Errors = stderr.ToString(),
-                    ComparisonJson = comparison.Payload is null ? null : Canonicaliser.Dumps(comparison.Payload, indent: true, ensureAscii: false, sortKeys: false),
-                };
+                var (stdout, stderr) = Writers();
+                var runner = new CaptureRunner();
+                var exitCode = runner.Compare(baselinePath, currentPath, stdout, stderr);
+                return new CaptureCompareResult(exitCode, stdout.ToString(), stderr.ToString(), runner.LastComparison);
             },
             cancellationToken);
     }
+
+    private static (StringWriter Stdout, StringWriter Stderr) Writers()
+        => (new StringWriter(CultureInfo.InvariantCulture), new StringWriter(CultureInfo.InvariantCulture));
 
     /// <remarks>Off Windows this fails with the default registry backend's <c>Windows Registry scanning requires Windows platform</c>.</remarks>
     public Task<RegistryAppListResult> ListRegistryAppsAsync(CancellationToken cancellationToken = default)
@@ -189,27 +158,6 @@ public sealed partial class DriftbusterBackend
             HuntHitCount = huntHits.Count,
         };
     }
-
-    private static CaptureRunOptions ToCaptureOptions(CaptureRunRequest request) => new()
-    {
-        Root = request.Root,
-        Profiles = request.ProfilesPath,
-        ProfileTags = request.ProfileTags,
-        Glob = request.Glob,
-        HuntGlob = request.HuntGlob,
-        HuntExclude = request.HuntExclude,
-        SkipHunt = request.SkipHunt,
-        SampleSize = request.SampleSize,
-        OutputDir = request.OutputDir,
-        CaptureId = request.CaptureId,
-        Operator = request.Operator,
-        Environment = request.Environment,
-        Reason = request.Reason,
-        MaskTokens = request.MaskTokens,
-        Placeholder = request.Placeholder,
-        AllowUnmasked = request.AllowUnmasked,
-        RegistryScan = request.RegistryScans,
-    };
 
     private static RegistryApplication ToRegistryApplication(RegistryApp app) => new()
     {

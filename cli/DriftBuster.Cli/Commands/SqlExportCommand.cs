@@ -5,8 +5,8 @@ using DriftBuster.Backend.Remote;
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster sql-export DATABASE...</c> over <see cref="CaptureRunner.RunSqlExport"/>, with <c>--manifest-name</c>, the positive
-/// <c>--limit</c> check and the <c>Manifest written to</c> line that <c>driftbuster capture export-sql</c> does not print.
+/// <c>driftbuster sql-export DATABASE...</c> over <see cref="CaptureRunner.ExportSql"/>, with <c>--manifest-name</c> and the
+/// <c>Manifest written to</c> line that <c>driftbuster capture export-sql</c> does not print.
 /// </summary>
 internal static class SqlExportCommand
 {
@@ -21,10 +21,9 @@ internal static class SqlExportCommand
             var options = arguments.Read(parseResult) with
             {
                 ManifestName = parseResult.GetValue(manifestName)!,
-                LimitMustBePositive = true,
                 ReportManifestPath = true,
             };
-            return CaptureRunner.RunSqlExport(options, stdout, stderr).ExitCode;
+            return new CaptureRunner().ExportSql(options, stdout, stderr);
         }));
         return command;
     }

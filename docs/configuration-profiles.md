@@ -15,13 +15,14 @@ return here for data model details. The types live in
 
 | JSON key | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `id` | string | — | Stable key used for lookups and diffs (`Identifier`). |
-| `path` | string or null | null | Exact POSIX-style relative path. Normalised on load. |
-| `path_glob` | string or null | null | Wildcard alternative when multiple files apply: `*` matches any run of characters (`/` included), `?` one character. Normalised like `path`. |
+| `id` | string | — | Stable key used for lookups and diffs; unique across the store. |
+| `path` | string or null | null | Exact relative path with forward slashes. |
+| `path_glob` | string or null | null | Wildcard alternative when multiple files apply: `*` matches any run of characters (`/` included), `?` one character. |
 | `application` / `version` / `branch` | string or null | null | Convenience helpers that match tags such as `application:<value>`. |
-| `tags` | array of strings | `[]` | Additional tag requirements beyond helper shortcuts. Whitespace is trimmed. |
+| `tags` | array of strings | `[]` | Additional tag requirements beyond helper shortcuts. |
 | `expected_format` / `expected_variant` | string or null | null | Hints aligning with catalog formats and variants. |
-| `metadata` | object | `{}` | Read-only copy for owner/context notes. |
+| `ignore_review_flags` | bool | false | A matching detection flagged `needs_review` is marked `review_ignored` instead. |
+| `metadata` | object of strings | `{}` | Owner/context notes. |
 
 ### Profile (`DetectionProfile`)
 
@@ -31,28 +32,20 @@ return here for data model details. The types live in
 | `description` | string or null | null | Optional free-form text clarifying purpose. |
 | `tags` | array of strings | `[]` | Activation tags; the profile applies when they are a subset of the provided tags. |
 | `configs` | array | `[]` | Ordered list of config entries. |
-| `metadata` | object | `{}` | Profile-wide annotations. |
+| `metadata` | object of strings | `{}` | Profile-wide annotations. |
 
-A store is `{"profiles": [ ... ]}`.
+A store is `{"profiles": [ ... ]}`, read strictly: an unknown or repeated key, a
+missing `name` or `id`, or a value of the wrong type stops the command with the
+file, the JSON path and the reason.
 
 ### `DetectionProfileStore`
 
-- Rejects duplicate profile names or config identifiers at registration or
-  update time.
-- `FromDict(payload)` / `ToDict()` load and save the JSON payload.
-- `FindConfig(identifier)` returns the applied profile/config pairing for a
-  stored identifier, or an empty list when it does not exist.
-- `ApplicableProfiles(tags)` returns the profiles activated by the supplied
-  tag set, normalising tags internally.
+- `DetectionProfileStore.Load(path)` reads a store file; the constructor
+  refuses a repeated profile name or config id.
 - `MatchingConfigs(tags, relativePath)` returns the profile/config pairs that
   apply to a path, the same matching `Detector.ScanWithProfiles` uses.
-- `Summary()` and `DiffSummarySnapshots(baseline, current)` produce snapshots
-  for manual audits; `driftbuster detection-profile summary|diff` runs them
-  over JSON files.
-- `UpdateProfile(name, mutator)` applies a mutator to a copy of the stored
-  profile, validates it, and reindexes the result.
-- `RemoveConfig(profileName, configId)` removes a specific config and reports
-  a missing profile or identifier.
+- `Summary()` lists the profiles; `DetectionProfileCommands.Diff` compares two
+  summaries. `driftbuster detection-profile summary|diff` runs them over files.
 
 ### `ProfiledDetection`
 
@@ -71,7 +64,7 @@ A store is `{"profiles": [ ... ]}`.
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Profiles.Detection;
 
-var store = DetectionProfileStore.FromDict(DetectionProfileCommands.LoadJson("profiles.json"));
+var store = DetectionProfileStore.Load("profiles.json");
 var detector = new Detector();
 var results = detector.ScanWithProfiles(
     "./deployments/prod-web-01",
@@ -83,7 +76,7 @@ foreach (var entry in results)
     Console.WriteLine($"{entry.Path} {entry.Detection?.FormatName} {entry.Detection?.Variant}");
     foreach (var applied in entry.Profiles)
     {
-        Console.WriteLine($"  profile: {applied.Profile.Name} -> {applied.Config.Identifier}");
+        Console.WriteLine($"  profile: {applied.Profile.Name} -> {applied.Config.Id}");
     }
 }
 ```
@@ -92,12 +85,12 @@ foreach (var entry in results)
   all its tags are present. A config applies when its own tags (and
   `application`/`version`/`branch` helpers) match the tag set.
 - Path matching prefers exact `path` equality (case-sensitive), falling back to `path_glob`
-  against the whole relative path (both normalised to POSIX-style
-  separators). Because `*` crosses `/`, `configs/*.json` also matches
-  `configs/sub/app.json`. `path_glob` matching ignores case on Windows only.
+  against the whole relative path (with forward slashes). Because `*` crosses
+  `/`, `configs/*.json` also matches `configs/sub/app.json`. `path_glob`
+  matching ignores case on Windows only.
 - If no config matches a file, `Profiles` is empty.
-- When an applied config's metadata sets `ignore_review_flags` to true, a
-  detection flagged `needs_review` is marked `review_ignored` instead.
+- When an applied config sets `ignore_review_flags`, a detection flagged
+  `needs_review` is marked `review_ignored` instead.
 - When profiles and hunts run together, store the token names you expect in the
   related profile metadata so drift reviews focus on mismatches instead of
   rediscovering approved dynamic values.
@@ -112,10 +105,10 @@ driftbuster detection-profile diff baseline-summary.json current-summary.json
 ```
 
 - The summary is sorted by profile name and lists `total_profiles`,
-  `total_configs`, and per profile `config_count` and `config_ids`.
-- The diff reports `totals`, `added_profiles`, `removed_profiles` and
-  `changed_profiles` (with `added_config_ids` and `removed_config_ids`).
-- `--indent 0` writes compact JSON; `--sort-keys` sorts keys.
+  `total_configs`, and per profile `tags` and `config_ids`.
+- The diff reports the `baseline` and `current` totals, `added_profiles`,
+  `removed_profiles` and `changed_profiles` (with both config counts,
+  `added_config_ids` and `removed_config_ids`).
 - When the totals or identifiers differ from the previous run, look up the
   affected IDs before promoting the change.
 

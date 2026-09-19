@@ -1,119 +1,80 @@
 using System.CommandLine;
-using System.Numerics;
 
-using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Profiles.Detection;
-using DriftBuster.Backend.Reporting;
 
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster detection-profile summary|diff|hunt-bridge</c> over <see cref="DetectionProfileCommands"/>. Every command writes its
-/// payload with <see cref="WriteJson"/>; an exception from the command is written as <c>error: {exc}</c> on stderr with exit code 1.
+/// <c>driftbuster detection-profile summary|diff|hunt-bridge</c> over <see cref="DetectionProfileCommands"/>: each result as indented
+/// JSON (<see cref="ModelJson"/>) on stdout, or into <c>--output</c>.
 /// </summary>
 internal static class DetectionProfileCommand
 {
-    /// <summary>The <c>--indent</c>, <c>--sort-keys</c> and <c>--output</c> values every subcommand takes.</summary>
-    internal sealed record OutputOptions(BigInteger Indent, bool SortKeys, string? Output);
-
     public static Command Build()
     {
-        var command = new Command("detection-profile", "Profile summary and diff helper for manual audits.");
+        var command = new Command("detection-profile", "Summarise, diff and bridge detection profile stores.");
         command.Subcommands.Add(BuildSummary());
         command.Subcommands.Add(BuildDiff());
         command.Subcommands.Add(BuildHuntBridge());
         return command;
     }
 
-    private static (Option<BigInteger> Indent, Option<bool> SortKeys, Option<string?> Output) OutputOptionsFor(Command command)
+    private static Option<string?> OutputOption(Command command)
     {
-        var indent = EngineArguments.Int("--indent", 2, "JSON indentation level (0 for compact output).");
-        var sortKeys = EngineArguments.Flag("--sort-keys", "Sort keys before writing JSON output.");
-        var output = EngineArguments.OptionalText("--output", "Optional file to write results to (defaults to stdout).");
-        command.Options.Add(indent);
-        command.Options.Add(sortKeys);
+        var output = new Option<string?>("--output") { Description = "File to write the JSON to (defaults to stdout)." };
         command.Options.Add(output);
-        return (indent, sortKeys, output);
+        return output;
     }
 
-    private static OutputOptions Read(ParseResult parseResult, (Option<BigInteger> Indent, Option<bool> SortKeys, Option<string?> Output) options)
-        => new(parseResult.GetValue(options.Indent), parseResult.GetValue(options.SortKeys), parseResult.GetValue(options.Output));
-
-    private static Command BuildSummary()
+    private static int Write<T>(T result, string? output, TextWriter stdout)
     {
-        var store = EngineArguments.Positional("store", "Path to a detection profile store JSON file.");
-        var command = new Command("summary", "Generate a profile summary from a ProfileStore payload.") { store };
-        var options = OutputOptionsFor(command);
-        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
-            () => DetectionProfileCommands.Summary(LexicalPath.Str(parseResult.GetValue(store)!)), Read(parseResult, options), stdout, stderr)));
-        return command;
-    }
-
-    private static Command BuildDiff()
-    {
-        var baseline = EngineArguments.Positional("baseline", "Baseline summary JSON file.");
-        var current = EngineArguments.Positional("current", "Current summary JSON file.");
-        var command = new Command("diff", "Diff two stored profile summary JSON payloads.") { baseline, current };
-        var options = OutputOptionsFor(command);
-        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
-            () => DetectionProfileCommands.Diff(LexicalPath.Str(parseResult.GetValue(baseline)!), LexicalPath.Str(parseResult.GetValue(current)!)),
-            Read(parseResult, options),
-            stdout,
-            stderr)));
-        return command;
-    }
-
-    private static Command BuildHuntBridge()
-    {
-        var store = EngineArguments.Positional("store", "ProfileStore JSON payload (same format as the summary command).");
-        var hunt = EngineArguments.Positional("hunt", "JSON array printed by driftbuster hunt.");
-        var tags = EngineArguments.Append("--tag", "Activation tag applied when matching profile configs (repeatable).");
-        var root = EngineArguments.OptionalText("--root", "Base path used to resolve hunt absolute paths into profile-relative paths.");
-        var command = new Command("hunt-bridge", "Attach profile metadata to hunt hits for manual review.") { store, hunt, tags, root };
-        var options = OutputOptionsFor(command);
-        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => Handle(
-            () => DetectionProfileCommands.HuntBridge(
-                LexicalPath.Str(parseResult.GetValue(store)!),
-                LexicalPath.Str(parseResult.GetValue(hunt)!),
-                parseResult.GetValue(tags)!,
-                parseResult.GetValue(root) is { } rootText ? LexicalPath.Str(rootText) : null),
-            Read(parseResult, options),
-            stdout,
-            stderr)));
-        return command;
-    }
-
-    /// <summary>The payload written with <see cref="WriteJson"/>, or <c>error: {exc}</c> and exit code 1.</summary>
-    internal static int Handle(Func<object?> produce, OutputOptions options, TextWriter stdout, TextWriter stderr)
-    {
-        try
-        {
-            WriteJson(produce(), options, stdout);
-            return 0;
-        }
-        catch (Exception exc) when (exc is not OutOfMemoryException)
-        {
-            ConsoleText.Write(stderr, $"error: {exc.Message}\n");
-            return 1;
-        }
-    }
-
-    /// <summary>
-    /// JSON, on one line when <c>indent &lt;= 0</c>, a new line appended unless the text ends with one, written to stdout or to
-    /// <c>output</c>.
-    /// </summary>
-    internal static void WriteJson(object? payload, OutputOptions options, TextWriter stdout)
-    {
-        int? indent = options.Indent <= 0 ? null : (int)BigInteger.Min(options.Indent, int.MaxValue);
-        var text = ConsoleText.Dumps(payload, indent, options.SortKeys);
-        text += text.EndsWith('\n') ? string.Empty : "\n";
-        if (options.Output is null)
+        var text = ModelJson.Serialize(result);
+        if (output is null)
         {
             ConsoleText.Write(stdout, text);
         }
         else
         {
-            EngineTextFile.WriteText(LexicalPath.Str(options.Output), ReportValues.TextModeNewLines(text));
+            File.WriteAllText(output, text);
         }
+
+        return 0;
+    }
+
+    private static Command BuildSummary()
+    {
+        var store = new Argument<string>("store") { Description = "Detection profile store JSON file." };
+        var command = new Command("summary", "Summarise a detection profile store.") { store };
+        var output = OutputOption(command);
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
+            Write(DetectionProfileCommands.Summary(parseResult.GetValue(store)!), parseResult.GetValue(output), stdout)));
+        return command;
+    }
+
+    private static Command BuildDiff()
+    {
+        var baseline = new Argument<string>("baseline") { Description = "Baseline summary JSON file." };
+        var current = new Argument<string>("current") { Description = "Current summary JSON file." };
+        var command = new Command("diff", "Compare two detection profile summaries.") { baseline, current };
+        var output = OutputOption(command);
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
+            Write(DetectionProfileCommands.Diff(parseResult.GetValue(baseline)!, parseResult.GetValue(current)!), parseResult.GetValue(output), stdout)));
+        return command;
+    }
+
+    private static Command BuildHuntBridge()
+    {
+        var store = new Argument<string>("store") { Description = "Detection profile store JSON file." };
+        var hunt = new Argument<string>("hunt") { Description = "JSON array written by driftbuster hunt." };
+        var tags = new Option<string[]>("--tag") { Description = "Scan tag used when matching profile configs (repeatable).", AllowMultipleArgumentsPerToken = false };
+        var root = new Option<string?>("--root") { Description = "Scanned root, to turn hit paths into profile-relative paths." };
+        var command = new Command("hunt-bridge", "Attach matching profile configs to hunt hits.") { store, hunt, tags, root };
+        var output = OutputOption(command);
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) => Write(
+            DetectionProfileCommands.HuntBridge(parseResult.GetValue(store)!, parseResult.GetValue(hunt)!, parseResult.GetValue(tags), parseResult.GetValue(root)),
+            parseResult.GetValue(output),
+            stdout)));
+        return command;
     }
 }

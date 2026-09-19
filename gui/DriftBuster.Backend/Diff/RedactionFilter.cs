@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using DriftBuster.Backend.Infrastructure;
 
@@ -60,6 +62,46 @@ public class RedactionFilter
         }
 
         return result;
+    }
+
+    /// <summary>Redacts every string value inside <paramref name="node"/> in place (property names are left alone) and returns it.</summary>
+    public JsonNode? ApplyTo(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject item:
+                foreach (var name in item.Select(pair => pair.Key).ToList())
+                {
+                    Replace(item[name], redacted => item[name] = redacted);
+                }
+
+                return item;
+            case JsonArray items:
+                for (var index = 0; index < items.Count; index++)
+                {
+                    var position = index;
+                    Replace(items[position], redacted => items[position] = redacted);
+                }
+
+                return items;
+            case JsonValue value when value.GetValueKind() == JsonValueKind.String:
+                return JsonValue.Create(Apply(value.GetValue<string>()));
+            default:
+                return node;
+        }
+    }
+
+    // A string child is swapped for its redacted copy; a container is redacted where it stands.
+    private void Replace(JsonNode? child, Action<JsonNode?> swap)
+    {
+        if (child is JsonValue value && value.GetValueKind() == JsonValueKind.String)
+        {
+            swap(JsonValue.Create(Apply(value.GetValue<string>())));
+        }
+        else
+        {
+            ApplyTo(child);
+        }
     }
 
     /// <summary>A copy of the per-token counts in first-hit order.</summary>

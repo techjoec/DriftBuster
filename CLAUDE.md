@@ -175,7 +175,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 - `cli/DriftBuster.Cli.Tests/` - Console command tests
 - `gui/DriftBuster.Gui.Tests/` - Headless xUnit tests with `[AvaloniaFact]`; `MainWindowUserJourneyTests` runs before claiming GUI parity; helpers `InMemorySessionCacheService` and `FakeDriftbusterService`
 - `cli/DriftBuster.PowerShell.Tests/` and `scripts/DriftBusterOfflineRunner.Tests.ps1` - Pester suites for the module and the offline runner
-- Coverage requirement: ≥83% total line coverage over the merged Backend, CLI and GUI report
+- Coverage requirement: ≥83% total line coverage over the merged Backend, CLI and GUI report; source generator output under `obj/` is not measured
 - Run long tests in tmux: `tmux new -s codexcli-<pid>-tests 'dotnet test ...'`
 
 ### Format Plugin Development
@@ -223,7 +223,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 
 ### Review Flags
 - Plugins mark oddities with `metadata.needs_review` and `review_reasons`
-- Profiles suppress via `metadata.ignore_review_flags = true`
+- Profiles suppress per config via `"ignore_review_flags": true`
 - Tests must cover flag emission and suppression
 
 ## Testing Strategy

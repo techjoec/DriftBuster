@@ -1,7 +1,7 @@
 using System.CommandLine;
-using System.Numerics;
 
 using DriftBuster.Backend.Remote;
+using DriftBuster.Backend.Sql;
 
 namespace DriftBuster.Cli.Commands;
 
@@ -16,7 +16,7 @@ internal sealed class SqlExportArguments
     private readonly Option<string[]> _hashColumn = EngineArguments.Append("--hash-column", "Deterministically hash column data (table.column).");
     private readonly Option<string> _placeholder = EngineArguments.Text("--placeholder", "[REDACTED]", "Placeholder used when masking columns.");
     private readonly Option<string> _hashSalt = EngineArguments.Text("--hash-salt", string.Empty, "Salt applied when hashing column data.");
-    private readonly Option<BigInteger?> _limit = EngineArguments.OptionalInt("--limit", "Optional maximum rows to export per table.");
+    private readonly Option<int?> _limit = new("--limit") { Description = "Optional maximum rows to export per table." };
     private readonly Option<string> _prefix = EngineArguments.Text("--prefix", string.Empty, "Optional prefix to apply to exported snapshot filenames.");
 
     public SqlExportArguments(Command command)
@@ -30,15 +30,18 @@ internal sealed class SqlExportArguments
 
     public SqlExportOptions Read(ParseResult parseResult) => new()
     {
-        Database = parseResult.GetValue(_database)!,
+        Databases = parseResult.GetValue(_database)!,
         OutputDir = parseResult.GetValue(_outputDir)!,
-        Table = parseResult.GetValue(_table)!,
-        ExcludeTable = parseResult.GetValue(_excludeTable)!,
-        MaskColumn = parseResult.GetValue(_maskColumn)!,
-        HashColumn = parseResult.GetValue(_hashColumn)!,
-        Placeholder = parseResult.GetValue(_placeholder),
-        HashSalt = parseResult.GetValue(_hashSalt),
-        Limit = parseResult.GetValue(_limit),
         Prefix = parseResult.GetValue(_prefix),
+        Settings = new SqlExportSettings
+        {
+            Tables = parseResult.GetValue(_table)!,
+            ExcludeTables = parseResult.GetValue(_excludeTable)!,
+            MaskedColumns = SqlExportSettings.ParseColumns(parseResult.GetValue(_maskColumn)!),
+            HashedColumns = SqlExportSettings.ParseColumns(parseResult.GetValue(_hashColumn)!),
+            Placeholder = parseResult.GetValue(_placeholder)!,
+            HashSalt = parseResult.GetValue(_hashSalt)!,
+            Limit = parseResult.GetValue(_limit),
+        },
     };
 }

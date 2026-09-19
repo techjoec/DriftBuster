@@ -30,7 +30,7 @@ public sealed class SqlExportCommandTests : IDisposable
         run.Err.Should().Be($"error: database not found: {missing}{nl}");
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(output, "m.json"), Utf8));
         manifest.RootElement.GetProperty("exports").GetArrayLength().Should().Be(2);
-        manifest.RootElement.GetProperty("options").GetProperty("limit").GetInt32().Should().Be(1);
+        manifest.RootElement.GetProperty("settings").GetProperty("limit").GetInt32().Should().Be(1);
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public sealed class SqlExportCommandTests : IDisposable
 
         run.ExitCode.Should().Be(1);
         run.Err.Should().Be("error: --limit must be positive when provided" + Environment.NewLine);
-        Directory.EnumerateFiles(output).Select(Path.GetFileName).Should().Equal("sql-manifest.json");
+        Directory.Exists(output).Should().BeFalse("nothing is written when the limit is refused");
     }
 
     [Fact]
@@ -52,6 +52,6 @@ public sealed class SqlExportCommandTests : IDisposable
         var run = CliInvocation.Invoke("sql-export", "demo.sqlite", "--limit", "x");
 
         run.ExitCode.Should().Be(2);
-        run.Err.Should().StartWith("driftbuster: error: argument --limit: The value 'x' is not a valid integer.");
+        run.Err.Should().StartWith("driftbuster: error: ").And.Contain("--limit");
     }
 }

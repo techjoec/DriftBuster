@@ -386,7 +386,7 @@ public class Detector
             throw new ArgumentNullException(nameof(profileStore), "profile_store must be provided.");
         }
 
-        var normalizedTags = ProfileTags.Normalize(tags);
+        var normalizedTags = (tags ?? []).OfType<string>().Select(tag => tag.Trim()).Where(tag => tag.Length > 0).ToHashSet(StringComparer.Ordinal);
         var scanResults = ScanPath(root, glob);
         var profiled = new List<ProfiledDetection>();
         var rootIsDir = Directory.Exists(EnginePath.KernelPath(root));
@@ -395,19 +395,9 @@ public class Detector
         {
             var relative = rootIsDir ? LexicalPath.RelativeTo(path, root) ?? PathText.Name(path) : PathText.Name(path);
             var applied = profileStore.MatchingConfigs(normalizedTags, relative);
-            if (detection?.Metadata is { Count: > 0 } metadata)
+            if (detection?.Metadata is { Count: > 0 } metadata && applied.Any(cfg => cfg.Config.IgnoreReviewFlags))
             {
-                bool ignore;
-                try
-                {
-                    ignore = applied.Any(cfg => EngineBuiltins.IsTruthy(cfg.Config.Metadata.TryGetValue("ignore_review_flags", out var flag) ? flag : null));
-                }
-                catch (Exception exc) when (exc is not OutOfMemoryException)
-                {
-                    ignore = false;
-                }
-
-                if (ignore && metadata.TryGetValue("needs_review", out var needsReview) && EngineBuiltins.IsTruthy(needsReview))
+                if (metadata.TryGetValue("needs_review", out var needsReview) && needsReview is true)
                 {
                     metadata["review_ignored"] = true;
                     metadata["needs_review"] = false;

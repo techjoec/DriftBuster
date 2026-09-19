@@ -78,7 +78,7 @@ public sealed class CaptureCommandTests : IDisposable
 
     /// <summary><c>capture export-sql</c> writes <c>sql-manifest.json</c> without reporting it, and leaves a non-positive limit to the exporter.</summary>
     [Fact]
-    public void ExportSqlWritesTheManifestSilently()
+    public void ExportSqlRefusesANonPositiveLimitBeforeWriting()
     {
         var database = CliTests.CreateSqliteDb(Path.Combine(_tmp.FullName, "demo.sqlite"));
         var output = Path.Combine(_tmp.FullName, "exports");
@@ -87,7 +87,7 @@ public sealed class CaptureCommandTests : IDisposable
 
         run.ExitCode.Should().Be(1);
         run.Out.Should().BeEmpty();
-        run.Err.Should().Be($"error: failed to export {database}: limit must be positive when provided. (Parameter 'limit'){Environment.NewLine}");
-        File.Exists(Path.Combine(output, "sql-manifest.json")).Should().BeTrue();
+        run.Err.Should().Be("error: --limit must be positive when provided" + Environment.NewLine);
+        Directory.Exists(output).Should().BeFalse();
     }
 }

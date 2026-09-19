@@ -17,15 +17,11 @@ public sealed class DetectorProfileReviewIgnoreTests : IDisposable
     {
         File.WriteAllText(Path.Combine(_tmp.FullName, "config.yaml"), "apiVersion: v1\n\tkind: ConfigMap\n", new UTF8Encoding(false));
 
-        var profile = new DetectionProfile(
-            "default",
-            configs:
-            [
-                new DetectionProfileConfig(
-                    "cfg1",
-                    path: "config.yaml",
-                    metadata: new Dictionary<string, object?>(StringComparer.Ordinal) { ["ignore_review_flags"] = true }),
-            ]);
+        var profile = new DetectionProfile
+        {
+            Name = "default",
+            Configs = [new DetectionProfileConfig { Id = "cfg1", Path = "config.yaml", IgnoreReviewFlags = true }],
+        };
         var store = new DetectionProfileStore([profile]);
 
         var detector = new Detector();

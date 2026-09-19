@@ -1,253 +1,350 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Hunt;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Profiles.Detection;
-using DriftBuster.Backend.Profiles.Run;
+using DriftBuster.Backend.Sql;
 
 namespace DriftBuster.Backend.Remote;
 
 /// <summary>
-/// <c>driftbuster capture</c> as library calls: <see cref="RunCapture"/>, <see cref="RunSqlExport"/>, <see cref="CompareSnapshots"/>.
-/// Each takes an options record and writes stdout/stderr text to the given writers. Clock, timer, host name and environment are seams.
+/// The <c>capture</c> operations: <c>run</c> (detect and hunt a tree into a redacted snapshot plus a manifest), <c>compare</c> (two
+/// snapshots) and <c>export-sql</c>. Progress lines go to stdout and refusals to stderr; each returns an exit code.
 /// </summary>
-public static partial class CaptureRunner
+public sealed class CaptureRunner(TimeProvider? time = null, Func<string>? hostName = null)
 {
-    public const string CaptureManifestSchemaVersion = "1.0";
-
-    /// <summary>UTC clock (test seam).</summary>
-    internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
-
-    /// <summary>Monotonic seconds (test seam).</summary>
-    internal static Func<double> Monotonic { get; set; } = () => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
-
-    /// <summary>Host name, domain included where the platform reports it (test seam).</summary>
-    internal static Func<string> HostName { get; set; } = CaptureHostName.Get;
-
-    /// <summary>Environment variable lookup (test seam).</summary>
-    internal static Func<string, string?> GetEnvironmentVariable { get; set; } = Environment.GetEnvironmentVariable;
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private readonly Func<string> _hostName = hostName ?? CaptureHostName.Get;
 
     /// <summary>
-    /// Validates the root, the redaction opt-in, operator, environment and reason (each refusal written to <paramref name="stderr"/>
-    /// as <c>error: ...</c>, exit 1); loads the optional profile store; scans with the detector (with profiles when given) and, unless
-    /// skipped, the default hunt rules; summarises registry scan files; writes <c>{capture_id}-snapshot.json</c> (redacted) and
-    /// <c>{capture_id}-manifest.json</c>; reports both paths and warns when a redaction filter replaced nothing.
+    /// Refuses a missing root, a run without mask tokens (unless <see cref="CaptureRunOptions.AllowUnmasked"/>), and a missing operator
+    /// (option, <c>DRIFTBUSTER_CAPTURE_OPERATOR</c>, <c>USER</c> or <c>USERNAME</c>), environment or reason; otherwise writes
+    /// <c>&lt;id&gt;-snapshot.json</c> (every string redacted) and <c>&lt;id&gt;-manifest.json</c> under the output directory.
     /// </summary>
-    /// <remarks>Detector guardrail warnings go to <paramref name="stderr"/>. Unreadable files are skipped by the hunt.</remarks>
-    public static CaptureRunOutcome RunCapture(CaptureRunOptions options, TextWriter stdout, TextWriter stderr)
+    public int Run(CaptureRunOptions options, TextWriter stdout, TextWriter stderr)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
-        if (!TryValidateRun(options, stderr, out var root, out var identity))
-        {
-            return new CaptureRunOutcome(1);
-        }
-
-        DetectionProfileStore? profileStore = null;
-        OrderedDictionary<string, object?>? profileSummary = null;
-        if (!string.IsNullOrEmpty(options.Profiles))
-        {
-            try
-            {
-                profileStore = DetectionProfileCommands.StoreFromPayload(DetectionProfileCommands.LoadJson(options.Profiles));
-                profileSummary = (OrderedDictionary<string, object?>)NormaliseSummary(profileStore.Summary())!;
-            }
-            catch (Exception exc) when (exc is not OutOfMemoryException)
-            {
-                stderr.Write($"error: failed to load profiles: {exc.Message}\n");
-                return new CaptureRunOutcome(1);
-            }
-        }
-
-        var detector = BuildDetector(options.SampleSize, stderr);
-        var captureId = string.IsNullOrEmpty(options.CaptureId) ? CaptureTimestamp(UtcNow()) : options.CaptureId;
-        var (snapshotPath, manifestPath) = PrepareOutputPaths(options.OutputDir, captureId);
-        var scan = Scan(options, root, detector, profileStore);
-
-        IReadOnlyList<OrderedDictionary<string, object?>> registryScans;
-        try
-        {
-            registryScans = LoadRegistryScanSummaries(options.RegistryScan);
-        }
-        catch (Exception exc) when (exc is not OutOfMemoryException)
-        {
-            stderr.Write($"error: {exc.Message}\n");
-            return new CaptureRunOutcome(1);
-        }
-
-        return WriteCapture(options, identity with { CaptureId = captureId, Root = root }, scan, profileSummary, registryScans, (snapshotPath, manifestPath), stdout, stderr);
-    }
-
-    private sealed record CaptureIdentity(string CaptureId, string Root, string Operator, string Environment, string Reason);
-
-    private sealed record CaptureScan(
-        List<OrderedDictionary<string, object?>> Detections,
-        List<OrderedDictionary<string, object?>> HuntHits,
-        double DetectionDuration,
-        double HuntDuration,
-        double TotalDuration);
-
-    // The checks made before anything is loaded or created; the first refusal goes to stderr.
-    private static bool TryValidateRun(CaptureRunOptions options, TextWriter stderr, out string root, out CaptureIdentity identity)
-    {
-        root = EnginePath.Resolve(options.Root);
-        identity = new CaptureIdentity(string.Empty, root, string.Empty, string.Empty, string.Empty);
-        var refusal = FirstRefusal(options, root, out var @operator, out var environment, out var reason);
+        var root = Path.GetFullPath(options.Root);
+        var refusal = Refusal(options, root, out var identity);
         if (refusal is not null)
         {
-            stderr.Write(refusal + "\n");
-            return false;
+            stderr.Write($"error: {refusal}\n");
+            return 1;
         }
 
-        identity = identity with { Operator = @operator, Environment = environment, Reason = reason };
-        return true;
-    }
-
-    private static string? FirstRefusal(CaptureRunOptions options, string root, out string @operator, out string environment, out string reason)
-    {
-        @operator = environment = reason = string.Empty;
-        if (!RunProfileStore.Exists(root))
+        DetectionProfileStore? store = null;
+        IReadOnlyList<RegistryScanSummary> registryScans;
+        try
         {
-            return $"error: capture root does not exist: {root}";
+            store = string.IsNullOrWhiteSpace(options.Profiles) ? null : DetectionProfileStore.Load(options.Profiles);
+            registryScans = [.. options.RegistryScan.Select(SummariseRegistryScan)];
         }
-
-        if (options.MaskTokens.Count == 0 && !options.AllowUnmasked)
+        catch (Exception exc) when (exc is DetectionProfileException or IOException or JsonException or UnauthorizedAccessException)
         {
-            return "error: provide at least one --mask-token or explicitly opt-in with --allow-unmasked";
+            stderr.Write($"error: {exc.Message}\n");
+            return 1;
         }
 
-        if (ResolveOperator(options.Operator) is not { } resolved)
-        {
-            return "error: provide --operator or set DRIFTBUSTER_CAPTURE_OPERATOR/USER before running captures";
-        }
+        var capturedAt = _time.GetUtcNow();
+        var id = string.IsNullOrEmpty(options.CaptureId) ? capturedAt.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture) : options.CaptureId;
+        var info = identity with { Id = id, Root = root, CapturedAt = capturedAt, Host = _hostName() };
+        var total = Stopwatch.StartNew();
+        var watch = Stopwatch.StartNew();
+        var detections = Detect(options, root, store, stderr);
+        var detectionSeconds = watch.Elapsed.TotalSeconds;
+        watch.Restart();
+        IReadOnlyList<HuntHitResult> huntHits = options.SkipHunt
+            ? []
+            : [.. HuntEngine.HuntPath(root, HuntRules.Default, options.HuntGlob, options.SampleSize, options.HuntExclude).Hits.Select(hit => HuntHitResult.From(hit, root))];
+        var huntSeconds = watch.Elapsed.TotalSeconds;
 
-        @operator = resolved;
-        environment = EngineText.Strip(options.Environment ?? string.Empty);
-        if (environment.Length == 0)
-        {
-            return "error: --environment is required for capture manifests";
-        }
-
-        reason = EngineText.Strip(options.Reason ?? string.Empty);
-        return reason.Length == 0 ? "error: --reason is required for capture manifests" : null;
-    }
-
-    // A detector whose guardrail warnings go to stderr; a size past its int parameter is clamped here with the detector's warning text.
-    private static Detector BuildDetector(long sampleSize, TextWriter stderr)
-    {
-        void Warn(string message) => stderr.Write(message + "\n");
-        if (sampleSize > int.MaxValue)
-        {
-            Warn(string.Create(CultureInfo.InvariantCulture, $"Sample size {sampleSize} exceeds {Detector.MaxSampleSize} bytes; clamping to guardrail."));
-            return new Detector(sampleSize: Detector.MaxSampleSize, onWarning: Warn);
-        }
-
-        return new Detector(sampleSize: (int)Math.Max(sampleSize, int.MinValue), onWarning: Warn);
-    }
-
-    // Detection scan, then hunt, each timed.
-    private static CaptureScan Scan(CaptureRunOptions options, string root, Detector detector, DetectionProfileStore? profileStore)
-    {
-        var startTime = Monotonic();
-        var detectionStart = Monotonic();
-        List<OrderedDictionary<string, object?>> detections = profileStore is not null
-            ? detector.ScanWithProfiles(root, profileStore, options.ProfileTags, options.Glob)
-                .Where(entry => entry.Detection is not null)
-                .Select(entry => SerialiseDetection(entry, root))
-                .ToList()
-            : detector.ScanPath(root, options.Glob)
-                .Where(result => result.Match is not null)
-                .Select(result => SerialisePlainDetection(result.Path, result.Match!, root))
-                .ToList();
-        var detectionDuration = Monotonic() - detectionStart;
-
-        var huntHits = new List<OrderedDictionary<string, object?>>();
-        var huntDuration = 0.0;
-        if (!options.SkipHunt)
-        {
-            var huntStart = Monotonic();
-            var hits = HuntEngine.HuntPath(root, HuntRules.Default, options.HuntGlob, options.SampleSize, options.HuntExclude);
-            huntDuration = Monotonic() - huntStart;
-            huntHits = hits.Hits.Select(hit => SerialiseHuntHit(hit, root)).ToList();
-        }
-
-        var totalDuration = Monotonic() - startTime;
-        return new CaptureScan(detections, huntHits, detectionDuration, huntDuration, totalDuration);
-    }
-
-    private static CaptureRunOutcome WriteCapture(
-        CaptureRunOptions options,
-        CaptureIdentity identity,
-        CaptureScan scan,
-        OrderedDictionary<string, object?>? profileSummary,
-        IReadOnlyList<OrderedDictionary<string, object?>> registryScans,
-        (string Snapshot, string Manifest) paths,
-        TextWriter stdout,
-        TextWriter stderr)
-    {
         var redactor = RedactionFilter.Resolve(maskTokens: options.MaskTokens, placeholder: options.Placeholder);
-        var snapshotPayload = BuildSnapshotPayload(identity, options.Placeholder, options.MaskTokens, scan.Detections, profileSummary, scan.HuntHits);
-        var redactedSnapshot = redactor is null ? snapshotPayload : (OrderedDictionary<string, object?>)RedactionFilter.RedactData(snapshotPayload, redactor)!;
-        WriteJsonText(paths.Snapshot, redactedSnapshot);
+        var snapshot = Redacted(new CaptureSnapshot(info, detections, store?.Summary(), huntHits), redactor);
 
-        var profileMatchCount = scan.Detections.Sum(entry => EngineBuiltins.Len(entry.GetValueOrDefault("profiles")));
-        var totalRedactions = redactor?.Stats().Values.Sum(count => (long)count) ?? 0;
-        var manifestPayload = BuildManifestPayload(
-            (IReadOnlyDictionary<string, object?>)redactedSnapshot["capture"]!,
-            paths.Snapshot,
-            paths.Manifest,
-            scan.DetectionDuration,
-            scan.HuntDuration,
-            scan.TotalDuration,
-            scan.Detections.Count,
-            profileMatchCount,
-            scan.HuntHits.Count,
-            profileSummary,
-            options.Placeholder,
-            options.MaskTokens.Count,
-            totalRedactions,
-            registryScans);
-        WriteJsonText(paths.Manifest, manifestPayload);
-
-        stdout.Write($"Snapshot written to {paths.Snapshot}\nManifest written to {paths.Manifest}\n");
-        if (redactor is not null && totalRedactions == 0)
+        var directory = Directory.CreateDirectory(options.OutputDir).FullName;
+        var snapshotPath = Path.Join(directory, $"{id}-snapshot.json");
+        var manifestPath = Path.Join(directory, $"{id}-manifest.json");
+        AtomicFile.WriteAllText(snapshotPath, ModelJson.Serialize(snapshot));
+        var redactions = redactor?.Stats().Values.Sum(count => (long)count) ?? 0;
+        var manifest = Manifest(snapshot, (snapshotPath, manifestPath), (detectionSeconds, huntSeconds, total.Elapsed.TotalSeconds), new CaptureRedaction(options.Placeholder, options.MaskTokens.Count, redactions), registryScans);
+        AtomicFile.WriteAllText(manifestPath, ModelJson.Serialize(manifest));
+        stdout.Write($"Snapshot written to {snapshotPath}\nManifest written to {manifestPath}\n");
+        if (redactor is not null && redactions == 0)
         {
             stderr.Write("warning: redaction filter configured but no tokens were replaced\n");
         }
 
-        return new CaptureRunOutcome(0, paths.Snapshot, paths.Manifest, redactedSnapshot, manifestPayload);
+        LastRun = (snapshotPath, manifestPath, manifest);
+        return 0;
     }
+
+    // Every string of the snapshot through the redactor.
+    private static CaptureSnapshot Redacted(CaptureSnapshot snapshot, RedactionFilter? redactor)
+        => redactor is null
+            ? snapshot
+            : redactor.ApplyTo(JsonSerializer.SerializeToNode(snapshot, ModelJson.TypeInfo<CaptureSnapshot>())).Deserialize(ModelJson.TypeInfo<CaptureSnapshot>())!;
+
+    private static CaptureManifest Manifest(
+        CaptureSnapshot snapshot,
+        (string Snapshot, string Manifest) paths,
+        (double Detection, double Hunt, double Total) seconds,
+        CaptureRedaction redaction,
+        IReadOnlyList<RegistryScanSummary> registryScans)
+    {
+        var captured = snapshot.Capture;
+        return new CaptureManifest(
+            CaptureManifest.CurrentSchemaVersion,
+            new CaptureManifestInfo(captured.Id, Path.GetFileName(paths.Snapshot), Path.GetFileName(paths.Manifest), captured.CapturedAt, captured.Root, captured.Operator, captured.Environment, captured.Reason, captured.Host),
+            new CaptureDurations(Math.Round(seconds.Detection, 3), Math.Round(seconds.Hunt, 3), Math.Round(seconds.Total, 3)),
+            new CaptureCounts(
+                snapshot.Detections.Count,
+                snapshot.Detections.Sum(entry => entry.Profiles.Count),
+                snapshot.HuntHits.Count,
+                registryScans.Count,
+                snapshot.ProfileSummary?.TotalProfiles ?? 0,
+                snapshot.ProfileSummary?.TotalConfigs ?? 0),
+            redaction,
+            registryScans);
+    }
+
+    /// <summary>The paths and manifest of the last successful <see cref="Run"/>.</summary>
+    public (string SnapshotPath, string ManifestPath, CaptureManifest Manifest)? LastRun { get; private set; }
 
     /// <summary>
-    /// The first non-blank of <paramref name="value"/>, <c>DRIFTBUSTER_CAPTURE_OPERATOR</c>, <c>USER</c>, <c>USERNAME</c>, trimmed; null
-    /// when all are blank.
+    /// Compares two snapshot files and prints the summary. A missing current snapshot is an error; a missing baseline means this is the
+    /// first capture.
     /// </summary>
-    public static string? ResolveOperator(string? value)
+    public int Compare(string baselinePath, string currentPath, TextWriter stdout, TextWriter stderr)
     {
-        string?[] candidates =
-        [
-            value,
-            GetEnvironmentVariable("DRIFTBUSTER_CAPTURE_OPERATOR"),
-            GetEnvironmentVariable("USER"),
-            GetEnvironmentVariable("USERNAME"),
-        ];
-        return candidates.Select(candidate => EngineText.Strip(candidate ?? string.Empty)).FirstOrDefault(candidate => candidate.Length > 0);
+        ArgumentNullException.ThrowIfNull(stdout);
+        ArgumentNullException.ThrowIfNull(stderr);
+        LastComparison = null;
+        if (!File.Exists(currentPath))
+        {
+            stderr.Write($"error: current snapshot not found: {currentPath}\n");
+            return 1;
+        }
+
+        if (!File.Exists(baselinePath))
+        {
+            stdout.Write("No baseline snapshot found; record this run as the first capture.\n");
+            return 0;
+        }
+
+        CaptureSnapshot baseline;
+        CaptureSnapshot current;
+        try
+        {
+            baseline = ReadSnapshot(baselinePath);
+            current = ReadSnapshot(currentPath);
+        }
+        catch (DetectionProfileException exc)
+        {
+            stderr.Write($"error: {exc.Message}\n");
+            return 1;
+        }
+
+        var comparison = CaptureComparer.Compare(baseline, current);
+        CaptureComparer.Write(comparison, stdout);
+        LastComparison = comparison;
+        return 0;
     }
 
-    /// <summary>A capture id from the UTC clock: <c>yyyyMMddTHHmmssZ</c>.</summary>
-    internal static string CaptureTimestamp(DateTimeOffset now)
-        => now.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+    /// <summary>The result of the last <see cref="Compare"/> that had both snapshots.</summary>
+    public CaptureComparison? LastComparison { get; private set; }
 
-    /// <summary>Creates the directory and returns the snapshot and manifest paths under it.</summary>
-    public static (string SnapshotPath, string ManifestPath) PrepareOutputPaths(string directory, string captureId)
+    public static CaptureSnapshot ReadSnapshot(string path) => DetectionProfileStore.Read(path, ModelJson.TypeInfo<CaptureSnapshot>());
+
+    /// <summary>
+    /// Exports each database into <c>&lt;stem&gt;-sql-snapshot.json</c> under the output directory and, when any export succeeded, writes the
+    /// manifest. A database that is missing or refused is reported on stderr and makes the exit code 1.
+    /// </summary>
+    public int ExportSql(SqlExportOptions options, TextWriter stdout, TextWriter stderr)
     {
-        ArgumentNullException.ThrowIfNull(directory);
-        ArgumentNullException.ThrowIfNull(captureId);
-        EnginePath.MakeDirectories(directory);
-        return (LexicalPath.Join(directory, $"{captureId}-snapshot.json"), LexicalPath.Join(directory, $"{captureId}-manifest.json"));
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(stdout);
+        ArgumentNullException.ThrowIfNull(stderr);
+        LastExport = null;
+        if (options.Settings.Limit is <= 0)
+        {
+            stderr.Write("error: --limit must be positive when provided\n");
+            return 1;
+        }
+
+        var exports = new List<SqlExportEntry>();
+        var written = new List<string>();
+        var exitCode = 0;
+        foreach (var database in options.Databases)
+        {
+            var path = Path.GetFullPath(RunProfileExpand(database));
+            if (!File.Exists(path))
+            {
+                stderr.Write($"error: database not found: {path}\n");
+                exitCode = 1;
+                continue;
+            }
+
+            SqlSnapshot snapshot;
+            try
+            {
+                snapshot = SqliteSnapshots.Build(path, options.Settings, _time);
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException exc)
+            {
+                stderr.Write($"error: failed to export {path}: {exc.Message}\n");
+                exitCode = 1;
+                continue;
+            }
+
+            var directory = Directory.CreateDirectory(options.OutputDir).FullName;
+            var destination = SnapshotPath(directory, Stem(options, path));
+            AtomicFile.WriteAllText(destination, ModelJson.Serialize(snapshot));
+            exports.Add(new SqlExportEntry(path, Path.GetFileName(destination), "sqlite", snapshot.Tables.ToDictionary(table => table.Name, table => table.RowCount, StringComparer.Ordinal)));
+            written.Add(destination);
+            stdout.Write($"Exported SQL snapshot to {destination}\n");
+        }
+
+        if (exports.Count > 0)
+        {
+            var manifestPath = Path.Join(Path.GetFullPath(options.OutputDir), options.ManifestName);
+            var manifest = new SqlExportManifest(_time.GetUtcNow(), exports, options.Settings);
+            AtomicFile.WriteAllText(manifestPath, ModelJson.Serialize(manifest));
+            if (options.ReportManifestPath)
+            {
+                stdout.Write($"Manifest written to {manifestPath}\n");
+            }
+
+            LastExport = (manifestPath, manifest, written);
+        }
+
+        return exitCode;
+    }
+
+    /// <summary>The manifest and snapshot paths of the last <see cref="ExportSql"/> that exported anything.</summary>
+    public (string ManifestPath, SqlExportManifest Manifest, IReadOnlyList<string> SnapshotPaths)? LastExport { get; private set; }
+
+    /// <summary>A registry scan output file: its token, the labels of its roots and requested roots, and its hit count.</summary>
+    public static RegistryScanSummary SummariseRegistryScan(string path)
+    {
+        var full = Path.GetFullPath(RunProfileExpand(path));
+        using var document = JsonDocument.Parse(File.ReadAllBytes(full));
+        var root = document.RootElement;
+        return new RegistryScanSummary(
+            Path.GetFileName(full),
+            full,
+            root.TryGetProperty("token", out var token) && token.ValueKind == JsonValueKind.String ? token.GetString() : null,
+            RootLabels(root, "roots"),
+            RootLabels(root, "requested_roots"),
+            root.TryGetProperty("hits", out var hits) && hits.ValueKind == JsonValueKind.Array ? hits.GetArrayLength() : 0);
+    }
+
+    private static string RunProfileExpand(string path) => Profiles.Run.RunProfileStore.Expand(path);
+
+    // "HIVE \ path" for each root with both, " (view N)" when it names a view.
+    private static List<string> RootLabels(JsonElement scan, string property)
+    {
+        var labels = new List<string>();
+        if (!scan.TryGetProperty(property, out var roots) || roots.ValueKind != JsonValueKind.Array)
+        {
+            return labels;
+        }
+
+        foreach (var entry in roots.EnumerateArray().Where(entry => entry.ValueKind == JsonValueKind.Object))
+        {
+            var hive = Text(entry, "hive");
+            var keyPath = Text(entry, "path");
+            if (hive.Length > 0 && keyPath.Length > 0)
+            {
+                var view = Text(entry, "view");
+                labels.Add($"{hive} \\ {keyPath}" + (view.Length > 0 ? $" (view {view})" : string.Empty));
+            }
+        }
+
+        return labels;
+
+        static string Text(JsonElement entry, string name)
+            => entry.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.String or JsonValueKind.Number
+                ? (value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText()).Trim()
+                : string.Empty;
+    }
+
+    private string? Refusal(CaptureRunOptions options, string root, out CaptureInfo identity)
+    {
+        identity = new CaptureInfo(string.Empty, root, default, string.Empty, string.Empty, string.Empty, string.Empty, options.Placeholder, options.MaskTokens.Count);
+        if (!Directory.Exists(root) && !File.Exists(root))
+        {
+            return $"capture root does not exist: {root}";
+        }
+
+        if (options.MaskTokens.Count == 0 && !options.AllowUnmasked)
+        {
+            return "provide at least one --mask-token or explicitly opt-in with --allow-unmasked";
+        }
+
+        var @operator = new[] { options.Operator, Environment.GetEnvironmentVariable("DRIFTBUSTER_CAPTURE_OPERATOR"), Environment.GetEnvironmentVariable("USER"), Environment.GetEnvironmentVariable("USERNAME") }
+            .Select(candidate => candidate?.Trim()).FirstOrDefault(candidate => !string.IsNullOrEmpty(candidate));
+        if (@operator is null)
+        {
+            return "provide --operator or set DRIFTBUSTER_CAPTURE_OPERATOR/USER before running captures";
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Environment))
+        {
+            return "--environment is required for capture manifests";
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Reason))
+        {
+            return "--reason is required for capture manifests";
+        }
+
+        identity = identity with { Operator = @operator, Environment = options.Environment.Trim(), Reason = options.Reason.Trim() };
+        return null;
+    }
+
+    private static List<CaptureDetection> Detect(CaptureRunOptions options, string root, DetectionProfileStore? store, TextWriter stderr)
+    {
+        var detector = new Detector(sampleSize: options.SampleSize, onWarning: message => stderr.Write(message + "\n"));
+        var scanned = store is null
+            ? detector.ScanPath(root, options.Glob).Select(result => new ProfiledDetection(result.Path, result.Match, []))
+            : detector.ScanWithProfiles(root, store, options.ProfileTags, options.Glob);
+        return [.. scanned.Where(entry => entry.Detection is not null).Select(entry => new CaptureDetection(
+            entry.Path,
+            Directory.Exists(root) ? Path.GetRelativePath(root, entry.Path).Replace('\\', '/') : Path.GetFileName(entry.Path),
+            entry.Detection!.PluginName,
+            entry.Detection.FormatName,
+            entry.Detection.Variant,
+            entry.Detection.Confidence,
+            [.. entry.Detection.Reasons],
+            JsonNodes.From(entry.Detection.Metadata),
+            [.. entry.Profiles.Select(applied => new CaptureProfileMatch(applied.Profile.Name, [.. applied.Profile.Tags.Order(StringComparer.Ordinal)], applied.Config))]))];
+    }
+
+    // The prefix or the database's stem; with several databases, "<prefix>-<stem>" (or the stem alone without a prefix).
+    private static string Stem(SqlExportOptions options, string path)
+    {
+        var stem = Path.GetFileNameWithoutExtension(path);
+        return options.Databases.Count > 1
+            ? string.IsNullOrEmpty(options.Prefix) ? stem : $"{options.Prefix}-{stem}"
+            : string.IsNullOrEmpty(options.Prefix) ? stem : options.Prefix;
+    }
+
+    // "<stem>-sql-snapshot.json", then "-1", "-2", ... when that exists.
+    private static string SnapshotPath(string directory, string stem)
+    {
+        var candidate = Path.Join(directory, $"{stem}-sql-snapshot.json");
+        for (var counter = 1; File.Exists(candidate); counter++)
+        {
+            candidate = Path.Join(directory, string.Create(CultureInfo.InvariantCulture, $"{stem}-sql-snapshot-{counter}.json"));
+        }
+
+        return candidate;
     }
 }

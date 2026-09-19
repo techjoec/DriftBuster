@@ -1,14 +1,15 @@
 using System.CommandLine;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Profiles.Detection;
 using DriftBuster.Backend.Profiles.Run;
 using DriftBuster.Backend.Scheduling;
 
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// Runs a command body with the invocation's stdout and stderr. A <see cref="CommandExitException"/>, <see cref="ScheduleException"/>
-/// or <see cref="RunProfileException"/> writes the message on stderr and exits 1; any other exception ends the command with exit
+/// Runs a command body with the invocation's stdout and stderr. A <see cref="CommandExitException"/>, <see cref="ScheduleException"/>,
+/// <see cref="RunProfileException"/> or <see cref="DetectionProfileException"/> writes the message on stderr and exits 1; any other exception ends the command with exit
 /// code 1 and <c>ExceptionTypeName: message</c> on stderr.
 /// </summary>
 internal static class CommandRunner
@@ -21,7 +22,7 @@ internal static class CommandRunner
         {
             return body(stdout, stderr);
         }
-        catch (Exception exc) when (exc is CommandExitException or ScheduleException or RunProfileException)
+        catch (Exception exc) when (exc is CommandExitException or ScheduleException or RunProfileException or DetectionProfileException)
         {
             ConsoleText.Print(stderr, exc.Message);
             return 1;

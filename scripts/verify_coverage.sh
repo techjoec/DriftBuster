@@ -62,15 +62,17 @@ coverage_dir="${repo_root}/build/coverage"
 rm -rf "${coverage_dir}"
 mkdir -p "${coverage_dir}"
 
-# Each run merges the previous json report; the last one writes the merged report and enforces the threshold on it.
+# Each run merges the previous json report; the last one writes the merged report and enforces the threshold on it. Source
+# generator output (regex, JSON contexts, interop, XAML) lives under obj/ and is not measured.
+exclude_generated='-p:ExcludeByFile=**/obj/**/*.cs'
 dotnet test gui/DriftBuster.Backend.Tests/DriftBuster.Backend.Tests.csproj -v minimal \
-  -p:CollectCoverage=true -p:CoverletOutputFormat=json \
+  -p:CollectCoverage=true -p:CoverletOutputFormat=json "${exclude_generated}" \
   -p:CoverletOutput="${coverage_dir}/backend.json"
 dotnet test cli/DriftBuster.Cli.Tests/DriftBuster.Cli.Tests.csproj -v minimal \
-  -p:CollectCoverage=true -p:CoverletOutputFormat=json \
+  -p:CollectCoverage=true -p:CoverletOutputFormat=json "${exclude_generated}" \
   -p:MergeWith="${coverage_dir}/backend.json" -p:CoverletOutput="${coverage_dir}/cli.json"
 dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -v minimal \
-  -p:CollectCoverage=true -p:CoverletOutputFormat=json%2Ccobertura \
+  -p:CollectCoverage=true -p:CoverletOutputFormat=json%2Ccobertura "${exclude_generated}" \
   -p:MergeWith="${coverage_dir}/cli.json" -p:CoverletOutput="${coverage_dir}/merged/" \
   -p:Threshold="${DOTNET_THRESHOLD}" -p:ThresholdType=line -p:ThresholdStat=total
 

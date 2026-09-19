@@ -869,7 +869,7 @@ function Resolve-DriftBusterProviderPath {
     return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 
-function ConvertTo-DriftBusterScheduleJson {
+function ConvertTo-DriftBusterModelJson {
     [CmdletBinding()]
     [OutputType([string])]
     param(
@@ -979,23 +979,28 @@ Export-DriftBusterSqlSnapshot -Database .\app.sqlite -MaskColumn accounts.secret
         $Prefix
     )
 
-    $request = [DriftBuster.Backend.Models.SqlExportRequest]::new()
-    $request.Databases = [string[]]@($Database | ForEach-Object { Resolve-DriftBusterProviderPath -Path $_ })
-    $request.OutputDir = Resolve-DriftBusterProviderPath -Path $OutputDir
-    $request.Tables = [string[]]@($Table | Where-Object { $_ })
-    $request.ExcludeTables = [string[]]@($ExcludeTable | Where-Object { $_ })
-    $request.MaskColumns = [string[]]@($MaskColumn | Where-Object { $_ })
-    $request.HashColumns = [string[]]@($HashColumn | Where-Object { $_ })
-    $request.Placeholder = $Placeholder
-    $request.HashSalt = $HashSalt
-    if ($PSBoundParameters.ContainsKey('Limit')) {
-        $request.Limit = $Limit
+    $settingValues = @{
+        Tables        = [string[]]@($Table | Where-Object { $_ })
+        ExcludeTables = [string[]]@($ExcludeTable | Where-Object { $_ })
+        MaskedColumns = [DriftBuster.Backend.Sql.SqlExportSettings]::ParseColumns([string[]]@($MaskColumn | Where-Object { $_ }))
+        HashedColumns = [DriftBuster.Backend.Sql.SqlExportSettings]::ParseColumns([string[]]@($HashColumn | Where-Object { $_ }))
+        Placeholder   = $Placeholder
+        HashSalt      = $HashSalt
     }
-    if ($Prefix) {
-        $request.Prefix = $Prefix
+    if ($PSBoundParameters.ContainsKey('Limit')) {
+        $settingValues.Limit = $Limit
     }
 
-    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.ExportSqlSnapshotAsync($request)
+    $settings = [DriftBuster.Backend.Sql.SqlExportSettings]$settingValues
+
+    $options = [DriftBuster.Backend.Remote.SqlExportOptions]@{
+        Databases = [string[]]@($Database | ForEach-Object { Resolve-DriftBusterProviderPath -Path $_ })
+        OutputDir = Resolve-DriftBusterProviderPath -Path $OutputDir
+        Prefix    = $Prefix
+        Settings  = $settings
+    }
+
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.ExportSqlSnapshotAsync($options)
     if ($result.Output) {
         Write-Verbose $result.Output.TrimEnd()
     }
@@ -1008,7 +1013,7 @@ Export-DriftBusterSqlSnapshot -Database .\app.sqlite -MaskColumn accounts.secret
         throw $message
     }
 
-    return ConvertFrom-DriftBusterJson -Json $result.ManifestJson
+    return ConvertFrom-DriftBusterModelJson -Model $result.Manifest
 }
 
 function Invoke-DriftBusterCaptureRun {
@@ -1047,21 +1052,20 @@ function Invoke-DriftBusterCaptureRun {
         $Reason
     )
 
-    $request = [DriftBuster.Backend.Models.CaptureRunRequest]::new()
-    $request.Root = $Root
-    $request.OutputDir = $OutputDir
-    if ($ProfilesPath) {
-        $request.ProfilesPath = $ProfilesPath
+    $options = [DriftBuster.Backend.Remote.CaptureRunOptions]@{
+        Root          = $Root
+        OutputDir     = $OutputDir
+        Profiles      = if ($ProfilesPath) { $ProfilesPath } else { $null }
+        ProfileTags   = [string[]]@($ProfileTag | Where-Object { $_ })
+        MaskTokens    = [string[]]@($MaskToken | Where-Object { $_ })
+        AllowUnmasked = [bool]$AllowUnmasked
+        SkipHunt      = [bool]$SkipHunt
+        Operator      = if ($Operator) { $Operator } else { $null }
+        Environment   = $Environment
+        Reason        = $Reason
     }
-    $request.ProfileTags = [string[]]@($ProfileTag | Where-Object { $_ })
-    $request.MaskTokens = [string[]]@($MaskToken | Where-Object { $_ })
-    $request.AllowUnmasked = [bool]$AllowUnmasked
-    $request.SkipHunt = [bool]$SkipHunt
-    $request.Operator = if ($Operator) { $Operator } else { $null }
-    $request.Environment = $Environment
-    $request.Reason = $Reason
 
-    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.RunCaptureAsync($request)
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.RunCaptureAsync($options)
     if ($result.Output) {
         Write-Verbose $result.Output.TrimEnd()
     }
@@ -1618,7 +1622,7 @@ Invoke-DriftBusterRemoteScan -ComputerName 'hq-core' -RemotePath 'C:\ProgramData
     }
 }
 
-function ConvertFrom-DriftBusterScheduleModel {
+function ConvertFrom-DriftBusterModelJson {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -1626,7 +1630,7 @@ function ConvertFrom-DriftBusterScheduleModel {
         $Model
     )
 
-    return ConvertFrom-DriftBusterJson -Json (ConvertTo-DriftBusterScheduleJson -Value $Model)
+    return ConvertFrom-DriftBusterJson -Json (ConvertTo-DriftBusterModelJson -Value $Model)
 }
 
 function Write-DriftBusterScheduleOutput {
@@ -1645,11 +1649,11 @@ function Write-DriftBusterScheduleOutput {
 
     # -Raw is the whole result as the console tool prints it; otherwise one object per entry (or the result itself).
     if ($Raw) {
-        return ConvertTo-DriftBusterScheduleJson -Value $Result
+        return ConvertTo-DriftBusterModelJson -Value $Result
     }
 
     foreach ($item in $(if ($PSBoundParameters.ContainsKey('Entry')) { $Entry } else { @($Result) })) {
-        Write-Output (ConvertFrom-DriftBusterScheduleModel -Model $item)
+        Write-Output (ConvertFrom-DriftBusterModelJson -Model $item)
     }
 }
 

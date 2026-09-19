@@ -279,17 +279,12 @@ public sealed class DetectorTests : IDisposable
 
         var detector = new Detector();
 
-        var profile = new DetectionProfile(
-            "prod",
-            tags: ["prod"],
-            configs:
-            [
-                new DetectionProfileConfig(
-                    "cfg-prod",
-                    path: "appsettings.json",
-                    expectedFormat: "json",
-                    expectedVariant: "structured-settings-json"),
-            ]);
+        var profile = new DetectionProfile
+        {
+            Name = "prod",
+            Tags = ["prod"],
+            Configs = [new DetectionProfileConfig { Id = "cfg-prod", Path = "appsettings.json", ExpectedFormat = "json", ExpectedVariant = "structured-settings-json" }],
+        };
         var store = new DetectionProfileStore([profile]);
 
         var results = detector.ScanWithProfiles(targetDir, store, tags: ["prod"]);
@@ -302,7 +297,7 @@ public sealed class DetectorTests : IDisposable
         profiled.Profiles.Should().NotBeEmpty();
         var applied = profiled.Profiles[0];
         applied.Profile.Name.Should().Be("prod");
-        applied.Config.Identifier.Should().Be("cfg-prod");
+        applied.Config.Id.Should().Be("cfg-prod");
     }
 
     // With the whole registry, a run of blank lines before "[s]\nk=v\n" in a .ini file is claimed by ini: toml (priority 165)

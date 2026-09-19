@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.Remote;
 
 namespace DriftBuster.Gui.Tests.Fakes;
 
@@ -12,10 +13,10 @@ namespace DriftBuster.Gui.Tests.Fakes;
 /// </summary>
 internal abstract class UnsupportedBackendSurfaces
 {
-    public Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportRequest request, CancellationToken cancellationToken = default)
+    public Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportOptions options, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("The GUI does not export SQL snapshots.");
 
-    public Task<CaptureRunResult> RunCaptureAsync(CaptureRunRequest request, CancellationToken cancellationToken = default)
+    public Task<CaptureRunResult> RunCaptureAsync(CaptureRunOptions options, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("The GUI does not run captures.");
 
     public Task<CaptureCompareResult> CompareCapturesAsync(string baselinePath, string currentPath, CancellationToken cancellationToken = default)

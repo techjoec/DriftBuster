@@ -1,180 +1,121 @@
-using System.Collections;
+using System.Text.Json;
 
-using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 
 namespace DriftBuster.Backend.Profiles.Detection;
 
-/// <summary>
-/// Detection-profile commands for the console tool: JSON loading with friendly errors, the store builder with a lenient fallback,
-/// and <c>summary</c>, <c>diff</c> and <c>hunt-bridge</c>, each returning the payload to write. Parsing and exit codes stay in the CLI.
-/// </summary>
+/// <summary>The <c>detection-profile</c> operations: <c>summary</c>, <c>diff</c> and <c>hunt-bridge</c>.</summary>
 public static class DetectionProfileCommands
 {
-    /// <summary>The strict store builder <see cref="StoreFromPayload"/> tries first (test seam; null skips it).</summary>
-    internal static Func<object?, DetectionProfileStore>? FromDict { get; set; } = DetectionProfileStore.FromDict;
+    public static DetectionProfileSummary Summary(string storePath) => DetectionProfileStore.Load(storePath).Summary();
 
-    /// <summary>
-    /// The UTF-8 JSON value at <paramref name="path"/>. Read failures throw <see cref="IOException"/>
-    /// (<c>Unable to read JSON payload from {path}: {reason}</c>); invalid JSON, non-UTF-8 bytes and decoder limits throw
-    /// <see cref="InvalidDataException"/>.
-    /// </summary>
-    public static object? LoadJson(string path)
+    /// <summary>Two summaries compared; names and ids in ordinal order.</summary>
+    public static DetectionProfileSummaryDiff Diff(string baselinePath, string currentPath)
+        => Diff(DetectionProfileStore.Read(baselinePath, ModelJson.TypeInfo<DetectionProfileSummary>()), DetectionProfileStore.Read(currentPath, ModelJson.TypeInfo<DetectionProfileSummary>()));
+
+    public static DetectionProfileSummaryDiff Diff(DetectionProfileSummary baselineSummary, DetectionProfileSummary currentSummary)
     {
-        ArgumentNullException.ThrowIfNull(path);
-        var shown = LexicalPath.Str(path);
-        byte[] raw;
-        try
+        ArgumentNullException.ThrowIfNull(baselineSummary);
+        ArgumentNullException.ThrowIfNull(currentSummary);
+        var baseline = baselineSummary.Profiles.ToDictionary(entry => entry.Name, StringComparer.Ordinal);
+        var current = currentSummary.Profiles.ToDictionary(entry => entry.Name, StringComparer.Ordinal);
+        var changed = new List<DetectionProfileChange>();
+        foreach (var name in current.Keys.Where(baseline.ContainsKey).Order(StringComparer.Ordinal))
         {
-            raw = EngineTextFile.ReadBytes(shown, shown);
-        }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-        {
-            throw new IOException($"Unable to read JSON payload from {shown}: {exc.Message}", exc);
-        }
-
-        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.DecodeFile(raw), out var value)
-            ? value
-            : throw new InvalidDataException($"Failed to parse JSON from {shown}: invalid JSON document");
-    }
-
-    /// <summary>
-    /// <see cref="DetectionProfileStore.FromDict"/>, or when that throws, a lenient build that skips non-object entries and configs
-    /// and uses each <c>id</c> and <c>name</c> as text.
-    /// </summary>
-    public static DetectionProfileStore StoreFromPayload(object? payload)
-    {
-        if (FromDict is { } builder)
-        {
-            try
+            var before = baseline[name].ConfigIds;
+            var after = current[name].ConfigIds;
+            var added = after.Except(before, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            var removed = before.Except(after, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            if (added.Length > 0 || removed.Length > 0 || before.Count != after.Count)
             {
-                return builder(payload);
-            }
-            catch (Exception exc) when (exc is not OutOfMemoryException)
-            {
-                // Fall back to the manual build for any exception.
+                changed.Add(new DetectionProfileChange(name, before.Count, after.Count, added, removed));
             }
         }
 
-        var profiles = new List<DetectionProfile>();
-        foreach (var entry in EngineBuiltins.Iterate(DetectionProfileStore.GetOrDefault(payload, "profiles", new List<object?>())))
-        {
-            if (entry is not IReadOnlyDictionary<string, object?>)
-            {
-                continue;
-            }
+        return new DetectionProfileSummaryDiff(
+            Totals(baseline.Values),
+            Totals(current.Values),
+            [.. current.Keys.Where(name => !baseline.ContainsKey(name)).Order(StringComparer.Ordinal)],
+            [.. baseline.Keys.Where(name => !current.ContainsKey(name)).Order(StringComparer.Ordinal)],
+            changed);
 
-            var configs = new List<DetectionProfileConfig>();
-            foreach (var cfg in EngineBuiltins.Iterate(DetectionProfileStore.GetOrDefault(entry, "configs", new List<object?>())))
-            {
-                if (cfg is IReadOnlyDictionary<string, object?>)
-                {
-                    configs.Add(DetectionProfileStore.ConfigFromDict(cfg, EngineRepr.Str(DetectionProfileStore.Subscript(cfg, "id"))));
-                }
-            }
-
-            var name = EngineRepr.Str(DetectionProfileStore.Subscript(entry, "name"));
-            profiles.Add(DetectionProfileStore.ProfileFromDict(entry, name, configs));
-        }
-
-        return new DetectionProfileStore(profiles);
-    }
-
-    /// <summary>The <see cref="DetectionProfileStore.Summary"/> of the store at <paramref name="storePath"/>.</summary>
-    public static OrderedDictionary<string, object?> Summary(string storePath)
-        => StoreFromPayload(LoadJson(storePath)).Summary();
-
-    /// <summary><see cref="DetectionProfileStore.DiffSummarySnapshots"/> of two summary files.</summary>
-    public static OrderedDictionary<string, object?> Diff(string baselinePath, string currentPath)
-    {
-        var baseline = LoadJson(baselinePath);
-        var current = LoadJson(currentPath);
-        return DetectionProfileStore.DiffSummarySnapshots(baseline, current);
+        static DetectionProfileSummaryTotals Totals(IEnumerable<DetectionProfileSummaryEntry> entries)
+            => new(entries.Count(), entries.Sum(entry => entry.ConfigIds.Count));
     }
 
     /// <summary>
-    /// Attaches matching profile configs to each hunt hit. The hunt payload must be a JSON array (a string is also accepted);
-    /// otherwise <see cref="InvalidDataException"/> (<c>Hunt payload must be a JSON array of hunt hits.</c>). Non-object items are skipped.
+    /// Each hit of a <c>driftbuster hunt</c> output file (a JSON array) with the configs its path matches: its <c>relative_path</c>, else
+    /// its <c>path</c> relative to <paramref name="root"/> (its name when outside the root or without one).
     /// </summary>
-    public static OrderedDictionary<string, object?> HuntBridge(string storePath, string huntPath, IEnumerable<string?>? tags, string? root)
+    public static HuntBridgeResult HuntBridge(string storePath, string huntPath, IEnumerable<string>? tags, string? root)
     {
-        var storePayload = LoadJson(storePath);
-        var huntsPayload = LoadJson(huntPath);
-        // A list or a string is accepted; a dict is not (OrderedDictionary also implements IList).
-        if (huntsPayload is IReadOnlyDictionary<string, object?> or not (IList or string))
+        var store = DetectionProfileStore.Load(storePath);
+        var scanTags = (tags ?? []).Select(tag => tag.Trim()).Where(tag => tag.Length > 0).ToHashSet(StringComparer.Ordinal);
+        using var hunts = ReadHunts(huntPath);
+        var items = new List<HuntBridgeItem>();
+        foreach (var hit in hunts.RootElement.EnumerateArray())
         {
-            throw new InvalidDataException("Hunt payload must be a JSON array of hunt hits.");
+            var relative = RelativePath(hit, root);
+            var matches = store.MatchingConfigs(scanTags, relative)
+                .Select(applied => new HuntBridgeMatch(
+                    applied.Profile.Name,
+                    applied.Config.Id,
+                    [.. applied.Profile.Tags.Order(StringComparer.Ordinal)],
+                    applied.Config.ExpectedFormat,
+                    applied.Config.ExpectedVariant))
+                .ToArray();
+            items.Add(new HuntBridgeItem(hit.Clone(), relative, matches));
         }
 
-        var store = StoreFromPayload(storePayload);
-        var hunts = EngineBuiltins.Iterate(huntsPayload).OfType<IReadOnlyDictionary<string, object?>>();
-        return BuildBridgePayload(store, hunts, tags?.ToList(), root);
+        return new HuntBridgeResult(items);
     }
 
-    /// <summary>
-    /// A non-empty <c>relative_path</c>; otherwise from <c>path</c>: its name when there is no root or it is outside it, else the posix
-    /// path relative to the root.
-    /// </summary>
-    public static string? ResolveRelativePath(IReadOnlyDictionary<string, object?> entry, string? root)
+    internal static string? RelativePath(JsonElement hit, string? root)
     {
-        ArgumentNullException.ThrowIfNull(entry);
-        if (entry.TryGetValue("relative_path", out var relative) && relative is string { Length: > 0 } relativeText)
+        if (hit.ValueKind != JsonValueKind.Object)
         {
-            return relativeText;
+            return null;
         }
 
-        if (!entry.TryGetValue("path", out var pathValue) || pathValue is not string { Length: > 0 } pathText)
+        if (hit.TryGetProperty("relative_path", out var relative) && relative.ValueKind == JsonValueKind.String && relative.GetString() is { Length: > 0 } text)
+        {
+            return text;
+        }
+
+        if (!hit.TryGetProperty("path", out var pathValue) || pathValue.GetString() is not { Length: > 0 } path)
         {
             return null;
         }
 
         if (root is null)
         {
-            return PathText.Name(pathText);
+            return Path.GetFileName(path);
         }
 
-        return LexicalPath.RelativeTo(pathText, root) ?? PathText.Name(pathText);
+        var fromRoot = Path.GetRelativePath(root, path);
+        return fromRoot.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(fromRoot) ? Path.GetFileName(path) : fromRoot.Replace('\\', '/');
     }
 
-    /// <summary>
-    /// <c>{"items": [...]}</c>: per hit, <c>hunt</c> (the hit), <c>relative_path</c> and <c>profiles</c>, each match with <c>profile</c>,
-    /// <c>config</c>, sorted <c>profile_tags</c>, <c>expected_format</c> and <c>expected_variant</c>.
-    /// </summary>
-    public static OrderedDictionary<string, object?> BuildBridgePayload(
-        DetectionProfileStore store,
-        IEnumerable<IReadOnlyDictionary<string, object?>> hunts,
-        IEnumerable<string?>? tags,
-        string? root)
+    private static JsonDocument ReadHunts(string path)
     {
-        ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(hunts);
-        var tagList = tags?.ToList();
-        var items = new List<object?>();
-        foreach (var entry in hunts)
+        try
         {
-            var relative = ResolveRelativePath(entry, root);
-            var matches = store.MatchingConfigs(tagList, relative);
-            var profiles = matches.Select(match =>
+            var document = JsonDocument.Parse(File.ReadAllBytes(path), new JsonDocumentOptions { AllowDuplicateProperties = false });
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
             {
-                var profileTags = match.Profile.Tags.ToList();
-                profileTags.Sort(PathText.CompareCodePoints);
-                return (object?)new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-                {
-                    ["profile"] = match.Profile.Name,
-                    ["config"] = match.Config.Identifier,
-                    ["profile_tags"] = profileTags.Cast<object?>().ToList(),
-                    ["expected_format"] = match.Config.ExpectedFormat,
-                    ["expected_variant"] = match.Config.ExpectedVariant,
-                };
-            }).ToList();
+                document.Dispose();
+                throw new DetectionProfileException($"{path}: $: a hunt file holds a JSON array of hits.");
+            }
 
-            items.Add(new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["hunt"] = entry,
-                ["relative_path"] = relative,
-                ["profiles"] = profiles,
-            });
+            return document;
         }
-
-        return new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["items"] = items };
+        catch (JsonException exc)
+        {
+            throw new DetectionProfileException($"{path}: {exc.Path ?? "$"}: {exc.Message}", exc);
+        }
+        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+        {
+            throw new DetectionProfileException($"{path}: {exc.Message}", exc);
+        }
     }
 }

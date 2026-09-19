@@ -68,7 +68,7 @@ sealed class MyPlugin : IFormatPlugin
 using DriftBuster.Backend.Detection;
 using DriftBuster.Backend.Profiles.Detection;
 
-var store = DetectionProfileStore.FromDict(DetectionProfileCommands.LoadJson("profiles.json"));
+var store = DetectionProfileStore.Load("profiles.json");
 var results = new Detector().ScanWithProfiles("./deployments", store, tags: ["env:prod"]);
 ```
 

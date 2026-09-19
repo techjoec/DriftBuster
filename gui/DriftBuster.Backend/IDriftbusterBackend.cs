@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.Remote;
 
 namespace DriftBuster.Backend
 {
@@ -47,10 +48,10 @@ namespace DriftBuster.Backend
             CancellationToken cancellationToken = default);
 
         /// <summary>Exports anonymised SQLite snapshots and their <c>sql-manifest.json</c> (<c>driftbuster capture export-sql</c>).</summary>
-        Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportRequest request, CancellationToken cancellationToken = default);
+        Task<SqlExportResult> ExportSqlSnapshotAsync(SqlExportOptions options, CancellationToken cancellationToken = default);
 
         /// <summary>Captures a redacted detection and hunt snapshot with its manifest (<c>driftbuster capture run</c>).</summary>
-        Task<CaptureRunResult> RunCaptureAsync(CaptureRunRequest request, CancellationToken cancellationToken = default);
+        Task<CaptureRunResult> RunCaptureAsync(CaptureRunOptions options, CancellationToken cancellationToken = default);
 
         /// <summary>Compares a baseline capture snapshot with a current one (<c>driftbuster capture compare</c>).</summary>
         Task<CaptureCompareResult> CompareCapturesAsync(string baselinePath, string currentPath, CancellationToken cancellationToken = default);

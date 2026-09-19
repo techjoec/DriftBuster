@@ -1,76 +1,25 @@
-using DriftBuster.Backend.Infrastructure;
-
 namespace DriftBuster.Backend.Profiles.Detection;
 
 /// <summary>
-/// A named set of configuration expectations. Construction and <c>with</c> normalise tags, copy configs and freeze metadata;
-/// equality compares field by field.
+/// A named set of configuration expectations. A profile without tags applies to every scan; otherwise every tag must be among the
+/// scan's tags.
 /// </summary>
 public sealed record DetectionProfile
 {
-    private readonly string _name = string.Empty;
-    private readonly IReadOnlySet<string> _tags = ProfileTags.Normalize(null);
-    private readonly IReadOnlyList<DetectionProfileConfig> _configs = [];
-    private readonly IReadOnlyDictionary<string, object?> _metadata = ProfileMetadata.Empty;
-
-    public DetectionProfile(
-        string name,
-        string? description = null,
-        IEnumerable<string?>? tags = null,
-        IEnumerable<DetectionProfileConfig>? configs = null,
-        IEnumerable<KeyValuePair<string, object?>>? metadata = null)
-    {
-        Name = name;
-        Description = description;
-        _tags = ProfileTags.Normalize(tags);
-        _configs = (configs ?? []).ToArray().AsReadOnly();
-        _metadata = ProfileMetadata.Freeze(metadata);
-    }
-
-    public string Name
-    {
-        get => _name;
-        init => _name = value ?? throw new ArgumentNullException(nameof(value));
-    }
+    public required string Name { get; init; }
 
     public string? Description { get; init; }
 
-    public IReadOnlySet<string> Tags
+    // Source-generated reads pass null for an absent init-only member, so the setters restore the empty defaults.
+    public IReadOnlyList<string> Tags { get; init => field = value ?? []; } = [];
+
+    public IReadOnlyList<DetectionProfileConfig> Configs { get; init => field = value ?? []; } = [];
+
+    public IReadOnlyDictionary<string, string> Metadata { get; init => field = value ?? DetectionProfileConfig.NoMetadata; } = DetectionProfileConfig.NoMetadata;
+
+    public bool AppliesTo(IReadOnlySet<string> scanTags)
     {
-        get => _tags;
-        init => _tags = ProfileTags.Normalize(value);
+        ArgumentNullException.ThrowIfNull(scanTags);
+        return Tags.All(scanTags.Contains);
     }
-
-    public IReadOnlyList<DetectionProfileConfig> Configs
-    {
-        get => _configs;
-        init => _configs = (value ?? []).ToArray().AsReadOnly();
-    }
-
-    public IReadOnlyDictionary<string, object?> Metadata
-    {
-        get => _metadata;
-        init => _metadata = ProfileMetadata.Freeze(value);
-    }
-
-    /// <summary>A profile without tags applies to every tag set; otherwise all its tags must be provided.</summary>
-    public bool AppliesTo(IReadOnlySet<string> providedTags)
-    {
-        ArgumentNullException.ThrowIfNull(providedTags);
-        return Tags.Count == 0 || Tags.IsSubsetOf(providedTags);
-    }
-
-    /// <summary>The configs matching <paramref name="relativePath"/> under <paramref name="providedTags"/>, in order.</summary>
-    public IReadOnlyList<DetectionProfileConfig> MatchingConfigs(IReadOnlySet<string> providedTags, string? relativePath)
-        => Configs.Where(config => config.Matches(relativePath, providedTags)).ToArray();
-
-    public bool Equals(DetectionProfile? other)
-        => other is not null
-            && string.Equals(Name, other.Name, StringComparison.Ordinal)
-            && string.Equals(Description, other.Description, StringComparison.Ordinal)
-            && Tags.SetEquals(other.Tags)
-            && Configs.SequenceEqual(other.Configs)
-            && EngineValues.Equal(Metadata, other.Metadata);
-
-    public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Name);
 }

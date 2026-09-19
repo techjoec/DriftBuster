@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using DriftBuster.Backend;
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.Remote;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.Tests.Fakes;
 
@@ -53,8 +54,8 @@ public sealed class DriftbusterServiceTests
         IDriftbusterBackend backend = new RecordingBackend();
         var ct = TestContext.Current.CancellationToken;
 
-        await FluentActions.Awaiting(() => backend.ExportSqlSnapshotAsync(new SqlExportRequest(), ct)).Should().ThrowAsync<NotSupportedException>();
-        await FluentActions.Awaiting(() => backend.RunCaptureAsync(new CaptureRunRequest(), ct)).Should().ThrowAsync<NotSupportedException>();
+        await FluentActions.Awaiting(() => backend.ExportSqlSnapshotAsync(new SqlExportOptions(), ct)).Should().ThrowAsync<NotSupportedException>();
+        await FluentActions.Awaiting(() => backend.RunCaptureAsync(new CaptureRunOptions(), ct)).Should().ThrowAsync<NotSupportedException>();
         await FluentActions.Awaiting(() => backend.CompareCapturesAsync("a.json", "b.json", ct)).Should().ThrowAsync<NotSupportedException>();
         await FluentActions.Awaiting(() => backend.ListRegistryAppsAsync(ct)).Should().ThrowAsync<NotSupportedException>();
         await FluentActions.Awaiting(() => backend.SearchRegistryAsync(new RegistrySearchRequest(), ct)).Should().ThrowAsync<NotSupportedException>();

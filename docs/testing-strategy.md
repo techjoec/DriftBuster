@@ -7,7 +7,8 @@ view models. Manual validation continues to play a role for vendor fixtures and
 reporting flows.
 
 Policy: maintain ≥ 83% total line coverage over the merged Backend, CLI and GUI
-test report. Treat this as a hard baseline for new and modified components.
+test report (source generator output under `obj/` is not measured). Treat this as a
+hard baseline for new and modified components.
 
 ## Automated test suite
 
@@ -47,7 +48,7 @@ test report. Treat this as a hard baseline for new and modified components.
 ### Review flags and profile ignores
 - Plugins may mark oddities with `metadata.needs_review` and `review_reasons`.
 - Profiles can suppress review flags per config via
-  `metadata.ignore_review_flags = true`.
+  `"ignore_review_flags": true`.
 - Tests cover flag emission and profile‑based suppression: the `*FlagsTests`,
   `XmlWellformedFlagTests` and `YamlFlagsAndGatingTests` under
   `gui/DriftBuster.Backend.Tests/Detection/Plugins/`, and

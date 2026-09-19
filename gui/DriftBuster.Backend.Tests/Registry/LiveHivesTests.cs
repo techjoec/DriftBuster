@@ -8,8 +8,8 @@ using DriftBuster.Backend.Remote;
 namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
-/// Live hive scans through the library: root descriptors, <see cref="RegistryCommands.EmitConfig"/> with explicit roots, and registry
-/// scans embedded in a capture manifest.
+/// Live hive scans through the library: root descriptors, <see cref="RegistryCommands.EmitConfig"/> with explicit roots, and the
+/// summary a capture manifest keeps of a registry scan file.
 /// </summary>
 [Collection(RegistrySeamCollection.Name)]
 public sealed class LiveHivesTests : IDisposable
@@ -55,46 +55,18 @@ public sealed class LiveHivesTests : IDisposable
     }
 
     [Fact]
-    public void CaptureManifestEmbedsRegistryScans()
+    public void A_registry_scan_file_summarises_its_roots_and_hits()
     {
         var registryJson = Path.Combine(_tmp.FullName, "registry_scan.json");
-        var hit = RemoteSchemaTests.Map(("hive", "HKLM"), ("path", @"Software\\VendorA"), ("value_name", "Server"), ("data_preview", "api"), ("reason", "keyword"));
-        var scan = RemoteSchemaTests.Map(
-            ("token", "VendorA"),
-            ("roots", new List<object?> { RemoteSchemaTests.Map(("hive", "HKLM"), ("path", @"Software\\VendorA")) }),
-            ("requested_roots", new List<object?> { RemoteSchemaTests.Map(("hive", "HKLM"), ("path", @"Software\\VendorA"), ("view", "64")) }),
-            ("hits", new List<object?> { hit }));
-        File.WriteAllText(registryJson, Canonicaliser.Dumps(scan, indent: false, ensureAscii: true, sortKeys: false), new UTF8Encoding(false));
+        File.WriteAllText(registryJson, """
+            {"token": "VendorA", "roots": [{"hive": "HKLM", "path": "Software\\VendorA"}, {"hive": "", "path": "x"}],
+             "requested_roots": [{"hive": "HKLM", "path": "Software\\VendorA", "view": "64"}],
+             "hits": [{"hive": "HKLM", "path": "Software\\VendorA", "value_name": "Server"}]}
+            """);
 
-        var summaries = CaptureRunner.LoadRegistryScanSummaries([registryJson]);
-        var normalisedRoots = Items(summaries[0]["roots"]).Cast<string>().Select(entry => entry.Replace(@"\\", @"\", StringComparison.Ordinal));
-        var normalisedRequested = Items(summaries[0]["requested_roots"]).Cast<string>().Select(entry => entry.Replace(@"\\", @"\", StringComparison.Ordinal));
-        normalisedRoots.Should().Equal(@"HKLM \ Software\VendorA");
-        normalisedRequested.Should().Equal(@"HKLM \ Software\VendorA (view 64)");
-        var manifest = CaptureRunner.BuildManifestPayload(
-            capture: RemoteSchemaTests.Map(
-                ("id", "capture"),
-                ("captured_at", "2025-03-12T00:00:00Z"),
-                ("root", _tmp.FullName),
-                ("operator", "tester"),
-                ("environment", "lab"),
-                ("reason", "validation"),
-                ("host", "test-host")),
-            snapshotPath: Path.Combine(_tmp.FullName, "snapshot.json"),
-            manifestPath: Path.Combine(_tmp.FullName, "manifest.json"),
-            detectionDuration: 1.0,
-            huntDuration: 0.5,
-            totalDuration: 1.5,
-            detectionCount: 0,
-            profileMatchCount: 0,
-            huntCount: 0,
-            profileSummary: RemoteSchemaTests.Map(),
-            placeholder: "[REDACTED]",
-            maskTokenCount: 0,
-            totalRedactions: 0,
-            registryScans: summaries);
-        Map(manifest["counts"])["registry_scans"].Should().Be(1L);
-        Map(Items(manifest["registry_scans"])[0])["file"].Should().Be(Path.GetFileName(registryJson));
+        var summary = CaptureRunner.SummariseRegistryScan(registryJson);
+
+        summary.Should().BeEquivalentTo(new RegistryScanSummary("registry_scan.json", registryJson, "VendorA", [@"HKLM \ Software\VendorA"], [@"HKLM \ Software\VendorA (view 64)"], 1));
     }
 
     private static List<object?> Items(object? value) => (List<object?>)value!;

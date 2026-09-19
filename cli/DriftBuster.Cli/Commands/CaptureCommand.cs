@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Numerics;
 
 using DriftBuster.Backend.Remote;
 
@@ -29,7 +28,7 @@ internal static class CaptureCommand
         var huntGlob = EngineArguments.Text("--hunt-glob", "**/*", "Glob pattern for hunt traversal.");
         var huntExclude = EngineArguments.Append("--hunt-exclude", "Glob patterns to skip during hunt traversal.");
         var skipHunt = EngineArguments.Flag("--skip-hunt", "Skip hunt scan step.");
-        var sampleSize = EngineArguments.Int("--sample-size", 128 * 1024, "Sample size in bytes for detection and hunt scans.");
+        var sampleSize = new Option<int>("--sample-size") { DefaultValueFactory = _ => 128 * 1024, Description = "Sample size in bytes for detection and hunt scans." };
         var outputDir = EngineArguments.Text("--output-dir", "captures", "Directory to store snapshot + manifest.");
         var captureId = EngineArguments.OptionalText("--capture-id", "Optional capture identifier (defaults to UTC timestamp).");
         var @operator = EngineArguments.OptionalText("--operator", "Operator name recorded in manifest.");
@@ -44,7 +43,7 @@ internal static class CaptureCommand
             root, profiles, profileTag, glob, huntGlob, huntExclude, skipHunt, sampleSize, outputDir, captureId, @operator, environment, reason,
             maskToken, placeholder, allowUnmasked, registryScan,
         };
-        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => CaptureRunner.RunCapture(
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => new CaptureRunner().Run(
             new CaptureRunOptions
             {
                 Root = parseResult.GetValue(root)!,
@@ -54,7 +53,7 @@ internal static class CaptureCommand
                 HuntGlob = parseResult.GetValue(huntGlob)!,
                 HuntExclude = parseResult.GetValue(huntExclude)!,
                 SkipHunt = parseResult.GetValue(skipHunt),
-                SampleSize = (long)BigInteger.Clamp(parseResult.GetValue(sampleSize), long.MinValue, long.MaxValue),
+                SampleSize = parseResult.GetValue(sampleSize),
                 OutputDir = parseResult.GetValue(outputDir)!,
                 CaptureId = parseResult.GetValue(captureId),
                 Operator = parseResult.GetValue(@operator),
@@ -66,7 +65,7 @@ internal static class CaptureCommand
                 RegistryScan = parseResult.GetValue(registryScan)!,
             },
             stdout,
-            stderr).ExitCode));
+            stderr)));
         return command;
     }
 
@@ -75,8 +74,8 @@ internal static class CaptureCommand
         var baseline = EngineArguments.Positional("baseline", "Baseline snapshot JSON path.");
         var current = EngineArguments.Positional("current", "Current snapshot JSON path.");
         var command = new Command("compare", "Compare two capture snapshots.") { baseline, current };
-        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => CaptureRunner.CompareSnapshots(
-            new CaptureCompareOptions(parseResult.GetValue(baseline)!, parseResult.GetValue(current)!), stdout, stderr).ExitCode));
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => new CaptureRunner().Compare(
+            parseResult.GetValue(baseline)!, parseResult.GetValue(current)!, stdout, stderr)));
         return command;
     }
 
@@ -84,7 +83,7 @@ internal static class CaptureCommand
     {
         var command = new Command("export-sql", "Export anonymised SQL snapshots for portable review.");
         var arguments = new SqlExportArguments(command);
-        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => CaptureRunner.RunSqlExport(arguments.Read(parseResult), stdout, stderr).ExitCode));
+        command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, stderr) => new CaptureRunner().ExportSql(arguments.Read(parseResult), stdout, stderr)));
         return command;
     }
 }

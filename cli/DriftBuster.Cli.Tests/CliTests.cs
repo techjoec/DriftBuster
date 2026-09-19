@@ -111,8 +111,10 @@ public sealed class CliTests : IDisposable
         exports.GetArrayLength().Should().BeGreaterThan(0, "expected manifest export entries");
         var exportEntry = exports[0];
         exportEntry.GetProperty("dialect").GetString().Should().Be("sqlite");
-        ColumnMap(exportEntry.GetProperty("masked_columns")).Should().Be("accounts=secret");
-        ColumnMap(exportEntry.GetProperty("hashed_columns")).Should().Be("accounts=email");
+        exportEntry.GetProperty("row_counts").GetProperty("accounts").GetInt32().Should().BePositive();
+        var settings = manifest.RootElement.GetProperty("settings");
+        ColumnMap(settings.GetProperty("masked_columns")).Should().Be("accounts=secret");
+        ColumnMap(settings.GetProperty("hashed_columns")).Should().Be("accounts=email");
         File.Exists(Path.Combine(outputDir, "demo-sql-snapshot.json")).Should().BeTrue();
     }
 

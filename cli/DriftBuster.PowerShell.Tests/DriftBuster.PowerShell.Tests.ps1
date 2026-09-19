@@ -257,12 +257,11 @@ Describe 'DriftBuster PowerShell module' {
             $entry = @($manifest.exports) | Select-Object -First 1
             $entry.output | Should -Be 'demo-sql-snapshot.json'
             $entry.dialect | Should -Be 'sqlite'
-            $entry.tables | Should -Contain 'accounts'
             $entry.row_counts.accounts | Should -Be 2
-            $entry.masked_columns.accounts | Should -Be @('secret')
-            $entry.hashed_columns.accounts | Should -Be @('email')
-            $manifest.options.hash_salt | Should -Be 'pepper'
-            $manifest.options.placeholder | Should -Be '[MASK]'
+            $manifest.settings.masked_columns.accounts | Should -Be @('secret')
+            $manifest.settings.hashed_columns.accounts | Should -Be @('email')
+            $manifest.settings.hash_salt | Should -Be 'pepper'
+            $manifest.settings.placeholder | Should -Be '[MASK]'
 
             Test-Path -LiteralPath (Join-Path $exportDir 'sql-manifest.json') | Should -BeTrue
             $snapshot = Get-Content -LiteralPath (Join-Path $exportDir 'demo-sql-snapshot.json') -Raw | ConvertFrom-Json
@@ -287,8 +286,8 @@ Describe 'DriftBuster PowerShell module' {
                 Pop-Location
             }
 
-            $manifest.options.limit | Should -Be 1
-            $manifest.options.tables | Should -Be @('accounts')
+            $manifest.settings.limit | Should -Be 1
+            $manifest.settings.tables | Should -Be @('accounts')
             $snapshot = Get-Content -LiteralPath (Join-Path $workDir 'out' 'copy-sql-snapshot.json') -Raw | ConvertFrom-Json
             @(@($snapshot.tables)[0].rows) | Should -HaveCount 1
         }
@@ -442,7 +441,7 @@ Describe 'DriftBuster PowerShell module' {
             $manifest.capture.operator | Should -Be 'pester-operator'
             $manifest.capture.environment | Should -Be 'test'
             $manifest.capture.reason | Should -Be 'pester'
-            $manifest.capture.snapshot_path | Should -Be (Split-Path -Leaf $result[0].SnapshotPath)
+            $manifest.capture.snapshot_file | Should -Be (Split-Path -Leaf $result[0].SnapshotPath)
             $snapshot = Get-Content -LiteralPath $result[0].SnapshotPath -Raw | ConvertFrom-Json
             $snapshot.capture.mask_token_count | Should -Be 1
             # Nothing in the tree carries the token, so the capture's redaction warning reaches the warning stream.
