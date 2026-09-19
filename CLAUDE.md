@@ -122,6 +122,8 @@ gitleaks dir . -v
 - `Diff/` - Canonicaliser, `LineDiff` (Myers line diff), `UnifiedDiffWriter`, redaction filter
 - `Hunt/`, `Secrets/` - Hunt rules and engine; secret scanner with the embedded `Resources/secret_rules.json`
 - `Settings/` - Per-format settings extraction (`SettingsExtractor`) and the setting-by-setting comparison across servers or picked files (`SettingsComparisonBuilder`, `SettingsComparisonReport`); carried in multi-server responses and diff results
+- `Curation/` - The user's choices about settings (groups, rules, ignore/mask/unmask, review list) in `curation.json`, applied to a comparison by `CurationApplier` (then `Settings/SettingsTally` recounts)
+- `History/` - `HistoryStore`: every scan's settings in SQLite `history.db`, file copies shared between runs, masked values as fingerprints only
 - `MultiServer/` - Multi-host runner, config identity, diff cache
 - `Profiles/Run/`, `Profiles/Detection/` - Run profiles and offline collector configs; detection profile store with summary and diff
 - `Scheduling/`, `Registry/`, `Sql/`, `Reporting/`, `Remote/` - Schedules, registry live scan, SQLite snapshot export, HTML/JSON lines reports, capture runner
@@ -137,7 +139,7 @@ gitleaks dir . -v
 - Windows: `%LOCALAPPDATA%/DriftBuster`
 - Linux/Mac: `$XDG_DATA_HOME/DriftBuster`
 - Override: `DRIFTBUSTER_DATA_ROOT` environment variable
-- Contains: cached diffs, session state, drilldown exports, GUI logs, GUI run profiles and schedules, the PowerShell module's backend cache
+- Contains: cached diffs, session state, drilldown exports, GUI logs, GUI run profiles and schedules, the PowerShell module's backend cache, `curation.json` (saved choices) and `history.db` (scan history)
 
 ### Console tool (`cli/DriftBuster.Cli/`)
 
@@ -150,6 +152,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
   - `MainWindowViewModel` - Top-level shell, tab navigation
   - `ServerSelectionViewModel` - Multi-server orchestration, drag/drop server management; `CurrentView` (`MultiServerView`: Setup, Compare, Details, Drilldown) and lands on Compare after a run
   - `CompareViewModel` - Settings comparison (per-server summary, file list, the selected file's setting table, difference navigation, filters, HTML/CSV report); also the Diff planner's Settings tab
+  - Compare's right-click menu (`Views/CompareContextMenu.cs`) calls `CompareViewModel.Actions.cs`; saved choices go through `ICurationService` (`CurationService.Shared` over the data root), this run's choices and marks stay in the view model
   - `DiffLinesViewModel` - Line diff for reading (side by side with folded context, or unified text) with change navigation; used by File details and the Diff planner
   - Result views fill the window and scroll their own virtualised panes (list, grid, lines); only Setup and the form pages scroll as a page
   - `ConfigDrilldownViewModel` - Configuration detail exploration
