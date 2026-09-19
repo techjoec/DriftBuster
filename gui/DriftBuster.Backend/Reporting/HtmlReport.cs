@@ -12,15 +12,14 @@ public static partial class HtmlReport
 {
     private const string DefaultTitle = "DriftBuster Report";
 
-    /// <summary><c>datetime.now(UTC)</c>, swapped by tests that pin the "Generated at" line.</summary>
+    /// <summary>The clock for the "Generated at" line (test seam).</summary>
     internal static Func<DateTimeOffset> UtcNow { get; set; } = IsoTimestamp.UtcNow;
 
     /// <summary>
-    /// <c>render_html_report</c>: every payload (detections with the extra metadata, diffs, hunt hits and the profile summary with the
-    /// extra metadata under <c>run_metadata</c>) is redacted before anything renders, then the header, the generation time, the
-    /// warnings, the detection summary table, one section per match, the profile summary, the diffs, the hunt highlights and the
-    /// redaction summary are joined by LF. Supplying both a redactor and mask tokens raises. <paramref name="warnings"/> is read where
-    /// Python's <c>list(warnings or [])</c> reads it, after every payload is prepared.
+    /// Every payload (detections with the extra metadata, diffs, hunt hits, and the profile summary with the extra metadata under
+    /// <c>run_metadata</c>) is redacted before anything renders; then the header, generation time, warnings, detection summary table, one
+    /// section per match, profile summary, diffs, hunt highlights and redaction summary are joined by LF. A redactor and mask tokens
+    /// together raise. <paramref name="warnings"/> is enumerated after every payload is prepared.
     /// </summary>
     public static string Render(
         IEnumerable<DetectionMatch> matches,
@@ -68,7 +67,7 @@ public static partial class HtmlReport
         return string.Join('\n', parts);
     }
 
-    /// <summary><c>write_html_report</c> to a stream: the rendered report written as is.</summary>
+    /// <summary>The rendered report written to a stream as is.</summary>
     public static void Write(
         IEnumerable<DetectionMatch> matches,
         TextWriter destination,
@@ -87,7 +86,7 @@ public static partial class HtmlReport
         destination.Write(Render(matches, title, diffs, profileSummary, huntHits, redactor, maskTokens, placeholder, extraMetadata, warnings, legalNotice));
     }
 
-    /// <summary><c>write_html_report</c> to a path: <c>Path(destination).write_text(html, encoding="utf-8")</c>, in text mode, a write failure raising the runtime's exception.</summary>
+    /// <summary>The rendered report written to a path as UTF-8 with the platform's line breaks; a write failure raises the runtime's exception.</summary>
     public static void Write(
         IEnumerable<DetectionMatch> matches,
         string destination,

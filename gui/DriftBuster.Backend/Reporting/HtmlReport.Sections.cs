@@ -10,14 +10,13 @@ public static partial class HtmlReport
 {
     private const string NoValue = "\u2014";
 
-    /// <summary><c>_format_metadata</c>: one table row per item, ordered by key code point.</summary>
+    /// <summary>One table row per item, ordered by key code point.</summary>
     internal static string FormatMetadata(IReadOnlyDictionary<string, object?> metadata)
     {
         var keys = metadata.Keys.Order(Comparer<string>.Create(PathText.CompareCodePoints)).ToList();
         return string.Join('\n', keys.Select(key => $"<tr><th>{ReportValues.Escape(key)}</th><td>{ReportValues.Escape(ReportValues.Str(metadata[key]))}</td></tr>"));
     }
 
-    /// <summary><c>_render_match</c>.</summary>
     internal static string RenderMatch(IReadOnlyDictionary<string, object?> match, int index)
     {
         var metadataTable = ReportValues.IsMapping(match.GetValueOrDefault("metadata"), out var metadata)
@@ -37,8 +36,8 @@ public static partial class HtmlReport
     }
 
     /// <summary>
-    /// <c>_render_detection_summary</c>: one row per (format, variant) in tuple order, with the match count and the peak confidence as
-    /// <c>{:.2f}</c> (a confidence <c>float()</c> rejects counts as 0.0).
+    /// One row per (format, variant), in ordinal order, with the match count and the peak confidence to two decimals (a confidence that
+    /// is not a number counts as 0.0).
     /// </summary>
     internal static string RenderDetectionSummary(IReadOnlyList<IReadOnlyDictionary<string, object?>> matches)
     {
@@ -75,9 +74,8 @@ public static partial class HtmlReport
     private static object? FirstTruthy(object? value, object fallback) => ReportValues.Truthy(value) ? value : fallback;
 
     /// <summary>
-    /// <c>_serialise_diff</c>: a <see cref="DiffArtifact"/> gives its label (or <c>Diff</c>), diff, stats and, when present, safety limits;
-    /// anything else is <c>dict(diff)</c> (<see cref="EngineBuiltins.Dict"/>): a mapping copied, a sequence read as key/value pairs, with
-    /// Python's errors.
+    /// A <see cref="DiffArtifact"/> gives its label (or <c>Diff</c>), diff, stats and, when present, safety limits; anything else goes
+    /// through <see cref="EngineBuiltins.Dict"/> (a mapping copied, a sequence read as key/value pairs).
     /// </summary>
     internal static OrderedDictionary<string, object?> SerialiseDiff(object diff)
     {
@@ -105,7 +103,7 @@ public static partial class HtmlReport
         return ReportValues.IsMapping(diff, out var mapping) ? ReportValues.Copy(mapping) : EngineBuiltins.Dict(diff, "diff");
     }
 
-    /// <summary><c>_render_diff_section</c>: an article per diff with its label, non-empty stats, safety notice and escaped diff text.</summary>
+    /// <summary>An article per diff with its label, non-empty stats, safety notice and escaped diff text.</summary>
     internal static string RenderDiffSection(IReadOnlyList<IReadOnlyDictionary<string, object?>> diffs)
     {
         if (diffs.Count == 0)
@@ -143,8 +141,8 @@ public static partial class HtmlReport
     }
 
     /// <summary>
-    /// <c>_serialise_hunt_hit</c> (the HTML variant): a mapping is copied; a hit gives its rule with <c>keywords</c> and the tuple of its
-    /// pattern sources under <c>patterns</c>, its path, line number and excerpt.
+    /// A mapping is copied; a hit gives its rule with <c>keywords</c> and its pattern sources under <c>patterns</c>, its path, line number
+    /// and excerpt.
     /// </summary>
     internal static OrderedDictionary<string, object?> SerialiseHuntHit(object hit)
     {
@@ -170,7 +168,6 @@ public static partial class HtmlReport
         };
     }
 
-    /// <summary><c>_render_hunt_section</c>.</summary>
     internal static string RenderHuntSection(IReadOnlyList<IReadOnlyDictionary<string, object?>> hits)
     {
         if (hits.Count == 0)
@@ -197,7 +194,7 @@ public static partial class HtmlReport
         return "<section class=\"hunt-section\"><h2>Hunt Highlights</h2><ul>" + items + "</ul></section>";
     }
 
-    /// <summary><c>_render_profile_summary</c>: the totals present, then one row per mapping profile (its config count unescaped).</summary>
+    /// <summary>The totals present, then one row per mapping profile (its config count unescaped).</summary>
     internal static string RenderProfileSummary(IReadOnlyDictionary<string, object?> summary)
     {
         if (summary.Count == 0)

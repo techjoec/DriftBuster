@@ -4,9 +4,8 @@ namespace DriftBuster.Backend.Reporting;
 
 public static partial class DetectionSummary
 {
-    // The catalog_remediations loop: entries that are not mappings are skipped; a truthy id or summary becomes its str(); the id joins
-    // the variant's ids once; the record is keyed by the id, else the summary, and fills its falsy id, category and documentation from
-    // later entries that carry them.
+    // Entries that are not mappings are skipped; a truthy id or summary becomes its text; the id joins the variant's ids once; the record
+    // is keyed by the id, else the summary, and fills its falsy id, category and documentation from later entries that carry them.
     private static void IndexRemediations(
         IEnumerable remediations,
         VariantBucket variantBucket,

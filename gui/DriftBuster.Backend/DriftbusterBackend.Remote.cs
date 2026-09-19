@@ -103,9 +103,9 @@ public sealed partial class DriftbusterBackend
     }
 
     /// <remarks>
-    /// The <c>registry search</c> order: the installed applications are enumerated first (off Windows this fails with the default registry
-    /// backend's <c>Windows Registry scanning requires Windows platform</c>), then the explicit roots are parsed or the token's roots
-    /// suggested, the patterns compiled as Python <c>re</c> patterns, and the roots searched.
+    /// Order: the installed applications are enumerated first (off Windows this fails with the default registry backend's
+    /// <c>Windows Registry scanning requires Windows platform</c>), then the explicit roots are parsed or the token's roots suggested, the
+    /// patterns compiled, and the roots searched.
     /// </remarks>
     public Task<RegistrySearchResult> SearchRegistryAsync(RegistrySearchRequest request, CancellationToken cancellationToken = default)
     {
@@ -147,8 +147,8 @@ public sealed partial class DriftbusterBackend
         return Task.Run(() => BuildReport(request, cancellationToken), cancellationToken);
     }
 
-    // The detections of the tree (and its default-rule hunt hits) rendered once: write_html_report's page, or write_json_lines' records each
-    // followed by LF; the requested file receives that text in text mode.
+    // The tree's detections (and default-rule hunt hits) rendered once as the HTML page or JSON lines, each record followed by LF; the file
+    // receives that text with the platform's line breaks.
     private static ReportResult BuildReport(ReportRequest request, CancellationToken cancellationToken)
     {
         var format = request.Format switch

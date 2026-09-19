@@ -8,8 +8,7 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Secrets;
 
 /// <summary>
-/// Secret rule compilation and loading, ignore lists, and the redacting copy.
-/// Mappings and values are Python-shaped, as <see cref="EngineJson"/> produces them.
+/// Secret rule compilation and loading, ignore lists, and the redacting copy. Mappings and values are <see cref="EngineJson"/> values.
 /// </summary>
 public static partial class SecretScanner
 {
@@ -18,19 +17,18 @@ public static partial class SecretScanner
 
     private static readonly Lock CacheLock = new();
 
-    /// <summary><c>_RULE_CACHE</c>; null until loaded.</summary>
+    /// <summary>The loaded rules; null until loaded.</summary>
     internal static IReadOnlyList<SecretDetectionRule>? RuleCache { get; set; }
 
-    /// <summary><c>_RULE_VERSION</c>; null until loaded.</summary>
+    /// <summary>The loaded ruleset version; null until loaded.</summary>
     internal static string? RuleVersion { get; set; }
 
-    /// <summary><c>_RULE_LOADED</c>; null until loaded.</summary>
+    /// <summary>Whether a ruleset was loaded; null until loaded.</summary>
     internal static bool? RuleLoaded { get; set; }
 
     /// <summary>Reads the packaged ruleset text, or null when it is not available.</summary>
     internal static Func<string?> ResourceReader { get; set; } = ReadEmbeddedRules;
 
-    /// <summary><c>reset_secret_rule_cache()</c>.</summary>
     public static void ResetSecretRuleCache()
     {
         lock (CacheLock)
@@ -42,9 +40,8 @@ public static partial class SecretScanner
     }
 
     /// <summary>
-    /// <c>compile_ruleset_from_mapping(payload)</c>: null for a falsy or non-mapping payload, a <c>rules</c> value that is
-    /// not a sequence, or no usable rule. Entries without a name or pattern are skipped, <c>flags</c> honours only
-    /// <c>i</c>, and a pattern that does not compile is skipped silently.
+    /// Null for a falsy or non-mapping payload, a <c>rules</c> value that is not a sequence, or no usable rule. Entries without a name or
+    /// pattern are skipped, <c>flags</c> honours only <c>i</c>, and a pattern that does not compile is skipped silently.
     /// </summary>
     public static SecretRuleset? CompileRulesetFromMapping(object? payload)
     {
@@ -101,10 +98,9 @@ public static partial class SecretScanner
     }
 
     /// <summary>
-    /// <c>load_secret_rules()</c>: the cached <c>(rules, version, loaded)</c>, loading the packaged ruleset on first use.
-    /// A missing resource or a JSON <c>null</c> caches no rules, version "none", not loaded; a ruleset without usable rules
-    /// caches no rules with its version (or "unknown"), loaded. A payload that is not a mapping raises
-    /// <see cref="InvalidOperationException"/>.
+    /// The cached rules, version and loaded flag, loading the packaged ruleset on first use. A missing resource or a JSON <c>null</c>
+    /// caches no rules, version "none", not loaded; a ruleset without usable rules caches no rules with its version (or "unknown"),
+    /// loaded. A payload that is not a mapping raises <see cref="InvalidOperationException"/>.
     /// </summary>
     public static (IReadOnlyList<SecretDetectionRule> Rules, string Version, bool Loaded) LoadSecretRules()
     {
@@ -153,8 +149,8 @@ public static partial class SecretScanner
     }
 
     /// <summary>
-    /// <c>secret_option_values(value)</c>: a string split on runs of whitespace, commas and semicolons; a sequence's non-null
-    /// items as stripped strings; empties dropped; anything else (a mapping, a number) gives nothing.
+    /// A string split on runs of whitespace, commas and semicolons; a sequence's non-null items as stripped strings; empties dropped;
+    /// anything else (a mapping, a number) gives nothing.
     /// </summary>
     public static IReadOnlyList<string> SecretOptionValues(object? value)
     {
@@ -180,7 +176,7 @@ public static partial class SecretScanner
             .ToList();
     }
 
-    // re.split(r"[\s,;]+", text) with empty parts dropped and the rest stripped.
+    // Split on runs of whitespace, commas and semicolons, empty parts dropped and the rest stripped.
     private static List<string> SplitOptionText(string text)
     {
         var parts = new List<string>();
@@ -204,7 +200,7 @@ public static partial class SecretScanner
         return parts;
     }
 
-    /// <summary>Python truthiness for the JSON value domain.</summary>
+    /// <summary>Truthiness over the JSON value domain: null, false, zero and empty strings and containers are false.</summary>
     internal static bool IsTruthy(object? value) => value switch
     {
         null => false,
@@ -219,7 +215,7 @@ public static partial class SecretScanner
         _ => true,
     };
 
-    // collections.abc.Sequence over Python-shaped values: str, list and tuple, never a mapping.
+    // A string, list or tuple, never a mapping.
     private static bool IsSequence(object? value) => value is string || (value is IEnumerable && value is not IDictionary && value is not IReadOnlyDictionary<string, object?>);
 
     private static IEnumerable<object?> SequenceItems(object value)
@@ -227,7 +223,7 @@ public static partial class SecretScanner
 
     private static object? Get(IReadOnlyDictionary<string, object?> mapping, string key) => mapping.TryGetValue(key, out var value) ? value : null;
 
-    // payload.get("version", "unknown") on a decoded JSON value.
+    // The payload's "version", else "unknown".
     private static object? PayloadVersion(object payload)
     {
         if (payload is IReadOnlyDictionary<string, object?> mapping)
@@ -238,6 +234,5 @@ public static partial class SecretScanner
         throw new InvalidOperationException($"expected a JSON object, not '{EngineBuiltins.TypeName(payload)}'");
     }
 
-    // Python's "value or fallback".
     private static object? OrElse(object? value, object fallback) => IsTruthy(value) ? value : fallback;
 }

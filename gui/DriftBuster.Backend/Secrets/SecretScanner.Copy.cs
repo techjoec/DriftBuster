@@ -5,14 +5,13 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Secrets;
 
-/// <summary><c>looks_binary</c>, <c>hash_file</c> and <c>copy_with_secret_filter</c>.</summary>
 public static partial class SecretScanner
 {
     private const string Redaction = "[SECRET]";
 
     private static readonly UTF8Encoding ReplacingUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
-    /// <summary><c>looks_binary(path)</c>: a NUL byte in the first 1024 bytes; false when the file cannot be read.</summary>
+    /// <summary>A NUL byte in the first 1024 bytes; false when the file cannot be read.</summary>
     public static bool LooksBinary(string path)
     {
         try
@@ -34,32 +33,26 @@ public static partial class SecretScanner
         }
     }
 
-    /// <summary><c>hash_file(path)</c>: the SHA-256 of the file as lowercase hex.</summary>
+    /// <summary>The SHA-256 of the file as lower-case hex.</summary>
     public static string HashFile(string path)
     {
         using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.Read);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
-    /// <summary>
-    /// <c>copy_with_secret_filter(source, destination, display_path=..., context=..., log=..., binary_detector=...)</c>.
-    /// </summary>
+    /// <summary>Copies a file with secret matches replaced by <c>[SECRET]</c>; returns the destination size and SHA-256.</summary>
     /// <remarks>
-    /// Without loaded rules, or for a binary source, the file is copied verbatim with its metadata (<c>shutil.copy2</c>).
-    /// Otherwise the source is streamed as UTF-8 with replacement and universal newlines, line by line: the first rule (not in
-    /// the ignore list) that matches the working line, unless an ignore pattern matches the original line, has its match
-    /// replaced with <c>[SECRET]</c>, is recorded as a finding and logged, and the search repeats on the redacted line
-    /// (stopping after an empty match). When nothing matched anywhere the file is copied verbatim; otherwise the
+    /// Without loaded rules, or for a binary source, the file is copied verbatim with its timestamps and permissions. Otherwise the source
+    /// is read as UTF-8 with replacement, CRLF and CR read as LF, line by line: the first rule (not ignored) that matches the working line,
+    /// unless an ignore pattern matches the original line, has its match replaced, is recorded as a finding and logged, and the search
+    /// repeats on the redacted line (stopping after an empty match). When nothing matched the file is copied verbatim; otherwise the
     /// redacted text is written as UTF-8 with platform newlines and the source's metadata copied best effort.
-    /// Returns the destination size and SHA-256.
     /// <para>
-    /// Rules can keep matching inside the <c>[SECRET]</c> text they inserted on a line
-    /// (<c>secret</c> with flag <c>i</c>, say, or two rules taking turns). Replacement proceeds until a line
-    /// has taken more than <see cref="GuardBudget"/> non-shrinking replacements wholly inside inserted text since its last
-    /// replacement that consumed source text. It then restores the line (and its findings and log lines) to that last
-    /// replacement, stops every rule that replaced inside inserted text since then on that line (each recorded in
-    /// <see cref="SecretDetectionContext.RedactionGuards"/>) and carries on searching with the remaining rules.
-    /// <paramref name="cancellationToken"/> is checked before every search and inside it.
+    /// Rules can keep matching inside the <c>[SECRET]</c> text they inserted (<c>secret</c> with flag <c>i</c>, or two rules taking turns).
+    /// After more than <see cref="GuardBudget"/> non-shrinking replacements wholly inside inserted text since the line's last replacement
+    /// that consumed source text, the line (with its findings and log lines) is restored to that replacement, every rule that replaced
+    /// inside inserted text since then is stopped for that line (recorded in <see cref="SecretDetectionContext.RedactionGuards"/>), and the
+    /// remaining rules carry on. <paramref name="cancellationToken"/> is checked before every search and inside it.
     /// </para>
     /// </remarks>
     public static (long Size, string Sha256) CopyWithSecretFilter(
@@ -271,8 +264,8 @@ public static partial class SecretScanner
         return (null, null);
     }
 
-    // open(encoding="utf-8", errors="replace") iterated by line: decoded incrementally, \r\n and \r read as \n (a \r that ends
-    // one read waits for the next), each line keeping its \n.
+    // Decoded incrementally as UTF-8 with replacement, \r\n and \r read as \n (a \r that ends one read waits for the next), each line
+    // keeping its \n.
     private static IEnumerable<string> ReadUniversalLines(string path)
     {
         using var stream = new FileStream(EnginePath.KernelPath(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -313,7 +306,7 @@ public static partial class SecretScanner
         }
     }
 
-    // Path.write_text(text, encoding="utf-8"): "\n" written as the platform newline.
+    // "\n" written as the platform newline.
     private static void WriteLines(string destination, List<string> lines)
     {
         using var writer = new StreamWriter(destination, append: false, ReplacingUtf8, bufferSize: 1 << 16);
@@ -331,7 +324,7 @@ public static partial class SecretScanner
         }
     }
 
-    /// <summary><c>shutil.copy2(source, destination)</c> followed by the destination's size and SHA-256.</summary>
+    /// <summary>A verbatim copy with timestamps and permissions, then the destination's size and SHA-256.</summary>
     internal static (long Size, string Sha256) CopyVerbatim(string source, string destination)
     {
         File.Copy(EnginePath.KernelPath(source), destination, overwrite: true);
@@ -339,7 +332,7 @@ public static partial class SecretScanner
         return (new FileInfo(destination).Length, HashFile(destination));
     }
 
-    // shutil.copystat, best effort: permission bits and access/modification times.
+    // Best effort: permission bits and access/modification times.
     private static void CopyStat(string source, string destination)
     {
         try

@@ -4,15 +4,13 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Secrets;
 
-/// <summary><c>build_context</c> and <c>manifest_secret_scanner</c>.</summary>
 public static partial class SecretScanner
 {
     /// <summary>
-    /// <c>build_context(options, secret_scanner)</c>: an inline <c>secret_scanner.ruleset</c> mapping that compiles wins over
-    /// the packaged rules; ignore rules are the union of <c>options.secret_ignore_rules</c> and
-    /// <c>secret_scanner.ignore_rules</c>; ignore patterns are <c>options.secret_ignore_patterns</c> then
-    /// <c>secret_scanner.ignore_patterns</c>, deduplicated in order and compiled without flags (a pattern that does not
-    /// compile is kept in the text list and dropped from the compiled one).
+    /// An inline <c>secret_scanner.ruleset</c> mapping that compiles wins over the packaged rules; ignore rules are the union of
+    /// <c>options.secret_ignore_rules</c> and <c>secret_scanner.ignore_rules</c>; ignore patterns are <c>options.secret_ignore_patterns</c>
+    /// then <c>secret_scanner.ignore_patterns</c>, de-duplicated in order and compiled without options (a pattern that does not compile
+    /// stays in the text list and is not applied).
     /// </summary>
     public static SecretDetectionContext BuildContext(IReadOnlyDictionary<string, object?>? options, IReadOnlyDictionary<string, object?>? secretScanner)
     {
@@ -59,7 +57,6 @@ public static partial class SecretScanner
             }
             catch (RegexParseException)
             {
-                // Not a valid .NET regular expression: the text stays listed, the pattern is not applied.
             }
         }
 
@@ -67,10 +64,8 @@ public static partial class SecretScanner
     }
 
     /// <summary>
-    /// The <c>secret_metadata</c> mapping <c>run_profiles.execute_profile</c> builds after copying a run's files: the ruleset
-    /// version, whether rules were loaded, the ignore rules (sorted) and ignore pattern texts, every finding, and the log
-    /// messages when there are any. It is written under <c>secrets</c> in the run's <c>metadata.json</c> and returned as
-    /// <c>ProfileRunResult.secrets</c>.
+    /// The <c>secrets</c> entry of a profile run's <c>metadata.json</c>, also returned on the run result: the ruleset version, whether
+    /// rules were loaded, the ignore rules (sorted) and ignore pattern texts, every finding, and the log messages when there are any.
     /// </summary>
     public static OrderedDictionary<string, object?> RunSecretsMetadata(SecretDetectionContext context, IReadOnlyList<string> messages)
     {
@@ -100,10 +95,7 @@ public static partial class SecretScanner
         return metadata;
     }
 
-    /// <summary>
-    /// <c>manifest_secret_scanner(options, secret_scanner, context)</c>: the ignore lists as sorted, distinct values and the
-    /// ruleset version.
-    /// </summary>
+    /// <summary>The manifest's secret scanner entry: the ignore lists as sorted, distinct values and the ruleset version.</summary>
     public static OrderedDictionary<string, object?> ManifestSecretScanner(
         IReadOnlyDictionary<string, object?> options,
         IReadOnlyDictionary<string, object?> secretScanner,

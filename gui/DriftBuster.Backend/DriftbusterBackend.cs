@@ -162,7 +162,7 @@ namespace DriftBuster.Backend
             return Task.Run(() => OfflineCollectorWriter.Prepare(profile, request, baseDir, cancellationToken), cancellationToken);
         }
 
-        // A blank base directory means the working directory, as the facade always treated it.
+        // A blank base directory means the working directory.
         private static string? FacadeBaseDir(string? baseDir) => string.IsNullOrWhiteSpace(baseDir) ? null : baseDir;
 
         // The GUI model as a run profile; the facade refuses a blank name before anything is validated or written.
@@ -177,9 +177,8 @@ namespace DriftBuster.Backend
             return RunProfile.FromDefinition(profile);
         }
 
-        // A structured profile runs with the option values its stored profile.json holds, as load_profile reads them (a list stays a list for
-        // build_context), wherever the model's text for a key is still that value's str() text; an option that is new or edited runs with
-        // its text. The stored file is read before the run saves over it.
+        // A structured profile runs with the option values its stored profile.json holds (a list stays a list) wherever the model's text for
+        // a key still shows that value's text; a new or edited option runs with its text. The stored file is read before the run saves over it.
         private static RunProfile WithStoredOptionValues(RunProfile profile, string? baseDir)
         {
             if (!profile.IsStructured || RunProfileStore.TryLoadStoredProfile(profile.Name, baseDir) is not { } stored)
@@ -261,9 +260,8 @@ namespace DriftBuster.Backend
         private static void ValidateMultiServerResponse(ServerScanResponse response)
             => MultiServerSchema.ValidateResponse(response);
 
-        // The data root's diff cache, after copying the entries a checkout's legacy <repo>/artifacts/cache/diffs holds that the
-        // cache lacks (best effort, before every scan), resolved as the scan's
-        // cache_dir is: user home expanded, created, and every symlink and ".." followed physically.
+        // The data root's diff cache, after copying in the entries a checkout's <repo>/artifacts/cache/diffs holds that it lacks (best effort,
+        // before every scan); home expanded, created, and symlinks and ".." resolved physically.
         internal static string PrepareMultiServerCacheDirectory(string? repositoryRoot)
         {
             var cacheDirectory = DriftbusterPaths.GetCacheDirectory("diffs");

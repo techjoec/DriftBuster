@@ -9,14 +9,12 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Reporting;
 
 /// <summary>
-/// The Python value operations the reporting adapters share: <c>html.escape</c>, <c>str()</c> with tuples, <c>format(x, ".2f")</c>,
-/// <c>isinstance(x, Mapping)</c>, <c>dict(mapping)</c>, <c>setdefault("run_metadata", {}).update(...)</c> and the value domain
-/// <c>json.dumps</c> accepts. Mappings are <see cref="IReadOnlyDictionary{TKey, TValue}"/> keyed by string (copies are
+/// Value helpers the reporting writers share. Mappings are <see cref="IReadOnlyDictionary{TKey, TValue}"/> keyed by string (copies are
 /// <see cref="OrderedDictionary{TKey, TValue}"/>), lists are <see cref="List{T}"/>, tuples are <see cref="object"/> arrays.
 /// </summary>
 internal static class ReportValues
 {
-    /// <summary><c>html.escape(text, quote=True)</c>: &amp;, &lt;, &gt;, the double quote and the single quote; nothing else.</summary>
+    /// <summary>&amp;, &lt;, &gt;, the double quote and the single quote; nothing else.</summary>
     public static string Escape(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -42,10 +40,7 @@ internal static class ReportValues
         return builder.ToString();
     }
 
-    /// <summary>
-    /// <c>str(value)</c> (and <c>format(value, "")</c>, which equals it for the built-in types): <see cref="EngineRepr.Str"/>, with a
-    /// top-level tuple spelled <c>(a, b)</c> or <c>(a,)</c>.
-    /// </summary>
+    /// <summary>The value's text (<see cref="EngineRepr.Str"/>), with a top-level tuple spelled <c>(a, b)</c> or <c>(a,)</c>.</summary>
     public static string Str(object? value) => value is object[] tuple ? TupleRepr(tuple) : EngineRepr.Str(ReprDomain(value));
 
     private static string TupleRepr(object[] tuple)
@@ -70,7 +65,7 @@ internal static class ReportValues
         _ => value,
     };
 
-    /// <summary><c>isinstance(value, Mapping)</c>.</summary>
+    /// <summary>Any string-keyed mapping, or other dictionary copied with its keys as text.</summary>
     public static bool IsMapping(object? value, out IReadOnlyDictionary<string, object?> mapping)
     {
         var found = AsMapping(value);
@@ -78,7 +73,7 @@ internal static class ReportValues
         return found is not null;
     }
 
-    // A string-keyed mapping as is; any other dictionary (Dictionary<string, string>, a Hashtable) as an ordered copy keyed by str(key).
+    // A string-keyed mapping as is; any other dictionary (Dictionary<string, string>, a Hashtable) as an ordered copy keyed by the key's text.
     private static IReadOnlyDictionary<string, object?>? AsMapping(object? value)
     {
         switch (value)
@@ -100,7 +95,7 @@ internal static class ReportValues
 
     private static readonly IReadOnlyDictionary<string, object?> EmptyMapping = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
 
-    /// <summary><c>dict(mapping)</c>: a shallow copy in the mapping's order.</summary>
+    /// <summary>A shallow copy in the mapping's order.</summary>
     public static OrderedDictionary<string, object?> Copy(IEnumerable<KeyValuePair<string, object?>> mapping)
     {
         var copy = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
@@ -113,8 +108,8 @@ internal static class ReportValues
     }
 
     /// <summary>
-    /// <c>payload.setdefault("run_metadata", {}).update(extra)</c>: a mapping already stored there is updated in place (the caller's
-    /// own dict, as the shallow copies share it); any other stored value raises <see cref="InvalidDataException"/>.
+    /// Merges into <c>payload["run_metadata"]</c>, creating it: a mapping already stored there is updated in place (the caller's own
+    /// dictionary, as the shallow copies share it); any other stored value raises <see cref="InvalidDataException"/>.
     /// </summary>
     public static void MergeRunMetadata(OrderedDictionary<string, object?> payload, IEnumerable<KeyValuePair<string, object?>> extra)
     {
@@ -145,18 +140,15 @@ internal static class ReportValues
         }
     }
 
-    /// <summary><c>for item in value</c> over a str, list, tuple or mapping; anything else raises <see cref="InvalidDataException"/>.</summary>
+    /// <summary>The items of a string, list, tuple or mapping; anything else raises <see cref="InvalidDataException"/>.</summary>
     public static IEnumerable<object?> Iterate(object? value) => EngineBuiltins.Iterate(value);
 
-    /// <summary><c>bool(value)</c>.</summary>
     public static bool Truthy(object? value) => EngineBuiltins.IsTruthy(value);
 
-    /// <summary><c>max(current, candidate)</c> for two floats: the candidate only when it compares greater (a NaN never does).</summary>
+    /// <summary>The candidate only when it compares greater (a NaN never does).</summary>
     public static double Max(double current, double candidate) => candidate > current ? candidate : current;
 
-    /// <summary>
-    /// <c>float(value or 0.0)</c>, or 0.0 where the value is not a number.
-    /// </summary>
+    /// <summary>The value as a double, 0.0 when it is falsy or not a number.</summary>
     public static double FloatOrZero(object? value)
     {
         try
@@ -170,8 +162,8 @@ internal static class ReportValues
     }
 
     /// <summary>
-    /// <c>format(value, ".{precision}f")</c>: the exact binary value rounded half to even at the requested digit, every integer
-    /// digit written out, the sign kept on a negative value that rounds to zero; <c>nan</c>, <c>inf</c> and <c>-inf</c> in lower case.
+    /// Fixed-point: the exact binary value rounded half to even at the requested digit, every integer digit written out, the sign kept on
+    /// a negative value that rounds to zero; <c>nan</c>, <c>inf</c> and <c>-inf</c> in lower case.
     /// </summary>
     public static string FormatFixed(double value, int precision)
     {
@@ -236,13 +228,10 @@ internal static class ReportValues
         _ => throw new NotSupportedException($"A value of type '{TypeName(value)}' cannot be written as JSON."),
     };
 
-    /// <summary>
-    /// <c>json.dumps(value, ensure_ascii=ensureAscii, indent=indent)</c>: the shared two-space layout re-indented, since every line
-    /// break the encoder writes is followed only by the indentation (string contents escape their line breaks).
-    /// </summary>
+    /// <summary>JSON at the given indent: the shared two-space layout re-indented (string contents escape their line breaks).</summary>
     public static string DumpsIndented(object? value, int indent, bool ensureAscii) => DumpsIndented(value, indent, ensureAscii, sortKeys: false);
 
-    /// <summary><c>json.dumps(value, ensure_ascii=ensureAscii, indent=indent, sort_keys=sortKeys)</c>, laid out as <see cref="DumpsIndented(object?, int, bool)"/>.</summary>
+    /// <summary><see cref="DumpsIndented(object?, int, bool)"/> with optional key sorting.</summary>
     public static string DumpsIndented(object? value, int indent, bool ensureAscii, bool sortKeys)
     {
         var text = Canonicaliser.Dumps(ToJsonValue(value), indent: true, ensureAscii, sortKeys);

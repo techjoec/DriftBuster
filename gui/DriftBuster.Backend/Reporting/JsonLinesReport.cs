@@ -10,7 +10,7 @@ namespace DriftBuster.Backend.Reporting;
 /// </summary>
 public static class JsonLinesReport
 {
-    /// <summary><c>_prepare_record</c>: <c>{"type": kind, "payload": dict(payload)}</c>, the whole record redacted when a redactor is given.</summary>
+    /// <summary><c>{"type": kind, "payload": copy}</c>, the whole record redacted when a redactor is given.</summary>
     internal static OrderedDictionary<string, object?> PrepareRecord(string kind, IReadOnlyDictionary<string, object?> payload, RedactionFilter? redactor)
     {
         var record = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
@@ -22,8 +22,8 @@ public static class JsonLinesReport
     }
 
     /// <summary>
-    /// <c>_serialise_hunt_hit</c>: a mapping is copied; a hit gives its rule (<c>name</c>, <c>description</c>, <c>token_name</c> and, under
-    /// <c>keywords</c>, the tuple of its pattern sources), <c>path</c>, <c>line_number</c> and <c>excerpt</c>.
+    /// A mapping is copied; a hit gives its rule (<c>name</c>, <c>description</c>, <c>token_name</c> and, under <c>keywords</c>, its pattern
+    /// sources), <c>path</c>, <c>line_number</c> and <c>excerpt</c>.
     /// </summary>
     internal static OrderedDictionary<string, object?> SerialiseHuntHit(object hit)
     {
@@ -52,9 +52,9 @@ public static class JsonLinesReport
         ?? throw new InvalidDataException($"expected a hunt hit, not '{Infrastructure.EngineBuiltins.TypeName(hit)}'");
 
     /// <summary>
-    /// <c>iter_json_records</c>: a detection record per match (metadata updated with <paramref name="extraMetadata"/>), then a
-    /// <c>profile_summary</c> record when the summary is non-empty, then a <c>hunt_hit</c> record per hit; the summary and each hit get
-    /// the run metadata merged under <c>run_metadata</c> when there is any. Supplying both a redactor and mask tokens raises.
+    /// A detection record per match (metadata updated with <paramref name="extraMetadata"/>), then a <c>profile_summary</c> record when the
+    /// summary is non-empty, then a <c>hunt_hit</c> record per hit; the summary and each hit get the run metadata merged under
+    /// <c>run_metadata</c> when there is any. A redactor and mask tokens together raise.
     /// </summary>
     public static IEnumerable<OrderedDictionary<string, object?>> IterJsonRecords(
         IEnumerable<DetectionMatch> matches,
@@ -109,7 +109,7 @@ public static class JsonLinesReport
         }
     }
 
-    /// <summary><c>render_json_lines</c>: each record as <c>json.dumps(record, ensure_ascii=False, sort_keys=sortKeys)</c>, joined by LF.</summary>
+    /// <summary>Each record as one line of JSON (non-ASCII kept, keys optionally sorted), joined by LF.</summary>
     public static string RenderJsonLines(
         IEnumerable<DetectionMatch> matches,
         IReadOnlyDictionary<string, object?>? profileSummary = null,
@@ -126,7 +126,7 @@ public static class JsonLinesReport
         return string.Join('\n', lines);
     }
 
-    /// <summary><c>write_json_lines</c>: each record written to <paramref name="stream"/> as it is produced, followed by LF.</summary>
+    /// <summary>Each record written to <paramref name="stream"/> as it is produced, followed by LF.</summary>
     public static void WriteJsonLines(
         IEnumerable<DetectionMatch> matches,
         TextWriter stream,
