@@ -87,7 +87,7 @@ namespace DriftBusterOfflineRunner
         public string ErrorType { get; private set; }
     }
 
-    /// <summary>Python builtins over the JSON value domain (null, bool, BigInteger, double, string, IDictionary, IList, byte[]).</summary>
+    /// <summary>Value operations over the JSON value domain (null, bool, BigInteger, double, string, IDictionary, IList, byte[]).</summary>
     public static class Engine
     {
         public static object Unwrap(object value)
@@ -152,7 +152,7 @@ namespace DriftBusterOfflineRunner
             return value is IList && !(value is byte[]);
         }
 
-        /// <summary>isinstance(value, collections.abc.Sequence) for JSON values: a str or a list.</summary>
+        /// <summary>A string or a list (a mapping is not a sequence).</summary>
         public static bool IsSequence(object value)
         {
             value = Unwrap(value);
@@ -243,13 +243,13 @@ namespace DriftBusterOfflineRunner
             return true;
         }
 
-        /// <summary><c>a or b</c>: the first operand when truthy, else the second.</summary>
+        /// <summary>The first operand when truthy, else the second.</summary>
         public static object Or(object first, object second)
         {
             return Truthy(first) ? first : second;
         }
 
-        /// <summary><c>mapping.get(key, default)</c> on a dict; InvalidDataException for anything else.</summary>
+        /// <summary>The key's value on a mapping, else <paramref name="fallback"/>; InvalidDataException for anything else.</summary>
         public static object Get(object mapping, string key, object fallback)
         {
             var dictionary = Unwrap(mapping) as IDictionary;
@@ -267,7 +267,7 @@ namespace DriftBusterOfflineRunner
             return dictionary != null && dictionary.Contains(key);
         }
 
-        /// <summary>The items <c>for item in value</c> yields: a str's code points, a dict's keys, a list's items.</summary>
+        /// <summary>A string's code points, a mapping's keys, a list's items.</summary>
         public static List<object> Iterate(object value)
         {
             value = Unwrap(value);
@@ -389,7 +389,7 @@ namespace DriftBusterOfflineRunner
             return value.ToString();
         }
 
-        /// <summary><c>int(value)</c> for a JSON value.</summary>
+        /// <summary>A JSON value as an integer (bool, integer, truncated float, integer text).</summary>
         public static BigInteger Int(object value)
         {
             value = Unwrap(value);
@@ -486,7 +486,7 @@ namespace DriftBusterOfflineRunner
             return true;
         }
 
-        /// <summary><c>float(value)</c> for a JSON value.</summary>
+        /// <summary>A JSON value as a double.</summary>
         public static double Float(object value)
         {
             value = Unwrap(value);
@@ -550,7 +550,7 @@ namespace DriftBusterOfflineRunner
         }
     }
 
-    /// <summary>float.__repr__ and float() parsing.</summary>
+    /// <summary>Shortest round-trip double text, and double parsing.</summary>
     public static class EngineFloat
     {
         public static string Repr(double value)
@@ -731,7 +731,7 @@ namespace DriftBusterOfflineRunner
             @"\A[+-]?(?:[0-9](?:_?[0-9])*(?:\.(?:[0-9](?:_?[0-9])*)?)?|\.[0-9](?:_?[0-9])*)(?:[eE][+-]?[0-9](?:_?[0-9])*)?\z",
             System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
-        /// <summary>float(text) after stripping: decimal literals with single underscores between digits, inf, infinity and nan.</summary>
+        /// <summary>The stripped text as a double: decimal literals with single underscores between digits, inf, infinity and nan.</summary>
         public static bool TryParse(string text, out double result)
         {
             result = 0.0;
@@ -974,7 +974,7 @@ namespace DriftBusterOfflineRunner
         }
     }
 
-    /// <summary>str methods and text helpers with Python's character classes.</summary>
+    /// <summary>Text helpers with the backend's (EngineText) character classes.</summary>
     public static class EngineText
     {
         public static List<string> CodePoints(string text)
@@ -996,7 +996,7 @@ namespace DriftBusterOfflineRunner
             return result;
         }
 
-        /// <summary>str.isspace for one UTF-16 unit (every Python whitespace character is in the BMP).</summary>
+        /// <summary>Whitespace test for one UTF-16 unit (every whitespace character the backend recognises is in the BMP).</summary>
         public static bool IsSpace(char ch)
         {
             return (ch >= (char)0x09 && ch <= (char)0x0D) || (ch >= (char)0x1C && ch <= (char)0x20) || ch == (char)0x85 || ch == (char)0xA0 || ch == (char)0x1680
@@ -1030,7 +1030,7 @@ namespace DriftBusterOfflineRunner
             return text.ToUpperInvariant();
         }
 
-        /// <summary>str.isalnum for one code point: a letter (L*) or a number (Nd, Nl, No).</summary>
+        /// <summary>Alphanumeric test for one code point: a letter (L*) or a number (Nd, Nl, No).</summary>
         public static bool IsAlnum(string codePoint)
         {
             switch (CharUnicodeInfo.GetUnicodeCategory(codePoint, 0))
@@ -1049,7 +1049,7 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        /// <summary>offline_runner._safe_name: each code point kept when alphanumeric, "-" or "_", else "-"; empty gives "data".</summary>
+        /// <summary>Each code point kept when alphanumeric, "-" or "_", else "-"; empty gives "data" (the backend's RunProfileStore.SafeName).</summary>
         public static string SafeName(string text)
         {
             var builder = new StringBuilder();
@@ -1068,7 +1068,7 @@ namespace DriftBusterOfflineRunner
             return builder.Length > 0 ? builder.ToString() : "data";
         }
 
-        /// <summary>The non-empty parts of <c>re.split(r"[\s,;]+", text)</c>.</summary>
+        /// <summary>The non-empty parts split on runs of whitespace, commas and semicolons.</summary>
         public static List<string> SplitSpaceCommaSemicolon(string text)
         {
             var parts = new List<string>();
@@ -1124,7 +1124,7 @@ namespace DriftBusterOfflineRunner
             return text.Substring(0, offset);
         }
 
-        /// <summary>Python's str ordering: code point by code point.</summary>
+        /// <summary>Ordinal comparison code point by code point.</summary>
         public static int CompareCodePoints(string left, string right)
         {
             var i = 0;
@@ -1170,7 +1170,7 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        /// <summary>repr(str).</summary>
+        /// <summary>A string quoted as the backend's EngineRepr spells it.</summary>
         public static string Repr(string text)
         {
             var quote = text.IndexOf('\'') >= 0 && text.IndexOf('"') < 0 ? '"' : '\'';
@@ -1233,7 +1233,7 @@ namespace DriftBusterOfflineRunner
             return builder.Append(quote).ToString();
         }
 
-        /// <summary>repr(bytes).</summary>
+        /// <summary><c>b'...'</c> spelling of bytes, as the backend's hashing uses it.</summary>
         public static string BytesRepr(byte[] bytes)
         {
             var hasSingle = Array.IndexOf(bytes, (byte)'\'') >= 0;
@@ -1293,8 +1293,8 @@ namespace DriftBusterOfflineRunner
     }
 
     /// <summary>
-    /// Python's UTF-8 codec: each maximal ill-formed subpart becomes one U+FFFD under errors="replace" (the .NET Framework decoder merges
-    /// some of them), and a stateful form carries an incomplete sequence across chunks until the final one.
+    /// UTF-8 decoding where each maximal ill-formed subpart becomes one U+FFFD (the .NET Framework decoder merges some of them), with a
+    /// stateful form that carries an incomplete sequence across chunks until the final one.
     /// </summary>
     public sealed class EngineUtf8Decoder
     {
@@ -1308,7 +1308,7 @@ namespace DriftBusterOfflineRunner
         /// <summary>The error message strict decoding raises for the first ill-formed sequence, or null.</summary>
         public string ErrorMessage { get; private set; }
 
-        /// <summary>bytes.decode("utf-8") under errors="strict": the text, or InvalidDataException.</summary>
+        /// <summary>Strict decoding: the text, or InvalidDataException.</summary>
         public static string DecodeStrict(byte[] bytes)
         {
             var decoder = new EngineUtf8Decoder();
@@ -1331,7 +1331,7 @@ namespace DriftBusterOfflineRunner
             return builder.ToString();
         }
 
-        /// <summary>bytes.decode("utf-8", errors="replace").</summary>
+        /// <summary>Decoding with replacement.</summary>
         public static string DecodeReplace(byte[] bytes)
         {
             bool invalid;
@@ -1483,7 +1483,7 @@ namespace DriftBusterOfflineRunner
         }
     }
 
-    /// <summary>json.loads and json.dumps (ensure_ascii, allow_nan).</summary>
+    /// <summary>JSON reader and writer over the value domain (non-finite floats allowed, optional ASCII escaping).</summary>
     public static class EngineJson
     {
         // A JSON file as Windows PowerShell 5.1 writes it (Set-Content -Encoding UTF8, Out-File) starts with a byte order mark.
@@ -1958,13 +1958,13 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        /// <summary>json.dumps(value, indent=indent (null when negative), sort_keys=sortKeys), ASCII-escaped.</summary>
+        /// <summary>ASCII-escaped JSON, indented by <paramref name="indent"/> (one line when negative), keys optionally sorted.</summary>
         public static string Dumps(object value, int indent, bool sortKeys)
         {
             return Dumps(value, indent, sortKeys, false);
         }
 
-        /// <summary>As <see cref="Dumps(object,int,bool)"/>; <paramref name="defaultStr"/> dumps bytes as the string of their repr (default=str).</summary>
+        /// <summary>As <see cref="Dumps(object,int,bool)"/>; with <paramref name="defaultStr"/>, bytes are written as the string of their <c>b'...'</c> spelling.</summary>
         public static string Dumps(object value, int indent, bool sortKeys, bool defaultStr)
         {
             var builder = new StringBuilder();
@@ -2284,7 +2284,7 @@ namespace DriftBusterOfflineRunner
         }
     }
 
-    /// <summary>os.path and pathlib.PurePath over strings.</summary>
+    /// <summary>Lexical path text: parsing, normalising, joining, relative paths, ordering, and variable and home expansion.</summary>
     public static class EnginePath
     {
         public static void SplitRoot(string path, out string drive, out string root, out string tail)
@@ -2364,7 +2364,7 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        // pathlib's parse: drive, root and the parts after them, empty and "." parts dropped.
+        // Drive, root and the parts after them, empty and "." parts dropped.
         private static void Parse(string path, out string drive, out string root, out List<string> parts)
         {
             parts = new List<string>();
@@ -2401,7 +2401,7 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        /// <summary>str(Path(path)).</summary>
+        /// <summary>The lexically normalised path text.</summary>
         public static string Normalise(string path)
         {
             string drive;
@@ -2432,7 +2432,7 @@ namespace DriftBusterOfflineRunner
             return string.Join(sep, parts.ToArray());
         }
 
-        /// <summary>os.path.join(first, second).</summary>
+        /// <summary>Plain join: the second path replaces the first when absolute, otherwise joined with one separator.</summary>
         public static string OsJoin(string first, string second)
         {
             if (!EngineOs.Windows)
@@ -2501,7 +2501,7 @@ namespace DriftBusterOfflineRunner
             return drive + root + path;
         }
 
-        /// <summary>str(Path(first) / second).</summary>
+        /// <summary>Lexical join, normalised.</summary>
         public static string Join(string first, string second)
         {
             return Normalise(OsJoin(Normalise(first), second));
@@ -2545,7 +2545,6 @@ namespace DriftBusterOfflineRunner
             return Format(drive, root, parts);
         }
 
-        /// <summary>Path(path).is_absolute().</summary>
         public static bool IsAbsolute(string path)
         {
             if (!EngineOs.Windows)
@@ -2567,7 +2566,7 @@ namespace DriftBusterOfflineRunner
             return EngineOs.Windows ? text.ToLowerInvariant() : text;
         }
 
-        /// <summary>str(Path(path).relative_to(other)), or null where the path is not under the other.</summary>
+        /// <summary>The path relative to <paramref name="other"/>, or null where the path is not under it.</summary>
         public static string RelativeTo(string path, string other)
         {
             string drive;
@@ -2621,7 +2620,7 @@ namespace DriftBusterOfflineRunner
             paths.Sort(EngineText.CompareCodePoints);
         }
 
-        /// <summary>Path(path).with_suffix(suffix) as text.</summary>
+        /// <summary>The path with its suffix replaced.</summary>
         public static string WithSuffix(string path, string suffix)
         {
             var sep = EngineOs.Sep;
@@ -2641,7 +2640,7 @@ namespace DriftBusterOfflineRunner
             return Join(Parent(path), stem + suffix);
         }
 
-        /// <summary>os.path.expandvars(path).</summary>
+        /// <summary>Environment variables expanded (<c>$NAME</c>, <c>${NAME}</c>, and <c>%NAME%</c> on Windows); unknown names left as written.</summary>
         public static string ExpandVars(string path)
         {
             return EngineOs.Windows ? ExpandVarsNt(path) : ExpandVarsPosix(path);
@@ -2801,7 +2800,7 @@ namespace DriftBusterOfflineRunner
             return result.ToString();
         }
 
-        /// <summary>os.path.expanduser(path).</summary>
+        /// <summary>A leading <c>~</c> or <c>~user</c> expanded; left as written when the home cannot be found.</summary>
         public static string ExpandUser(string path)
         {
             if (!path.StartsWith("~", StringComparison.Ordinal))
@@ -2891,7 +2890,7 @@ namespace DriftBusterOfflineRunner
             return expanded.Length > 0 ? expanded : "/";
         }
 
-        // pwd.getpwnam(name).pw_dir from /etc/passwd (the uid's entry for null); null when not found.
+        // The user's home directory from /etc/passwd (the current uid's entry for null); null when not found.
         private static string PasswdHome(string name)
         {
             try
@@ -2916,7 +2915,7 @@ namespace DriftBusterOfflineRunner
             return null;
         }
 
-        /// <summary>Path(path).expanduser() as text: InvalidOperationException when the home directory cannot be determined.</summary>
+        /// <summary>A leading <c>~</c> expanded: InvalidOperationException when the home directory cannot be determined.</summary>
         public static string PathExpandUser(string path)
         {
             string drive;
@@ -2944,7 +2943,7 @@ namespace DriftBusterOfflineRunner
         }
     }
 
-    /// <summary>File system checks with Python's link semantics.</summary>
+    /// <summary>File system checks; links are followed unless the name says otherwise.</summary>
     public static class EngineFs
     {
         private const uint ReparseTagSymlink = 0xA000000C;
@@ -3014,7 +3013,7 @@ namespace DriftBusterOfflineRunner
         [DllImport("libc", SetLastError = true)]
         private static extern int statx(int directory, byte[] path, int flags, uint mask, byte[] buffer);
 
-        // stat(path).st_mode off Windows (links followed, through statx, whose layout is the same on every architecture); -1 when the
+        // The st_mode of the path off Windows (links followed, through statx, whose layout is the same on every architecture); -1 when the
         // path does not resolve.
         private static int StatMode(string path)
         {
@@ -3028,7 +3027,6 @@ namespace DriftBusterOfflineRunner
             return buffer[28] | (buffer[29] << 8);
         }
 
-        /// <summary>Path.is_symlink().</summary>
         public static bool IsSymlink(string path)
         {
             var target = EngineOs.Abs(path);
@@ -3108,7 +3106,7 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        /// <summary>os.path.realpath(path) (strict=False).</summary>
+        /// <summary>The path with every symlink and ".." resolved, non-strict (a missing tail is kept as written).</summary>
         public static string Realpath(string path)
         {
             var absolute = EngineOs.Abs(path);
@@ -3197,14 +3195,13 @@ namespace DriftBusterOfflineRunner
             return resolved;
         }
 
-        /// <summary>os.path.lexists(path).</summary>
+        /// <summary>The entry exists, links not followed.</summary>
         public static bool LExists(string path)
         {
             var target = EngineOs.Abs(path);
             return File.Exists(target) || Directory.Exists(target) || IsSymlink(path);
         }
 
-        /// <summary>Path.exists(): links followed.</summary>
         public static bool Exists(string path)
         {
             if (EngineOs.Windows)
@@ -3223,7 +3220,6 @@ namespace DriftBusterOfflineRunner
             return StatMode(path) >= 0;
         }
 
-        /// <summary>Path.is_dir(): links followed.</summary>
         public static bool IsDir(string path)
         {
             if (EngineOs.Windows)
@@ -3242,7 +3238,6 @@ namespace DriftBusterOfflineRunner
             return mode >= 0 && (mode & 0xF000) == 0x4000;
         }
 
-        /// <summary>Path.is_file(): links followed.</summary>
         public static bool IsFile(string path)
         {
             if (EngineOs.Windows)
@@ -3261,7 +3256,7 @@ namespace DriftBusterOfflineRunner
             return mode >= 0 && (mode & 0xF000) == 0x8000;
         }
 
-        /// <summary>path.stat().st_size.</summary>
+        /// <summary>The file size, links followed.</summary>
         public static long Size(string path)
         {
             if (EngineOs.Windows && IsSymlink(path))
@@ -3280,7 +3275,7 @@ namespace DriftBusterOfflineRunner
             return new FileInfo(real).Length;
         }
 
-        /// <summary>The entry names os.scandir lists; an empty list when the directory cannot be listed.</summary>
+        /// <summary>The entry names of a directory; an empty list when it cannot be listed.</summary>
         public static List<string> ListDir(string path, bool directoriesOnly)
         {
             var names = new List<string>();
@@ -3310,8 +3305,8 @@ namespace DriftBusterOfflineRunner
         }
 
         /// <summary>
-        /// The files of Path(path).rglob("*") (every entry below the directory, symlinked directories listed but not entered, unreadable
-        /// directories skipped) for which is_file() holds, each as str(path / relative).
+        /// Every file below the directory (symlinked directories listed but not entered, unreadable directories skipped), each as the joined
+        /// path text.
         /// </summary>
         public static List<string> RglobFiles(string path)
         {
@@ -3369,7 +3364,7 @@ namespace DriftBusterOfflineRunner
             _entries.Add("[" + Stamp() + "] " + message);
         }
 
-        /// <summary><c>_write_log</c>: the entries joined by new lines, a final new line when there are entries, as text.</summary>
+        /// <summary>The entries joined by new lines, a final new line when there are entries.</summary>
         public void Save(string path)
         {
             var text = string.Join("\n", _entries.ToArray()) + (_entries.Count > 0 ? "\n" : string.Empty);
@@ -3485,12 +3480,12 @@ namespace DriftBusterOfflineRunner
         public string Sha256 { get; private set; }
     }
 
-    /// <summary>Text files as pathlib reads and writes them (UTF-8, universal new lines).</summary>
+    /// <summary>UTF-8 text files: CRLF and CR read as LF, LF written as the platform's line break.</summary>
     public static class EngineFile
     {
         private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
 
-        /// <summary>Path.read_text(encoding="utf-8"): strict decoding, "\r\n" and "\r" read as "\n".</summary>
+        /// <summary>Strict UTF-8 decoding, "\r\n" and "\r" read as "\n".</summary>
         public static string ReadText(string path)
         {
             byte[] bytes;
@@ -3511,7 +3506,7 @@ namespace DriftBusterOfflineRunner
             return text.Replace("\r\n", "\n").Replace('\r', '\n');
         }
 
-        /// <summary>Path.write_text(text, encoding="utf-8"): "\n" written as the platform's line break, strict encoding.</summary>
+        /// <summary>"\n" written as the platform's line break, strict encoding.</summary>
         public static void WriteText(string path, string text)
         {
             if (Environment.NewLine != "\n")
@@ -3564,7 +3559,7 @@ namespace DriftBusterOfflineRunner
             return null;
         }
 
-        /// <summary>shutil.copystat, best effort: permission bits (off Windows) and access and modification times.</summary>
+        /// <summary>Best effort: permission bits (off Windows) and access and modification times.</summary>
         public static void CopyStat(string source, string destination)
         {
             try
@@ -3590,7 +3585,7 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        /// <summary>shutil.copy2(source, destination) followed by the destination's size and SHA-256.</summary>
+        /// <summary>A verbatim copy with timestamps and permissions, then the destination's size and SHA-256.</summary>
         public static CopyResult CopyVerbatim(string source, string destination)
         {
             File.Copy(EngineOs.Abs(source), EngineOs.Abs(destination), true);
@@ -3606,10 +3601,10 @@ namespace DriftBusterOfflineRunner
         /// <summary>Replacements inside inserted text one line may take since its last replacement that consumed source text.</summary>
         public const int GuardBudget = 1024;
 
-        /// <summary>The packaged ruleset load_secret_rules caches for the session (set by the runner; null before the first load).</summary>
+        /// <summary>The packaged ruleset cached for the session (set by the runner; null before the first load).</summary>
         public static object PackagedRules { get; set; }
 
-        /// <summary>_compile_ruleset_from_mapping(payload): null when nothing compiles.</summary>
+        /// <summary>Null when nothing compiles (the backend's SecretScanner.CompileRulesetFromMapping rules).</summary>
         public static CompiledRuleset CompileRuleset(object payload)
         {
             payload = Engine.Unwrap(payload);
@@ -3668,7 +3663,7 @@ namespace DriftBusterOfflineRunner
             return new CompiledRuleset(rules, Engine.Str(Engine.Or(Engine.Get(payload, "version", null), string.Empty)));
         }
 
-        /// <summary>secret_option_values(value).</summary>
+        /// <summary>The backend's SecretScanner.SecretOptionValues rules.</summary>
         public static List<string> OptionValues(object value)
         {
             value = Engine.Unwrap(value);
@@ -3713,7 +3708,7 @@ namespace DriftBusterOfflineRunner
             return result;
         }
 
-        /// <summary>build_context's ignore values and patterns over a compiled ruleset.</summary>
+        /// <summary>The ignore values and patterns over a compiled ruleset (the backend's SecretScanner.BuildContext rules).</summary>
         public static SecretContext BuildContext(object options, object secretScanner, CompiledRuleset rules, bool loaded)
         {
             var context = new SecretContext();
@@ -3768,7 +3763,7 @@ namespace DriftBusterOfflineRunner
             return context;
         }
 
-        /// <summary>looks_binary(path): a NUL byte in the first 1024 bytes; false when the file cannot be read.</summary>
+        /// <summary>A NUL byte in the first 1024 bytes; false when the file cannot be read.</summary>
         public static bool LooksBinary(string path)
         {
             try
@@ -3796,7 +3791,7 @@ namespace DriftBusterOfflineRunner
             }
         }
 
-        /// <summary>copy_with_secret_filter(source, destination, display_path=..., context=..., log=...).</summary>
+        /// <summary>The backend's SecretScanner.CopyWithSecretFilter, including its guard.</summary>
         public static CopyResult CopyWithSecretFilter(string source, string destination, string displayPath, SecretContext context, RunLog log)
         {
             var parent = Path.GetDirectoryName(EngineOs.Abs(destination));
@@ -3932,7 +3927,7 @@ namespace DriftBusterOfflineRunner
             return false;
         }
 
-        // open(encoding="utf-8", errors="replace") iterated by line: "\r\n" and "\r" read as "\n", each line keeping its "\n".
+        // Decoded as UTF-8 with replacement, "\r\n" and "\r" read as "\n", each line keeping its "\n".
         private static IEnumerable<string> ReadUniversalLines(string path)
         {
             using (var stream = new FileStream(EngineOs.Abs(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
@@ -4081,9 +4076,8 @@ namespace DriftBusterOfflineRunner
 namespace DriftBusterOfflineRunner
 {
     /// <summary>
-    /// winreg.EnumValue's data for a value RegistryKey.GetValue does not read: the value's type and raw bytes through RegQueryValueExW
-    /// (RegistryKey returns null for REG_LINK, REG_RESOURCE_LIST, REG_FULL_RESOURCE_DESCRIPTOR, REG_RESOURCE_REQUIREMENTS_LIST and
-    /// non-standard type numbers, all of which winreg returns as bytes).
+    /// The type and raw bytes of a value RegistryKey.GetValue does not read, through RegQueryValueExW (RegistryKey returns null for
+    /// REG_LINK, REG_RESOURCE_LIST, REG_FULL_RESOURCE_DESCRIPTOR, REG_RESOURCE_REQUIREMENTS_LIST and non-standard type numbers).
     /// </summary>
     public static class EngineWinreg
     {
@@ -4215,7 +4209,7 @@ namespace DriftBusterOfflineRunner
         internal static extern IntPtr sqlite3_errmsg(IntPtr db);
     }
 
-    /// <summary>A result set: column names and rows of Python values (null, BigInteger, double, string, byte[]).</summary>
+    /// <summary>A result set: column names and rows of values (null, BigInteger, double, string, byte[]).</summary>
     public sealed class SqliteRows
     {
         public SqliteRows()
@@ -4228,7 +4222,7 @@ namespace DriftBusterOfflineRunner
 
         public List<object[]> Rows { get; private set; }
 
-        /// <summary>sqlite3.Row[name]: the first column whose name equals <paramref name="name"/> ignoring ASCII case.</summary>
+        /// <summary>The first column whose name equals <paramref name="name"/> ignoring ASCII case.</summary>
         public object Lookup(object[] row, string name)
         {
             for (var index = 0; index < Columns.Count; index++)
@@ -4379,7 +4373,7 @@ namespace DriftBusterOfflineRunner
             return code == 7 ? "InsufficientMemoryException" : "SqliteException";
         }
 
-        /// <summary>cursor.execute(sql).fetchall(): every row, each value by its storage class.</summary>
+        /// <summary>Every row of the statement, each value by its storage class.</summary>
         public SqliteRows FetchAll(string sql)
         {
             var bytes = Encoding.UTF8.GetBytes(sql);
@@ -4497,7 +4491,7 @@ namespace DriftBusterOfflineRunner
 
     public static class SqlSnapshots
     {
-        /// <summary>_hash_text(value, salt=salt).</summary>
+        /// <summary>The backend's SqliteSnapshots.HashText.</summary>
         public static string HashText(object value, string salt)
         {
             var text = EngineJson.Dumps(value, -1, true, true);
@@ -4509,7 +4503,7 @@ namespace DriftBusterOfflineRunner
             return "sha256:" + EngineText.Sha256Hex(combined);
         }
 
-        /// <summary>_normalise_value(value): bytes as {"type": "base64", "value": ...}; everything else as read.</summary>
+        /// <summary>Bytes as {"type": "base64", "value": ...}; everything else as read.</summary>
         public static object NormaliseValue(object value)
         {
             var bytes = value as byte[];
@@ -4524,7 +4518,7 @@ namespace DriftBusterOfflineRunner
             return payload;
         }
 
-        /// <summary>datetime.now(UTC).isoformat().</summary>
+        /// <summary>The UTC capture time, as the backend's IsoTimestamp.Format writes it.</summary>
         public static string CapturedAt()
         {
             var now = DateTime.UtcNow;
@@ -4555,9 +4549,8 @@ namespace DriftBusterOfflineRunner
         }
 
         /// <summary>
-        /// build_sqlite_snapshot(path, tables=..., exclude_tables=..., mask_columns=..., hash_columns=..., limit=..., placeholder=...,
-        /// hash_salt=...).to_dict(), the database opened read-only. <paramref name="path"/> is str(Path(path)); the column maps hold, per
-        /// table, the column names.
+        /// The backend's SqliteSnapshots.BuildSqliteSnapshot as a mapping, the database opened read-only. <paramref name="path"/> is
+        /// lexically normalised; the column maps hold, per table, the column names.
         /// </summary>
         public static OrderedDictionary Build(
             string path,
@@ -4776,9 +4769,8 @@ function Get-DBOrderedMap {
     return , ([System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal))
 }
 
-# offline_runner's config readers: OfflineRunnerConfig, OfflineRunnerProfile, the three source kinds, RemoteRegistryTarget,
-# OfflineRunnerSettings and OfflineEncryptionSettings. Values stay in the engine's JSON domain (EngineJson.Loads) so truthiness, str() and
-# int() behave consistently.
+# Config readers: the config, profiles, the three source kinds, remote registry targets, runner settings and encryption settings.
+# Values stay in the engine's JSON domain (EngineJson.Loads) so truthiness and text/integer conversion match the backend.
 
 function Get-DBTimestamp {
     [CmdletBinding()]
@@ -4788,7 +4780,7 @@ function Get-DBTimestamp {
 }
 
 function Get-DBStringTuple {
-    # tuple(str(item) for item in value): the str() of each item.
+    # The text of each item.
     [CmdletBinding()]
     param($Value)
 
@@ -4800,7 +4792,7 @@ function Get-DBStringTuple {
     return , $items.ToArray()
 }
 
-# _expand_path(text): os.path.expanduser(os.path.expandvars(text)) as str(Path(...)).
+# Environment variables, then a leading ~, expanded; the result lexically normalised.
 function Get-DBExpandedPath {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][AllowEmptyString()][string] $Text)
@@ -4911,7 +4903,6 @@ function ConvertFrom-DBRegistryRootDescriptor {
 }
 
 function ConvertTo-DBRegistryRootList {
-    # offline_runner._normalise_registry_roots(value)
     [CmdletBinding()]
     param($Value)
 
@@ -5071,7 +5062,7 @@ function ConvertFrom-DBRemoteRegistryTarget {
     }
 }
 
-# str(value).strip() if value and str(value).strip() else None
+# The value's text stripped, or $null when the value is falsy or the text is blank.
 function Get-DBStrippedTruthy {
     [CmdletBinding()]
     param($Value)
@@ -5086,7 +5077,7 @@ function Get-DBStrippedTruthy {
     return $null
 }
 
-# re.split(r"[\s,;]+") parts for a str, stripped non-blank str() items for a list, nothing otherwise.
+# A string split on runs of whitespace, commas and semicolons; a list's stripped non-blank item texts; nothing otherwise.
 function Get-DBNormalisedSequence {
     [CmdletBinding()]
     param($Value)
@@ -5117,7 +5108,6 @@ function Get-DBNormalisedSequence {
 }
 
 function ConvertFrom-DBOfflineRegistryScanSource {
-    # OfflineRegistryScanSource.from_dict(payload)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
@@ -5184,7 +5174,7 @@ function ConvertFrom-DBOfflineRegistryScanSource {
 }
 
 function ConvertTo-DBSnapshotColumnMap {
-    # offline_runner._normalise_snapshot_columns(value): table -> string[] in first-seen order.
+    # table -> string[] in first-seen order (the backend's OfflineSqlSnapshotSource.NormaliseSnapshotColumns rules).
     [CmdletBinding()]
     param($Value)
 
@@ -5256,7 +5246,6 @@ function ConvertTo-DBSnapshotColumnMap {
 }
 
 function ConvertFrom-DBOfflineSqlSnapshotSource {
-    # OfflineSqlSnapshotSource.from_dict(payload)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
@@ -5384,7 +5373,6 @@ function Get-DBSnapshotArgument {
 }
 
 function ConvertFrom-DBOfflineRunnerProfile {
-    # OfflineRunnerProfile.from_dict(payload)
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] $Payload)
 
@@ -5477,7 +5465,6 @@ function ConvertFrom-DBOfflineRunnerProfile {
 }
 
 function ConvertFrom-DBOfflineEncryptionSetting {
-    # OfflineEncryptionSettings.from_dict(payload)
     [CmdletBinding()]
     param($Payload)
 
@@ -5520,7 +5507,6 @@ function ConvertFrom-DBOfflineEncryptionSetting {
 }
 
 function ConvertFrom-DBOfflineRunnerSetting {
-    # OfflineRunnerSettings.from_dict(payload)
     [CmdletBinding()]
     param($Payload)
 
@@ -5596,7 +5582,6 @@ function ConvertFrom-DBOfflineRunnerSetting {
 }
 
 function ConvertFrom-DBOfflineRunnerConfig {
-    # OfflineRunnerConfig.from_dict(payload)
     [CmdletBinding()]
     param($Payload)
 
@@ -5620,7 +5605,7 @@ function ConvertFrom-DBOfflineRunnerConfig {
     $profileObject = ConvertFrom-DBOfflineRunnerProfile $profilePayload
     $settings = ConvertFrom-DBOfflineRunnerSetting $settingsPayload
 
-    # dict(metadata_payload): a falsy str or list gives {}, a falsy number, bool or None is refused.
+    # A mapping is copied; a falsy string or list gives {}; a falsy number, bool or null is refused.
     $metadata = Get-DBOrderedMap
     if ([Engine]::IsMapping($metadataPayload)) {
         foreach ($key in @($metadataPayload.Keys)) {
@@ -5662,11 +5647,11 @@ function Import-DBOfflineRunnerConfig {
     return ConvertFrom-DBOfflineRunnerConfig $payload
 }
 
-# secret_scanning as offline_runner uses it: the ruleset (inline in the config, else the packaged rules file), the ignore lists,
+# Secret scanning: the ruleset (inline in the config, else the packaged rules file), the ignore lists,
 # the manifest summary and the scrubbing copy.
 
 function ConvertTo-DBCompiledRuleset {
-    # _compile_ruleset_from_mapping(payload): $null when nothing compiles.
+    # $null when nothing compiles.
     [CmdletBinding()]
     param($Payload)
 
@@ -6204,7 +6189,6 @@ function Invoke-DBFileSource {
 # Building a SQLite snapshot, and the sql_snapshot branch of a config run.
 
 function Get-DBSqliteSnapshot {
-    # build_sqlite_snapshot(path, **kwargs).to_dict()
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $Path,
@@ -6427,7 +6411,7 @@ function Get-DBRegistrySubkey {
 }
 
 function ConvertFrom-DBRegistryData {
-    # The Python value winreg.EnumValue returns for a value read through RegistryKey.
+    # The JSON-domain value for registry data read through RegistryKey (the backend's RegistryValueDecoder shapes).
     [CmdletBinding()]
     param($Data, [Microsoft.Win32.RegistryValueKind] $Kind)
 
@@ -6485,7 +6469,7 @@ function Get-DBRegistryValue {
             try {
                 $kind = $key.GetValueKind($name)
                 if ($kind -eq [Microsoft.Win32.RegistryValueKind]::Unknown -or $kind -eq [Microsoft.Win32.RegistryValueKind]::None) {
-                    # REG_NONE, REG_DWORD_BIG_ENDIAN, REG_LINK, the resource lists and non-standard types: winreg returns their bytes.
+                    # REG_NONE, REG_DWORD_BIG_ENDIAN, REG_LINK, the resource lists and non-standard types: their raw bytes.
                     $rawType = 0
                     $data = [EngineWinreg]::QueryRaw($key.Handle, $name, [ref]$rawType)
                     $kind = [Microsoft.Win32.RegistryValueKind]::Binary
@@ -6655,7 +6639,7 @@ function Get-DBAppRegistryRoot {
 }
 
 function Get-DBRegistryValueText {
-    # The text branch of _match_value: str, bytes decoded as UTF-8 with replacement, int and float str(), lists joined by ", ".
+    # The text a value is matched as: strings, bytes decoded as UTF-8 with replacement, numbers as their text, lists joined by ", ".
     [CmdletBinding()]
     param($Value)
 
@@ -6683,7 +6667,6 @@ function Get-DBRegistryValueText {
 }
 
 function Search-DBRegistry {
-    # search_registry(roots, spec)
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][AllowEmptyCollection()] $Roots,
@@ -6792,7 +6775,7 @@ function Search-DBRegistry {
 }
 
 function ConvertTo-DBRegistryPattern {
-    # re.compile(pattern) for a registry scan pattern.
+    # A registry scan pattern compiled.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Pattern)
 
@@ -7235,11 +7218,9 @@ function Invoke-DBRegistryScanSource {
     return [pscustomobject]@{ Summary = $summary; Files = $files.ToArray() }
 }
 
-# DPAPI/AES package encryption: _dpapi_unprotect, _decode_key_entry, _load_encryption_keyset, _encrypt_package_file and
-# _apply_package_encryption, over System.Security.Cryptography.
+# DPAPI/AES package encryption over System.Security.Cryptography (docs/encryption.md).
 
 function Unprotect-DBDpapiBlob {
-    # _dpapi_unprotect(blob, scope=scope)
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][byte[]] $Blob,
@@ -7346,7 +7327,6 @@ function ConvertFrom-DBHexText {
 }
 
 function ConvertFrom-DBKeyEntry {
-    # _decode_key_entry(entry, description=description)
     [CmdletBinding()]
     param(
         $Entry,
@@ -7400,7 +7380,7 @@ function ConvertFrom-DBKeyEntry {
 }
 
 function Import-DBEncryptionKeyset {
-    # _load_encryption_keyset(path): the AES key and the HMAC key.
+    # The AES key and the HMAC key.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string] $Path)
 
@@ -7438,7 +7418,7 @@ function Import-DBEncryptionKeyset {
 }
 
 function Protect-DBPackageFile {
-    # _encrypt_package_file(source, destination, aes_key=..., hmac_key=...): the payload written to the destination.
+    # The encrypted payload written to the destination.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $Source,
@@ -7502,7 +7482,6 @@ function Protect-DBPackageFile {
 }
 
 function Invoke-DBPackageEncryption {
-    # _apply_package_encryption(package_path, settings, base_dir=..., log=...)
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string] $PackagePath,

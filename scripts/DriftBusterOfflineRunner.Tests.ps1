@@ -65,7 +65,6 @@ BeforeAll {
         return ConvertFrom-DBOfflineRunnerConfig (ConvertTo-EngineValue $Payload)
     }
 
-    # _build_config(tmp_path, profile=..., runner=..., metadata=...)
     function ConvertTo-BuiltConfig {
         param([string] $TmpPath, $ProfilePayload, $Runner, $Metadata)
         $payload = [ordered]@{ profile = $ProfilePayload }
