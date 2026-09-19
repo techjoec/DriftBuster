@@ -121,10 +121,10 @@ public sealed class RegistryExportPluginTests : IDisposable
             .And.Contain(key + "url:thing", "http://x")
             .And.Contain(key + "Path", "%SystemRoot%")
             .And.Contain(key + "Hosts", "a\nb")
-            .And.Contain(key + "Blob", "hex:01,02,03")
             .And.Contain(key + "Gone", "(deleted)")
             .And.Contain(@"[HKEY_CURRENT_USER\Software\Contoso\Old] (key)", "(deleted)");
-        settings.Should().HaveCount(10);
+        settings.Should().NotContainKey(key + "Blob", "binary values are not settings");
+        settings.Should().HaveCount(9);
     }
 
     [Fact]

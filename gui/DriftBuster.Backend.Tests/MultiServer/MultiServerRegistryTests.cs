@@ -5,6 +5,7 @@ using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Registry;
+using DriftBuster.Backend.Settings;
 
 namespace DriftBuster.Backend.Tests.MultiServer;
 
@@ -152,6 +153,8 @@ public sealed class MultiServerRegistryTests : IDisposable
                 Dword("Port", 443),
                 new("Path", RegistryValueDecoder.RegExpandSz, Encoding.Unicode.GetBytes("%TMP%\0")),
                 new("Blob", RegistryValueDecoder.RegBinary, Enumerable.Range(0, 30).Select(value => (byte)value).ToArray()),
+                Sz("Huge", new string('x', SettingValueLimit.MaxChars + 1)),
+                new("List", RegistryValueDecoder.RegMultiSz, Encoding.Unicode.GetBytes("alpha\0beta\0gamma\0delta\0epsilon\0\0")),
             ]),
             new("HKLM", @"SOFTWARE\Vendor\A", null, [], []),
             new("HKLM", @"SOFTWARE\Vendor\b", null, [], [new("Q", RegistryValueDecoder.RegQword, BitConverter.GetBytes(1UL))]),
@@ -164,8 +167,9 @@ public sealed class MultiServerRegistryTests : IDisposable
 
             [HKEY_LOCAL_MACHINE\SOFTWARE\Vendor]
             @="default"
-            "Blob"=hex:00,01,02,03,04,05,06,07,08,09,0a,0b,0c,0d,0e,0f,10,11,12,13,14,15,\
-              16,17,18,19,1a,1b,1c,1d
+            "List"=hex(7):61,00,6c,00,70,00,68,00,61,00,00,00,62,00,65,00,74,00,61,00,00,\
+              00,67,00,61,00,6d,00,6d,00,61,00,00,00,64,00,65,00,6c,00,74,00,61,00,00,00,\
+              65,00,70,00,73,00,69,00,6c,00,6f,00,6e,00,00,00,00,00
             "Path"=hex(2):25,00,54,00,4d,00,50,00,25,00,00,00
             "Port"=dword:000001bb
             "zeta"="C:\\x \"q\""
@@ -199,7 +203,7 @@ public sealed class MultiServerRegistryTests : IDisposable
             read.Truncated.Should().BeTrue();
             var node = read.Nodes.Should().ContainSingle().Subject;
             node.Subkeys.Should().Equal("Child");
-            RegistryExportWriter.Render(new RegistryRoot("HKLM", @"S\V"), read.Nodes).Should().Contain("\"D\"=dword:000001bb").And.Contain("\"M\"=hex(7):61,00,00,00,62,00,00,00,00,00").And.Contain("\"S\"=\"x\"").And.Contain("\"B\"=hex:01,02");
+            RegistryExportWriter.Render(new RegistryRoot("HKLM", @"S\V"), read.Nodes).Should().Contain("\"D\"=dword:000001bb").And.Contain("\"M\"=hex(7):61,00,00,00,62,00,00,00,00,00").And.Contain("\"S\"=\"x\"").And.NotContain("\"B\"=");
 
             RemoteRegistryTreeReader.RunPowerShell = (_, _, _) => ("""{"error":"Access is denied."}""", string.Empty, 1);
             var denied = () => new RemoteRegistryTreeReader("app-01", "c.xml").Read([], 12, TestContext.Current.CancellationToken);

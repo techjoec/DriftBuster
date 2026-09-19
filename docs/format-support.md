@@ -42,7 +42,8 @@ settings are named like this:
 | HCL, nginx and other conf, Dockerfile, text | The directive or key, prefixed by the blocks it sits in (`http.server.listen`); repeated names are numbered (`RUN #2`) |
 | SQLite, property lists, Markdown with front matter and other binary-hybrid files | One `(file contents)` entry compared by hash |
 
-A file that does not parse as its format is read line by line instead. Values that look like secrets (by setting name or by
+A file that does not parse as its format is read line by line instead. A single value longer than 32 KiB (more than a
+large certificate chain) is left out of the comparison, and binary registry values are never compared. Values that look like secrets (by setting name or by
 the secret scanner's rules) are compared but never shown. A file with more settings than a table can hold is also compared
 as a whole, so a difference past the cut still shows.
 

@@ -5,7 +5,8 @@ namespace DriftBuster.Backend.Settings;
 /// <summary>
 /// Registry Editor export settings: each value named <c>[key path] value name</c> (<c>(Default)</c> for <c>@</c>), with its data
 /// as <see cref="RegistryExportText.RenderData"/> shows it. A <c>[-key]</c> section is one <c>[key] (key)</c> row reading
-/// <c>(deleted)</c>. Null when the text has no export header, so the caller falls back to the line reader.
+/// <c>(deleted)</c>. Binary values (<see cref="RegistryExportText.IsSettingData"/>) are left out. Null when the text has no export
+/// header, so the caller falls back to the line reader.
 /// </summary>
 internal static class RegistryExportSettings
 {
@@ -38,7 +39,10 @@ internal static class RegistryExportSettings
                 continue;
             }
 
-            builder.Add($"[{entry.KeyPath}] {entry.ValueName}", RegistryExportText.RenderData(entry.RawData!, unicode));
+            if (RegistryExportText.IsSettingData(entry.RawData!))
+            {
+                builder.Add($"[{entry.KeyPath}] {entry.ValueName}", RegistryExportText.RenderData(entry.RawData!, unicode));
+            }
         }
 
         return builder.Build(SettingsMode.Parsed);

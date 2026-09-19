@@ -2,13 +2,17 @@ using System.Buffers.Binary;
 using System.Globalization;
 using System.Text;
 
+using DriftBuster.Backend.Settings;
+
 namespace DriftBuster.Backend.Registry;
 
 /// <summary>
 /// Renders registry keys as a Registry Editor version 5 export, the way regedit writes one: <c>[HKEY_…\path]</c> sections in
 /// depth-first order, the default value (<c>@</c>) first and the rest sorted by name, <c>REG_SZ</c> as a quoted string,
 /// <c>REG_DWORD</c> as <c>dword:</c>, every other type as <c>hex(n):</c> bytes wrapped at 80 columns with a trailing backslash.
-/// Subkeys are sorted, so the same registry state always renders the same text.
+/// Subkeys are sorted, so the same registry state always renders the same text. Only settings are written: strings,
+/// expandable and multi-strings up to <see cref="SettingValueLimit.MaxChars"/> characters, and numbers; binary values
+/// (<c>REG_NONE</c>, <c>REG_BINARY</c>, <c>REG_LINK</c>, resource lists, unknown types) and longer strings are left out.
 /// </summary>
 /// <remarks>Derived from publicly documented behavior, not vendor source (Microsoft's documentation of the .reg file syntax).</remarks>
 public static class RegistryExportWriter
@@ -60,6 +64,11 @@ public static class RegistryExportWriter
 
     private static void AppendValue(StringBuilder builder, RegistryRawValue value)
     {
+        if (!IsSetting(value))
+        {
+            return;
+        }
+
         var name = value.Name.Length == 0 ? "@" : Quote(value.Name);
         if (value.Type == RegistryValueDecoder.RegSz)
         {
@@ -76,6 +85,14 @@ public static class RegistryExportWriter
         var prefix = value.Type == RegistryValueDecoder.RegBinary ? $"{name}=hex:" : string.Create(CultureInfo.InvariantCulture, $"{name}=hex({value.Type:x}):");
         AppendHex(builder, prefix, value.Data);
     }
+
+    // Numbers always; strings when their UTF-16 text fits the value limit; nothing binary.
+    internal static bool IsSetting(RegistryRawValue value) => value.Type switch
+    {
+        RegistryValueDecoder.RegDword or RegistryValueDecoder.RegDwordBigEndian or RegistryValueDecoder.RegQword => true,
+        RegistryValueDecoder.RegSz or RegistryValueDecoder.RegExpandSz or RegistryValueDecoder.RegMultiSz => value.Data.Length / 2 <= SettingValueLimit.MaxChars,
+        _ => false,
+    };
 
     // regedit's layout: bytes as two hex digits joined by commas, a line ending in ",\" once it would pass 80 columns, and
     // continuation lines indented by two spaces.

@@ -23,7 +23,8 @@ Multi-server Comparison
   from the host's installed applications. A key under another listed key is part of that key's record.
 - Each key is read breadth first (12 levels, at most 20,000 keys, 60 seconds) and rendered exactly as
   Registry Editor exports it: `[HKEY_…]` sections, `@` first and values sorted by name, `REG_SZ` quoted,
-  `REG_DWORD` as `dword:`, every other type as `hex(n):` bytes. The text becomes an ordinary record at
+  `REG_DWORD` as `dword:`, other strings and numbers as `hex(n):` bytes. Only settings are kept: binary values
+  (`REG_BINARY`, `REG_NONE`, `REG_LINK`, resource lists, unknown types) and strings over 32 KiB are left out. The text becomes an ordinary record at
   `registry/<hive>/<path>.reg` (`registry/HKLM (32-bit)/…` for a view), so Compare, Files, File details,
   history and curation treat it like a configuration file, and a type change (`REG_SZ` to `REG_EXPAND_SZ`)
   is drift.
@@ -33,7 +34,8 @@ Multi-server Comparison
 - The host's message reports `Read N registry key(s) on <computer>.`, a read cut short by the limits, and
   entries that are not keys. A host with only registry keys fails when the registry cannot be read; a host with
   file roots too keeps its file results. Reading the registry needs Windows.
-- `.reg` files found under a host's roots are detected (`registry-export`) and compared the same way.
+- `.reg` files found under a host's roots are detected (`registry-export`) and compared the same way; their
+  binary (`hex:` and non-string `hex(n):`) values are left out too.
 
 Console Tool
 ------------

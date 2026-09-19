@@ -2,7 +2,10 @@ using System.Globalization;
 
 namespace DriftBuster.Backend.Settings;
 
-/// <summary>Collects entries in file order; a key seen again gets " #2", " #3" so every key stays unique.</summary>
+/// <summary>
+/// Collects entries in file order; a key seen again gets " #2", " #3" so every key stays unique. A value longer than
+/// <see cref="SettingValueLimit.MaxChars"/> is left out.
+/// </summary>
 internal sealed class SettingsBuilder
 {
     // A file with more settings is cut here; SettingsExtractor then compares the whole file by hash so a difference past
@@ -22,6 +25,11 @@ internal sealed class SettingsBuilder
         if (IsFull)
         {
             Truncated = true;
+            return;
+        }
+
+        if (!SettingValueLimit.Fits(value))
+        {
             return;
         }
 

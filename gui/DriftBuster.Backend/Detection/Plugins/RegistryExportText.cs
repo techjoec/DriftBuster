@@ -140,6 +140,23 @@ internal static class RegistryExportText
         return type + ":" + compact;
     }
 
+    /// <summary>
+    /// Whether a value's data is a setting: a string, a deletion, <c>dword</c>, or <c>hex(2)</c>/<c>hex(7)</c> (strings) and
+    /// <c>hex(4)</c>/<c>hex(5)</c>/<c>hex(b)</c> (numbers). <c>hex:</c> (<c>REG_BINARY</c>) and every other <c>hex(n)</c> type is
+    /// binary data.
+    /// </summary>
+    internal static bool IsSettingData(string raw)
+    {
+        ArgumentNullException.ThrowIfNull(raw);
+        var colon = raw.IndexOf(':', StringComparison.Ordinal);
+        if (raw.StartsWith('"') || colon < 0)
+        {
+            return true;
+        }
+
+        return raw[..colon].Trim().ToLowerInvariant() is "dword" or "hex(2)" or "hex(7)" or "hex(4)" or "hex(5)" or "hex(b)";
+    }
+
     // Trimmed lines with universal newlines; a value line that ends in a backslash (hex data) joins the next line.
     private static IEnumerable<string> LogicalLines(string text)
     {
