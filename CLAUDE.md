@@ -154,10 +154,11 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
   - `CompareViewModel` - Settings comparison (per-server summary, file list, the selected file's setting table, difference navigation, filters, HTML/CSV report); also the Diff planner's Settings tab
   - Compare's right-click menu (`Views/CompareContextMenu.cs`) calls `CompareViewModel.Actions.cs`; saved choices go through `ICurationService` (`CurationService.Shared` over the data root), this run's choices and marks stay in the view model
   - `DiffLinesViewModel` - Line diff for reading (side by side with folded context, or unified text) with change navigation; used by File details and the Diff planner
-  - Result views fill the window and scroll their own virtualised panes (list, grid, lines); only Setup and the form pages scroll as a page
+  - Every page fills the window and scrolls its own virtualised panes: a list or grid beside the selected item's details (Setup hosts, Compare files, Hunt findings, Profiles); shared styles in `Assets/Styles/Theme.axaml` (`Border.pane`, `Button.chip`, `Border.count`, grid headers, tabs)
+  - Right-click menus: Compare settings, values and files (`Views/CompareContextMenu.cs`, also used by Files), Hunt findings; dialogs and the clipboard through `Views/DialogHost.cs`
   - `ConfigDrilldownViewModel` - Configuration detail exploration
   - `DiffViewModel` - Side-by-side comparison view
-  - `HuntViewModel` / `SecretScannerSettingsViewModel` - Secret scanning
+  - `HuntViewModel` / `SecretScannerSettingsViewModel` - Hunt scan with rule chips, file/text filters and the selected finding; secret scanner settings
   - `RunProfilesViewModel` - Profile management and scheduling
   - `ResultsCatalogViewModel` - Catalog browsing with sort/filter
 - **Multi-server orchestration** runs in process through the backend:
