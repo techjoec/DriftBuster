@@ -53,10 +53,6 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
     // The last loaded profile's name, description and secret scanner options, and whether it had no baseline: an unedited load saves them
     // as loaded, so the saved profile behaves as the loaded one.
-    private string? _loadedProfileName;
-    private string? _loadedDescription;
-    private SecretScannerOptions? _loadedSecretScanner;
-    private bool _loadedWithoutBaseline;
 
     [ObservableProperty]
     private string? _profileDescription;
@@ -91,8 +87,8 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
     {
         get
         {
-            var ruleCount = SecretScanner.IgnoreRules?.Length ?? 0;
-            var patternCount = SecretScanner.IgnorePatterns?.Length ?? 0;
+            var ruleCount = SecretScanner.IgnoreRules.Count;
+            var patternCount = SecretScanner.IgnorePatterns.Count;
             if (ruleCount == 0 && patternCount == 0)
             {
                 return "Secret scanner active. No ignores configured.";
@@ -430,9 +426,9 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
             var result = await _service.RunProfileAsync(profile, saveProfile: true).ConfigureAwait(true);
             ListSavedProfile(profile);
             PopulateRunResults(result);
-            StatusMessage = (result.Files.Length == 0
+            StatusMessage = (result.Files.Count == 0
                 ? "Run complete. No files were copied."
-                : $"Run complete. Files copied: {result.Files.Length}.") + (schedulesSkipped ? " " + SchedulesNotSavedMessage : string.Empty);
+                : $"Run complete. Files copied: {result.Files.Count}.") + (schedulesSkipped ? " " + SchedulesNotSavedMessage : string.Empty);
         }
         catch (Exception ex)
         {
@@ -504,45 +500,28 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         }
     }
 
-    // The profile as edited. Sources keep their declared order (a structured profile collects in that order and names an aliasless source
-    // by its position). The baseline is the saved spelling of its source, or none when the loaded profile had none and the baseline is
-    // still the first source (the run then reads the first source as the baseline anyway). A name, description, option key or secret
-    // scanner list unedited since the load saves as loaded; an edited name or option key is stripped (EngineText.Strip), and option keys
-    // are compared exactly (a later row with the same key wins).
+    // The profile as edited: sources in declared order (the run collects in that order and names an aliasless source by its position),
+    // text trimmed, blank option rows dropped (a later row with the same key wins).
     private RunProfileDefinition BuildCurrentProfile()
     {
         var sources = Sources.Where(entry => !string.IsNullOrWhiteSpace(entry.Path)).ToList();
-        var baseline = sources.FirstOrDefault(entry => entry.IsBaseline);
-        var keepNoBaseline = _loadedWithoutBaseline && baseline is not null && ReferenceEquals(baseline, sources[0]);
-
         return new RunProfileDefinition
         {
-            Name = _loadedProfileName is not null && string.Equals(ProfileName, _loadedProfileName, StringComparison.Ordinal)
-                ? _loadedProfileName
-                : EngineText.Strip(ProfileName),
-            Description = string.Equals(ProfileDescription, _loadedDescription, StringComparison.Ordinal)
-                ? _loadedDescription
-                : string.IsNullOrWhiteSpace(ProfileDescription) ? null : ProfileDescription.Trim(),
-            Sources = sources.Select(entry => entry.ToSource()).ToArray(),
-            Baseline = keepNoBaseline ? null : baseline?.ToSource().Path,
+            Name = ProfileName.Trim(),
+            Description = string.IsNullOrWhiteSpace(ProfileDescription) ? null : ProfileDescription.Trim(),
+            Sources = [.. sources.Select(entry => entry.ToSource())],
+            Baseline = sources.FirstOrDefault(entry => entry.IsBaseline)?.ToSource().Path,
             Options = BuildOptions(),
-            SecretScanner = ReferenceEquals(SecretScanner, _loadedSecretScanner) ? CopySecretScannerOptions(SecretScanner) : CloneSecretScannerOptions(SecretScanner),
+            SecretScanner = CleanSecretScannerOptions(SecretScanner),
         };
     }
 
     private Dictionary<string, string> BuildOptions()
     {
         var options = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var option in Options)
+        foreach (var option in Options.Where(option => !string.IsNullOrWhiteSpace(option.Key)))
         {
-            var unedited = option.LoadedKey is not null && string.Equals(option.Key, option.LoadedKey, StringComparison.Ordinal);
-            var key = unedited ? option.LoadedKey! : EngineText.Strip(option.Key ?? string.Empty);
-            if (!unedited && key.Length == 0)
-            {
-                continue;
-            }
-
-            options[key] = option.Value ?? string.Empty;
+            options[option.Key.Trim()] = option.Value?.Trim() ?? string.Empty;
         }
 
         return options;
@@ -558,7 +537,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
     public void ApplySecretScanner(SecretScannerOptions? options)
     {
-        SecretScanner = CloneSecretScannerOptions(options);
+        SecretScanner = CleanSecretScannerOptions(options);
     }
 
     private void LoadProfile(RunProfileDefinition? profile)
@@ -572,14 +551,11 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
         ProfileName = profile.Name;
         ProfileDescription = profile.Description;
-        _loadedProfileName = profile.Name;
-        _loadedDescription = profile.Description;
-        _loadedWithoutBaseline = profile.Baseline is null;
 
         Sources.Clear();
         // The baseline is the first source whose path is exactly the profile's baseline (the store compares paths exactly).
-        var baselineIndex = profile.Baseline is null ? 0 : Array.FindIndex(profile.Sources, source => string.Equals(source.Path, profile.Baseline, StringComparison.Ordinal));
-        for (var index = 0; index < profile.Sources.Length; index++)
+        var baselineIndex = profile.Baseline is null ? 0 : profile.Sources.ToList().FindIndex(source => string.Equals(source.Path, profile.Baseline, StringComparison.Ordinal));
+        for (var index = 0; index < profile.Sources.Count; index++)
         {
             var source = profile.Sources[index];
             var isBaseline = index == baselineIndex;
@@ -594,11 +570,10 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         Options.Clear();
         foreach (var option in profile.Options)
         {
-            Options.Add(new KeyValueEntry { Key = option.Key, Value = option.Value, LoadedKey = option.Key });
+            Options.Add(new KeyValueEntry { Key = option.Key, Value = option.Value });
         }
 
-        SecretScanner = CopySecretScannerOptions(profile.SecretScanner);
-        _loadedSecretScanner = SecretScanner;
+        SecretScanner = profile.SecretScanner;
 
         SelectedProfile = profile;
         StatusMessage = $"Loaded profile '{profile.Name}'.";
@@ -677,36 +652,15 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         RunCommand.NotifyCanExecuteChanged();
     }
 
-    // The lists exactly as they are (a loaded profile's patterns are regular expressions, where white space and repeats matter).
-    private static SecretScannerOptions CopySecretScannerOptions(SecretScannerOptions? options) => new()
+    // Trimmed, blanks and repeats dropped.
+    private static SecretScannerOptions CleanSecretScannerOptions(SecretScannerOptions? options) => new()
     {
-        IgnoreRules = options?.IgnoreRules?.ToArray() ?? Array.Empty<string>(),
-        IgnorePatterns = options?.IgnorePatterns?.ToArray() ?? Array.Empty<string>(),
+        IgnoreRules = Clean(options?.IgnoreRules),
+        IgnorePatterns = Clean(options?.IgnorePatterns),
     };
 
-    private static SecretScannerOptions CloneSecretScannerOptions(SecretScannerOptions? options)
-    {
-        var clone = new SecretScannerOptions();
-        if (options?.IgnoreRules is not null)
-        {
-            clone.IgnoreRules = options.IgnoreRules
-                .Where(rule => !string.IsNullOrWhiteSpace(rule))
-                .Select(rule => rule.Trim())
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-        }
-
-        if (options?.IgnorePatterns is not null)
-        {
-            clone.IgnorePatterns = options.IgnorePatterns
-                .Where(pattern => !string.IsNullOrWhiteSpace(pattern))
-                .Select(pattern => pattern.Trim())
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-        }
-
-        return clone;
-    }
+    private static string[] Clean(IEnumerable<string>? values)
+        => [.. (values ?? []).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value.Trim()).Distinct(StringComparer.Ordinal)];
 
     private void PopulateRunResults(RunProfileRunResult result)
     {
@@ -1008,13 +962,9 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
         // The patterns the entry was loaded with and their text: saved unchanged while the text is, so a pattern holding a line break,
         // an empty pattern or any other text the editor cannot spell survives a load and save.
-        private string[]? _loadedExclude;
-        private string? _loadedExcludeText;
 
         // The path and alias the entry was loaded with: saved exactly as loaded while unedited, so a loaded alias with surrounding
         // whitespace keeps naming the same run directory.
-        private string? _loadedPath;
-        private string? _loadedAlias;
 
         [ObservableProperty]
         private string _path = string.Empty;
@@ -1062,67 +1012,27 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         /// <summary>The run directory the alias names, or null when the source has no alias.</summary>
         internal string? AliasDirectory => ToSource().Alias is { } alias ? RunProfileStore.SafeName(alias) : null;
 
-        /// <summary>Shows a loaded source's alias, optional flag and exclude patterns, and remembers its path and alias as loaded.</summary>
+        /// <summary>Shows a loaded source's alias, optional flag and exclude patterns (one per line).</summary>
         internal void Load(RunProfileSource source)
         {
             Alias = source.Alias;
             Optional = source.Optional;
-            LoadExclude(source.Exclude ?? Array.Empty<string>());
-            _loadedPath = Path;
-            _loadedAlias = Alias;
+            Exclude = string.Join('\n', source.Exclude);
         }
 
-        /// <summary>Shows <paramref name="patterns"/> one per line and remembers them, so an unchanged editor saves them as loaded.</summary>
-        internal void LoadExclude(IReadOnlyList<string> patterns)
+        internal RunProfileSource ToSource() => new()
         {
-            _loadedExclude = patterns.ToArray();
-            _loadedExcludeText = string.Join('\n', _loadedExclude);
-            Exclude = _loadedExcludeText;
-        }
-
-        internal RunProfileSource ToSource() => new(SavedPath())
-        {
-            Alias = SavedAlias(),
+            Path = (Path ?? string.Empty).Trim(),
+            Alias = string.IsNullOrWhiteSpace(Alias) ? null : Alias.Trim(),
             Optional = Optional,
-            Exclude = ExcludePatterns(),
+            Exclude = [.. (Exclude ?? string.Empty).Split(LineBreaks, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)],
         };
-
-        // The loaded path while unedited; an edited path stripped (EngineText.Strip).
-        private string SavedPath()
-            => _loadedPath is not null && string.Equals(Path, _loadedPath, StringComparison.Ordinal) ? _loadedPath : EngineText.Strip(Path ?? string.Empty);
-
-        // The loaded alias while unedited; an edited alias stripped (EngineText.Strip), none when that leaves it empty, as the backend
-        // drops it.
-        private string? SavedAlias()
-        {
-            if (_loadedAlias is not null && string.Equals(Alias, _loadedAlias, StringComparison.Ordinal))
-            {
-                return _loadedAlias;
-            }
-
-            var alias = EngineText.Strip(Alias ?? string.Empty);
-            return alias.Length == 0 ? null : alias;
-        }
-
-        private string[] ExcludePatterns()
-        {
-            var text = Exclude ?? string.Empty;
-            if (_loadedExclude is not null && string.Equals(text, _loadedExcludeText, StringComparison.Ordinal))
-            {
-                return _loadedExclude.ToArray();
-            }
-
-            return text.Split(LineBreaks, StringSplitOptions.None).Where(pattern => pattern.Length > 0).ToArray();
-        }
     }
 
     public sealed partial class KeyValueEntry : ObservableObject
     {
         [ObservableProperty]
         private string _key = string.Empty;
-
-        /// <summary>The key as a loaded profile held it (null for a row added since): an unedited key saves exactly as loaded.</summary>
-        internal string? LoadedKey { get; init; }
 
         [ObservableProperty]
         private string? _value;

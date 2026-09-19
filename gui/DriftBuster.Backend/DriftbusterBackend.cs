@@ -58,26 +58,13 @@ namespace DriftBuster.Backend
         }
 
         public Task<RunProfileListResult> ListProfilesAsync(string? baseDir = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(
-                () => new RunProfileListResult
-                {
-                    Profiles = RunProfileStore.ListProfiles(FacadeBaseDir(baseDir), cancellationToken).Select(profile => profile.ToDefinition()).ToArray(),
-                },
-                cancellationToken);
-        }
+            => Task.Run(() => new RunProfileListResult(RunProfileStore.List(FacadeBaseDir(baseDir), cancellationToken)), cancellationToken);
 
         public Task SaveProfileAsync(RunProfileDefinition profile, string? baseDir = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => RunProfileStore.SaveProfile(ToRunProfile(profile), FacadeBaseDir(baseDir)), cancellationToken);
-        }
+            => Task.Run(() => RunProfileStore.Save(profile, FacadeBaseDir(baseDir)), cancellationToken);
 
         public Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(
-                () => ToRunResult(RunProfileExecutor.ExecuteProfile(WithStoredOptionValues(ToRunProfile(profile), FacadeBaseDir(baseDir)), FacadeBaseDir(baseDir), timestamp, saveProfile, cancellationToken)),
-                cancellationToken);
-        }
+            => Task.Run(() => new RunProfileExecutor(FacadeBaseDir(baseDir)).Execute(profile, saveProfile, timestamp, cancellationToken), cancellationToken);
 
         public Task<ScheduleListResult> ListSchedulesAsync(string? baseDir = null, CancellationToken cancellationToken = default)
             => Task.Run(() => ScheduleStore.ListSchedules(baseDir), cancellationToken);
@@ -100,63 +87,16 @@ namespace DriftBuster.Backend
         private static ScheduleCommands Schedules(string? baseDir, string? configPath, string? statePath)
             => new(FacadeBaseDir(baseDir), FacadePath(configPath), FacadePath(statePath));
 
-        // A blank manifest or state path means the default under the profiles root.
-        private static string? FacadePath(string? path) => string.IsNullOrWhiteSpace(path) ? null : path;
-
         public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir = null, CancellationToken cancellationToken = default)
         {
             return Task.Run(() => OfflineCollectorWriter.Prepare(profile, request, baseDir, cancellationToken), cancellationToken);
         }
 
+        // A blank manifest or state path means the default under the profiles root.
+        private static string? FacadePath(string? path) => string.IsNullOrWhiteSpace(path) ? null : path;
+
         // A blank base directory means the working directory.
         private static string? FacadeBaseDir(string? baseDir) => string.IsNullOrWhiteSpace(baseDir) ? null : baseDir;
-
-        // The GUI model as a run profile; the facade refuses a blank name before anything is validated or written.
-        private static RunProfile ToRunProfile(RunProfileDefinition profile)
-        {
-            ArgumentNullException.ThrowIfNull(profile);
-            if (string.IsNullOrWhiteSpace(profile.Name))
-            {
-                throw new InvalidOperationException("Profile name is required.");
-            }
-
-            return RunProfile.FromDefinition(profile);
-        }
-
-        // A structured profile runs with the option values its stored profile.json holds (a list stays a list) wherever the model's text for
-        // a key still shows that value's text; a new or edited option runs with its text. The stored file is read before the run saves over it.
-        private static RunProfile WithStoredOptionValues(RunProfile profile, string? baseDir)
-        {
-            if (!profile.IsStructured || RunProfileStore.TryLoadStoredProfile(profile.Name, baseDir) is not { } stored)
-            {
-                return profile;
-            }
-
-            var options = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-            foreach (var (key, text) in profile.Options)
-            {
-                var unchanged = stored.Options.TryGetValue(key, out var storedText) && string.Equals(storedText, text, StringComparison.Ordinal);
-                options[key] = unchanged && stored.SecretOptions.TryGetValue(key, out var value) ? value : text;
-            }
-
-            return profile.WithSecretOptions(new System.Collections.ObjectModel.ReadOnlyDictionary<string, object?>(options));
-        }
-
-        private static RunProfileRunResult ToRunResult(ProfileRunResult result) => new()
-        {
-            Profile = result.Profile.ToDefinition(),
-            Timestamp = result.Timestamp,
-            OutputDir = result.OutputDir,
-            Files = result.Files
-                .Select(file => new RunProfileFileResult
-                {
-                    Source = file.Source,
-                    Destination = PathText.ToPosix(file.Destination),
-                    Size = file.Size,
-                    Sha256 = file.Sha256,
-                })
-                .ToArray(),
-        };
 
         public async Task<ServerScanResponse> RunServerScansAsync(
             IEnumerable<ServerScanPlan> plans,

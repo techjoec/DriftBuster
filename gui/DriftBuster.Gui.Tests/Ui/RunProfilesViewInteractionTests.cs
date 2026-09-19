@@ -99,7 +99,7 @@ public sealed class RunProfilesViewInteractionTests
         service.PrepareOfflineCollectorHandler = (_, _, _) =>
         {
             invoked = true;
-            return Task.FromResult(new OfflineCollectorResult());
+            return Task.FromResult(Results.Collector());
         };
 
         var view = new RunProfilesView
@@ -129,7 +129,7 @@ public sealed class RunProfilesViewInteractionTests
         {
             triggered = true;
             request.PackagePath.Should().Be("/tmp/collector.zip");
-            return Task.FromResult(new OfflineCollectorResult());
+            return Task.FromResult(Results.Collector());
         };
 
         var view = new RunProfilesView

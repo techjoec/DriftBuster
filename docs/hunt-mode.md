@@ -91,12 +91,9 @@ copied. Key behaviours to keep in mind:
   span with `[SECRET]`, record a finding, and log messages such as
   `secret candidate redacted (PasswordAssignment) from ...`. These messages
   persist in `metadata.json → secrets.messages`.
-- Ignore lists are honoured at two layers: profile options may specify
-  `secret_ignore_rules` / `secret_ignore_patterns`, while the GUI and
-  `driftbuster profile run --secret-ignore-rule/--secret-ignore-pattern` feed
-  structured `secret_scanner` overrides. Both paths normalise values into
-  sorted lists before the scan begins so manifests and hashes are
-  deterministic.
+- Ignore lists live in the profile's `secret_scanner` (`ignore_rules`,
+  `ignore_patterns`); `driftbuster profile run --secret-ignore-rule/--secret-ignore-pattern`
+  appends to them for one run.
 - When no matches trigger, files are copied byte-for-byte and `rules_loaded`
   stays `true`, proving the ruleset executed. Binary files skip redaction.
 - The resulting manifest enumerates rule version, ignored entries, and every

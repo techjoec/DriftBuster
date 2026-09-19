@@ -68,10 +68,7 @@ internal sealed class ReleaseSteps(string root, TextWriter stdout, Func<IReadOnl
             throw new CommandExitException($"Release notes not found: {LexicalPath.Str(releaseNotes)}");
         }
 
-        var versions = RunProfileStore.ReadJson(Path.Combine(root, "versions.json"));
-        var guiVersion = versions is IReadOnlyDictionary<string, object?> mapping && mapping.TryGetValue("gui", out var gui)
-            ? EngineRepr.Str(gui)
-            : EngineRepr.Str(EngineBuiltins.Get(versions, "gui") ?? "0.0.0");
+        var guiVersion = ComponentVersions.Load(root).Gui;
         var script = Path.Combine(root, "scripts", "build_velopack_release.sh");
         if (!TextModeFile.Exists(script))
         {

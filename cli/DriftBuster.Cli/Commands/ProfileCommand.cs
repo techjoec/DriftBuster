@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Cli.Commands;
@@ -77,8 +78,7 @@ internal static class ProfileCommand
         var command = new Command("show", "Show profile configuration.") { name };
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
-            var payload = RunProfileCommands.Show(parseResult.GetValue(name)!, BaseDir(parseResult, baseDir));
-            ConsoleText.Print(stdout, ConsoleText.Dumps(payload, indent: 2, sortKeys: true));
+            ConsoleText.Write(stdout, ModelJson.Serialize(RunProfileStore.Load(parseResult.GetValue(name)!, BaseDir(parseResult, baseDir))));
             return 0;
         }));
         return command;

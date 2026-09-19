@@ -1,113 +1,49 @@
-using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.Profiles.Run;
 
-/// <summary>
-/// Run-profile commands for the console tool: <c>--option</c> and secret-ignore handling, and <c>create</c>, <c>list</c>, <c>show</c>,
-/// <c>run</c>. Parsing, printing and exit codes stay in the CLI.
-/// </summary>
+/// <summary>The <c>profile</c> operations for the console tool: <c>create</c>, <c>list</c>, <c>show</c> and <c>run</c>.</summary>
 public static class RunProfileCommands
 {
-    /// <summary><c>key=value</c> split at the first "=", both sides trimmed; a pair without "=" throws <see cref="CommandExitException"/>.</summary>
-    public static OrderedDictionary<string, object?> ParseOptions(IEnumerable<string> pairs)
+    /// <summary><c>key=value</c> split at the first <c>=</c>, both sides trimmed; a later key replaces an earlier one.</summary>
+    public static IReadOnlyDictionary<string, string> ParseOptions(IEnumerable<string> pairs)
     {
         ArgumentNullException.ThrowIfNull(pairs);
-        var options = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var item in pairs)
+        var options = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var pair in pairs)
         {
-            var separator = item.IndexOf('=', StringComparison.Ordinal);
+            var separator = pair.IndexOf('=', StringComparison.Ordinal);
             if (separator < 0)
             {
-                throw new CommandExitException($"Invalid option format: {EngineRepr.StrRepr(item)}. Use key=value.");
+                throw new RunProfileException($"Invalid option '{pair}': use key=value.");
             }
 
-            options[EngineText.Strip(item[..separator])] = EngineText.Strip(item[(separator + 1)..]);
+            options[pair[..separator].Trim()] = pair[(separator + 1)..].Trim();
         }
 
         return options;
     }
 
     /// <summary>Trimmed values, blanks and repeats dropped, first-occurrence order.</summary>
-    public static IReadOnlyList<string> CleanSecretValues(IEnumerable<string?>? values) => CleanedValues(values);
+    public static IReadOnlyList<string> CleanValues(IEnumerable<string?>? values)
+        => [.. (values ?? []).OfType<string>().Select(value => value.Trim()).Where(value => value.Length > 0).Distinct(StringComparer.Ordinal)];
 
-    private static List<string> CleanedValues(IEnumerable<string?>? values)
-    {
-        var cleaned = new List<string>();
-        foreach (var value in values ?? [])
-        {
-            if (value is null)
-            {
-                continue;
-            }
-
-            var text = EngineText.Strip(value);
-            if (text.Length > 0 && !cleaned.Contains(text, StringComparer.Ordinal))
-            {
-                cleaned.Add(text);
-            }
-        }
-
-        return cleaned;
-    }
-
-    /// <summary><c>ignore_rules</c> and <c>ignore_patterns</c>, each only when non-empty after cleaning.</summary>
-    public static OrderedDictionary<string, object?> BuildSecretScannerPayload(IEnumerable<string?>? ignoreRules, IEnumerable<string?>? ignorePatterns)
-    {
-        var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        var rules = CleanedValues(ignoreRules);
-        var patterns = CleanedValues(ignorePatterns);
-        if (rules.Count > 0)
-        {
-            payload["ignore_rules"] = rules.Cast<object?>().ToList();
-        }
-
-        if (patterns.Count > 0)
-        {
-            payload["ignore_patterns"] = patterns.Cast<object?>().ToList();
-        }
-
-        return payload;
-    }
-
-    /// <summary>
-    /// The profile unchanged without overrides; otherwise each override list appended to the cleaned existing list (repeats skipped)
-    /// and read back through <see cref="RunProfile.FromDict"/>, keeping the original <see cref="RunProfile.SecretOptions"/> (a structured
-    /// profile's raw option values do not survive <see cref="RunProfile.ToDict"/>).
-    /// </summary>
-    public static RunProfile ApplySecretOverrides(RunProfile profile, IEnumerable<string?>? ignoreRules, IEnumerable<string?>? ignorePatterns)
+    /// <summary>The profile's ignore lists with <paramref name="ignoreRules"/> and <paramref name="ignorePatterns"/> appended (repeats skipped).</summary>
+    public static RunProfileDefinition WithSecretOverrides(RunProfileDefinition profile, IEnumerable<string?>? ignoreRules, IEnumerable<string?>? ignorePatterns)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        var overrides = BuildSecretScannerPayload(ignoreRules, ignorePatterns);
-        if (overrides.Count == 0)
+        return profile with
         {
-            return profile;
-        }
-
-        var payload = profile.ToDict();
-        var existingPayload = payload["secret_scanner"] as OrderedDictionary<string, object?>;
-        var existing = new OrderedDictionary<string, object?>(existingPayload ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal), StringComparer.Ordinal);
-        foreach (var (key, values) in overrides)
-        {
-            var current = existing.GetValueOrDefault(key) is List<object?> list ? list.Select(item => (string?)item) : null;
-            var merged = CleanedValues(current);
-            foreach (var value in (List<object?>)values!)
+            SecretScanner = new SecretScannerOptions
             {
-                if (!merged.Contains((string)value!, StringComparer.Ordinal))
-                {
-                    merged.Add((string)value!);
-                }
-            }
-
-            existing[key] = merged.Cast<object?>().ToList();
-        }
-
-        payload["secret_scanner"] = existing;
-        return RunProfile.FromDict(payload).WithSecretOptions(profile.SecretOptions);
+                IgnoreRules = CleanValues([.. profile.SecretScanner.IgnoreRules, .. ignoreRules ?? []]),
+                IgnorePatterns = CleanValues([.. profile.SecretScanner.IgnorePatterns, .. ignorePatterns ?? []]),
+            },
+        };
     }
 
-    /// <summary>A profile from the arguments (string sources, parsed options, secret scanner payload), saved and returned.</summary>
-    public static RunProfile Create(
+    /// <summary>A profile from the arguments, saved and returned.</summary>
+    public static RunProfileDefinition Create(
         string name,
         string? description,
         IEnumerable<string>? sources,
@@ -117,33 +53,33 @@ public static class RunProfileCommands
         IEnumerable<string?>? ignorePatterns,
         string? baseDir)
     {
-        var profile = new RunProfile(
-            name,
-            description,
-            (sources ?? []).Select(source => new RunProfileSource(source)),
-            baseline,
-            ParseOptions(options ?? []),
-            BuildSecretScannerPayload(ignoreRules, ignorePatterns));
-        RunProfileStore.SaveProfile(profile, baseDir);
+        var profile = new RunProfileDefinition
+        {
+            Name = name,
+            Description = description,
+            Sources = [.. (sources ?? []).Select(path => new RunProfileSource { Path = path })],
+            Baseline = baseline,
+            Options = ParseOptions(options ?? []),
+            SecretScanner = new SecretScannerOptions { IgnoreRules = CleanValues(ignoreRules), IgnorePatterns = CleanValues(ignorePatterns) },
+        };
+        RunProfileStore.Save(profile, baseDir);
         return profile;
     }
 
-    /// <summary>Lines for <c>list</c>: "- name description" right-trimmed, or "No profiles found.".</summary>
+    /// <summary>Lines for <c>list</c>: <c>- name description</c>, or <c>No profiles found.</c>.</summary>
     public static IReadOnlyList<string> ListProfileLines(string? baseDir, CancellationToken cancellationToken = default)
     {
-        var profiles = RunProfileStore.ListProfiles(baseDir, cancellationToken);
+        var profiles = RunProfileStore.List(baseDir, cancellationToken);
         return profiles.Count == 0
             ? ["No profiles found."]
-            : profiles.Select(profile => EngineText.StripEnd($"- {profile.Name} {profile.Description ?? string.Empty}")).ToList();
+            : [.. profiles.Select(profile => $"- {profile.Name} {profile.Description}".TrimEnd())];
     }
 
-    public static OrderedDictionary<string, object?> Show(string name, string? baseDir) => RunProfileStore.LoadProfile(name, baseDir).ToDict();
-
     /// <summary>
-    /// The profile from <paramref name="profilePath"/> or by <paramref name="name"/>, with secret overrides applied, saved when
-    /// <paramref name="save"/> is set, then executed.
+    /// The profile from <paramref name="profilePath"/> or by <paramref name="name"/>, with the secret overrides, saved when
+    /// <paramref name="save"/> is set, then run.
     /// </summary>
-    public static ProfileRunResult Run(
+    public static RunProfileRunResult Run(
         string? profilePath,
         string? name,
         string? baseDir,
@@ -154,14 +90,8 @@ public static class RunProfileCommands
         CancellationToken cancellationToken = default)
     {
         var profile = !string.IsNullOrEmpty(profilePath)
-            ? RunProfile.FromDict(RunProfileStore.ReadJson(profilePath))
-            : RunProfileStore.LoadProfile(name ?? throw new ArgumentNullException(nameof(name)), baseDir);
-        profile = ApplySecretOverrides(profile, ignoreRules, ignorePatterns);
-        if (save)
-        {
-            RunProfileStore.SaveProfile(profile, baseDir);
-        }
-
-        return RunProfileExecutor.ExecuteProfile(profile, baseDir, timestamp, cancellationToken);
+            ? RunProfileStore.Read(profilePath)
+            : RunProfileStore.Load(name ?? throw new ArgumentNullException(nameof(name)), baseDir);
+        return new RunProfileExecutor(baseDir).Execute(WithSecretOverrides(profile, ignoreRules, ignorePatterns), save, timestamp, cancellationToken);
     }
 }

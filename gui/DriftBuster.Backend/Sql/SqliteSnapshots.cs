@@ -157,7 +157,7 @@ public static partial class SqliteSnapshots
             return OpenInMemory();
         }
 
-        if (RunProfileStore.IsDirectory(resolved))
+        if (Directory.Exists(resolved))
         {
             Batteries_V2.Init();
             throw new SqliteException(raw.sqlite3_errstr(raw.SQLITE_CANTOPEN).utf8_to_string(), raw.SQLITE_CANTOPEN);

@@ -28,6 +28,35 @@ driftbuster profile run --name prod-web
   `--secret-ignore-pattern` tune the secret scanner.
 - `profile run --profile <file.json> --save` runs a profile file and stores it.
 
+A `profile.json` looks like this, and is read strictly: an unknown or repeated
+key, a missing `name` or a value of the wrong type stops the command with the
+file, the JSON path and the reason.
+
+```json
+{
+  "name": "prod-web",
+  "description": "Production web tier",
+  "sources": [
+    {"path": "deployments/prod-web-01", "alias": null, "optional": false, "exclude": []},
+    {"path": "%LOGROOT%/web/**/*.log", "alias": "logs", "optional": true, "exclude": ["*.tmp"]}
+  ],
+  "baseline": "deployments/prod-web-01",
+  "options": {"env": "prod"},
+  "secret_scanner": {"ignore_rules": [], "ignore_patterns": ["^#"]}
+}
+```
+
+- A source is a file, directory or glob (`*`, `?`, `[...]`, `**` for any
+  depth); `%VAR%` environment variables and a leading `~` are expanded.
+- Saving checks that every source that is not optional and has no wildcard
+  exists, that the baseline is one of the source paths (the first source when
+  none is set) and that every ignore pattern is a valid regular expression.
+- A run copies each source, in order, into
+  `Profiles/<name>/raw/<timestamp>/<alias or source_NN>/` through the secret
+  filter and writes the run's result (profile, sources, files, secret summary)
+  to `metadata.json` beside them. An optional source that is missing or
+  matches nothing is recorded as skipped; any other stops the run.
+
 ## 2. Define a detection profile store
 
 Detection profile stores are JSON:

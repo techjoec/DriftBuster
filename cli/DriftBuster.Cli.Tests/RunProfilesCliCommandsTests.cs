@@ -21,11 +21,11 @@ public sealed class RunProfilesCliCommandsTests : IDisposable
         var accepted = CliInvocation.Invoke("profile", "--base-dir", _tmp.FullName, "create", "--name", "opts", "--source", source, "--option", "foo=bar", "--option", "baz = qux ");
         accepted.ExitCode.Should().Be(0, accepted.Err);
         var shown = CliInvocation.Invoke("profile", "--base-dir", _tmp.FullName, "show", "opts");
-        shown.Json().GetProperty("options").EnumerateObject().Select(option => $"{option.Name}={option.Value.GetString()}").Should().Equal("baz=qux", "foo=bar");
+        shown.Json().GetProperty("options").EnumerateObject().Select(option => $"{option.Name}={option.Value.GetString()}").Should().Equal("foo=bar", "baz=qux");
 
         var refused = CliInvocation.Invoke("profile", "--base-dir", _tmp.FullName, "create", "--name", "bad", "--option", "invalid");
         refused.ExitCode.Should().Be(1);
-        refused.Err.Should().Be("Invalid option format: 'invalid'. Use key=value." + Environment.NewLine);
+        refused.Err.Should().Be("Invalid option 'invalid': use key=value." + Environment.NewLine);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class RunProfilesCliCommandsTests : IDisposable
         payload.GetProperty("options").GetProperty("key").GetString().Should().Be("value");
         payload.GetProperty("options").EnumerateObject().Should().HaveCount(1);
         var scanner = payload.GetProperty("secret_scanner");
-        scanner.EnumerateObject().Select(property => property.Name).Should().Equal("ignore_patterns", "ignore_rules");
+        scanner.EnumerateObject().Select(property => property.Name).Should().Equal("ignore_rules", "ignore_patterns");
         scanner.GetProperty("ignore_rules").EnumerateArray().Select(value => value.GetString()).Should().Equal("Skip");
         scanner.GetProperty("ignore_patterns").EnumerateArray().Select(value => value.GetString()).Should().Equal("ALLOW");
 

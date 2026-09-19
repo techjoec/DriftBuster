@@ -38,13 +38,7 @@ public sealed class SyncVersionsTests : IDisposable
     [Fact]
     public void MainInvokesExpectedUpdates()
     {
-        var versions = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["core"] = "1.0.0",
-            ["catalog"] = "2.0.0",
-            ["gui"] = "3.0.0",
-            ["powershell"] = "4.0.0",
-        };
+        var versions = new ComponentVersions("1.0.0", "2.0.0", "3.0.0", "4.0.0");
 
         var recorded = VersionSync.Updates("/tmp/driftbuster", versions).ToList();
 

@@ -188,10 +188,13 @@ Describe 'DriftBuster PowerShell module' {
             Set-Content -LiteralPath $profileBaseline 'baseline'
             Set-Content -LiteralPath (Join-Path $sourceDir.FullName 'data.txt') 'data'
 
-            $profileDef = [DriftBuster.Backend.Models.RunProfileDefinition]::new()
-            $profileDef.Name = 'Profile One'
-            $profileDef.Baseline = $profileBaseline
-            $profileDef.Sources = @($profileBaseline, (Join-Path $sourceDir.FullName '*.txt'))
+            $profileDef = [DriftBuster.Backend.Models.RunProfileDefinition]@{
+                Name     = 'Profile One'
+                Baseline = $profileBaseline
+                Sources  = [DriftBuster.Backend.Models.RunProfileSource[]]@(
+                    [DriftBuster.Backend.Models.RunProfileSource]@{ Path = $profileBaseline },
+                    [DriftBuster.Backend.Models.RunProfileSource]@{ Path = (Join-Path $sourceDir.FullName '*.txt') })
+            }
 
             $result = Invoke-DriftBusterRunProfile -Profile $profileDef -BaseDir $baseDir -Confirm:$false
             $result.files | Should -Not -BeNullOrEmpty

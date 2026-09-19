@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
@@ -23,25 +24,25 @@ public sealed class SecretScannerEdgeTests : IDisposable
     [Fact]
     public void RunSecretsMetadataMatchesExecuteProfile()
     {
-        const string expected = """
-            {"ruleset_version": "2024-06-01", "rules_loaded": true, "ignored_rules": ["Alpha", "Zed"], "ignored_patterns": ["NOPE", "(x"],
-             "findings": [{"path": "config.txt", "rule": "PasswordAssignment", "line": 1, "snippet": "[SECRET]"},
-                          {"path": "config.txt", "rule": "AwsAccessKeyId", "line": 2, "snippet": "[SECRET]"}],
-             "messages": ["secret candidate redacted (PasswordAssignment) from config.txt:1 -> [SECRET]",
-                          "secret candidate redacted (AwsAccessKeyId) from config.txt:2 -> [SECRET]",
-                          "scrubbed 2 potential secret line(s) from config.txt"]}
-            """;
         var source = Path.Combine(_tmp.FullName, "config.txt");
         File.WriteAllText(source, "password = Hunter12345\nAKIAABCDEFGHIJKLMNOP\n", new UTF8Encoding(false));
-        var options = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["secret_ignore_patterns"] = "NOPE, (x" };
-        var scanner = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["ignore_rules"] = new List<object?> { "Zed", "Alpha" } };
-        var context = SecretScanner.BuildContext(options, scanner);
+        var context = SecretScanner.BuildContext(new SecretScannerOptions { IgnoreRules = ["Zed", "Alpha"], IgnorePatterns = ["NOPE", "(x"] });
         var logs = new List<string>();
 
         SecretScanner.CopyWithSecretFilter(source, Path.Combine(_tmp.FullName, "out", "config.txt"), "config.txt", context, logs.Add, cancellationToken: TestContext.Current.CancellationToken);
 
-        EngineJson.TryLoads(expected, out var want).Should().BeTrue();
-        EngineRepr.Repr(SecretScanner.RunSecretsMetadata(context, logs)).Should().Be(EngineRepr.Repr(want));
+        SecretScanner.Summarise(context, logs).Should().BeEquivalentTo(new SecretRunSummary(
+            "2024-06-01",
+            true,
+            ["Alpha", "Zed"],
+            ["NOPE", "(x"],
+            [new SecretFindingResult("config.txt", "PasswordAssignment", 1, "[SECRET]"), new SecretFindingResult("config.txt", "AwsAccessKeyId", 2, "[SECRET]")],
+            [],
+            [
+                "secret candidate redacted (PasswordAssignment) from config.txt:1 -> [SECRET]",
+                "secret candidate redacted (AwsAccessKeyId) from config.txt:2 -> [SECRET]",
+                "scrubbed 2 potential secret line(s) from config.txt",
+            ]));
     }
 
     [Fact]
@@ -60,7 +61,7 @@ public sealed class SecretScannerEdgeTests : IDisposable
     {
         var source = Path.Combine(_tmp.FullName, "config.txt");
         File.WriteAllText(source, "password = Hunter12345\r\n", new UTF8Encoding(false));
-        var context = SecretScanner.BuildContext(null, null);
+        var context = SecretScanner.BuildContext(null);
         var destination = Path.Combine(_tmp.FullName, "nested", "deeper", "config.txt");
 
         var (size, digest) = SecretScanner.CopyWithSecretFilter(source, destination, "config.txt", context, _ => { }, _ => true, TestContext.Current.CancellationToken);
@@ -80,7 +81,7 @@ public sealed class SecretScannerEdgeTests : IDisposable
         File.SetLastWriteTimeUtc(source, stamp);
         var destination = Path.Combine(_tmp.FullName, "out.txt");
 
-        SecretScanner.CopyWithSecretFilter(source, destination, "config.txt", SecretScanner.BuildContext(null, null), _ => { }, cancellationToken: TestContext.Current.CancellationToken);
+        SecretScanner.CopyWithSecretFilter(source, destination, "config.txt", SecretScanner.BuildContext(null), _ => { }, cancellationToken: TestContext.Current.CancellationToken);
 
         File.GetLastWriteTimeUtc(destination).Should().Be(stamp);
         File.ReadAllText(destination).Should().Contain("[SECRET]");

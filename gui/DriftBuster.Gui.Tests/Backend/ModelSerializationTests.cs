@@ -127,7 +127,7 @@ public sealed class ModelSerializationTests
         {
             Name = "nightly-scan",
             Description = "Full nightly configuration scan",
-            Sources = new[] { new RunProfileSource("/etc/app"), new RunProfileSource("/opt/service") { Alias = "service", Optional = true, Exclude = new[] { "*.tmp", "*.bak" } } },
+            Sources = new[] { new RunProfileSource { Path = "/etc/app" }, new RunProfileSource { Path = "/opt/service", Alias = "service", Optional = true, Exclude = new[] { "*.tmp", "*.bak" } } },
             Baseline = "/etc/app",
             Options = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -145,7 +145,7 @@ public sealed class ModelSerializationTests
         result.Name.Should().Be("nightly-scan");
         result.Description.Should().Be("Full nightly configuration scan");
         result.Sources.Select(source => source.Path).Should().Equal("/etc/app", "/opt/service");
-        result.Sources[0].IsPathOnly.Should().BeTrue();
+        result.Sources[0].Should().BeEquivalentTo(new RunProfileSource { Path = "/etc/app" });
         result.Sources[1].Alias.Should().Be("service");
         result.Sources[1].Optional.Should().BeTrue();
         result.Sources[1].Exclude.Should().Equal("*.tmp", "*.bak");
@@ -229,39 +229,5 @@ public sealed class ModelSerializationTests
         result.HostId.Should().Be("srv-01");
         result.Message.Should().Be("Scanning /etc");
         result.Timestamp.Should().Be(ts);
-    }
-
-    [Fact]
-    public void RunProfileSource_reads_bare_strings_and_objects()
-    {
-        const string json = """
-            {"name": "mixed", "sources": ["/etc/app", {"path": "/logs/*.log", "alias": "logs", "optional": true, "exclude": ["*.tmp", "*.bak"]}, {"path": "/data", "alias": "  ", "exclude": "*.cache", "extra": 1}]}
-            """;
-
-        var profile = JsonSerializer.Deserialize<RunProfileDefinition>(json)!;
-
-        profile.Sources.Should().HaveCount(3);
-        profile.Sources[0].Path.Should().Be("/etc/app");
-        profile.Sources[0].IsPathOnly.Should().BeTrue();
-        profile.Sources[1].Path.Should().Be("/logs/*.log");
-        profile.Sources[1].Alias.Should().Be("logs");
-        profile.Sources[1].Optional.Should().BeTrue();
-        profile.Sources[1].Exclude.Should().Equal("*.tmp", "*.bak");
-        profile.Sources[2].Alias.Should().BeNull();
-        profile.Sources[2].Optional.Should().BeFalse();
-        profile.Sources[2].Exclude.Should().Equal("*.cache");
-    }
-
-    [Fact]
-    public void RunProfileSource_writes_a_bare_string_for_a_path_only_source()
-    {
-        var sources = new[]
-        {
-            new RunProfileSource("/etc/app"),
-            new RunProfileSource("/logs") { Optional = true },
-            new RunProfileSource("/data") { Alias = "data", Exclude = new[] { "*.tmp" } },
-        };
-
-        JsonSerializer.Serialize(sources).Should().Be("""["/etc/app",{"path":"/logs","optional":true},{"path":"/data","alias":"data","exclude":["*.tmp"]}]""");
     }
 }

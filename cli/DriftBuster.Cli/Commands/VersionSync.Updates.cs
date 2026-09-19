@@ -6,11 +6,11 @@ internal static partial class VersionSync
     /// The updates <see cref="Run"/> makes, in order: <c>core</c> versions the backend and the console tool, <c>catalog</c> the detection
     /// catalog, <c>gui</c> the desktop app and <c>powershell</c> the module (whose <c>BackendVersion</c> pins <c>core</c>).
     /// </summary>
-    public static IEnumerable<VersionUpdate> Updates(string root, IReadOnlyDictionary<string, object?> versions)
+    public static IEnumerable<VersionUpdate> Updates(string root, ComponentVersions versions)
     {
         ArgumentNullException.ThrowIfNull(versions);
-        var core = Str(versions["core"]);
-        var catalog = Str(versions["catalog"]);
+        var core = versions.Core;
+        var catalog = versions.Catalog;
 
         yield return new(
             At(root, "Directory.Build.props"),
@@ -20,10 +20,10 @@ internal static partial class VersionSync
         yield return new(
             At(root, "gui", "GuiVersion.props"),
             "<DriftBusterGuiVersion>[^<]+</DriftBusterGuiVersion>",
-            $"<DriftBusterGuiVersion>{Str(versions["gui"])}</DriftBusterGuiVersion>",
+            $"<DriftBusterGuiVersion>{versions.Gui}</DriftBusterGuiVersion>",
             1);
         var psd1 = At(root, "cli", "DriftBuster.PowerShell", "DriftBuster.psd1");
-        yield return new(psd1, "ModuleVersion\\s*=\\s*'[^']+'", $"ModuleVersion     = '{Str(versions["powershell"])}'", 1);
+        yield return new(psd1, "ModuleVersion\\s*=\\s*'[^']+'", $"ModuleVersion     = '{versions.Powershell}'", 1);
         yield return new(psd1, "[ \\t]*BackendVersion\\s*=\\s*'[^']+'", $"        BackendVersion = '{core}'", 1);
 
         yield return new(

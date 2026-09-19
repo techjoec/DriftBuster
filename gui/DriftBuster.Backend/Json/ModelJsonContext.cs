@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.Profiles.Run;
 using DriftBuster.Backend.Scheduling;
 
 namespace DriftBuster.Backend.Json;
@@ -15,6 +16,10 @@ namespace DriftBuster.Backend.Json;
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     RespectNullableAnnotations = true,
     RespectRequiredConstructorParameters = true)]
+[JsonSerializable(typeof(RunProfileDefinition))]
+[JsonSerializable(typeof(RunProfileListResult))]
+[JsonSerializable(typeof(RunProfileRunResult))]
+[JsonSerializable(typeof(OfflineRunnerConfig))]
 [JsonSerializable(typeof(ScheduleManifest))]
 [JsonSerializable(typeof(IReadOnlyDictionary<string, ScheduleStateEntry>))]
 [JsonSerializable(typeof(ScheduleListResult))]

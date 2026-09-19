@@ -1,13 +1,9 @@
-using System.Text.RegularExpressions;
-
+using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
 
-/// <summary>
-/// The offline runner's secret-scanning helpers: ruleset compilation from a mapping, secret option values, the manifest scanner
-/// block and the secret context. The runner execution tests are Pester tests of the offline runner script.
-/// </summary>
+/// <summary>Ruleset compilation from a mapping and the secret context a run builds.</summary>
 [Collection(SecretRuleCacheCollection.Name)]
 public sealed class OfflineRunnerTests : IDisposable
 {
@@ -47,38 +43,13 @@ public sealed class OfflineRunnerTests : IDisposable
     }
 
     [Fact]
-    public void SecretOptionValuesAndManifestHelpers()
+    public void The_context_carries_the_profile_ignore_lists()
     {
-        SecretScanner.SecretOptionValues("a, b ; c").Should().Equal("a", "b", "c");
-        SecretScanner.SecretOptionValues(new List<object?> { "x", null, " y " }).Should().Equal("x", "y");
+        var context = SecretScanner.BuildContext(new SecretScannerOptions { IgnoreRules = ["Token"], IgnorePatterns = ["ALLOW", "ALLOW", "("] });
 
-        var context = new SecretDetectionContext(
-            rules: [],
-            version: "v1",
-            ignoreRules: new HashSet<string>(StringComparer.Ordinal) { "Skip" },
-            ignorePatterns: [new Regex("SKIP", RegexOptions.CultureInvariant, Regex.InfiniteMatchTimeout)],
-            ignorePatternText: ["SKIP"],
-            rulesLoaded: true);
-        var manifest = SecretScanner.ManifestSecretScanner(
-            Map(("secret_ignore_rules", "Skip")),
-            Map(("ignore_patterns", new List<object?> { "SKIP" })),
-            context);
-        manifest["ruleset_version"].Should().Be("v1");
-        ((List<object?>)manifest["ignore_rules"]!).Should().Equal("Skip");
-        ((List<object?>)manifest["ignore_patterns"]!).Should().Equal("SKIP");
-    }
-
-    [Fact]
-    public void BuildSecretContextPrefersInlineRules()
-    {
-        var payload = Map(
-            ("ruleset", Map(("version", "inline"), ("rules", new List<object?> { Map(("name", "Token"), ("pattern", "VALUE")) }))),
-            ("ignore_rules", new List<object?> { "Token" }));
-        var context = SecretScanner.BuildContext(Map(("secret_ignore_patterns", new List<object?> { "ALLOW" })), payload);
-
-        context.Version.Should().Be("inline");
         context.RulesLoaded.Should().BeTrue();
         context.IgnoreRules.Should().BeEquivalentTo(["Token"]);
-        context.IgnorePatternText.Should().Contain("ALLOW");
+        context.IgnorePatternText.Should().Equal("ALLOW", "(");
+        context.IgnorePatterns.Should().ContainSingle();
     }
 }

@@ -70,94 +70,10 @@ public sealed class DriftbusterBackendEdgeTests
             {
                 Name = "edge-profile",
                 Baseline = baseline,
-                Sources = new[] { new RunProfileSource(baseline), new RunProfileSource(missingPath) },
+                Sources = new[] { new RunProfileSource { Path = baseline }, new RunProfileSource { Path = missingPath } },
             };
 
-            await Assert.ThrowsAsync<FileNotFoundException>(() => _backend.RunProfileAsync(profile, saveProfile: false, baseDir: baseDir, cancellationToken: TestContext.Current.CancellationToken));
-        }
-        finally
-        {
-            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task RunProfile_runs_a_stored_structured_profile_with_its_raw_option_values()
-    {
-        var root = Directory.CreateTempSubdirectory("driftbuster-facade-options-");
-        try
-        {
-            // The same hand-written profile under two base directories: one run by the executor from the file, one through the facade.
-            string Stage(string name)
-            {
-                var baseDir = Directory.CreateDirectory(Path.Combine(root.FullName, name)).FullName;
-                var data = Directory.CreateDirectory(Path.Combine(baseDir, "data")).FullName;
-                File.WriteAllText(Path.Combine(data, "app.ini"), "password='SuperSecret1234abcd'\n");
-                var profileDir = Directory.CreateDirectory(Path.Combine(baseDir, "Profiles", "p")).FullName;
-                File.WriteAllText(
-                    Path.Combine(profileDir, "profile.json"),
-                    "{\"name\": \"p\", \"sources\": [{\"path\": " + JsonSerializer.Serialize(data) + ", \"alias\": \"d\"}], "
-                    + "\"options\": {\"secret_ignore_patterns\": [\"5\"], \"note\": 7}}");
-                return baseDir;
-            }
-
-            var direct = Stage("direct");
-            var facade = Stage("facade");
-            var expected = RunProfileExecutor.ExecuteProfile(RunProfileStore.LoadProfile("p", direct), direct, "t", TestContext.Current.CancellationToken);
-
-            var listed = (await _backend.ListProfilesAsync(facade, TestContext.Current.CancellationToken)).Profiles.Single();
-            listed.Options["secret_ignore_patterns"].Should().Be("['5']");
-            var result = await _backend.RunProfileAsync(listed, saveProfile: true, baseDir: facade, timestamp: "t", cancellationToken: TestContext.Current.CancellationToken);
-
-            string Secrets(string outputDir) => JsonDocument.Parse(File.ReadAllText(Path.Combine(outputDir, "metadata.json"))).RootElement.GetProperty("secrets").GetRawText();
-            Secrets(result.OutputDir).Should().Be(Secrets(expected.OutputDir));
-            ((List<object?>)expected.Secrets!["findings"]!).Should().ContainSingle();
-            ((List<object?>)expected.Secrets!["ignored_patterns"]!).Should().Equal("5");
-
-            // An edited value runs with its text, as the model holds it.
-            listed.Options["secret_ignore_patterns"] = "['6']";
-            var edited = await _backend.RunProfileAsync(listed, saveProfile: false, baseDir: Stage("edited"), timestamp: "t", cancellationToken: TestContext.Current.CancellationToken);
-            JsonDocument.Parse(Secrets(edited.OutputDir)).RootElement.GetProperty("ignored_patterns").EnumerateArray().Select(item => item.GetString()).Should().Equal("['6']");
-        }
-        finally
-        {
-            root.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task RunProfile_reorders_baseline_to_first_source()
-    {
-        var baseDir = Path.Combine(Path.GetTempPath(), "DriftbusterTests", Guid.NewGuid().ToString("N"));
-        var sourceDir = Directory.CreateDirectory(Path.Combine(baseDir, "src"));
-        var a = Path.Combine(sourceDir.FullName, "a.txt");
-        var b = Path.Combine(sourceDir.FullName, "b.txt");
-        File.WriteAllText(a, "A");
-        File.WriteAllText(b, "B");
-
-        try
-        {
-            // Put baseline second; expect it to be treated as first during copy (source_00)
-            var profile = new RunProfileDefinition
-            {
-                Name = "reorder",
-                Baseline = b,
-                Sources = new[] { new RunProfileSource(a), new RunProfileSource(b) },
-            };
-
-            var result = await _backend.RunProfileAsync(profile, saveProfile: false, baseDir: baseDir, cancellationToken: TestContext.Current.CancellationToken);
-            result.Files.Should().NotBeEmpty();
-
-            // Find entry for the baseline and assert it landed under source_00
-            var baselineEntry = result.Files.FirstOrDefault(f => string.Equals(f.Source, b, StringComparison.Ordinal));
-            baselineEntry.Should().NotBeNull();
-            baselineEntry!.Destination.Replace('\\', '/').Should().Contain("/source_00/");
-
-            // metadata.json should include baseline field
-            var metadataPath = Path.Combine(result.OutputDir, "metadata.json");
-            File.Exists(metadataPath).Should().BeTrue();
-            var json = JsonDocument.Parse(File.ReadAllText(metadataPath));
-            json.RootElement.GetProperty("baseline").GetString().Should().Be(b);
+            await Assert.ThrowsAsync<RunProfileException>(() => _backend.RunProfileAsync(profile, saveProfile: false, baseDir: baseDir, cancellationToken: TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -183,9 +99,9 @@ public sealed class DriftbusterBackendEdgeTests
                 Name = "structured",
                 Sources = new[]
                 {
-                    new RunProfileSource(secretFile),
-                    new RunProfileSource(logs.FullName) { Alias = "logs", Exclude = new[] { "*.tmp" } },
-                    new RunProfileSource(Path.Combine(baseDir, "missing", "*.log")) { Optional = true },
+                    new RunProfileSource { Path = secretFile },
+                    new RunProfileSource { Path = logs.FullName, Alias = "logs", Exclude = new[] { "*.tmp" } },
+                    new RunProfileSource { Path = Path.Combine(baseDir, "missing", "*.log"), Optional = true },
                 },
             };
 

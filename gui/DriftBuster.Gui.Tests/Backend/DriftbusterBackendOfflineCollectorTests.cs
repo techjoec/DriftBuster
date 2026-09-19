@@ -26,7 +26,7 @@ public class DriftbusterBackendOfflineCollectorTests
         var profile = new RunProfileDefinition
         {
             Name = "offline-test",
-            Sources = new[] { new RunProfileSource("C:/logs") },
+            Sources = new[] { new RunProfileSource { Path = "C:/logs" } },
         };
 
         var packagePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.zip");
@@ -73,9 +73,9 @@ public class DriftbusterBackendOfflineCollectorTests
             Name = "structured",
             Sources = new[]
             {
-                new RunProfileSource("C:/logs/app.log"),
-                new RunProfileSource("C:/data") { Alias = " data ", Optional = true, Exclude = new[] { "*.tmp", " ", "cache/*" } },
-                new RunProfileSource("  "),
+                new RunProfileSource { Path = "C:/logs/app.log" },
+                new RunProfileSource { Path = "C:/data", Alias = " data ", Optional = true, Exclude = new[] { "*.tmp", " ", "cache/*" } },
+                new RunProfileSource { Path = "  " },
             },
         };
 
@@ -97,7 +97,7 @@ public class DriftbusterBackendOfflineCollectorTests
 
             var sources = profileElement.GetProperty("sources");
             Assert.Equal(2, sources.GetArrayLength());
-            Assert.Equal("""{"path":"C:/logs/app.log","optional":false,"exclude":[]}""", Compact(sources[0]));
+            Assert.Equal("""{"path":"C:/logs/app.log","alias":null,"optional":false,"exclude":[]}""", Compact(sources[0]));
             Assert.Equal("""{"path":"C:/data","alias":"data","optional":true,"exclude":["*.tmp"," ","cache/*"]}""", Compact(sources[1]));
         }
         finally

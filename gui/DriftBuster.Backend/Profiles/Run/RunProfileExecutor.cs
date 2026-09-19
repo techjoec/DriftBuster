@@ -1,272 +1,171 @@
 using System.Globalization;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Profiles.Run;
 
 /// <summary>
-/// Runs a profile: saves it, copies every source's files through the secret filter into
-/// <c>&lt;profile&gt;/raw/&lt;timestamp&gt;/&lt;source dir&gt;</c>, and writes <c>metadata.json</c> beside them.
+/// Runs a profile: validates (and optionally saves) it, copies every source's files through the secret filter into
+/// <c>&lt;profile&gt;/raw/&lt;timestamp&gt;/&lt;alias or source_NN&gt;</c> in declared order, and writes the result as
+/// <c>metadata.json</c> beside them.
 /// </summary>
 /// <remarks>
-/// Path-only profiles put the baseline source first. A structured profile (<see cref="RunProfile.IsStructured"/>) collects like the
-/// offline runner: declared order; an <see cref="RunProfileSource.Alias"/> names the directory instead of <c>source_NN</c>;
-/// optional sources that are missing or empty are skipped; matches are globbed, sorted and de-duplicated, symlinks and matches
-/// inside an already collected directory skipped; files matching <see cref="RunProfileSource.Exclude"/> are not copied.
+/// A source is a path or a glob (<see cref="PathWildcard"/> syntax, <c>**</c> for any depth). An optional source that is missing or
+/// matches nothing is skipped; any other raises <see cref="RunProfileException"/>. Matches are taken in ordinal order; symbolic links,
+/// matches inside an already collected directory and anything under the Profiles root are skipped; a directory's files keep their
+/// relative paths, a file keeps its name; files matching the source's exclude patterns are left out.
 /// </remarks>
-public static partial class RunProfileExecutor
+public sealed class RunProfileExecutor(string? baseDir = null, TimeProvider? time = null)
 {
-    /// <summary>Clock for run timestamps (test seam).</summary>
-    internal static Func<DateTime> UtcNow { get; set; } = () => DateTime.UtcNow;
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
 
-    /// <summary>UTC run timestamp, <c>yyyyMMddTHHmmssZ</c>.</summary>
-    public static string Timestamp() => UtcNow().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
-
-    public static ProfileRunResult ExecuteProfile(RunProfile profile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default)
-        => ExecuteProfile(profile, baseDir, timestamp, saveProfile: true, cancellationToken);
-
-    /// <summary>
-    /// As the public overload; with <paramref name="saveProfile"/> false the profile is validated but <c>profile.json</c> is not
-    /// written (the GUI's choice).
-    /// </summary>
-    internal static ProfileRunResult ExecuteProfile(RunProfile profile, string? baseDir, string? timestamp, bool saveProfile, CancellationToken cancellationToken)
+    public RunProfileRunResult Execute(RunProfileDefinition profile, bool saveProfile, string? timestamp = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        var createdAncestors = MissingProfilesAncestors(baseDir);
-        string profileDirectory;
-        if (saveProfile)
-        {
-            profileDirectory = RunProfileStore.SaveProfile(profile, baseDir);
-        }
-        else
-        {
-            RunProfileStore.ValidateProfile(profile);
-            profileDirectory = RunProfileStore.ProfileDirectory(profile.Name, baseDir);
-        }
-
-        var runTimestamp = string.IsNullOrEmpty(timestamp) ? Timestamp() : timestamp;
-        var runRoot = RunProfileStore.JoinName(RunProfileStore.JoinName(profileDirectory, "raw"), runTimestamp);
-        EnginePath.MakeDirectories(runRoot);
-
-        var secretContext = SecretScanner.BuildContext(profile.SecretOptions, profile.SecretScanner);
-        var secretLogs = new List<string>();
-        var files = new List<ProfileFile>();
-        var summaries = new List<ProfileRunSource>();
-
-        var sources = profile.IsStructured ? profile.Sources.ToList() : BaselineFirst(profile);
-        var ownOutput = createdAncestors.Select(PhysicalPath).Prepend(PhysicalPath(profileDirectory)).ToList();
-        for (var index = 0; index < sources.Count; index++)
+        var profileDirectory = saveProfile ? RunProfileStore.Save(profile, baseDir) : ValidatedDirectory(profile);
+        var runTimestamp = string.IsNullOrEmpty(timestamp)
+            ? _time.GetUtcNow().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture)
+            : timestamp;
+        var runRoot = Directory.CreateDirectory(Path.Join(profileDirectory, "raw", runTimestamp)).FullName;
+        var profilesRoot = Path.GetFullPath(RunProfileStore.ProfilesRoot(baseDir));
+        var context = SecretScanner.BuildContext(profile.SecretScanner);
+        var log = new List<string>();
+        var files = new List<RunProfileFileResult>();
+        var sources = new List<RunProfileSourceResult>();
+        for (var index = 0; index < profile.Sources.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var destinationName = DestinationName(sources[index], index);
-            var destinationRoot = RunProfileStore.JoinName(runRoot, destinationName);
-            EnginePath.MakeDirectories(destinationRoot);
-            var target = new CopyTarget(files, secretContext, secretLogs.Add, ownOutput);
-            summaries.Add(profile.IsStructured
-                ? CollectStructuredSource(sources[index], destinationName, destinationRoot, target, cancellationToken)
-                : CollectSource(sources[index], destinationName, destinationRoot, target, cancellationToken));
+            var source = profile.Sources[index];
+            var name = string.IsNullOrEmpty(source.Alias)
+                ? string.Create(CultureInfo.InvariantCulture, $"source_{index:00}")
+                : RunProfileStore.SafeName(source.Alias);
+            var collector = new SourceCollector(source, index, Path.Join(runRoot, name), profilesRoot, context, log.Add, files);
+            sources.Add(collector.Collect(name, cancellationToken));
         }
 
-        var secretMetadata = SecretScanner.RunSecretsMetadata(secretContext, secretLogs);
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["profile"] = profile.ToDict(),
-            ["timestamp"] = runTimestamp,
-            ["baseline"] = sources.Count == 0 ? null : string.IsNullOrEmpty(profile.Baseline) ? sources[0].Path : profile.Baseline,
-            ["files"] = files.Select(entry => (object?)entry.ToDict()).ToList(),
-            ["secrets"] = secretMetadata,
-        };
-        RunProfileStore.WriteJson(RunProfileStore.JoinName(runRoot, "metadata.json"), metadata);
-        return new ProfileRunResult(profile, runTimestamp, runRoot, files, secretMetadata)
-        {
-            RedactionGuards = [.. secretContext.RedactionGuards],
-            Sources = summaries,
-        };
+        var result = new RunProfileRunResult(
+            profile,
+            runTimestamp,
+            runRoot,
+            string.IsNullOrEmpty(profile.Baseline) ? profile.Sources[0].Path : profile.Baseline,
+            sources,
+            files,
+            SecretScanner.Summarise(context, log));
+        AtomicFile.WriteAllText(Path.Join(runRoot, "metadata.json"), ModelJson.Serialize(result));
+        return result;
     }
 
-    // Path-only profiles move the first source whose path is the baseline to the front; structured profiles keep declared order.
-    private static List<RunProfileSource> BaselineFirst(RunProfile profile)
+    /// <summary>True when a pattern matches the relative path (forward slashes) or its last segment.</summary>
+    internal static bool ShouldExclude(string relativePath, IReadOnlyList<string> patterns)
     {
-        var sources = profile.Sources.ToList();
-        var baselineIndex = string.IsNullOrEmpty(profile.Baseline)
-            ? -1
-            : sources.FindIndex(source => string.Equals(source.Path, profile.Baseline, StringComparison.Ordinal));
-        if (baselineIndex >= 0)
+        ArgumentNullException.ThrowIfNull(relativePath);
+        ArgumentNullException.ThrowIfNull(patterns);
+        var name = relativePath[(relativePath.LastIndexOf('/') + 1)..];
+        return patterns.Any(pattern => PathWildcard.IsMatch(relativePath, pattern) || PathWildcard.IsMatch(name, pattern));
+    }
+
+    private string ValidatedDirectory(RunProfileDefinition profile)
+    {
+        RunProfileStore.Validate(profile);
+        return RunProfileStore.ProfileDirectory(profile.Name, baseDir);
+    }
+
+    private sealed class SourceCollector(
+        RunProfileSource source,
+        int index,
+        string destinationRoot,
+        string profilesRoot,
+        SecretDetectionContext context,
+        Action<string> log,
+        List<RunProfileFileResult> files)
+    {
+        private readonly List<string> _matched = [];
+        private readonly List<string> _collectedDirectories = [];
+
+        public RunProfileSourceResult Collect(string directoryName, CancellationToken cancellationToken)
         {
-            var baseline = sources[baselineIndex];
-            sources.RemoveAt(baselineIndex);
-            sources.Insert(0, baseline);
-        }
-
-        return sources;
-    }
-
-    /// <summary>A source's directory: its alias made safe, else <c>source_NN</c>.</summary>
-    public static string DestinationName(RunProfileSource source, int fallbackIndex)
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        return string.IsNullOrEmpty(source.Alias)
-            ? string.Create(CultureInfo.InvariantCulture, $"source_{fallbackIndex:00}")
-            : RunProfileStore.SafeName(source.Alias);
-    }
-
-    // Where a run's files go: the file list, secret context and log, and the run's own output directories (the profile directory and
-    // any directories above it the run created), which a structured source must never collect.
-    private sealed record CopyTarget(List<ProfileFile> Files, SecretDetectionContext Context, Action<string> Log, IReadOnlyList<string> OwnOutput)
-    {
-        public bool IsOwnOutput(string physicalPath) => OwnOutput.Any(directory => IsInside(physicalPath, directory));
-    }
-
-    // The Profiles root and each missing directory above it, nearest first.
-    private static List<string> MissingProfilesAncestors(string? baseDir)
-    {
-        var missing = new List<string>();
-        var path = LexicalPath.Join(string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir, "Profiles");
-        while (!ExistsOrUnknown(path))
-        {
-            missing.Add(path);
-            var parent = LexicalPath.Parent(path);
-            if (string.Equals(parent, path, StringComparison.Ordinal))
+            var matches = Matches(cancellationToken);
+            if (matches.Count == 0)
             {
-                break;
+                var reason = PathWildcard.HasWildcards(source.Path) ? "no-matches" : "missing";
+                return source.Optional
+                    ? new RunProfileSourceResult(source.Path, directoryName, Optional: true, Skipped: true, reason, [])
+                    : throw new RunProfileException($"sources[{index}].path: {(string.Equals(reason, "missing", StringComparison.Ordinal) ? "does not exist" : "matches nothing")}: {source.Path}");
             }
 
-            path = parent;
-        }
-
-        return missing;
-    }
-
-    // Existence, with a lookup that throws counted as existing (creating the directory then fails).
-    private static bool ExistsOrUnknown(string path)
-    {
-        try
-        {
-            return RunProfileStore.Exists(path);
-        }
-        catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
-        {
-            return true;
-        }
-    }
-
-    // Absolute path with links resolved, or the absolute path when resolution fails.
-    private static string PhysicalPath(string path) => EnginePath.ResolvePhysicalPath(EnginePath.Absolute(path)) ?? EnginePath.Absolute(path);
-
-    // One path-only source: its matches, directories walked recursively, each file copied.
-    private static ProfileRunSource CollectSource(RunProfileSource source, string destinationName, string destinationRoot, CopyTarget target, CancellationToken cancellationToken)
-    {
-        var matched = new List<string>();
-        foreach (var match in CollectMatches(RunProfileStore.ExpandPath(source.Path), cancellationToken))
-        {
-            if (RunProfileStore.IsDirectory(match))
+            Directory.CreateDirectory(destinationRoot);
+            foreach (var match in matches)
             {
-                foreach (var file in WalkFiles(match, cancellationToken))
+                cancellationToken.ThrowIfCancellationRequested();
+                if (IsLink(match) || _collectedDirectories.Any(directory => IsInside(match, directory)))
                 {
-                    if (EnginePath.IsFile(file))
+                    continue;
+                }
+
+                if (Directory.Exists(match))
+                {
+                    _collectedDirectories.Add(match);
+                    foreach (var file in FileTreeGlob.Glob(match, "**/*", cancellationToken).Where(IsCollectable).Order(StringComparer.Ordinal))
                     {
-                        CopyUnlessExcluded(source, file, match, destinationRoot, target, matched, cancellationToken);
+                        Copy(file, match, cancellationToken);
                     }
                 }
+                else if (IsCollectable(match))
+                {
+                    Copy(match, Path.GetDirectoryName(match)!, cancellationToken);
+                }
             }
-            else if (EnginePath.IsFile(match))
+
+            return new RunProfileSourceResult(source.Path, directoryName, source.Optional, Skipped: false, Reason: null, _matched);
+        }
+
+        // Full paths in ordinal order, each once, none under the Profiles root.
+        private List<string> Matches(CancellationToken cancellationToken)
+        {
+            var expanded = RunProfileStore.Expand(source.Path);
+            IEnumerable<string> found = PathWildcard.HasWildcards(expanded)
+                ? FileTreeGlob.GlobPathname(expanded, cancellationToken)
+                : RunProfileStore.Exists(expanded) ? [expanded] : [];
+            return [.. found.Select(Path.GetFullPath).Where(path => !IsInside(path, profilesRoot)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+        }
+
+        private bool IsCollectable(string path) => EnginePath.IsFile(path) && !IsLink(path) && !IsInside(Path.GetFullPath(path), profilesRoot);
+
+        private void Copy(string file, string basePath, CancellationToken cancellationToken)
+        {
+            var relative = Path.GetRelativePath(basePath, file).Replace('\\', '/');
+            if (ShouldExclude(relative, source.Exclude))
             {
-                CopyUnlessExcluded(source, match, LexicalPath.Parent(match), destinationRoot, target, matched, cancellationToken);
+                return;
+            }
+
+            var destination = Path.Join(destinationRoot, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            var (size, sha256) = SecretScanner.CopyWithSecretFilter(file, destination, relative, context, log, cancellationToken: cancellationToken);
+            files.Add(new RunProfileFileResult(source.Path, destination.Replace('\\', '/'), size, sha256));
+            _matched.Add(relative);
+        }
+
+        private static bool IsInside(string path, string directory)
+        {
+            var relative = Path.GetRelativePath(directory, path);
+            return string.Equals(relative, ".", StringComparison.Ordinal)
+                || (!string.Equals(relative, "..", StringComparison.Ordinal) && !relative.StartsWith("../", StringComparison.Ordinal) && !relative.StartsWith(@"..\", StringComparison.Ordinal) && !Path.IsPathRooted(relative));
+        }
+
+        private static bool IsLink(string path)
+        {
+            try
+            {
+                return new FileInfo(path).LinkTarget is not null;
+            }
+            catch (Exception exc) when (exc is IOException or UnauthorizedAccessException)
+            {
+                return false;
             }
         }
-
-        return new ProfileRunSource(source.Path, destinationName, source.Optional, Skipped: false, Reason: null, matched, source.Exclude ?? []);
     }
-
-    // Every entry below a directory, minus paths whose names only exist as a U+FFFD decoding of non-UTF-8 bytes (and repeats of a
-    // U+FFFD path), so a real U+FFFD name is read once and never in place of an undecodable sibling.
-    private static IEnumerable<string> WalkFiles(string directory, CancellationToken cancellationToken)
-    {
-        var replaced = new HashSet<string>(StringComparer.Ordinal);
-        return FileTreeGlob.Glob(directory, "**/*", cancellationToken)
-            .Where(path => !path.Contains('\uFFFD', StringComparison.Ordinal) || (replaced.Add(path) && !EnginePath.IsUndecodableName(path)));
-    }
-
-    private static void CopyUnlessExcluded(
-        RunProfileSource source,
-        string file,
-        string basePath,
-        string destinationRoot,
-        CopyTarget target,
-        List<string> matched,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var relative = RelativePath(file, basePath);
-        if (ShouldExclude(relative, source.Exclude))
-        {
-            return;
-        }
-
-        target.Files.Add(CopyFile(source.Path, file, basePath, destinationRoot, target.Context, target.Log, cancellationToken));
-        matched.Add(relative);
-    }
-
-    /// <summary>
-    /// True when a pattern matches the relative path (posix form) or its last segment (<see cref="PathWildcard"/> syntax).
-    /// </summary>
-    internal static bool ShouldExclude(string relativePosix, IReadOnlyList<string>? patterns)
-    {
-        ArgumentNullException.ThrowIfNull(relativePosix);
-        if (patterns is null || patterns.Count == 0)
-        {
-            return false;
-        }
-
-        var name = relativePosix[(relativePosix.LastIndexOf('/') + 1)..];
-        return patterns.Any(pattern => PathWildcard.IsMatch(relativePosix, pattern) || PathWildcard.IsMatch(name, pattern));
-    }
-
-    /// <summary>
-    /// The path itself when it exists; its glob matches (sorted by posix path) when it holds a wildcard; otherwise
-    /// <see cref="FileNotFoundException"/> (<c>Path does not exist: ...</c>).
-    /// </summary>
-    internal static IReadOnlyList<string> CollectMatches(string pathText, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(pathText);
-        var candidate = LexicalPath.Str(pathText);
-        if (RunProfileStore.Exists(candidate))
-        {
-            return [candidate];
-        }
-
-        if (RunProfileStore.HasMagic(pathText))
-        {
-            return FileTreeGlob.GlobPathname(pathText, cancellationToken).Select(LexicalPath.Str).ToList();
-        }
-
-        throw new FileNotFoundException($"Path does not exist: {pathText}");
-    }
-
-    /// <summary>
-    /// Copies a file to <paramref name="destinationRoot"/> at its path relative to <paramref name="basePath"/> (its name when not
-    /// under it), through the secret filter when a context and log are given, else as a plain copy keeping timestamps.
-    /// </summary>
-    internal static ProfileFile CopyFile(
-        string source,
-        string file,
-        string basePath,
-        string destinationRoot,
-        SecretDetectionContext? secretContext = null,
-        Action<string>? secretLog = null,
-        CancellationToken cancellationToken = default)
-    {
-        var relative = RelativePath(file, basePath);
-        var destination = LexicalPath.Join(destinationRoot, relative);
-        EnginePath.MakeDirectories(LexicalPath.Parent(destination));
-        var (size, digest) = secretContext is not null && secretLog is not null
-            ? SecretScanner.CopyWithSecretFilter(file, destination, relative, secretContext, secretLog, cancellationToken: cancellationToken)
-            : SecretScanner.CopyVerbatim(file, destination);
-        return new ProfileFile(source, destination, size, digest);
-    }
-
-    // Relative posix path under the base, or the file name.
-    private static string RelativePath(string file, string basePath) => LexicalPath.RelativeTo(file, basePath) ?? PathText.Name(file);
 }

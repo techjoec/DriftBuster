@@ -418,14 +418,14 @@ public sealed class DriftbusterBackendTests
             {
                 Name = "Profile One",
                 Baseline = baselineFile,
-                Sources = new[] { new RunProfileSource(baselineFile), new RunProfileSource(Path.Combine(sourceDir.FullName, "*.txt")) },
+                Sources = new[] { new RunProfileSource { Path = baselineFile }, new RunProfileSource { Path = Path.Combine(sourceDir.FullName, "*.txt") } },
                 Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["key"] = "value" },
             };
 
             var result = await _backend.RunProfileAsync(profile, saveProfile: true, baseDir: baseDir, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(Directory.Exists(result.OutputDir));
-            Assert.True(result.Files.Length >= 2);
+            Assert.True(result.Files.Count >= 2);
             Assert.NotNull(result.Profile);
 
             var listed = await _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken);
@@ -447,7 +447,7 @@ public sealed class DriftbusterBackendTests
     public async Task SaveProfileAsync_requires_name()
     {
         var profile = new RunProfileDefinition { Name = "" };
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _backend.SaveProfileAsync(profile, baseDir: Path.GetTempPath(), cancellationToken: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<DriftBuster.Backend.Profiles.Run.RunProfileException>(() => _backend.SaveProfileAsync(profile, baseDir: Path.GetTempPath(), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -462,10 +462,10 @@ public sealed class DriftbusterBackendTests
         var profileDefinition = new RunProfileDefinition
         {
             Name = "Valid Profile",
-            Sources = new[] { new RunProfileSource("config.json"), new RunProfileSource("logs") { Alias = "logs", Optional = true } },
+            Sources = new[] { new RunProfileSource { Path = "config.json" }, new RunProfileSource { Path = "logs", Alias = "logs", Optional = true } },
         };
 
-        var json = JsonSerializer.Serialize(profileDefinition, new JsonSerializerOptions { WriteIndented = true });
+        var json = DriftBuster.Backend.Json.ModelJson.Serialize(profileDefinition);
         File.WriteAllText(Path.Combine(validDir.FullName, "profile.json"), json);
 
         try
@@ -480,7 +480,7 @@ public sealed class DriftbusterBackendTests
             // Listing reads every profile.json and raises on the first that is not JSON.
             var invalidDir = Directory.CreateDirectory(Path.Combine(profilesRoot, "Broken"));
             File.WriteAllText(Path.Combine(invalidDir.FullName, "profile.json"), "{ invalid json");
-            await Assert.ThrowsAsync<InvalidDataException>(() => _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<DriftBuster.Backend.Profiles.Run.RunProfileException>(() => _backend.ListProfilesAsync(baseDir, TestContext.Current.CancellationToken));
         }
         finally
         {

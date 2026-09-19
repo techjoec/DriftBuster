@@ -1,14 +1,4 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
-{
-    public sealed class OfflineCollectorResult
-    {
-        public string PackagePath { get; set; } = string.Empty;
-
-        public string ConfigFileName { get; set; } = string.Empty;
-
-        public string ScriptFileName { get; set; } = string.Empty;
-    }
-}
+/// <summary>The written package and the names of the config and runner script inside it.</summary>
+public sealed record OfflineCollectorResult(string PackagePath, string ConfigFileName, string ScriptFileName);

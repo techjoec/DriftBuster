@@ -59,16 +59,14 @@ internal static partial class StagePortable
         return 0;
     }
 
-    /// <summary><c>read_gui_version(root)</c>: the stripped <c>gui</c> entry of <c>versions.json</c>.</summary>
+    /// <summary>The trimmed <c>gui</c> version from <c>versions.json</c>.</summary>
     public static string ReadGuiVersion(string root)
     {
-        var versionsPath = Path.Combine(root, "versions.json");
-        var data = RunProfileStore.ReadJson(versionsPath);
-        var version = EngineText.Strip(EngineRepr.Str(EngineBuiltins.Get(data, "gui") ?? string.Empty));
-        return version.Length == 0 ? throw new CommandExitException($"Missing GUI version in {versionsPath}") : version;
+        var version = ComponentVersions.Load(root).Gui.Trim();
+        return version.Length == 0 ? throw new CommandExitException($"Missing GUI version in {Path.Combine(root, "versions.json")}") : version;
     }
 
-    /// <summary><c>build_publish(root, configuration=..., rid=...)</c>: the single-file publish and its output directory.</summary>
+    /// <summary>The single-file publish and its output directory.</summary>
     public static string BuildPublish(
         string root, string configuration, string rid, TextWriter stdout, Func<IReadOnlyList<string>, string?, int> launcher)
     {

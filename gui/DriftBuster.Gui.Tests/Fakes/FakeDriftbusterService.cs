@@ -77,7 +77,7 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
             return ListProfilesHandler(cancellationToken);
         }
 
-        return Task.FromResult(new RunProfileListResult());
+        return Task.FromResult(new RunProfileListResult([]));
     }
 
     public Task SaveProfileAsync(RunProfileDefinition profile, CancellationToken cancellationToken = default)
@@ -97,7 +97,7 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
             return RunProfileHandler(profile, saveProfile, cancellationToken);
         }
 
-        return Task.FromResult(new RunProfileRunResult());
+        return Task.FromResult(Results.Run(profile));
     }
 
     public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, CancellationToken cancellationToken = default)
@@ -107,7 +107,7 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
             return PrepareOfflineCollectorHandler(profile, request, cancellationToken);
         }
 
-        return Task.FromResult(new OfflineCollectorResult());
+        return Task.FromResult(Results.Collector());
     }
 
     public Task<ServerScanResponse> RunServerScansAsync(IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)

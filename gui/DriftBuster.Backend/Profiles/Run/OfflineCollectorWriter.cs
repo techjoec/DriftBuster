@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.IO.Compression;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Secrets;
 
@@ -16,12 +16,6 @@ namespace DriftBuster.Backend.Profiles.Run;
 public static class OfflineCollectorWriter
 {
     public const string ScriptFileName = "driftbuster-offline-runner.ps1";
-
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        WriteIndented = true,
-    };
 
     /// <summary>Writes the collector package to <see cref="OfflineCollectorRequest.PackagePath"/> and names the files inside it.</summary>
     public static OfflineCollectorResult Prepare(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir, CancellationToken cancellationToken)
@@ -55,12 +49,7 @@ public static class OfflineCollectorWriter
             cancellationToken.ThrowIfCancellationRequested();
             var configFileName = ResolveConfigFileName(request.ConfigFileName, clean.Name);
             WriteCollectorFiles(tempRoot, configFileName, clean, request.Metadata, baseDir, packagePath, cancellationToken);
-            return new OfflineCollectorResult
-            {
-                PackagePath = packagePath,
-                ConfigFileName = configFileName,
-                ScriptFileName = ScriptFileName,
-            };
+            return new OfflineCollectorResult(packagePath, configFileName, ScriptFileName);
         }
         finally
         {
@@ -68,69 +57,34 @@ public static class OfflineCollectorWriter
         }
     }
 
-    /// <summary>
-    /// The offline runner config for <paramref name="profile"/>. Each source is an object with <c>path</c>, <c>alias</c> when set,
-    /// <c>optional</c> and <c>exclude</c>, the shape the PowerShell runner reads; the baseline defaults to the first source's path.
-    /// </summary>
-    public static OrderedDictionary<string, object?> BuildConfigPayload(RunProfileDefinition profile, IDictionary<string, string>? metadata, JsonElement secretRules)
+    /// <summary>The offline runner config for <paramref name="profile"/>; the baseline defaults to the first source's path.</summary>
+    public static OfflineRunnerConfig BuildConfig(RunProfileDefinition profile, IDictionary<string, string>? metadata, JsonElement secretRules, DateTimeOffset preparedAt)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        var sources = (profile.Sources ?? []).Where(source => source is not null && !string.IsNullOrWhiteSpace(source.Path)).Select(SourcePayload).ToList();
-        var baseline = string.IsNullOrWhiteSpace(profile.Baseline) && sources.Count > 0 ? (string?)sources[0]["path"] : profile.Baseline;
-        var secretScanner = profile.SecretScanner ?? new SecretScannerOptions();
-        var profilePayload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["name"] = profile.Name,
-            ["description"] = profile.Description,
-            ["baseline"] = baseline,
-            ["sources"] = sources,
-            ["tags"] = new[] { "offline" },
-            ["options"] = profile.Options,
-            ["secret_scanner"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["ignore_rules"] = secretScanner.IgnoreRules ?? [],
-                ["ignore_patterns"] = secretScanner.IgnorePatterns ?? [],
-                ["ruleset"] = secretRules,
-            },
-        };
-        foreach (var key in profilePayload.Where(pair => pair.Value is null).Select(pair => pair.Key).ToList())
-        {
-            profilePayload.Remove(key);
-        }
-
-        return new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["schema"] = "https://driftbuster.dev/offline-runner/config/v1",
-            ["version"] = "1",
-            ["profile"] = profilePayload,
-            ["runner"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["compress"] = true,
-                ["include_config"] = true,
-                ["include_logs"] = true,
-                ["include_manifest"] = true,
-                ["manifest_name"] = "manifest.json",
-                ["log_name"] = "runner.log",
-                ["data_directory_name"] = "data",
-                ["logs_directory_name"] = "logs",
-                ["package_name"] = $"{RunProfileStore.SafeName(profile.Name)}-offline-results",
-                ["cleanup_staging"] = true,
-            },
-            ["metadata"] = BuildMetadata(profile.Name, metadata),
-        };
-    }
-
-    private static OrderedDictionary<string, object?> SourcePayload(RunProfileSource source)
-    {
-        var entry = new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["path"] = source.Path };
-        if (!string.IsNullOrWhiteSpace(source.Alias))
-        {
-            entry["alias"] = source.Alias;
-        }
-
-        entry["optional"] = source.Optional;
-        entry["exclude"] = source.Exclude ?? [];
-        return entry;
+        var baseline = string.IsNullOrWhiteSpace(profile.Baseline) && profile.Sources.Count > 0 ? profile.Sources[0].Path : profile.Baseline;
+        return new OfflineRunnerConfig(
+            OfflineRunnerConfig.SchemaId,
+            "1",
+            new OfflineRunnerProfile(
+                profile.Name,
+                profile.Description,
+                baseline,
+                profile.Sources,
+                ["offline"],
+                profile.Options,
+                new OfflineRunnerSecretScanner(profile.SecretScanner.IgnoreRules, profile.SecretScanner.IgnorePatterns, secretRules)),
+            new OfflineRunnerSettings(
+                Compress: true,
+                IncludeConfig: true,
+                IncludeLogs: true,
+                IncludeManifest: true,
+                ManifestName: "manifest.json",
+                LogName: "runner.log",
+                DataDirectoryName: "data",
+                LogsDirectoryName: "logs",
+                PackageName: $"{RunProfileStore.SafeName(profile.Name)}-offline-results",
+                CleanupStaging: true),
+            BuildMetadata(profile.Name, metadata, preparedAt));
     }
 
     private static string ResolveConfigFileName(string? requestedName, string profileName)
@@ -178,9 +132,7 @@ public static class OfflineCollectorWriter
         CancellationToken cancellationToken)
     {
         var configPath = Path.Combine(tempRoot, configFileName);
-        var payload = BuildConfigPayload(profile, metadata, LoadSecretRules(baseDir));
-        var json = JsonSerializer.Serialize(payload, SerializerOptions);
-        File.WriteAllText(configPath, json + Environment.NewLine);
+        File.WriteAllText(configPath, ModelJson.Serialize(BuildConfig(profile, metadata, LoadSecretRules(baseDir), DateTimeOffset.UtcNow)));
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -197,36 +149,23 @@ public static class OfflineCollectorWriter
         ZipFile.CreateFromDirectory(tempRoot, packagePath, CompressionLevel.Optimal, includeBaseDirectory: false);
     }
 
-    // The profile with blank sources dropped, paths and aliases trimmed and the ignore lists trimmed and deduplicated. Exclude patterns are
-    // kept as written, as the run executor matches them, so a profile excludes the same files when run and when collected.
+    // The profile with blank sources dropped, paths and aliases trimmed and the ignore lists cleaned. Exclude patterns are kept as
+    // written, as the run executor matches them, so a profile excludes the same files when run and when collected.
     private static RunProfileDefinition CloneProfile(RunProfileDefinition profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        return new RunProfileDefinition
+        return profile with
         {
-            Name = profile.Name,
-            Description = profile.Description,
-            Baseline = profile.Baseline,
-            Sources = (profile.Sources ?? [])
-                .Where(source => source is not null && !string.IsNullOrWhiteSpace(source.Path))
-                .Select(source => new RunProfileSource(source.Path.Trim())
-                {
-                    Alias = string.IsNullOrWhiteSpace(source.Alias) ? null : source.Alias.Trim(),
-                    Optional = source.Optional,
-                    Exclude = [.. source.Exclude ?? []],
-                })
-                .ToArray(),
-            Options = new Dictionary<string, string>(profile.Options ?? new Dictionary<string, string>(StringComparer.Ordinal), StringComparer.Ordinal),
+            Sources = [.. profile.Sources
+                .Where(source => !string.IsNullOrWhiteSpace(source.Path))
+                .Select(source => source with { Path = source.Path.Trim(), Alias = string.IsNullOrWhiteSpace(source.Alias) ? null : source.Alias.Trim() })],
             SecretScanner = new SecretScannerOptions
             {
-                IgnoreRules = CleanList(profile.SecretScanner?.IgnoreRules),
-                IgnorePatterns = CleanList(profile.SecretScanner?.IgnorePatterns),
+                IgnoreRules = RunProfileCommands.CleanValues(profile.SecretScanner.IgnoreRules),
+                IgnorePatterns = RunProfileCommands.CleanValues(profile.SecretScanner.IgnorePatterns),
             },
         };
     }
-
-    private static string[] CleanList(string[]? values)
-        => (values ?? []).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value.Trim()).Distinct(StringComparer.Ordinal).ToArray();
 
     private static JsonElement LoadSecretRules(string? baseDir)
     {
@@ -243,25 +182,23 @@ public static class OfflineCollectorWriter
         return document.RootElement.Clone();
     }
 
-    private static OrderedDictionary<string, object?> BuildMetadata(string profileName, IDictionary<string, string>? metadata)
+    private static Dictionary<string, string> BuildMetadata(string profileName, IDictionary<string, string>? metadata, DateTimeOffset preparedAt)
     {
-        var meta = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
+        var meta = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["profile_name"] = profileName,
-            ["prepared_at"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+            ["prepared_at"] = preparedAt.UtcDateTime.ToString("o", CultureInfo.InvariantCulture),
         };
-
-        var user = Environment.UserName;
-        if (!string.IsNullOrWhiteSpace(user))
+        if (!string.IsNullOrWhiteSpace(Environment.UserName))
         {
-            meta["prepared_by"] = user;
+            meta["prepared_by"] = Environment.UserName;
         }
 
-        foreach (var entry in metadata ?? new Dictionary<string, string>(StringComparer.Ordinal))
+        foreach (var (key, value) in metadata ?? new Dictionary<string, string>(StringComparer.Ordinal))
         {
-            if (!string.IsNullOrWhiteSpace(entry.Key))
+            if (!string.IsNullOrWhiteSpace(key))
             {
-                meta[entry.Key.Trim()] = entry.Value ?? string.Empty;
+                meta[key.Trim()] = value ?? string.Empty;
             }
         }
 

@@ -24,7 +24,7 @@ public sealed class DriftbusterServiceTests
         await service.ListProfilesAsync(TestContext.Current.CancellationToken);
         await service.SaveProfileAsync(new RunProfileDefinition { Name = "profile" }, TestContext.Current.CancellationToken);
         await service.RunProfileAsync(new RunProfileDefinition { Name = "profile" }, saveProfile: true, cancellationToken: TestContext.Current.CancellationToken);
-        await service.PrepareOfflineCollectorAsync(new RunProfileDefinition { Name = "profile" }, new OfflineCollectorRequest(), TestContext.Current.CancellationToken);
+        await service.PrepareOfflineCollectorAsync(new RunProfileDefinition { Name = "profile" }, new OfflineCollectorRequest { PackagePath = "p.zip" }, TestContext.Current.CancellationToken);
         await service.RunServerScansAsync(new[]
         {
             new ServerScanPlan { HostId = "host-01", Label = "Primary" },
@@ -95,7 +95,7 @@ public sealed class DriftbusterServiceTests
 
         public Task<RunProfileListResult> ListProfilesAsync(string? baseDir = null, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(new RunProfileListResult());
+            return Task.FromResult(new RunProfileListResult([]));
         }
 
         public Task SaveProfileAsync(RunProfileDefinition profile, string? baseDir = null, CancellationToken cancellationToken = default)
@@ -107,13 +107,13 @@ public sealed class DriftbusterServiceTests
         public Task<RunProfileRunResult> RunProfileAsync(RunProfileDefinition profile, bool saveProfile, string? baseDir = null, string? timestamp = null, CancellationToken cancellationToken = default)
         {
             RunInvocations++;
-            return Task.FromResult(new RunProfileRunResult());
+            return Task.FromResult(Results.Run(profile));
         }
 
         public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir = null, CancellationToken cancellationToken = default)
         {
             OfflineCollectorCalls++;
-            return Task.FromResult(new OfflineCollectorResult());
+            return Task.FromResult(Results.Collector());
         }
 
         public Task<ServerScanResponse> RunServerScansAsync(IEnumerable<ServerScanPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)

@@ -12,23 +12,6 @@ namespace DriftBuster.Cli.Commands;
 /// </summary>
 internal static partial class VersionSync
 {
-    private static readonly string[] ExpectedKeys = ["core", "catalog", "gui", "powershell"];
-
-    /// <summary><c>load_versions()</c>: <c>versions.json</c> under <paramref name="root"/>, which must hold every expected key.</summary>
-    public static IReadOnlyDictionary<string, object?> LoadVersions(string root)
-    {
-        var data = RunProfileStore.ReadJson(Path.Combine(root, "versions.json"));
-        if (data is not IReadOnlyDictionary<string, object?> mapping)
-        {
-            throw new InvalidDataException($"versions.json must hold a JSON object, not '{EngineBuiltins.TypeName(data)}'");
-        }
-
-        var missing = ExpectedKeys.Where(key => !mapping.ContainsKey(key)).Order(StringComparer.Ordinal).Cast<object?>().ToList();
-        return missing.Count > 0
-            ? throw new CommandExitException($"versions.json is missing keys: {EngineRepr.Repr(missing)}")
-            : mapping;
-    }
-
     /// <summary>
     /// <c>update_file(path, pattern, replacement, count=count)</c>: every match of the .NET regular expression (the first
     /// <paramref name="count"/> when it is positive) replaced by the literal replacement text, written back in text mode.
@@ -63,13 +46,12 @@ internal static partial class VersionSync
     /// <summary><c>main()</c>: loads the versions under <paramref name="root"/> and applies every update in order.</summary>
     public static void Run(string root)
     {
-        foreach (var update in Updates(root, LoadVersions(root)))
+        foreach (var update in Updates(root, ComponentVersions.Load(root)))
         {
             UpdateFile(update.Path, update.Pattern, update.Replacement, update.Count);
         }
     }
 
-    private static string Str(object? value) => EngineRepr.Str(value);
 
     private static string At(string root, params string[] parts) => Path.Combine([root, .. parts]);
 }

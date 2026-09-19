@@ -49,7 +49,7 @@ public sealed class StagePortableDevTests : IDisposable
         var root = _tmp.FullName;
         var publishDir = Dir("gui", "DriftBuster.Gui", "bin", "Release", "net10.0", "win-x64", "publish");
         File.WriteAllText(Path.Combine(publishDir, "DriftBuster.Gui.exe"), "binary");
-        File.WriteAllText(Path.Combine(root, "versions.json"), "{\"gui\": \"0.1.0\"}");
+        File.WriteAllText(Path.Combine(root, "versions.json"), "{\"core\": \"0.1.0\", \"catalog\": \"0.0.1\", \"gui\": \"0.1.0\", \"powershell\": \"0.1.0\"}");
         var stageDir = Dir("staged");
         File.WriteAllText(Path.Combine(stageDir, "stale.txt"), "stale");
         var options = new StagePortableOptions { StageDir = stageDir, Rid = "win-x64", Configuration = "Release", Timestamp = "20260305-000000Z" };

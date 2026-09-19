@@ -1,29 +1,26 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
+/// <summary>
+/// A run profile (<c>Profiles/&lt;safe name&gt;/profile.json</c>): its sources in collection order, the baseline source path (the
+/// first source when none), free-form options and the secret scanner's ignore lists.
+/// </summary>
+public sealed record RunProfileDefinition
 {
-    public sealed class RunProfileDefinition
-    {
-        // UI Automation reads a list item through ToString.
-        public override string ToString() => Name;
+    public required string Name { get; init; }
 
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
+    public string? Description { get; init; }
 
-        [JsonPropertyName("description")]
-        public string? Description { get; set; }
+    // Source-generated reads pass null for an absent init-only member, so the setters restore the empty defaults.
+    public IReadOnlyList<RunProfileSource> Sources { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("sources")]
-        public RunProfileSource[] Sources { get; set; } = System.Array.Empty<RunProfileSource>();
+    public string? Baseline { get; init; }
 
-        [JsonPropertyName("baseline")]
-        public string? Baseline { get; set; }
+    public IReadOnlyDictionary<string, string> Options { get; init => field = value ?? EmptyOptions; } = EmptyOptions;
 
-        [JsonPropertyName("options")]
-        public IDictionary<string, string> Options { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+    public SecretScannerOptions SecretScanner { get; init => field = value ?? new(); } = new();
 
-        [JsonPropertyName("secret_scanner")]
-        public SecretScannerOptions SecretScanner { get; set; } = new();
-    }
+    // UI Automation reads a list item through ToString.
+    public override string ToString() => Name;
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyOptions = new Dictionary<string, string>(StringComparer.Ordinal);
 }

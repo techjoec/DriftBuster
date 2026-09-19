@@ -69,27 +69,11 @@ public class RunProfilesViewModelTests
         {
             var service = new FakeDriftbusterService
             {
-                RunProfileHandler = (_, _, _) => Task.FromResult(new RunProfileRunResult
-                {
-                    OutputDir = output.FullName,
-                    Files = new[]
-                    {
-                        new RunProfileFileResult
-                        {
-                            Source = "B",
-                            Destination = Path.Combine(output.FullName, "b.txt").Replace(Path.DirectorySeparatorChar, '/'),
-                            Size = 1,
-                            Sha256 = "hash-b",
-                        },
-                        new RunProfileFileResult
-                        {
-                            Source = "A",
-                            Destination = Path.Combine(output.FullName, "a.txt").Replace(Path.DirectorySeparatorChar, '/'),
-                            Size = 2048,
-                            Sha256 = "hash-a",
-                        },
-                    },
-                }),
+                RunProfileHandler = (profile, _, _) => Task.FromResult(Results.Run(
+                    profile,
+                    output.FullName,
+                    new RunProfileFileResult("B", Path.Combine(output.FullName, "b.txt").Replace(Path.DirectorySeparatorChar, '/'), 1, "hash-b"),
+                    new RunProfileFileResult("A", Path.Combine(output.FullName, "a.txt").Replace(Path.DirectorySeparatorChar, '/'), 2048, "hash-a"))),
             };
 
             var viewModel = new RunProfilesViewModel(service)
@@ -142,12 +126,7 @@ public class RunProfilesViewModelTests
                 Assert.Equal("collector", profile.Name);
                 Assert.Single(profile.SecretScanner.IgnoreRules);
                 Assert.Equal("rule-ignore", profile.SecretScanner.IgnoreRules[0]);
-                return Task.FromResult(new OfflineCollectorResult
-                {
-                    PackagePath = request.PackagePath,
-                    ConfigFileName = "collector.offline.config.json",
-                    ScriptFileName = "driftbuster-offline-runner.ps1",
-                });
+                return Task.FromResult(Results.Collector(request.PackagePath, "collector.offline.config.json", "driftbuster-offline-runner.ps1"));
             };
 
             var viewModel = new RunProfilesViewModel(service)
@@ -505,14 +484,7 @@ public class RunProfilesViewModelTests
     {
         var service = new FakeDriftbusterService
         {
-            ListProfilesHandler = _ => Task.FromResult(new RunProfileListResult
-            {
-                Profiles = new[]
-                {
-                    new RunProfileDefinition { Name = "Alpha" },
-                    new RunProfileDefinition { Name = "Beta" },
-                },
-            }),
+            ListProfilesHandler = _ => Task.FromResult(new RunProfileListResult([new RunProfileDefinition { Name = "Alpha" }, new RunProfileDefinition { Name = "Beta" }])),
         };
 
         var viewModel = new RunProfilesViewModel(service);
@@ -560,10 +532,7 @@ public class RunProfilesViewModelTests
                     savedNames.Add(profile.Name);
                     return Task.CompletedTask;
                 },
-                ListProfilesHandler = _ => Task.FromResult(new RunProfileListResult
-                {
-                    Profiles = new[] { new RunProfileDefinition { Name = "saved" } },
-                }),
+                ListProfilesHandler = _ => Task.FromResult(new RunProfileListResult([new RunProfileDefinition { Name = "saved" }])),
             };
 
             var viewModel = new RunProfilesViewModel(service)
@@ -718,7 +687,7 @@ public class RunProfilesViewModelTests
         {
             Name = "Loaded",
             Description = "  description ",
-            Sources = new[] { new RunProfileSource("/baseline.txt"), new RunProfileSource("/other.txt") },
+            Sources = new[] { new RunProfileSource { Path = "/baseline.txt" }, new RunProfileSource { Path = "/other.txt" } },
             Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Key"] = "Value",
@@ -738,7 +707,6 @@ public class RunProfilesViewModelTests
         viewModel.Sources[0].IsBaseline.Should().BeTrue();
         viewModel.Sources[1].Path.Should().Be("/other.txt");
         viewModel.Options.Should().ContainSingle(option => option.Key == "Key" && option.Value == "Value");
-        // A loaded profile's lists are kept as loaded (the store has already read them with secret_option_values).
         viewModel.SecretScannerSummary.Should().Contain("Ignored rules: 2, patterns: 1");
     }
 
@@ -870,11 +838,11 @@ public class RunProfilesViewModelTests
             saved.Should().NotBeNull();
             saved!.Sources.Should().HaveCount(2);
             saved.Sources[0].Path.Should().Be(baseline);
-            saved.Sources[0].IsPathOnly.Should().BeTrue();
+            saved.Sources[0].Should().BeEquivalentTo(new RunProfileSource { Path = baseline });
             saved.Sources[1].Path.Should().Be(secondary.FullName);
             saved.Sources[1].Alias.Should().Be("logs");
             saved.Sources[1].Optional.Should().BeTrue();
-            saved.Sources[1].Exclude.Should().Equal("*.tmp", "cache/* ", "a;b");
+            saved.Sources[1].Exclude.Should().Equal("*.tmp", "cache/*", "a;b");
 
             var reloaded = new RunProfilesViewModel(new FakeDriftbusterService());
             reloaded.LoadProfileCommand.Execute(saved);
@@ -885,7 +853,7 @@ public class RunProfilesViewModelTests
             reloaded.Sources[0].Exclude.Should().BeEmpty();
             reloaded.Sources[1].Alias.Should().Be("logs");
             reloaded.Sources[1].Optional.Should().BeTrue();
-            reloaded.Sources[1].Exclude.Should().Be("*.tmp\ncache/* \na;b");
+            reloaded.Sources[1].Exclude.Should().Be("*.tmp\ncache/*\na;b");
         }
         finally
         {
@@ -894,139 +862,36 @@ public class RunProfilesViewModelTests
         }
     }
     [Fact]
-    public void A_loaded_path_and_alias_save_as_loaded_until_edited()
+    public async Task Saved_values_are_trimmed_and_the_baseline_is_the_marked_source()
     {
-        var viewModel = new RunProfilesViewModel(new FakeDriftbusterService());
-        viewModel.LoadProfileCommand.Execute(new RunProfileDefinition
-        {
-            Name = "loaded",
-            Sources = new[] { new RunProfileSource(" /data/in ") { Alias = " logs " } },
-        });
-        var entry = viewModel.Sources[0];
-
-        entry.ToSource().Path.Should().Be(" /data/in ");
-        entry.ToSource().Alias.Should().Be(" logs ");
-        entry.AliasDirectory.Should().Be("-logs-");
-
-        // An edited value is stripped, U+001F included as white space; an alias it empties is none.
-        entry.Alias = "\u001f logs2 ";
-        entry.Path = "\u001f/data/in ";
-        entry.ToSource().Alias.Should().Be("logs2");
-        entry.ToSource().Path.Should().Be("/data/in");
-        entry.Alias = "\u001f ";
-        entry.ToSource().Alias.Should().BeNull();
-        entry.Alias = " logs ";
-        entry.ToSource().Alias.Should().Be(" logs ");
-    }
-
-    // Loads each profile the store reads (as ListProfilesAsync hands it to the tab), saves it without edits, and runs the loaded and the
-    // saved profile over the same tree: the collected files, the per-source summaries, metadata.json and profile.json must be identical.
-    [Theory]
-    [InlineData("{\"name\": \" logs \", \"sources\": [{\"path\": \"{a}\", \"alias\": \"x\"}, \"{b}\", \"{c}\"], \"baseline\": \"{b}\", \"options\": {\" k\": 1, \"A\": \"2\", \"a\": \"3\"}, \"secret_scanner\": {\"ignore_patterns\": [\" x\", \" x\"]}, \"description\": \" d \"}")]
-    [InlineData("{\"name\": \"plain\", \"sources\": [\"{a}\", \"{b}\"], \"baseline\": \"{b}\", \"options\": {\"\": \"e\"}}")]
-    public async Task A_loaded_profile_saved_without_edits_collects_exactly_as_loaded(string payload)
-    {
-        var root = Directory.CreateTempSubdirectory("driftbuster-gui-round-trip-");
+        var root = Directory.CreateTempSubdirectory("driftbuster-gui-trim-");
         try
         {
-            string Tree(string name, string content)
-            {
-                var directory = Directory.CreateDirectory(Path.Combine(root.FullName, "tree", name)).FullName;
-                File.WriteAllText(Path.Combine(directory, name + ".txt"), content);
-                return directory;
-            }
-
-            // The directories go into a JSON string literal, so Windows backslashes are escaped.
-            static string Json(string path) => path.Replace("\\", "\\\\", StringComparison.Ordinal);
-            var text = payload.Replace("{a}", Json(Tree("a", "password = Hunter12345\n")), StringComparison.Ordinal)
-                .Replace("{b}", Json(Tree("b", "b")), StringComparison.Ordinal).Replace("{c}", Json(Tree("c", "c")), StringComparison.Ordinal);
-            DriftBuster.Backend.Infrastructure.EngineJson.TryLoads(text, out var parsed).Should().BeTrue();
-            var loaded = RunProfile.FromDict(parsed).ToDefinition();
-
+            var plain = Directory.CreateDirectory(Path.Combine(root.FullName, "a")).FullName;
+            var other = Directory.CreateDirectory(Path.Combine(root.FullName, "b")).FullName;
             RunProfileDefinition? saved = null;
             var service = new FakeDriftbusterService { SaveProfileHandler = (profile, _) => { saved = profile; return Task.CompletedTask; } };
             var viewModel = new RunProfilesViewModel(service);
-            viewModel.LoadProfileCommand.Execute(loaded);
-            viewModel.SaveCommand.CanExecute(null).Should().BeTrue();
-            await viewModel.SaveCommand.ExecuteAsync(null);
-            saved.Should().NotBeNull();
-
-            string Run(RunProfileDefinition definition, string side)
-            {
-                var baseDir = Directory.CreateDirectory(Path.Combine(root.FullName, side)).FullName;
-                var result = RunProfileExecutor.ExecuteProfile(RunProfile.FromDefinition(definition), baseDir, "t", TestContext.Current.CancellationToken);
-                var files = result.Files.Select(file => $"{Path.GetRelativePath(result.OutputDir, file.Destination)} {file.Size} {file.Sha256}");
-                var sources = result.Sources.Select(source => $"{source.Path}|{source.Directory}|{source.Skipped}|{string.Join(",", source.Matched)}");
-                var profileDirectory = Path.GetDirectoryName(Path.GetDirectoryName(result.OutputDir))!;
-                var record = string.Join("\n", files.Concat(sources))
-                    + File.ReadAllText(Path.Combine(result.OutputDir, "metadata.json")) + File.ReadAllText(Path.Combine(profileDirectory, "profile.json"))
-                    + Path.GetFileName(profileDirectory);
-                // The base directory appears as written, in POSIX form and JSON-escaped (all the same on Linux).
-                return record.Replace(baseDir.Replace("\\", "\\\\", StringComparison.Ordinal), "<base>", StringComparison.Ordinal)
-                    .Replace(baseDir.Replace('\\', '/'), "<base>", StringComparison.Ordinal)
-                    .Replace(baseDir, "<base>", StringComparison.Ordinal);
-            }
-
-            Run(saved!, "saved").Should().Be(Run(loaded, "loaded"));
-        }
-        finally
-        {
-            root.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task A_loaded_baseline_saves_as_the_spelling_of_its_source()
-    {
-        var root = Directory.CreateTempSubdirectory("driftbuster-gui-baseline-");
-        try
-        {
-            var plain = Path.Combine(root.FullName, "a");
-            var spaced = plain + " ";
-            var upper = Path.Combine(root.FullName, "A");
-            Directory.CreateDirectory(plain);
-            Directory.CreateDirectory(spaced);
-            Directory.CreateDirectory(upper);
-            RunProfileDefinition? saved = null;
-            var service = new FakeDriftbusterService
-            {
-                SaveProfileHandler = (profile, _) =>
-                {
-                    saved = profile;
-                    return Task.CompletedTask;
-                },
-            };
-            var viewModel = new RunProfilesViewModel(service);
             viewModel.LoadProfileCommand.Execute(new RunProfileDefinition
             {
-                Name = "spaced",
-                Sources = new[] { new RunProfileSource(plain), new RunProfileSource(spaced) },
-                Baseline = spaced,
+                Name = " loaded ",
+                Description = "  ",
+                Sources = [new RunProfileSource { Path = " " + plain + " ", Alias = " logs " }, new RunProfileSource { Path = other, Alias = " " }],
+                Baseline = other,
             });
+            viewModel.Options.Add(new RunProfilesViewModel.KeyValueEntry { Key = " k ", Value = " v " });
+            viewModel.Options.Add(new RunProfilesViewModel.KeyValueEntry { Key = " ", Value = "dropped" });
 
-            viewModel.Sources.Select(source => source.IsBaseline).Should().Equal(false, true);
-            viewModel.SaveCommand.CanExecute(null).Should().BeTrue();
+            viewModel.Sources[0].AliasDirectory.Should().Be("logs");
             await viewModel.SaveCommand.ExecuteAsync(null);
 
-            saved!.Baseline.Should().Be(spaced);
-            saved.Sources.Select(source => source.Path).Should().Equal(plain, spaced);
-            var validate = () => RunProfileStore.ValidateProfile(RunProfile.FromDefinition(saved));
-            validate.Should().NotThrow();
-
-            // An edited baseline is saved stripped as str.strip strips it (U+001F included), the same text as its source.
-            viewModel.Sources[1].Path = "\u001f" + spaced;
-            await viewModel.SaveCommand.ExecuteAsync(null);
-            saved!.Baseline.Should().Be(plain);
-            saved.Sources[1].Path.Should().Be(plain);
-
-            // The baseline is matched exactly, never ignoring case.
-            viewModel.LoadProfileCommand.Execute(new RunProfileDefinition
+            saved.Should().BeEquivalentTo(new RunProfileDefinition
             {
-                Name = "case",
-                Sources = new[] { new RunProfileSource(upper), new RunProfileSource(plain) },
-                Baseline = plain,
+                Name = "loaded",
+                Sources = [new RunProfileSource { Path = plain, Alias = "logs" }, new RunProfileSource { Path = other }],
+                Baseline = other,
+                Options = new Dictionary<string, string>(StringComparer.Ordinal) { ["k"] = "v" },
             });
-            viewModel.Sources.Select(source => source.IsBaseline).Should().Equal(false, true);
         }
         finally
         {
@@ -1100,45 +965,6 @@ public class RunProfilesViewModelTests
     }
 
     [Fact]
-    public async Task Loaded_exclude_patterns_the_editor_cannot_spell_are_saved_unchanged()
-    {
-        var baseline = Path.GetTempFileName();
-        try
-        {
-            RunProfileDefinition? saved = null;
-            var service = new FakeDriftbusterService
-            {
-                SaveProfileHandler = (profile, _) =>
-                {
-                    saved = profile;
-                    return Task.CompletedTask;
-                },
-            };
-            var patterns = new[] { " lead", "trail ", "semi;colon", "line\nbreak", string.Empty };
-            var viewModel = new RunProfilesViewModel(service);
-            viewModel.LoadProfileCommand.Execute(new RunProfileDefinition
-            {
-                Name = "patterns",
-                Sources = new[] { new RunProfileSource(baseline) { Exclude = patterns } },
-                Baseline = baseline,
-            });
-
-            await viewModel.SaveCommand.ExecuteAsync(null);
-
-            saved!.Sources[0].Exclude.Should().Equal(patterns);
-
-            viewModel.Sources[0].Exclude += "\n*.bak";
-            await viewModel.SaveCommand.ExecuteAsync(null);
-
-            saved!.Sources[0].Exclude.Should().Equal(" lead", "trail ", "semi;colon", "line", "break", "*.bak");
-        }
-        finally
-        {
-            File.Delete(baseline);
-        }
-    }
-
-    [Fact]
     public async Task An_optional_source_whose_path_is_missing_can_be_saved_and_run()
     {
         var baseline = Path.GetTempFileName();
@@ -1152,7 +978,7 @@ public class RunProfilesViewModelTests
                 RunProfileHandler = (profile, _, _) =>
                 {
                     ran = profile;
-                    return Task.FromResult(new RunProfileRunResult { Profile = profile });
+                    return Task.FromResult(Results.Run(profile));
                 },
             };
             var viewModel = new RunProfilesViewModel(service) { ProfileName = "optional" };

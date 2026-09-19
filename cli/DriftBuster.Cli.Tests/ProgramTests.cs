@@ -58,10 +58,11 @@ public sealed class ProgramTests
         var tmp = Directory.CreateTempSubdirectory("driftbuster-cli-program-");
         try
         {
-            var run = CliInvocation.Invoke("profile", "show", "absent-profile", "--base-dir", Path.Combine(tmp.FullName, "no-such-base"));
+            // A directory given as the profile file fails to open: an error the command does not expect.
+            var run = CliInvocation.Invoke("profile", "run", "--profile", tmp.FullName, "--base-dir", tmp.FullName);
 
             run.ExitCode.Should().Be(1);
-            run.Err.Should().Be("FileNotFoundException: Profile not found: absent-profile" + Environment.NewLine);
+            run.Err.Should().StartWith("UnauthorizedAccessException: ");
         }
         finally
         {

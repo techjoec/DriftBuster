@@ -1,11 +1,4 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
-{
-    public sealed class RunProfileListResult
-    {
-        [JsonPropertyName("profiles")]
-        public RunProfileDefinition[] Profiles { get; set; } = System.Array.Empty<RunProfileDefinition>();
-    }
-}
+/// <summary>Every saved run profile, by directory name.</summary>
+public sealed record RunProfileListResult(IReadOnlyList<RunProfileDefinition> Profiles);

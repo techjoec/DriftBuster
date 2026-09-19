@@ -1,14 +1,9 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
+/// <summary>Secret scanner rule names to ignore, and regular expressions whose matches are never reported.</summary>
+public sealed record SecretScannerOptions
 {
-    public sealed class SecretScannerOptions
-    {
-        [JsonPropertyName("ignore_rules")]
-        public string[] IgnoreRules { get; set; } = System.Array.Empty<string>();
+    public IReadOnlyList<string> IgnoreRules { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("ignore_patterns")]
-        public string[] IgnorePatterns { get; set; } = System.Array.Empty<string>();
-    }
+    public IReadOnlyList<string> IgnorePatterns { get; init => field = value ?? []; } = [];
 }

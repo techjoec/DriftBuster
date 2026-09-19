@@ -306,8 +306,10 @@ function Get-DriftBusterSerializerOption {
         return $script:SerializerOptions
     }
 
+    # snake_case, as the backend's own JSON names its models.
     $options = [System.Text.Json.JsonSerializerOptions]::new()
     $options.DefaultIgnoreCondition = [System.Text.Json.Serialization.JsonIgnoreCondition]::WhenWritingNull
+    $options.PropertyNamingPolicy = [System.Text.Json.JsonNamingPolicy]::SnakeCaseLower
     $options.PropertyNameCaseInsensitive = $true
     $converterType = [System.Type]::GetType('System.Text.Json.Serialization.JsonStringEnumMemberConverter, System.Text.Json', $false)
     if ($converterType) {
@@ -397,6 +399,7 @@ function Get-DriftBusterPropertyValue {
 
 function ConvertTo-DriftBusterRunProfileDefinition {
     [CmdletBinding()]
+    [OutputType([DriftBuster.Backend.Models.RunProfileDefinition])]
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
         [object]
@@ -412,85 +415,30 @@ function ConvertTo-DriftBusterRunProfileDefinition {
             return $InputObject
         }
 
-        if ($InputObject -is [string]) {
-            $text = $InputObject
-            if (Test-Path -LiteralPath $InputObject) {
-                $text = Get-Content -LiteralPath $InputObject -Raw
-            }
-
+        # A path or JSON text, a hashtable or an object: read strictly as profile.json is, except that a source may be a plain path.
+        $value = $InputObject
+        if ($value -is [string]) {
+            $text = if (Test-Path -LiteralPath $value) { Get-Content -LiteralPath $value -Raw } else { $value }
             if ([string]::IsNullOrWhiteSpace($text)) {
                 throw 'Run profile content was empty.'
             }
 
-            $parsed = ConvertFrom-DriftBusterJson -Json $text
-            return ConvertTo-DriftBusterRunProfileDefinition -InputObject $parsed
+            $value = $text | ConvertFrom-Json -AsHashtable -Depth 64
         }
 
-        $profileDef = [DriftBuster.Backend.Models.RunProfileDefinition]::new()
-
-        $name = Get-DriftBusterPropertyValue -Object $InputObject -Names @('name', 'Name')
-        if ($null -ne $name) {
-            $profileDef.Name = [string]$name
+        $map = [ordered]@{}
+        foreach ($entry in @(if ($value -is [System.Collections.IDictionary]) { $value.GetEnumerator() } else { $value.PSObject.Properties })) {
+            $map[[string]$entry.Name] = $entry.Value
         }
 
-        $description = Get-DriftBusterPropertyValue -Object $InputObject -Names @('description', 'Description')
-        if ($null -ne $description) {
-            $profileDef.Description = [string]$description
+        if ($map.Contains('sources')) {
+            $map['sources'] = @(foreach ($source in @($map['sources'])) {
+                    if ($source -is [string]) { @{ path = $source } } else { $source }
+                })
         }
 
-        $baseline = Get-DriftBusterPropertyValue -Object $InputObject -Names @('baseline', 'Baseline')
-        if ($null -ne $baseline) {
-            $profileDef.Baseline = [string]$baseline
-        }
-
-        $sources = Get-DriftBusterPropertyValue -Object $InputObject -Names @('sources', 'Sources')
-        if ($null -ne $sources) {
-            if ($sources -is [System.Collections.IEnumerable] -and -not ($sources -is [string])) {
-                $profileDef.Sources = @($sources | ForEach-Object { [string]$_ })
-            }
-            else {
-                $profileDef.Sources = @([string]$sources)
-            }
-        }
-
-        $options = Get-DriftBusterPropertyValue -Object $InputObject -Names @('options', 'Options')
-        if ($null -ne $options) {
-            if ($options -is [System.Collections.IDictionary]) {
-                foreach ($key in $options.Keys) {
-                    $profileDef.Options[[string]$key] = [string]$options[$key]
-                }
-            }
-            elseif ($null -ne $options -and $options.PSObject) {
-                foreach ($property in $options.PSObject.Properties) {
-                    $profileDef.Options[[string]$property.Name] = [string]$property.Value
-                }
-            }
-        }
-
-        $secretScanner = Get-DriftBusterPropertyValue -Object $InputObject -Names @('secret_scanner', 'SecretScanner')
-        if ($null -ne $secretScanner) {
-            $ignoreRules = Get-DriftBusterPropertyValue -Object $secretScanner -Names @('ignore_rules', 'IgnoreRules')
-            if ($ignoreRules) {
-                if ($ignoreRules -is [System.Collections.IEnumerable] -and -not ($ignoreRules -is [string])) {
-                    $profileDef.SecretScanner.IgnoreRules = @($ignoreRules | ForEach-Object { [string]$_ })
-                }
-                else {
-                    $profileDef.SecretScanner.IgnoreRules = @([string]$ignoreRules)
-                }
-            }
-
-            $ignorePatterns = Get-DriftBusterPropertyValue -Object $secretScanner -Names @('ignore_patterns', 'IgnorePatterns')
-            if ($ignorePatterns) {
-                if ($ignorePatterns -is [System.Collections.IEnumerable] -and -not ($ignorePatterns -is [string])) {
-                    $profileDef.SecretScanner.IgnorePatterns = @($ignorePatterns | ForEach-Object { [string]$_ })
-                }
-                else {
-                    $profileDef.SecretScanner.IgnorePatterns = @([string]$ignorePatterns)
-                }
-            }
-        }
-
-        return $profileDef
+        $json = $map | ConvertTo-Json -Depth 64 -Compress
+        return [System.Text.Json.JsonSerializer]::Deserialize($json, [DriftBuster.Backend.Models.RunProfileDefinition], [DriftBuster.Backend.Json.ModelJson]::Options)
     }
 }
 

@@ -1,20 +1,4 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
-{
-    public sealed class RunProfileFileResult
-    {
-        [JsonPropertyName("source")]
-        public string Source { get; set; } = string.Empty;
-
-        [JsonPropertyName("destination")]
-        public string Destination { get; set; } = string.Empty;
-
-        [JsonPropertyName("size")]
-        public long Size { get; set; }
-
-        [JsonPropertyName("sha256")]
-        public string Sha256 { get; set; } = string.Empty;
-    }
-}
+/// <summary>A collected file: the source it came from, where it was copied (forward slashes), and the copy's size and SHA-256.</summary>
+public sealed record RunProfileFileResult(string Source, string Destination, long Size, string Sha256);

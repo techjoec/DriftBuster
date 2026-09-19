@@ -1,56 +1,23 @@
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.Secrets;
 
 public static partial class SecretScanner
 {
     /// <summary>
-    /// An inline <c>secret_scanner.ruleset</c> mapping that compiles wins over the packaged rules; ignore rules are the union of
-    /// <c>options.secret_ignore_rules</c> and <c>secret_scanner.ignore_rules</c>; ignore patterns are <c>options.secret_ignore_patterns</c>
-    /// then <c>secret_scanner.ignore_patterns</c>, de-duplicated in order and compiled without options (a pattern that does not compile
-    /// stays in the text list and is not applied).
+    /// The packaged rules with the profile's ignore lists: rule names to skip, and ignore patterns (distinct, in order) whose matches on
+    /// the original line are never redacted. Patterns are validated when the profile is saved; one that does not compile is skipped.
     /// </summary>
-    public static SecretDetectionContext BuildContext(IReadOnlyDictionary<string, object?>? options, IReadOnlyDictionary<string, object?>? secretScanner)
+    public static SecretDetectionContext BuildContext(SecretScannerOptions? options)
     {
-        object? rulesetPayload = null;
-        if (IsTruthy(secretScanner))
-        {
-            rulesetPayload = Get(secretScanner!, "ruleset");
-        }
-
-        IReadOnlyList<SecretDetectionRule> rules;
-        string version;
-        bool loaded;
-        if (CompileRulesetFromMapping(rulesetPayload as IReadOnlyDictionary<string, object?>) is { } inline)
-        {
-            (rules, version, loaded) = (inline.Rules, inline.Version, inline.Rules.Count > 0);
-        }
-        else
-        {
-            (rules, version, loaded) = LoadSecretRules();
-        }
-
-        var ignoreRules = new HashSet<string>(StringComparer.Ordinal);
-        var patternSources = new List<string>();
-        if (IsTruthy(options))
-        {
-            ignoreRules.UnionWith(SecretOptionValues(Get(options!, "secret_ignore_rules")));
-            patternSources.AddRange(SecretOptionValues(Get(options!, "secret_ignore_patterns")));
-        }
-
-        if (IsTruthy(secretScanner))
-        {
-            ignoreRules.UnionWith(SecretOptionValues(Get(secretScanner!, "ignore_rules")));
-            patternSources.AddRange(SecretOptionValues(Get(secretScanner!, "ignore_patterns")));
-        }
-
-        var patternText = new List<string>();
+        var (rules, version, loaded) = LoadSecretRules();
+        var patternText = (options?.IgnorePatterns ?? []).Distinct(StringComparer.Ordinal).ToList();
         var patterns = new List<Regex>();
-        foreach (var source in patternSources.Distinct(StringComparer.Ordinal))
+        foreach (var source in patternText)
         {
-            patternText.Add(source);
             try
             {
                 patterns.Add(PatternRegex.Create(source));
@@ -60,62 +27,22 @@ public static partial class SecretScanner
             }
         }
 
+        var ignoreRules = new HashSet<string>(options?.IgnoreRules ?? [], StringComparer.Ordinal);
         return new SecretDetectionContext(rules, version, ignoreRules, patterns, patternText, loaded && rules.Count > 0);
     }
 
-    /// <summary>
-    /// The <c>secrets</c> entry of a profile run's <c>metadata.json</c>, also returned on the run result: the ruleset version, whether
-    /// rules were loaded, the ignore rules (sorted) and ignore pattern texts, every finding, and the log messages when there are any.
-    /// </summary>
-    public static OrderedDictionary<string, object?> RunSecretsMetadata(SecretDetectionContext context, IReadOnlyList<string> messages)
+    /// <summary>What the filter did during a run, for the run result and <c>metadata.json</c>.</summary>
+    public static SecretRunSummary Summarise(SecretDetectionContext context, IReadOnlyList<string> messages)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(messages);
-        var ignoredRules = context.IgnoreRules.ToList();
-        ignoredRules.Sort(PathText.CompareCodePoints);
-        var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["ruleset_version"] = context.Version,
-            ["rules_loaded"] = context.Rules.Count > 0 && context.RulesLoaded,
-            ["ignored_rules"] = ignoredRules.Cast<object?>().ToList(),
-            ["ignored_patterns"] = context.IgnorePatternText.Cast<object?>().ToList(),
-            ["findings"] = context.Findings.Select(finding => (object?)new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["path"] = finding.Path,
-                ["rule"] = finding.Rule,
-                ["line"] = finding.Line,
-                ["snippet"] = finding.Snippet,
-            }).ToList(),
-        };
-        if (messages.Count > 0)
-        {
-            metadata["messages"] = messages.Cast<object?>().ToList();
-        }
-
-        return metadata;
-    }
-
-    /// <summary>The manifest's secret scanner entry: the ignore lists as sorted, distinct values and the ruleset version.</summary>
-    public static OrderedDictionary<string, object?> ManifestSecretScanner(
-        IReadOnlyDictionary<string, object?> options,
-        IReadOnlyDictionary<string, object?> secretScanner,
-        SecretDetectionContext context)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(secretScanner);
-        ArgumentNullException.ThrowIfNull(context);
-        static List<object?> Sorted(IEnumerable<string> values)
-        {
-            var distinct = values.Distinct(StringComparer.Ordinal).ToList();
-            distinct.Sort(PathText.CompareCodePoints);
-            return distinct.Cast<object?>().ToList();
-        }
-
-        return new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["ignore_rules"] = Sorted(SecretOptionValues(Get(options, "secret_ignore_rules")).Concat(SecretOptionValues(Get(secretScanner, "ignore_rules")))),
-            ["ignore_patterns"] = Sorted(SecretOptionValues(Get(options, "secret_ignore_patterns")).Concat(SecretOptionValues(Get(secretScanner, "ignore_patterns")))),
-            ["ruleset_version"] = context.Version,
-        };
+        return new SecretRunSummary(
+            context.Version,
+            context.RulesLoaded,
+            [.. context.IgnoreRules.Order(StringComparer.Ordinal)],
+            context.IgnorePatternText,
+            [.. context.Findings.Select(finding => new SecretFindingResult(finding.Path, finding.Rule, finding.Line, finding.Snippet))],
+            [.. context.RedactionGuards.Select(guard => new SecretFindingResult(guard.Path, guard.Rule, guard.Line, string.Empty))],
+            [.. messages]);
     }
 }

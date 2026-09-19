@@ -27,7 +27,7 @@ internal static class EngineTextFile
         ArgumentNullException.ThrowIfNull(bytes);
         FileSystemError.ThrowIfEmbeddedNull(path);
         shown ??= LexicalPath.Str(path);
-        if (RunProfileStore.IsDirectory(path))
+        if (Directory.Exists(path))
         {
             throw FileSystemError.AccessDenied(shown);
         }
@@ -57,7 +57,7 @@ internal static class EngineTextFile
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(shown);
         FileSystemError.ThrowIfEmbeddedNull(path);
-        if (RunProfileStore.IsDirectory(path))
+        if (Directory.Exists(path))
         {
             throw FileSystemError.AccessDenied(shown);
         }

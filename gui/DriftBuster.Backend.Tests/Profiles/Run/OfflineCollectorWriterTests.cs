@@ -25,9 +25,9 @@ public sealed class OfflineCollectorWriterTests : IDisposable
             Description = "collect",
             Sources =
             [
-                new RunProfileSource(" C:/logs "),
-                new RunProfileSource("C:/data") { Alias = "  ", Optional = true, Exclude = ["*.tmp", ""] },
-                new RunProfileSource(" "),
+                new RunProfileSource { Path = " C:/logs " },
+                new RunProfileSource { Path = "C:/data", Alias = "  ", Optional = true, Exclude = ["*.tmp", ""] },
+                new RunProfileSource { Path = " " },
             ],
             Options = new Dictionary<string, string>(StringComparer.Ordinal) { ["k"] = "v" },
             SecretScanner = new SecretScannerOptions { IgnoreRules = ["a", " a ", ""], IgnorePatterns = ["P"] },
@@ -48,7 +48,7 @@ public sealed class OfflineCollectorWriterTests : IDisposable
         var profileElement = config.GetProperty("profile");
         profileElement.GetProperty("baseline").GetString().Should().Be("C:/logs");
         JsonSerializer.Serialize(profileElement.GetProperty("sources")).Should().Be(
-            """[{"path":"C:/logs","optional":false,"exclude":[]},{"path":"C:/data","optional":true,"exclude":["*.tmp",""]}]""");
+            """[{"path":"C:/logs","alias":null,"optional":false,"exclude":[]},{"path":"C:/data","alias":null,"optional":true,"exclude":["*.tmp",""]}]""");
         JsonSerializer.Serialize(profileElement.GetProperty("secret_scanner").GetProperty("ignore_rules")).Should().Be("""["a"]""");
         profileElement.GetProperty("secret_scanner").GetProperty("ruleset").GetProperty("rules").GetArrayLength().Should().BePositive();
         config.GetProperty("runner").GetProperty("package_name").GetString().Should().Be("field-kit-offline-results");
@@ -58,12 +58,12 @@ public sealed class OfflineCollectorWriterTests : IDisposable
     [Fact]
     public void PrepareValidatesTheRequest()
     {
-        var profile = new RunProfileDefinition { Name = "p", Sources = [new RunProfileSource("C:/logs")] };
+        var profile = new RunProfileDefinition { Name = "p", Sources = [new RunProfileSource { Path = "C:/logs" }] };
 
         var noName = () => OfflineCollectorWriter.Prepare(new RunProfileDefinition { Name = " " }, new OfflineCollectorRequest { PackagePath = "x.zip" }, null, TestContext.Current.CancellationToken);
         noName.Should().Throw<InvalidOperationException>().WithMessage("Profile name is required.");
 
-        var noPackage = () => OfflineCollectorWriter.Prepare(profile, new OfflineCollectorRequest(), null, TestContext.Current.CancellationToken);
+        var noPackage = () => OfflineCollectorWriter.Prepare(profile, new OfflineCollectorRequest { PackagePath = " " }, null, TestContext.Current.CancellationToken);
         noPackage.Should().Throw<InvalidOperationException>().WithMessage("Package path is required.");
 
         var separator = () => OfflineCollectorWriter.Prepare(
