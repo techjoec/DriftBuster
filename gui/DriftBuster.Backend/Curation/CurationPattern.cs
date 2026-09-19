@@ -4,8 +4,8 @@ namespace DriftBuster.Backend.Curation;
 
 /// <summary>
 /// Wildcard matching for curation patterns: <c>*</c> matches any run of characters (a <c>/</c> included), <c>?</c> one
-/// character, always case-insensitive because files are matched across servers case-insensitively. An empty pattern matches
-/// everything; a pattern without wildcards must equal the text.
+/// character, always case-insensitive because files are matched across servers case-insensitively. <c>;</c> separates
+/// alternatives (<c>Built;*.Timestamp</c>). An empty pattern matches everything; a pattern without wildcards must equal the text.
 /// </summary>
 public static class CurationPattern
 {
@@ -18,7 +18,15 @@ public static class CurationPattern
             return true;
         }
 
-        // MatchesSimpleExpression reads \ as an escape; curation patterns have none, so each one stands for itself.
-        return FileSystemName.MatchesSimpleExpression(pattern.Replace("\\", "\\\\", StringComparison.Ordinal), text, ignoreCase: true);
+        foreach (var alternative in pattern.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            // MatchesSimpleExpression reads \ as an escape; curation patterns have none, so each one stands for itself.
+            if (FileSystemName.MatchesSimpleExpression(alternative.Replace("\\", "\\\\", StringComparison.Ordinal), text, ignoreCase: true))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

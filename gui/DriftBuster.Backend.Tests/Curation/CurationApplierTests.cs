@@ -152,5 +152,7 @@ public sealed class CurationApplierTests
         CurationPattern.IsMatch("anything", string.Empty).Should().BeTrue();
         CurationPattern.IsMatch(@"C:\path\x", @"C:\path\*").Should().BeTrue();
         CurationPattern.IsMatch("Cache.Minutes", "Cache.Hours").Should().BeFalse();
+        CurationPattern.IsMatch("Built", "Cache.*; Built").Should().BeTrue("; separates alternatives");
+        CurationPattern.IsMatch("Other", "Cache.*;Built").Should().BeFalse();
     }
 }

@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 namespace DriftBuster.Backend.Curation;
 
 /// <summary>
-/// A pattern over files and settings that names what it matches (application, friendly file name, description) and can act on
-/// it: ignore, mask or unmask the matching settings, or put them in groups. An empty key pattern makes the rule about whole
-/// files: labels apply, and ignore leaves the whole file out.
+/// A pattern over files and settings that names the files it matches (application, friendly file name, description) and can
+/// act on the matching settings: ignore, mask or unmask them, or put them in groups. An empty key pattern makes the rule act
+/// on whole files: ignore leaves the whole file out.
 /// </summary>
 public sealed record CurationRule
 {

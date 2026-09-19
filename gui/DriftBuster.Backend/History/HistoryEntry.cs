@@ -9,4 +9,8 @@ public sealed record HistoryEntry(
     string Key,
     string? Value,
     bool Masked,
-    string ValueHash);
+    string ValueHash)
+{
+    /// <summary>When the run was recorded, in this machine's time zone, for display.</summary>
+    public DateTimeOffset RecordedAtLocal => RecordedAt.ToLocalTime();
+}

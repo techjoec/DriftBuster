@@ -64,6 +64,59 @@ public static class SettingsComparisonReport
         return builder.Append("</body></html>\n").ToString();
     }
 
+    /// <summary>The settings on the review list, differing or not, as a page: file, setting, each server's value.</summary>
+    public static string ReviewHtml(SettingsComparison comparison, DateTimeOffset generatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(comparison);
+        var builder = new StringBuilder();
+        builder.Append("<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>DriftBuster review</title>\n")
+            .Append("<style>body{font-family:Segoe UI,sans-serif;margin:24px;color:#0f172a}table{border-collapse:collapse;width:100%}")
+            .Append("th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}th{background:#f1f5f9}")
+            .Append(".d{background:#fef3c7;font-weight:600}.m{color:#b91c1c;font-style:italic}.p{color:#475569}</style></head><body>\n")
+            .Append("<h1>Settings picked for review</h1>\n<p class=\"p\">Generated ")
+            .Append(Encode(generatedAt.ToString("yyyy-MM-dd HH:mm 'UTC'zzz", CultureInfo.InvariantCulture)))
+            .Append(".</p>\n<table><tr><th>File</th><th>Setting</th>");
+        foreach (var host in comparison.Hosts)
+        {
+            builder.Append("<th>").Append(Encode(host.Label)).Append("</th>");
+        }
+
+        builder.Append("</tr>\n");
+        foreach (var file in comparison.Files)
+        {
+            foreach (var row in file.Settings.Where(row => row.InReview))
+            {
+                builder.Append("<tr><td>").Append(Encode(file.Path)).Append("</td><td>").Append(Encode(row.Key)).Append("</td>");
+                foreach (var value in row.Values)
+                {
+                    var css = value.DiffersFromBaseline ? " class=\"d\"" : value.State == SettingValueState.Value ? string.Empty : " class=\"m\"";
+                    builder.Append("<td").Append(css).Append('>').Append(Encode(CellText(value))).Append("</td>");
+                }
+
+                builder.Append("</tr>\n");
+            }
+        }
+
+        return builder.Append("</table>\n</body></html>\n").ToString();
+    }
+
+    /// <summary>The settings on the review list as CSV rows: file, setting, each server's value.</summary>
+    public static string ReviewCsv(SettingsComparison comparison)
+    {
+        ArgumentNullException.ThrowIfNull(comparison);
+        var builder = new StringBuilder();
+        AppendCsvRow(builder, ["File", "Setting", .. comparison.Hosts.Select(host => host.Label)]);
+        foreach (var file in comparison.Files)
+        {
+            foreach (var row in file.Settings.Where(row => row.InReview))
+            {
+                AppendCsvRow(builder, [file.Path, row.Key, .. row.Values.Select(CellText)]);
+            }
+        }
+
+        return builder.ToString();
+    }
+
     public static string Csv(SettingsComparison comparison)
     {
         ArgumentNullException.ThrowIfNull(comparison);

@@ -43,11 +43,12 @@ public static class CurationApplier
         List<CurationChoice> choices,
         IReadOnlyList<CurationReviewItem> review)
     {
-        var fileRules = rules.Where(rule => rule.KeyPattern.Length == 0 && rule.MatchesFile(file.Path)).ToList();
-        file.AppName = fileRules.Select(rule => rule.AppName).FirstOrDefault(name => name.Length > 0) ?? string.Empty;
-        file.FileLabel = fileRules.Select(rule => rule.FileLabel).FirstOrDefault(name => name.Length > 0) ?? string.Empty;
-        file.Description = fileRules.Select(rule => rule.Description).FirstOrDefault(text => text.Length > 0) ?? string.Empty;
-        file.Ignored = fileRules.Any(rule => rule.Ignore)
+        // Labels come from every rule whose files match; a setting pattern only narrows what the rule acts on.
+        var labelRules = rules.Where(rule => rule.MatchesFile(file.Path)).ToList();
+        file.AppName = labelRules.Select(rule => rule.AppName).FirstOrDefault(name => name.Length > 0) ?? string.Empty;
+        file.FileLabel = labelRules.Select(rule => rule.FileLabel).FirstOrDefault(name => name.Length > 0) ?? string.Empty;
+        file.Description = labelRules.Select(rule => rule.Description).FirstOrDefault(text => text.Length > 0) ?? string.Empty;
+        file.Ignored = labelRules.Any(rule => rule.Ignore && rule.KeyPattern.Length == 0)
             || choices.Any(choice => string.Equals(choice.Kind, CurationChoiceKinds.Ignore, StringComparison.Ordinal) && choice.Target.IsSource && choice.Target.MatchesFile(file.Path));
 
         foreach (var row in file.Settings)
