@@ -83,8 +83,8 @@ Prioritised sourcing for the current compliance push lives below.
    `fixtures/vendor_samples/telemetry_collector_sample.json`. Source structure
    from public pruning guidance, convert real hostnames to the `example.invalid`
    domain, and swap tokens for environment variable placeholders. During manual
-   rehearsals, pair this fixture with the retention metrics CLI flag to confirm
-   pruning guardrails stay aligned with compliance docs.
+   rehearsals, pair this fixture with `driftbuster maint purge-reporting-retention
+   --retention-days` to confirm pruning guardrails stay aligned with compliance docs.
 2. **Directory sync export** — Maintain the YAML payload at
    `fixtures/vendor_samples/identity_directory_sample.yaml` to rehearse identity
    integrations. Derive the payload layout from open standards documentation,
@@ -99,9 +99,8 @@ Prioritised sourcing for the current compliance push lives below.
 - Expand the table row-by-row as new detectors appear. Keep the first column
   aligned with catalog format identifiers so cross-referencing stays painless.
 - Store only the links to these samples or short extraction scripts in a
-  private, access-controlled mirror repository. For day-to-day development,
-  keep a local `samples/README.md` with retrieval commands but do not commit the
-  raw fixtures here.
+  private, access-controlled mirror repository, together with their retrieval
+  commands; do not commit the raw vendor fixtures here.
 
 ### Legal coordination
 
@@ -235,8 +234,7 @@ grounded in reproducible fixtures.
   redaction helpers.
 - Evaluate structured diff tooling to compare expected vs. actual metadata for
   fuzzed fixtures without enabling automated pipelines.
-- Source at least two additional public formats (YAML, INI) and extend the
-  inventory once detector support becomes available.
+- Source additional public YAML and INI samples and extend the inventory.
 - Draft placeholder mutation recipes for future binary formats (e.g., firmware
   slices) while keeping them manual-only.
 - For INI/CONF updates, log manual checks that preserve key ordering, comment markers (inline vs line), mixed newline handling, and encoding detection (UTF BOMs vs Latin-1) in `notes/checklists/manual-tests.md` to mirror backlog expectations.

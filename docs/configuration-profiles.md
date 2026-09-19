@@ -91,10 +91,10 @@ foreach (var entry in results)
 - Tags determine which profiles and configs activate. A profile applies when
   all its tags are present. A config applies when its own tags (and
   `application`/`version`/`branch` helpers) match the tag set.
-- Path matching prefers exact `path` equality, falling back to `path_glob`
+- Path matching prefers exact `path` equality (case-sensitive), falling back to `path_glob`
   against the whole relative path (both normalised to POSIX-style
   separators). Because `*` crosses `/`, `configs/*.json` also matches
-  `configs/sub/app.json`. Matching ignores case on Windows only.
+  `configs/sub/app.json`. `path_glob` matching ignores case on Windows only.
 - If no config matches a file, `Profiles` is empty.
 - When an applied config's metadata sets `ignore_review_flags` to true, a
   detection flagged `needs_review` is marked `review_ignored` instead.
@@ -184,9 +184,9 @@ and `SkipUntil` operations over `ScheduleSpec` entries.
 ## Registry Scan Sources
 
 - `registry_scan` entries live under `profile.sources` in offline runner
-  configs. Supply a token plus optional keyword/regex filters. Remote capture
-  targets are configured via `remote` (single host) and `remote_batch`
-  (additional hosts) objects.
+  configs. Supply a token plus optional keyword/regex filters. `remote` (single
+  host) and `remote_batch` (additional hosts) objects are validated and kept in
+  the config, but scans read only the local registry.
 - Supported remote keys: `host` (required), `username`, `password_env`,
   `credential_profile`, `transport`, `port`, `use_ssl`, and `alias`. Raw
   `password` values are rejected – reference environment variables instead.

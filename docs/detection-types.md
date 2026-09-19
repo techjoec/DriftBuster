@@ -1,18 +1,18 @@
 # Detection Types Reference
 
-The detection catalog (`DETECTION_CATALOG` below: `DetectionCatalog.Default`,
-built in `gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`)
+The detection catalog (`DetectionCatalog.Default`, built in
+`gui/DriftBuster.Backend/Detection/Catalog/DetectionCatalogData.cs`)
 holds the canonical detection metadata consumed by the core detector; the usage
 percentages are survey estimates kept in this document. Detection runs in
 ascending priority order; the first positive match wins. The tables below blend the shipped class definitions from
-`DETECTION_CATALOG` (v0.0.3) with the usage insights from the format survey data
+the catalog (v0.0.3) with the usage insights from the format survey data
 (v0.0.3).
 
 ## Active Detection Classes
 
 | Priority | Class Name              | Catalog Format        | Default Severity | Primary Variant / Notes                 | Key Extensions                      | Usage % | Detection Cues                |
 |----------|------------------------|-----------------------|------------------|-----------------------------------------|-------------------------------------|---------|-------------------------------|
-| 10       | RegistryExport         | registry-export       | high             | —                                       | `.reg`                               | 10      | signature + prefix            |
+| 10       | RegistryExport         | registry-export       | high             | catalog entry only; no built-in plugin emits it | `.reg`                 | 10      | —                             |
 | 15       | RegistryLive           | registry-live         | medium           | scan-definition                          | `.json`, `.yml`, `.yaml`             | —       | `registry_scan` manifest key  |
 | 20       | StructuredConfigXml    | structured-config-xml | high             | web/app/machine + transform variants     | `.config`                            | 12      | filename + section hints      |
 | 30       | XmlGeneric             | xml                   | medium           | generic, msbuild, manifest/resource/XAML | `.xml`, `.manifest`, `.resx`, `.xaml` | 14     | namespace + root metadata     |
@@ -20,11 +20,14 @@ ascending priority order; the first positive match wins. The tables below blend 
 | 50       | Yaml                   | yaml                  | medium           | generic / kubernetes-manifest            | `.yml`, `.yaml`                      | 8       | key/colon indentation         |
 | 60       | Toml                   | toml                  | medium           | generic / array-of-tables                | `.toml`                              | 4       | bracketed sections + `=`      |
 | 70       | Ini                    | ini                   | medium           | sectioned-ini, dotenv, hybrid, desktop   | `.ini`, `.cfg`, `.cnf`               | 15      | section headers + key density + extension hints |
+| 75       | Hcl                    | hcl                   | high             | hashicorp-nomad / -vault / -consul, generic | `.hcl`                          | —       | extension + block/attribute structure |
 | 80       | KeyValueProperties     | properties            | medium           | java-properties                          | `.properties`                        | 3       | extension + `=`/`:` pairs + continuations |
 | 90       | UnixConf               | unix-conf             | high             | directive-conf + apache/nginx/SSH/VPN    | `.conf`                              | 2       | directive keywords + comment markers |
-| 100      | ScriptConfig           | script-config         | high             | generic (PowerShell/BAT/CMD/VB planned)  | `.ps1`, `.bat`, `.cmd`, `.vbs`       | 4       | shebang/keyword scan          |
+| 100      | ScriptConfig           | script-config         | high             | generic (Dockerfiles); PowerShell/BAT/CMD/VB variants are catalog-only | `.ps1`, `.bat`, `.cmd`, `.vbs`, `Dockerfile` | 4 | shebang/keyword scan |
 | 110      | EmbeddedSqlDb          | embedded-sql-db       | high             | —                                       | `.sqlite`, `.db`                     | 2       | page-structured signature     |
 | 120      | GenericBinaryDat       | binary-dat            | low              | —                                       | `.dat`, `.bin`                       | 3       | entropy threshold             |
+| 130      | Plist                  | plist                 | medium           | xml-or-binary                            | `.plist`                             | 0.5     | `bplist00` header             |
+| 140      | MarkdownConfig         | markdown-config       | low              | embedded-yaml-frontmatter                | `.md`                                | 0.5     | leading `---` YAML front matter |
 | 1000     | UnknownTextOrBinary    | unknown-text-or-binary | info            | fallback                                 | _fallback_                           | —       | —                             |
 
 Default severity labels mirror the canonical values embedded in the catalog
@@ -113,9 +116,8 @@ reviewers and to script downstream workflows without hard-coding guidance.
 
 ### Ini
 
-- **Severity hint:** INI-style configuration files centralise environment
-  toggles, service hosts, and credential references that influence access
-  control immediately.
+- **Severity hint:** INI and dotenv style files often embed credentials,
+  tokens, and environment toggles that impact access control immediately.
 - **Remediations:**
   - `ini-secret-rotation` (secrets): Rotate secrets surfaced in dotenv or
     credential sections and confirm masked samples replace raw exports.
@@ -136,6 +138,18 @@ reviewers and to script downstream workflows without hard-coding guidance.
   - `ini-dotenv-sanitise-identifiers` (sanitisation): Strip hostnames and
     environment identifiers from dotenv exports prior to archiving or
     distribution.
+
+### Hcl
+
+- **Severity hint:** HCL configurations describe Nomad jobs, Vault listeners
+  and seals, and Consul agents, and routinely embed tokens, TLS material
+  paths, and cluster addresses.
+- **Remediations:**
+  - `hcl-token-rotation` (secrets): Rotate tokens and unseal material
+    referenced in captured HCL and replace archived copies with redacted
+    variants.
+  - `hcl-listener-review` (hardening): Review listener, TLS, and ACL stanzas
+    against hardened baselines before redeploying captured configs.
 
 ### KeyValueProperties
 
@@ -193,120 +207,107 @@ reviewers and to script downstream workflows without hard-coding guidance.
     credentials or certificates, replace it with hashed summaries before
     sharing.
 
-INI-family detectors now rank structural evidence (section headers, directive blocks, brace hybrids) ahead of extension-only cues so shared `.conf` and `.properties` suffixes keep their dedicated variants. Dotenv matches remain gated by known filenames and export/`=` density, allowing Java properties to retain the `java-properties` variant even when sections are absent.
+### Plist
+
+- **Severity hint:** Property lists carry application preferences, launch
+  agent definitions, and embedded credentials for desktop and mobile tooling.
+- **Remediations:**
+  - `plist-secret-review` (secrets): Review captured property lists for stored
+    tokens or account identifiers and redact them before sharing.
+
+### MarkdownConfig
+
+- **Severity hint:** Markdown front matter carries site generator settings and
+  publishing metadata that can expose author identities and internal paths.
+- **Remediations:**
+  - `markdown-frontmatter-scrub` (sanitisation): Strip author, host, and path
+    identifiers from front matter before archiving captured documents.
+
+INI-family detectors rank structural evidence (section headers, directive blocks, brace hybrids) ahead of extension-only cues so shared `.conf` and `.properties` suffixes keep their dedicated variants. Dotenv matches remain gated by known filenames and export/`=` density, allowing Java properties to retain the `java-properties` variant even when sections are absent.
 
 ### Plugin Families and Aliases
 
 Some format plugins expose families that normalise to existing catalog classes to keep reporting stable while we trial heuristics:
 
 - `dockerfile` → catalog `script-config` (shared “script-like” detection family). Metadata and reasons remain Dockerfile-specific.
-- `hcl` → catalog `ini` (temporary mapping during preview). Reports identify the plugin, and detected blocks/keys surface under metadata; mapping may receive a dedicated catalog family in a later catalog revision.
+- `hcl` → catalog `hcl` with `hashicorp-nomad`, `hashicorp-vault`, `hashicorp-consul` and `generic` variants.
 
 ### Embedded Variants
 
 - **XmlGeneric** — variants `app-manifest-xml`, `resource-xml`, and `interface-xml`
-  rely on namespace and root element metadata. They inherit the 30-series
-  priorities (`31–33`) defined in `DETECTION_CATALOG` and fall back to
-  `generic` only after namespace checks fail.
+  rely on namespace and root element metadata. They take priorities `34–36`
+  (`msbuild-*` are `31–33`, `xslt-xml` is `37`) and fall back to `generic`
+  only after namespace checks fail.
 - **Json** — variants `jsonc`, `structured-settings-json`, and
   `runtime-package-json` are tracked in the format survey.
-  `DETECTION_CATALOG` currently implements the first two (`41–42`). The core
+  The catalog implements the first two (`41–42`). The core
   plugin surfaces `structured-settings-json` for `appsettings*.json` payloads
   (filename or `ConnectionStrings`/`Logging` keys) and promotes `jsonc` when
   inline or block comments are detected outside string literals.
-- **Toml** — `PackageManifestToml` (61) and `ProjectSettingsToml` (62) cover
-  common manifest and workspace descriptors.
-- **ScriptConfig** — plan to surface the PowerShell, Batch, CMD, and VBScript
-  flavours as metadata for downstream tooling once the core heuristics are in
-  place.
-
-## Backlog Formats
-
-The format survey introduces four additional configurations to cover once the
-core and XML work stabilise. They are not yet represented in
-`DETECTION_CATALOG`.
-
-| Catalog Format         | Variant                     | Key Extensions | Usage % | Detection Cues              |
-|------------------------|-----------------------------|----------------|---------|-----------------------------|
-| markdown-config        | embedded-yaml-frontmatter   | `.md`          | 0.5     | YAML front matter           |
-| property-list          | xml-or-binary               | `.plist`       | 0.5     | header magic + XML decl     |
-
-> Note: The active catalog now includes `registry-live` definition files in
-> addition to the original survey families. The survey totals may lag until the
-> next refresh.
-
-`env-file` and `ini-json-hybrid` graduated from this backlog and are now
-surfaced by the INI plugin as dedicated variants alongside the classic
-sectioned coverage.
-
-## Implementation Order
-
-1. **Core module** — stabilise detector orchestration, sampling, and the
-   priority/metadata schema (in progress).
-2. **XML family** — complete the `.config` and XML plugin coverage (structured
-   config + generic XML variants).
-3. **Remaining formats** — iterate through the rest of the catalog, starting
-   with the highest-usage families (JSON, INI, YAML, TOML, etc.), then expand
-   into the backlog formats above.
+- **Toml** — `ArrayOfTablesToml` (61) is emitted by the plugin;
+  `PackageManifestToml` (62) and `ProjectSettingsToml` (63) are catalog-only.
+- **ScriptConfig** — the catalog defines `ps1-shell`, `batch-script`,
+  `cmd-shell` and `vbscript` variants; no built-in plugin emits them.
 
 ## Usage Notes
 
 - Types may specify filename regexes as well as extensions. Treat both as
   heuristics when authoring plugins.
-- `.config` matches now expose ``config_original_filename``,
-  ``config_role``, and ``config_transform_scope`` so adapters can
-  surface scope-aware drift summaries. Manual logs now pair those with
-  ``config_ingested_at``, ``config_sanitised_at``, and
-  ``config_verified_at`` timestamps for the neutral
-  ``web-config``/``app-config``/``machine-config`` families plus the
-  ``web-config-transform`` variant.
-- XML matches expose ``root_local_name`` and ``root_namespace`` metadata to
+- `.config` matches expose `config_original_filename`,
+  `config_role`, and `config_transform_scope` so adapters can
+  surface scope-aware drift summaries. Manual logs pair those with
+  `config_ingested_at`, `config_sanitised_at`, and
+  `config_verified_at` timestamps for the neutral
+  `web-config`/`app-config`/`machine-config` families plus the
+  `web-config-transform` variant.
+- XML matches expose `root_local_name` and `root_namespace` metadata to
   help downstream tools differentiate between manifest, resource, and XAML
   payloads even when filenames are ambiguous.
-- ``schema_locations`` metadata now records XSD provenance for XML payloads,
-  and `.resx` files include ``resource_keys`` previews for quick auditing.
-- XML detections now attach ``attribute_hints`` metadata so hunt mode can align
+- `schema_locations` metadata records XSD provenance for XML payloads,
+  and `.resx` files include `resource_keys` previews for quick auditing.
+- XML detections attach `attribute_hints` metadata so hunt mode can align
   connection strings, service endpoints, and feature flags with profile
   expectations.
-- MSBuild `.targets`, `.props`, and project payloads emit ``msbuild_*``
+- MSBuild `.targets`, `.props`, and project payloads emit `msbuild_*`
   metadata fields summarising default targets, SDK declarations, and hashed
   import references to help diff tooling track build graph drift.
 - Binary detectors rely on sampling thresholds; large opaque files may need
   increased sample sizes for confident matches.
 - When multiple detectors might claim a file, adjust priorities so the most
   specific rule executes first.
-- Inject experimental plugins by passing an explicit plugin list to ``Detector``
-  and set ``sortPlugins: false`` if the order should stay untouched during manual
+- Inject experimental plugins by passing an explicit plugin list to `Detector`
+  and set `sortPlugins: false` if the order should stay untouched during manual
   testing.
 - Registry names must stay unique—registering a different implementation
-  with the same ``Name`` throws ``ArgumentException`` so collisions surface
+  with the same `Name` throws `ArgumentException` so collisions surface
   immediately.
 
 ### Detection Metadata
 
-Detections now ship with a normalised metadata dictionary that the
-``DetectionMetadata.ValidateDetectionMetadata`` helper keeps aligned with the catalog. Keys are
+Detections ship with a normalised metadata dictionary that the
+`DetectionMetadata.ValidateDetectionMetadata` helper keeps aligned with the catalog. Keys are
 lowercase slugs to remain JSON friendly and arrive pre-sanitised for adapters.
 
 | Key               | Description                                                   | Example Value |
 |-------------------|---------------------------------------------------------------|---------------|
-| ``catalog_version`` | Detection catalog version embedded in the match payload.     | ``0.0.3``     |
-| ``catalog_format``  | Canonical catalog identifier resolved from ``format_name``.   | ``xml``       |
-| ``catalog_variant`` | Optional variant slug derived from ``DetectionMatch.variant``.| ``resource-xml``  |
-| ``bytes_sampled``   | Number of bytes the detector analysed for the match.         | ``65536``     |
-| ``encoding``        | Text codec used when content decoding succeeded.             | ``utf-8``     |
-| ``sample_truncated``| Present when sampling hit the configured guardrail.          | ``true``      |
+| `catalog_version` | Detection catalog version embedded in the match payload.     | `0.0.3`     |
+| `catalog_format`  | Canonical catalog identifier resolved from `format_name`.   | `xml`       |
+| `catalog_variant` | Optional variant slug derived from `DetectionMatch.variant`.| `resource-xml`  |
+| `bytes_sampled`   | Number of bytes the detector analysed for the match.         | `65536`     |
+| `encoding`        | Text codec used when content decoding succeeded.             | `utf-8`     |
+| `sample_truncated`| Present when sampling hit the configured guardrail.          | `true`      |
 
-Sample metadata payload::
+Sample metadata payload:
 
-    {
-        "catalog_version": "0.0.3",
-        "catalog_format": "xml",
-        "catalog_variant": "resource-xml",
-        "bytes_sampled": 65536,
-        "encoding": "utf-8",
-        "sample_truncated": false
-    }
+``json
+{
+  "catalog_version": "0.0.3",
+  "catalog_format": "xml",
+  "catalog_variant": "resource-xml",
+  "bytes_sampled": 65536,
+  "encoding": "utf-8"
+}
+``
 
 Keep this document synchronised with `DetectionCatalogData.cs` and the format
 survey data whenever priorities, variants, or usage assumptions change.

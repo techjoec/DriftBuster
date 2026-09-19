@@ -42,8 +42,6 @@ Docs are grouped so you can jump straight to the guide you need.
 
 ## Plans & Notes
 
-- [`format-backlog-briefing.md`](format-backlog-briefing.md) — queued formats
-  and heuristics.
 - [`windows-gui-guide.md`](windows-gui-guide.md) — Avalonia usage guide.
 - [`windows-gui-notes.md`](windows-gui-notes.md) — engineering notes and
   packaging research.

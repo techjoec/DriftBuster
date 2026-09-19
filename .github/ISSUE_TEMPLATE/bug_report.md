@@ -24,8 +24,8 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Version [e.g. 22]
+ - OS: [e.g. Windows 11, Ubuntu 24.04]
+ - Version: output of `driftbuster --version` (e.g. 0.2.0+<commit>)
  - GUI or CLI
 
 **Additional context**

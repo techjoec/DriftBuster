@@ -33,7 +33,7 @@ SQL Snapshot Exports
   - `Export-DriftBusterSqlSnapshot -Database fixtures/sql/sample.sqlite -MaskColumn accounts.secret -HashColumn accounts.email`
 - Exports land in `sql-exports/` by default with a `sql-manifest.json` rollup containing table lists, row counts, and column policies.
 - Record which columns were masked or hashed so auditors can retrace the anonymisation steps.
-- Store the masked database, manifest, and checksum bundle under a restricted directory until the retention deadline recorded in `notes/checklists/legal-review.md`.
+- Store the snapshot JSON and `sql-manifest.json` under a restricted directory until the retention deadline recorded in `notes/checklists/legal-review.md`.
 - Follow the retention guidance in `docs/legal-safeguards.md#retention` and document purge completion when artefacts are deleted.
 
 Offline Runner
@@ -75,7 +75,7 @@ Explicit Hive Roots
 - Use `--root` when generating snippets to capture the exact hive paths and views you intend to traverse (`HKLM\Software\VendorA` or `HKLM\Software\VendorA,view=32`).
 - Parsed roots populate the `registry_scan.roots` array; when present, the offline runner skips heuristic discovery and walks only the supplied descriptors.
 - Manifest entries mirror both `roots` and `requested_roots` so auditors can reconcile requested scope with the resolved traversal.
-- Embed collected outputs in a capture manifest with `driftbuster capture run --registry-scan data/vendorA/registry_scan.json ...` so token, roots and hit metadata sit alongside the filesystem capture.
+- Embed collected outputs in a capture manifest with `driftbuster capture run --registry-scan data/vendorA-registry/registry_scan.json ...` so token, roots and hit metadata sit alongside the filesystem capture.
 
 Remote Targets
 --------------
@@ -111,8 +111,10 @@ Remote Targets
   }
   ```
 
-- The `remote` entry is used for the primary connection; `remote_batch` entries
-  feed secondary hosts. Each target accepts these keys: `host` (required),
+- The offline runner validates `remote` (one host) and `remote_batch` (more
+  hosts) and carries them in the config, but no scan connects to remote hosts
+  yet: a `registry_scan` source always reads the local registry. For remote
+  capture use `Invoke-DriftBusterRemoteScan` (below). Each target accepts these keys: `host` (required),
   `username`, `password_env`, `credential_profile`, `transport`, `port`,
   `use_ssl`, and `alias`. Inline `password` fields are rejected to prevent
   accidental leaks. When only a batch is required, skip the `remote` block and
@@ -132,12 +134,7 @@ Profile Scheduler
   the fields.
 - `every` accepts compact intervals (`15m`, `1h30m`), ISO 8601 time durations
   (`PT45M`) or seconds. Use `start_at` to anchor the first run and optionally
-  constrain execution to a quiet window with `window.start`/`window.end` in
-  local time.
+  constrain execution to a quiet window with `window.start`/`window.end`,
+  evaluated in `window.timezone` (default `UTC`).
 - `driftbuster schedule due` lists the runs that are due and marks them pending;
   `mark-complete` advances the schedule after the run.
-
-GUI
----
-- The GUI surfaces `registry_scan.json` results collected by the offline runner
-  beside file-based findings.

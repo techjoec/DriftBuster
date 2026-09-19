@@ -19,7 +19,7 @@ Use two or more copies of a configuration tree that differ (the `fixtures/multi-
 
 4. **Right-click menu** (on a setting, a value and a file)
    - Group: add (new name), view, remove. Rule: create from the item with an application name, add another setting to it.
-   - Mark, Copy as each format (check the clipboard), View as tree, raw data, History (all three tabs).
+   - Mark, Copy as each format (check the clipboard), View → As tree and Raw data, History (all three tabs).
    - Add to report, then **Review list** and **Export review**; remove it again.
    - Ignore a setting (this run), a value (always) and a file (these servers): the chip counts drop; **Show ignored** shows them dimmed; **Forget this run's choices**.
    - Mask and unmask values; a restart keeps the saved choice and drops the this-run one.

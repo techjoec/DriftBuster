@@ -48,7 +48,7 @@ follow-up questions.
 
 - Store certificate chain PDFs and timestamp authority receipts in
   `artifacts/gui-packaging/certificates/` when available.
-- Update the entries above whenever the WebView2 runtime or Avalonia
+- Update the entries above whenever the .NET runtime or Avalonia
   dependencies change to keep NOTICE references accurate.
 
 ## Retention owners

@@ -8,12 +8,12 @@ evidence, not in this file.
 | Sample type | Command | Expect |
 |-------------|---------|--------|
 | Text/XML | `driftbuster scan fixtures/config --glob "*.config"` | Every `.config` detected as `structured-config-xml` with its variant (`web-config`, `app-config`, `machine-config`, `web-config-transform`). |
-| JSON | `driftbuster scan fixtures/config/appsettings.json --json` | `format: json`, `bytes_sampled` equal to the file size, `sample_truncated: false`. |
+| JSON | `driftbuster scan fixtures/config/appsettings.json --json` | `format: json`, `bytes_sampled` equal to the file size, no `sample_truncated` key. |
 | Truncated sample | `driftbuster scan fixtures/config/web.config --sample-size 64 --json` | `bytes_sampled: 64`, `sample_truncated: true`, no exception. |
 | Directory walk | `driftbuster scan fixtures --json` | One JSON line per file; binary and undetected files reported without failing the run. |
 
-In the `--json` output check `metadata.bytes_sampled`, `encoding`, `sample_truncated`, the catalog keys, and that `reasons`
-has no duplicate, padded or multi-line entries.
+In the `--json` output check `metadata.bytes_sampled`, `encoding`, `sample_truncated` (present only when the sample was
+cut) and the catalog keys.
 
 ## Profiles
 

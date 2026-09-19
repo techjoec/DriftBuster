@@ -9,8 +9,8 @@ Recommended test cases:
 
 - Detection basics
   - Detects the intended format with a minimal, valid sample.
-  - Returns `DetectionMatch` with: `format`, `variant` (if any), `reason`.
-  - Score is within expected range and stable across typical inputs.
+  - Returns `DetectionMatch` with `FormatName`, `Variant` (if any) and `Reasons`.
+  - `Confidence` is within the expected range and stable across typical inputs.
 
 - Extension as hint (not a gate)
   - Extension alone must not trigger detection. Content signals should gate.

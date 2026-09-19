@@ -16,7 +16,7 @@ Blockers and majors: the results catalog rendered empty (DataGrid theme missing)
 
 Minors: combo boxes and list items exposed type names to UI Automation; identical diff labels for the same file on two hosts; placeholder host names; the filtered count shown as the catalog size; a Baseline filter that filtered nothing; truncated catalog columns and bare XML file names; escaped JSON exports; "Remember session" never saved without a separate click; `--bogus` reported as a missing path; a missing registry root reported as "no hits"; the saved profile not listed after a run.
 
-Six tests assumed Linux (symlink kind, case-sensitive names, path separators, XDG) and now hold on Windows. The commits from 526f83f through the Windows test fixes carry the detail of each fix.
+Six tests assumed Linux (symlink kind, case-sensitive names, path separators, XDG) and now hold on Windows. The commits from "Diff: line-per-element XML, JSON diffed as JSON, distinct same-name labels" through the Windows test fixes carry the detail of each fix.
 
 ## Result
 

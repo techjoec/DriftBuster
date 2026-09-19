@@ -69,16 +69,16 @@ Do **not** submit code, snippets, or data from:
 
 ### Enforcement
 Pull requests adding disallowed licenses **will be rejected**.  
-Use `licensecheck .` locally before submitting to catch unexpected copyleft code.
+Check each new package's licence on NuGet before adding it and record it in `THIRD-PARTY-NOTICES.txt`.
 
 ---
 
 ## 6. Modules & Formatters
 
-- External modules and formatters **must include their own LICENSE** file.
+- Out-of-tree format plugins (built on `IFormatPlugin`) **must include their own LICENSE** file.
 - Modules interacting through DriftBuster’s public API may use permissive licenses only.
 - Closed-source modules may exist but **cannot statically link** or embed DriftBuster code.
-- All module metadata must declare:
+- Each module's README must declare:
   ```json
   {
     "name": "MyFormatter",
@@ -142,8 +142,8 @@ Submissions failing these local checks will be sent back for fixes.
 
 ### Tooling Guardrails
 
-- No GitHub Actions/Runners for this repository. Do not add workflows, runners,
-  or pipeline descriptors. Keep all checks local and documented in the PR.
+- No GitHub Actions/Runners for this repository. The two files in `.github/workflows/` are disabled placeholders; do not
+  enable them or add workflows, runners, or pipeline descriptors. Keep all checks local and documented in the PR.
 
 ---
 

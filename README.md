@@ -76,8 +76,8 @@ dotnet run --project cli/DriftBuster.Cli -- diff fixtures/config/web.config fixt
 dotnet run --project cli/DriftBuster.Cli -- hunt fixtures/multi-server/server01
 ```
 
-Hits print as a JSON array with rule, path, line, excerpt and a
-`plan_transform` placeholder. See `docs/hunt-mode.md`.
+Hits print as a JSON array with `rule`, `path`, `relative_path`, `line_number`,
+`excerpt` and a `metadata.plan_transform` placeholder. See `docs/hunt-mode.md`.
 
 ### Render a report
 
@@ -108,7 +108,7 @@ dotnet run --project gui/DriftBuster.Gui/DriftBuster.Gui.csproj
 ```
 
 Tips:
-- Use the header theme toggle to switch Dark/Light.
+- Use the header **Theme** dropdown to switch between Dark+ and Light+.
 - Click “Check core” to verify backend health (status dot shows green/red).
 - The Profiles view includes schedule cards. Add a schedule name, profile reference, and interval (e.g. `24h`, `PT1H30M`) to persist cadence metadata alongside `Profiles/schedules.json` under the data root. Optional window start/end/timezone fields narrow execution windows, while metadata rows capture contacts or ticket IDs.
 
@@ -118,12 +118,12 @@ See `docs/windows-gui-guide.md` for the full walkthrough.
 
 - Build or load a profile, then add schedule entries in the GUI to define cadence, window, tags, and metadata. Saving the profile writes both `profile.json` and the consolidated `Profiles/schedules.json` manifest under the data root.
 - Use the editable **Profile** dropdown on each schedule card to pick an existing profile name quickly.
-- Inspect or act on the same schedules from the shell with `driftbuster schedule list`, `due`, `mark-complete --name <schedule>`, or `skip-until --name <schedule> --resume-at <iso8601>`. The console tool shares the GUI’s manifest and `scheduler-state.json`.
+- Inspect or act on the same schedules from the shell with `driftbuster schedule list`, `due`, `mark-complete --name <schedule>`, or `skip-until --name <schedule> --resume-at <iso8601>`. The console tool shares the GUI’s schedules when run with `--base-dir <data root>`.
 
 ### Multi-server quickstart
 
 - Start the GUI; it opens on Multi-server **Setup**. Tick the hosts to include, pick one to set its label, scope and roots, drag hosts to change the order, and turn on **Remember session** to keep them next time (the snapshot is stored under your DriftBuster data root, e.g. `%LOCALAPPDATA%/DriftBuster/sessions/multi-server.json`).
-- Click **Run all** to queue every active host. Use **Run missing only** for retries; toasts and the activity timeline record progress, warnings, and exports.
+- Click **Run all** to queue every active host. Use **Run missing** for retries; toasts and the activity timeline record progress, warnings, and exports.
 - The run lands on **Compare**: a sentence per server ("prod: 6 settings differ in 2 files, 1 file missing"), a list of files with how many settings differ in each, and the selected file's settings as a table with a column per server and the differing values highlighted. **Next** / **Previous** (F8 / Shift+F8) walk every difference across the files. Click a server to show only what differs there, search settings and values, or turn off **Only show differences**. Secrets are masked but still compared. **Save report** writes the comparison as HTML and CSV under `exports/` in the data root.
 - Right-click any setting, value or file to shape future runs: put it in a **group**, cover it with a **rule** (names the application and file, and can ignore, mask or group whatever it matches), **mark** it for now, **copy** it as JSON, TSV, text or hex, view the file **as a tree** or as **raw data**, see its **history** (where else the setting is set, where else the value appears), **add it to the review report**, **ignore** or **mask** it for this run or always, or **report a bug** about it (a prefilled GitHub issue, after you check the payload). **Manage choices…** edits everything saved and imports or exports it. Choices live in `curation.json` and every scan's settings in `history.db`, both in the data root.
 - **Files** lists every scanned configuration with filters; double-click a row for **File details**: the baseline and any other server's copy side by side (or as a unified diff), unchanged lines folded away, **Next change** / **Previous change** (F7 / Shift+F7), and HTML/JSON exports (`exports/<config>-<timestamp>.{html,json}` under the data root).
@@ -152,7 +152,7 @@ dotnet run --project cli/DriftBuster.Cli -- multi-server <<'JSON'
 JSON
 ```
 
-The console tool and GUI share an OS-specific data root (`%LOCALAPPDATA%/DriftBuster`, `$XDG_DATA_HOME/DriftBuster`); set `DRIFTBUSTER_DATA_ROOT` to override where cached diffs live.
+The console tool and GUI share an OS-specific data root (`%LOCALAPPDATA%/DriftBuster` on Windows, `$XDG_DATA_HOME/DriftBuster` or `~/.local/share/DriftBuster` on Linux, `~/Library/Application Support/DriftBuster` on macOS); set `DRIFTBUSTER_DATA_ROOT` to move the whole data root.
 
 ### Console commands
 

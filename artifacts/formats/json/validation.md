@@ -1,6 +1,6 @@
 # JSON detector validation snapshot
 
-- **Detector**: `driftbuster.formats.json.plugin.JsonPlugin` (v0.0.3)
+- **Detector**: `gui/DriftBuster.Backend/Detection/Plugins/JsonPlugin.cs` (v0.0.3)
 - **Sample**: 280 kB appsettings payload with inline `//` comments
 - **Result**:
   - Variant: `structured-settings-json`

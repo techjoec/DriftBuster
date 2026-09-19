@@ -8,7 +8,7 @@ the code.
 
 | Format family            | Variants / focus                                                 | Plugin | Module version | Status       | Notes |
 |--------------------------|------------------------------------------------------------------|--------|----------------|--------------|-------|
-| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.6          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, MSBuild metadata, and line-level namespace provenance hashes now populate automatically. |
+| Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.6          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, MSBuild metadata, and line-level namespace provenance hashes are populated. |
 | Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.6          | Stabilising  | Namespace logging captures per-declaration hashes + line numbers, schema provenance, `.resx` resource keys, MSBuild project detection, and attribute hints surface alongside hunt-aligned tokens. |
 | JSON                     | Generic JSON, comment-friendly `jsonc`, `appsettings*.json`      | json   | 0.0.3          | Preview      | Large-sample validation and sampling guardrails are still being tuned. |
 | Registry live scan       | JSON/YAML scan manifests (`registry_scan` token/keywords/patterns) | registry-live | 0.0.1      | Preview      | Integrates live Windows Registry hunts via definition files; avoids `.reg` exports. |
@@ -34,9 +34,9 @@ settings are named like this:
 | JSON | Dotted paths (`Logging.LogLevel.Default`), array items by position (`Hosts[2]`); comments are tolerated |
 | YAML | Dotted paths, sequence items by position; a second document is prefixed `doc2.` |
 | TOML | `table.key`, arrays of tables by position (`plugin[2].name`) |
-| INI, `.env`, `.properties`, `.reg` | `[section] key`, or the bare key before any section |
+| INI, `.env`, `.properties` | `[section] key`, or the bare key before any section |
 | HCL, nginx and other conf, Dockerfile, text | The directive or key, prefixed by the blocks it sits in (`http.server.listen`); repeated names are numbered (`RUN #2`) |
-| SQLite and other binary files | One `(file contents)` entry compared by hash |
+| SQLite, property lists, Markdown with front matter and other binary-hybrid files | One `(file contents)` entry compared by hash |
 
 A file that does not parse as its format is read line by line instead. Values that look like secrets (by setting name or by
 the secret scanner's rules) are compared but never shown. A file with more settings than a table can hold is also compared
@@ -76,7 +76,5 @@ material. Current mappings:
 
 ## Roadmap References
 
-- `docs/format-backlog-briefing.md` captures planned coverage and outstanding
-  heuristics before additional formats leave HOLD.
 - `docs/detection-types.md` lists catalog priorities and the usage data backing
   each class.

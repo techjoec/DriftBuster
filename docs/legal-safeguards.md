@@ -36,9 +36,8 @@ These guardrails cover every feature, note, and capture helper.
 - Remediation stubs reference internal documentation only (`docs/*` and
   scrub guides) so downstream operators do not treat them as legal mandates for
   third-party systems.
-- Variant-specific severity copy (e.g., dotenv guidance) cleared by the legal
-  review on record; keep future updates vendor-neutral and reference internal
-  documentation only.
+- Variant-specific severity copy (e.g., dotenv guidance) stays vendor-neutral
+  and references internal documentation only.
 - Keep future catalog updates aligned with this language review; deviations
   require re-approval before shipping.
 
@@ -69,15 +68,17 @@ These guardrails cover every feature, note, and capture helper.
 - Limit explicit hive roots to the minimum scope required for the investigation
   and review manifests for the `requested_roots` trace before sharing evidence.
 - When staging remote captures, keep the WinRM working directory under a
-  restricted path (`$env:ProgramData\DriftBusterRemote`) and purge the staging
-  folder once manifests and `registry_scan.json` outputs are archived.
+  restricted path (the module default is `$env:ProgramData\DriftBuster\RemoteScan`;
+  each run removes its own staging folder) and archive manifests and
+  `registry_scan.json` outputs before sharing.
 - Run `driftbuster capture run --registry-scan ...` on secured workstations so
   registry summaries join filesystem manifests without copying raw hive exports.
 
 ## Bundled dependencies
 
-- The GUI is Avalonia with the Fluent theme and the embedded Inter font, plus
-  CommunityToolkit.Mvvm and Velopack; the backend uses Microsoft.Data.Sqlite.
+- The GUI is Avalonia (Fluent theme, DataGrid, ItemsRepeater) with the embedded
+  Inter font, CommunityToolkit.Mvvm and Velopack; the backend uses
+  Microsoft.Data.Sqlite and YamlDotNet; the console tool uses System.CommandLine.
   Every redistributed component, including the Inter font and the native
   libraries inside SkiaSharp, HarfBuzzSharp and SQLitePCLRaw, is listed in
   `THIRD-PARTY-NOTICES.txt` with its licence and copyright line; refresh that
@@ -107,23 +108,16 @@ These guardrails cover every feature, note, and capture helper.
   - Record any third-party dependency updates (e.g., .NET runtime version, Avalonia patch level) in the release notes (`notes/releases/<version>.md`) and refresh `THIRD-PARTY-NOTICES.txt` before release builds.
   - Confirm that all redistributables shipped with the bundle allow offline redistribution and include their licence text within the package.
 
-## Realtime secret scanning safeguards
+## Run profile secret scanning safeguards
 
-- Realtime profile runs must persist only scrubbed artefacts. Validate that captured files replace matched secrets with the `[SECRET]` placeholder before sharing evidence.
+- Run profile executions must persist only scrubbed artefacts. Validate that captured files replace matched secrets with the `[SECRET]` placeholder before sharing evidence.
 - Document every CLI or GUI override that adds secret ignore rules or patterns. Record the justification and reviewer in `notes/checklists/legal-review.md`.
-- Treat the realtime metadata `secrets` block as restricted telemetry. Store it alongside the run output and never detach the findings list from its redacted files.
+- Treat the run metadata `secrets` block as restricted telemetry. Store it alongside the run output and never detach the findings list from its redacted files.
 - When reviewing manual redactions, diff the captured snippets against the original sources to confirm masking preserved surrounding context without leaking the secret value.
-
-## Scheduler notification secrets
-
-- Store SMTP usernames and passwords in an operator-managed secret store (Key Vault, 1Password, etc.) and hydrate the scheduler via environment variables or encrypted config blobs. Never hardcode credentials inside JSON manifests or PowerShell profiles.
-- Restrict Slack and Teams webhook URLs to the same secret stores. Treat the URLs as credentials: scope them to the DriftBuster channel, disable re-use across staging/production, and rotate immediately if leaked.
-- Keep notification payload logs free from credentials. Scrub SMTP transcripts before archiving, and redact webhook URLs from scheduler debug output prior to attaching evidence to reviews.
-- Record credential hand-offs and rotations in `notes/checklists/legal-review.md`, noting which operator approved the change and where the updated secret now lives.
 
 ## Diff planner MRU storage
 
-- Persist only sanitized summaries. MRU entries must never include raw file contents, secrets, or unmasked configuration values; the GUI enforces this by rejecting payloads where `payload_kind` resolves to `raw`.
+- Persist only sanitized summaries. MRU entries hold file paths, a display name, `payload_kind` and a sanitized digest; they never hold file contents, secrets, or unmasked configuration values.
 - Store cache files under `%LOCALAPPDATA%/DriftBuster/cache/diff-planner/` (or the XDG data root). Operators may relocate the directory, but any alternate path must inherit the same restricted ACLs as the default location.
 - Sanitized entries should cap at ten records and rotate automatically. Manual exports must mask timestamps, hostnames, and operator identifiers before sharing outside the local workstation.
 - Record MRU telemetry samples (the GUI writes `logs/diff-planner-telemetry.json` under the data root at runtime) when auditing sanitization behaviour and capture retention outcomes in `notes/checklists/legal-review.md`.
@@ -167,10 +161,3 @@ These guardrails cover every feature, note, and capture helper.
   command that performed the deletion.
 - When sharing artefacts externally, duplicate them into a fresh directory and
   re-run masking to avoid reusing long-lived copies.
-
-## HOLD Exit Briefing
-
-- Confirm the sample list in `docs/testing-strategy.md#hold-exit-checklist-hooks` sticks to the rules above and stays format-universal.
-- Record HOLD clearance in the status log when the guardrails still hold true.
-- 2025-10-24 audit: Reconfirmed sample names, placeholders, and remediation copy stay neutral; no vendor identifiers detected.
-- 2025-10-31 approval: Hold-exit evidence bundle (`artifacts/hold-exit/`, mirrored to `captures/reporting-hold/2025-10-31/`) cleared for restricted distribution with retention logged in `notes/checklists/legal-review.md`.

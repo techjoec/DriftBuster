@@ -11,4 +11,4 @@ vendor integrations during compliance and coverage reviews.
 | `identity_directory_sample.yaml` | YAML | Directory export sync covering incremental windows and anonymised identifiers. | Mirrored from open standards payload structure with organisation references removed and hashing guidance inlined. |
 
 Both fixtures avoid real vendor identifiers and follow the guardrails documented in
-`docs/legal-safeguards.md#vendor-sample-handling`.
+`docs/legal-safeguards.md`.

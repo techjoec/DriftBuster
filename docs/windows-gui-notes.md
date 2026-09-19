@@ -1,10 +1,10 @@
 # Windows GUI Notes
 
-Updated audit of the Avalonia starter plus earlier research log. For a user-facing walkthrough see `docs/windows-gui-guide.md`.
+Engineering notes for the Avalonia GUI. For a user-facing walkthrough see `docs/windows-gui-guide.md`.
 
-## Current Base Assets (2025-10 audit)
+## Current base assets
 
-- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net10.0` with Avalonia 12. The refined header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
+- **Avalonia shell**: `gui/DriftBuster.Gui` targets `net10.0` with Avalonia 12. The header couples navigation, backend health, and theme controls in a compact strip; views swap via `CurrentView` bindings.
 - **Backend library**: `gui/DriftBuster.Backend` hosts shared diff, hunt, and run-profile helpers consumed by both the GUI and the PowerShell module.
 - **Execution contract**: Operations run in process on background tasks through `IDriftbusterBackend`, returning the JSON payloads the UI bindings consume.
 - **UI snapshot**: every page fills the window with a list or grid beside the selected item's details, panes that scroll on their own, and right-click menus for actions (see `docs/windows-gui-guide.md`). Shared styles (`Border.pane`, `Button.chip`, `Border.count`, data grid headers, tabs) live in `Assets/Styles/Theme.axaml`; dialogs and the clipboard go through `Views/DialogHost.cs`.
@@ -25,7 +25,7 @@ The headless test suite cannot catch this because the headless platform stubs fo
 - **.NET SDK 10.0.x** installed locally for restore, build, run, and publish steps.
 - **Optional tooling**: Avalonia preview support in editor (Rider, VS Code extension) improves XAML edits but is not required.
 - **Runtime checks**: Confirm `dotnet --list-sdks` includes 10.x before running the GUI.
-- **NuGet footprint**: `Avalonia`, `Avalonia.Desktop`, `Avalonia.Controls.DataGrid`, `Avalonia.Controls.ItemsRepeater`, `Avalonia.Fonts.Inter`, `Avalonia.Themes.Fluent` (versions in `gui/DriftBuster.Gui/DriftBuster.Gui.csproj`). No FluentAvalonia or Avalonia.Diagnostics dependency.
+- **NuGet footprint**: the `PackageReference` list in `gui/DriftBuster.Gui/DriftBuster.Gui.csproj` (Avalonia with DataGrid, ItemsRepeater, Inter and the Fluent theme, CommunityToolkit.Mvvm, Velopack, logging abstractions). No FluentAvalonia or Avalonia.Diagnostics dependency.
 - **Assets**: `Assets/app.ico` already contains the DrB badge; replace it with design-approved artwork before shipping installers.
 
 ## Compiled Bindings
@@ -75,11 +75,13 @@ Publishing with a runtime identifier is self-contained by default (the GUI proje
 
 - **Bootstrap**: `gui/DriftBuster.Gui.Tests/TestAppBuilder.cs` declares `[assembly: AvaloniaTestApplication]` and builds the real `App` with `.UseHeadless(...)`; `[AvaloniaFact]`/`[AvaloniaTheory]` run each test on the Avalonia dispatcher. Test parallelization is disabled assembly-wide.
 - **tmux command shape**: Run GUI tests inside tmux to keep sessions responsive, e.g. `tmux new -d -s codexcli-ui 'dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj'`. Capture logs with `|& tee artifacts/<session>.log` when reproducing issues.
-- **Focused filters**: Use `--filter 'FullyQualifiedName~MainWindowUiTests'` (or the other class names) for quick iteration, then finish with full Debug/Release passes and `-p:EnableAvaloniaXamlCompilation=true` to match release builds.
+- **Focused filters**: Use `--filter 'FullyQualifiedName~MainWindowUiTests'` (or the other class names) for quick iteration, then finish with full Debug and Release passes (compiled XAML is on by default).
 
-## Packaging & Distribution Plan
+## Packaging & Distribution
 
-- **MSIX**
+- **Velopack installer** (the default)
+  - `driftbuster release --runtime win-x64 --release-notes notes/releases/<semver>.md --installer-rid win-x64` builds it under `artifacts/velopack/releases/<rid>`; `--channel` sets the update channel label.
+- **MSIX** (`scripts/package_msix.ps1`)
   - Delivers auto-updates and clean install/uninstall.
   - Needs a code-signing certificate and explicit capability declarations (file system access).
 - **Portable ZIP**
@@ -87,8 +89,8 @@ Publishing with a runtime identifier is self-contained by default (the GUI proje
 - **Bundled runtime**
   - Ship the .NET runtime when targeting hosts without it (the default for a publish with a runtime identifier).
   - Record third-party notices alongside binaries.
-- **Update Channel**
-  - Manual updates: publish checksum + version in release notes.
+- **Updates**
+  - Velopack installs update from their channel; for portable bundles publish the checksum and version in the release notes.
 
 ## Evidence
 
@@ -114,10 +116,10 @@ Packaging evidence is captured per release, not kept in the repository: the publ
 ## Compliance & Accessibility Checklist
 
 - Legal Guardrails: Never embed vendor logos or proprietary sample content; rely on neutral icons.
-- Security: the only files the GUI writes are under the data root: the session, sanitized Diff planner history (never raw file contents), `curation.json`, `history.db` (masked values as fingerprints only), exports the user asks for, and logs.
+- Security: the GUI writes under the data root (the session, `Profiles/`, `cache/`, sanitized Diff planner history that never holds raw file contents, `curation.json`, `history.db` with masked values as fingerprints only, exports the user asks for, and logs), plus offline collector packages saved where the user chooses.
 - Accessibility: Target keyboard navigation, high-contrast theme, and screen-reader labels for critical controls.
   1. Launch packaged build on Windows 11 VM with stable Narrator + Inspect versions logged in the accessibility evidence file.
-  2. Start Narrator (`Win + Ctrl + Enter`) before opening the DriftBuster shell so focus events are captured from the splash screen.
+  2. Start Narrator (`Win + Ctrl + Enter`) before opening the DriftBuster shell so focus events are captured from the first window.
   3. Tab through Setup, Compare, Files, File details and the dialogs; record any unlabeled controls or incorrect announcements.
   4. Run `inspect.exe` from the Windows SDK, attach to the DriftBuster window, and capture `Name`, `AutomationId`, and `HelpText` for critical controls.
   5. Switch to High Contrast mode (Windows Settings → Accessibility → Contrast Themes) and repeat Inspect sweeps to document contrast ratio readings.

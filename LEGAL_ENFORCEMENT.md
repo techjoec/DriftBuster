@@ -45,8 +45,8 @@ comply with the Apache 2.0 license while protecting users from liability.
 
 | Stage | Action |
 |-------|---------|
-| **Detection** | Automated CI runs security scans and build/test validation. |
-| **Violation** | Contributor notified and PR blocked until fixed. |
+| **Detection** | `scripts/verify_coverage.sh`, `scripts/lint_all.sh` and `gitleaks dir . -v`, run locally before every commit. |
+| **Violation** | Contributor notified; the change is not merged until fixed. |
 | **Escalation** | Repeat violations → contributor removal per governance policy. |
 | **Third-Party Infringement** | File issue → remove artifact until cleared. |
 

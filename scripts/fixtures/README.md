@@ -17,7 +17,7 @@
        '(?i)user|username'             = 'service_account'
    }
 
-   Get-ChildItem -Path $source -Filter '*.env*' -File | ForEach-Object {
+   Get-ChildItem -Path $source -Filter '*.env*' -File -Force | ForEach-Object {
        $lines = Get-Content -LiteralPath $_.FullName -Encoding UTF8 | ForEach-Object {
            if ($_ -match '^\s*(export\s+)?([^=#\s]+)\s*=') {
                $key = $Matches[2]

@@ -26,19 +26,23 @@
 > users and AI assistants know what's actually shipped vs. in development.
 
 ### GUI Tabs
+- [ ] Multi-server - Setup, Compare (settings by server, right-click curation), Files and File details
 - [ ] Diff planner - Compare configuration snapshots
 - [ ] Hunt explorer - Secret/identifier scanning
 - [ ] Profiles - Profile management and scheduling
-- [ ] Multi-server - Multi-host orchestration (up to 6 servers)
 
 ### Format Plugins
 - [ ] JSON, XML, YAML, TOML, INI, HCL, Dockerfile, text, binary, Registry
 
-### CLI Tools
-- [ ] `driftbuster.cli` - Main scanning CLI
-- [ ] `driftbuster.multi_server` - Multi-server orchestration
-- [ ] `driftbuster.offline_runner` - Process pre-captured snapshots
-- [ ] `driftbuster-export-sql` - SQLite export with masking/hashing
+### Console Tool
+- [ ] `driftbuster scan`, `diff`, `hunt`, `report` - Detection, diffs, hunts and reports
+- [ ] `driftbuster multi-server` - Multi-server orchestration
+- [ ] `driftbuster profile`, `detection-profile`, `schedule` - Profiles and schedules
+- [ ] `driftbuster sql-export`, `capture` - SQLite export with masking/hashing and capture manifests
+- [ ] `driftbuster registry-scan` - Windows Registry live scan
+
+### Offline Runner
+- [ ] `scripts/driftbuster-offline-runner.ps1` - Standalone collector for Windows PowerShell 5.1
 
 ### PowerShell Module
 - [ ] `Invoke-DriftBusterDiff`, `Export-DriftBusterSqlSnapshot`

@@ -137,7 +137,8 @@ gitleaks dir . -v
 
 **Data Root** (OS-specific, resolved by `DriftbusterPaths`):
 - Windows: `%LOCALAPPDATA%/DriftBuster`
-- Linux/Mac: `$XDG_DATA_HOME/DriftBuster`
+- Linux: `$XDG_DATA_HOME/DriftBuster` (or `~/.local/share/DriftBuster`)
+- macOS: `~/Library/Application Support/DriftBuster`
 - Override: `DRIFTBUSTER_DATA_ROOT` environment variable
 - Contains: cached diffs, session state, drilldown exports, GUI logs, GUI run profiles and schedules, the PowerShell module's backend cache, `curation.json` (saved choices) and `history.db` (scan history)
 
@@ -148,7 +149,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
 ### Avalonia GUI (`gui/DriftBuster.Gui/`)
 
 - Target: .NET 10, nullable + implicit usings enabled; compiled bindings by default
-- **ViewModels** (all implement `IDisposable` for proper cleanup; `ls gui/DriftBuster.Gui/ViewModels/` for the full list):
+- **ViewModels** (those that subscribe to events implement `IDisposable`; `ls gui/DriftBuster.Gui/ViewModels/` for the full list):
   - `MainWindowViewModel` - Top-level shell, tab navigation
   - `ServerSelectionViewModel` - Multi-server orchestration, drag/drop server management; `CurrentView` (`MultiServerView`: Setup, Compare, Details, Drilldown) and lands on Compare after a run
   - `CompareViewModel` - Settings comparison (per-server summary, file list, the selected file's setting table, difference navigation, filters, HTML/CSV report); also the Diff planner's Settings tab
@@ -157,7 +158,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
   - Every page fills the window and scrolls its own virtualised panes: a list or grid beside the selected item's details (Setup hosts, Compare files, Hunt findings, Profiles); shared styles in `Assets/Styles/Theme.axaml` (`Border.pane`, `Button.chip`, `Border.count`, grid headers, tabs)
   - Right-click menus: Compare settings, values and files (`Views/CompareContextMenu.cs`, also used by Files), Hunt findings; dialogs and the clipboard through `Views/DialogHost.cs`
   - `ConfigDrilldownViewModel` - Configuration detail exploration
-  - `DiffViewModel` - Side-by-side comparison view
+  - `DiffViewModel` - Diff planner: picked files, Settings / Line by line / JSON tabs
   - `HuntViewModel` / `SecretScannerSettingsViewModel` - Hunt scan with rule chips, file/text filters and the selected finding; secret scanner settings
   - `RunProfilesViewModel` - Profile management and scheduling
   - `ResultsCatalogViewModel` - Catalog browsing with sort/filter
@@ -165,7 +166,7 @@ System.CommandLine commands under `Commands/`, one file per command. A parse err
   - Drag-to-reorder host cards
   - Session caching: `sessions/multi-server.json` under the data root
   - Exports to `exports/<config>-<timestamp>.{html,json}` under the data root
-- **Theming**: Dark/Light toggle with accessibility support
+- **Theming**: Theme selector (Dark+ / Light+) over the palettes in `Assets/Styles/Theme.axaml`
 - **State persistence**: the GUI keeps profiles and schedule cards in `Profiles/` under the data root (`Profiles/schedules.json`)
 
 ### Tests
@@ -285,7 +286,7 @@ dotnet test --filter "FullyQualifiedName~Handles"    # Pattern match
 
 **ViewModels Must Implement IDisposable**
 - Event subscriptions create strong references causing memory leaks
-- All ViewModels unsubscribe from events in `Dispose()`
+- View models that subscribe to events unsubscribe in `Dispose()`
 
 **Avalonia Drag/Drop API**
 - Uses the Avalonia 12 `DataTransfer`/`DataTransferItem`/`DataFormat` API (`DataObject` no longer exists)
@@ -300,7 +301,7 @@ dotnet test --filter "FullyQualifiedName~Handles"    # Pattern match
 
 ## Project-Specific Constraints
 
-1. **No CI/CD**: All checks are local-only. Never add `.github/workflows/` or automation hooks.
+1. **No CI/CD**: All checks are local-only. The two files in `.github/workflows/` are disabled placeholders (`workflow_dispatch` only); never enable them, add workflows, or add automation hooks.
 2. **No telemetry**: No analytics without explicit user opt-in.
 3. **Secrets scanning**: Run `gitleaks dir . -v` before commits.
 4. **Version sync**: Update `versions.json` and run `dotnet run --project cli/DriftBuster.Cli -- version` when bumping component versions.

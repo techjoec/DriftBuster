@@ -76,12 +76,12 @@ Each hit is a JSON object:
   `{}`) fails with "placeholder_template must include {token_name}
   placeholder".
 - In code, `HuntEngine.BuildPlanTransforms(hits, placeholderTemplate)`
-  deduplicates hits per file and line and pairs each `token_name` with the
-  matched value.
+  emits one transform per distinct token, value, file and line, pairing each
+  `token_name` with the matched value.
 - Feed the resulting placeholders into diff masking (`driftbuster diff
   --mask-token <value>`) or token catalogs without re-parsing hunt excerpts.
 
-## Realtime secret scanner
+## Run profile secret scanner
 
 Run profile captures run the secret scrubber on each source file before it is
 copied. Key behaviours to keep in mind:
@@ -140,7 +140,8 @@ var result = HuntEngine.HuntPath("./deployments", [dbRule], glob: "**/*.config")
 var json = HuntEngine.ToJson(result);
 ```
 
-- `keywords` provide cheap filters (case-insensitive substring matches).
+- `keywords` are case-insensitive substring gates: every keyword must occur in
+  the file and at least one on the hit's line.
 - `patterns` are .NET regular expressions (`System.Text.RegularExpressions`
   syntax), compiled case-insensitive, multiline and culture-invariant, used to
   flag lines for review. Each pattern runs on the linear-time `NonBacktracking`

@@ -1,6 +1,6 @@
 ## Multi-Server Test Fixtures
 
-Ten simulated servers under varied configuration states used by the
+Simulated servers (`server01`…) under varied configuration states used by the
 multi-server tests in `gui/DriftBuster.Backend.Tests/MultiServer/` and
 `cli/DriftBuster.Cli.Tests/`, and bundled with the GUI as
 `Samples/MultiServer/`.

@@ -24,7 +24,7 @@ How the Avalonia desktop app in `gui/DriftBuster.Gui` is laid out and what each 
 The toggles at the top of the page switch between **Setup**, **Compare**, **Files** and **File details**; **Run all** scans every included host. After a run the page lands on Compare.
 
 ### Setup
-- The host list on the left shows every host: tick to include it in runs, drag to change the order, and read its scope in one line ("Custom roots: C:\\apps (+1 more)") and its state in a word (Ready, Scanning, Done, Cached, Failed, Off).
+- The host list on the left shows every host: tick to include it in runs, drag to change the order, and read its scope in one line ("Custom roots: C:\\apps (+1 more)") and its state in a word (Ready, Queued, Scanning, Done, Cached, Failed, Off).
 - The selected host's settings sit on the right: label, scope (all drives, single drive, custom roots), roots with add and remove, **Retry** after a failure, and the last run time.
 - **Remember session** keeps hosts, roots and view state in `sessions/multi-server.json` under the data root; **Save**, **Add host** and **Clear** sit beside it.
 - **Run status and activity** (collapsed at the bottom) lists each host's run state with a **File details** link, and the activity timeline with **All / Errors / Warnings / Exports** filters and copy buttons. Toasts report progress, warnings and failures.
@@ -62,9 +62,9 @@ Right-click any setting, value, or file (in Compare, in the Diff planner's Setti
 
 ### Remote capture orchestration
 - Use the PowerShell module when coordinating multi-host captures without launching the GUI: `Invoke-DriftBusterRemoteScan -ComputerName branch-01 -RemotePath "ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -MaskToken <token>` mounts the admin share and runs the capture in process against the UNC path.
-- For environments where SMB access is blocked, flip to WinRM with `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath "C:\\ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -AllowUnmasked -RemoteWorkingDirectory "$env:ProgramData\\DriftBusterRemote"`. The cmdlet stages the module and backend on the remote host (PowerShell 7.6 required there), runs the capture, and copies the snapshot and manifest back into `<output>/<host>/` alongside GUI evidence.
-- Generate offline runner snippets with `driftbuster registry-scan emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` so the multi-server view and manifests can display the requested hive list next to each host.
-- After pulling results back, run `driftbuster capture run --registry-scan <output>/<host>/registry_scan.json ...` to embed the registry summary alongside filesystem detections before importing evidence into the GUI session archive.
+- For environments where SMB access is blocked, flip to WinRM with `Invoke-DriftBusterRemoteScan -UseWinRM -ComputerName hq-core -RemotePath "C:\\ProgramData\\VendorA" -RunProfilePath profiles\\vendor.json -Environment prod -Reason audit -AllowUnmasked -RemoteWorkingDirectory "$env:ProgramData\\DriftBuster\\RemoteScan"`. The cmdlet stages the module and backend on the remote host (PowerShell 7.6 required there), runs the capture, and copies the snapshot and manifest back into `<output>/<host>/`.
+- `driftbuster registry-scan emit-config "VendorA" --root "HKLM\\Software\\VendorA,view=64"` renders a `registry_scan` source for an offline runner config.
+- After pulling results back, `driftbuster capture run --registry-scan <output>/<host>/registry_scan.json ...` embeds the registry summary in the capture manifest beside the filesystem detections.
 
 ## 5. Diff Planner
 - **Files to compare** (folds away after a build): pick a baseline and one or more files, or reopen a **Recent plans** entry. **Build plan** runs the comparison.
@@ -82,7 +82,9 @@ Right-click any setting, value, or file (in Compare, in the Diff planner's Setti
     - `plan`: serialized content including `before`, `after`, `content_type`, labels, `mask_tokens`, `placeholder`, and
       `context_lines`.
     - `metadata`: source file paths (`left_path`, `right_path`), the resolved `content_type`, and the enforced `context_lines`.
-- The **Sanitized JSON** toggle emits the digest-only summary that the GUI stores in MRU entries. Sanitized payloads always
+    - `unified_diff`: the comparison's unified diff text.
+  - `settings`: the setting-by-setting comparison shown in the Settings tab.
+- The **Sanitized** / **Raw** toggle emits the digest-only summary that the GUI stores in MRU entries. Sanitized payloads always
   exclude raw file contents and instead provide:
   - `generated_at`: UTC timestamp recorded when the diff ran.
   - `versions`: file names with directory information stripped.
@@ -90,8 +92,8 @@ Right-click any setting, value, or file (in Compare, in the Diff planner's Setti
   - `comparisons[]`: each entry includes `plan` metadata (labels, mask tokens, placeholder, context lines), `metadata`
     (content type plus redacted path names), and a `summary` block exposing `before_digest`, `after_digest`, `diff_digest`,
     and line statistics (`before_lines`, `after_lines`, `added_lines`, `removed_lines`, `changed_lines`).
-- Sanitized payloads are the only variant persisted to disk; MRU entries store the `sanitized_summary.json` format for replay
-  without risking sensitive data.
+- Sanitized payloads are the only variant persisted to disk; MRU entries (`diff-planner/mru.json` under the cache directory)
+  keep only paths, names, the payload kind and a sanitized digest for replay.
 - Redacted samples for both payloads live under `artifacts/samples/diff-planner/`:
   - `raw_payload.json` demonstrates the direct backend contract.
   - `sanitized_summary.json` shows the MRU-safe structure with digests and counts.
@@ -108,23 +110,22 @@ Right-click any setting, value, or file (in Compare, in the Diff planner's Setti
 ### Run profile scheduling workflow
 
 1. Open the **Profiles** view and either load an existing profile or enter the sources/baseline for a new one.
-2. Scroll past the options list to find the schedule cards. Each card requires a **Name**, **Profile** reference (typically the profile name), and an **Every** interval (shorthand like `15m`, `24h`, or ISO 8601). The **Profile** field is now an editable dropdown that lists every saved profile plus the in-progress draft name so you can reuse definitions without retyping. Optional **Start at**, **Window start/end/timezone**, **Tags**, and metadata rows capture quiet hours, labels, and notification contacts.
+2. Scroll past the options list to find the schedule cards. Each card requires a **Name**, **Profile** reference (typically the profile name), and an **Interval** (shorthand like `15m`, `24h`, or ISO 8601 `PT#H#M#S`). **Profile** is an editable dropdown that lists every saved profile plus the in-progress draft name so you can reuse definitions without retyping. Optional **Start at**, **Window start/end/timezone**, **Tags**, and metadata rows capture quiet hours, labels, and notification contacts.
 3. Renaming the active profile updates any blank schedule rows automatically so cadence entries continue targeting the right definition; schedule cards with custom profile overrides keep their values intact.
 4. Click **Save profile** to persist both the `profile.json` definition and the consolidated `Profiles/schedules.json` manifest. The GUI normalises tag lists and metadata keys before writing to disk.
-5. Use the console tool when automating: `driftbuster schedule list` to inspect schedules, `due` to surface pending runs, `mark-complete` to advance cadence after a run, and `skip-until` to defer execution. The GUI and console tool share the manifest and `scheduler-state.json` files so state remains aligned.
+5. Use the console tool when automating: `driftbuster schedule list` to inspect schedules, `due` to surface pending runs, `mark-complete` to advance cadence after a run, and `skip-until` to defer execution. Pass `--base-dir <data root>` so the console tool reads the same `Profiles/schedules.json` the GUI writes.
 
 ### Run profiles secret scanner workflow
 - Switch to **Profiles** and open **Secret scanner settings** to review ignore lists. The dialog (`SecretScannerSettingsViewModel`) clones the active profile configuration, so cancelling leaves the persisted options untouched.
-- Saving applies the ignore rules/patterns plus optional inline ruleset JSON to the profile and updates the summary string beneath the button. The view model emits the same payload the backend run profile executor consumes for `driftbuster profile run`, so the GUI and console runs stay aligned.
-- When a run executes, the backend writes redaction messages (for example, `secret candidate redacted (PasswordAssignment) …`) into the activity timeline and into `metadata.json → secrets.messages`. Rows associated with scrubbed files surface a **Secrets** pill, mirroring the `HasSecrets` flag in the results view models.
-- Sanitised copies persist under the profile output directory alongside `metadata.json`. The manifest exposes rule version, ignored lists, findings, and the logged messages so auditors can reconcile GUI output with stored evidence. Pair these manifests with `artifacts/secret-scanning/realtime-validation-20251025T065645Z.log` when capturing validation proof for A13.3.
+- Saving applies the ignore rules and patterns to the profile and updates the summary string beneath the button. The view model emits the same payload the backend run profile executor consumes for `driftbuster profile run`, so the GUI and console runs stay aligned.
+- When a run executes, the backend writes redaction messages (for example, `secret candidate redacted (PasswordAssignment) …`) into `metadata.json → secrets.messages` beside the sanitised copies.
+- Sanitised copies persist under the profile output directory alongside `metadata.json`. The manifest exposes rule version, ignored lists, findings, and the logged messages so auditors can reconcile GUI output with stored evidence.
 
 ## Themes
 
-- **Palette catalog:** `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` now exposes `Palette.DarkPlus` and `Palette.LightPlus` resource dictionaries. Each dictionary defines the `Color.*` and `Brush.*` tokens consumed throughout the GUI so palette updates remain isolated to a single file.
-- **Migration defaults:** Legacy callers that rely on `Color.Accent`, `Brush.Surface`, and related keys continue to resolve without change. The base resources still point at the Dark+ palette until the selector applies a new option, preventing regressions for cached control templates and custom styles.
-- **Runtime selection:** `MainWindowViewModel` binds the header dropdown to these palette entries. Selecting an option updates `Application.Current.RequestedThemeVariant` and rewrites the shared color/brush tokens so view refreshes pick up the new palette immediately.
-- **Extending palettes:** To add additional themes, clone the structure used by `Palette.DarkPlus`, register a new `ThemeOption` in `ApplicationThemeRuntime`, and update the documentation matrix above. Keep the `Theme.DefaultPaletteId` resource in sync with the intended startup palette so migrations stay deterministic.
+- **Palettes:** `gui/DriftBuster.Gui/Assets/Styles/Theme.axaml` defines `Palette.DarkPlus` and `Palette.LightPlus`, each with the `Color.*` and `Brush.*` tokens the GUI consumes; `Theme.DefaultPaletteId` is the startup palette.
+- **Runtime selection:** `MainWindowViewModel` binds the header **Theme** dropdown to these palettes. Selecting one updates `Application.Current.RequestedThemeVariant` and rewrites the shared tokens so views pick up the new palette immediately.
+- **Adding a theme:** add a palette dictionary shaped like `Palette.DarkPlus` and register a `ThemeOption` in `ApplicationThemeRuntime`.
 
 ### Performance
 
@@ -158,7 +159,7 @@ Right-click any setting, value, or file (in Compare, in the Diff planner's Setti
 |------|---------|
 | Capture current commit hash (`git rev-parse HEAD`) with the bundle. | Tie installer evidence back to source. |
 | Generate SHA256 manifest for every staged file. | Enable downstream integrity verification without internet access; see `docs/windows-gui-notes.md#evidence`. |
-| Copy updated `NOTICE` directory into the bundle. | Keep licence obligations intact across packaging flavours. |
+| Copy `LICENSE`, `NOTICE` and `THIRD-PARTY-NOTICES.txt` into the bundle. | Keep licence obligations intact across packaging flavours. |
 | Log the publish transcript (`artifacts/gui-packaging/README.md` has the commands) and archive it alongside hashes. | Provide reproducible evidence for legal and security reviews. |
 
 ## 10. Manual Smoke Checklist
@@ -173,7 +174,6 @@ Right-click any setting, value, or file (in Compare, in the Diff planner's Setti
 - Full coverage expectations:
   - Debug collect: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
   - Release collect: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory artifacts/coverage-dotnet`
-  - XAML compilation gate: `dotnet test gui/DriftBuster.Gui.Tests/DriftBuster.Gui.Tests.csproj -p:EnableAvaloniaXamlCompilation=true`
 
 ## 12. Troubleshooting
 | Symptom | Suggested Checks |
@@ -195,7 +195,7 @@ For deeper implementation notes, refer to `docs/windows-gui-notes.md` (engineeri
 - The module loads `DriftBuster.Backend.dll` through the shared cache directory resolved by `DriftbusterPaths.GetCacheDirectory`.
 - Initialise the module with the following sequence to guarantee a published backend and JSON-aligned outputs:
   1. Publish the backend once per build: `dotnet publish gui/DriftBuster.Backend/DriftBuster.Backend.csproj -c Debug -o gui/DriftBuster.Backend/bin/Debug/published`.
-  2. Import the module: `pwsh -NoLogo -NoProfile -Command "Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psm1 -Force"`.
+  2. Import the module: `pwsh -NoLogo -NoProfile -Command "Import-Module ./cli/DriftBuster.PowerShell/DriftBuster.psd1 -Force"`.
   3. Verify connectivity and schema: `Test-DriftBusterPing` (returns `{ status = "pong" }`), `Invoke-DriftBusterDiff -Left baseline.json -Right release.json`, and `Invoke-DriftBusterRunProfile -Profile <profile.json> -BaseDir . -NoSave -Raw`.
   4. When validating packaging, run `pwsh ./cli/DriftBuster.PowerShell.Tests/Invoke-ModuleTests.ps1` to execute the Pester suite and capture an NUnit XML report under `artifacts/powershell/tests/`.
 - Package the module for distribution using `pwsh ./scripts/package_powershell_module.ps1 -Configuration Release`. The script copies the compiled backend into a temporary staging area, produces `artifacts/powershell/releases/DriftBuster.PowerShell-<version>.zip`, and writes a matching `.sha256` checksum file in the same directory.

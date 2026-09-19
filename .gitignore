@@ -81,8 +81,6 @@ artifacts/gui-packaging/portable/**
 !artifacts/formats/**
 !artifacts/samples/
 !artifacts/samples/**
-!artifacts/diff-planner-validation/
-!artifacts/diff-planner-validation/**
 
 # Block ephemeral files even inside allowlisted dirs
 artifacts/**/*.log

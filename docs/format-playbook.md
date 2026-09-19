@@ -163,12 +163,12 @@ format-specific exception.
 - Adapters may add run-level metadata (e.g., `scan_id`, `report_version`,
   `source_path`) to each detection map without mutating the original detector
   output, so repeated renders stay deterministic.
-- When detectors attach catalog context (severity, remediation, references),
-  avoid overriding those keys in `extra_metadata`. Downstream reporting expects
-  detector-provided values to win if conflicts occur.
-- When diff or HTML adapters mask values or add approval IDs, record those as
-  explicit keys inside the nested `metadata` map (`redaction.applied=True`,
-  `token_approval_id=...`) instead of mutating the top-level structure.
+- Run-level `extraMetadata` passed to `DetectionPayloads.Iterate` overwrites a
+  detector key of the same name, so never reuse catalog keys (`catalog_*`,
+  severity, remediation, references) for run metadata.
+- When adapters mask values or add approval IDs, record those as explicit keys
+  inside the nested `metadata` map instead of mutating the top-level
+  structure.
 
 ## 3. Documentation Requirements
 
