@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary>Line splitting with the exact boundary set of Python <c>str.splitlines</c>.</summary>
+/// <summary>Line splitting on every line boundary .NET's <c>\n</c>-based split misses.</summary>
 public static class TextLines
 {
     /// <summary>

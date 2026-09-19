@@ -5,20 +5,16 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Text for the values <see cref="EngineJson"/> produces, shaped like Python's <c>str()</c> and <c>repr()</c> but with JSON's
-/// <c>null</c> and <c>true</c>/<c>false</c>: integers, floats in the shortest round-trip form with Python's fixed/exponent switch,
-/// strings quoted and escaped as <c>str.__repr__</c> does, bytes (<see cref="byte"/> arrays) as <c>b'...'</c>, and lists, tuples
-/// (<see cref="object"/> arrays) and dicts spelled with their elements' reprs.
+/// Display text for <see cref="EngineJson"/> values, used in messages and reports: strings quoted with escapes, floats in
+/// shortest round-trip form, byte arrays as <c>b'...'</c>, lists, tuples (object arrays) and dicts spelled from their items,
+/// and <c>null</c>/<c>true</c>/<c>false</c>.
 /// </summary>
 public static class EngineRepr
 {
-    /// <summary><c>str(value)</c>: the string itself for a str, otherwise <see cref="Repr"/>.</summary>
+    /// <summary>A string as itself, anything else as <see cref="Repr"/>.</summary>
     public static string Str(object? value) => value is string text ? text : Repr(value);
 
-    /// <summary>
-    /// <c>repr(value)</c> for the JSON value domain. Containers are walked on an explicit stack, so a list nested as
-    /// deep as <see cref="EngineJson.MaxNestingDepth"/> is spelled out without touching the thread's stack.
-    /// </summary>
+    /// <summary>Quoted display form. Containers are walked on an explicit stack, so nesting up to <see cref="EngineJson.MaxNestingDepth"/> is safe.</summary>
     public static string Repr(object? value)
     {
         var builder = new StringBuilder();
@@ -79,8 +75,8 @@ public static class EngineRepr
     };
 
     /// <summary>
-    /// <c>repr(bytes)</c> (a <see cref="byte"/> array): <c>b'...'</c>, double quotes when the bytes hold a single quote and no double
-    /// quote; backslash, the quote, tab, line feed and carriage return escaped, every other byte outside space to "~" as <c>\xhh</c>.
+    /// <c>b'...'</c> (double quotes when the bytes hold ' and no "): backslash, the quote, \t, \n and \r escaped; bytes outside
+    /// space..~ as <c>\xhh</c>.
     /// </summary>
     public static string BytesRepr(byte[] bytes)
     {
@@ -162,10 +158,8 @@ public static class EngineRepr
     }
 
     /// <summary>
-    /// <c>repr(float)</c>: the shortest digit string that round-trips, laid out as <c>float_repr_style = 'short'</c>
-    /// does: exponent form (<c>1e+16</c>, <c>1.5e-05</c>, two-digit signed exponent) when the decimal point would
-    /// sit at or before position -4 or after position 16, otherwise fixed form with at least one fractional digit
-    /// (<c>1000000000000000.0</c>, <c>0.0001</c>); <c>nan</c>, <c>inf</c> and <c>-inf</c> spelled in lower case.
+    /// Shortest round-trip digits; exponent form (<c>1e+16</c>, <c>1.5e-05</c>) when the decimal point falls at or before -4 or
+    /// after 16, otherwise fixed with at least one fractional digit; <c>nan</c>, <c>inf</c>, <c>-inf</c>.
     /// </summary>
     public static string Float(double value)
     {
@@ -179,7 +173,7 @@ public static class EngineRepr
             return value > 0 ? "inf" : "-inf";
         }
 
-        // "R" is the shortest round-trip form on .NET Core 3.0+, as Python's repr is; only its layout differs.
+        // "R" gives the shortest round-trip digits; only the layout is ours.
         var roundTrip = value.ToString("R", CultureInfo.InvariantCulture);
         var negative = roundTrip.StartsWith('-');
         var unsigned = negative ? roundTrip[1..] : roundTrip;
@@ -226,9 +220,8 @@ public static class EngineRepr
     }
 
     /// <summary>
-    /// <c>str.__repr__</c>: single quotes unless the text holds a single quote and no double quote; backslash and
-    /// the chosen quote escaped; \t, \n and \r by name; every other non-printable code point as \xNN, \uNNNN or
-    /// \UNNNNNNNN. Printable is <see cref="EngineText.IsPrintable"/> (Python's Unicode 15.1 <c>str.isprintable()</c>).
+    /// Single quotes unless the text holds ' and no "; backslash and the chosen quote escaped; \t, \n, \r by name; other
+    /// non-printable code points (<see cref="EngineText.IsPrintable"/>) as \xNN, \uNNNN or \UNNNNNNNN.
     /// </summary>
     public static string StrRepr(string text)
     {
@@ -238,7 +231,7 @@ public static class EngineRepr
         var offset = 0;
         while (offset < text.Length)
         {
-            // An unpaired surrogate is a code point of its own to Python (category Cs, escaped as \udXXX).
+            // An unpaired surrogate is escaped as its own code point (\udXXX).
             var codePoint = char.IsSurrogatePair(text, offset) ? char.ConvertToUtf32(text, offset) : text[offset];
             offset += codePoint > 0xFFFF ? 2 : 1;
             AppendCodePoint(builder, codePoint, quote);

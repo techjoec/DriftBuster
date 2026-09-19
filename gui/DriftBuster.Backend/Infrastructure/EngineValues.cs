@@ -15,7 +15,6 @@ public static class EngineValues
     /// <summary>Set and dict key semantics: <see cref="Equal"/>, and <see cref="InvalidDataException"/> for a list or dict.</summary>
     public static IEqualityComparer<object?> HashKeys { get; } = new HashKeyComparer();
 
-    /// <summary><c>left == right</c>.</summary>
     public static bool Equal(object? left, object? right)
     {
         if (ReferenceEquals(left, right))
@@ -165,7 +164,7 @@ public static class EngineValues
     internal static InvalidDataException NotComparable(object? left, object? right)
         => new($"A value of type '{EngineBuiltins.TypeName(left)}' cannot be compared with a value of type '{EngineBuiltins.TypeName(right)}'.");
 
-    /// <summary>A Python int as the smallest of <see cref="int"/>, <see cref="long"/> and <see cref="BigInteger"/> that holds it.</summary>
+    /// <summary>An integer as the narrowest of <see cref="int"/>, <see cref="long"/> and <see cref="BigInteger"/> that holds it.</summary>
     public static object Narrow(BigInteger value)
     {
         if (value >= int.MinValue && value <= int.MaxValue)
@@ -179,8 +178,7 @@ public static class EngineValues
     private static bool SequencesEqual(IList left, IList right)
         => left.Count == right.Count && Enumerable.Range(0, left.Count).All(index => Equal(left[index], right[index]));
 
-    // list_richcompare / tuplerichcompare: the first index whose items are not equal decides with that pair's "<"; with none, the
-    // shorter sequence is less.
+    // The first index whose items differ decides with that pair's "<"; with none, the shorter sequence is less.
     private static bool SequenceLessThan(IList left, IList right)
     {
         var shared = Math.Min(left.Count, right.Count);

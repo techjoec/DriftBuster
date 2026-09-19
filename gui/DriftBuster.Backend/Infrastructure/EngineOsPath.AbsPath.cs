@@ -1,11 +1,11 @@
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary><c>os.path.abspath</c>, <c>os.path.normpath</c>, <c>os.path.split</c> and <c>os.path.join</c>.</summary>
+/// <summary>Lexical path operations: absolute, normalise, split and join.</summary>
 public static partial class EngineOsPath
 {
     /// <summary>
-    /// <c>os.path.abspath(path)</c>: a relative path joined onto the working directory, then <see cref="NormPath"/>, so ".." parts
-    /// are removed lexically. On Windows this is <see cref="Path.GetFullPath(string)"/> less any trailing separator after the root.
+    /// Joins a relative path onto the working directory and removes <c>..</c> lexically (<see cref="NormPath"/>). On Windows,
+    /// <see cref="Path.GetFullPath(string)"/> without a trailing separator after the root.
     /// </summary>
     public static string AbsPath(string path)
     {
@@ -19,8 +19,8 @@ public static partial class EngineOsPath
     }
 
     /// <summary>
-    /// <c>posixpath.normpath(path)</c>: empty and "." parts dropped, ".." removing the part before it (kept at the start of a relative
-    /// path), a leading "//" (exactly two slashes) kept, and "." for an empty result.
+    /// Drops empty and "." parts, lets ".." remove the part before it (kept at the start of a relative path), keeps a leading
+    /// "//" (exactly two), and returns "." for an empty result.
     /// </summary>
     public static string NormPath(string path)
     {
@@ -60,9 +60,8 @@ public static partial class EngineOsPath
     }
 
     /// <summary>
-    /// <c>os.path.split(path)</c>: the text up to and including the last separator, with trailing separators removed unless it is
-    /// only separators, and the text after it. On Windows the head is <see cref="Path.GetDirectoryName(string)"/> (the root when that is
-    /// null) and the tail <see cref="Path.GetFileName(string)"/>.
+    /// Head (up to the last separator, trailing separators trimmed unless it is all separators) and tail. Windows uses
+    /// <see cref="Path.GetDirectoryName(string)"/> (the root when null) and <see cref="Path.GetFileName(string)"/>.
     /// </summary>
     public static (string Head, string Tail) Split(string path)
     {
@@ -82,10 +81,7 @@ public static partial class EngineOsPath
         return (head, path[index..]);
     }
 
-    /// <summary>
-    /// <c>os.path.join(path, name)</c>: a rooted <paramref name="name"/> replaces the path; otherwise one separator joins them. On Windows
-    /// this is <see cref="Path.Combine(string, string)"/>.
-    /// </summary>
+    /// <summary>A rooted <paramref name="name"/> replaces the path; otherwise one separator joins them. Windows uses <see cref="Path.Combine(string, string)"/>.</summary>
     public static string Join(string path, string name)
     {
         ArgumentNullException.ThrowIfNull(path);

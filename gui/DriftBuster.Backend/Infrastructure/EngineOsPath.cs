@@ -4,26 +4,23 @@ using System.Text.RegularExpressions;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Environment-variable and home-directory expansion in a path, under the host platform's rules: POSIX shell-style
-/// <c>$VAR</c>/<c>${VAR}</c> and <c>~</c> everywhere but Windows, and <c>%VAR%</c> with <c>~</c> there.
+/// Environment-variable and home-directory expansion with the host's rules: <c>$VAR</c>/<c>${VAR}</c> and <c>~</c> on Unix;
+/// <c>%VAR%</c>, <c>$VAR</c> and <c>~</c> on Windows.
 /// </summary>
 public static partial class EngineOsPath
 {
-    // posixpath._varpattern compiled with re.ASCII.
+    // Unix variable syntax, ASCII names.
     [GeneratedRegex(@"\$(?<name>[A-Za-z0-9_]+|\{[^}]*\}?)", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex PosixVariable();
 
-    // ntpath._varpattern compiled with re.ASCII.
+    // Windows variable syntax: single-quoted text is left alone, %% and $$ are literal.
     [GeneratedRegex(@"'[^']*'?|%(?<percent>%|[^%]*%?)|\$(?<dollar>\$|[-A-Za-z0-9_]+|\{[^}]*\}?)", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex WindowsVariable();
 
-    /// <summary>Test seam for <c>os.environ[name]</c>: null stands for an unset variable.</summary>
+    /// <summary>Test seam for reading an environment variable; null means unset.</summary>
     internal static Func<string, string?> GetEnvironmentVariable { get; set; } = Lookup;
 
-    /// <summary>
-    /// <c>os.path.expandvars(path)</c>: <c>$name</c> and <c>${name}</c> (and on Windows <c>%name%</c>, <c>$$</c>, <c>%%</c> and
-    /// single-quoted text left alone) replaced by the variable's value; unknown variables are left unchanged.
-    /// </summary>
+    /// <summary>Replaces known variables; unknown ones are left as written.</summary>
     public static string ExpandVars(string path) => ExpandVars(path, OperatingSystem.IsWindows());
 
     internal static string ExpandVars(string path, bool windows)
@@ -99,21 +96,18 @@ public static partial class EngineOsPath
         return GetEnvironmentVariable(name) ?? match.Value;
     }
 
-    /// <summary>Test seam for <c>pwd.getpwnam(name).pw_dir</c> over the encoded name: null stands for no such account.</summary>
+    /// <summary>Test seam for a named account's home directory; null means no such account.</summary>
     internal static Func<byte[], string?> GetUserHome { get; set; } = UnixPasswd.HomeByName;
 
-    /// <summary>Test seam for <c>pwd.getpwuid(os.getuid()).pw_dir</c>: null stands for no such account.</summary>
+    /// <summary>Test seam for the current account's home directory; null means none.</summary>
     internal static Func<string?> GetCurrentUserHome { get; set; } = UnixPasswd.HomeOfCurrentUser;
 
     /// <summary>
-    /// <c>os.path.expanduser(path)</c>: a leading <c>~</c> becomes a home directory. On posix <c>~</c> uses <c>HOME</c> (the
-    /// password database's entry for the current user when unset) and <c>~user</c> the named account's entry, with trailing
-    /// <c>/</c> stripped from the home; an account that does not exist leaves the path unchanged. Where the password database
-    /// cannot be read (<see cref="UnixPasswd.Available"/>), <c>~</c> falls back to the runtime's profile directory and
-    /// <c>~user</c> is left unchanged. On Windows <c>USERPROFILE</c> (or <c>HOMEDRIVE</c> + <c>HOMEPATH</c>) is used and
-    /// <c>~user</c> is guessed as a sibling profile directory.
+    /// Expands a leading <c>~</c> or <c>~user</c>. Unix: <c>HOME</c>, else the password database; <c>~user</c> from the database,
+    /// unchanged when unknown or when the database is unavailable. Windows: <c>USERPROFILE</c> (or <c>HOMEDRIVE</c>+<c>HOMEPATH</c>),
+    /// with <c>~user</c> guessed as a sibling profile directory.
     /// </summary>
-    /// <exception cref="ArgumentException">A posix <c>~user</c> name holding a NUL character.</exception>
+    /// <exception cref="ArgumentException">A Unix <c>~user</c> name holding NUL.</exception>
     public static string ExpandUser(string path) => ExpandUser(path, OperatingSystem.IsWindows());
 
     internal static string ExpandUser(string path, bool windows)
@@ -151,8 +145,7 @@ public static partial class EngineOsPath
         else
         {
             var name = path[1..end];
-            // pwd.getpwnam encodes the name with the filesystem encoding: an unpaired surrogate cannot be encoded, and is left
-            // unexpanded (the root keeps its surrogate and is never looked up); a NUL is refused.
+            // A name with an unpaired surrogate cannot be encoded for the lookup, so it stays unexpanded; NUL is refused.
             if (EngineUtf8.HasUnpairedSurrogate(name))
             {
                 return path;

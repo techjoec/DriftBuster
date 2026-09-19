@@ -3,20 +3,16 @@ using System.Text.RegularExpressions;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Linear-time driver for the <c>^\s*...</c> MULTILINE patterns. A .NET regex searched with <c>^</c> under
-/// <see cref="RegexOptions.Multiline"/> re-scans and backtracks a run of blank lines from every line start inside
-/// it (quadratic, and past the match timeout well inside one sample), so the plugins spell those patterns with
-/// <c>\G</c> and drive them from here.
+/// Linear-time driver for <c>^\s*...</c> multiline patterns: a .NET regex with <c>^</c> under <see cref="RegexOptions.Multiline"/>
+/// rescans a run of blank lines from every line start (quadratic, hitting the match timeout), so plugins write these patterns
+/// with <c>\G</c> and drive them from here.
 /// </summary>
 public static class LineStartMatcher
 {
     /// <summary>
-    /// The successive non-overlapping matches of a <c>^\s*&lt;anchor&gt;...</c> MULTILINE pattern, given its
-    /// <c>\G</c>-anchored spelling. <paramref name="pattern"/> must begin with <c>\G[\s\x1c-\x1f]*</c> followed by
-    /// something no whitespace code point can start, so a match from a line start is decided entirely at the end of
-    /// the whitespace run that begins there: every line start inside a run that failed reaches the same end and
-    /// fails the same way, and every one inside a run that matched lies within that match. Each code point is
-    /// therefore visited a bounded number of times.
+    /// Non-overlapping matches of a <c>\G[\s\x1c-\x1f]*...</c> pattern tried at each line start. After the whitespace the pattern
+    /// must need a non-whitespace character, so every line start inside one whitespace run succeeds or fails the same way and each
+    /// character is visited a bounded number of times.
     /// </summary>
     public static IReadOnlyList<Match> Matches(Regex pattern, string text)
     {
@@ -40,7 +36,7 @@ public static class LineStartMatcher
         return matches;
     }
 
-    /// <summary>Python <c>search</c> truthiness for the same pattern shape: stops at the first match.</summary>
+    /// <summary>Whether <see cref="Matches"/> would find anything; stops at the first match.</summary>
     public static bool IsMatch(Regex pattern, string text)
     {
         ArgumentNullException.ThrowIfNull(pattern);
@@ -59,7 +55,7 @@ public static class LineStartMatcher
         return false;
     }
 
-    /// <summary>The end of the Python <c>\s*</c> run starting at <paramref name="offset"/>.</summary>
+    /// <summary>End of the whitespace run (<see cref="EngineText.IsSpace"/>) starting at <paramref name="offset"/>.</summary>
     public static int SkipSpaces(string text, int offset)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -72,12 +68,8 @@ public static class LineStartMatcher
     }
 
     /// <summary>
-    /// The first MULTILINE <c>^</c> position at or after <paramref name="offset"/>: the offset itself when it is 0
-    /// or follows a <c>\n</c>, else just past the next <c>\n</c>; <c>text.Length + 1</c> when there is none, which
-    /// ends a <c>while (position &lt;= text.Length)</c> loop. Python's MULTILINE <c>^</c> matches after <c>\n</c>
-    /// only. Hand-rolled scanners that tried a line start, skipped its whitespace run to <c>end</c> and failed call
-    /// <c>NextLineStart(text, end + 1)</c>: every line start inside the run fails identically, and <c>text[end]</c>
-    /// is not whitespace, so the next line start lies strictly beyond it.
+    /// The first line start at or after <paramref name="offset"/> (only <c>\n</c> starts a line); <c>text.Length + 1</c> when none.
+    /// Scanners that failed at a line start after skipping whitespace to <c>end</c> call <c>NextLineStart(text, end + 1)</c>.
     /// </summary>
     public static int NextLineStart(string text, int offset)
     {

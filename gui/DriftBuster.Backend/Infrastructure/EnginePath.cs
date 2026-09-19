@@ -1,22 +1,15 @@
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary><c>pathlib.Path</c> file-system queries with Python's semantics: <c>is_file()</c>, <c>realpath</c> and sorted <c>glob</c>.</summary>
+/// <summary>File-system queries that follow the kernel's path semantics (links, <c>..</c>, non-UTF-8 names) rather than the runtime's lexical ones.</summary>
 public static class EnginePath
 {
     /// <summary>
-    /// <c>Path.is_file()</c>: true only when a <c>stat</c> that follows symlinks reports a regular file. A FIFO, a socket, a
-    /// device, a directory, a dangling or looping link and a path that does not exist are not files, so no caller that
-    /// walks with this check ever opens a pipe (which would block) or a device.
+    /// True only for a regular file after following links. FIFOs, sockets, devices, directories and dangling or looping links are
+    /// false, so walkers never open a pipe (which blocks) or a device.
     /// </summary>
     /// <remarks>
-    /// Linux asks the kernel for the file type (<see cref="UnixFileType"/>, <c>statx</c>; the file is never opened). As in Python,
-    /// only a failure with <c>ENOENT</c>, <c>ENOTDIR</c>, <c>EBADF</c> or <c>ELOOP</c> means "not a file"; any other raises
-    /// (<see cref="UnauthorizedAccessException"/> for a file inside a directory that cannot be searched, otherwise
-    /// <see cref="IOException"/>). Windows
-    /// has no FIFOs in a directory tree and reports devices through <see cref="FileAttributes.Device"/>: there, and on any
-    /// Unix without <c>statx</c>, the path must exist, not be a directory or a device, and a link must resolve (its relative
-    /// target taken against the physical directory holding the link, so <c>../shared/x.conf</c> reached through a directory
-    /// link still resolves) to something that is neither.
+    /// Linux uses <c>statx</c> without opening the file; only ENOENT, ENOTDIR, EBADF and ELOOP mean "not a file", other errors throw.
+    /// Elsewhere the path must exist, not be a directory or device, and its links must resolve against the link's physical directory.
     /// </remarks>
     public static bool IsFile(string path)
     {
@@ -58,11 +51,8 @@ public static class EnginePath
         => attributes.HasFlag(FileAttributes.Directory) || attributes.HasFlag(FileAttributes.Device);
 
     /// <summary>
-    /// True for a directory entry whose name the runtime could not decode: on Linux a file name is bytes, .NET decodes
-    /// the bytes of a listed name as UTF-8 with U+FFFD for each invalid sequence, and the decoded name then names nothing
-    /// (Python keeps such a name through <c>surrogateescape</c> and opens it). The entry holds U+FFFD and a <c>lstat</c> of
-    /// the decoded path fails with an error Python ignores; it is never opened. Always false where file names are not bytes, or
-    /// without <c>statx</c>. Raises as <see cref="IsFile"/> raises.
+    /// True for a Linux directory entry whose byte name is not UTF-8: .NET decodes it with U+FFFD, so the decoded path names
+    /// nothing and must not be opened. False where names are not bytes or without <c>statx</c>.
     /// </summary>
     public static bool IsUndecodableName(string path)
     {
@@ -71,14 +61,12 @@ public static class EnginePath
             && UnixFileType.Stat(path, followSymlinks: false) == UnixFileType.Kind.Missing;
     }
 
-    // Symlink hops the OS allows on one lookup before failing with ELOOP; Python's is_file() then returns False.
+    // Link hops before the kernel fails a lookup with ELOOP.
     private const int MaxLinkHops = 40;
 
     /// <summary>
-    /// A relative path joined onto the working directory in <see cref="LexicalPath.Str"/> form, with no other normalisation, so a
-    /// <c>..</c> segment stays where it is (<see cref="Path.GetFullPath(string)"/> would remove it). A fully qualified path is returned in
-    /// <see cref="LexicalPath.Str"/> form. On Windows a path with a root but no drive (<c>\x</c>) or a drive but no root (<c>C:x</c>) is
-    /// joined onto the directory <see cref="Path.GetFullPath(string)"/> gives for that root.
+    /// Joins a relative path onto the working directory without normalising, so <c>..</c> stays in place
+    /// (<see cref="Path.GetFullPath(string)"/> would remove it). Windows <c>\x</c> and <c>C:x</c> join onto their root's full path.
     /// </summary>
     public static string Absolute(string path)
     {
@@ -93,13 +81,9 @@ public static class EnginePath
         return LexicalPath.Str(Path.Join(directory, string.Join(Path.DirectorySeparatorChar, segments)));
     }
 
-    /// <summary>
-    /// A path with no root whose first segment starts with <c>~</c> has that segment replaced by <see cref="EngineOsPath.ExpandUser(string)"/>
-    /// of it; any other path is returned in <see cref="LexicalPath.Str"/> form.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">The first segment is still <c>~</c>-prefixed after expansion (an account the password
-    /// database does not hold, or no home directory at all): <c>Could not determine home directory.</c></exception>
-    /// <exception cref="ArgumentException">A posix <c>~user</c> name holding a NUL character.</exception>
+    /// <summary>Expands a leading <c>~</c> or <c>~user</c> segment; any other path is returned as is.</summary>
+    /// <exception cref="InvalidOperationException">No home directory for the user.</exception>
+    /// <exception cref="ArgumentException">A <c>~user</c> name holding NUL.</exception>
     public static string ExpandUser(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -119,19 +103,15 @@ public static class EnginePath
     }
 
     /// <summary>
-    /// The absolute path with links resolved. On Windows the path is made full (<see cref="Path.GetFullPath(string)"/>) and, when the
-    /// entry or its deepest existing ancestor is a link, that prefix is replaced by the link's final target; segments that do not exist
-    /// are kept as written (letter case and 8.3 names are left as given). Elsewhere the path is made absolute
-    /// against the working directory, then every link and <c>..</c> followed physically (<see cref="ResolvePhysicalPath(string, out bool)"/>),
-    /// a component that does not exist kept as written. A directory reached only through a name that is not UTF-8 keeps the kernel's
-    /// spelling of it (<see cref="KernelPath"/>), which reaches the same entry through its links; a link loop or a link that cannot be read
-    /// falls back to the lexically normalised absolute path.
+    /// The absolute path with links resolved. Windows replaces the deepest existing link prefix with its final target; elsewhere
+    /// every link and <c>..</c> is followed physically. Missing components are kept as written; a loop or unreadable link falls
+    /// back to the lexically normalised path.
     /// </summary>
-    /// <exception cref="ArgumentException">On posix, a path holding a NUL character.</exception>
+    /// <exception cref="ArgumentException">On Unix, a path holding NUL.</exception>
     public static string Resolve(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        // posixpath.realpath lstats every component, and the first lstat refuses a NUL anywhere in the path.
+        // A NUL anywhere in the path is refused before any lookup.
         if (!OperatingSystem.IsWindows())
         {
             FileSystemError.ThrowIfEmbeddedNull(path);
@@ -180,17 +160,10 @@ public static class EnginePath
     }
 
     /// <summary>
-    /// A spelling of <paramref name="path"/> that the runtime's file APIs resolve to the entry the operating system resolves
-    /// <paramref name="path"/> to. The runtime removes <c>..</c> parts lexically before every call (<c>link/../x</c> becomes
-    /// <c>x</c>), where a POSIX kernel, and so Python, steps to the parent of wherever <c>link</c> leads. Every part up to the last
-    /// <c>..</c> is therefore walked as the kernel walks it and the rest is appended as written, so a final link stays a link. On
-    /// Linux the walk reads link targets as bytes (<see cref="UnixPathWalk"/>) and expands a link only when a <c>..</c> steps out
-    /// of it, so a target whose name is not UTF-8 is never looked up under the U+FFFD spelling the runtime would give it. A part
-    /// before a <c>..</c> that is missing, a loop or not a directory (the kernel fails that lookup) yields a path under it that
-    /// cannot exist either. When the directory the kernel reaches can only be named with bytes that are not UTF-8, no spelling
-    /// the runtime accepts reaches it: the result is <see cref="Unreachable"/> joined with the rest, which names nothing. A path
-    /// without <c>..</c>, and every path on Windows (whose own path parsing removes <c>..</c> lexically, as the runtime does), is
-    /// returned unchanged.
+    /// A spelling of <paramref name="path"/> that the runtime's file APIs resolve to the same entry the kernel does. The runtime
+    /// removes <c>..</c> lexically (<c>link/../x</c> becomes <c>x</c>) while the kernel steps to the parent of the link's target,
+    /// so every part up to the last <c>..</c> is walked physically. A directory reachable only by a non-UTF-8 name yields a path
+    /// under <see cref="Unreachable"/>. Paths without <c>..</c>, and all Windows paths, are returned unchanged.
     /// </summary>
     public static string KernelPath(string path)
     {
@@ -237,19 +210,14 @@ public static class EnginePath
     }
 
     /// <summary>
-    /// <c>Path(path).mkdir(parents=True, exist_ok=True)</c>: every missing directory is created as the kernel reaches it. A <c>..</c>
-    /// after a directory that does not exist yet steps out of that directory once it is created, as Python's retry on a missing
-    /// parent does (<c>new/../sub</c> creates <c>new</c> and <c>sub</c>), where <see cref="KernelPath"/> alone names a
-    /// path under the missing part that nothing can create. A directory that already exists is left as it is.
+    /// Creates every missing directory, applying a <c>..</c> after a not-yet-existing directory once it exists
+    /// (<c>new/../sub</c> creates <c>new</c> and <c>sub</c>). Existing directories are left alone.
     /// </summary>
     /// <remarks>
-    /// On Linux this is <c>Path.mkdir</c>'s own algorithm over <c>mkdir(2)</c> (<see cref="UnixMkdir"/>): a failure raises the
-    /// exception <see cref="FileSystemError.Create"/> builds for the call's <c>errno</c> (its <see cref="Exception.HResult"/>)
-    /// naming the directory whose call failed as <c>str(Path)</c> spells it (<c>The file 'afile' already exists.</c>,
-    /// <c>The path 'afile/x' is not a directory.</c>). Elsewhere, and for a path holding an unpaired surrogate (or with the
-    /// <see cref="UnixPathWalk.Disabled"/> seam set), the directories are created through the runtime, whose exceptions carry its own text.
+    /// On Linux, failures throw <see cref="FileSystemError.Create"/>'s exception for the errno, naming the directory whose
+    /// <c>mkdir</c> failed; elsewhere the runtime's own exceptions apply.
     /// </remarks>
-    /// <exception cref="ArgumentException">The path holds a NUL character.</exception>
+    /// <exception cref="ArgumentException">The path holds NUL.</exception>
     public static void MakeDirectories(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -277,8 +245,8 @@ public static class EnginePath
         Directory.CreateDirectory(kernel);
     }
 
-    // pathlib.Path.mkdir(exist_ok=True) after its first os.mkdir(path) failed with error (0: created). ENOENT with parents creates the
-    // parent and retries once without parents; any other error is ignored only when is_dir() is True, whose own raise wins.
+    // After a failed mkdir (error 0 = created): ENOENT with parents creates the parent and retries once; any other error is
+    // ignored only when the path is already a directory.
     private static void MakeDirectoryChecked(string path, int error, bool parents)
     {
         if (error == 0)
@@ -309,21 +277,17 @@ public static class EnginePath
         => UnixMkdir.MakeDirectory(path) ?? throw new InvalidOperationException("mkdir(2) became unavailable during a call that used it.");
 
     /// <summary>
-    /// The path <see cref="KernelPath"/> spells a result under when the directory the kernel reaches has no UTF-8 name: a name
-    /// under a character device, whose lookup fails with <c>ENOTDIR</c>, so neither it nor anything below it exists, is opened
-    /// or is created.
+    /// Where <see cref="KernelPath"/> puts a path that has no UTF-8 spelling: under a character device, so nothing there
+    /// exists, opens or can be created.
     /// </summary>
     internal const string Unreachable = "/dev/null/unreachable";
 
-    // The failed part joined onto the directory reached before it (a ".." that failed, a link expansion past the hop limit, goes
-    // under Unreachable).
     private static string UnderFailedPart(string reached, string[] components, int failedIndex)
         => string.Equals(components[failedIndex], "..", StringComparison.Ordinal)
             ? Beneath(Unreachable, components.Skip(failedIndex))
             : Beneath(Path.Join(reached, components[failedIndex]), components.Skip(failedIndex + 1));
 
-    // parts joined under a directory that does not exist, every ".." spelled as the ordinary name "..." so the runtime's lexical
-    // removal never climbs back out of it.
+    // Parts under a directory that does not exist, each ".." spelled "..." so the runtime's lexical removal cannot climb out.
     private static string Beneath(string directory, IEnumerable<string> parts)
         => Path.Join(directory, string.Join('/', parts.Select(part => string.Equals(part, "..", StringComparison.Ordinal) ? "..." : part)));
 
@@ -340,17 +304,14 @@ public static class EnginePath
     }
 
     /// <summary>
-    /// <c>realpath</c>: resolves every link component of <paramref name="fullPath"/> against the physical directory
-    /// resolved so far (the OS semantics <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/> does not follow, since it
-    /// joins a relative target with the link's lexical directory). Null for a link loop or a target that cannot be read. On
-    /// Linux link targets are read as bytes (<see cref="UnixPathWalk"/>); a physical path holding a name that is not UTF-8 comes
-    /// back with U+FFFD for it, text for a hash that names nothing to open (see <see cref="ResolvePhysicalPath(string, out bool)"/>).
+    /// Resolves every link against the physical directory reached so far (unlike <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/>,
+    /// which uses the link's lexical directory). Null for a loop or unreadable link.
     /// </summary>
     public static string? ResolvePhysicalPath(string fullPath) => ResolvePhysicalPath(fullPath, out _);
 
     /// <summary>
-    /// <see cref="ResolvePhysicalPath(string)"/>; <paramref name="nameable"/> is false when the physical path holds a name that
-    /// is not UTF-8, so the text returned must not be opened: the runtime would look up the U+FFFD spelling, a different entry.
+    /// <see cref="ResolvePhysicalPath(string)"/>; <paramref name="nameable"/> is false when the result holds a non-UTF-8 name, so
+    /// it must not be opened.
     /// </summary>
     internal static string? ResolvePhysicalPath(string fullPath, out bool nameable)
     {
@@ -419,13 +380,9 @@ public static class EnginePath
     }
 
     /// <summary>
-    /// The <see cref="FileTreeGlob.Glob"/> matches under <paramref name="root"/>, sorted segment by segment and code point by code
-    /// point over their posix form (<see cref="PathText.ComparePosixPaths"/>). The same case-sensitive order is used on every platform.
+    /// <see cref="FileTreeGlob.Glob"/> matches sorted case-sensitively by posix path segment on every platform. A root that
+    /// exists but cannot be listed throws; a missing root yields nothing.
     /// </summary>
-    /// <remarks>
-    /// A root directory that exists but cannot be listed raises its I/O error rather than yielding nothing. A missing root
-    /// yields nothing.
-    /// </remarks>
     public static IReadOnlyList<string> SortedGlob(string root, string pattern, CancellationToken cancellationToken = default)
     {
         var paths = FileTreeGlob.Glob(root, pattern, cancellationToken).ToList();

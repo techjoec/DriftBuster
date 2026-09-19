@@ -5,36 +5,24 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// A JSON decode producing plain CLR values: an object becomes an insertion-ordered
-/// <see cref="OrderedDictionary{TKey, TValue}"/> where a duplicate key keeps its first slot with the last value, an
-/// array becomes <see cref="List{T}"/> of <see cref="object"/>, a string a <see cref="string"/>, an integer an
-/// <see cref="int"/>, <see cref="long"/> or <see cref="BigInteger"/> (the smallest that holds it), a fractional or
-/// exponent number a <see cref="double"/>, true/false a <see cref="bool"/> and null a null reference.
+/// JSON decode into plain CLR values: objects as insertion-ordered <see cref="OrderedDictionary{TKey, TValue}"/> (a duplicate
+/// key keeps its first slot, last value), arrays as <see cref="List{T}"/>, integers as the narrowest of int/long/BigInteger,
+/// fractions and exponents as double.
 /// </summary>
 /// <remarks>
-/// The grammar is the one <c>Detection/Plugins/EngineJsonScanner.cs</c> spells out: whitespace is space, tab, LF
-/// and CR; <c>NaN</c>, <c>Infinity</c> and <c>-Infinity</c> are floats; numbers use ASCII digits with no leading
-/// zeros, a lexeme with a fraction or exponent is a float (correctly rounded, so an overflowing exponent gives an
-/// infinity); strings reject raw control characters below U+0020 and keep unpaired surrogate escapes; trailing
-/// commas, comments and a leading U+FEFF are rejected; anything but whitespace after the value is extra data. An
-/// integer literal of more than <see cref="MaxIntDigits"/> digits and a container nested deeper than
-/// <see cref="MaxNestingDepth"/> are rejected, so a hostile document cannot turn a decode into unbounded work.
-/// Nesting is kept on an explicit stack, so neither the decode nor a caller walking the result needs the thread's
-/// stack.
+/// Accepts <c>NaN</c>, <c>Infinity</c>, <c>-Infinity</c> and unpaired surrogate escapes; rejects comments, trailing commas, a
+/// leading BOM, raw control characters in strings and trailing data. Integers over <see cref="MaxIntDigits"/> digits and nesting
+/// past <see cref="MaxNestingDepth"/> are rejected so hostile input cannot cause unbounded work. Nesting uses an explicit stack.
 /// </remarks>
 public static class EngineJson
 {
     /// <summary>The longest integer literal that decodes; a longer one is rejected.</summary>
     public const int MaxIntDigits = 4300;
 
-    /// <summary>
-    /// The deepest container nesting a decode accepts: one level per array or object, including empty ones. A
-    /// document nested deeper is rejected rather than decoded.
-    /// </summary>
+    /// <summary>Deepest nesting accepted, one level per array or object.</summary>
     public const int MaxNestingDepth = 9998;
 
-    // Every NaN, Infinity and -Infinity literal decodes to one shared boxed double, so EngineValues' identity-first comparison finds a
-    // decoded NaN equal to itself wherever it is compared.
+    // All NaN literals share one boxed double, so EngineValues' identity-first comparison finds a decoded NaN equal to itself.
     private static readonly object NaN = double.NaN;
     private static readonly object PositiveInfinity = double.PositiveInfinity;
     private static readonly object NegativeInfinity = double.NegativeInfinity;
@@ -52,14 +40,9 @@ public static class EngineJson
     public static bool TryLoads(string text, out object? value) => TryLoads(text, out value, out _);
 
     /// <summary>
-    /// Decodes <paramref name="text"/>: false for text that is not a JSON document, and <see cref="InvalidDataException"/> for a document
-    /// past a decoder limit instead, at the first failure in text order: an integer literal of more than <see cref="MaxIntDigits"/>
-    /// digits, or a container nested deeper than <see cref="MaxNestingDepth"/>.
+    /// <see cref="TryLoads(string, out object?)"/>, but a document past a decoder limit (<see cref="MaxIntDigits"/>,
+    /// <see cref="MaxNestingDepth"/>) throws <see cref="InvalidDataException"/> instead of returning false.
     /// </summary>
-    /// <remarks>
-    /// The nesting boundary is the one <c>json.loads</c> hits with the interpreter's frames of a top-level script; a caller holding more
-    /// frames reaches the C recursion limit a few containers earlier.
-    /// </remarks>
     public static bool TryLoadsOrRaiseLimits(string text, out object? value)
     {
         if (TryLoads(text, out value, out var limit))
@@ -323,8 +306,8 @@ public static class EngineJson
 
     private static bool IsAsciiDigit(char c) => c is >= '0' and <= '9';
 
-    // _match_number_unicode: -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)? over ASCII digits, where a '.' not followed
-    // by a digit and an exponent without digits end the number instead of failing it.
+    // -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)? over ASCII digits; a '.' or exponent without digits ends the number
+    // rather than failing it.
     private static bool TryParseNumber(string text, ref int pos, out object? value, ref Exception? limit)
     {
         value = null;
@@ -440,7 +423,7 @@ public static class EngineJson
         return IsAsciiDigit(text[idx - 1]) ? idx : start;
     }
 
-    // scanstring_unicode with strict=True: "start" is just past the opening quote; "end" lands just past the closing one.
+    // Strict string scan: "start" is just past the opening quote, "end" just past the closing one.
     private static bool TryScanString(string text, int start, out int end, StringBuilder builder)
     {
         var i = start;

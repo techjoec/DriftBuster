@@ -4,10 +4,8 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// <c>os.mkdir(path, 0o777)</c> over <c>mkdir(2)</c>: the kernel resolves every part of the path as given (a <c>..</c> after a link
-/// steps to the parent of the link's target), and the failure is the call's own <c>errno</c>. Linux only, like the other byte-level
-/// calls (<see cref="UnixFileType"/>, <see cref="UnixPathWalk"/>); <see cref="MakeDirectory"/> returns null elsewhere and where the
-/// call cannot be made, and callers fall back to managed directory creation.
+/// <c>mkdir(2)</c> with mode 0777: the kernel resolves the path as given (a <c>..</c> after a link steps to the target's parent)
+/// and the failure is its errno. Linux only; null elsewhere, and callers fall back to managed creation.
 /// </summary>
 /// <remarks>Derived from the publicly documented mkdir(2) interface, not vendor source.</remarks>
 internal static partial class UnixMkdir
@@ -19,11 +17,7 @@ internal static partial class UnixMkdir
     [LibraryImport("libc", EntryPoint = "mkdir", SetLastError = true)]
     private static unsafe partial int MkdirNative(byte* path, uint mode);
 
-    /// <summary>
-    /// 0 when <paramref name="path"/> was created, otherwise the <c>errno</c> of the failed call; null when this platform offers no
-    /// <c>mkdir(2)</c> binding, or <paramref name="path"/> holds a NUL or an unpaired surrogate (text the kernel cannot receive as
-    /// Python spells it: Python refuses both before the call).
-    /// </summary>
+    /// <summary>0 when created, else the errno; null without a <c>mkdir(2)</c> binding or when the path holds NUL or an unpaired surrogate.</summary>
     internal static unsafe int? MakeDirectory(string path)
     {
         ArgumentNullException.ThrowIfNull(path);

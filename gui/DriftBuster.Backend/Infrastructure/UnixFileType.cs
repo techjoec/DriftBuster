@@ -22,12 +22,12 @@ internal static partial class UnixFileType
     private const int NoSuchSystemCall = 38;
     private const int OperationNotPermitted = 1;
 
-    // pathlib._abc._IGNORED_ERRNOS: ENOENT, ENOTDIR, EBADF, ELOOP. Path.is_file() reports these as False and raises any other.
+    // ENOENT, ENOTDIR, EBADF, ELOOP: "not a file" rather than an error.
     private static readonly int[] IgnoredErrors = [2, 20, 9, 40];
 
     private static volatile bool _unavailable = !OperatingSystem.IsLinux();
 
-    /// <summary>What a successful <c>stat</c> says the path is, or <see cref="Missing"/> when it fails with an error Python ignores.</summary>
+    /// <summary>What a <c>stat</c> reports, or <see cref="Missing"/> for an ignored error.</summary>
     internal enum Kind
     {
         /// <summary>
@@ -36,10 +36,8 @@ internal static partial class UnixFileType
         /// </summary>
         Missing,
 
-        /// <summary><c>S_ISREG</c>.</summary>
         Regular,
 
-        /// <summary><c>S_ISDIR</c>.</summary>
         Directory,
 
         /// <summary>Anything else: a FIFO, a socket, a character or block device, or (not following links) a symlink.</summary>
@@ -50,11 +48,10 @@ internal static partial class UnixFileType
     private static unsafe partial int Statx(int directoryFd, byte* path, int flags, uint mask, byte* buffer);
 
     /// <summary>
-    /// <c>os.stat(path, follow_symlinks=...)</c> reduced to its file type; null when this platform or kernel offers no
-    /// <c>statx</c>. A path holding a NUL character is <see cref="Kind.Missing"/>, as <c>is_file()</c> reports it.
+    /// The path's file type; null when the kernel offers no <c>statx</c>. A path holding NUL is <see cref="Kind.Missing"/>.
     /// </summary>
-    /// <exception cref="UnauthorizedAccessException">The lookup was refused (<c>EACCES</c>: a component cannot be searched).</exception>
-    /// <exception cref="IOException">Any other failure Python's <c>is_file()</c> raises (<c>ENAMETOOLONG</c>, <c>EIO</c>, ...).</exception>
+    /// <exception cref="UnauthorizedAccessException">EACCES: a component cannot be searched.</exception>
+    /// <exception cref="IOException">Any other error (ENAMETOOLONG, EIO, ...).</exception>
     internal static Kind? Stat(string path, bool followSymlinks)
     {
         ArgumentNullException.ThrowIfNull(path);

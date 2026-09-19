@@ -6,17 +6,16 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Python built-ins over the values <see cref="EngineJson"/> produces (null, bool, int, float, str, list, dict), with Python's
-/// results: <c>bool()</c>, <c>int()</c>, <c>float()</c>, <c>iter()</c> and <c>mapping.get</c>. A value of the wrong kind raises
-/// <see cref="ArgumentException"/>, text that is not a number <see cref="FormatException"/>, a number out of range
-/// <see cref="OverflowException"/> and a lookup on something other than a JSON object <see cref="InvalidDataException"/>.
+/// Conversions over <see cref="EngineJson"/> values (null, bool, int, float, string, list, dict) used by config readers.
+/// Wrong kind throws <see cref="ArgumentException"/>, non-numeric text <see cref="FormatException"/>, out of range
+/// <see cref="OverflowException"/>, a lookup on a non-object <see cref="InvalidDataException"/>.
 /// </summary>
 public static class EngineBuiltins
 {
-    /// <summary><c>sys.get_int_max_str_digits()</c> default.</summary>
+    /// <summary>Longest integer text <see cref="Int"/> accepts.</summary>
     private const int MaxIntStringDigits = 4300;
 
-    // Py_ISSPACE: the whitespace PyLong_FromString and float_from_string_inner strip around the ASCII literal.
+    // Whitespace trimmed around a numeric literal.
     private static readonly char[] AsciiWhitespace = [' ', '\t', '\n', '\v', '\f', '\r'];
 
     /// <summary>The kind of <paramref name="value"/> as error messages name it, in JSON's terms where the value is a JSON value.</summary>
@@ -33,7 +32,7 @@ public static class EngineBuiltins
         _ => value.GetType().Name,
     };
 
-    /// <summary><c>bool(value)</c>.</summary>
+    /// <summary>False for null, false, zero, empty strings and empty collections; true otherwise.</summary>
     public static bool IsTruthy(object? value) => value switch
     {
         null => false,
@@ -47,10 +46,7 @@ public static class EngineBuiltins
         _ => true,
     };
 
-    /// <summary>
-    /// <c>len(value)</c>: the code points of a str (an unpaired surrogate is one), the items of a list or tuple, the keys of a dict;
-    /// anything else raises <see cref="ArgumentException"/>.
-    /// </summary>
+    /// <summary>Code points of a string (a lone surrogate counts as one), items of a list or tuple, keys of a dict; anything else throws.</summary>
     public static int Len(object? value) => value switch
     {
         string text => CodePointCount(text),
@@ -70,7 +66,7 @@ public static class EngineBuiltins
         return count;
     }
 
-    /// <summary><c>value.get(key)</c> on a mapping; any other value raises <see cref="InvalidDataException"/>.</summary>
+    /// <summary>A key's value on a JSON object (null when absent); any other value throws <see cref="InvalidDataException"/>.</summary>
     public static object? Get(object? value, string key)
     {
         if (value is IReadOnlyDictionary<string, object?> mapping)
@@ -81,10 +77,7 @@ public static class EngineBuiltins
         throw new InvalidDataException($"expected a JSON object, not '{TypeName(value)}'");
     }
 
-    /// <summary>
-    /// <c>for item in value</c>: a str yields its code points (an unpaired surrogate is one), a list its items, a dict its keys;
-    /// anything else raises <see cref="ArgumentException"/>.
-    /// </summary>
+    /// <summary>A string's code points, a list's items or a dict's keys; anything else throws.</summary>
     public static IEnumerable<object?> Iterate(object? value) => value switch
     {
         string text => CodePoints(text),
@@ -109,9 +102,8 @@ public static class EngineBuiltins
     }
 
     /// <summary>
-    /// <c>dict(value)</c>: a mapping is copied in its order; a str, list or tuple is read as key/value pairs, each item an iterable of
-    /// exactly two elements, a later pair replacing an earlier key; any other value, an item that is not a pair and a key that is not a
-    /// string (the typed mappings hold string keys only) raise <see cref="ArgumentException"/>.
+    /// A copy of a mapping in order, or a mapping built from two-item pairs (a later key wins). Non-pairs and non-string keys
+    /// throw <see cref="ArgumentException"/>.
     /// </summary>
     public static OrderedDictionary<string, object?> Dict(object? value, string what = "mapping")
     {
@@ -167,10 +159,7 @@ public static class EngineBuiltins
             : throw new InvalidDataException($"The {what} keys must be strings, not '{TypeName(elements[0])}'.");
     }
 
-    /// <summary>
-    /// <c>int(value)</c>: bools and ints as themselves, floats truncated, strs parsed in base 10 (<see cref="FormatException"/> for text
-    /// that is not an integer).
-    /// </summary>
+    /// <summary>Bools and ints as is, floats truncated, strings parsed in base 10.</summary>
     public static BigInteger Int(object? value) => value switch
     {
         bool flag => flag ? BigInteger.One : BigInteger.Zero,
@@ -184,8 +173,8 @@ public static class EngineBuiltins
         _ => throw new InvalidDataException($"A value of type '{TypeName(value)}' cannot be converted to an integer."),
     };
 
-    // PyLong_FromUnicodeObject(text, 10): Unicode decimal digits and whitespace become ASCII, then optional whitespace, a sign,
-    // digits with single underscores between them, and optional whitespace.
+    // Unicode digits and whitespace are folded to ASCII, then: optional whitespace, sign, digits with single underscores
+    // between them, optional whitespace.
     private static BigInteger ParseInt(string text)
     {
         var ascii = ToAsciiDigitsAndSpaces(text);
@@ -229,10 +218,7 @@ public static class EngineBuiltins
         return body![0] == '-' ? -magnitude : magnitude;
     }
 
-    /// <summary>
-    /// <c>float(value)</c>: bools and ints converted (an int past the float range raises <see cref="OverflowException"/>), floats as
-    /// themselves, strs parsed as <c>PyFloat_FromString</c> does.
-    /// </summary>
+    /// <summary>Bools and ints converted (past the double range throws), floats as is, strings parsed as a decimal literal or inf/infinity/nan.</summary>
     public static double Float(object? value) => value switch
     {
         bool flag => flag ? 1.0 : 0.0,
@@ -245,8 +231,8 @@ public static class EngineBuiltins
         _ => throw new InvalidDataException($"A value of type '{TypeName(value)}' cannot be converted to a number."),
     };
 
-    // PyFloat_FromString: Unicode decimal digits and whitespace become ASCII; an underscore must sit between two digits; then
-    // surrounding whitespace is stripped and the rest is a decimal literal or inf, infinity or nan (any case, optional sign).
+    // Unicode digits and whitespace folded to ASCII; underscores only between digits; then a decimal literal or
+    // inf/infinity/nan in any case with an optional sign.
     private static double ParseFloat(string text)
     {
         var ascii = ToAsciiDigitsAndSpaces(text);
@@ -326,7 +312,7 @@ public static class EngineBuiltins
         return index == text.Length;
     }
 
-    // _Py_string_to_number_with_underscores: null when an underscore does not sit between two digits.
+    // Null when an underscore is not between two digits.
     private static string? RemoveUnderscoresBetweenDigits(string text)
     {
         var builder = new StringBuilder(text.Length);
@@ -356,9 +342,8 @@ public static class EngineBuiltins
         return previous == '_' ? null : builder.ToString();
     }
 
-    // _PyUnicode_TransformDecimalAndSpaceToASCII: a code point below 127 stays as it is (the ASCII separators U+001C to
-    // U+001F included), other whitespace becomes ' ', a decimal digit its ASCII digit; null when any other code point is
-    // present (the conversion then fails).
+    // ASCII (U+001C-U+001F included) kept, other whitespace becomes ' ', Unicode decimal digits their ASCII digit; null
+    // for any other code point.
     private static string? ToAsciiDigitsAndSpaces(string text)
     {
         var builder = new StringBuilder(text.Length);

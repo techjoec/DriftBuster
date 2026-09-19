@@ -4,35 +4,23 @@ using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary>
-/// <c>Path.write_text(text, encoding="utf-8")</c> and <c>Path.read_text(encoding="utf-8")</c>. Failures surface as the runtime's own
-/// exceptions: a directory is refused with <see cref="UnauthorizedAccessException"/>, as the runtime refuses to open one.
-/// </summary>
+/// <summary>UTF-8 file reads and writes. A directory is refused with <see cref="UnauthorizedAccessException"/>; other failures are the runtime's exceptions.</summary>
 internal static class EngineTextFile
 {
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
-    /// <summary>
-    /// Opens the kernel path for reading (<see cref="FileMode.Open"/>) or writing (<see cref="FileMode.Create"/>); a test seam that hands
-    /// back a stream failing after the open.
-    /// </summary>
+    /// <summary>Opens the kernel path for read or create; a test seam that can return a stream failing after the open.</summary>
     internal static Func<string, FileMode, Stream> OpenStream { get; set; } = DefaultOpen;
 
-    /// <summary>
-    /// <c>Path(path).write_text(text, encoding="utf-8")</c> for text already laid out with the platform's line breaks: a directory raises
-    /// <see cref="UnauthorizedAccessException"/> and any other failure the runtime's exception.
-    /// </summary>
-    /// <exception cref="ArgumentException">The path holds a NUL character.</exception>
+    /// <summary>Writes text already laid out with the platform's line breaks as UTF-8.</summary>
+    /// <exception cref="ArgumentException">The path holds NUL.</exception>
     public static void WriteText(string path, string text)
     {
         ArgumentNullException.ThrowIfNull(text);
         WriteBytes(path, Utf8.GetBytes(text));
     }
 
-    /// <summary>
-    /// <see cref="WriteText"/> over bytes already encoded (<c>Path.write_bytes</c>, <c>open(path, "w")</c> of encoded text), naming a
-    /// directory as <paramref name="shown"/> (<c>str(Path(path))</c> when null).
-    /// </summary>
+    /// <summary><see cref="WriteText"/> for encoded bytes, naming a directory as <paramref name="shown"/> (the path when null).</summary>
     public static void WriteBytes(string path, byte[] bytes, string? shown = null)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -59,17 +47,11 @@ internal static class EngineTextFile
         }
     }
 
-    /// <summary>
-    /// <c>Path(path).read_text(encoding="utf-8")</c>: the whole file as strict UTF-8. A directory raises
-    /// <see cref="UnauthorizedAccessException"/>, any other failure the runtime's exception; bytes that are not UTF-8 raise
-    /// <see cref="InvalidDataException"/>.
-    /// </summary>
-    /// <exception cref="ArgumentException">The path holds a NUL character.</exception>
+    /// <summary>The whole file as strict UTF-8; invalid bytes throw <see cref="InvalidDataException"/>.</summary>
+    /// <exception cref="ArgumentException">The path holds NUL.</exception>
     public static string ReadUtf8Text(string path) => EngineUtf8.DecodeFile(ReadBytes(path, path));
 
-    /// <summary>
-    /// <c>open(path, "rb").read()</c> with the failures <see cref="ReadUtf8Text"/> raises, naming a directory as <paramref name="shown"/>.
-    /// </summary>
+    /// <summary>The file's bytes, with <see cref="ReadUtf8Text"/>'s failures, naming a directory as <paramref name="shown"/>.</summary>
     public static byte[] ReadBytes(string path, string shown)
     {
         ArgumentNullException.ThrowIfNull(path);

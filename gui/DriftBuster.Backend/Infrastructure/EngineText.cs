@@ -5,14 +5,12 @@ using System.Text;
 namespace DriftBuster.Backend.Infrastructure;
 
 /// <summary>
-/// Python <c>str</c> semantics that .NET does not share: the whitespace set of <c>str.isspace</c> / <c>re \s</c>
-/// (adds U+001C-U+001F to <see cref="char.IsWhiteSpace(char)"/>), the word set of <c>re \w</c> on code points, the
-/// full lowercase mapping of <c>str.lower</c> (U+0130 expands, final sigma is contextual) and the full uppercase
-/// mapping of <c>str.upper</c> (one code point may become several).
+/// Text rules the engine relies on that .NET lacks: whitespace includes U+001C-U+001F, word characters are judged per code
+/// point, and case mapping is full (U+0130 expands, final sigma is contextual, one code point may upper-case to several).
 /// </summary>
 public static class EngineText
 {
-    // Every code point for which str.isspace() is true (Python 3.13); identical to the set matched by re \s.
+    // Unicode White_Space plus U+001C-U+001F; the same set the engine's regexes treat as whitespace.
     public static bool IsSpace(char ch) => ch switch
     {
         '\t' or '\n' or '\v' or '\f' or '\r' => true,
@@ -23,7 +21,7 @@ public static class EngineText
         _ => false,
     };
 
-    /// <summary><c>str.strip()</c> with no argument.</summary>
+    /// <summary>Trims <see cref="IsSpace"/> characters from both ends.</summary>
     public static string Strip(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -42,7 +40,6 @@ public static class EngineText
         return start == 0 && end == text.Length ? text : text[start..end];
     }
 
-    /// <summary><c>str.lstrip()</c> with no argument.</summary>
     public static string StripStart(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -55,7 +52,6 @@ public static class EngineText
         return start == 0 ? text : text[start..];
     }
 
-    /// <summary><c>str.rstrip()</c> with no argument.</summary>
     public static string StripEnd(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -68,10 +64,7 @@ public static class EngineText
         return end == text.Length ? text : text[..end];
     }
 
-    /// <summary>
-    /// <c>sub in text</c>: a code point subsequence, so an occurrence that would start or end inside a surrogate pair
-    /// (the needle being or ending in a lone surrogate) does not count.
-    /// </summary>
+    /// <summary>Code-point substring test: a match that would start or end inside a surrogate pair does not count.</summary>
     public static bool Contains(string text, string sub)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -90,7 +83,7 @@ public static class EngineText
         return false;
     }
 
-    /// <summary><c>str.split()</c> with no separator: runs of whitespace delimit, empties dropped.</summary>
+    /// <summary>Splits on runs of whitespace, dropping empty parts.</summary>
     public static IReadOnlyList<string> Split(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -120,18 +113,12 @@ public static class EngineText
         return words;
     }
 
-    /// <summary>
-    /// A word character: letters (L*), numbers (N*) and underscore, on whole code points, under the runtime's Unicode categories
-    /// (<see cref="EngineUnicode.GetCategory"/>).
-    /// </summary>
+    /// <summary>Letter, number or underscore, judged on the whole code point.</summary>
     public static bool IsWordRune(Rune rune) => rune.Value == '_' || EngineUnicode.IsAlnum(rune.Value);
 
-    /// <summary>Whether one code point is alphanumeric: letters (L*) and numbers (N*).</summary>
     public static bool IsAlnum(Rune rune) => EngineUnicode.IsAlnum(rune.Value);
 
-    /// <summary>
-    /// Whether one code point is printable: every category but Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs, with U+0020 printable.
-    /// </summary>
+    /// <summary>Printable: every category except Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs, with the space itself printable.</summary>
     public static bool IsPrintable(int codePoint)
     {
         if (codePoint == ' ')
@@ -149,10 +136,8 @@ public static class EngineText
     }
 
     /// <summary>
-    /// <c>str.lower()</c>: the simple lowercase mapping of every code point, the one unconditional SpecialCasing
-    /// expansion (U+0130 to "i\u0307") and the Final_Sigma rule (U+03A3 becomes U+03C2 when a cased code point
-    /// precedes it and none follows, skipping case-ignorable code points on both sides). An unpaired surrogate is a
-    /// code point of its own to Python (category Cs, no case mapping) and passes through unchanged.
+    /// Full lowercase: simple mappings plus U+0130 to "i̇" and Final_Sigma (U+03A3 becomes U+03C2 after a cased code point
+    /// with none following, skipping case-ignorables). Unpaired surrogates pass through.
     /// </summary>
     public static string Lower(string text)
     {
@@ -223,9 +208,8 @@ public static class EngineText
         return true;
     }
 
-    // Case_Ignorable (Unicode DerivedCoreProperties): Mn, Me, Cf, Lm, Sk plus Word_Break MidLetter, MidNumLet and
-    // Single_Quote. A code point that is both cased and case-ignorable is skipped, because case-ignorable is tested
-    // first.
+    // Case_Ignorable (DerivedCoreProperties): Mn, Me, Cf, Lm, Sk plus Word_Break MidLetter, MidNumLet and Single_Quote.
+    // Tested before cased, so a code point that is both counts as ignorable.
     private static bool IsCaseIgnorable(Rune rune)
     {
         switch (EngineUnicode.GetCategory(rune.Value))
@@ -242,8 +226,7 @@ public static class EngineText
         }
     }
 
-    // Cased: Lu, Ll, Lt plus the Other_Lowercase and Other_Uppercase code points that are not case-ignorable
-    // (ordinal indicators, Roman numerals, circled and squared Latin letters).
+    // Cased: Lu, Ll, Lt plus Other_Lowercase and Other_Uppercase code points that are not case-ignorable.
     private static bool IsCased(Rune rune)
     {
         switch (EngineUnicode.GetCategory(rune.Value))
@@ -262,12 +245,11 @@ public static class EngineText
         }
     }
 
-    /// <summary><c>str.upper()</c> of a single code point, including the SpecialCasing expansions (\u00DF to SS, \uFB01 to FI).</summary>
+    /// <summary>Full uppercase of one code point, including SpecialCasing expansions (ß to SS, ﬁ to FI).</summary>
     public static string Upper(Rune rune)
         => FullUppercase.TryGetValue(rune.Value, out var expansion) ? expansion : Rune.ToUpperInvariant(rune).ToString();
 
-    // Generated from the interpreter: every code point whose str.upper() is longer than one code point, plus the one
-    // single-code-point mapping the invariant culture refuses (dotless i).
+    // Every code point whose uppercase is longer than one code point, plus dotless i, which the invariant culture will not map.
     private static readonly Dictionary<int, string> FullUppercase = new()
     {
         [0x0131] = "I",

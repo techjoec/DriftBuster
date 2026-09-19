@@ -10,9 +10,8 @@ public static class EngineUtf8
     private static readonly UTF8Encoding Strict = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     /// <summary>
-    /// The decoded text; a byte sequence that is not UTF-8 raises <see cref="InvalidDataException"/>, whose message names the
-    /// first bad sequence and its position, for example <c>The data is not valid UTF-8: byte 0xFF at position 1 cannot start a
-    /// character.</c>
+    /// Strict decode; invalid bytes throw <see cref="InvalidDataException"/> naming the first bad sequence and its position
+    /// (<c>The data is not valid UTF-8: byte 0xFF at position 1 cannot start a character.</c>).
     /// </summary>
     public static string Decode(byte[] bytes)
     {
@@ -27,20 +26,14 @@ public static class EngineUtf8
         }
     }
 
-    /// <summary>
-    /// <see cref="Decode"/> for a file's contents, without a leading UTF-8 byte order mark: Windows PowerShell 5.1
-    /// (<c>Set-Content -Encoding UTF8</c>, <c>Out-File</c>) and older editors write one ahead of the JSON people hand us.
-    /// </summary>
+    /// <summary><see cref="Decode"/> without a leading BOM, which Windows PowerShell 5.1 and older editors write.</summary>
     public static string DecodeFile(byte[] bytes)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         return bytes is [0xEF, 0xBB, 0xBF, ..] ? Decode(bytes[3..]) : Decode(bytes);
     }
 
-    /// <summary>
-    /// True when <paramref name="text"/> holds a surrogate that is not half of a pair: text strict UTF-8 cannot encode, and that
-    /// the runtime's encoders silently replace with U+FFFD.
-    /// </summary>
+    /// <summary>True when the text holds an unpaired surrogate, which strict UTF-8 cannot encode and the runtime's encoders turn into U+FFFD.</summary>
     public static bool HasUnpairedSurrogate(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -83,9 +76,8 @@ public static class EngineUtf8
         return null;
     }
 
-    // One sequence at the start of rest: (bytes consumed, error span, error reason or null). The lead byte decides the length, the
-    // second byte's range is narrowed after E0, ED, F0 and F4 (Unicode Table 3-7), and a sequence cut short by the end of the data
-    // reports every remaining byte unless a byte already present is invalid.
+    // Per sequence: the lead byte sets the length, the second byte's range narrows after E0, ED, F0 and F4 (Table 3-7), and a
+    // sequence cut short by the end reports every remaining byte unless one present is already invalid.
     private const string InvalidStart = "invalid start byte";
     private const string InvalidContinuation = "invalid continuation byte";
     private const string EndOfData = "unexpected end of data";

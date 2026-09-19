@@ -3,10 +3,7 @@ namespace DriftBuster.Backend.Infrastructure;
 /// <summary>The path text helpers the engine uses, over <see cref="LexicalPath"/>; engine code never calls <see cref="Path.GetExtension"/>.</summary>
 public static class PathText
 {
-    /// <summary>
-    /// The last segment of <see cref="LexicalPath.Str"/> (<see cref="LexicalPath.Name"/>): empty and "." segments are dropped, so
-    /// <c>a/./</c> gives "a", while ".", "/" and a bare root give "".
-    /// </summary>
+    /// <summary>The last segment (empty and "." segments dropped); "", for ".", "/" or a bare root.</summary>
     public static string Name(string path) => LexicalPath.Name(path);
 
     /// <summary>
@@ -38,7 +35,6 @@ public static class PathText
         return (Label(leftParts), Label(rightParts));
     }
 
-    /// <summary><see cref="Name"/> lowered with the invariant culture.</summary>
     public static string NameLower(string path) => EngineText.Lower(Name(path));
 
     /// <summary>
@@ -52,23 +48,18 @@ public static class PathText
         return index > 0 && index < name.Length - 1 ? name[index..] : string.Empty;
     }
 
-    /// <summary><see cref="Suffix"/> lowered with the invariant culture.</summary>
     public static string SuffixLower(string path) => EngineText.Lower(Suffix(path));
 
-    /// <summary>Replaces the platform directory separator with "/".</summary>
     public static string ToPosix(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
         return Path.DirectorySeparatorChar == '/' ? path : path.Replace(Path.DirectorySeparatorChar, '/');
     }
 
-    /// <summary>The posix-style path of <paramref name="path"/> relative to <paramref name="root"/>.</summary>
     public static string RelativePosix(string root, string path) => ToPosix(Path.GetRelativePath(root, path));
 
     /// <summary>
-    /// Orders posix-style paths the way <c>sorted()</c> orders <c>PurePosixPath</c> objects: component by component,
-    /// each component compared by Unicode code point. "a/z" sorts before "a-b" and "a.txt" because the
-    /// component "a" is shorter, and U+FF5E sorts before U+1F600 because code points, not UTF-16 units, are compared.
+    /// Orders posix paths component by component, each by code point: "a/z" before "a-b", and astral characters after all BMP ones.
     /// </summary>
     public static int ComparePosixPaths(string left, string right)
     {

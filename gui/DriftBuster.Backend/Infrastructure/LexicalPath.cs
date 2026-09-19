@@ -39,7 +39,6 @@ public static class LexicalPath
     /// <summary>The root of <see cref="Str"/>, or an empty string.</summary>
     public static string Anchor(string path) => Split(path).Root;
 
-    /// <summary><see cref="Path.IsPathFullyQualified(string)"/>.</summary>
     public static bool IsAbsolute(string path)
     {
         ArgumentNullException.ThrowIfNull(path);

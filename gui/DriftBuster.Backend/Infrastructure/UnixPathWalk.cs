@@ -33,10 +33,8 @@ internal static partial class UnixPathWalk
     /// </summary>
     internal static bool Disabled { get; set; }
 
-    /// <summary>How far a walk got.</summary>
     internal enum Outcome
     {
-        /// <summary>Every component was reached.</summary>
         Reached,
 
         /// <summary>A component the kernel would fail to look up: missing, a loop, not a directory, or refused.</summary>
@@ -60,9 +58,8 @@ internal static partial class UnixPathWalk
     private static unsafe partial nint ReadLinkNative(byte* path, byte* buffer, nuint size);
 
     /// <summary>
-    /// <c>realpath</c> without the strict flag (<c>os.path.realpath</c>): every link resolved against the physical directory
-    /// reached so far, <c>..</c> applied to the physical path, a component that does not exist kept as written. Null (in
-    /// <paramref name="walked"/>) for a loop or a link that cannot be read. False when this platform has no byte walk.
+    /// Resolves every link against the physical directory reached so far and applies <c>..</c> physically; missing components are
+    /// kept as written. <paramref name="walked"/> is null for a loop or unreadable link; false when there is no byte walk here.
     /// </summary>
     internal static bool TryResolvePhysical(string fullPath, out Walked? walked)
     {
@@ -152,7 +149,7 @@ internal static partial class UnixPathWalk
         return parts;
     }
 
-    // readlink(2) on exact bytes: the target, "not a link" (EINVAL, or no such entry: realpath keeps a missing name), or an error.
+    // readlink(2) on exact bytes: the target, "not a link" (EINVAL, or a missing name, which is kept), or an error.
     private static unsafe (LinkKind Kind, byte[]? Target) ReadLink(byte[] path)
     {
         var terminated = new byte[path.Length + 1];
@@ -214,7 +211,7 @@ internal static partial class UnixPathWalk
             }
         }
 
-        // realpath: expand every link at once.
+        // Expands every link at once.
         public bool Resolve(List<byte[]> components)
         {
             foreach (var component in components)
