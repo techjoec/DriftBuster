@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = "Release",
-    [string]$Runtime = "win10-x64",
+    [string]$Runtime = "win-x64",
     [string]$OutputDirectory = "artifacts/gui-packaging/msix",
     [string]$IntermediateDirectory = "artifacts/gui-packaging/msix/staging",
     [string]$Publisher = "CN=DriftBuster Developers",
@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath $projectPath)) {
 
 $runtimeNormalized = $Runtime.Trim()
 if (-not $runtimeNormalized) {
-    throw "Runtime must be provided (e.g. win10-x64, win10-arm64)."
+    throw "Runtime must be provided (e.g. win-x64, win-arm64)."
 }
 
 $publishDirectory = Join-Path $root "artifacts/gui-packaging/publish-msix/$Configuration/$runtimeNormalized"

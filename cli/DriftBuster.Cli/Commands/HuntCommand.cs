@@ -19,7 +19,7 @@ internal static class HuntCommand
         var sampleSize = EngineArguments.Int("--sample-size", HuntEngine.DefaultSampleSize, "Maximum bytes read from each file (default: 131072).");
         var exclude = EngineArguments.Append("--exclude", "Glob pattern matched against absolute and relative paths to skip (repeatable).");
         var template = EngineArguments.Text(
-            "--placeholder-template", HuntEngine.DefaultPlaceholderTemplate, "Plan transform placeholder template (default: {{{{ {token_name} }}}}).");
+            "--placeholder-template", HuntEngine.DefaultPlaceholderTemplate, "Plan transform placeholder template, a .NET composite format string with one {token_name} field (default: {{{{ {token_name} }}}}, which renders as {{ name }}).");
         var command = new Command("hunt", "Hunt a file or directory for dynamic configuration values and print the hits as JSON.")
         {
             path, glob, sampleSize, exclude, template,
