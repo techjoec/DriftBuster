@@ -1,3 +1,7 @@
+using System.Text.Json;
+
+using DriftBuster.Backend.Infrastructure;
+
 namespace DriftBuster.Backend.Detection.Plugins;
 
 /// <summary>Best-effort parse of the comment-free sample producing top-level metadata.</summary>
@@ -9,11 +13,9 @@ public sealed partial class JsonPlugin
         internal static ParseResult Failure { get; } = new(false, new OrderedDictionary<string, object?>(StringComparer.Ordinal));
     }
 
-    private static readonly string[] TypeNames = ["object", "array", "string", "integer", "number", "boolean", "null"];
-
     /// <summary>
-    /// Parses the structurally complete prefix of <paramref name="text"/> (<see cref="Infrastructure.EngineJson"/> rules) and reports
-    /// the top-level type and the first five object keys or array item types. With <paramref name="allowComments"/> the parse is skipped.
+    /// Parses the structurally complete prefix of <paramref name="text"/> as plain JSON and reports the top-level type and the first
+    /// five distinct object keys or the types of the first five array items. With <paramref name="allowComments"/> the parse is skipped.
     /// </summary>
     internal static ParseResult AttemptParse(string text, bool allowComments)
     {
@@ -24,39 +26,39 @@ public sealed partial class JsonPlugin
         }
 
         var snippet = TruncateToStructuralBoundary(text);
-        if (snippet.Length == 0)
+        using var document = snippet.Length == 0 ? null : ScannedJson.TryParse(snippet, ScannedJson.Strict);
+        if (document is null)
         {
             return ParseResult.Failure;
         }
 
-        var parsed = EngineJsonScanner.Parse(snippet);
-        if (parsed is null)
-        {
-            return ParseResult.Failure;
-        }
-
+        var root = document.RootElement;
         var metadata = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        if (parsed.Kind == EngineJsonScanner.Kind.Dict)
+        if (root.ValueKind == JsonValueKind.Object)
         {
             metadata["top_level_type"] = "object";
-            metadata["top_level_keys"] = parsed.Keys.Take(TopLevelKeyLimit).ToList();
+            metadata["top_level_keys"] = root.EnumerateObject().Select(property => property.Name).Distinct(StringComparer.Ordinal).Take(TopLevelKeyLimit).ToList();
         }
-        else if (parsed.Kind == EngineJsonScanner.Kind.List)
+        else if (root.ValueKind == JsonValueKind.Array)
         {
             metadata["top_level_type"] = "array";
-            if (parsed.ItemKinds.Count > 0)
+            var names = root.EnumerateArray().Take(TopLevelKeyLimit).Select(TypeName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+            if (names.Count > 0)
             {
-                // Distinct type names in ordinal order.
-                var names = new SortedSet<string>(StringComparer.Ordinal);
-                foreach (var kind in parsed.ItemKinds.Take(TopLevelKeyLimit))
-                {
-                    names.Add(TypeNames[(int)kind]);
-                }
-
-                metadata["top_level_sample_types"] = names.ToList();
+                metadata["top_level_sample_types"] = names;
             }
         }
 
         return new ParseResult(true, metadata);
     }
+
+    private static string TypeName(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Object => "object",
+        JsonValueKind.Array => "array",
+        JsonValueKind.String => "string",
+        JsonValueKind.Number => value.GetRawText().AsSpan().IndexOfAny('.', 'e', 'E') < 0 ? "integer" : "number",
+        JsonValueKind.True or JsonValueKind.False => "boolean",
+        _ => "null",
+    };
 }

@@ -70,7 +70,7 @@ public sealed class RegistryLivePluginTests
         // Filename hint reason and options captured
         m!.Reasons.Should().Contain(reason => reason.Contains("Filename suggests a registry scan JSON manifest", StringComparison.Ordinal));
         m.Metadata.Should().NotBeNull();
-        m.Metadata!["max_depth"].Should().Be(5);
+        m.Metadata!["max_depth"].Should().Be(5L);
 
         m.Confidence.Should().BeApproximately(0.7000000000000001, 1e-9);
         m.Reasons.Should().Equal(

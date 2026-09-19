@@ -192,15 +192,11 @@ public sealed class JsonPluginTests
     }
 
     [Fact]
-    public void ScannerAcceptsNonStandardLiterals()
+    public void NonStandardLiteralsAreNotJson()
     {
         var match = Detect("nan.json", "[NaN, Infinity, -Infinity]");
-        match!.Metadata!["top_level_sample_types"].Should().BeEquivalentTo(new[] { "number" });
-        match.Metadata.Should().NotContainKey("parse_failed");
-
-        var scalar = Detect("neg-inf-top.json", "-Infinity");
-        scalar!.Metadata!["top_level_type"].Should().Be("unknown");
-        scalar.Metadata.Should().NotContainKey("parse_failed");
+        match!.Metadata!.Should().ContainKey("parse_failed");
+        match.Metadata.Should().NotContainKey("top_level_sample_types");
     }
 
     [Fact]

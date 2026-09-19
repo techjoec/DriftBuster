@@ -1,6 +1,9 @@
+using System.Buffers;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 
 using DriftBuster.Backend.Infrastructure;
 
@@ -24,25 +27,70 @@ public static partial class Canonicaliser
         public int Count => Items?.Count ?? List!.Count;
     }
 
+    private static readonly JsonWriterOptions CanonicalWriterOptions = new()
+    {
+        Indented = true,
+        NewLine = "\n",
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        MaxDepth = ScannedJson.MaxDepth,
+    };
+
     /// <summary>
-    /// Empty or whitespace-only input gives ""; trimmed text that parses (<see cref="EngineJson"/>) is re-serialised with sorted keys,
-    /// indent 2, non-ASCII kept; anything else goes through <see cref="CanonicaliseText"/>, including documents past the decoder limits.
+    /// Empty or whitespace-only input gives ""; plain JSON (<see cref="ScannedJson.Strict"/>) is re-written indented by 2 with object
+    /// keys in ordinal order (duplicates kept, in order), numbers as written and non-ASCII unescaped. Anything else, including JSON
+    /// with comments, goes through <see cref="CanonicaliseText"/> so a comment change still shows in the diff.
     /// </summary>
     public static string CanonicaliseJson(string payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
-        if (payload.Length == 0)
+        if (string.IsNullOrWhiteSpace(payload))
         {
             return string.Empty;
         }
 
-        var stripped = EngineText.Strip(payload);
-        if (stripped.Length == 0)
+        using var document = ScannedJson.TryParse(payload.Trim(), ScannedJson.Strict);
+        if (document is null)
         {
-            return string.Empty;
+            return CanonicaliseText(payload);
         }
 
-        return EngineJson.TryLoads(stripped, out var parsed) ? DumpsSorted(parsed) : CanonicaliseText(payload);
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer, CanonicalWriterOptions))
+        {
+            WriteSorted(writer, document.RootElement);
+        }
+
+        return Encoding.UTF8.GetString(buffer.WrittenSpan);
+    }
+
+    // Recursion is bounded by ScannedJson.MaxDepth.
+    private static void WriteSorted(Utf8JsonWriter writer, JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in element.EnumerateObject().OrderBy(property => property.Name, StringComparer.Ordinal))
+                {
+                    writer.WritePropertyName(property.Name);
+                    WriteSorted(writer, property.Value);
+                }
+
+                writer.WriteEndObject();
+                break;
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in element.EnumerateArray())
+                {
+                    WriteSorted(writer, item);
+                }
+
+                writer.WriteEndArray();
+                break;
+            default:
+                element.WriteTo(writer);
+                break;
+        }
     }
 
     /// <summary>

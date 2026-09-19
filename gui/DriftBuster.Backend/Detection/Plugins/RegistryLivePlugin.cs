@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using DriftBuster.Backend.Infrastructure;
@@ -72,7 +73,6 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             reasons.Add("Filename contains registry/scan hints");
         }
 
-        object? parsedJson = null;
         if (extension is ".json" or "" || HasJsonKey(text))
         {
             if (HasJsonKey(text))
@@ -80,17 +80,14 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
                 reasons.Add("Found 'registry_scan' top-level key in JSON payload");
             }
 
-            if (!EngineJson.TryLoads(text, out parsedJson))
+            using var document = ScannedJson.TryParse(text, ScannedJson.Lenient);
+            if (document is not null
+                && document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("registry_scan", out var spec)
+                && spec.ValueKind == JsonValueKind.Object)
             {
-                parsedJson = null;
+                return BuildJsonMatch(spec, reasons, metadata);
             }
-        }
-
-        if (parsedJson is OrderedDictionary<string, object?> { Count: > 0 } document
-            && document.TryGetValue("registry_scan", out var spec)
-            && spec is OrderedDictionary<string, object?> specification)
-        {
-            return BuildJsonMatch(specification, reasons, metadata);
         }
 
         // YAML by heuristics only; no YAML parser here.
@@ -102,39 +99,31 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
         return null;
     }
 
-    private DetectionMatch BuildJsonMatch(OrderedDictionary<string, object?> spec, List<string> reasons, OrderedDictionary<string, object?> metadata)
+    private DetectionMatch BuildJsonMatch(JsonElement spec, List<string> reasons, OrderedDictionary<string, object?> metadata)
     {
-        if (spec.TryGetValue("token", out var token) && token is string tokenText && EngineText.Strip(tokenText).Length > 0)
+        if (spec.TryGetProperty("token", out var token) && token.ValueKind == JsonValueKind.String && token.GetString()!.Trim().Length > 0)
         {
-            metadata["token"] = EngineText.Strip(tokenText);
-            reasons.Add($"Token provided: {EngineText.Strip(tokenText)}");
+            metadata["token"] = token.GetString()!.Trim();
+            reasons.Add($"Token provided: {metadata["token"]}");
         }
 
-        if (spec.TryGetValue("keywords", out var keywords) && keywords is List<object?> keywordItems)
+        if (NonBlankItems(spec, "keywords") is { Count: > 0 } keywords)
         {
-            var kw = keywordItems.Select(EngineRepr.Str).Where(item => EngineText.Strip(item).Length > 0).ToList();
-            if (kw.Count > 0)
-            {
-                metadata["keywords"] = kw;
-                reasons.Add("Keyword list provided");
-            }
+            metadata["keywords"] = keywords;
+            reasons.Add("Keyword list provided");
         }
 
-        if (spec.TryGetValue("patterns", out var patterns) && patterns is List<object?> patternItems)
+        if (NonBlankItems(spec, "patterns") is { Count: > 0 } patterns)
         {
-            var pt = patternItems.Select(EngineRepr.Str).Where(item => EngineText.Strip(item).Length > 0).ToList();
-            if (pt.Count > 0)
-            {
-                metadata["patterns"] = pt;
-                reasons.Add("Pattern list provided");
-            }
+            metadata["patterns"] = patterns;
+            reasons.Add("Pattern list provided");
         }
 
         foreach (var option in PassThroughOptions)
         {
-            if (spec.TryGetValue(option, out var value))
+            if (spec.TryGetProperty(option, out var value))
             {
-                metadata[option] = value;
+                metadata[option] = OptionValue(value);
             }
         }
 
@@ -153,6 +142,17 @@ public sealed partial class RegistryLivePlugin : IFormatPlugin
             reasons.Count > 0 ? reasons : ["JSON manifest indicates registry live scan"],
             metadata.Count > 0 ? metadata : null);
     }
+
+    // Numbers stay numbers (integral as long); anything else as its text.
+    private static object OptionValue(JsonElement value) => value.ValueKind != JsonValueKind.Number
+        ? ScannedJson.ScalarText(value)
+        : value.TryGetInt64(out var integral) ? integral : value.GetDouble();
+
+    // The array's items as text, blanks dropped; null when the property is missing or not an array.
+    private static List<string>? NonBlankItems(JsonElement spec, string name)
+        => spec.TryGetProperty(name, out var items) && items.ValueKind == JsonValueKind.Array
+            ? items.EnumerateArray().Select(ScannedJson.ScalarText).Where(item => item.Trim().Length > 0).ToList()
+            : null;
 
     private DetectionMatch BuildYamlMatch(string text, List<string> reasons, OrderedDictionary<string, object?> metadata)
     {
