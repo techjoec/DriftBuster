@@ -6,7 +6,7 @@ using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.MultiServer;
 
-/// <summary><c>MultiServerRunner._build_catalog_and_drilldown</c>: one catalog entry and one drilldown per config id.</summary>
+/// <summary>One catalog entry and one drilldown per config id.</summary>
 public static class CatalogBuilder
 {
     private sealed record HostDiff(string Before, string After, string Diff, JsonElement Summary);
@@ -20,12 +20,11 @@ public static class CatalogBuilder
         OrderedDictionary<string, HostDiff> UnifiedDiffs);
 
     /// <summary>
-    /// Builds the catalog and drilldown. Config ids are visited in code-point order; the baseline record is the baseline host's,
-    /// else that of the code-point-smallest host holding the config. Every present host (plan order) is diffed against the
-    /// baseline's canonical payload; <c>drift_count</c> counts hosts with added, removed or changed lines; severity is
-    /// <c>high</c> when that count reaches <c>max(1, hosts // 2)</c>, <c>medium</c> when any host drifts, else <c>none</c>.
+    /// Config ids in code-point order; the baseline record is the baseline host's, else the code-point-smallest host holding the config.
+    /// Every present host (plan order) is diffed against the baseline's canonical payload; <c>drift_count</c> counts hosts with changes;
+    /// severity is <c>high</c> at max(1, hosts / 2) drifting hosts, <c>medium</c> for any, else <c>none</c>.
     /// </summary>
-    /// <param name="hostConfigs">Each host's records by config id, hosts in the order their scans were recorded.</param>
+    /// <param name="hostConfigs">Each host's records by config id, hosts in scan order.</param>
     public static (ConfigCatalogEntry[] Catalog, ConfigDrilldown[] Drilldown) Build(
         IReadOnlyList<MultiServerPlan> plans,
         OrderedDictionary<string, OrderedDictionary<string, ConfigRecord>> hostConfigs,
@@ -53,7 +52,7 @@ public static class CatalogBuilder
             }
         }
 
-        // hosts_by_id: a later plan with the same host id replaces an earlier one.
+        // A later plan with the same host id replaces an earlier one.
         var hostsById = new Dictionary<string, MultiServerPlan>(StringComparer.Ordinal);
         foreach (var plan in plans)
         {
@@ -115,7 +114,7 @@ public static class CatalogBuilder
         return new ConfigView(configId, perHost, baseline, presentHostIds, driftStats, unifiedDiffs);
     }
 
-    /// <summary>The severity rule: <c>high</c> when <paramref name="driftCount"/> reaches <c>max(1, totalHosts // 2)</c>.</summary>
+    /// <summary><c>high</c> when <paramref name="driftCount"/> reaches max(1, totalHosts / 2) (integer division).</summary>
     public static string Severity(int driftCount, int totalHosts)
     {
         if (driftCount >= Math.Max(1, totalHosts / 2))

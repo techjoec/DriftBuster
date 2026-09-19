@@ -1,12 +1,8 @@
 namespace DriftBuster.Backend.MultiServer;
 
-/// <summary><c>MultiServerRunner._select_baseline</c>.</summary>
 public static class BaselineSelector
 {
-    /// <summary>
-    /// The first plan of <c>sorted(plans, key=(not is_preferred, -priority, index))</c>: a preferred host before any other, then
-    /// the highest priority, then the earliest plan.
-    /// </summary>
+    /// <summary>The baseline host: a preferred host first, then the highest priority, then the earliest plan.</summary>
     public static MultiServerPlan Select(IReadOnlyList<MultiServerPlan> plans)
     {
         ArgumentNullException.ThrowIfNull(plans);

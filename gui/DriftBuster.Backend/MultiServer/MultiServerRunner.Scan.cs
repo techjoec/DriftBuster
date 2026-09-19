@@ -14,8 +14,8 @@ public sealed partial class MultiServerRunner
     private static readonly UTF8Encoding ReplacingUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
     /// <summary>
-    /// <c>_scan_plan</c>: the detector's budget is shared by every root of the host; each detected file becomes a record whose
-    /// canonical payload comes from the cache when the entry's signature (host, config, root fingerprint, file hash, content type, canonical form version) matches.
+    /// The detector's budget is shared by the host's roots; each detected file becomes a record whose canonical payload comes from
+    /// the cache when the signature (host, config, root fingerprint, file hash, content type, canonical form version) matches.
     /// </summary>
     private PlanScan ScanPlanCore(MultiServerPlan plan, IReadOnlyList<string> roots, CancellationToken cancellationToken)
     {
@@ -191,7 +191,7 @@ public sealed partial class MultiServerRunner
         return rules.Count > 0 && text.Split('\n').Any(line => rules.Any(rule => PatternRegex.Search(rule.Pattern, line, cancellationToken) is not null));
     }
 
-    // path.is_file(), where a lookup error means the file cannot be read rather than failing the host.
+    // A lookup error means the file cannot be read, not that the host fails.
     private static bool IsRegularFile(string path)
     {
         try
@@ -204,10 +204,7 @@ public sealed partial class MultiServerRunner
         }
     }
 
-    /// <summary>
-    /// <c>sha1("|".join(sorted(str(root.resolve()) for root in roots)))</c>: each root resolved as the OS resolves it, so a ".."
-    /// after a symlink steps to the parent of the link's target.
-    /// </summary>
+    /// <summary>SHA-1 of the sorted, physically resolved roots joined by "|" (a ".." after a symlink steps to the target's parent).</summary>
     internal static string RootFingerprint(IReadOnlyList<string> roots)
     {
         var resolved = roots.Select(root => EnginePath.ResolvePhysicalPath(EnginePath.Absolute(root)) ?? Path.GetFullPath(root)).ToList();
@@ -216,9 +213,8 @@ public sealed partial class MultiServerRunner
     }
 
     /// <summary>
-    /// <c>path.read_text(encoding="utf-8", errors="replace")</c>: the whole file, universal newlines. A file longer than
-    /// <paramref name="maxBytes"/> raises <see cref="IOException"/> without being read: past <see cref="DefaultMaxTextBytes"/> its
-    /// text may not fit a runtime string.
+    /// The whole file as UTF-8 with replacement and universal newlines. A file over <paramref name="maxBytes"/> throws
+    /// <see cref="IOException"/> unread, since its text might not fit a string.
     /// </summary>
     internal static string ReadText(string path, long maxBytes = DefaultMaxTextBytes)
     {

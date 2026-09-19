@@ -6,26 +6,21 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>
-/// The multi-server diff cache: one JSON file per host and config, <c>&lt;root&gt;/&lt;sha1("{host}:{config}")&gt;.json</c>,
-/// holding the canonical payload, content type, detection metadata, file hash and signature.
+/// One JSON file per host and config, <c>&lt;root&gt;/&lt;sha1("{host}:{config}")&gt;.json</c>: canonical payload, content type,
+/// detection metadata, file hash and signature.
 /// </summary>
 /// <remarks>
-/// Writes are atomic where an in-place <c>write_text</c> would succeed: the entry is written to a temporary file beside the
-/// file the entry path leads to (through a symlink, as <c>write_text</c> follows it) and renamed over that file, so a cancelled or
-/// failed write never leaves a partial entry. The outcome stays that of an in-place write in the two cases a rename changes it: an existing entry
-/// that cannot be opened for writing fails as <c>open(path, "w")</c> fails, even though a rename could replace it, and when the
-/// directory refuses the temporary file the entry is written in place (an existing writable entry in a
-/// directory that refuses new names is truncated and rewritten; a missing one fails as the write fails). That in-place write is
-/// the only one a crash can leave partial; cancellation is checked before it starts. Every other outcome: a
-/// missing entry (a dangling link included) loads as null; a file that is not UTF-8, or whose JSON is not an object, raises
-/// <see cref="InvalidDataException"/>; an I/O failure raises the runtime's exception. A raise fails the host as offline in
-/// <see cref="MultiServerRunner"/>.
+/// Writes go to a temporary file beside the target (following a symlink entry) and are renamed over it, so a failed or cancelled
+/// write never leaves a partial entry. Two exceptions keep in-place semantics: an existing entry that cannot be opened for writing
+/// fails, and when the directory refuses a temporary file the entry is written in place (the only write a crash can leave
+/// partial). A missing entry loads as null; non-UTF-8 or non-object JSON throws <see cref="InvalidDataException"/>; I/O errors
+/// propagate and fail the host as offline in <see cref="MultiServerRunner"/>.
 /// </remarks>
 public sealed class DiffCache
 {
     private const string TemporarySuffix = ".tmp";
 
-    /// <summary>Creates <paramref name="root"/> (and its parents) when missing, as <c>mkdir(parents=True, exist_ok=True)</c>.</summary>
+    /// <summary>Creates <paramref name="root"/> and its parents when missing.</summary>
     public DiffCache(string root)
     {
         ArgumentNullException.ThrowIfNull(root);
@@ -38,13 +33,12 @@ public sealed class DiffCache
     /// <summary>Test seam: invoked with the temporary file's path after it is written and before it replaces the entry.</summary>
     internal Action<string>? TemporaryWritten { get; set; }
 
-    /// <summary>The entry path for <paramref name="hostId"/> and <paramref name="configId"/>.</summary>
     public string EntryPath(string hostId, string configId)
         => Path.Combine(Root, MultiServerPlan.Sha1Hex($"{hostId}:{configId}") + ".json");
 
     /// <summary>
-    /// <c>DiffCache.load</c>: null when the entry does not exist (after following links), is not valid JSON or does not carry
-    /// <paramref name="signature"/>; otherwise the stored payload.
+    /// Null when the entry does not exist (after following links), is not valid JSON or does not carry <paramref name="signature"/>;
+    /// otherwise the stored payload.
     /// </summary>
     public OrderedDictionary<string, object?>? Load(string hostId, string configId, string signature)
     {
@@ -77,10 +71,7 @@ public sealed class DiffCache
             : null;
     }
 
-    /// <summary>
-    /// Stores <paramref name="payload"/> plus <c>signature</c> as <c>json.dumps(data, ensure_ascii=False, sort_keys=True)</c>
-    /// in UTF-8, atomically, into the file the entry path leads to.
-    /// </summary>
+    /// <summary>Stores <paramref name="payload"/> plus <c>signature</c> as UTF-8 JSON (sorted keys, non-ASCII kept), atomically.</summary>
     public void Save(string hostId, string configId, string signature, OrderedDictionary<string, object?> payload, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payload);
@@ -116,9 +107,8 @@ public sealed class DiffCache
         }
     }
 
-    // open(path, "w") opens an existing file for writing before it truncates it: an entry that refuses that (a read-only file)
-    // fails the save even though a rename could replace it. Opening without truncating changes nothing; only a regular file is
-    // opened, so a FIFO entry never blocks here.
+    // An existing entry that refuses opening for write (read-only) fails the save even though a rename could replace it. Only a
+    // regular file is opened, so a FIFO never blocks here.
     private static void RequireWritableEntry(string target)
     {
         var kind = UnixFileType.Stat(target, followSymlinks: true);
@@ -143,9 +133,8 @@ public sealed class DiffCache
         }
     }
 
-    // The file open(path, "w") writes: the entry itself, or where a symlink entry leads (a dangling link's target is created).
-    // A directory, or a link that loops, fails as open() fails. A link leading to a name that is not UTF-8 cannot be named: the
-    // entry is then written in place through the link (not nameable), as open() writes it, instead of beside a guessed name.
+    // The file to write: the entry, or where a symlink entry leads (a dangling link's target is created). A directory or looping
+    // link fails. A link to a non-UTF-8 name cannot be named, so the entry is written in place through the link.
     private static (string Target, bool Nameable) WriteTarget(string path)
     {
         var target = EnginePath.KernelPath(path);
@@ -175,10 +164,9 @@ public sealed class DiffCache
     }
 
     /// <summary>
-    /// <c>_resolve_cache_dir(cache_dir)</c>: an explicit directory is created and resolved; otherwise the <c>cache/diffs</c>
-    /// directory under the data root (<see cref="DriftbusterPaths.GetDataRoot"/>, resolved through symlinks) is used, after <c>_migrate_legacy_cache</c>:
-    /// when <c>&lt;repositoryRoot&gt;/artifacts/cache/diffs</c> exists and the destination is empty, every legacy file the
-    /// destination does not hold is copied. The legacy directory is taken relative to the repository root.
+    /// An explicit directory is created and resolved; otherwise <c>cache/diffs</c> under the resolved data root
+    /// (<see cref="DriftbusterPaths.GetDataRoot"/>), after copying files from <c>&lt;repositoryRoot&gt;/artifacts/cache/diffs</c> when that
+    /// exists and the destination is empty.
     /// </summary>
     public static string ResolveCacheDirectory(string? cacheDir, string? repositoryRoot)
     {
@@ -187,7 +175,7 @@ public sealed class DiffCache
             return CreateAndResolve(EngineOsPath.ExpandUser(cacheDir));
         }
 
-        // _resolve_data_root() returns the data root resolved through symlinks; cache/diffs is appended as written.
+        // The data root resolved through symlinks, with cache/diffs appended as written.
         var destination = Path.Combine(CreateAndResolve(DriftbusterPaths.GetDataRoot()), "cache", "diffs");
         EnginePath.MakeDirectories(destination);
         if (!string.IsNullOrEmpty(repositoryRoot) && !DestinationHasEntries(destination))
@@ -198,17 +186,15 @@ public sealed class DiffCache
         return destination;
     }
 
-    // path.mkdir(parents=True, exist_ok=True) then path.resolve(): both as the kernel walks the path, so a ".." after a symlink
-    // steps to the parent of the link's target (the runtime would remove it lexically first).
-    // A directory whose physical path holds a name that is not UTF-8 keeps the kernel's spelling of it instead, which reaches the
-    // same directory through its links.
+    // Creates and resolves the path as the kernel walks it (a ".." after a symlink steps to the target's parent). A directory whose
+    // physical path is not UTF-8 keeps the kernel's spelling, which reaches it through its links.
     private static string CreateAndResolve(string path)
     {
         EnginePath.MakeDirectories(path);
         return EnginePath.Resolve(path);
     }
 
-    // any(destination.iterdir()); an error counts as entries present, which ends the best-effort migration.
+    // Any entry present; an error counts as present, which ends the best-effort migration.
     private static bool DestinationHasEntries(string destination)
     {
         try
@@ -222,9 +208,8 @@ public sealed class DiffCache
     }
 
     /// <summary>
-    /// Best effort: copies every file of <c>&lt;repositoryRoot&gt;/artifacts/cache/diffs</c> that the cache directory does not
-    /// already hold. Failures are ignored. This is also the GUI facade's migration before every scan, which (unlike
-    /// <see cref="ResolveCacheDirectory"/>) copies into a cache that already holds entries.
+    /// Best effort: copies every file of <c>&lt;repositoryRoot&gt;/artifacts/cache/diffs</c> the cache does not hold; failures are ignored.
+    /// The GUI facade runs this before every scan, even into a non-empty cache.
     /// </summary>
     public static void MigrateLegacyDiffCache(string repositoryRoot, string cacheDirectory)
     {

@@ -5,7 +5,6 @@ namespace DriftBuster.Backend.MultiServer;
 /// <summary>The <c>multi-server.v2</c> contract: the version and shape guarantees the GUI facade checks on every response.</summary>
 public static class MultiServerSchema
 {
-    /// <summary><c>SCHEMA_VERSION</c>.</summary>
     public const string Version = "multi-server.v2";
 
     /// <summary>

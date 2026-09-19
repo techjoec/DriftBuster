@@ -7,22 +7,17 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.MultiServer;
 
-/// <summary>Config ids and display names: <c>_slugify</c>, <c>_normalise_config_id</c> and <c>_display_name</c>.</summary>
+/// <summary>Config ids and display names.</summary>
 /// <remarks>
-/// The id is always built from the relative posix path, so two applications holding a <c>web.config</c> on one host keep separate
-/// ids: <c>slug(format)/slug(variant)/slug(relative path)</c>, the variant part only when a variant is present. When two
-/// records on one host still produce the same id (the same relative path under two roots, or two paths whose slugs coincide),
-/// both are kept: the first keeps the id and a later one gets <see cref="Disambiguate"/>'s <c>@root{index}</c> suffix, where
-/// the index is the zero-based position of its root in the plan's roots (<see cref="MultiServerPlan.Roots"/>, missing roots
-/// counted, so a root appearing or disappearing never renames another root's ids), with <c>.{n}</c>, n from 2, appended when
-/// that is taken too. Slugs never hold '@' or '.', so a suffixed id never equals a natural one. The display name is unchanged.
+/// The id is <c>slug(format)/slug(variant)/slug(relative path)</c> (variant only when present), so two apps' <c>web.config</c> on one
+/// host keep separate ids. When a host still produces the same id twice, the later record gets <see cref="Disambiguate"/>'s
+/// <c>@root{index}</c> suffix (index = zero-based position of its root in <see cref="MultiServerPlan.Roots"/>, missing roots counted,
+/// so roots coming and going never rename others), then <c>.{n}</c> from 2. Slugs never hold '@' or '.', so suffixed ids never
+/// collide with natural ones.
 /// </remarks>
 public static class ConfigIdentity
 {
-    /// <summary>
-    /// <c>_slugify</c>: stripped and lowered, then every code point that is not <c>str.isalnum</c> (Unicode letters and numbers)
-    /// and not '-', '_' or '/' becomes '-'.
-    /// </summary>
+    /// <summary>Trimmed and lowered; every code point that is not a letter, number, '-', '_' or '/' becomes '-'.</summary>
     public static string Slugify(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -38,7 +33,7 @@ public static class ConfigIdentity
         {
             if (Rune.DecodeFromUtf16(text.AsSpan(offset), out var rune, out var consumed) != OperationStatus.Done)
             {
-                // An unpaired surrogate is a code point of its own to Python, and not alphanumeric.
+                // An unpaired surrogate is not alphanumeric.
                 builder.Append('-');
                 offset++;
                 continue;
@@ -60,9 +55,8 @@ public static class ConfigIdentity
     }
 
     /// <summary>
-    /// The config id of <paramref name="match"/> found at <paramref name="relativePosix"/>: the format is
-    /// <c>catalog_format</c>, else the match's format name, else <c>config</c>; the variant is a non-blank string
-    /// <c>catalog_variant</c>. When the relative path slugs to nothing the id is <c>slug(format)#sha1(fallback)[:12]</c>.
+    /// Format from <c>catalog_format</c>, else the match's format name, else <c>config</c>; variant from a non-blank <c>catalog_variant</c>.
+    /// When the relative path slugs to nothing the id is <c>slug(format)#sha1(fallback)[:12]</c>.
     /// </summary>
     public static string NormaliseConfigId(DetectionMatch match, string relativePosix)
     {
@@ -89,8 +83,7 @@ public static class ConfigIdentity
     }
 
     /// <summary>
-    /// <paramref name="configId"/> when <paramref name="isTaken"/> rejects it; otherwise <c>{configId}@root{rootIndex}</c>, then
-    /// <c>{configId}@root{rootIndex}.{n}</c> for n = 2, 3, ... until one is free.
+    /// <paramref name="configId"/> when free; otherwise <c>{configId}@root{rootIndex}</c>, then <c>.{n}</c> for n = 2, 3, ... until free.
     /// </summary>
     public static string Disambiguate(string configId, int rootIndex, Func<string, bool> isTaken)
     {
@@ -114,7 +107,7 @@ public static class ConfigIdentity
     private static object? Get(IReadOnlyDictionary<string, object?>? metadata, string key)
         => metadata is not null && metadata.TryGetValue(key, out var value) ? value : null;
 
-    // str(a or b): the first value Python treats as true, spelled with str().
+    // The first truthy value as text.
     private static string? FirstTruthy(object? first, string? second)
     {
         if (IsTruthy(first))
@@ -137,7 +130,7 @@ public static class ConfigIdentity
         _ => true,
     };
 
-    // str.encode("utf-8", "ignore"): unpaired surrogates dropped.
+    // UTF-8 with unpaired surrogates dropped.
     private static byte[] EncodeIgnoringErrors(string text)
     {
         var builder = new StringBuilder(text.Length);

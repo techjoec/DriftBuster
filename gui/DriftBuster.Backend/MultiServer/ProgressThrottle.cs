@@ -3,13 +3,11 @@ using DriftBuster.Backend.Models;
 namespace DriftBuster.Backend.MultiServer;
 
 /// <summary>
-/// <c>emit_progress</c>'s duplicate suppression, owned by one run: an update is dropped
-/// when the host's previous update had the same status and message and was emitted less than
-/// <see cref="IntervalSeconds"/> earlier.
+/// Per-run progress de-duplication: an update is dropped when the host's previous update had the same status and message and was
+/// emitted less than <see cref="IntervalSeconds"/> earlier.
 /// </summary>
 public sealed class ProgressThrottle
 {
-    /// <summary><c>_PROGRESS_THROTTLE_SECONDS</c>.</summary>
     public const double IntervalSeconds = 0.05;
 
     private readonly Dictionary<string, (double Timestamp, ServerScanStatus Status, string Message)> _last = new(StringComparer.Ordinal);

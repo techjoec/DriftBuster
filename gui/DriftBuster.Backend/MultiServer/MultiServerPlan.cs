@@ -14,12 +14,12 @@ public sealed record MultiServerPlan
 
     public required string Label { get; init; }
 
-    /// <summary>The roots as given; the runner spells each as <c>Path(root)</c> does (<see cref="LexicalPath.Str"/>).</summary>
+    /// <summary>The roots as given; the runner normalises each with <see cref="LexicalPath.Str"/>.</summary>
     public IReadOnlyList<string> Roots { get; init; } = [];
 
     public bool IsPreferred { get; init; }
 
-    /// <summary><c>BaselinePreference.priority</c>: a Python int, unbounded.</summary>
+    /// <summary>Baseline priority, arbitrary size.</summary>
     public BigInteger Priority { get; init; }
 
     /// <summary>Registry keys the scan reads besides the roots; null when none.</summary>
@@ -29,9 +29,8 @@ public sealed record MultiServerPlan
     public double? ThrottleSeconds { get; init; }
 
     /// <summary>
-    /// <c>Plan.from_mapping</c> over the GUI's plan model: the host id stripped (a random SHA-1 hex digest when empty), the label
-    /// stripped (the host id when empty), every root stripped, blank roots dropped, and the rest expanded with <c>expandvars</c>
-    /// then <c>expanduser</c>.
+    /// From the GUI plan model: host id trimmed (a random SHA-1 hex digest when empty), label trimmed (the host id when empty),
+    /// roots trimmed, blanks dropped, the rest with environment variables and <c>~</c> expanded.
     /// </summary>
     public static MultiServerPlan FromServerScanPlan(ServerScanPlan plan)
     {
@@ -49,11 +48,9 @@ public sealed record MultiServerPlan
     }
 
     /// <summary>
-    /// <c>multi_server._build_plans(request)</c> over a decoded JSON request (<see cref="EngineJson"/> values): <c>request.get("plans")
-    /// or []</c> must be a list or a str (a str yields no plans), entries that are not mappings are skipped, and each mapping goes
-    /// through <see cref="FromMapping"/>. A <c>plans</c> value of any other type raises <see cref="CommandExitException"/>
-    /// (<c>'plans' must be an array</c>); a request that is not a mapping raises <see cref="InvalidDataException"/>, as does every
-    /// error <see cref="FromMapping"/> raises.
+    /// Plans from a decoded <c>multi-server</c> request: <c>plans</c> must be a list (a string yields none; any other type throws
+    /// <see cref="CommandExitException"/> <c>'plans' must be an array</c>); non-object entries are skipped; each object goes through
+    /// <see cref="FromMapping"/>. A non-object request throws <see cref="InvalidDataException"/>.
     /// </summary>
     public static IReadOnlyList<MultiServerPlan> BuildPlans(object? request)
     {
@@ -75,11 +72,10 @@ public sealed record MultiServerPlan
     }
 
     /// <summary>
-    /// <c>Plan.from_mapping(payload)</c> with Python's coercions: <c>str(host_id or "")</c> and <c>str(label or host_id)</c>
-    /// (<see cref="EngineRepr.Str"/>), <c>for entry in roots or []</c> with <c>str(entry or "")</c>, <c>bool(is_preferred)</c>,
-    /// <c>int(priority)</c>, <c>float(throttle_seconds)</c> (null when the value is not a number) and a
-    /// truthy <c>baseline</c> or <c>export</c> that must be a mapping. <c>scope</c>, <c>role</c>, the export flags and
-    /// <c>cached_at</c> are read by Python but never used by the runner, and none of their coercions can raise.
+    /// One plan object: <c>host_id</c> and <c>label</c> as text (label defaults to the host id), <c>roots</c> as text entries,
+    /// <c>baseline.is_preferred</c> as bool, <c>baseline.priority</c> as integer, <c>throttle_seconds</c> as a number (null otherwise),
+    /// optional <c>registry</c>. A truthy <c>baseline</c> or <c>export</c> must be an object. <c>scope</c>, <c>role</c>, export flags and
+    /// <c>cached_at</c> are ignored.
     /// </summary>
     public static MultiServerPlan FromMapping(OrderedDictionary<string, object?> payload)
     {
@@ -133,7 +129,7 @@ public sealed record MultiServerPlan
         return MultiServerRegistry.Create(keys, Text("computer"), Text("credential_file"));
     }
 
-    // float(throttle_value), None when the value is not a number; an OverflowException propagates.
+    // A number, or null when the value is not one; OverflowException propagates.
     private static double? Throttle(object? value)
     {
         if (value is null)

@@ -23,15 +23,13 @@ namespace DriftBuster.Backend.MultiServer;
 /// </remarks>
 public sealed partial class MultiServerRunner
 {
-    /// <summary><c>_DEFAULT_MULTI_SERVER_SAMPLE_BUDGET</c>: 64 MiB per host.</summary>
+    /// <summary>Aggregate sampling budget per host.</summary>
     public const long DefaultSampleBudget = 64L * 1024 * 1024;
 
     /// <summary>
-    /// The largest file a record reads whole (<see cref="ReadText"/>): a sixth of the longest runtime string (0x3FFFFFDF
-    /// characters). The text read always fits one string, and so, for ordinary text, do its canonical form and the cache entry's
-    /// JSON; they are not bounded, though: indented canonical JSON grows with nesting and <c>json.dumps</c> escapes a control
-    /// character as six characters, so a text near the limit can still pass the longest string, and the runtime's
-    /// <see cref="OutOfMemoryException"/> then ends the run. A detected file past the limit is skipped as unreadable.
+    /// The largest file read whole: a sixth of the longest runtime string. Canonical forms and cache JSON can still grow past it
+    /// (escaping, indentation), in which case the runtime's <see cref="OutOfMemoryException"/> ends the run. Larger detected files are
+    /// skipped as unreadable.
     /// </summary>
     internal const long DefaultMaxTextBytes = 0x3FFFFFDF / 6;
 
@@ -49,7 +47,7 @@ public sealed partial class MultiServerRunner
         ScanPlan = ScanPlanCore;
     }
 
-    /// <summary>Seam for <c>runner._detector</c>; the default skips unreadable files (<see cref="SkippingDetector"/>).</summary>
+    /// <summary>The detector (test seam); the default skips unreadable files (<see cref="SkippingDetector"/>).</summary>
     internal Detector Detector { get; set; }
 
     internal DiffCache Cache { get; }
@@ -57,18 +55,17 @@ public sealed partial class MultiServerRunner
     /// <summary>Test seam for <see cref="DefaultMaxTextBytes"/>.</summary>
     internal long MaxTextBytes { get; set; } = DefaultMaxTextBytes;
 
-    /// <summary>Seam for <c>MultiServerRunner._scan_plan(plan, existing_roots, secret_hits)</c>.</summary>
+    /// <summary>The per-host scan (test seam).</summary>
     internal Func<MultiServerPlan, IReadOnlyList<string>, CancellationToken, PlanScan> ScanPlan { get; set; }
 
-    /// <summary>Seam for <c>datetime.now(UTC)</c>.</summary>
+    /// <summary>UTC clock (test seam).</summary>
     internal Func<DateTimeOffset> UtcNow { get; set; } = static () => DateTimeOffset.UtcNow;
 
-    /// <summary>Seam for <c>time.monotonic()</c>, in seconds.</summary>
+    /// <summary>Monotonic seconds (test seam).</summary>
     internal Func<double> Monotonic { get; set; } = static () => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
 
     /// <summary>
-    /// Seam for the wait inside <c>time.sleep</c>, after <see cref="SleepDuration"/> accepted the argument; the default waits in
-    /// whole milliseconds (rounded up, in steps the wait handle accepts), wakes early and raises when the token is cancelled.
+    /// The throttle wait (test seam); the default waits in whole milliseconds, rounded up, and throws when the token is cancelled.
     /// </summary>
     internal Action<TimeSpan, CancellationToken> Sleep { get; set; } = static (delay, token) =>
     {
@@ -82,7 +79,6 @@ public sealed partial class MultiServerRunner
         token.ThrowIfCancellationRequested();
     };
 
-    /// <summary><c>MultiServerRunner.run(plans)</c>.</summary>
     public ServerScanResponse Run(IEnumerable<MultiServerPlan> plans, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(plans);
@@ -178,10 +174,8 @@ public sealed partial class MultiServerRunner
     private static OrderedDictionary<string, ConfigRecord> Empty() => new(StringComparer.Ordinal);
 
     /// <summary>
-    /// <c>time.sleep(seconds)</c>'s argument checks for a positive <paramref name="seconds"/>, which raise out of <c>run()</c>
-    /// (the sleep follows the host's <c>try</c>): the timeout in nanoseconds, rounded up, must be below
-    /// 2<sup>63</sup>, and off Windows the absolute deadline, CLOCK_MONOTONIC (<paramref name="monotonicSeconds"/>) plus the timeout,
-    /// must be below 2<sup>63</sup> nanoseconds as well; either failure raises <see cref="OverflowException"/>.
+    /// The throttle delay: the timeout in nanoseconds (rounded up) must be below 2<sup>63</sup>, and off Windows so must the monotonic
+    /// deadline; otherwise <see cref="OverflowException"/>, which escapes <c>Run</c>.
     /// </summary>
     internal static TimeSpan SleepDuration(double seconds, double monotonicSeconds)
     {
@@ -200,9 +194,8 @@ public sealed partial class MultiServerRunner
         return TimeSpan.FromTicks((timeout + 99) / 100);
     }
 
-    // Path.exists(): a stat that follows links succeeds. A root whose lookup is refused counts as existing, so the scan reports
-    // it as permission_denied. A root holding an unpaired surrogate names nothing the runtime can
-    // open: it would encode it with U+FFFD and look up a different entry, so it is not found.
+    // Exists after following links. A refused lookup counts as existing, so the scan reports permission_denied. A root with an unpaired
+    // surrogate is not found, since the runtime would look up its U+FFFD spelling.
     private static bool RootExists(string root)
     {
         if (EngineUtf8.HasUnpairedSurrogate(root))
@@ -225,7 +218,7 @@ public sealed partial class MultiServerRunner
         }
     }
 
-    /// <summary><c>datetime.now(UTC)</c> at microsecond precision.</summary>
+    /// <summary>UTC now at microsecond precision.</summary>
     private DateTimeOffset Now()
     {
         var now = UtcNow().ToUniversalTime();
@@ -274,7 +267,7 @@ public sealed partial class MultiServerRunner
             },
         };
 
-    // text[:length] on code points.
+    // The first length code points.
     internal static string TruncateCodePoints(string text, int length)
     {
         var builder = new StringBuilder();
