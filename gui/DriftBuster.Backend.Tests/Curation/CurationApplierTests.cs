@@ -1,12 +1,10 @@
 using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.Models;
-using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.Curation;
 
 /// <summary>Curation applied to a comparison: ignores, masks, rules, groups, the review list, scopes, and the recount.</summary>
 // The sample's password is masked by the process-wide secret rules that the secret scanner tests replace.
-[Collection(SecretRuleCacheCollection.Name)]
 public sealed class CurationApplierTests
 {
     private static readonly string HostSet = CurationScopes.HostSetId(CurationSample.Plans);

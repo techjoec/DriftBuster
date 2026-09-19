@@ -1,24 +1,23 @@
 using System;
-using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
 {
     public enum ConfigPresenceStatus
     {
-        [EnumMember(Value = "unknown")]
+        [JsonStringEnumMemberName("unknown")]
         Unknown,
 
-        [EnumMember(Value = "found")]
+        [JsonStringEnumMemberName("found")]
         Found,
 
-        [EnumMember(Value = "not_found")]
+        [JsonStringEnumMemberName("not_found")]
         NotFound,
 
-        [EnumMember(Value = "permission_denied")]
+        [JsonStringEnumMemberName("permission_denied")]
         PermissionDenied,
 
-        [EnumMember(Value = "offline")]
+        [JsonStringEnumMemberName("offline")]
         Offline,
     }
 }

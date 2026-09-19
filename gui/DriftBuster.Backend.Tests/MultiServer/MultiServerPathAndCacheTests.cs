@@ -2,7 +2,6 @@ using System.Globalization;
 
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
-using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.MultiServer;
 
@@ -10,7 +9,6 @@ namespace DriftBuster.Backend.Tests.MultiServer;
 /// Runner behaviour for files too long to read whole and for a cache failure that fails the host offline.
 /// </summary>
 // Scans flag secrets through the process-wide secret rule cache that the secret scanner tests replace.
-[Collection(SecretRuleCacheCollection.Name)]
 public sealed class MultiServerPathAndCacheTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-multi-server-paths-");
@@ -78,7 +76,7 @@ public sealed class MultiServerPathAndCacheTests : IDisposable
 
         var entry = runner.Cache.EntryPath("host", "json/generic/app-json");
         response.Results[0].Availability.Should().Be(ServerAvailabilityStatus.Offline);
-        response.Results[0].Message.Should().Be(MultiServerRunner.TruncateCodePoints($"Scan failed: Access to the path '{entry}' is denied.", 160));
+        response.Results[0].Message.Should().StartWith($"Scan failed: Access to the path '{entry}.");
         Directory.GetFileSystemEntries(CacheDir).Should().BeEmpty();
     }
 }

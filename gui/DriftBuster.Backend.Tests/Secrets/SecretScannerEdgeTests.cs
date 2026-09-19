@@ -8,16 +8,13 @@ using DriftBuster.Backend.Secrets;
 
 namespace DriftBuster.Backend.Tests.Secrets;
 
-/// <summary>Secret scanner metadata, rule resource loading, binary detection and the redaction guard.</summary>
-[Collection(SecretRuleCacheCollection.Name)]
+/// <summary>Secret filter summaries, binary detection, copies and the redaction guard.</summary>
 public sealed class SecretScannerEdgeTests : IDisposable
 {
-    private readonly SecretRuleCacheIsolation _isolation = new();
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-secret-edges-");
 
     public void Dispose()
     {
-        _isolation.Dispose();
         _tmp.Delete(recursive: true);
     }
 
@@ -43,17 +40,6 @@ public sealed class SecretScannerEdgeTests : IDisposable
                 "secret candidate redacted (AwsAccessKeyId) from config.txt:2 -> [SECRET]",
                 "scrubbed 2 potential secret line(s) from config.txt",
             ]));
-    }
-
-    [Fact]
-    public void InvalidResourceJsonRaises()
-    {
-        SecretScanner.ResetSecretRuleCache();
-        SecretScanner.ResourceReader = () => "{not json";
-
-        var load = SecretScanner.LoadSecretRules;
-
-        load.Should().Throw<InvalidDataException>();
     }
 
     [Fact]

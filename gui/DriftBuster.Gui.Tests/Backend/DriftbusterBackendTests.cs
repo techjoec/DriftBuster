@@ -324,34 +324,6 @@ public sealed class DriftbusterBackendTests
     }
 
     [Fact]
-    public void PrepareMultiServerCacheDirectory_uses_data_root_cache_and_migrates_legacy_files()
-    {
-        var repositoryRoot = Path.Combine(Path.GetTempPath(), "DriftbusterRepo", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(repositoryRoot);
-        try
-        {
-            var legacyCache = Path.Combine(repositoryRoot, "artifacts", "cache", "diffs");
-            Directory.CreateDirectory(legacyCache);
-            File.WriteAllText(Path.Combine(legacyCache, "sample.json"), "{}");
-
-            var method = typeof(DriftbusterBackend).GetMethod("PrepareMultiServerCacheDirectory", BindingFlags.NonPublic | BindingFlags.Static);
-            var cacheDirectory = method!.Invoke(null, new object?[] { repositoryRoot }) as string;
-
-            cacheDirectory.Should().NotBeNullOrWhiteSpace();
-            cacheDirectory!.StartsWith(_fixture.Root, StringComparison.OrdinalIgnoreCase).Should().BeTrue();
-            cacheDirectory.Should().Contain(Path.Combine("cache", "diffs"));
-            File.Exists(Path.Combine(cacheDirectory, "sample.json")).Should().BeTrue();
-        }
-        finally
-        {
-            if (Directory.Exists(repositoryRoot))
-            {
-                Directory.Delete(repositoryRoot, recursive: true);
-            }
-        }
-    }
-
-    [Fact]
     public async Task RunServerScansAsync_writes_the_diff_cache_under_the_data_root()
     {
         var plans = new[]

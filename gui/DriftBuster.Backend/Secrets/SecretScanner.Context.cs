@@ -13,7 +13,7 @@ public static partial class SecretScanner
     /// </summary>
     public static SecretDetectionContext BuildContext(SecretScannerOptions? options)
     {
-        var (rules, version, loaded) = LoadSecretRules();
+        var (rules, version) = SecretRules.Packaged;
         var patternText = (options?.IgnorePatterns ?? []).Distinct(StringComparer.Ordinal).ToList();
         var patterns = new List<Regex>();
         foreach (var source in patternText)
@@ -28,7 +28,7 @@ public static partial class SecretScanner
         }
 
         var ignoreRules = new HashSet<string>(options?.IgnoreRules ?? [], StringComparer.Ordinal);
-        return new SecretDetectionContext(rules, version, ignoreRules, patterns, patternText, loaded && rules.Count > 0);
+        return new SecretDetectionContext(rules, version, ignoreRules, patterns, patternText, rules.Count > 0);
     }
 
     /// <summary>What the filter did during a run, for the run result and <c>metadata.json</c>.</summary>

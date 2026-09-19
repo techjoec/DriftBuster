@@ -68,22 +68,15 @@ public sealed class MultiServerUnitTests : IDisposable
     }
 
     [Fact]
-    public void CacheSaveWritesSortedCompactJson()
+    public void Cache_entries_hold_the_canonical_text_for_their_signature()
     {
         var cache = new DiffCache(Path.Combine(_tmp.FullName, "cache"));
-        var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["b"] = 1,
-            ["a"] = new List<object?> { 1, 2.5, new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["z"] = null, ["y"] = true } },
-            ["u"] = "é\n",
-        };
 
-        cache.Save("host", "cfg", "sig", payload, TestContext.Current.CancellationToken);
+        cache.Save("host", "cfg", "sig", "canonical é\n");
 
         var path = cache.EntryPath("host", "cfg");
         Path.GetFileName(path).Should().Be(MultiServerPlan.Sha1Hex("host:cfg") + ".json");
-        File.ReadAllText(path).Should().Be("{\"a\": [1, 2.5, {\"y\": true, \"z\": null}], \"b\": 1, \"signature\": \"sig\", \"u\": \"é\\n\"}");
-        cache.Load("host", "cfg", "sig")!["b"].Should().Be(1);
+        cache.Load("host", "cfg", "sig").Should().Be("canonical é\n");
         cache.Load("host", "cfg", "other").Should().BeNull();
         cache.Load("host", "missing", "sig").Should().BeNull();
         Directory.EnumerateFiles(cache.Root).Should().ContainSingle();

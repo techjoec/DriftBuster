@@ -23,9 +23,8 @@ public static partial class RegistryScan
         ArgumentNullException.ThrowIfNull(spec);
         backend ??= DefaultBackend();
         var keywords = spec.Keywords.Select(EngineText.Lower).ToList();
-        // The limits are clamped to long; the counts compared with them never exceed it.
-        var maxDepth = ClampToLong(System.Numerics.BigInteger.Max(0, spec.MaxDepth));
-        var maxHits = ClampToLong(System.Numerics.BigInteger.Max(1, spec.MaxHits));
+        var maxDepth = Math.Max(0, spec.MaxDepth);
+        var maxHits = Math.Max(1, spec.MaxHits);
         var budget = spec.TimeBudgetS > 0.1 ? spec.TimeBudgetS : 0.1;
         var started = Stopwatch.GetTimestamp();
 
@@ -142,5 +141,4 @@ public static partial class RegistryScan
                 return null;
         }
     }
-    private static long ClampToLong(System.Numerics.BigInteger value) => value > long.MaxValue ? long.MaxValue : (long)value;
 }

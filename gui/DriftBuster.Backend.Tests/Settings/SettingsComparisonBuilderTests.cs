@@ -1,13 +1,11 @@
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Settings;
-using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.Settings;
 
 /// <summary>Files compared setting by setting against the baseline server, with the per-server summary people read first.</summary>
 // Values are checked against the process-wide secret rules that the secret scanner tests replace.
-[Collection(SecretRuleCacheCollection.Name)]
 public sealed class SettingsComparisonBuilderTests
 {
     private static readonly MultiServerPlan[] Plans =

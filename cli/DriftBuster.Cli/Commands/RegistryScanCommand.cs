@@ -1,6 +1,6 @@
 using System.CommandLine;
-using System.Numerics;
 
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Registry;
 
 namespace DriftBuster.Cli.Commands;
@@ -52,8 +52,8 @@ internal static class RegistryScanCommand
     private sealed record SearchOptions(
         Option<string[]> Keyword,
         Option<string[]> Pattern,
-        Option<BigInteger> MaxDepth,
-        Option<BigInteger> MaxHits,
+        Option<int> MaxDepth,
+        Option<int> MaxHits,
         Option<double> TimeBudget,
         Option<string[]> Root);
 
@@ -62,8 +62,8 @@ internal static class RegistryScanCommand
         var options = new SearchOptions(
             EngineArguments.Append("--keyword", "Keyword to require (repeatable)"),
             EngineArguments.Append("--pattern", "Regex to match (repeatable)"),
-            EngineArguments.Int("--max-depth", 12, "Maximum key depth (default: 12)"),
-            EngineArguments.Int("--max-hits", 200, "Maximum hits (default: 200)"),
+            new Option<int>("--max-depth") { DefaultValueFactory = _ => 12, Description = "Maximum key depth (default: 12)" },
+            new Option<int>("--max-hits") { DefaultValueFactory = _ => 200, Description = "Maximum hits (default: 200)" },
             EngineArguments.Float("--time-budget", 10.0, "Time budget in seconds (default: 10.0)"),
             EngineArguments.Append("--root", RootHelp));
         command.Options.Add(options.Keyword);
@@ -116,7 +116,7 @@ internal static class RegistryScanCommand
                 parseResult.GetValue(options.TimeBudget),
                 parseResult.GetValue(remoteTarget),
                 parseResult.GetValue(options.Root));
-            ConsoleText.Print(stdout, RegistryCommands.EmitConfigJson(snippet));
+            ConsoleText.Write(stdout, ModelJson.Serialize(snippet));
             return 0;
         }));
         return command;

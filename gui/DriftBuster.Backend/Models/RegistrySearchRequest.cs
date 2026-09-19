@@ -18,10 +18,10 @@ namespace DriftBuster.Backend.Models
         public string[] Patterns { get; set; } = [];
 
         [JsonPropertyName("max_depth")]
-        public long MaxDepth { get; set; } = 12;
+        public int MaxDepth { get; set; } = 12;
 
         [JsonPropertyName("max_hits")]
-        public long MaxHits { get; set; } = 200;
+        public int MaxHits { get; set; } = 200;
 
         [JsonPropertyName("time_budget_s")]
         public double TimeBudgetSeconds { get; set; } = 10.0;

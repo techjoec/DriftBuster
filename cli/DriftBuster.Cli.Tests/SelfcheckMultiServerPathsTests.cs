@@ -42,8 +42,8 @@ public sealed class SelfcheckMultiServerPathsTests : IDisposable
             stdout,
             (_, _) =>
             [
-                new ScenarioResult("a", true, new(StringComparer.Ordinal) { ["x"] = 1L }),
-                new ScenarioResult("b", true, new(StringComparer.Ordinal) { ["x"] = 2L }),
+                new ScenarioResult("a", true, "x=1"),
+                new ScenarioResult("b", true, "x=2"),
             ]);
 
         code.Should().Be(0);

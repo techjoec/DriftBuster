@@ -1,7 +1,4 @@
 namespace DriftBuster.Cli.Commands;
 
-/// <summary>
-/// One self-check scenario: its name, the value its judge returned (an <c>and</c> chain yields <c>True</c>, <c>False</c>, or the
-/// first falsy operand) and the evaluated response.
-/// </summary>
-internal sealed record ScenarioResult(string Name, object? Passed, OrderedDictionary<string, object?> Details);
+/// <summary>One self-check scenario: whether it passed and what the run looked like.</summary>
+internal sealed record ScenarioResult(string Name, bool Passed, string Details);

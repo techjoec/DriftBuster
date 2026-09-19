@@ -1,12 +1,10 @@
 using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.History;
 using DriftBuster.Backend.Tests.Curation;
-using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.History;
 
 /// <summary>Scan history: runs recorded, file versions shared between runs, masked values kept as fingerprints, and the queries.</summary>
-[Collection(SecretRuleCacheCollection.Name)]
 public sealed class HistoryStoreTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-history-");

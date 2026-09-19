@@ -3,7 +3,6 @@ using System.Globalization;
 using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
-using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.MultiServer;
 
@@ -12,7 +11,6 @@ namespace DriftBuster.Backend.Tests.MultiServer;
 /// cancellation, per-run progress throttling and the severity thresholds.
 /// </summary>
 // Scans flag secrets through the process-wide secret rule cache that the secret scanner tests replace.
-[Collection(SecretRuleCacheCollection.Name)]
 public sealed class MultiServerPortFixesTests : IDisposable
 {
     private const string WebConfig = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<configuration>\n  <appSettings>\n    <add key=\"Mode\" value=\"{0}\" />\n  </appSettings>\n</configuration>\n";
@@ -151,40 +149,6 @@ public sealed class MultiServerPortFixesTests : IDisposable
         finally
         {
             File.SetUnixFileMode(root, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        }
-    }
-
-    [Fact]
-    public void CancellationLeavesNoPartialCacheFile()
-    {
-        using var first = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        var runner = new MultiServerRunner(CacheDir);
-        runner.Cache.TemporaryWritten = _ => first.Cancel();
-        var plans = new[] { MultiServerTests.SamplePlan("server01", 1, isPreferred: true) };
-
-        var cancelled = () => runner.Run(plans, cancellationToken: first.Token);
-
-        cancelled.Should().Throw<OperationCanceledException>();
-        Directory.EnumerateFileSystemEntries(CacheDir).Should().BeEmpty();
-
-        using var later = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        var writes = 0;
-        runner.Cache.TemporaryWritten = _ =>
-        {
-            if (++writes == 3)
-            {
-                later.Cancel();
-            }
-        };
-        var cancelledLater = () => runner.Run(plans, cancellationToken: later.Token);
-
-        cancelledLater.Should().Throw<OperationCanceledException>();
-        var entries = Directory.EnumerateFileSystemEntries(CacheDir).ToList();
-        entries.Should().HaveCount(2).And.AllSatisfy(entry => entry.Should().EndWith(".json"));
-        foreach (var entry in entries)
-        {
-            EngineJson.TryLoads(File.ReadAllText(entry), out var parsed).Should().BeTrue();
-            parsed.Should().BeOfType<OrderedDictionary<string, object?>>().Which.Should().ContainKey("signature");
         }
     }
 

@@ -1,14 +1,18 @@
+using System.Globalization;
+using System.Text.Json;
+
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
+using DriftBuster.Backend.MultiServer;
 
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster maint selfcheck-multi-server-paths</c>: runs the
-/// multi-server scenarios in process through <see cref="MultiServerCommand.Execute"/> against <c>&lt;portable root&gt;/Samples/MultiServer</c>
-/// or the repository's <c>fixtures/multi-server</c>, writes the JSON report, prints <c>[PASS]</c> or <c>[FAIL]</c> per scenario and exits 0
-/// only when every scenario passed.
+/// <c>driftbuster maint selfcheck-multi-server-paths</c>: runs the multi-server scenarios in process against
+/// <c>&lt;portable root&gt;/Samples/MultiServer</c> or the repository's <c>fixtures/multi-server</c>, writes the JSON report, prints
+/// <c>[PASS]</c> or <c>[FAIL]</c> per scenario and exits 0 only when every scenario passed.
 /// </summary>
-internal static partial class SelfcheckMultiServerPaths
+internal static class SelfcheckMultiServerPaths
 {
     public const string DefaultPortableRoot = "artifacts/gui-packaging/portable/staged";
 
@@ -17,79 +21,96 @@ internal static partial class SelfcheckMultiServerPaths
     /// <summary>The portable root's <c>Samples/MultiServer</c> when present, else the repository's multi-server fixtures.</summary>
     public static string ResolveSamples(string portableRoot, string root)
     {
-        var portableSamples = LexicalPath.Join(LexicalPath.Join(portableRoot, "Samples"), "MultiServer");
-        if (TextModeFile.Exists(portableSamples))
+        var portableSamples = Path.Join(portableRoot, "Samples", "MultiServer");
+        if (Directory.Exists(portableSamples))
         {
             return portableSamples;
         }
 
-        var fixtureSamples = Path.Combine(root, "fixtures", "multi-server");
-        return TextModeFile.Exists(fixtureSamples)
-            ? fixtureSamples
-            : throw new CommandExitException("Could not locate multi-server sample directories.");
+        var fixtureSamples = Path.Join(root, "fixtures", "multi-server");
+        return Directory.Exists(fixtureSamples) ? fixtureSamples : throw new CommandExitException("Could not locate multi-server sample directories.");
     }
 
-    public static int Run(
-        string portableRoot, string output, string root, TextWriter stdout, Func<string, string, IReadOnlyList<ScenarioResult>>? runScenarios = null)
+    public static int Run(string portableRoot, string output, string root, TextWriter stdout, Func<string, string, IReadOnlyList<ScenarioResult>>? runScenarios = null)
     {
-        runScenarios ??= RunScenarios;
         var samplesRoot = ResolveSamples(portableRoot, root);
-        var reportPath = LexicalPath.Str(output);
-        var reportDir = LexicalPath.Parent(reportPath);
-        Directory.CreateDirectory(reportDir);
-
-        var scenarios = runScenarios(samplesRoot, reportDir);
-        var passed = scenarios.LongCount(scenario => EngineBuiltins.IsTruthy(scenario.Passed));
-        var total = (long)scenarios.Count;
-        var report = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["generated_at"] = IsoTimestamp.Format(IsoTimestamp.UtcNow()),
-            ["samples_root"] = LexicalPath.Str(samplesRoot),
-            ["passed"] = passed,
-            ["total"] = total,
-            ["success"] = passed == total,
-            ["scenarios"] = scenarios.Select(scenario => (object?)new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["name"] = scenario.Name,
-                ["passed"] = scenario.Passed,
-                ["details"] = scenario.Details,
-            }).ToList(),
-        };
-        TextModeFile.WriteText(reportPath, ConsoleText.Dumps(report, indent: 2, sortKeys: false) + "\n");
-
+        var reportDir = Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!).FullName;
+        var scenarios = (runScenarios ?? RunScenarios)(samplesRoot, reportDir);
+        var report = new SelfcheckReport(DateTimeOffset.UtcNow, samplesRoot, scenarios.Count(scenario => scenario.Passed), scenarios.Count, scenarios);
+        File.WriteAllText(output, JsonSerializer.Serialize(report, CliJsonContext.Default.SelfcheckReport) + "\n");
         foreach (var scenario in scenarios)
         {
-            ConsoleText.Print(stdout, $"[{(EngineBuiltins.IsTruthy(scenario.Passed) ? "PASS" : "FAIL")}] {scenario.Name}");
+            ConsoleText.Print(stdout, $"[{(scenario.Passed ? "PASS" : "FAIL")}] {scenario.Name}");
         }
 
-        ConsoleText.Print(stdout, $"\nSelf-check summary: {passed}/{total} passed");
-        ConsoleText.Print(stdout, $"Report: {reportPath}");
-        return passed == total ? 0 : 1;
+        ConsoleText.Print(stdout, string.Create(CultureInfo.InvariantCulture, $"\nSelf-check summary: {report.Passed}/{report.Total} passed"));
+        ConsoleText.Print(stdout, $"Report: {output}");
+        return report.Success ? 0 : 1;
     }
 
-    /// <summary>
-    /// <c>run_multi_server(request=...)</c>: the exit code, the parsed JSON lines (a line that is not JSON becomes a <c>decode-error</c>
-    /// event) and the stripped stderr, which the in-process run leaves empty.
-    /// </summary>
-    public static (int ReturnCode, List<object?> Events, string Stderr) RunMultiServer(OrderedDictionary<string, object?> request)
+    /// <summary>Every scenario in order, caches under <c>&lt;report dir&gt;/cache</c>.</summary>
+    public static IReadOnlyList<ScenarioResult> RunScenarios(string samplesRoot, string reportDir)
     {
-        using var stdin = new StringReader(ConsoleText.Dumps(request, indent: null, sortKeys: false));
-        using var stdout = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
-        var returnCode = MultiServerCommand.Execute(stdin, stdout);
-        var events = new List<object?>();
-        foreach (var raw in TextLines.SplitLines(stdout.ToString()))
+        var cacheRoot = Path.Join(reportDir, "cache");
+        string Sample(string name) => Path.Join(samplesRoot, name);
+        var server01 = Plan("host-01", Sample("server01"), preferred: true, priority: 10);
+        var server02 = Plan("host-02", Sample("server02"), preferred: false, priority: 5);
+        var scenarios = new List<ScenarioResult>
         {
-            var line = EngineText.Strip(raw);
-            if (line.Length == 0)
-            {
-                continue;
-            }
+            Scan("single_host", cacheRoot, [server01], response => response.Results.Length == 1 && response.Catalog.Length > 0 && response.Drilldown.Length > 0 && Failed(response) == 0),
+            Scan("two_host_drift", cacheRoot, [server01, server02], response => response.Results.Length == 2 && response.Catalog.Any(entry => entry.DriftCount > 0)),
+            Scan("missing_root_failure", cacheRoot, [server01, Plan("host-x", Sample("does-not-exist"), preferred: false, priority: 1)], response => Failed(response) >= 1),
+            Scan("cache_reuse_hot_run", cacheRoot, [server01, server02], _ => true, cacheName: "hot-run"),
+            Scan(
+                "cache_reuse_hot_run_repeat",
+                cacheRoot,
+                [server01, server02],
+                response => response.Results.Where(result => result.Availability == ServerAvailabilityStatus.Found).All(result => result.UsedCache),
+                cacheName: "hot-run"),
+        };
 
-            events.Add(EngineJson.TryLoads(line, out var parsed)
-                ? parsed
-                : new OrderedDictionary<string, object?>(StringComparer.Ordinal) { ["type"] = "decode-error", ["line"] = line });
+        var temp = Directory.CreateTempSubdirectory("driftbuster-selfcheck-");
+        try
+        {
+            File.WriteAllText(Path.Combine(temp.FullName, "log4net.config"), "﻿<log4net><appender name='A'>☃</appender></log4net>");
+            scenarios.Add(Scan("vendor_variant_unicode_payload", cacheRoot, [Plan("host-u", temp.FullName, preferred: true, priority: 1)], response => Failed(response) == 0 && response.Catalog.Length > 0));
+        }
+        finally
+        {
+            temp.Delete(recursive: true);
         }
 
-        return (returnCode, events, string.Empty);
+        using var stdout = new StringWriter(CultureInfo.InvariantCulture);
+        var exitCode = MultiServerCommand.Execute(new StringReader("""{"schema_version": "multi-server.v0", "plans": []}"""), stdout);
+        scenarios.Add(new ScenarioResult("invalid_schema_rejected", exitCode == 1 && stdout.ToString().Contains("Unsupported schema version", StringComparison.Ordinal), stdout.ToString().Trim()));
+        return scenarios;
     }
+
+    private static ScenarioResult Scan(string name, string cacheRoot, IReadOnlyList<ServerScanPlan> plans, Func<ServerScanResponse, bool> judge, string? cacheName = null)
+    {
+        try
+        {
+            var runner = new MultiServerRunner(Directory.CreateDirectory(Path.Join(cacheRoot, cacheName ?? name)).FullName);
+            var response = runner.Run(plans.Select(MultiServerPlan.FromServerScanPlan));
+            var details = string.Create(
+                CultureInfo.InvariantCulture,
+                $"hosts={response.Results.Length} catalog={response.Catalog.Length} drilldown={response.Drilldown.Length} failed={Failed(response)}");
+            return new ScenarioResult(name, judge(response), details);
+        }
+        catch (Exception exc) when (exc is not OutOfMemoryException)
+        {
+            return new ScenarioResult(name, false, $"{exc.GetType().Name}: {exc.Message}");
+        }
+    }
+
+    private static int Failed(ServerScanResponse response) => response.Results.Count(result => result.Status == ServerScanStatus.Failed);
+
+    private static ServerScanPlan Plan(string hostId, string root, bool preferred, int priority) => new()
+    {
+        HostId = hostId,
+        Label = hostId,
+        Scope = ServerScanScope.CustomRoots,
+        Roots = [root],
+        Baseline = new ServerScanBaselinePreference { IsPreferred = preferred, Priority = priority },
+    };
 }

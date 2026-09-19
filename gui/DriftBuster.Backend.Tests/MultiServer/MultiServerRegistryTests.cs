@@ -5,12 +5,10 @@ using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Registry;
-using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.MultiServer;
 
 /// <summary>Registry keys in a multi-server run: read through a reader, rendered as .reg records, compared like files.</summary>
-[Collection(SecretRuleCacheCollection.Name)]
 public sealed class MultiServerRegistryTests : IDisposable
 {
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-multi-server-registry-");
@@ -131,8 +129,10 @@ public sealed class MultiServerRegistryTests : IDisposable
         fromGui.Registry.Computer.Should().Be("app-01");
         fromGui.Registry.CredentialFile.Should().BeNull();
 
-        EngineJson.TryLoads("""{"plans": [{"host_id": "a", "registry": {"keys": ["Vendor"], "credential_file": "c.xml"}}, {"host_id": "b", "registry": "x"}]}""", out var request).Should().BeTrue();
-        var plans = MultiServerPlan.BuildPlans(request);
+        var request = System.Text.Json.JsonSerializer.Deserialize(
+            """{"plans": [{"host_id": "a", "registry": {"keys": ["Vendor"], "credential_file": "c.xml"}}, {"host_id": "b"}]}""",
+            DriftBuster.Backend.Json.ModelJson.TypeInfo<MultiServerRequest>())!;
+        var plans = request.Plans.Select(MultiServerPlan.FromServerScanPlan).ToList();
         plans[0].Registry!.Keys.Should().Equal("Vendor");
         plans[0].Registry!.CredentialFile.Should().Be("c.xml");
         plans[0].Registry!.Computer.Should().BeNull();

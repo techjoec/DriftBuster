@@ -3,21 +3,17 @@ using System.Text.Json;
 using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Profiles.Run;
-using DriftBuster.Backend.Tests.Secrets;
 
 namespace DriftBuster.Backend.Tests.Profiles.Run;
 
 /// <summary>A profile run: collection per source, skips and refusals, the secret filter, and <c>metadata.json</c>.</summary>
-[Collection(SecretRuleCacheCollection.Name)]
 public sealed class RunProfileExecutorTests : IDisposable
 {
     private static readonly DateTimeOffset Now = new(2025, 3, 1, 8, 30, 0, TimeSpan.Zero);
-    private readonly SecretRuleCacheIsolation _isolation = new();
     private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-run-");
 
     public void Dispose()
     {
-        _isolation.Dispose();
         _tmp.Delete(recursive: true);
     }
 

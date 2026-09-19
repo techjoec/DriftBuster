@@ -101,14 +101,14 @@ public sealed class RegistryCliTests : IDisposable
         snippet.GetProperty("alias").GetString().Should().Be("vendor");
         var scan = snippet.GetProperty("registry_scan");
         scan.GetProperty("max_depth").GetInt32().Should().Be(12);
-        scan.GetProperty("time_budget_s").GetRawText().Should().Be("10.0");
+        scan.GetProperty("time_budget_s").GetDouble().Should().Be(10.0);
         scan.GetProperty("remote").GetProperty("port").GetInt32().Should().Be(5986);
         scan.GetProperty("remote_batch")[0].GetProperty("host").GetString().Should().Be("host2");
-        scan.TryGetProperty("patterns", out _).Should().BeFalse();
+        scan.GetProperty("patterns").GetArrayLength().Should().Be(0);
 
         var refused = CliInvocation.Invoke("registry-scan", "emit-config", "VendorA", "--remote-target", "host,bogus=1");
         refused.ExitCode.Should().Be(1);
-        refused.Err.Should().Be("FormatException: Unsupported remote target key 'bogus'" + Environment.NewLine);
+        refused.Err.Should().Be("invalid --remote-target value: Unsupported remote target key 'bogus'." + Environment.NewLine);
     }
 
     /// <summary>An integer option refuses a value that is not an integer: a parse error with exit code 2.</summary>
@@ -120,6 +120,6 @@ public sealed class RegistryCliTests : IDisposable
         var run = CliInvocation.Invoke("registry-scan", "search", "VendorA", "--max-depth", "deep");
 
         run.ExitCode.Should().Be(2);
-        run.Err.Should().Contain("argument --max-depth: The value 'deep' is not a valid integer.");
+        run.Err.Should().Contain("'deep'").And.Contain("--max-depth");
     }
 }

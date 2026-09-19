@@ -1,7 +1,5 @@
 using System.Text;
 
-using DriftBuster.Backend.Diff;
-using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Registry;
 using DriftBuster.Backend.Remote;
 
@@ -45,13 +43,8 @@ public sealed class LiveHivesTests : IDisposable
 
         var snippet = RegistryCommands.EmitConfig("VendorA", keywords: ["server"], roots: ["HKLM\\Software\\VendorA,view=64"]);
 
-        EngineJson.TryLoads(RegistryCommands.EmitConfigJson(snippet), out var payload).Should().BeTrue();
-        var roots = Map(Map(payload)["registry_scan"]).GetValueOrDefault("roots");
-        var entry = Map(Items(roots).Should().ContainSingle().Subject);
-        entry.ToList().Should().Equal(
-            new KeyValuePair<string, object?>("hive", "HKLM"),
-            new KeyValuePair<string, object?>("path", "Software\\VendorA"),
-            new KeyValuePair<string, object?>("view", "64"));
+        snippet.RegistryScan.Roots.Should().Equal(new RegistryRootEntrySpec("HKLM", @"Software\VendorA", "64"));
+        snippet.RegistryScan.Keywords.Should().Equal("server");
     }
 
     [Fact]
@@ -68,8 +61,4 @@ public sealed class LiveHivesTests : IDisposable
 
         summary.Should().BeEquivalentTo(new RegistryScanSummary("registry_scan.json", registryJson, "VendorA", [@"HKLM \ Software\VendorA"], [@"HKLM \ Software\VendorA (view 64)"], 1));
     }
-
-    private static List<object?> Items(object? value) => (List<object?>)value!;
-
-    private static OrderedDictionary<string, object?> Map(object? value) => (OrderedDictionary<string, object?>)value!;
 }

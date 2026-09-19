@@ -132,7 +132,7 @@ public static class OfflineCollectorWriter
         CancellationToken cancellationToken)
     {
         var configPath = Path.Combine(tempRoot, configFileName);
-        File.WriteAllText(configPath, ModelJson.Serialize(BuildConfig(profile, metadata, LoadSecretRules(baseDir), DateTimeOffset.UtcNow)));
+        File.WriteAllText(configPath, ModelJson.Serialize(BuildConfig(profile, metadata, PackagedSecretRules(), DateTimeOffset.UtcNow)));
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -167,18 +167,12 @@ public static class OfflineCollectorWriter
         };
     }
 
-    private static JsonElement LoadSecretRules(string? baseDir)
+    // The packaged rules as they are embedded, for the runner to compile itself.
+    private static JsonElement PackagedSecretRules()
     {
-        using var resource = typeof(OfflineCollectorWriter).Assembly.GetManifestResourceStream(SecretScanner.SecretRulesResource);
-        if (resource is not null)
-        {
-            using var embedded = JsonDocument.Parse(resource);
-            return embedded.RootElement.Clone();
-        }
-
-        var path = ResolveRequiredFile(baseDir, "gui", "DriftBuster.Backend", "Resources", "secret_rules.json");
-        using var stream = File.OpenRead(path);
-        using var document = JsonDocument.Parse(stream);
+        using var resource = typeof(OfflineCollectorWriter).Assembly.GetManifestResourceStream(SecretRules.ResourceName)
+            ?? throw new InvalidOperationException($"The {SecretRules.ResourceName} resource is missing from the build.");
+        using var document = JsonDocument.Parse(resource);
         return document.RootElement.Clone();
     }
 

@@ -32,7 +32,7 @@ internal static partial class SettingSecrets
             return true;
         }
 
-        var rules = SecretScanner.LoadSecretRules().Rules;
+        var rules = SecretRules.Packaged.Rules;
         var pair = $"{name}={value}";
         return rules.Any(rule => PatternRegex.Search(rule.Pattern, pair, cancellationToken) is not null
             || PatternRegex.Search(rule.Pattern, value, cancellationToken) is not null);

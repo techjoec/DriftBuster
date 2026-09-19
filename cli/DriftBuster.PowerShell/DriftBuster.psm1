@@ -311,13 +311,8 @@ function Get-DriftBusterSerializerOption {
     $options.DefaultIgnoreCondition = [System.Text.Json.Serialization.JsonIgnoreCondition]::WhenWritingNull
     $options.PropertyNamingPolicy = [System.Text.Json.JsonNamingPolicy]::SnakeCaseLower
     $options.PropertyNameCaseInsensitive = $true
-    $converterType = [System.Type]::GetType('System.Text.Json.Serialization.JsonStringEnumMemberConverter, System.Text.Json', $false)
-    if ($converterType) {
-        $options.Converters.Add([System.Activator]::CreateInstance($converterType))
-    }
-    else {
-        $options.Converters.Add([System.Text.Json.Serialization.JsonStringEnumConverter]::new())
-    }
+    # Enum values by their JsonStringEnumMemberName, as the backend writes them.
+    $options.Converters.Add([System.Text.Json.Serialization.JsonStringEnumConverter]::new())
 
     $script:SerializerOptions = $options
     return $script:SerializerOptions

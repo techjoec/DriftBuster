@@ -1,30 +1,29 @@
 using System;
-using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
 {
     public enum ServerScanStatus
     {
-        [EnumMember(Value = "idle")]
+        [JsonStringEnumMemberName("idle")]
         Idle,
 
-        [EnumMember(Value = "queued")]
+        [JsonStringEnumMemberName("queued")]
         Queued,
 
-        [EnumMember(Value = "running")]
+        [JsonStringEnumMemberName("running")]
         Running,
 
-        [EnumMember(Value = "succeeded")]
+        [JsonStringEnumMemberName("succeeded")]
         Succeeded,
 
-        [EnumMember(Value = "failed")]
+        [JsonStringEnumMemberName("failed")]
         Failed,
 
-        [EnumMember(Value = "skipped")]
+        [JsonStringEnumMemberName("skipped")]
         Skipped,
 
-        [EnumMember(Value = "cached")]
+        [JsonStringEnumMemberName("cached")]
         Cached,
     }
 }

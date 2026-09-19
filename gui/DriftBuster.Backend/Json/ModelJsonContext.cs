@@ -1,10 +1,13 @@
 using System.Text.Json.Serialization;
 
 using DriftBuster.Backend.Models;
+using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Profiles.Detection;
 using DriftBuster.Backend.Profiles.Run;
+using DriftBuster.Backend.Registry;
 using DriftBuster.Backend.Remote;
 using DriftBuster.Backend.Scheduling;
+using DriftBuster.Backend.Secrets;
 using DriftBuster.Backend.Sql;
 
 namespace DriftBuster.Backend.Json;
@@ -32,6 +35,10 @@ namespace DriftBuster.Backend.Json;
 [JsonSerializable(typeof(CaptureComparison))]
 [JsonSerializable(typeof(SqlSnapshot))]
 [JsonSerializable(typeof(SqlExportManifest))]
+[JsonSerializable(typeof(DiffCacheEntry))]
+[JsonSerializable(typeof(RegistryScanConfig))]
+[JsonSerializable(typeof(SecretRuleFile))]
+[JsonSerializable(typeof(MultiServerRequest))]
 [JsonSerializable(typeof(ScheduleManifest))]
 [JsonSerializable(typeof(IReadOnlyDictionary<string, ScheduleStateEntry>))]
 [JsonSerializable(typeof(ScheduleListResult))]

@@ -146,22 +146,11 @@ public sealed partial class MultiServerRunner
         var fileHash = Sha256Hex(rawText);
         var signature = Sha256Hex($"{plan.HostId}:{configId}:{fingerprint}:{fileHash}:{contentType}:{Canonicaliser.FormVersion}");
         var cached = Cache.Load(plan.HostId, configId, signature);
-        string canonical;
-        if (cached is not null && cached.Count > 0)
+        var canonical = cached ?? Canonicaliser.Canonicalise(rawText, contentType);
+        if (cached is null)
         {
-            canonical = cached.TryGetValue("canonical", out var stored) && ConfigIdentity.IsTruthy(stored) ? EngineRepr.Str(stored) : string.Empty;
-        }
-        else
-        {
-            canonical = Canonicaliser.Canonicalise(rawText, contentType);
-            var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["canonical"] = canonical,
-                ["content_type"] = contentType,
-                ["metadata"] = DetectionMetadata.JsonSafe(metadata),
-                ["file_hash"] = fileHash,
-            };
-            Cache.Save(plan.HostId, configId, signature, payload, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            Cache.Save(plan.HostId, configId, signature, canonical);
         }
 
         var record = new ConfigRecord
@@ -180,14 +169,14 @@ public sealed partial class MultiServerRunner
             PluginName = string.IsNullOrEmpty(match.PluginName) ? "unknown" : match.PluginName,
             RelativePath = relative,
         };
-        return (record, cached is not null && cached.Count > 0);
+        return (record, cached is not null);
     }
 
     // Any line matching one of the secret scanner's rules (the embedded secret_rules.json), the same rules the profile
     // collector redacts with.
     private static bool ContainsSecret(string text, CancellationToken cancellationToken)
     {
-        var rules = SecretScanner.LoadSecretRules().Rules;
+        var rules = SecretRules.Packaged.Rules;
         return rules.Count > 0 && text.Split('\n').Any(line => rules.Any(rule => PatternRegex.Search(rule.Pattern, line, cancellationToken) is not null));
     }
 

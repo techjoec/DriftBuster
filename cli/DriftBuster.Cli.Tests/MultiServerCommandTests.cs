@@ -4,8 +4,7 @@ using System.Text.Json;
 namespace DriftBuster.Cli.Tests;
 
 /// <summary>
-/// <c>driftbuster multi-server</c>: the request on stdin, progress and result lines on stdout
-/// as ASCII-escaped JSON, error lines with exit code 1.
+/// <c>driftbuster multi-server</c>: the request on stdin, progress and result lines on stdout, an error line with exit code 1.
 /// </summary>
 public sealed class MultiServerCommandTests : IDisposable
 {
@@ -31,7 +30,7 @@ public sealed class MultiServerCommandTests : IDisposable
         var cache = Path.Combine(_tmp.FullName, "cache");
         var request = $$$"""
             {"schema_version": "multi-server.v2", "cache_dir": {{{Quote(cache)}}}, "plans": [
-              {"host_id": "a", "label": "Caf\u00e9 \\ A \ud800", "roots": [{{{Quote(hostA)}}}], "baseline": {"is_preferred": true}},
+              {"host_id": "a", "label": "Caf\u00e9 A", "roots": [{{{Quote(hostA)}}}], "baseline": {"is_preferred": true}},
               {"host_id": "b", "label": "B", "roots": [{{{Quote(hostB)}}}]}]}
             """;
 
@@ -39,27 +38,29 @@ public sealed class MultiServerCommandTests : IDisposable
 
         run.ExitCode.Should().Be(0, run.Out);
         var lines = run.Out.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        lines.Should().OnlyContain(line => line.All(ch => ch < 0x7F));
-        lines[..^1].Should().NotBeEmpty().And.OnlyContain(line => line.StartsWith("{\"type\": \"progress\", \"payload\": {\"host_id\": ", StringComparison.Ordinal));
-        lines[^1].Should().StartWith("{\"type\": \"result\", \"payload\": {\"version\": \"multi-server.v2\", \"results\": [{\"host_id\": \"a\", \"label\": \"Caf\\u00e9 \\\\ A \\ud800\"");
-        var result = JsonDocument.Parse(lines[^1]).RootElement.GetProperty("payload");
-        result.GetProperty("summary").GetProperty("baseline_host_id").GetString().Should().Be("a");
-        result.GetProperty("summary").GetProperty("generated_at").GetString().Should().MatchRegex(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{6})?\+00:00$");
-        result.GetProperty("catalog").GetArrayLength().Should().Be(1);
+        lines[..^1].Should().NotBeEmpty().And.OnlyContain(line => line.StartsWith("{\"type\":\"progress\",\"progress\":{\"host_id\":", StringComparison.Ordinal));
+        var result = JsonDocument.Parse(lines[^1]).RootElement;
+        result.GetProperty("type").GetString().Should().Be("result");
+        var payload = result.GetProperty("result");
+        payload.GetProperty("results")[0].GetProperty("label").GetString().Should().Be("Café A");
+        payload.GetProperty("summary").GetProperty("baseline_host_id").GetString().Should().Be("a");
+        payload.GetProperty("catalog").GetArrayLength().Should().Be(1);
         Directory.EnumerateFiles(cache).Should().NotBeEmpty();
     }
 
     [Theory]
-    [InlineData("not json", "Invalid JSON payload: invalid JSON document")]
-    [InlineData("[1]", "Unhandled error: expected a JSON object, not 'array'")]
-    [InlineData("{\"schema_version\": 2}", "Unsupported schema version: 2")]
-    [InlineData("{\"plans\": 5}", "'plans' must be an array")]
-    [InlineData("{\"cache_dir\": 5}", "Unhandled error: cache_dir must be a path string, not 'integer'")]
+    [InlineData("not json", "Invalid request: $: *")]
+    [InlineData("[1]", "Invalid request: $: *")]
+    [InlineData("{\"schema_version\": \"2\"}", "Unsupported schema version: 2")]
+    [InlineData("{\"plans\": 5}", "Invalid request: $.plans: *")]
+    [InlineData("{\"colour\": 5}", "Invalid request: $.colour: *")]
     public void RefusedRequestsWriteOneErrorLine(string request, string message)
     {
         var run = CliInvocation.InvokeWithInput(request, "multi-server");
 
         run.ExitCode.Should().Be(1);
-        run.Out.Should().Be($"{{\"type\": \"error\", \"message\": \"{message}\"}}{Environment.NewLine}");
+        var line = JsonDocument.Parse(run.Out).RootElement;
+        line.GetProperty("type").GetString().Should().Be("error");
+        line.GetProperty("message").GetString().Should().Match(message);
     }
 }

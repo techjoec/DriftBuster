@@ -1,4 +1,4 @@
-using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
 
 namespace DriftBuster.Backend.Models
 {
@@ -6,23 +6,23 @@ namespace DriftBuster.Backend.Models
     public enum SettingValueState
     {
         /// <summary>The file has the setting; <see cref="SettingValue.Value"/> holds it unless it is masked.</summary>
-        [EnumMember(Value = "value")]
+        [JsonStringEnumMemberName("value")]
         Value,
 
         /// <summary>The file is there but does not have the setting.</summary>
-        [EnumMember(Value = "not_set")]
+        [JsonStringEnumMemberName("not_set")]
         NotSet,
 
         /// <summary>The server has no such file.</summary>
-        [EnumMember(Value = "file_missing")]
+        [JsonStringEnumMemberName("file_missing")]
         FileMissing,
 
         /// <summary>The file is there but could not be read.</summary>
-        [EnumMember(Value = "unreadable")]
+        [JsonStringEnumMemberName("unreadable")]
         Unreadable,
 
         /// <summary>The server itself could not be scanned.</summary>
-        [EnumMember(Value = "not_scanned")]
+        [JsonStringEnumMemberName("not_scanned")]
         NotScanned,
     }
 }

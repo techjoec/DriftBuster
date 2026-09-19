@@ -1,4 +1,3 @@
-using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace DriftBuster.Backend.Registry;
@@ -13,9 +12,9 @@ public sealed record SearchSpec
 
     public IReadOnlyList<Regex> Patterns { get; init; } = [];
 
-    public BigInteger MaxDepth { get; init; } = 12;
+    public int MaxDepth { get; init; } = 12;
 
-    public BigInteger MaxHits { get; init; } = 200;
+    public int MaxHits { get; init; } = 200;
 
     public double TimeBudgetS { get; init; } = 10.0;
 }

@@ -34,10 +34,7 @@ namespace DriftBuster.Backend
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             PropertyNameCaseInsensitive = true,
-            Converters =
-            {
-                new JsonStringEnumMemberConverter()
-            },
+            Converters = { new JsonStringEnumConverter() },
         };
 
         private static readonly Encoding Utf8 = new UTF8Encoding(false, false);
@@ -134,7 +131,7 @@ namespace DriftBuster.Backend
             var response = await Task.Run(
                 () =>
                 {
-                    var runner = new MultiServerRunner(PrepareMultiServerCacheDirectory(ResolveLegacyCacheRepositoryRoot()));
+                    var runner = new MultiServerRunner(DriftbusterPaths.GetCacheDirectory("diffs"));
                     return runner.Run(planList.Select(MultiServerPlan.FromServerScanPlan), progress, cancellationToken);
                 },
                 cancellationToken).ConfigureAwait(false);
@@ -145,27 +142,6 @@ namespace DriftBuster.Backend
 
         private static void ValidateMultiServerResponse(ServerScanResponse response)
             => MultiServerSchema.ValidateResponse(response);
-
-        // The data root's diff cache, after copying in the entries a checkout's <repo>/artifacts/cache/diffs holds that it lacks (best effort,
-        // before every scan); home expanded, created, and symlinks and ".." resolved physically.
-        internal static string PrepareMultiServerCacheDirectory(string? repositoryRoot)
-        {
-            var cacheDirectory = DriftbusterPaths.GetCacheDirectory("diffs");
-            if (!string.IsNullOrWhiteSpace(repositoryRoot))
-            {
-                DiffCache.MigrateLegacyDiffCache(repositoryRoot, cacheDirectory);
-            }
-
-            return DiffCache.ResolveCacheDirectory(cacheDirectory, repositoryRoot: null);
-        }
-
-        // The checkout the working directory, the application base or the process directory lies in; the working directory when
-        // none is inside one.
-        private static string ResolveLegacyCacheRepositoryRoot()
-            => RepositoryRoot.Find(Environment.CurrentDirectory)
-                ?? RepositoryRoot.Find(AppContext.BaseDirectory)
-                ?? RepositoryRoot.Find(Path.GetDirectoryName(Environment.ProcessPath))
-                ?? Environment.CurrentDirectory;
 
         private static void InitializePlans(List<ServerScanPlan> planList, IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
         {
