@@ -1,9 +1,9 @@
 <#
-  Pester 5 tests for driftbuster-offline-runner.ps1 (dot-sourced for its helpers, run as a script for the entry point).
+  Pester 5 tests for driftbuster-offline-runner.ps1 (dot-sourced for its functions, run as a script for the entry point).
 
-  Covers package encryption, config helpers, secret masking, runner execution, SQL snapshots, live registry hives and
-  OfflineRegistryScanSource parsing. Tests tagged 'Windows' (live registry, DPAPI) are skipped elsewhere; SQL tests use
-  winsqlite3 on Windows and libsqlite3.so.0 on Linux.
+  Covers strict config and keyset reading, file and glob collection, the secret filter, SQL snapshots, registry scans (local and
+  over WinRM, both with the registry calls mocked), package encryption and the script entry point. Tests tagged 'Windows' (live
+  registry, DPAPI) are skipped elsewhere; SQL tests use winsqlite3 on Windows and libsqlite3.so.0 on Linux.
 
   Run: Invoke-Pester -Path scripts/DriftBusterOfflineRunner.Tests.ps1 -Output Detailed
 #>
@@ -14,16 +14,14 @@ BeforeDiscovery {
 
 BeforeAll {
     . (Join-Path -Path $PSScriptRoot -ChildPath 'driftbuster-offline-runner.ps1') -ConfigPath 'dot-sourced'
-    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 
-    $script:OnWindowsHost = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
     $script:RepoRoot = Split-Path -Path $PSScriptRoot -Parent
     $script:RunnerScript = Join-Path -Path $PSScriptRoot -ChildPath 'driftbuster-offline-runner.ps1'
     $script:ConfigSchema = 'https://driftbuster.dev/offline-runner/config/v1'
     $script:ManifestSchema = 'https://driftbuster.dev/offline-runner/manifest/v1'
     $script:KeysetSchema = 'https://driftbuster.dev/offline-runner/encryption/keyset/v1'
     $script:EncryptedSchema = 'https://driftbuster.dev/offline-runner/encryption/dpapi-aes/v1'
-    [DriftBusterOfflineRunner.EngineOs]::Cwd = $TestDrive
 
     function Get-TestDirectory {
         $path = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString('N'))
@@ -41,79 +39,81 @@ BeforeAll {
         return $path
     }
 
-    # The runner's JSON value for a PowerShell literal (a dump and load through its JSON reader).
-    function ConvertTo-EngineValue {
-        param($Value)
-        return , [DriftBusterOfflineRunner.EngineJson]::Loads([DriftBusterOfflineRunner.EngineJson]::Dumps($Value, -1, $false))
-    }
-
     function Write-TestText {
         param([string] $Path, [string] $Content)
         [void][System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($Path))
         [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($false))
     }
 
-    function Write-TestConfig {
-        param([string] $Directory, $Payload)
-        $path = Join-Path -Path $Directory -ChildPath 'config.json'
-        Write-TestText -Path $path -Content ([DriftBusterOfflineRunner.EngineJson]::Dumps($Payload, 2, $false))
-        return $path
+    function Write-TestJson {
+        param([string] $Path, $Payload)
+        Write-TestText -Path $Path -Content (ConvertTo-Json -InputObject $Payload -Depth 32)
+        return $Path
     }
 
-    function ConvertTo-TestConfig {
-        param($Payload)
-        return ConvertFrom-DBOfflineRunnerConfig (ConvertTo-EngineValue $Payload)
+    # The config written as config.json in Directory and read back through the runner's strict reader.
+    function Import-TestConfig {
+        param([string] $Directory, $Payload, [string] $Name = 'config.json')
+        return Import-DBConfig (Write-TestJson -Path (Join-Path $Directory $Name) -Payload $Payload)
     }
 
-    function ConvertTo-BuiltConfig {
-        param([string] $TmpPath, $ProfilePayload, $Runner, $Metadata)
-        $payload = [ordered]@{ profile = $ProfilePayload }
+    # A config with the given sources that writes into <Directory>/out and keeps its staging directory.
+    function Import-SourceConfig {
+        param([string] $Directory, [object[]] $Sources, $Runner, $SecretScanner, [string] $Name = 'test run')
         if ($null -eq $Runner) {
-            $Runner = [ordered]@{ output_directory = (Join-Path -Path $TmpPath -ChildPath 'out'); cleanup_staging = $false }
+            $Runner = [ordered]@{ output_directory = 'out'; compress = $false; cleanup_staging = $false }
         }
 
-        $payload['runner'] = $Runner
-        if ($null -ne $Metadata) {
-            $payload['metadata'] = $Metadata
+        $profilePayload = [ordered]@{ name = $Name; sources = $Sources }
+        if ($null -ne $SecretScanner) {
+            $profilePayload['secret_scanner'] = $SecretScanner
         }
 
-        return ConvertTo-TestConfig $payload
+        return Import-TestConfig -Directory $Directory -Payload ([ordered]@{ schema = $script:ConfigSchema; profile = $profilePayload; runner = $Runner })
+    }
+
+    function Read-JsonFile {
+        param([string] $Path)
+        return ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText($Path))
+    }
+
+    # The message of the exception the script block throws.
+    function Get-ThrownMessage {
+        param([scriptblock] $Script)
+        try {
+            & $Script | Out-Null
+        }
+        catch {
+            return $_.Exception.Message
+        }
+
+        throw 'expected an exception'
     }
 
     function Read-ZipText {
         param([string] $ZipPath, [string] $EntryName)
-        $stream = [System.IO.File]::OpenRead($ZipPath)
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
         try {
-            $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Read)
-            try {
-                $entry = $archive.GetEntry($EntryName)
-                if ($null -eq $entry) {
-                    throw "zip entry not found: $EntryName"
-                }
+            $entry = $archive.GetEntry($EntryName)
+            if ($null -eq $entry) {
+                throw "zip entry not found: $EntryName"
+            }
 
-                $reader = [System.IO.StreamReader]::new($entry.Open(), [System.Text.UTF8Encoding]::new($false))
-                try {
-                    return $reader.ReadToEnd()
-                }
-                finally {
-                    $reader.Dispose()
-                }
+            $reader = [System.IO.StreamReader]::new($entry.Open(), [System.Text.UTF8Encoding]::new($false))
+            try {
+                return $reader.ReadToEnd()
             }
             finally {
-                $archive.Dispose()
+                $reader.Dispose()
             }
         }
         finally {
-            $stream.Dispose()
+            $archive.Dispose()
         }
     }
 
     function Get-ZipEntryName {
-        param([byte[]] $Bytes, [string] $ZipPath)
-        if ($ZipPath) {
-            $Bytes = [System.IO.File]::ReadAllBytes($ZipPath)
-        }
-
+        param([byte[]] $Bytes)
         $stream = [System.IO.MemoryStream]::new($Bytes)
         try {
             $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Read)
@@ -129,41 +129,19 @@ BeforeAll {
         }
     }
 
-    function Read-ManifestFromPackage {
-        param([string] $PackagePath)
-        $PackagePath | Should -Not -BeNullOrEmpty
-        return [DriftBusterOfflineRunner.EngineJson]::Loads((Read-ZipText -ZipPath $PackagePath -EntryName 'manifest.json'))
-    }
-
-    function Read-RunnerLogFromPackage {
-        param([string] $PackagePath)
-        $PackagePath | Should -Not -BeNullOrEmpty
-        return Read-ZipText -ZipPath $PackagePath -EntryName 'logs/runner.log'
-    }
-
-    function Read-JsonFile {
-        param([string] $Path)
-        return [DriftBusterOfflineRunner.EngineJson]::Loads([DriftBusterOfflineRunner.EngineFile]::ReadText($Path))
-    }
-
-    function Get-FileSha256 {
-        param([string] $Path)
-        return [DriftBusterOfflineRunner.EngineFile]::HashFile($Path)
+    function Get-RepeatedByte {
+        param([char] $Character, [int] $Count)
+        return , [byte[]]([System.Text.Encoding]::ASCII.GetBytes([string]::new($Character, $Count)))
     }
 
     function Write-TestKeyset {
         param([string] $Path, [byte[]] $AesKey, [byte[]] $HmacKey)
-        $payload = [ordered]@{
-            schema   = $script:KeysetSchema
-            aes_key  = [ordered]@{ encoding = 'base64'; data = [System.Convert]::ToBase64String($AesKey) }
-            hmac_key = [ordered]@{ encoding = 'base64'; data = [System.Convert]::ToBase64String($HmacKey) }
-        }
-        Write-TestText -Path $Path -Content ([DriftBusterOfflineRunner.EngineJson]::Dumps($payload, 2, $false))
-    }
-
-    function Get-RepeatedByte {
-        param([char] $Character, [int] $Count)
-        return , [byte[]]([System.Text.Encoding]::ASCII.GetBytes([string]::new($Character, $Count)))
+        [void](Write-TestJson -Path $Path -Payload ([ordered]@{
+                    schema   = $script:KeysetSchema
+                    aes_key  = [ordered]@{ encoding = 'base64'; data = [System.Convert]::ToBase64String($AesKey) }
+                    hmac_key = [ordered]@{ encoding = 'hex'; data = [System.BitConverter]::ToString($HmacKey).Replace('-', '') }
+                }))
+        return $Path
     }
 
     # AES-256-CBC with PKCS7 padding.
@@ -199,44 +177,33 @@ BeforeAll {
         }
     }
 
-    function Assert-EngineError {
-        param([scriptblock] $Script, [string] $Type, [string] $MessageLike)
-        $caught = $null
-        try {
-            & $Script | Out-Null
-        }
-        catch {
-            $caught = Get-DBEngineException $_
-            if ($null -eq $caught) {
-                throw
-            }
-        }
-
-        $caught | Should -Not -BeNullOrEmpty -Because "a $Type was expected"
-        $caught.ErrorType | Should -BeExactly $Type
-        if ($MessageLike) {
-            $caught.Message | Should -BeLike $MessageLike
-        }
+    # The encrypted package's zip entry names, after checking its MAC.
+    function Read-EncryptedPackage {
+        param([string] $Path, [byte[]] $AesKey, [byte[]] $HmacKey)
+        $payload = Read-JsonFile $Path
+        $payload.schema | Should -BeExactly $script:EncryptedSchema
+        $payload.algorithm | Should -BeExactly 'aes-256-cbc+hmac-sha256'
+        $iv = [System.Convert]::FromBase64String($payload.iv)
+        $ciphertext = [System.Convert]::FromBase64String($payload.ciphertext)
+        $payload.mac | Should -BeExactly ([System.Convert]::ToBase64String((Get-TestHmac -Key $HmacKey -Iv $iv -Ciphertext $ciphertext)))
+        return , (Get-ZipEntryName -Bytes (Unprotect-TestCiphertext -AesKey $AesKey -Iv $iv -Ciphertext $ciphertext))
     }
 
-    function Get-TextLine {
+    function Get-Sha256Hex {
         param([string] $Text)
-        $lines = [System.Collections.Generic.List[string]]::new()
-        foreach ($line in ($Text -split "`r`n|`n|`r")) {
-            $lines.Add($line)
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return [System.BitConverter]::ToString($sha.ComputeHash([System.Text.UTF8Encoding]::new($false).GetBytes($Text))).Replace('-', '').ToLowerInvariant()
         }
-
-        if ($lines.Count -gt 0 -and $lines[$lines.Count - 1] -eq '') {
-            $lines.RemoveAt($lines.Count - 1)
+        finally {
+            $sha.Dispose()
         }
-
-        return , $lines.ToArray()
     }
 
-    # The sample accounts database fixtures/sql/README.md documents
+    # The sample accounts database fixtures/sql/README.md documents.
     function Initialize-SampleDatabase {
         param([string] $Path)
-        [DriftBusterOfflineRunner.SqlSnapshots]::Execute($Path, [System.Collections.ArrayList]@(
+        [DriftBusterOfflineRunner.SqlSnapshot]::Execute($Path, [string[]]@(
                 'CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, secret TEXT, balance REAL)',
                 "INSERT INTO accounts (email, secret, balance) VALUES ('alice@example.com', 'token-1', 42.5)",
                 "INSERT INTO accounts (email, secret, balance) VALUES ('bob@example.com', 'token-2', 13.75)"
@@ -245,903 +212,430 @@ BeforeAll {
     }
 }
 
-Describe 'package encryption' {
-    It 'execute config encrypts package with dpapi aes keyset' {
+Describe 'config reading' {
+    It 'fills every default' {
         $tmp = Get-TestDirectory
-        $sourceDir = Join-Path $tmp 'source'
-        Write-TestText -Path (Join-Path $sourceDir 'secrets.txt') -Content 'token-123'
-
-        $keysetPath = Join-Path $tmp 'keyset.json'
-        $aesKey = Get-RepeatedByte 'A' 32
-        $hmacKey = Get-RepeatedByte 'B' 32
-        Write-TestKeyset -Path $keysetPath -AesKey $aesKey -HmacKey $hmacKey
-        $outputDir = Join-Path $tmp 'output'
-
-        $config = ConvertTo-TestConfig ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{
-                    name           = 'encrypt-demo'
-                    description    = 'demo'
-                    sources        = @([ordered]@{ path = (Join-Path $sourceDir 'secrets.txt'); alias = 'secret' })
-                    options        = @{}
-                    secret_scanner = @{}
-                }
-                runner   = [ordered]@{
-                    output_directory = $outputDir
-                    compress         = $true
-                    cleanup_staging  = $false
-                    encryption       = [ordered]@{
-                        enabled = $true; mode = 'dpapi-aes'; keyset_path = $keysetPath; output_extension = '.enc'; remove_plaintext = $true
-                    }
-                }
-                metadata = @{}
-            })
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z'
-
-        $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
-        $result.encrypted_package_path | Should -BeExactly $result.package_path
-        Test-Path -LiteralPath $result.package_path | Should -BeTrue -Because 'expected encrypted package'
-
-        $result.unencrypted_package_path | Should -Not -BeNullOrEmpty
-        Test-Path -LiteralPath $result.unencrypted_package_path | Should -BeFalse -Because 'plaintext package should be removed'
-
-        $encrypted = Read-JsonFile $result.package_path
-        $encrypted['schema'] | Should -BeExactly $script:EncryptedSchema
-        $encrypted['algorithm'] | Should -BeExactly 'aes-256-cbc+hmac-sha256'
-
-        $iv = [System.Convert]::FromBase64String($encrypted['iv'])
-        $ciphertext = [System.Convert]::FromBase64String($encrypted['ciphertext'])
-        $mac = [System.Convert]::FromBase64String($encrypted['mac'])
-        [System.Convert]::ToBase64String($mac) | Should -BeExactly ([System.Convert]::ToBase64String((Get-TestHmac -Key $hmacKey -Iv $iv -Ciphertext $ciphertext)))
-
-        $plaintext = Unprotect-TestCiphertext -AesKey $aesKey -Iv $iv -Ciphertext $ciphertext
-        $names = Get-ZipEntryName -Bytes $plaintext
-        @($names | Where-Object { $_.StartsWith('data/') }).Count | Should -BeGreaterThan 0
-        $names | Should -Contain 'manifest.json'
-
-        if ($result.manifest_path -and (Test-Path -LiteralPath $result.manifest_path)) {
-            $manifest = Read-JsonFile $result.manifest_path
-        }
-        else {
-            throw 'expected the staging manifest'
-        }
-
-        $encryptionInfo = $manifest['package']['encryption']
-        $encryptionInfo['enabled'] | Should -BeTrue
-        $encryptionInfo['output_name'].EndsWith('.enc') | Should -BeTrue
-        $encryptionInfo['remove_plaintext'] | Should -BeTrue
-        $encryptionInfo['sha256'] | Should -BeExactly (Get-FileSha256 $result.package_path)
-    }
-
-    It 'execute config requires compress for encryption' {
-        $tmp = Get-TestDirectory
-        $keysetPath = Join-Path $tmp 'keyset.json'
-        Write-TestKeyset -Path $keysetPath -AesKey (Get-RepeatedByte 'A' 32) -HmacKey (Get-RepeatedByte 'B' 32)
-
-        $config = ConvertTo-TestConfig ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{
-                    name = 'no-compress'; sources = @([ordered]@{ path = $keysetPath; alias = 'key' }); options = @{}; secret_scanner = @{}
-                }
-                runner   = [ordered]@{
-                    output_directory = (Join-Path $tmp 'out'); compress = $false; cleanup_staging = $false
-                    encryption = [ordered]@{ enabled = $true; keyset_path = $keysetPath }
-                }
-                metadata = @{}
-            })
-
-        Assert-EngineError { Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20240101T000000Z' } 'InvalidDataException'
-    }
-
-    It 'execute config path supports relative paths' {
-        $tmp = Get-TestDirectory
-        $configDir = Join-Path $tmp 'bundle'
-        Write-TestText -Path (Join-Path $configDir 'secrets.txt') -Content 'token-456'
-        $aesKey = Get-RepeatedByte 'C' 32
-        $hmacKey = Get-RepeatedByte 'D' 32
-        Write-TestKeyset -Path (Join-Path $configDir 'keyset.json') -AesKey $aesKey -HmacKey $hmacKey
-
-        $configPath = Write-TestConfig -Directory $configDir -Payload ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{ name = 'relative-paths'; sources = @([ordered]@{ path = 'secrets.txt' }); options = @{}; secret_scanner = @{} }
-                runner   = [ordered]@{
-                    compress = $true; cleanup_staging = $true
-                    encryption = [ordered]@{ enabled = $true; mode = 'dpapi-aes'; keyset_path = 'keyset.json'; output_extension = '.enc'; remove_plaintext = $true }
-                }
-                metadata = @{}
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath -Timestamp '20240202T120000Z'
-
-        $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.EnginePath]::Parent($result.package_path) | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($configDir))
-        [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
-        $result.encrypted_package_path | Should -BeExactly $result.package_path
-
-        $result.unencrypted_package_path | Should -Not -BeNullOrEmpty
-        Test-Path -LiteralPath $result.unencrypted_package_path | Should -BeFalse
-
-        $payload = $result.encryption_payload
-        $payload | Should -Not -BeNullOrEmpty
-        $payload['package']['original_name'].EndsWith('.zip') | Should -BeTrue
-
-        $iv = [System.Convert]::FromBase64String($payload['iv'])
-        $ciphertext = [System.Convert]::FromBase64String($payload['ciphertext'])
-        $plaintext = Unprotect-TestCiphertext -AesKey $aesKey -Iv $iv -Ciphertext $ciphertext
-        $names = Get-ZipEntryName -Bytes $plaintext
-        @($names | Where-Object { $_.EndsWith('secrets.txt') }).Count | Should -BeGreaterThan 0
-        $names | Should -Contain 'manifest.json'
-    }
-}
-
-Describe 'config helpers' {
-    It 'offline registry scan source from dict normalises values' {
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                registry_scan = [ordered]@{
-                    token = 'ExampleApp '; keywords = 'alpha, beta'; patterns = @('value1', 'value2'); max_depth = '8'; max_hits = '150'; time_budget_s = '15'
-                }
-                alias         = '  ExampleAlias  '
-            })
-        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
-        $source.token | Should -BeExactly 'ExampleApp'
-        $source.keywords | Should -Be @('alpha', 'beta')
-        $source.patterns | Should -Be @('value1', 'value2')
-        $source.max_depth | Should -Be 8
-        $source.max_hits | Should -Be 150
-        $source.time_budget_s | Should -Be 15.0
-        Get-DBDestinationName -Source $source -FallbackIndex 1 | Should -BeExactly '--ExampleAlias--'
-
-        $noAlias = ConvertFrom-DBOfflineRegistryScanSource (ConvertTo-EngineValue ([ordered]@{ registry_scan = [ordered]@{ token = 'Example'; keywords = @('one'); patterns = @() } }))
-        (Get-DBDestinationName -Source $noAlias -FallbackIndex 2).StartsWith('registry_') | Should -BeTrue
-    }
-
-    It 'normalise snapshot columns handles sequences' {
-        $mapping = ConvertTo-DBSnapshotColumnMap (ConvertTo-EngineValue ([ordered]@{ users = @('id', 'email'); events = @('timestamp', 'severity') }))
-        $mapping['users'] | Should -Be @('id', 'email')
-        $mapping['events'] | Should -Be @('timestamp', 'severity')
-
-        $sequence = ConvertTo-DBSnapshotColumnMap (ConvertTo-EngineValue @('audit.id', 'audit.created', 'logs.message', 'invalid', 'logs.'))
-        $sequence['audit'] | Should -Be @('id', 'created')
-        $sequence['logs'] | Should -Be @('message')
-        (ConvertTo-DBSnapshotColumnMap $null).Count | Should -Be 0
-    }
-
-    It 'offline sql snapshot source from dict and kwargs' {
-        $tmp = Get-TestDirectory
-        $dbPath = Join-Path $tmp 'db.sqlite'
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                sql_snapshot = [ordered]@{
-                    path = $dbPath; tables = @('users', 'logs'); exclude_tables = 'audit'; mask_columns = [ordered]@{ users = @('password') }
-                    hash_columns = @('users.email', 'users.id'); limit = '25'; placeholder = '[MASKED]'; hash_salt = 'pepper'
-                }
-                alias        = ' database '
-            })
-        $source = ConvertFrom-DBOfflineSqlSnapshotSource $payload
-        $source.path | Should -BeExactly $dbPath
-        $source.tables | Should -Be @('users', 'logs')
-        $source.exclude_tables | Should -Be @('audit')
-        $source.mask_columns['users'] | Should -Be @('password')
-        $source.hash_columns['users'] | Should -Be @('email', 'id')
-        $source.limit | Should -Be 25
-        $source.placeholder | Should -BeExactly '[MASKED]'
-        $source.hash_salt | Should -BeExactly 'pepper'
-        Get-DBDestinationName -Source $source -FallbackIndex 2 | Should -BeExactly 'database'
-
-        $kwargs = Get-DBSnapshotArgument $source
-        $kwargs['tables'] | Should -Be @('users', 'logs')
-        $kwargs['limit'] | Should -Be 25
-    }
-
-    It 'offline sql snapshot source limit validation' {
-        $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; limit = 0 } })
-        Assert-EngineError { ConvertFrom-DBOfflineSqlSnapshotSource $payload } 'InvalidDataException'
-    }
-
-    It 'offline sql snapshot source dialect validation' {
-        $payload = ConvertTo-EngineValue ([ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db'; dialect = 'postgres' } })
-        Assert-EngineError { ConvertFrom-DBOfflineSqlSnapshotSource $payload } 'InvalidDataException'
-    }
-
-    It 'offline runner profile with registry and sql sources' {
-        $tmp = Get-TestDirectory
-        $filePath = Join-Path $tmp 'config.txt'
-        Write-TestText -Path $filePath -Content 'example'
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                name           = 'profile-sample'
-                sources        = @(
-                    [ordered]@{ path = $filePath },
-                    [ordered]@{ registry_scan = [ordered]@{ token = 'ExampleToken'; keywords = @('alpha'); patterns = @('value') } },
-                    [ordered]@{ sql_snapshot = [ordered]@{ path = 'sample.db' } }
-                )
-                baseline       = $filePath
-                tags           = @('audit')
-                options        = [ordered]@{ secret_ignore_rules = @('PasswordAssignment') }
-                secret_scanner = [ordered]@{ ignore_rules = @('GenericApiToken') }
-            })
-        $profileObject = ConvertFrom-DBOfflineRunnerProfile $payload
-        $profileObject.sources.Count | Should -Be 3
-        @($profileObject.sources | Where-Object { $_.kind -eq 'registry_scan' }).Count | Should -BeGreaterThan 0
-        @($profileObject.sources | Where-Object { $_.kind -eq 'sql_snapshot' }).Count | Should -BeGreaterThan 0
-    }
-
-    It 'offline encryption settings from dict formats extension' {
-        $tmp = Get-TestDirectory
-        $keysetPath = Join-Path $tmp 'key.json'
-        Write-TestText -Path $keysetPath -Content '{}'
-        $settings = ConvertFrom-DBOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{
-                    enabled = $true; mode = 'DPAPI-AES'; keyset_path = $keysetPath; output_extension = 'encpkg'; remove_plaintext = $false
-                }))
-        $settings.enabled | Should -BeTrue
-        $settings.mode | Should -BeExactly 'dpapi-aes'
-        $settings.output_extension | Should -BeExactly '.encpkg'
-        $settings.remove_plaintext | Should -BeFalse
-
-        Assert-EngineError { ConvertFrom-DBOfflineEncryptionSetting (ConvertTo-EngineValue ([ordered]@{ enabled = $true })) } 'InvalidDataException'
-    }
-
-    It 'offline runner settings from dict handles defaults' {
-        $tmp = Get-TestDirectory
-        $settings = ConvertFrom-DBOfflineRunnerSetting (ConvertTo-EngineValue ([ordered]@{
-                    output_directory = $tmp; package_name = ' '; max_total_bytes = '2048'; encryption = [ordered]@{ enabled = $false }
-                }))
-        $settings.output_directory | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($tmp))
-        $settings.package_name | Should -BeNullOrEmpty
-        $settings.max_total_bytes | Should -Be 2048
-        $settings.encryption | Should -Not -BeNullOrEmpty
-        $settings.encryption.enabled | Should -BeFalse
-    }
-
-    It 'execute config skips registry scan on non windows' {
-        # The runner is pinned to a host view that is not Windows.
-        Mock Test-DBWindowsPlatform { $false }
-        $tmp = Get-TestDirectory
-        $config = ConvertTo-TestConfig ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{
-                    name           = 'registry-only'
-                    sources        = @([ordered]@{ registry_scan = [ordered]@{ token = 'ExampleToken'; keywords = @('alpha'); patterns = @('value') } })
-                    options        = @{}
-                    secret_scanner = @{}
-                }
-                runner   = [ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $false; cleanup_staging = $false }
-                metadata = @{}
-            })
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20251025T083000Z'
-
-        $result.manifest_path | Should -Not -BeNullOrEmpty
-        $manifest = Read-JsonFile $result.manifest_path
-        $manifest['sources'].Count | Should -BeGreaterThan 0
-        $summary = $manifest['sources'][0]
-        $summary['type'] | Should -BeExactly 'registry_scan'
-        $summary['skipped'] | Should -BeTrue
-        $summary['reason'] | Should -BeExactly 'not-windows'
-    }
-}
-
-Describe 'secret masking' {
-    It 'execute config masks secret samples' {
-        $tmp = Get-TestDirectory
-        $fixturesRoot = Join-TestPath $script:RepoRoot @('fixtures', 'secret_samples')
-        $keysetPath = Join-Path $tmp 'keyset.json'
-        Write-TestKeyset -Path $keysetPath -AesKey (Get-RepeatedByte 'A' 32) -HmacKey (Get-RepeatedByte 'B' 32)
-
-        $config = ConvertTo-TestConfig ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{
-                    name           = 'fixtures-secret-validation'
-                    description    = 'integration validation for secret masking'
-                    sources        = @([ordered]@{ path = (Join-Path $fixturesRoot 'auth_secrets.txt'); alias = 'secret-fixtures' })
-                    options        = @{}
-                    secret_scanner = @{}
-                }
-                runner   = [ordered]@{
-                    output_directory = (Join-Path $tmp 'output'); compress = $true; cleanup_staging = $false
-                    encryption = [ordered]@{ enabled = $true; mode = 'dpapi-aes'; keyset_path = $keysetPath; output_extension = '.enc'; remove_plaintext = $true }
-                }
-                metadata = [ordered]@{ audit = 'secret-masking' }
-            })
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20251025T070000Z'
-
-        $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.EnginePath]::Suffix($result.package_path) | Should -BeExactly '.enc'
-        $result.encrypted_package_path | Should -BeExactly $result.package_path
-        $result.unencrypted_package_path | Should -Not -BeNullOrEmpty
-        Test-Path -LiteralPath $result.unencrypted_package_path | Should -BeFalse
-
-        Test-Path -LiteralPath $result.manifest_path | Should -BeTrue
-        $manifest = Read-JsonFile $result.manifest_path
-        $details = $manifest['package']['encryption']
-        $details['enabled'] | Should -BeTrue
-        $details['schema'] | Should -BeExactly $script:EncryptedSchema
-
-        $findings = $manifest['secrets']['findings']
-        $rules = @($findings | ForEach-Object { $_['rule'] })
-        foreach ($expected in @('PasswordAssignment', 'GenericApiToken', 'AwsAccessKeyId')) {
-            $rules | Should -Contain $expected
-        }
-
-        @($findings | Where-Object { $_['path'].EndsWith('auth_secrets.txt') }).Count | Should -BeGreaterThan 0 -Because 'findings should reference the secret fixture'
-
-        $secretEntry = @($result.files | Where-Object { $_.relative_path.EndsWith('auth_secrets.txt') })[0]
-        $secretEntry | Should -Not -BeNullOrEmpty -Because 'expected collected secret fixture'
-
-        $sanitized = [System.IO.File]::ReadAllText($secretEntry.destination)
-        $sanitized | Should -Match ([regex]::Escape('[SECRET]'))
-        $sanitized | Should -Not -Match 'SuperSecret1234'
-        $sanitized | Should -Not -Match 'ABCDEF1234567890ABCD'
-        $sanitized | Should -Not -Match 'AKIA1234567890ABCDEF'
-
-        $snippets = @($findings | ForEach-Object { $_['snippet'] })
-        $snippets | Should -Contain '[SECRET]'
-        @($snippets | Where-Object { $_.Contains('SuperSecret1234') }).Count | Should -Be 0
-    }
-}
-
-Describe 'runner execution' {
-    It 'load config accepts string and object sources' {
-        $tmp = Get-TestDirectory
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                schema  = $script:ConfigSchema
-                profile = [ordered]@{
-                    name    = 'demo'
-                    sources = @((Join-Path $tmp 'file.txt'), [ordered]@{ path = (Join-Path $tmp 'dir'); alias = 'dir'; optional = $true })
-                }
-            })
-
-        $config = Import-DBOfflineRunnerConfig -Path $configPath
-        $config.profile.name | Should -BeExactly 'demo'
-        $config.profile.sources.Count | Should -Be 2
-        $first, $second = $config.profile.sources
-        $first.kind | Should -BeExactly 'file'
-        $second.kind | Should -BeExactly 'file'
-        $first.path.EndsWith('file.txt') | Should -BeTrue
-        $second.alias | Should -BeExactly 'dir'
-        $second.optional | Should -BeTrue
-    }
-
-    It 'execute offline run collects files' {
-        $tmp = Get-TestDirectory
-        $logsDir = Join-Path $tmp 'logs'
-        $sampleLog = Join-Path $logsDir 'firewall.log'
-        Write-TestText -Path $sampleLog -Content 'entry'
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                schema   = $script:ConfigSchema
-                version  = '1.0'
-                profile  = [ordered]@{
-                    name        = 'windows_baseline'
-                    description = 'Collect baseline logs'
-                    sources     = @([ordered]@{ path = $sampleLog }, [ordered]@{ path = $logsDir; alias = 'logs'; exclude = @('*.tmp') })
-                    tags        = @('windows', 'baseline')
-                }
-                runner   = [ordered]@{
-                    output_directory = (Join-Path $tmp 'out'); compress = $true; include_config = $true; include_logs = $true; include_manifest = $true
-                }
-                metadata = [ordered]@{ request_id = 'abc-123' }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-
-        $result.package_path | Should -Not -BeNullOrEmpty
-        Test-Path -LiteralPath $result.package_path | Should -BeTrue
-        $result.manifest_path | Should -BeNullOrEmpty
-        $result.log_path | Should -BeNullOrEmpty
-        $result.staging_dir | Should -BeNullOrEmpty
-        $result.files.Count | Should -BeGreaterOrEqual 2
-
-        $contents = Get-ZipEntryName -ZipPath $result.package_path
-        @($contents | Where-Object { $_.StartsWith('data/') }).Count | Should -BeGreaterThan 0
-        $contents | Should -Contain 'manifest.json'
-        @($contents | Where-Object { $_ -eq 'config.json' -or $_.EndsWith('config.json') }).Count | Should -BeGreaterThan 0
-
-        $manifest = Read-ManifestFromPackage $result.package_path
-        $logContents = Read-RunnerLogFromPackage $result.package_path
-        $manifest['schema'] | Should -BeExactly $script:ManifestSchema
-        $manifest['profile']['name'] | Should -BeExactly 'windows_baseline'
-        $manifest['metadata']['request_id'] | Should -BeExactly 'abc-123'
-        @($manifest['files'] | Where-Object { $_['relative_path'].EndsWith('firewall.log') }).Count | Should -BeGreaterThan 0
-        $manifest['package']['cleanup_staging'] | Should -BeTrue
-        $logContents | Should -Match 'offline collection finished'
-    }
-
-    It 'execute offline run handles optional source' {
-        $tmp = Get-TestDirectory
-        $existing = Join-Path $tmp 'present.log'
-        Write-TestText -Path $existing -Content 'log'
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{
-                    name    = 'optional'
-                    sources = @([ordered]@{ path = $existing }, [ordered]@{ path = (Join-TestPath $tmp @('missing', '*.log')); alias = 'missing'; optional = $true })
-                }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-
-        @($result.files | Where-Object { $_.alias -eq 'missing' }).Count | Should -Be 0
-        $result.manifest_path | Should -BeNullOrEmpty
-        $manifest = Read-ManifestFromPackage $result.package_path
-        $summary = @($manifest['sources'] | Where-Object { $_['alias'] -eq 'missing' })[0]
-        $summary['skipped'] | Should -BeTrue
-        $summary['reason'] | Should -BeExactly 'no-matches'
-    }
-
-    It 'execute offline run missing required source' {
-        $tmp = Get-TestDirectory
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'missing-required'; sources = @((Join-Path $tmp 'missing.txt')) }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
-            })
-
-        Assert-EngineError { Invoke-DBOfflineRunnerPath -ConfigPath $configPath } 'FileNotFoundException'
-    }
-
-    It 'execute offline run respects exclude patterns' {
-        $tmp = Get-TestDirectory
-        $dataDir = Join-Path $tmp 'data'
-        Write-TestText -Path (Join-Path $dataDir 'keep.log') -Content 'keep'
-        Write-TestText -Path (Join-Path $dataDir 'ignore.tmp') -Content 'ignore'
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'excludes'; sources = @([ordered]@{ path = $dataDir; exclude = @('*.tmp') }) }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-        $paths = @($result.files | ForEach-Object { $_.relative_path })
-        @($paths | Where-Object { $_.Contains('ignore.tmp') }).Count | Should -Be 0
-        @($paths | Where-Object { $_.EndsWith('keep.log') }).Count | Should -BeGreaterThan 0
-    }
-
-    It 'execute offline run deduplicates recursive glob matches' {
-        $tmp = Get-TestDirectory
-        $sourceRoot = Join-Path $tmp 'source'
-        Write-TestText -Path (Join-Path $sourceRoot 'root.log') -Content 'root'
-        Write-TestText -Path (Join-TestPath $sourceRoot @('nested', 'child.log')) -Content 'child'
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'recursive-glob'; sources = @([ordered]@{ path = "$sourceRoot/**/*" }) }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out') }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-        $collected = @($result.files | ForEach-Object { $_.relative_path })
-        $collected.Count | Should -Be @($collected | Select-Object -Unique).Count
-        @($collected | Where-Object { $_.EndsWith('root.log') }).Count | Should -BeGreaterThan 0
-        @($collected | Where-Object { $_.EndsWith('child.log') }).Count | Should -BeGreaterThan 0
-    }
-
-    It 'execute offline run enforces max total bytes' {
-        $tmp = Get-TestDirectory
-        $source = Join-Path $tmp 'large.bin'
-        [System.IO.File]::WriteAllBytes($source, (Get-RepeatedByte '0' 1024))
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'limits'; sources = @($source) }
-                runner  = [ordered]@{ max_total_bytes = 10; output_directory = (Join-Path $tmp 'out') }
-            })
-
-        Assert-EngineError { Invoke-DBOfflineRunnerPath -ConfigPath $configPath } 'InvalidOperationException' '*max_total_bytes*'
-    }
-
-    It 'execute offline run scrubs secret lines' {
-        $tmp = Get-TestDirectory
-        $secretFile = Join-Path $tmp 'secrets.txt'
-        Write-TestText -Path $secretFile -Content "safe line`npassword = SUPERSECRET123456`nkeep me`n"
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'secret-scan'; sources = @($secretFile) }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); include_logs = $true; include_manifest = $true }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-
-        Read-RunnerLogFromPackage $result.package_path | Should -Match 'secret candidate redacted'
-
-        $collectedFile = @($result.files | Where-Object { $_.source -eq $secretFile })[0]
-        $collectedText = Read-ZipText -ZipPath $result.package_path -EntryName "data/$($collectedFile.relative_path)"
-        $collectedText | Should -Not -Match 'SUPERSECRET123456'
-        $lines = Get-TextLine $collectedText
-        $lines | Should -Be @('safe line', '[SECRET]', 'keep me')
-
-        $manifest = Read-ManifestFromPackage $result.package_path
-        $manifest['profile'].Contains('secret_scanner') | Should -BeTrue
-        $profileScanner = $manifest['profile']['secret_scanner']
-        $profileScanner['ruleset_version'] | Should -BeExactly '2024-06-01'
-        $profileScanner.Contains('rules') | Should -BeFalse
-        $secrets = $manifest['secrets']
-        $secrets['ruleset_version'] | Should -BeExactly '2024-06-01'
-        $secrets['ignored_rules'].Count | Should -Be 0
-        $secrets['ignored_patterns'].Count | Should -Be 0
-        $secrets['findings'].Count | Should -Be 1
-        $finding = $secrets['findings'][0]
-        @('PasswordAssignment', 'GenericApiToken') | Should -Contain $finding['rule']
-        ($finding['snippet'].EndsWith('[SECRET]') -or $finding['snippet'].Contains('[SECRET]')) | Should -BeTrue
-    }
-
-    It 'execute offline run honours secret ignore patterns' {
-        $tmp = Get-TestDirectory
-        $secretFile = Join-Path $tmp 'allowlist.txt'
-        Write-TestText -Path $secretFile -Content 'password = ALLOW_ME'
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'secret-ignore'; sources = @($secretFile); secret_scanner = [ordered]@{ ignore_patterns = @('ALLOW_ME') } }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); include_logs = $true; include_manifest = $true }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-
-        Read-RunnerLogFromPackage $result.package_path | Should -Not -Match 'secret candidate redacted'
-        $collectedFile = @($result.files | Where-Object { $_.source -eq $secretFile })[0]
-        Read-ZipText -ZipPath $result.package_path -EntryName "data/$($collectedFile.relative_path)" | Should -Match 'ALLOW_ME'
-
-        $manifest = Read-ManifestFromPackage $result.package_path
-        $secrets = $manifest['secrets']
-        $secrets['findings'].Count | Should -Be 0
-        $secrets['ignored_patterns'] | Should -Contain 'ALLOW_ME'
-        $manifest['profile']['secret_scanner']['ignore_patterns'] | Should -Contain 'ALLOW_ME'
-        $manifest['profile']['secret_scanner'].Contains('rules') | Should -BeFalse
-    }
-
-    It 'execute offline run prefers ruleset from config' {
-        $tmp = Get-TestDirectory
-        $secretFile = Join-Path $tmp 'custom.txt'
-        Write-TestText -Path $secretFile -Content 'token = TOTALLY_CUSTOM_SECRET'
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{
-                    name           = 'secret-config'
-                    sources        = @($secretFile)
-                    secret_scanner = [ordered]@{
-                        ruleset = [ordered]@{ version = 'custom-1'; rules = @([ordered]@{ name = 'CustomToken'; pattern = 'TOTALLY_CUSTOM_SECRET'; flags = '' }) }
-                    }
-                }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); include_logs = $true; include_manifest = $true }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-
-        $manifest = Read-ManifestFromPackage $result.package_path
-        $secrets = $manifest['secrets']
-        $secrets['ruleset_version'] | Should -BeExactly 'custom-1'
-        $secrets['findings'].Count | Should -BeGreaterThan 0
-        $profileScanner = $manifest['profile']['secret_scanner']
-        $profileScanner['ruleset_version'] | Should -BeExactly 'custom-1'
-        $profileScanner.Contains('rules') | Should -BeFalse
-    }
-
-    It 'execute offline run retains staging when cleanup disabled' {
-        $tmp = Get-TestDirectory
-        $sample = Join-Path $tmp 'artifact.txt'
-        Write-TestText -Path $sample -Content 'data'
-
-        $configPath = Write-TestConfig -Directory $tmp -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'no-cleanup'; sources = @($sample) }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); cleanup_staging = $false; include_manifest = $true; include_logs = $true }
-            })
-
-        $result = Invoke-DBOfflineRunnerPath -ConfigPath $configPath
-
-        $result.staging_dir | Should -Not -BeNullOrEmpty
-        Test-Path -LiteralPath $result.staging_dir | Should -BeTrue
-        $result.manifest_path | Should -Not -BeNullOrEmpty
-        Test-Path -LiteralPath $result.manifest_path | Should -BeTrue
-        $result.log_path | Should -Not -BeNullOrEmpty
-        Test-Path -LiteralPath $result.log_path | Should -BeTrue
-    }
-
-    It 'compile ruleset from mapping handles invalid entries' {
-        ConvertTo-DBCompiledRuleset $null | Should -BeNullOrEmpty
-        ConvertTo-DBCompiledRuleset (ConvertTo-EngineValue ([ordered]@{ rules = 'invalid' })) | Should -BeNullOrEmpty
-
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                version = 'custom'
-                rules   = @([ordered]@{ name = 'Valid'; pattern = 'secret'; flags = 'i' }, [ordered]@{ name = 'Broken'; pattern = '[' })
-            })
-        $compiled = ConvertTo-DBCompiledRuleset $payload
-        $compiled | Should -Not -BeNullOrEmpty
-        $compiled.Version | Should -BeExactly 'custom'
-        $compiled.Rules.Count | Should -Be 1
-        $compiled.Rules[0] | Should -BeOfType ([DriftBusterOfflineRunner.SecretRule])
-    }
-
-    It 'secret option values and manifest helpers' {
-        $values = Get-DBSecretOptionValue 'a, b ; c'
-        $values | Should -Be @('a', 'b', 'c')
-        $values = Get-DBSecretOptionValue (ConvertTo-EngineValue @('x', $null, ' y '))
-        $values | Should -Be @('x', 'y')
-
-        $context = [DriftBusterOfflineRunner.SecretContext]::new()
-        $context.Version = 'v1'
-        [void]$context.IgnoreRules.Add('Skip')
-        $context.IgnorePatterns.Add([regex]::new('SKIP'))
-        $context.IgnorePatternText.Add('SKIP')
-        $context.RulesLoaded = $true
-
-        $manifest = Get-DBManifestSecretScanner -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_rules = 'Skip' })) `
-            -SecretScanner (ConvertTo-EngineValue ([ordered]@{ ignore_patterns = @('SKIP') })) -Context $context
-        $manifest['ruleset_version'] | Should -BeExactly 'v1'
-        $manifest['ignore_rules'] | Should -Be @('Skip')
-        $manifest['ignore_patterns'] | Should -Be @('SKIP')
-    }
-
-    It 'build secret context prefers inline rules' {
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                ruleset      = [ordered]@{ version = 'inline'; rules = @([ordered]@{ name = 'Token'; pattern = 'VALUE' }) }
-                ignore_rules = @('Token')
-            })
-        $context = Get-DBSecretContext -Options (ConvertTo-EngineValue ([ordered]@{ secret_ignore_patterns = @('ALLOW') })) -SecretScanner $payload
-        $context.Version | Should -BeExactly 'inline'
-        $context.RulesLoaded | Should -BeTrue
-        @($context.IgnoreRules) | Should -Be @('Token')
-        $context.IgnorePatternText | Should -Contain 'ALLOW'
-    }
-
-    It 'offline collection source validations' {
-        Assert-EngineError { ConvertFrom-DBOfflineCollectionSource (ConvertTo-EngineValue @{}) } 'InvalidDataException'
-
-        $source = ConvertFrom-DBOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '~/data'; alias = '  '; exclude = '*.tmp' }))
+        $config = Import-TestConfig -Directory $tmp -Payload ([ordered]@{ profile = [ordered]@{ name = 'defaults'; sources = @(@{ path = 'app.config' }) } })
+
+        $config.schema | Should -BeExactly $script:ConfigSchema
+        $config.version | Should -BeExactly '1'
+        $config.path | Should -BeExactly (Join-Path $tmp 'config.json')
+        $source = $config.profile.sources[0]
+        $source.kind | Should -BeExactly 'file'
         $source.alias | Should -BeNullOrEmpty
-        $source.exclude | Should -Be @('*.tmp')
-
-        $rootSource = ConvertFrom-DBOfflineCollectionSource (ConvertTo-EngineValue ([ordered]@{ path = '/' }))
-        Get-DBDestinationName -Source $rootSource -FallbackIndex 7 | Should -BeExactly 'source_07'
+        $source.optional | Should -BeFalse
+        $source.exclude.Count | Should -Be 0
+        $config.profile.secret_scanner.ruleset | Should -BeNullOrEmpty
+        $runner = $config.runner
+        $runner.compress | Should -BeTrue
+        $runner.include_config | Should -BeTrue
+        $runner.include_logs | Should -BeTrue
+        $runner.include_manifest | Should -BeTrue
+        $runner.cleanup_staging | Should -BeTrue
+        $runner.manifest_name | Should -BeExactly 'manifest.json'
+        $runner.log_name | Should -BeExactly 'runner.log'
+        $runner.data_directory_name | Should -BeExactly 'data'
+        $runner.logs_directory_name | Should -BeExactly 'logs'
+        $runner.max_total_bytes | Should -BeNullOrEmpty
+        $runner.encryption | Should -BeNullOrEmpty
     }
 
-    It 'offline runner profile validations' {
-        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = '' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); baseline = 'missing' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); options = 'invalid' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo'; sources = @('/tmp/a'); secret_scanner = 'invalid' })) } 'InvalidDataException'
-        Assert-EngineError { ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'demo' })) } 'InvalidDataException'
+    It 'reads registry scan, SQL snapshot and encryption settings' {
+        $tmp = Get-TestDirectory
+        $config = Import-TestConfig -Directory $tmp -Payload ([ordered]@{
+                profile = [ordered]@{
+                    name    = 'mixed'
+                    sources = @(
+                        [ordered]@{
+                            registry_scan = [ordered]@{
+                                token        = ' VendorA '
+                                keywords     = @('server')
+                                patterns     = @('api\.')
+                                roots        = @('HKLM/Software/VendorA, view=64', [ordered]@{ hive = 'hkcu'; path = 'Software\VendorA'; view = 'auto' })
+                                remote       = 'app-01'
+                                remote_batch = @('app-02', [ordered]@{ host = 'app-03'; port = 5986; use_ssl = $true; alias = 'third' })
+                            }
+                        },
+                        [ordered]@{
+                            alias        = 'db'
+                            sql_snapshot = [ordered]@{ path = 'app.sqlite'; mask_columns = [ordered]@{ accounts = @('secret') }; limit = 5 }
+                        })
+                }
+                runner  = [ordered]@{ encryption = [ordered]@{ keyset_path = 'keys.json'; output_extension = 'sealed' } }
+            })
 
-        $profileObject = ConvertFrom-DBOfflineRunnerProfile (ConvertTo-EngineValue ([ordered]@{ name = 'tags'; sources = @('/tmp/a'); tags = 'prod' }))
-        $profileObject.tags | Should -Be @('prod')
+        $scan = $config.profile.sources[0]
+        $scan.kind | Should -BeExactly 'registry_scan'
+        $scan.token | Should -BeExactly 'VendorA'
+        $scan.max_depth | Should -Be 12
+        $scan.max_hits | Should -Be 200
+        $scan.time_budget_s | Should -Be 10.0
+        $scan.roots[0].hive | Should -BeExactly 'HKLM'
+        $scan.roots[0].path | Should -BeExactly 'Software\VendorA'
+        $scan.roots[0].view | Should -BeExactly '64'
+        $scan.roots[1].hive | Should -BeExactly 'HKCU'
+        $scan.roots[1].view | Should -BeNullOrEmpty
+        @($scan.targets | ForEach-Object { $_.host }) | Should -Be @('app-01', 'app-02', 'app-03')
+        $scan.targets[0].transport | Should -BeExactly 'winrm'
+        $scan.targets[2].port | Should -Be 5986
+        $scan.targets[2].use_ssl | Should -BeTrue
+        $scan.targets[2].alias | Should -BeExactly 'third'
+
+        $sql = $config.profile.sources[1]
+        $sql.kind | Should -BeExactly 'sql_snapshot'
+        $sql.dialect | Should -BeExactly 'sqlite'
+        $sql.placeholder | Should -BeExactly '[REDACTED]'
+        $sql.hash_salt | Should -BeExactly ''
+        $sql.limit | Should -Be 5
+        $sql.mask_columns['accounts'] | Should -Be @('secret')
+
+        $config.runner.encryption.enabled | Should -BeTrue
+        $config.runner.encryption.mode | Should -BeExactly 'dpapi-aes'
+        $config.runner.encryption.output_extension | Should -BeExactly '.sealed'
+        $config.runner.encryption.remove_plaintext | Should -BeTrue
     }
 
-    It 'offline runner config default package name' {
-        Mock Get-DBTimestamp { '20230101T000000Z' }
-        $config = ConvertTo-TestConfig ([ordered]@{ profile = [ordered]@{ name = 'Demo'; sources = @('/tmp/a') } })
-        Get-DBDefaultPackageName -Config $config | Should -BeExactly 'Demo-20230101T000000Z'
+    It 'refuses <Case>' -ForEach @(
+        @{ Case = 'an unknown top-level key'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}]}, "extra": 1}'; JsonPath = '$.extra'; Message = 'unknown key' }
+        @{ Case = 'a misspelt source key'; Json = '{"profile": {"name": "p", "sources": [{"path": "a", "exlude": []}]}}'; JsonPath = '$.profile.sources[0].exlude'; Message = 'unknown key' }
+        @{ Case = 'a key in the wrong case'; Json = '{"profile": {"name": "p", "sources": [{"Path": "a"}]}}'; JsonPath = '$.profile.sources[0].Path'; Message = 'unknown key' }
+        @{ Case = 'a source given as a string'; Json = '{"profile": {"name": "p", "sources": ["a"]}}'; JsonPath = '$.profile.sources[0]'; Message = 'expected an object' }
+        @{ Case = 'a profile without sources'; Json = '{"profile": {"name": "p", "sources": []}}'; JsonPath = '$.profile.sources'; Message = 'at least one source is required' }
+        @{ Case = 'a missing profile'; Json = '{"runner": {}}'; JsonPath = '$.profile'; Message = 'required' }
+        @{ Case = 'a blank profile name'; Json = '{"profile": {"name": " ", "sources": [{"path": "a"}]}}'; JsonPath = '$.profile.name'; Message = 'must not be blank' }
+        @{ Case = 'another schema'; Json = '{"schema": "v2", "profile": {"name": "p", "sources": [{"path": "a"}]}}'; JsonPath = '$.schema'; Message = 'expected https://driftbuster.dev/offline-runner/config/v1' }
+        @{ Case = 'a text flag'; Json = '{"profile": {"name": "p", "sources": [{"path": "a", "optional": "yes"}]}}'; JsonPath = '$.profile.sources[0].optional'; Message = 'expected true or false' }
+        @{ Case = 'a non-string exclude'; Json = '{"profile": {"name": "p", "sources": [{"path": "a", "exclude": ["*.log", 3]}]}}'; JsonPath = '$.profile.sources[0].exclude[1]'; Message = 'expected a string' }
+        @{ Case = 'a zero byte limit'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}]}, "runner": {"max_total_bytes": 0}}'; JsonPath = '$.runner.max_total_bytes'; Message = 'must be positive' }
+        @{ Case = 'a text byte limit'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}]}, "runner": {"max_total_bytes": "10"}}'; JsonPath = '$.runner.max_total_bytes'; Message = 'expected a whole number' }
+        @{ Case = 'a baseline that is not a source'; Json = '{"profile": {"name": "p", "baseline": "b", "sources": [{"path": "a"}]}}'; JsonPath = '$.profile.baseline'; Message = 'must be one of the source paths' }
+        @{ Case = 'a non-string option'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}], "options": {"depth": 2}}}'; JsonPath = '$.profile.options.depth'; Message = 'expected a string' }
+        @{ Case = 'metadata that is not an object'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}]}, "metadata": []}'; JsonPath = '$.metadata'; Message = 'expected an object' }
+        @{ Case = 'encryption without compress'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}]}, "runner": {"compress": false, "encryption": {"keyset_path": "k"}}}'; JsonPath = '$.runner.encryption'; Message = 'encryption needs compress' }
+        @{ Case = 'encryption without a keyset'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}]}, "runner": {"encryption": {}}}'; JsonPath = '$.runner.encryption.keyset_path'; Message = 'required when encryption is enabled' }
+        @{ Case = 'another encryption mode'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}]}, "runner": {"encryption": {"mode": "gpg", "keyset_path": "k"}}}'; JsonPath = '$.runner.encryption.mode'; Message = "only 'dpapi-aes' is supported" }
+        @{ Case = 'another SQL dialect'; Json = '{"profile": {"name": "p", "sources": [{"sql_snapshot": {"path": "a", "dialect": "postgres"}}]}}'; JsonPath = '$.profile.sources[0].sql_snapshot.dialect'; Message = "only 'sqlite' is supported" }
+        @{ Case = 'a zero row limit'; Json = '{"profile": {"name": "p", "sources": [{"sql_snapshot": {"path": "a", "limit": 0}}]}}'; JsonPath = '$.profile.sources[0].sql_snapshot.limit'; Message = 'must be positive' }
+        @{ Case = 'a column list that is not a list'; Json = '{"profile": {"name": "p", "sources": [{"sql_snapshot": {"path": "a", "mask_columns": {"accounts": "secret"}}}]}}'; JsonPath = '$.profile.sources[0].sql_snapshot.mask_columns.accounts'; Message = 'expected an array of strings' }
+        @{ Case = 'a registry root in another hive'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "roots": ["HKCR\\x"]}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.roots[0]'; Message = 'expected HKLM\<path> or HKCU\<path>, optionally followed by ,view=32, ,view=64 or ,view=auto' }
+        @{ Case = 'a registry view of 16'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "roots": [{"hive": "HKLM", "path": "x", "view": "16"}]}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.roots[0]'; Message = 'view must be 32, 64 or auto' }
+        @{ Case = 'a registry scan without a token'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.token'; Message = 'required' }
+        @{ Case = 'the ssh transport'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "remote": {"host": "h", "transport": "ssh"}}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.remote.transport'; Message = "'ssh' is not supported; use winrm" }
+        @{ Case = 'an inline password'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "remote": {"host": "h", "username": "u", "password": "p"}}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.remote.password'; Message = 'unknown key' }
+        @{ Case = 'password_env without a username'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "remote_batch": [{"host": "h", "password_env": "X"}]}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.remote_batch[0]'; Message = 'password_env needs a username' }
+        @{ Case = 'a username without a password source'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "remote": {"host": "h", "username": "u"}}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.remote'; Message = 'username needs password_env or credential_profile' }
+        @{ Case = 'both password sources'; Json = '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "remote": {"host": "h", "username": "u", "password_env": "X", "credential_profile": "c.xml"}}}]}}'; JsonPath = '$.profile.sources[0].registry_scan.remote'; Message = 'use password_env or credential_profile, not both' }
+        @{ Case = 'a ruleset rule without a pattern'; Json = '{"profile": {"name": "p", "sources": [{"path": "a"}], "secret_scanner": {"ruleset": {"rules": [{"name": "r"}]}}}}'; JsonPath = '$.profile.secret_scanner.ruleset.rules[0].pattern'; Message = 'required' }
+    ) {
+        $path = Join-Path (Get-TestDirectory) 'config.json'
+        Write-TestText -Path $path -Content $Json
+        Get-ThrownMessage { Import-DBConfig $path } | Should -BeExactly "${path}: ${JsonPath}: $Message"
     }
 
-    It 'execute config logs when secret rules missing' {
-        Mock Get-DBSecretContext {
-            $context = [DriftBusterOfflineRunner.SecretContext]::new()
-            $context.Version = 'v'
-            $context.RulesLoaded = $false
-            return $context
+    It 'names the file and the pattern that does not compile' {
+        $path = Join-Path (Get-TestDirectory) 'config.json'
+        Write-TestText -Path $path -Content '{"profile": {"name": "p", "sources": [{"registry_scan": {"token": "t", "patterns": ["ok", "(unclosed"]}}]}}'
+        (Get-ThrownMessage { Import-DBConfig $path }).StartsWith("${path}: `$.profile.sources[0].registry_scan.patterns[1]: ", [System.StringComparison]::Ordinal) | Should -BeTrue
+    }
+
+    It 'names the file that is not JSON' {
+        $path = Join-Path (Get-TestDirectory) 'config.json'
+        Write-TestText -Path $path -Content '{"profile": '
+        $caught = $null
+        try {
+            Import-DBConfig $path
+        }
+        catch {
+            $caught = $_.Exception
         }
 
+        $caught | Should -BeOfType ([System.IO.InvalidDataException])
+        $caught.Message.StartsWith("${path}: `$: ", [System.StringComparison]::Ordinal) | Should -BeTrue
+    }
+}
+
+Describe 'file collection' {
+    It 'collects files and trees into alias folders with a manifest' {
         $tmp = Get-TestDirectory
-        $filePath = Join-Path $tmp 'data.txt'
-        Write-TestText -Path $filePath -Content 'content'
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'demo'; sources = @($filePath) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); cleanup_staging = $false })
+        Write-TestText -Path (Join-TestPath $tmp @('app', 'web.config')) -Content "<configuration />`n"
+        Write-TestText -Path (Join-TestPath $tmp @('app', 'conf', 'b.ini')) -Content "[b]`nkey=1`n"
+        Write-TestText -Path (Join-TestPath $tmp @('app', 'conf', 'a.ini')) -Content "[a]`nkey=1`n"
+        $config = Import-TestConfig -Directory $tmp -Payload ([ordered]@{
+                profile  = [ordered]@{
+                    name = 'web app'; description = 'demo'; baseline = 'app/web.config'; tags = @('web'); options = [ordered]@{ tier = 'prod' }
+                    sources = @([ordered]@{ path = 'app/web.config' }, [ordered]@{ path = 'app/conf'; alias = 'my conf' })
+                }
+                runner   = [ordered]@{ output_directory = 'out'; compress = $false; cleanup_staging = $false }
+                metadata = [ordered]@{ ticket = 'CHG-1' }
+            })
 
-        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20230101T010101Z'
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
 
-        $result.log_path | Should -Not -BeNullOrEmpty
-        [System.IO.File]::ReadAllText($result.log_path) | Should -Match 'secret detection rules unavailable'
+        $result.StagingDirectory | Should -BeExactly (Join-TestPath $tmp @('out', 'web-app-20250101T000000Z'))
+        $result.PackagePath | Should -BeNullOrEmpty
+        $result.FilesCollected | Should -Be 3
+        Test-Path -LiteralPath (Join-TestPath $result.StagingDirectory @('data', 'source_00', 'web.config')) | Should -BeTrue
+        Test-Path -LiteralPath (Join-TestPath $result.StagingDirectory @('data', 'my-conf', 'a.ini')) | Should -BeTrue
+        Test-Path -LiteralPath (Join-TestPath $result.StagingDirectory @('config.json')) | Should -BeTrue
+        Get-Content -LiteralPath $result.LogPath | Where-Object { $_ -like '*collected 2 items from app/conf' } | Should -Not -BeNullOrEmpty
+
+        $manifest = Read-JsonFile $result.ManifestPath
+        $manifest.schema | Should -BeExactly $script:ManifestSchema
+        $manifest.timestamp | Should -BeExactly '20250101T000000Z'
+        $manifest.profile.name | Should -BeExactly 'web app'
+        $manifest.profile.baseline | Should -BeExactly 'app/web.config'
+        $manifest.profile.options.tier | Should -BeExactly 'prod'
+        $manifest.runner.schema | Should -BeExactly $script:ConfigSchema
+        $manifest.config.sha256 | Should -BeExactly (Get-DBFileHash $config.path)
+        $manifest.metadata.ticket | Should -BeExactly 'CHG-1'
+        @($manifest.files | ForEach-Object { $_.relative_path }) | Should -Be @('source_00/web.config', 'my-conf/a.ini', 'my-conf/b.ini')
+        $manifest.files[0].sha256 | Should -BeExactly (Get-DBFileHash (Join-TestPath $tmp @('app', 'web.config')))
+        $manifest.sources[1].alias | Should -BeExactly 'my-conf'
+        @($manifest.sources[1].matched) | Should -Be @('a.ini', 'b.ini')
+        $manifest.sources[1].skipped | Should -BeFalse
+        $manifest.secrets.rules_loaded | Should -BeTrue
+        $manifest.secrets.ruleset_version | Should -BeExactly '2024-06-01'
+        $manifest.package.compressed | Should -BeFalse
+        $manifest.package.encryption.enabled | Should -BeFalse
     }
 
-    It 'execute config skips symlink' {
+    It 'skips a missing optional source and stops on a missing required one' {
         $tmp = Get-TestDirectory
-        $realFile = Join-Path $tmp 'real.txt'
-        Write-TestText -Path $realFile -Content 'data'
-        $symlink = Join-Path $tmp 'link.txt'
-        New-Item -ItemType SymbolicLink -Path $symlink -Target $realFile | Out-Null
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'missing.txt'; optional = $true }, [ordered]@{ path = 'none/*.txt'; optional = $true })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+        $manifest = Read-JsonFile $result.ManifestPath
+        $manifest.sources[0].skipped | Should -BeTrue
+        $manifest.sources[0].reason | Should -BeExactly 'missing'
+        $manifest.sources[1].reason | Should -BeExactly 'no-matches'
+        $result.FilesCollected | Should -Be 0
 
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'symlinks'; sources = @($realFile, $symlink) })
-
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp
-        $paths = @($result.files | ForEach-Object { $_.source })
-        @($paths | Where-Object { $_.EndsWith('real.txt') }).Count | Should -BeGreaterThan 0
-        $paths | Should -Not -Contain $symlink
+        $required = Import-SourceConfig $tmp @([ordered]@{ path = 'missing.txt' }) -Name 'required'
+        { Invoke-DBOfflineRunner -Config $required -Timestamp '20250101T000000Z' } | Should -Throw 'Source does not exist: missing.txt'
     }
 
-    It 'execute config appends zip extension' {
+    It 'matches globs once each and honours exclude patterns' {
         $tmp = Get-TestDirectory
-        $filePath = Join-Path $tmp 'file.log'
-        Write-TestText -Path $filePath -Content 'data'
-        $config = ConvertTo-BuiltConfig -TmpPath $tmp -ProfilePayload ([ordered]@{ name = 'archive'; sources = @($filePath) }) `
-            -Runner ([ordered]@{ output_directory = (Join-Path $tmp 'out'); package_name = 'artifact'; compress = $true; cleanup_staging = $true })
+        foreach ($relative in @('logs/a.log', 'logs/keep.txt', 'logs/deep/b.log', 'logs/deep/c.txt')) {
+            Write-TestText -Path (Join-TestPath $tmp $relative.Split('/')) -Content $relative
+        }
 
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp
-        $result.package_path | Should -Not -BeNullOrEmpty
-        [DriftBusterOfflineRunner.EnginePath]::Name($result.package_path).EndsWith('.zip') | Should -BeTrue
+        $config = Import-SourceConfig $tmp @(
+            [ordered]@{ path = 'logs/**/*.txt'; alias = 'text' },
+            [ordered]@{ path = 'logs'; alias = 'tree'; exclude = @('*.log', 'deep/c.txt') },
+            [ordered]@{ path = 'log?'; alias = 'dirs' })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        $manifest = Read-JsonFile $result.ManifestPath
+        @($manifest.sources[0].matched) | Should -Be @('c.txt', 'keep.txt')
+        @($manifest.sources[1].matched) | Should -Be @('keep.txt')
+        @($manifest.sources[2].matched) | Should -Be @('a.log', 'deep/b.log', 'deep/c.txt', 'keep.txt')
+    }
+
+    It 'stops when the collection passes max_total_bytes' {
+        $tmp = Get-TestDirectory
+        Write-TestText -Path (Join-Path $tmp 'big.txt') -Content ('x' * 64)
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'big.txt' }) -Runner ([ordered]@{ output_directory = 'out'; max_total_bytes = 32 })
+        { Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z' } | Should -Throw '*max_total_bytes*'
+    }
+
+    It 'skips a symbolic link' {
+        $tmp = Get-TestDirectory
+        Write-TestText -Path (Join-Path $tmp 'target.txt') -Content 'target'
+        try {
+            [void](New-Item -ItemType SymbolicLink -Path (Join-Path $tmp 'link.txt') -Target (Join-Path $tmp 'target.txt') -ErrorAction Stop)
+        }
+        catch {
+            Set-ItResult -Skipped -Because "symbolic links cannot be created here: $($_.Exception.Message)"
+            return
+        }
+
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'link.txt' })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+        $result.FilesCollected | Should -Be 0
+        Get-Content -LiteralPath $result.LogPath | Where-Object { $_ -like '*skipping symlink*' } | Should -Not -BeNullOrEmpty
+    }
+
+    It 'packages the staging directory and removes it' {
+        $tmp = Get-TestDirectory
+        Write-TestText -Path (Join-Path $tmp 'app.config') -Content "keep`n"
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'app.config'; alias = 'app' }) -Runner ([ordered]@{
+                output_directory = 'out'; package_name = 'bundle'; include_config = $false })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        $result.PackagePath | Should -BeExactly (Join-TestPath $tmp @('out', 'bundle.zip'))
+        $result.UnencryptedPackagePath | Should -BeExactly $result.PackagePath
+        $result.EncryptedPackagePath | Should -BeNullOrEmpty
+        $result.StagingDirectory | Should -BeNullOrEmpty
+        $result.ManifestPath | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-TestPath $tmp @('out', 'test-run-20250101T000000Z')) | Should -BeFalse
+        $names = Get-ZipEntryName -Bytes ([System.IO.File]::ReadAllBytes($result.PackagePath))
+        $names | Should -Be @('data/app/app.config', 'logs/runner.log', 'manifest.json')
+        (ConvertFrom-Json (Read-ZipText $result.PackagePath 'manifest.json')).package.package_name | Should -BeExactly 'bundle.zip'
+    }
+}
+
+Describe 'secret filter' {
+    It 'keeps the embedded rules identical to the backend rules file' {
+        $packaged = [System.IO.File]::ReadAllText((Join-TestPath $script:RepoRoot @('gui', 'DriftBuster.Backend', 'Resources', 'secret_rules.json')))
+        (Get-DBEmbeddedSecretRuleText).Replace("`r`n", "`n").TrimEnd() | Should -BeExactly $packaged.Replace("`r`n", "`n").TrimEnd()
+    }
+
+    It 'redacts the secret samples and records each finding' {
+        $tmp = Get-TestDirectory
+        $fixture = Join-TestPath $script:RepoRoot @('fixtures', 'secret_samples', 'auth_secrets.txt')
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = $fixture; alias = 'secrets' })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        $result.Findings | Should -Be 3
+        $sanitised = [System.IO.File]::ReadAllText((Join-TestPath $result.StagingDirectory @('data', 'secrets', 'auth_secrets.txt')))
+        $sanitised | Should -Match ([regex]::Escape('[SECRET]'))
+        $sanitised | Should -Not -Match 'SuperSecret1234'
+        $sanitised | Should -Not -Match 'ABCDEF1234567890ABCD'
+        $sanitised | Should -Not -Match 'AKIA1234567890ABCDEF'
+        $sanitised | Should -Match 'Sample credentials for integration tests only'
+
+        $findings = (Read-JsonFile $result.ManifestPath).secrets.findings
+        @($findings | ForEach-Object { $_.rule }) | Should -Be @('PasswordAssignment', 'GenericApiToken', 'AwsAccessKeyId')
+        @($findings | ForEach-Object { $_.line }) | Should -Be @(2, 3, 4)
+        $findings[0].path | Should -BeExactly 'secrets/auth_secrets.txt'
+        $findings[0].snippet | Should -BeExactly '[SECRET]'
+        @($findings | Where-Object { $_.snippet.Contains('SuperSecret1234') }).Count | Should -Be 0
+        Get-Content -LiteralPath $result.LogPath | Where-Object { $_ -like '*scrubbed 3 potential secret line(s) from secrets/auth_secrets.txt' } | Should -Not -BeNullOrEmpty
+    }
+
+    It 'honours ignore_rules and ignore_patterns' {
+        $tmp = Get-TestDirectory
+        # The token line is assembled so secret scanners over this repository do not flag the sample.
+        $token = 'AUTH_TOKEN=' + ('ABCDEF' + '1234567890ABCD') + ' # sample'
+        Write-TestText -Path (Join-Path $tmp 'app.env') -Content "password=SuperSecret1234`n$token`naws=AKIA1234567890ABCDEF`n"
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'app.env'; alias = 'env' }) -SecretScanner ([ordered]@{
+                ignore_rules = @('PasswordAssignment'); ignore_patterns = @('# sample$', '# sample$', '(unclosed') })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        $lines = [System.IO.File]::ReadAllLines((Join-TestPath $result.StagingDirectory @('data', 'env', 'app.env')))
+        $lines | Should -Be @('password=SuperSecret1234', $token, 'aws=[SECRET]')
+        $secrets = (Read-JsonFile $result.ManifestPath).secrets
+        @($secrets.ignored_rules) | Should -Be @('PasswordAssignment')
+        @($secrets.ignored_patterns) | Should -Be @('# sample$', '(unclosed')
+    }
+
+    It 'uses the config ruleset in place of the packaged one' {
+        $tmp = Get-TestDirectory
+        Write-TestText -Path (Join-Path $tmp 'app.ini') -Content "password=SuperSecret1234`nlicense=CORP-1234`n"
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'app.ini'; alias = 'ini' }) -SecretScanner ([ordered]@{
+                ruleset = [ordered]@{ version = 'custom-1'; rules = @([ordered]@{ name = 'License'; pattern = 'corp-\d+'; flags = 'i' }) } })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        [System.IO.File]::ReadAllLines((Join-TestPath $result.StagingDirectory @('data', 'ini', 'app.ini'))) | Should -Be @('password=SuperSecret1234', 'license=[SECRET]')
+        $secrets = (Read-JsonFile $result.ManifestPath).secrets
+        $secrets.ruleset_version | Should -BeExactly 'custom-1'
+        $secrets.findings[0].rule | Should -BeExactly 'License'
+    }
+
+    It 'copies binary files verbatim' {
+        $tmp = Get-TestDirectory
+        $bytes = [byte[]](@(0, 1, 2, 0) + [System.Text.Encoding]::ASCII.GetBytes('password=SuperSecret1234'))
+        [System.IO.File]::WriteAllBytes((Join-Path $tmp 'blob.bin'), $bytes)
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'blob.bin'; alias = 'bin' })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        $result.Findings | Should -Be 0
+        [System.IO.File]::ReadAllBytes((Join-TestPath $result.StagingDirectory @('data', 'bin', 'blob.bin'))) | Should -Be $bytes
     }
 }
 
 Describe 'SQL snapshots' {
-    It 'build sqlite snapshot masks and hashes' {
-        $tmp = Get-TestDirectory
-        $dbPath = Initialize-SampleDatabase (Join-Path $tmp 'sample.sqlite')
+    It 'masks and hashes columns as the backend does' {
+        $database = Initialize-SampleDatabase (Join-Path (Get-TestDirectory) 'sample.sqlite')
+        $snapshot = [DriftBusterOfflineRunner.SqlSnapshot]::Build(
+            $database, [string[]]@(), [string[]]@(), @{ accounts = [string[]]@('secret') }, @{ accounts = [string[]]@('email') }, 0, '[MASK]', 'pepper')
 
-        $payload = Get-DBSqliteSnapshot -Path $dbPath -MaskColumns ([ordered]@{ accounts = @('secret') }) -HashColumns ([ordered]@{ accounts = @('email') }) `
-            -Placeholder '[MASK]' -HashSalt 'pepper'
-
-        $payload['database'] | Should -BeExactly 'sample.sqlite'
-        $payload['dialect'] | Should -BeExactly 'sqlite'
-        $payload['tables'].Count | Should -BeGreaterThan 0 -Because 'expected exported tables'
-
-        $accounts = $payload['tables'][0]
+        $snapshot['database'] | Should -BeExactly 'sample.sqlite'
+        $snapshot['dialect'] | Should -BeExactly 'sqlite'
+        $accounts = $snapshot['tables'][0]
         $accounts['name'] | Should -BeExactly 'accounts'
         $accounts['row_count'] | Should -Be 2
-        $accounts['masked_columns'] | Should -Be @('secret')
-        $accounts['hashed_columns'] | Should -Be @('email')
-
-        $rows = $accounts['rows']
-        $rows[0]['secret'] | Should -BeExactly '[MASK]'
-        $rows[0]['email'].StartsWith('sha256:') | Should -BeTrue
-        [double]$rows[0]['balance'] | Should -Be 42.5
+        @($accounts['columns']) | Should -Be @('id', 'email', 'secret', 'balance')
+        $accounts['rows'][0]['secret'] | Should -BeExactly '[MASK]'
+        $accounts['rows'][0]['email'] | Should -BeExactly ('sha256:' + (Get-Sha256Hex 'accounts.email:pepper"alice@example.com"'))
+        $accounts['rows'][0]['balance'] | Should -Be 42.5
+        $accounts['rows'][1]['id'] | Should -Be 2
     }
 
-    It 'write sqlite snapshot with limits and sequences' {
-        $tmp = Get-TestDirectory
-        $dbPath = Initialize-SampleDatabase (Join-Path $tmp 'limited.sqlite')
-        [DriftBusterOfflineRunner.SqlSnapshots]::Execute($dbPath, [System.Collections.ArrayList]@(
+    It 'escapes hashed text the way System.Text.Json writes it' {
+        $text = 'a<b>&''+"' + [char]0xE9 + "`n"
+        $escaped = 's"a|u003Cb|u003E|u0026|u0027|u002B|u0022|u00E9|n"'.Replace('|', [string][char]92)
+        [DriftBusterOfflineRunner.SqlSnapshot]::HashValue($text, 's') | Should -BeExactly ('sha256:' + (Get-Sha256Hex $escaped))
+        [DriftBusterOfflineRunner.SqlSnapshot]::HashValue($null, '') | Should -BeExactly ('sha256:' + (Get-Sha256Hex 'null'))
+    }
+
+    It 'limits rows, picks tables and writes BLOBs as base64' {
+        $database = Initialize-SampleDatabase (Join-Path (Get-TestDirectory) 'limited.sqlite')
+        [DriftBusterOfflineRunner.SqlSnapshot]::Execute($database, [string[]]@(
                 'CREATE TABLE audit (id INTEGER PRIMARY KEY, payload BLOB)',
-                "INSERT INTO audit (payload) VALUES (X'6175646974')"
-            ))
+                "INSERT INTO audit (payload) VALUES (X'6175646974')"))
 
-        $destination = Join-Path $tmp 'out.json'
-        $snapshot = Get-DBSqliteSnapshot -Path $dbPath -Tables @('accounts') -ExcludeTables @('nonexistent') `
-            -MaskColumns (ConvertTo-EngineValue @('accounts.secret')) -HashColumns (ConvertTo-EngineValue @('accounts.email')) -Limit 1
-        [DriftBusterOfflineRunner.EngineFile]::WriteText($destination, [DriftBusterOfflineRunner.EngineJson]::Dumps($snapshot, 2, $true))
+        $limited = [DriftBusterOfflineRunner.SqlSnapshot]::Build($database, [string[]]@('accounts', 'audit'), [string[]]@('audit'), @{}, @{}, 1, '[REDACTED]', '')
+        @($limited['tables']).Count | Should -Be 1
+        $limited['tables'][0]['row_count'] | Should -Be 2
+        @($limited['tables'][0]['rows']).Count | Should -Be 1
 
-        $payload = Read-JsonFile $destination
-        $payload['tables'][0]['row_count'] | Should -Be 2
-        $payload['tables'][0]['rows'].Count | Should -Be 1
-        $payload['tables'][0]['rows'][0]['secret'] | Should -BeExactly '[REDACTED]'
-
-        $audit = Get-DBSqliteSnapshot -Path $dbPath -Tables @('audit')
+        $audit = [DriftBusterOfflineRunner.SqlSnapshot]::Build($database, [string[]]@('audit'), [string[]]@(), @{}, @{}, 0, '[REDACTED]', '')
         $audit['tables'][0]['rows'][0]['payload']['type'] | Should -BeExactly 'base64'
-
-        Assert-EngineError { Get-DBSqliteSnapshot -Path $dbPath -Limit 0 } 'ArgumentOutOfRangeException'
+        $audit['tables'][0]['rows'][0]['payload']['value'] | Should -BeExactly 'YXVkaXQ='
     }
 
-    It 'offline runner sql snapshot source' {
+    It 'collects a snapshot source into the manifest' {
         $tmp = Get-TestDirectory
-        $dbPath = Initialize-SampleDatabase (Join-Path $tmp 'runner.sqlite')
-        $config = ConvertTo-TestConfig ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{
-                    name           = 'sql-demo'
-                    description    = 'demo'
-                    sources        = @([ordered]@{
-                            sql_snapshot = [ordered]@{
-                                path = $dbPath; mask_columns = [ordered]@{ accounts = @('secret') }; hash_columns = [ordered]@{ accounts = @('email') }
-                                placeholder = '[MASK]'; hash_salt = 'pepper'
-                            }
-                            alias        = 'accounts-db'
-                        })
-                    tags           = @('demo')
-                    options        = @{}
-                    secret_scanner = @{}
+        [void](Initialize-SampleDatabase (Join-Path $tmp 'runner.sqlite'))
+        $config = Import-SourceConfig $tmp @([ordered]@{
+                alias        = 'accounts-db'
+                sql_snapshot = [ordered]@{
+                    path = 'runner.sqlite'; mask_columns = [ordered]@{ accounts = @('secret') }; hash_columns = [ordered]@{ accounts = @('email') }
+                    placeholder = '[MASK]'; hash_salt = 'pepper'
                 }
-                runner   = [ordered]@{ output_directory = (Join-Path $tmp 'runner-output'); compress = $false; cleanup_staging = $false }
-                metadata = @{}
             })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
 
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20230101T000000Z'
-
-        $result.package_path | Should -BeNullOrEmpty
-        $result.files.Count | Should -BeGreaterThan 0 -Because 'expected collected files'
-        $exported = Read-JsonFile $result.files[0].destination
-        $accountTable = $exported['tables'][0]
-        $accountTable['masked_columns'] | Should -Be @('secret')
-        $accountTable['rows'][0]['email'].StartsWith('sha256:') | Should -BeTrue
-
-        $result.manifest_path | Should -Not -BeNullOrEmpty
-        $manifest = Read-JsonFile $result.manifest_path
-        $summary = @($manifest['sources'] | Where-Object { $_['type'] -eq 'sql_snapshot' })[0]
-        $summary['alias'] | Should -BeExactly 'accounts-db'
-        $summary['tables'] | Should -Be @('accounts')
-        $manifest['metadata'].Contains('sql_exports') | Should -BeTrue -Because 'expected sql metadata entries in manifest'
-        $entry = @($manifest['metadata']['sql_exports'] | Where-Object { $_['alias'] -eq 'accounts-db' })[0]
-        $entry['masked_columns']['accounts'] | Should -Be @('secret')
-        @($entry['masked_columns'].Keys) | Should -Be @('accounts')
-        $entry['hashed_columns']['accounts'] | Should -Be @('email')
-        @($entry['hashed_columns'].Keys) | Should -Be @('accounts')
-        $entry['placeholder'] | Should -BeExactly '[MASK]'
+        $result.FilesCollected | Should -Be 1
+        $exported = Read-JsonFile (Join-TestPath $result.StagingDirectory @('data', 'accounts-db', 'sql-snapshot.json'))
+        $exported.tables[0].rows[0].secret | Should -BeExactly '[MASK]'
+        $manifest = Read-JsonFile $result.ManifestPath
+        $summary = $manifest.sources[0]
+        $summary.type | Should -BeExactly 'sql_snapshot'
+        @($summary.tables) | Should -Be @('accounts')
+        $summary.row_counts.accounts | Should -Be 2
+        $export = $manifest.sql_exports[0]
+        $export.alias | Should -BeExactly 'accounts-db'
+        @($export.masked_columns.accounts) | Should -Be @('secret')
+        @($export.hashed_columns.accounts) | Should -Be @('email')
+        $export.placeholder | Should -BeExactly '[MASK]'
+        $manifest.files[0].source | Should -BeExactly 'sql:sqlite'
     }
 
-    It 'offline runner sql snapshot optional' {
+    It 'skips a missing optional database and stops on a missing required one' {
         $tmp = Get-TestDirectory
-        $config = ConvertTo-TestConfig ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{
-                    name           = 'sql-optional'
-                    description    = 'optional'
-                    sources        = @([ordered]@{ sql_snapshot = [ordered]@{ path = (Join-Path $tmp 'missing.sqlite'); optional = $true } })
-                    tags           = @()
-                    options        = @{}
-                    secret_scanner = @{}
-                }
-                runner   = [ordered]@{ output_directory = (Join-Path $tmp 'optional-output'); compress = $false; cleanup_staging = $false }
-                metadata = @{}
-            })
+        $config = Import-SourceConfig $tmp @([ordered]@{ sql_snapshot = [ordered]@{ path = 'missing.sqlite' }; optional = $true })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+        $summary = (Read-JsonFile $result.ManifestPath).sources[0]
+        $summary.skipped | Should -BeTrue
+        $summary.reason | Should -BeExactly 'missing'
 
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20230102T000000Z'
-
-        $result.files.Count | Should -Be 0
-        $result.manifest_path | Should -Not -BeNullOrEmpty
-        $manifest = Read-JsonFile $result.manifest_path
-        $summary = @($manifest['sources'] | Where-Object { $_['type'] -eq 'sql_snapshot' })[0]
-        $summary['skipped'] | Should -BeTrue
-        $summary['reason'] | Should -BeExactly 'missing'
-    }
-
-    It 'loads SQLite from the platform library' {
-        $expected = $(if ([DriftBusterOfflineRunner.EngineOs]::Windows) { 'winsqlite3' } else { 'libsqlite3.so.0' })
-        [DriftBusterOfflineRunner.SqliteDatabase]::LibraryName | Should -BeExactly $expected
+        $required = Import-SourceConfig $tmp @([ordered]@{ sql_snapshot = [ordered]@{ path = 'missing.sqlite' } }) -Name 'required'
+        { Invoke-DBOfflineRunner -Config $required -Timestamp '20250101T000000Z' } | Should -Throw 'SQL snapshot source not found: missing.sqlite'
     }
 }
 
-Describe 'live registry hives' {
-    It 'offline runner uses explicit roots' {
-        $tmp = Get-TestDirectory
-        $config = ConvertTo-TestConfig ([ordered]@{
-                schema   = $script:ConfigSchema
-                profile  = [ordered]@{
-                    name           = 'registry-only'
-                    sources        = @([ordered]@{
-                            registry_scan = [ordered]@{ token = 'VendorA'; roots = @([ordered]@{ hive = 'HKLM'; path = 'Software\\VendorA'; view = '64' }) }
-                        })
-                    options        = @{}
-                    secret_scanner = @{}
-                }
-                runner   = [ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $false; cleanup_staging = $false }
-                metadata = @{}
-            })
-
-        Mock Test-DBWindowsPlatform { $true }
-        Mock Get-DBAppRegistryRoot { throw 'find_app_registry_roots should not run when roots are supplied' }
-        Mock Get-DBInstalledApp { throw 'find_app_registry_roots should not run when roots are supplied' }
-        Mock Search-DBRegistry {
-            return , @([pscustomobject]@{ hive = 'HKLM'; path = 'Software\\VendorA'; value_name = 'Server'; data_preview = 'api.internal'; reason = 'keyword' })
-        }
-
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
-        Should -Invoke Search-DBRegistry -Times 1 -Exactly -ParameterFilter {
-            @($Roots).Count -eq 1 -and $Roots[0].hive -ceq 'HKLM' -and $Roots[0].path -ceq 'Software\\VendorA' -and $Roots[0].view -ceq '64'
-        }
-
-        $result.manifest_path | Should -Not -BeNullOrEmpty
-        $manifest = Read-JsonFile $result.manifest_path
-        $summary = $manifest['sources'][0]
-        $summary['type'] | Should -BeExactly 'registry_scan'
-        $summary['roots'] -is [System.Collections.IList] | Should -BeTrue
-        $summary['requested_roots'] -is [System.Collections.IList] | Should -BeTrue
-        @($summary['roots'] | ForEach-Object { $_.Replace('\\', '\') }) | Should -Be @('HKLM \ Software\VendorA')
-        @($summary['requested_roots'] | ForEach-Object { $_.Replace('\\', '\') }) | Should -Be @('HKLM \ Software\VendorA (view 64)')
-
-        $result.staging_dir | Should -Not -BeNullOrEmpty
-        $alias = Get-DBDestinationName -Source $config.profile.sources[0] -FallbackIndex 1
-        $dataPath = Join-TestPath $result.staging_dir @($config.settings.data_directory_name, $alias, 'registry_scan.json')
-        $payload = Read-JsonFile $dataPath
-        $payload['requested_roots'][0]['view'] | Should -BeExactly '64'
-    }
-}
-
-Describe 'remote registry scans' {
+Describe 'registry scans' {
     BeforeAll {
-        function Get-RemoteRegistryTestConfig {
-            param([string] $Tmp, $RegistryScan)
-            return ConvertTo-TestConfig ([ordered]@{
-                    schema   = $script:ConfigSchema
-                    profile  = [ordered]@{
-                        name           = 'registry-remote'
-                        sources        = @([ordered]@{ registry_scan = $RegistryScan })
-                        options        = @{}
-                        secret_scanner = @{}
-                    }
-                    runner   = [ordered]@{ output_directory = (Join-Path $Tmp 'out'); compress = $false; cleanup_staging = $false }
-                    metadata = @{}
-                })
+        function Import-RegistryConfig {
+            param([string] $Directory, $RegistryScan)
+            return Import-SourceConfig $Directory @([ordered]@{ registry_scan = $RegistryScan })
+        }
+
+        function Read-RegistryResult {
+            param($Result, [string] $Name)
+            return Read-JsonFile (Join-TestPath $Result.StagingDirectory @('data', 'source_00', $Name))
         }
 
         # A remote read as the WinRM endpoint returns it: hashtables with kinds as RegistryValueKind names.
@@ -1149,120 +643,137 @@ Describe 'remote registry scans' {
             param([string] $Hive, [string] $Path, $View, [string[]] $Subkeys, [hashtable[]] $Values)
             return @{ hive = $Hive; path = $Path; view = $View; subkeys = $Subkeys; values = $Values }
         }
-
-        function Read-RegistryResult {
-            param($Result, $Config, [string] $Name)
-            $alias = Get-DBDestinationName -Source $Config.profile.sources[0] -FallbackIndex 0
-            return Read-JsonFile (Join-TestPath $Result.staging_dir @($Config.settings.data_directory_name, $alias, $Name))
-        }
     }
 
-    BeforeEach {
+    It 'is skipped off Windows' {
+        Mock Test-DBWindowsPlatform { $false }
+        $config = Import-RegistryConfig (Get-TestDirectory) ([ordered]@{ token = 'VendorA' })
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+        $summary = (Read-JsonFile $result.ManifestPath).sources[0]
+        $summary.skipped | Should -BeTrue
+        $summary.reason | Should -BeExactly 'not-windows'
+    }
+
+    It 'searches the explicit roots without discovering applications' {
         Mock Test-DBWindowsPlatform { $true }
-        Mock Close-DBRemoteRegistrySession { }
+        Mock Get-DBInstalledApp { throw 'installed applications should not be read when roots are given' }
+        Mock Search-DBRegistry { , @([pscustomobject]@{ hive = 'HKLM'; path = 'Software\VendorA'; value_name = 'Server'; data_preview = 'api.internal'; reason = 'keyword' }) }
+        $config = Import-RegistryConfig (Get-TestDirectory) ([ordered]@{ token = 'VendorA'; roots = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA'; view = '64' }) })
+
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        Should -Invoke Search-DBRegistry -Times 1 -Exactly -ParameterFilter { @($Roots).Count -eq 1 -and $Roots[0].view -ceq '64' }
+        $summary = (Read-JsonFile $result.ManifestPath).sources[0]
+        $summary.type | Should -BeExactly 'registry_scan'
+        $summary.hits | Should -Be 1
+        @($summary.roots) | Should -Be @('HKLM \ Software\VendorA')
+        @($summary.requested_roots) | Should -Be @('HKLM \ Software\VendorA (view 64)')
+        $payload = Read-RegistryResult $result 'registry_scan.json'
+        $payload.hits[0].data_preview | Should -BeExactly 'api.internal'
+        $payload.requested_roots[0].view | Should -BeExactly '64'
     }
 
-    It 'scans each remote host over its own session and writes one result per host' {
-        $tmp = Get-TestDirectory
-        $config = Get-RemoteRegistryTestConfig $tmp ([ordered]@{
-                token       = 'VendorA'
-                keywords    = @('api')
-                roots       = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA'; view = '64' })
-                remote      = [ordered]@{ host = 'app-01.corp.local'; alias = 'app 01' }
-                remote_batch = @('app-02.corp.local')
-            })
-        Mock Open-DBRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
-        Mock Invoke-DBRemoteRegistryDump {
-            $request = $Request
-            $request.roots.Count | Should -Be 1
-            $request.max_depth | Should -Be 12
-            $server = $(if ($Session.ComputerName -ceq 'app-01.corp.local') { 'api.one' } else { 'api.two' })
-            return @{
-                truncated = $false
-                nodes     = @(
-                    (Get-RemoteTestNode 'HKLM' 'Software\VendorA' '64' @('Child') @(@{ name = 'Server'; kind = 'String'; data = $server }, @{ name = 'Port'; kind = 'DWord'; data = 443 })),
-                    (Get-RemoteTestNode 'HKLM' 'Software\VendorA\Child' '64' @() @(@{ name = 'Hosts'; kind = 'MultiString'; data = @('api.a', 'db.b') }))
-                )
-            }
+    Context 'over WinRM' {
+        BeforeEach {
+            Mock Test-DBWindowsPlatform { $true }
+            Mock Close-DBRemoteRegistrySession { }
         }
 
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
-
-        $summary = (Read-JsonFile $result.manifest_path)['sources'][0]
-        Should -Invoke Open-DBRemoteRegistrySession -Times 2 -Exactly
-        Should -Invoke Close-DBRemoteRegistrySession -Times 2 -Exactly
-        $summary['hits'] | Should -Be 4
-        @($summary['targets']).Count | Should -Be 2
-        $summary['targets'][0]['host'] | Should -BeExactly 'app-01.corp.local'
-        $summary['targets'][0]['hits'] | Should -Be 2
-        $summary['targets'][0]['output'] | Should -BeLike '*registry_scan-app_01.json'
-        $summary['targets'][1]['output'] | Should -BeLike '*registry_scan-app-02.corp.local.json'
-
-        $first = Read-RegistryResult $result $config 'registry_scan-app_01.json'
-        $first['host'] | Should -BeExactly 'app-01.corp.local'
-        $first['alias'] | Should -BeExactly 'app 01'
-        @($first['hits'] | ForEach-Object { $_['value_name'] }) | Should -Be @('Server', 'Hosts')
-        $first['hits'][0]['data_preview'] | Should -BeExactly 'api.one'
-        $first['hits'][1]['data_preview'] | Should -BeExactly 'api.a, db.b'
-        (Read-RegistryResult $result $config 'registry_scan-app-02.corp.local.json')['hits'][0]['data_preview'] | Should -BeExactly 'api.two'
-    }
-
-    It 'discovers roots from the remote host installed applications' {
-        $tmp = Get-TestDirectory
-        $config = Get-RemoteRegistryTestConfig $tmp ([ordered]@{ token = 'VendorA'; remote = 'app-01.corp.local' })
-        $uninstall = 'Software\Microsoft\Windows\CurrentVersion\Uninstall'
-        Mock Open-DBRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
-        Mock Invoke-DBRemoteRegistryDump {
-            $request = $Request
-            if ($request.roots[0].path -ceq $uninstall) {
-                $request.max_depth | Should -Be 1
+        It 'scans each remote host over its own session and writes one result per host' {
+            $config = Import-RegistryConfig (Get-TestDirectory) ([ordered]@{
+                    token        = 'VendorA'
+                    keywords     = @('api')
+                    roots        = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA'; view = '64' })
+                    remote       = [ordered]@{ host = 'app-01.corp.local'; alias = 'app 01' }
+                    remote_batch = @('app-02.corp.local')
+                })
+            Mock Open-DBRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
+            Mock Invoke-DBRemoteRegistryDump {
+                $Request.roots.Count | Should -Be 1
+                $Request.max_depth | Should -Be 12
+                $server = $(if ($Session.ComputerName -ceq 'app-01.corp.local') { 'api.one' } else { 'api.two' })
                 return @{
                     truncated = $false
                     nodes     = @(
-                        (Get-RemoteTestNode 'HKLM' $uninstall '64' @('{A}') @()),
-                        (Get-RemoteTestNode 'HKLM' "$uninstall\{A}" '64' @() @(@{ name = 'DisplayName'; kind = 'String'; data = 'VendorA Suite' }, @{ name = 'Publisher'; kind = 'String'; data = 'VendorA' }))
+                        (Get-RemoteTestNode 'HKLM' 'Software\VendorA' '64' @('Child') @(@{ name = 'Server'; kind = 'String'; data = $server }, @{ name = 'Port'; kind = 'DWord'; data = 443 })),
+                        (Get-RemoteTestNode 'HKLM' 'Software\VendorA\Child' '64' @() @(@{ name = 'Hosts'; kind = 'MultiString'; data = @('api.a', 'db.b') }))
                     )
                 }
             }
 
-            return @{
-                truncated = $true
-                nodes     = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA\Suite' '64' @() @(@{ name = 'Url'; kind = 'String'; data = 'https://vendor' })))
+            $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+            Should -Invoke Open-DBRemoteRegistrySession -Times 2 -Exactly
+            Should -Invoke Close-DBRemoteRegistrySession -Times 2 -Exactly
+            $summary = (Read-JsonFile $result.ManifestPath).sources[0]
+            $summary.hits | Should -Be 4
+            @($summary.targets).Count | Should -Be 2
+            $summary.targets[0].host | Should -BeExactly 'app-01.corp.local'
+            $summary.targets[0].hits | Should -Be 2
+            $summary.targets[0].output | Should -BeLike '*registry_scan-app_01.json'
+            $summary.targets[1].output | Should -BeLike '*registry_scan-app-02.corp.local.json'
+
+            $first = Read-RegistryResult $result 'registry_scan-app_01.json'
+            $first.host | Should -BeExactly 'app-01.corp.local'
+            $first.alias | Should -BeExactly 'app 01'
+            @($first.hits | ForEach-Object { $_.value_name }) | Should -Be @('Server', 'Hosts')
+            $first.hits[0].data_preview | Should -BeExactly 'api.one'
+            $first.hits[1].data_preview | Should -BeExactly 'api.a, db.b'
+            (Read-RegistryResult $result 'registry_scan-app-02.corp.local.json').hits[0].data_preview | Should -BeExactly 'api.two'
+        }
+
+        It 'discovers roots from the remote host installed applications' {
+            $config = Import-RegistryConfig (Get-TestDirectory) ([ordered]@{ token = 'VendorA'; remote = 'app-01.corp.local' })
+            $uninstall = 'Software\Microsoft\Windows\CurrentVersion\Uninstall'
+            Mock Open-DBRemoteRegistrySession { [pscustomobject]@{ ComputerName = $Target.host } }
+            Mock Invoke-DBRemoteRegistryDump {
+                if ($Request.roots[0].path -ceq $uninstall) {
+                    $Request.max_depth | Should -Be 1
+                    return @{
+                        truncated = $false
+                        nodes     = @(
+                            (Get-RemoteTestNode 'HKLM' $uninstall '64' @('{A}') @()),
+                            (Get-RemoteTestNode 'HKLM' "$uninstall\{A}" '64' @() @(@{ name = 'DisplayName'; kind = 'String'; data = 'VendorA Suite' }, @{ name = 'Publisher'; kind = 'String'; data = 'VendorA' }))
+                        )
+                    }
+                }
+
+                return @{
+                    truncated = $true
+                    nodes     = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA\Suite' '64' @() @(@{ name = 'Url'; kind = 'String'; data = 'https://vendor' })))
+                }
             }
+
+            $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+            Should -Invoke Invoke-DBRemoteRegistryDump -Times 2 -Exactly
+            $target = (Read-JsonFile $result.ManifestPath).sources[0].targets[0]
+            $target.hits | Should -Be 1
+            $target.truncated | Should -BeTrue
+            @($target.roots) | Should -Contain 'HKLM \ Software\VendorA\Suite'
         }
 
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
+        It 'records a host that fails and still scans the rest' {
+            $config = Import-RegistryConfig (Get-TestDirectory) ([ordered]@{
+                    token        = 'VendorA'
+                    roots        = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA' })
+                    remote_batch = @('down.corp.local', 'up.corp.local')
+                })
+            Mock Open-DBRemoteRegistrySession {
+                if ($Target.host -ceq 'down.corp.local') { throw 'WinRM cannot complete the operation.' }
+                [pscustomobject]@{ ComputerName = $Target.host }
+            }
+            Mock Invoke-DBRemoteRegistryDump { @{ truncated = $false; nodes = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA' $null @() @(@{ name = 'A'; kind = 'String'; data = 'x' }))) } }
 
-        Should -Invoke Invoke-DBRemoteRegistryDump -Times 2 -Exactly
-        $target = (Read-JsonFile $result.manifest_path)['sources'][0]['targets'][0]
-        $target['hits'] | Should -Be 1
-        $target['truncated'] | Should -BeTrue
-        @($target['roots'] | ForEach-Object { $_.Replace('\\', '\') }) | Should -Contain 'HKLM \ Software\VendorA\Suite'
-    }
+            $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
 
-    It 'records a host that fails and still scans the rest' {
-        $tmp = Get-TestDirectory
-        $config = Get-RemoteRegistryTestConfig $tmp ([ordered]@{
-                token        = 'VendorA'
-                roots        = @([ordered]@{ hive = 'HKLM'; path = 'Software\VendorA' })
-                remote_batch = @('down.corp.local', 'up.corp.local')
-            })
-        Mock Open-DBRemoteRegistrySession {
-            if ($Target.host -ceq 'down.corp.local') { throw 'WinRM cannot complete the operation.' }
-            [pscustomobject]@{ ComputerName = $Target.host }
+            $summary = (Read-JsonFile $result.ManifestPath).sources[0]
+            $summary.targets[0].error | Should -BeExactly 'WinRM cannot complete the operation.'
+            $summary.targets[0].PSObject.Properties['output'] | Should -BeNullOrEmpty
+            $summary.targets[1].hits | Should -Be 1
+            $summary.hits | Should -Be 1
+            @($summary.requested_roots) | Should -Be @('HKLM \ Software\VendorA')
         }
-        Mock Invoke-DBRemoteRegistryDump { @{ truncated = $false; nodes = @((Get-RemoteTestNode 'HKLM' 'Software\VendorA' $null @() @(@{ name = 'A'; kind = 'String'; data = 'x' }))) } }
-
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250312T010101Z'
-
-        $summary = (Read-JsonFile $result.manifest_path)['sources'][0]
-        $summary['targets'][0]['error'] | Should -BeExactly 'WinRM cannot complete the operation.'
-        $summary['targets'][0].Contains('output') | Should -BeFalse
-        $summary['targets'][1]['hits'] | Should -Be 1
-        $summary['hits'] | Should -Be 1
-        $summary['targets'][1]['roots'] -is [System.Collections.IList] | Should -BeTrue
-        $summary['requested_roots'] -is [System.Collections.IList] | Should -BeTrue
-        @($result.manifest_path) | Should -Not -BeNullOrEmpty
     }
 
     It 'reports a key reached through two views once' {
@@ -1303,14 +814,9 @@ Describe 'remote registry scans' {
         }
     }
 
-    It 'rejects incomplete or conflicting credentials: <Case>' -ForEach @(
-        @{ Case = 'unset variable'; Target = @{ username = 'u'; password_env = 'DRIFTBUSTER_TEST_UNSET_VARIABLE'; credential_profile = $null }; Message = '*DRIFTBUSTER_TEST_UNSET_VARIABLE is not set*' }
-        @{ Case = 'no username'; Target = @{ username = $null; password_env = 'X'; credential_profile = $null }; Message = '*password_env needs a username*' }
-        @{ Case = 'username alone'; Target = @{ username = 'u'; password_env = $null; credential_profile = $null }; Message = '*username needs password_env or credential_profile*' }
-        @{ Case = 'both'; Target = @{ username = 'u'; password_env = 'X'; credential_profile = 'p.xml' }; Message = '*not both*' }
-    ) {
-        $target = [pscustomobject]($Target + @{ host = 'h' })
-        { Get-DBRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw $Message
+    It 'stops on an unset password variable' {
+        $target = [pscustomobject]@{ host = 'h'; username = 'u'; password_env = 'DRIFTBUSTER_TEST_UNSET_VARIABLE'; credential_profile = $null }
+        { Get-DBRemoteRegistryCredential -Target $target -BaseDir $TestDrive } | Should -Throw '*DRIFTBUSTER_TEST_UNSET_VARIABLE is not set*'
     }
 
     It 'reads credential_profile relative to the base directory and requires a PSCredential' {
@@ -1322,80 +828,6 @@ Describe 'remote registry scans' {
     It 'connects as the current user when no credential is given' {
         $target = [pscustomobject]@{ host = 'h'; username = $null; password_env = $null; credential_profile = $null }
         Get-DBRemoteRegistryCredential -Target $target -BaseDir $null | Should -BeNullOrEmpty
-    }
-}
-
-Describe 'OfflineRegistryScanSource' {
-    It 'remote schema parses single target' {
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                alias         = 'hq-remote'
-                registry_scan = [ordered]@{
-                    token  = 'VendorA'
-                    remote = [ordered]@{
-                        host = 'hq-gateway'; username = 'DOMAIN\collector'; password_env = 'DRIFTBUSTER_REMOTE_PASS'; transport = 'winrm'
-                        port = 5986; use_ssl = $true; credential_profile = 'hq-collector'
-                    }
-                }
-            })
-
-        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
-        $source.remote | Should -Not -BeNullOrEmpty
-        $source.remote.host | Should -BeExactly 'hq-gateway'
-        $source.remote.username | Should -BeExactly 'DOMAIN\collector'
-        $source.remote.password_env | Should -BeExactly 'DRIFTBUSTER_REMOTE_PASS'
-        $source.remote.transport | Should -BeExactly 'winrm'
-        $source.remote.port | Should -Be 5986
-        $source.remote.use_ssl | Should -BeExactly $true
-        $source.remote.credential_profile | Should -BeExactly 'hq-collector'
-    }
-
-    It 'remote schema supports batch targets' {
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                registry_scan = [ordered]@{
-                    token        = 'VendorA'
-                    remote       = 'branch-gateway'
-                    remote_batch = @(
-                        [ordered]@{ host = 'branch-01'; username = 'svc-collector' },
-                        'branch-02',
-                        [ordered]@{ host = 'branch-03'; use_ssl = $false; transport = 'winrm'; port = 5985 }
-                    )
-                }
-            })
-
-        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
-        $source.remote | Should -Not -BeNullOrEmpty
-        $source.remote.host | Should -BeExactly 'branch-gateway'
-        $source.remote_batch.Count | Should -Be 3
-        @($source.remote_batch | ForEach-Object { $_.host }) | Should -Be @('branch-01', 'branch-02', 'branch-03')
-        $source.remote_batch[0].username | Should -BeExactly 'svc-collector'
-        $source.remote_batch[2].use_ssl | Should -BeExactly $false
-        $source.remote_batch[2].port | Should -Be 5985
-    }
-
-    It 'remote schema rejects inline passwords' {
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                registry_scan = [ordered]@{ token = 'VendorA'; remote = [ordered]@{ host = 'forbidden'; password = 'super-secret' } }
-            })
-        Assert-EngineError { ConvertFrom-DBOfflineRegistryScanSource $payload } 'InvalidDataException'
-    }
-
-    It 'remote batch allows mapping payload' {
-        $payload = ConvertTo-EngineValue ([ordered]@{
-                registry_scan = [ordered]@{ token = 'VendorA'; remote_batch = [ordered]@{ host = 'branch-unique'; credential_profile = 'branch-profile' } }
-            })
-
-        $source = ConvertFrom-DBOfflineRegistryScanSource $payload
-        $source.remote | Should -BeNullOrEmpty
-        $source.remote_batch.Count | Should -Be 1
-        $target = $source.remote_batch[0]
-        $target.host | Should -BeExactly 'branch-unique'
-        $target.transport | Should -BeExactly 'winrm'
-        $target.port | Should -BeNullOrEmpty
-        $target.use_ssl | Should -BeNullOrEmpty
-        $target.username | Should -BeNullOrEmpty
-        $target.password_env | Should -BeNullOrEmpty
-        $target.credential_profile | Should -BeExactly 'branch-profile'
-        $target.alias | Should -BeNullOrEmpty
     }
 }
 
@@ -1426,37 +858,29 @@ Describe 'Windows registry scan' -Tag 'Windows' {
             $root.Dispose()
         }
 
-        $tmp = Get-TestDirectory
-        $config = ConvertTo-TestConfig ([ordered]@{
-                profile = [ordered]@{
-                    name    = 'registry-live'
-                    sources = @([ordered]@{
-                            registry_scan = [ordered]@{ token = 'DriftBusterOfflineRunnerTest'; keywords = @('server'); roots = @("HKCU\$($script:RegistryTestKey)") }
-                        })
-                }
-                runner  = [ordered]@{ output_directory = (Join-Path $tmp 'out'); compress = $false; cleanup_staging = $false }
+        $config = Import-SourceConfig (Get-TestDirectory) @([ordered]@{
+                registry_scan = [ordered]@{ token = 'DriftBusterOfflineRunnerTest'; keywords = @('server'); roots = @("HKCU\$($script:RegistryTestKey)") }
             })
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250101T000000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
 
-        $scan = Read-JsonFile $result.files[0].destination
-        @($scan['hits'] | ForEach-Object { $_['value_name'] }) | Should -Be @('Server', 'Blob', 'BackupServer')
-        @($scan['hits'] | ForEach-Object { $_['data_preview'] }) | Should -Be @('api.internal', 'server-blob', 'backup.internal')
-        $scan['hits'][2]['path'] | Should -BeExactly "$($script:RegistryTestKey)\Nested"
-        $scan['requested_roots'][0]['view'] | Should -BeNullOrEmpty
+        $scan = Read-JsonFile (Join-TestPath $result.StagingDirectory @('data', 'source_00', 'registry_scan.json'))
+        @($scan.hits | ForEach-Object { $_.value_name }) | Should -Be @('Server', 'Blob', 'BackupServer')
+        @($scan.hits | ForEach-Object { $_.data_preview }) | Should -Be @('api.internal', 'server-blob', 'backup.internal')
+        $scan.hits[2].path | Should -BeExactly "$($script:RegistryTestKey)\Nested"
+        $scan.requested_roots[0].view | Should -BeNullOrEmpty
 
         $values = Get-DBRegistryValue -Hive 'HKCU' -Path "$($script:RegistryTestKey)\Nested" -View $null
         ($values | Where-Object { $_.Name -eq 'Negative' }).Data | Should -Be 4294967295
         $rootValues = Get-DBRegistryValue -Hive 'HKCU' -Path $script:RegistryTestKey -View $null
-        $flags = ($rootValues | Where-Object { $_.Name -eq 'Flags' }).Data
-        Get-DBRegistryValueText $flags | Should -BeExactly 'alpha, beta'
+        Get-DBRegistryValueText ($rootValues | Where-Object { $_.Name -eq 'Flags' }).Data | Should -BeExactly 'alpha, beta'
 
-        $patterned = (Search-DBRegistry -Roots @([pscustomobject]@{ hive = 'HKCU'; path = $script:RegistryTestKey; view = $null }) -Spec ([pscustomobject]@{
-                    keywords = @(); patterns = @([regex]::new('^\d+$')); max_depth = 0; max_hits = 200; time_budget_s = 10.0
-                }))
+        $patterned = Search-DBRegistry -Roots @([pscustomobject]@{ hive = 'HKCU'; path = $script:RegistryTestKey; view = $null }) -Spec ([pscustomobject]@{
+                keywords = @(); patterns = @([regex]::new('^\d+$')); max_depth = 0; max_hits = 200; time_budget_s = 10.0
+            })
         @($patterned | ForEach-Object { $_.value_name }) | Should -Be @('Port')
     }
 
-    It 'reads value types RegistryKey.GetValue leaves null as winreg reads them' -Skip:(-not $script:OnWindows) {
+    It 'reads value types RegistryKey.GetValue leaves null' -Skip:(-not $script:OnWindows) {
         if (-not ('DriftBusterOfflineRunnerTests.RawRegistry' -as [type])) {
             Add-Type -TypeDefinition @"
 using System;
@@ -1508,8 +932,78 @@ namespace DriftBusterOfflineRunnerTests
     }
 }
 
-Describe 'DPAPI keysets' -Tag 'Windows' {
-    It 'decrypts dpapi key entries for the current user and the machine' -Skip:(-not $script:OnWindows) {
+Describe 'package encryption' {
+    It 'encrypts the package with a base64 and hex keyset and removes the plaintext' {
+        $tmp = Get-TestDirectory
+        Write-TestText -Path (Join-Path $tmp 'app.config') -Content "keep`n"
+        $aesKey = Get-RepeatedByte 'A' 32
+        $hmacKey = Get-RepeatedByte 'B' 48
+        [void](Write-TestKeyset -Path (Join-TestPath $tmp @('keys', 'keyset.json')) -AesKey $aesKey -HmacKey $hmacKey)
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'app.config'; alias = 'app' }) -Runner ([ordered]@{
+                output_directory = 'out'; encryption = [ordered]@{ keyset_path = 'keys/keyset.json' } })
+
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        $result.PackagePath | Should -BeExactly (Join-TestPath $tmp @('out', 'test-run-20250101T000000Z.zip.enc'))
+        $result.EncryptedPackagePath | Should -BeExactly $result.PackagePath
+        $result.UnencryptedPackagePath | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-TestPath $tmp @('out', 'test-run-20250101T000000Z.zip')) | Should -BeFalse
+        $payload = Read-JsonFile $result.PackagePath
+        $payload.package.original_name | Should -BeExactly 'test-run-20250101T000000Z.zip'
+        $names = Read-EncryptedPackage -Path $result.PackagePath -AesKey $aesKey -HmacKey $hmacKey
+        $names | Should -Contain 'data/app/app.config'
+        $names | Should -Contain 'manifest.json'
+    }
+
+    It 'keeps the plaintext package when asked and records the encryption in the manifest' {
+        $tmp = Get-TestDirectory
+        Write-TestText -Path (Join-Path $tmp 'app.config') -Content "keep`n"
+        [void](Write-TestKeyset -Path (Join-Path $tmp 'keyset.json') -AesKey (Get-RepeatedByte 'C' 32) -HmacKey (Get-RepeatedByte 'D' 32))
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'app.config' }) -Runner ([ordered]@{
+                output_directory = 'out'; cleanup_staging = $false
+                encryption = [ordered]@{ keyset_path = 'keyset.json'; output_extension = '.sealed'; remove_plaintext = $false } })
+
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
+
+        $result.PackagePath | Should -BeLike '*.zip.sealed'
+        Test-Path -LiteralPath $result.UnencryptedPackagePath | Should -BeTrue
+        $details = (Read-JsonFile $result.ManifestPath).package.encryption
+        $details.enabled | Should -BeTrue
+        $details.schema | Should -BeExactly $script:EncryptedSchema
+        $details.remove_plaintext | Should -BeFalse
+        $details.removed_plaintext | Should -BeFalse
+        $details.output_name | Should -BeExactly 'test-run-20250101T000000Z.zip.sealed'
+        $details.sha256 | Should -BeExactly (Get-DBFileHash $result.PackagePath)
+        Get-Content -LiteralPath $result.LogPath | Where-Object { $_ -like '*encrypted package -> test-run-20250101T000000Z.zip.sealed' } | Should -Not -BeNullOrEmpty
+    }
+
+    It 'refuses a keyset with <Case>' -ForEach @(
+        @{ Case = 'a short AES key'; Json = '{"aes_key": {"data": "AAAAAAAAAAAAAAAAAAAAAA=="}, "hmac_key": {"encoding": "hex", "data": "' + ('00' * 32) + '"}}'; JsonPath = '$.aes_key'; Message = 'AES-256 needs a 32-byte key' }
+        @{ Case = 'a short HMAC key'; Json = '{"aes_key": {"encoding": "hex", "data": "' + ('00' * 32) + '"}, "hmac_key": {"encoding": "hex", "data": "0000"}}'; JsonPath = '$.hmac_key'; Message = 'the HMAC key needs at least 32 bytes' }
+        @{ Case = 'an unknown key'; Json = '{"aes_key": {"data": "x", "min_length": 32}, "hmac_key": {"data": "x"}}'; JsonPath = '$.aes_key.min_length'; Message = 'unknown key' }
+        @{ Case = 'a missing HMAC key'; Json = '{"aes_key": {"data": "x"}}'; JsonPath = '$.hmac_key'; Message = 'required' }
+        @{ Case = 'another encoding'; Json = '{"aes_key": {"encoding": "raw", "data": "x"}, "hmac_key": {"data": "x"}}'; JsonPath = '$.aes_key.encoding'; Message = 'expected base64, hex or dpapi' }
+        @{ Case = 'odd hex'; Json = '{"aes_key": {"encoding": "hex", "data": "abc"}, "hmac_key": {"data": "x"}}'; JsonPath = '$.aes_key.data'; Message = 'expected an even number of hexadecimal digits' }
+        @{ Case = 'another schema'; Json = '{"schema": "v2", "aes_key": {"data": "x"}, "hmac_key": {"data": "x"}}'; JsonPath = '$.schema'; Message = 'expected https://driftbuster.dev/offline-runner/encryption/keyset/v1' }
+    ) {
+        $path = Join-Path (Get-TestDirectory) 'keyset.json'
+        Write-TestText -Path $path -Content $Json
+        Get-ThrownMessage { Import-DBKeyset $path } | Should -BeExactly "${path}: ${JsonPath}: $Message"
+    }
+
+    It 'names the base64 key that does not decode' {
+        $path = Join-Path (Get-TestDirectory) 'keyset.json'
+        Write-TestText -Path $path -Content '{"aes_key": {"data": "not base64!"}, "hmac_key": {"data": "x"}}'
+        Get-ThrownMessage { Import-DBKeyset $path } | Should -BeLike "${path}: `$.aes_key.data: *"
+    }
+
+    It 'refuses DPAPI keys off Windows' -Skip:$script:OnWindows {
+        $path = Join-Path (Get-TestDirectory) 'keyset.json'
+        Write-TestText -Path $path -Content '{"aes_key": {"encoding": "dpapi", "data": "AAAA"}, "hmac_key": {"data": "x"}}'
+        { Import-DBKeyset $path } | Should -Throw 'DPAPI keys can only be read on Windows.'
+    }
+
+    It 'decrypts DPAPI key entries for the current user and the machine' -Tag 'Windows' -Skip:(-not $script:OnWindows) {
         Add-Type -AssemblyName System.Security
         $tmp = Get-TestDirectory
         Write-TestText -Path (Join-Path $tmp 'secrets.txt') -Content 'token-789'
@@ -1517,29 +1011,18 @@ Describe 'DPAPI keysets' -Tag 'Windows' {
         $hmacKey = Get-RepeatedByte 'F' 40
         $aesBlob = [System.Security.Cryptography.ProtectedData]::Protect($aesKey, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
         $hmacBlob = [System.Security.Cryptography.ProtectedData]::Protect($hmacKey, $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine)
-        $keysetPath = Join-Path $tmp 'keyset.json'
-        Write-TestText -Path $keysetPath -Content ([DriftBusterOfflineRunner.EngineJson]::Dumps([ordered]@{
+        [void](Write-TestJson -Path (Join-Path $tmp 'keyset.json') -Payload ([ordered]@{
                     schema   = $script:KeysetSchema
                     aes_key  = [ordered]@{ encoding = 'dpapi'; data = [System.Convert]::ToBase64String($aesBlob) }
-                    hmac_key = [ordered]@{ encoding = 'dpapi'; scope = 'machine'; data = [System.Convert]::ToBase64String($hmacBlob); min_length = 40 }
-                }, 2, $false))
+                    hmac_key = [ordered]@{ encoding = 'dpapi'; scope = 'local_machine'; data = [System.Convert]::ToBase64String($hmacBlob) }
+                }))
+        $config = Import-SourceConfig $tmp @([ordered]@{ path = 'secrets.txt'; alias = 'secrets' }) -Runner ([ordered]@{
+                output_directory = 'out'; encryption = [ordered]@{ keyset_path = 'keyset.json' } })
 
-        $config = ConvertTo-TestConfig ([ordered]@{
-                profile = [ordered]@{ name = 'dpapi'; sources = @((Join-Path $tmp 'secrets.txt')) }
-                runner  = [ordered]@{
-                    output_directory = (Join-Path $tmp 'out'); cleanup_staging = $false
-                    encryption = [ordered]@{ enabled = $true; keyset_path = $keysetPath }
-                }
-            })
-        $result = Invoke-DBOfflineRunner -Config $config -BaseDir $tmp -Timestamp '20250101T000000Z'
+        $result = Invoke-DBOfflineRunner -Config $config -Timestamp '20250101T000000Z'
 
-        $payload = Read-JsonFile $result.package_path
-        $iv = [System.Convert]::FromBase64String($payload['iv'])
-        $ciphertext = [System.Convert]::FromBase64String($payload['ciphertext'])
-        [System.Convert]::ToBase64String([System.Convert]::FromBase64String($payload['mac'])) |
-            Should -BeExactly ([System.Convert]::ToBase64String((Get-TestHmac -Key $hmacKey -Iv $iv -Ciphertext $ciphertext)))
-        $names = Get-ZipEntryName -Bytes (Unprotect-TestCiphertext -AesKey $aesKey -Iv $iv -Ciphertext $ciphertext)
-        $names | Should -Contain 'data/secrets-txt/secrets.txt'
+        $names = Read-EncryptedPackage -Path $result.PackagePath -AesKey $aesKey -HmacKey $hmacKey
+        $names | Should -Contain 'data/secrets/secrets.txt'
     }
 }
 
@@ -1547,19 +1030,27 @@ Describe 'driftbuster-offline-runner.ps1' {
     It 'runs a config file and reports the package' {
         $tmp = Get-TestDirectory
         Write-TestText -Path (Join-TestPath $tmp @('bundle', 'app.config')) -Content "password = SUPERSECRET123456`nkeep`n"
-        $configPath = Write-TestConfig -Directory (Join-Path $tmp 'bundle') -Payload ([ordered]@{
-                profile = [ordered]@{ name = 'script entry'; sources = @('app.config') }
+        $configPath = Write-TestJson -Path (Join-TestPath $tmp @('bundle', 'config.json')) -Payload ([ordered]@{
+                profile = [ordered]@{ name = 'script entry'; sources = @([ordered]@{ path = 'app.config'; alias = 'app' }) }
                 runner  = [ordered]@{ package_name = 'collected' }
             })
 
         $output = & $script:RunnerScript -ConfigPath $configPath -OutputDirectory (Join-Path $tmp 'packages')
 
-        $output.PackagePath | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Join((Join-Path $tmp 'packages'), 'collected.zip'))
+        $output.PackagePath | Should -BeExactly (Join-TestPath $tmp @('packages', 'collected.zip'))
         $output.FilesCollected | Should -Be 1
+        $output.Findings | Should -Be 1
         $output.StagingDirectory | Should -BeNullOrEmpty
-        $manifest = Read-ManifestFromPackage $output.PackagePath
-        $manifest['config']['path'] | Should -BeExactly ([DriftBusterOfflineRunner.EnginePath]::Normalise($configPath))
-        $manifest['secrets']['findings'].Count | Should -Be 1
-        Read-ZipText -ZipPath $output.PackagePath -EntryName 'data/app-config/app.config' | Should -Match '\[SECRET\]'
+        $manifest = ConvertFrom-Json (Read-ZipText $output.PackagePath 'manifest.json')
+        $manifest.config.path | Should -BeExactly $configPath
+        Read-ZipText $output.PackagePath 'data/app/app.config' | Should -Match '\[SECRET\]'
+        Read-ZipText $output.PackagePath 'config.json' | Should -Not -BeNullOrEmpty
+    }
+
+    It 'stops with the strict reader error' {
+        $tmp = Get-TestDirectory
+        $configPath = Join-Path $tmp 'config.json'
+        Write-TestText -Path $configPath -Content '{"profile": {"name": "p", "sources": [{"path": "a", "exlude": []}]}}'
+        Get-ThrownMessage { & $script:RunnerScript -ConfigPath $configPath } | Should -BeExactly "${configPath}: `$.profile.sources[0].exlude: unknown key"
     }
 }

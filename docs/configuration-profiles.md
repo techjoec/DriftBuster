@@ -187,8 +187,9 @@ and `SkipUntil` operations over `ScheduleSpec` entries.
   instead of the local machine; see `docs/registry.md#remote-targets` for
   credentials, outputs and limits.
 - Supported remote keys: `host` (required), `username`, `password_env`,
-  `credential_profile`, `transport`, `port`, `use_ssl`, and `alias`. Raw
-  `password` values are rejected – reference environment variables instead.
+  `credential_profile`, `transport`, `port`, `use_ssl`, and `alias`. The runner
+  reads its config strictly, so a raw `password` key stops the run as an
+  unknown key – reference environment variables instead.
 - Example profile snippet covering one headquarters host plus a branch batch:
 
   ```json
@@ -203,7 +204,7 @@ and `SkipUntil` operations over `ScheduleSpec` entries.
             "keywords": ["server"],
             "remote": {
               "host": "hq-gateway.internal",
-              "username": "DOMAIN\\\\collector",
+              "username": "DOMAIN\\collector",
               "password_env": "DRIFTBUSTER_REMOTE_PASS"
             },
             "remote_batch": [

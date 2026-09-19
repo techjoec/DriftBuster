@@ -29,7 +29,13 @@ The loader expects a UTF-8 JSON document matching
 * `hmac_key`: ≥32 bytes encoded using the same encodings.
 * `encoding: "dpapi"` accepts a base64-encoded DPAPI blob. The runner unwraps
   the blob with `CryptUnprotectData` (default scope: `current_user`, override
-  with `"scope": "local_machine"`).
+  with `"scope": "local_machine"`). DPAPI keys can only be read on Windows.
+* `encoding` defaults to `base64`; `schema` may be left out.
+
+The keyset is read strictly, like the config: an unknown key, a value of the
+wrong type, a key of the wrong length or data that does not decode stops the
+run with an error naming the keyset file and the JSON path, for example
+`keys.json: $.aes_key: AES-256 needs a 32-byte key`.
 
 Fresh anonymised samples live in `artifacts/encryption/README.md`. Copy one per
 environment, rotate keys after validation, and replace the placeholder values
@@ -84,14 +90,17 @@ Enable encryption in the runner section of the offline config:
 Important behaviours to call out:
 
 * Compression **must** remain enabled. The runner stops with
-  `Encryption requires compression to be enabled.` when `compress` is `false`
-  because encryption wraps the generated ZIP.
+  `<config>: $.runner.encryption: encryption needs compress` when `compress` is
+  `false` because encryption wraps the generated ZIP.
+* `enabled` defaults to `true`, `mode` to `dpapi-aes` (the only mode),
+  `output_extension` to `.enc` and `remove_plaintext` to `true`. `keyset_path`
+  is required and resolves against the config file's directory.
 * Encrypted output is written next to the plaintext archive with the configured
   `output_extension`. When `remove_plaintext` is true the original ZIP is
   deleted after encryption.
-* The manifest includes an `encryption` section with the algorithm, SHA-256 of
-  the encrypted payload, the generated filename, and whether the plaintext was
-  removed.
+* The manifest's `package.encryption` section records the mode, algorithm,
+  schema, keyset path and `remove_plaintext`. The staging copy also gets the
+  encrypted file's `output_name`, its `sha256` and `removed_plaintext`.
 
 ### Validating output
 
@@ -111,10 +120,10 @@ for end-to-end expectations.
 
 ### Troubleshooting
 
-- If the runner reports `Runner 'encryption' must be a mapping if provided.`,
-  inspect the `encryption` block in your offline config. The loader requires a
-  mapping; JSON strings or arrays will fail before any staging work begins.
-- `Encryption requires compression to be enabled.` indicates that
+- If the runner reports `<config>: $.runner.encryption: expected an object`,
+  inspect the `encryption` block in your offline config. Config errors stop the
+  run before any staging work begins.
+- `$.runner.encryption: encryption needs compress` indicates that
   `runner.compress` is `false`. Flip it back to `true` so the ZIP exists before
   encryption runs.
 - When encryption removes the plaintext ZIP, the staging manifest records

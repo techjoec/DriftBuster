@@ -20,5 +20,21 @@ offline collection scenarios.
 - Secret rule `pattern` values and `ignore_patterns` are .NET regular
   expressions (`System.Text.RegularExpressions` syntax), compiled
   culture-invariant. A rule is case-sensitive unless its `flags` contain `i` or
-  the pattern itself sets `(?i)`. A pattern that does not parse is skipped
-  rather than failing the run.
+  the pattern itself sets `(?i)`. A rule `pattern` that does not parse stops
+  the run with a config error; an `ignore_patterns` entry that does not parse is
+  skipped.
+
+## Strict reading
+
+The runner reads its config (and the encryption keyset) strictly: every key
+must be one the runner knows, spelt in the same case, with a value of the right
+type. Anything else stops the run before collection starts, with an error that
+names the file and the JSON path:
+
+```text
+C:\collect\app.config.json: $.profile.sources[0].exlude: unknown key
+```
+
+Each source is an object: `{"path", "alias", "optional", "exclude"}`, or one
+with a `registry_scan` or `sql_snapshot` block. A source without an `alias` is
+collected into `data/source_NN` (its position, from `00`).
