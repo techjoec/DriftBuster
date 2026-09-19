@@ -124,7 +124,7 @@ gitleaks dir . -v
 - `Settings/` - Per-format settings extraction (`SettingsExtractor`) and the setting-by-setting comparison across servers or picked files (`SettingsComparisonBuilder`, `SettingsComparisonReport`); carried in multi-server responses and diff results
 - `Curation/` - The user's choices about settings (groups, rules, ignore/mask/unmask, review list) in `curation.json`, applied to a comparison by `CurationApplier` (then `Settings/SettingsTally` recounts)
 - `History/` - `HistoryStore`: every scan's settings in SQLite `history.db`, file copies shared between runs, masked values as fingerprints only
-- `MultiServer/` - Multi-host runner, config identity, diff cache
+- `MultiServer/` - Multi-host runner, config identity, diff cache; a plan's registry keys are read (`Registry/LocalRegistryTreeReader`, or `RemoteRegistryTreeReader` over WinRM), rendered as `.reg` text (`RegistryExportWriter`) and added as `registry/<hive>/<path>.reg` records
 - `Profiles/Run/`, `Profiles/Detection/` - Run profiles and offline collector configs; detection profile store with summary and diff
 - `Scheduling/`, `Registry/`, `Sql/`, `Reporting/`, `Remote/` - Schedules, registry live scan, SQLite snapshot export, HTML/JSON lines reports, capture runner
 - `Infrastructure/` - Repository root lookup, path and text helpers, file I/O

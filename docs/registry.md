@@ -16,6 +16,25 @@ Notes
 - Traversal enforces limits: max depth, max hits, and a time budget.
 - The implementation lives in `gui/DriftBuster.Backend/Registry/` (`RegistryScan`, `SearchSpec`, `IRegistryBackend`).
 
+Multi-server Comparison
+-----------------------
+- A multi-server plan (GUI Setup, or a `multi-server` request's `"registry"` object) can name registry keys
+  (`HKLM\SOFTWARE\Vendor`, `HKCU\…`, optionally `,view=32|64`) or application names, whose keys are found
+  from the host's installed applications. A key under another listed key is part of that key's record.
+- Each key is read breadth first (12 levels, at most 20,000 keys, 60 seconds) and rendered exactly as
+  Registry Editor exports it: `[HKEY_…]` sections, `@` first and values sorted by name, `REG_SZ` quoted,
+  `REG_DWORD` as `dword:`, every other type as `hex(n):` bytes. The text becomes an ordinary record at
+  `registry/<hive>/<path>.reg` (`registry/HKLM (32-bit)/…` for a view), so Compare, Files, File details,
+  history and curation treat it like a configuration file, and a type change (`REG_SZ` to `REG_EXPAND_SZ`)
+  is drift.
+- `computer` empty reads this machine; a name reads that computer over WinRM through Windows PowerShell 5.1,
+  with the same key dump the offline runner uses. `credential_file` is a PSCredential saved with
+  `Export-Clixml` (the GUI's **Save sign-in…** writes one); without it the current user connects.
+- The host's message reports `Read N registry key(s) on <computer>.`, a read cut short by the limits, and
+  entries that are not keys. A host with only registry keys fails when the registry cannot be read; a host with
+  file roots too keeps its file results. Reading the registry needs Windows.
+- `.reg` files found under a host's roots are detected (`registry-export`) and compared the same way.
+
 Console Tool
 ------------
 - List apps: `driftbuster registry-scan list-apps`

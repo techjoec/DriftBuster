@@ -21,5 +21,14 @@ namespace DriftBuster.Gui.Services
 
         [JsonPropertyName("roots")]
         public string[] Roots { get; set; } = Array.Empty<string>();
+
+        [JsonPropertyName("registry_keys")]
+        public string[] RegistryKeys { get; set; } = Array.Empty<string>();
+
+        [JsonPropertyName("computer")]
+        public string? Computer { get; set; }
+
+        [JsonPropertyName("credential_file")]
+        public string? CredentialFile { get; set; }
     }
 }

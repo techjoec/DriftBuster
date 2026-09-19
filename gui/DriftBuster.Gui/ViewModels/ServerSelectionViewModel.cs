@@ -170,6 +170,20 @@ namespace DriftBuster.Gui.ViewModels
 
         public IRelayCommand<RootEntryViewModel> RemoveRootCommand { get; }
 
+        /// <summary>Registry keys (or application names) every host reads.</summary>
+        public ObservableCollection<string> SharedRegistryKeys { get; } = new();
+
+        [ObservableProperty]
+        private string _newSharedRegistryKey = string.Empty;
+
+        public IRelayCommand AddSharedRegistryKeyCommand => field ??= new RelayCommand(OnAddSharedRegistryKey);
+
+        public IRelayCommand<string> RemoveSharedRegistryKeyCommand => field ??= new RelayCommand<string>(key => SharedRegistryKeys.Remove(key ?? string.Empty));
+
+        public IRelayCommand<ServerSlotViewModel> AddRegistryKeyCommand => field ??= new RelayCommand<ServerSlotViewModel>(OnAddRegistryKey, slot => slot is not null);
+
+        public IRelayCommand<string> RemoveRegistryKeyCommand => field ??= new RelayCommand<string>(key => SelectedServer?.RegistryKeys.Remove(key ?? string.Empty));
+
         public IRelayCommand AddServerCommand { get; }
 
         public IAsyncRelayCommand RunAllCommand { get; }
@@ -413,6 +427,12 @@ namespace DriftBuster.Gui.ViewModels
 
         private void RestoreServerStates(ServerSelectionCache snapshot)
         {
+            SharedRegistryKeys.Clear();
+            foreach (var key in snapshot.SharedRegistryKeys.Where(key => !string.IsNullOrWhiteSpace(key)))
+            {
+                SharedRegistryKeys.Add(key.Trim());
+            }
+
             foreach (var entry in snapshot.Servers)
             {
                 var server = Servers.FirstOrDefault(slot => string.Equals(slot.HostId, entry.HostId, StringComparison.OrdinalIgnoreCase));
@@ -430,6 +450,14 @@ namespace DriftBuster.Gui.ViewModels
                 var roots = entry.Roots.Where(root => !string.IsNullOrWhiteSpace(root))
                     .Select(root => new RootEntryViewModel(root.Trim()));
                 server.ReplaceRoots(roots);
+                server.RegistryKeys.Clear();
+                foreach (var key in entry.RegistryKeys.Where(key => !string.IsNullOrWhiteSpace(key)))
+                {
+                    server.RegistryKeys.Add(key.Trim());
+                }
+
+                server.Computer = entry.Computer ?? string.Empty;
+                server.CredentialFile = entry.CredentialFile ?? string.Empty;
                 server.ResetStatus();
             }
 
@@ -491,6 +519,39 @@ namespace DriftBuster.Gui.ViewModels
             slot.RefreshValidationSummary();
         }
 
+        private void OnAddSharedRegistryKey()
+        {
+            var key = (NewSharedRegistryKey ?? string.Empty).Trim();
+            if (key.Length > 0 && !SharedRegistryKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
+            {
+                SharedRegistryKeys.Add(key);
+            }
+
+            NewSharedRegistryKey = string.Empty;
+        }
+
+        private void OnAddRegistryKey(ServerSlotViewModel? slot)
+        {
+            if (slot is null)
+            {
+                return;
+            }
+
+            var key = (slot.NewRegistryKey ?? string.Empty).Trim();
+            if (key.Length > 0 && !slot.RegistryKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
+            {
+                slot.RegistryKeys.Add(key);
+            }
+
+            slot.NewRegistryKey = string.Empty;
+        }
+
+        /// <summary>The keys a host's run reads: every host's keys, then its own.</summary>
+        internal string[] RegistryKeysFor(ServerSlotViewModel slot) =>
+            SharedRegistryKeys.Concat(slot.RegistryKeys).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        private bool HasRegistryKeys(ServerSlotViewModel slot) => SharedRegistryKeys.Count > 0 || slot.RegistryKeys.Count > 0;
+
         private void OnRemoveRoot(RootEntryViewModel? entry)
         {
             if (entry is null)
@@ -506,7 +567,7 @@ namespace DriftBuster.Gui.ViewModels
 
             DebugLog.Trace("ServerSelection", "OnRemoveRoot", new { entry.Path, slot.Label, RemainingRootCount = slot.Roots.Count });
 
-            if (slot.Roots.Count <= 1)
+            if (slot.Roots.Count <= 1 && !HasRegistryKeys(slot))
             {
                 entry.StatusMessage = "At least one root is required.";
                 entry.ValidationState = RootValidationState.Invalid;
@@ -778,6 +839,21 @@ namespace DriftBuster.Gui.ViewModels
             }
         }
 
+        private static ServerSelectionCacheEntry CacheEntry(ServerSlotViewModel server) => new ServerSelectionCacheEntry
+        {
+            HostId = server.HostId,
+            Label = server.Label,
+            Enabled = server.IsEnabled,
+            Scope = server.Scope,
+            Roots = server.Roots
+                            .Where(root => root is not null && !string.IsNullOrWhiteSpace(root.Path))
+                            .Select(root => root.Path)
+                            .ToArray(),
+            RegistryKeys = server.RegistryKeys.ToArray(),
+            Computer = string.IsNullOrWhiteSpace(server.Computer) ? null : server.Computer.Trim(),
+            CredentialFile = string.IsNullOrWhiteSpace(server.CredentialFile) ? null : server.CredentialFile.Trim(),
+        };
+
         private ServerSelectionCache BuildSessionSnapshot()
         {
             var sortDescriptor = CatalogViewModel.SortDescriptor;
@@ -787,18 +863,9 @@ namespace DriftBuster.Gui.ViewModels
                 PersistSession = true,
                 Servers = Servers
                     .Where(server => server is not null)
-                    .Select(server => new ServerSelectionCacheEntry
-                    {
-                        HostId = server.HostId,
-                        Label = server.Label,
-                        Enabled = server.IsEnabled,
-                        Scope = server.Scope,
-                        Roots = server.Roots
-                            .Where(root => root is not null && !string.IsNullOrWhiteSpace(root.Path))
-                            .Select(root => root.Path)
-                            .ToArray(),
-                    })
+                    .Select(CacheEntry)
                     .ToList(),
+                SharedRegistryKeys = SharedRegistryKeys.ToList(),
                 Activities = _activityEntries
                     .Where(entry => entry is not null)
                     .Select(entry => new ActivityCacheEntry
@@ -871,29 +938,7 @@ namespace DriftBuster.Gui.ViewModels
                     continue;
                 }
 
-                var plan = new ServerScanPlan
-                {
-                    HostId = server.HostId,
-                    Label = server.Label,
-                    Scope = server.Scope,
-                    Roots = server.Scope == ServerScanScope.CustomRoots
-                        ? server.Roots.Select(root => root.Path).ToArray()
-                        : Array.Empty<string>(),
-                    Baseline = new ServerScanBaselinePreference
-                    {
-                        IsPreferred = server.Index == 0,
-                        Priority = server.Index,
-                        Role = "auto",
-                    },
-                    Export = new ServerScanExportOptions
-                    {
-                        IncludeCatalog = true,
-                        IncludeDrilldown = true,
-                        IncludeDiffs = true,
-                        IncludeSummary = true,
-                    },
-                    CachedAt = server.LastRunAt,
-                };
+                var plan = BuildPlan(server);
 
                 plans.Add(plan);
                 server.MarkState(ServerScanStatus.Queued, "Queued");
@@ -1435,6 +1480,33 @@ namespace DriftBuster.Gui.ViewModels
             return string.IsNullOrWhiteSpace(name) ? null : name.Trim();
         }
 
+        private ServerScanPlan BuildPlan(ServerSlotViewModel server) => new ServerScanPlan
+        {
+            HostId = server.HostId,
+            Label = server.Label,
+            Scope = server.Scope,
+            Roots = server.Scope == ServerScanScope.CustomRoots
+                ? server.Roots.Select(root => root.Path).ToArray()
+                : Array.Empty<string>(),
+            Baseline = new ServerScanBaselinePreference
+            {
+                IsPreferred = server.Index == 0,
+                Priority = server.Index,
+                Role = "auto",
+            },
+            Export = new ServerScanExportOptions
+            {
+                IncludeCatalog = true,
+                IncludeDrilldown = true,
+                IncludeDiffs = true,
+                IncludeSummary = true,
+            },
+            CachedAt = server.LastRunAt,
+            Registry = RegistryKeysFor(server) is { Length: > 0 } registryKeys
+                ? new ServerScanRegistryOptions { Keys = registryKeys, Computer = server.Computer.Trim(), CredentialFile = server.CredentialFile.Trim() }
+                : null,
+        };
+
         private bool HasValidRoots(ServerSlotViewModel slot)
         {
             if (slot.Scope != ServerScanScope.CustomRoots)
@@ -1442,7 +1514,7 @@ namespace DriftBuster.Gui.ViewModels
                 return true;
             }
 
-            return slot.Roots.Count > 0 && slot.Roots.All(root => root.ValidationState == RootValidationState.Valid);
+            return (slot.Roots.Count > 0 || HasRegistryKeys(slot)) && slot.Roots.All(root => root.ValidationState == RootValidationState.Valid);
         }
 
         private RootValidationResult ValidateRoot(ServerSlotViewModel slot, RootEntryViewModel entry)

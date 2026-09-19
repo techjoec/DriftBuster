@@ -14,6 +14,9 @@ namespace DriftBuster.Gui.Services
         [JsonPropertyName("servers")]
         public IList<ServerSelectionCacheEntry> Servers { get; set; } = new List<ServerSelectionCacheEntry>();
 
+        [JsonPropertyName("shared_registry_keys")]
+        public IList<string> SharedRegistryKeys { get; set; } = new List<string>();
+
         [JsonPropertyName("activities")]
         public IList<ActivityCacheEntry> Activities { get; set; } = new List<ActivityCacheEntry>();
 

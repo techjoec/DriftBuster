@@ -83,6 +83,7 @@
         </Border>
 
         <Grid Grid.Row="1" ColumnDefinitions="340,6,*" MinHeight="220">
+          <Grid RowDefinitions="*,Auto" RowSpacing="10">
           <!-- Every host: tick to include it in a run, drag to change the order, pick one to edit it. -->
           <Border Classes="pane" Padding="0">
             <ListBox x:Name="HostList"
@@ -117,6 +118,39 @@
               </ListBox.ItemTemplate>
             </ListBox>
           </Border>
+
+          <!-- Registry keys every host reads; each host can add its own and read them from another computer. -->
+          <Border Grid.Row="1" Classes="pane">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Registry keys (all hosts)" FontWeight="SemiBold" />
+              <TextBlock Text="Compared like files. A key such as HKLM\SOFTWARE\Vendor, or an app name to find its keys." Classes="subtitle" FontSize="12" TextWrapping="Wrap" />
+              <ItemsControl ItemsSource="{Binding SharedRegistryKeys}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="0,0,0,4">
+                      <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" />
+                      <Button Grid.Column="1" Content="✕" Classes="outline"
+                              Command="{Binding ((vm:ServerSelectionViewModel)DataContext).RemoveSharedRegistryKeyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}"
+                              ToolTip.Tip="Remove this key"
+                              automation:AutomationProperties.AutomationId="ServerSelection.SharedRegistry.Remove"
+                              automation:AutomationProperties.Name="{Binding StringFormat='Remove {0}'}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                <TextBox Text="{Binding NewSharedRegistryKey, Mode=TwoWay}"
+                         PlaceholderText="HKLM\SOFTWARE\Vendor or an app name"
+                         automation:AutomationProperties.AutomationId="ServerSelection.SharedRegistry.New"
+                         automation:AutomationProperties.Name="New registry key for all hosts" />
+                <Button Grid.Column="1" Content="Add" Classes="outline"
+                        Command="{Binding AddSharedRegistryKeyCommand}"
+                        automation:AutomationProperties.AutomationId="ServerSelection.SharedRegistry.Add" />
+              </Grid>
+            </StackPanel>
+          </Border>
+          </Grid>
           <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
 
           <!-- The selected host's settings. -->
@@ -190,6 +224,52 @@
                 </Grid>
                 <TextBlock Text="{Binding RootInputError}" Classes="subtitle" Foreground="{DynamicResource Brush.Accent}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding ValidationSummary}" Classes="subtitle" TextWrapping="Wrap" />
+
+                <TextBlock Text="Registry" Classes="subtitle" FontWeight="SemiBold" />
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="8">
+                  <TextBlock Text="Computer" Classes="subtitle" VerticalAlignment="Center" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding Computer, Mode=TwoWay}"
+                           PlaceholderText="This computer. Or a name, read over WinRM"
+                           automation:AutomationProperties.AutomationId="ServerSelection.HostCard.Computer"
+                           automation:AutomationProperties.Name="Computer the registry is read from" />
+                  <TextBlock Grid.Row="1" Text="Sign-in" Classes="subtitle" VerticalAlignment="Center" IsVisible="{Binding IsRemote}" />
+                  <WrapPanel Grid.Row="1" Grid.Column="1" IsVisible="{Binding IsRemote}">
+                    <TextBlock Text="{Binding CredentialText}" VerticalAlignment="Center" Margin="0,0,10,6" TextWrapping="Wrap" ToolTip.Tip="{Binding CredentialFile}" />
+                    <Button Content="Save sign-in…" Classes="outline" Margin="0,0,6,6" Click="OnSaveCredential"
+                            automation:AutomationProperties.AutomationId="ServerSelection.HostCard.SaveCredential" />
+                    <Button Content="Use a saved file…" Classes="outline" Margin="0,0,6,6" Click="OnBrowseCredential"
+                            automation:AutomationProperties.AutomationId="ServerSelection.HostCard.BrowseCredential" />
+                    <Button Content="Use my sign-in" Classes="outline" Margin="0,0,6,6" Click="OnClearCredential" IsVisible="{Binding HasCredentialFile}"
+                            automation:AutomationProperties.AutomationId="ServerSelection.HostCard.ClearCredential" />
+                  </WrapPanel>
+                </Grid>
+                <TextBlock Text="Extra keys for this host (besides the keys every host reads)" Classes="subtitle" FontSize="12" />
+                <ItemsControl ItemsSource="{Binding RegistryKeys}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,6">
+                        <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" />
+                        <Button Grid.Column="1" Content="✕" Classes="outline"
+                                Command="{Binding ((vm:ServerSelectionViewModel)DataContext).RemoveRegistryKeyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                ToolTip.Tip="Remove this key"
+                                automation:AutomationProperties.AutomationId="ServerSelection.HostCard.RemoveRegistryKey"
+                                automation:AutomationProperties.Name="{Binding StringFormat='Remove {0}'}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBox Text="{Binding NewRegistryKey, Mode=TwoWay}"
+                           PlaceholderText="HKLM\SOFTWARE\Vendor or an app name"
+                           automation:AutomationProperties.AutomationId="ServerSelection.HostCard.NewRegistryKey"
+                           automation:AutomationProperties.Name="New registry key for this host" />
+                  <Button Grid.Column="1" Content="Add" Classes="outline"
+                          Command="{Binding ((vm:ServerSelectionViewModel)DataContext).AddRegistryKeyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          CommandParameter="{Binding}"
+                          automation:AutomationProperties.AutomationId="ServerSelection.HostCard.AddRegistryKey" />
+                </Grid>
               </StackPanel>
             </ScrollViewer>
           </Border>

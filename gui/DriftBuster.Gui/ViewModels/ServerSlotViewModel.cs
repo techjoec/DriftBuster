@@ -55,6 +55,30 @@ namespace DriftBuster.Gui.ViewModels
 
         public ObservableCollection<RootEntryViewModel> Roots { get; } = new();
 
+        /// <summary>Registry keys (or application names) this host reads besides the keys every host reads.</summary>
+        public ObservableCollection<string> RegistryKeys { get; } = new();
+
+        /// <summary>The computer the registry keys are read from over WinRM; empty reads this machine.</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsRemote))]
+        [NotifyPropertyChangedFor(nameof(SummaryText))]
+        private string _computer = string.Empty;
+
+        /// <summary>A saved PSCredential file for <see cref="Computer"/>; empty signs in as the logged-in user.</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CredentialText))]
+        [NotifyPropertyChangedFor(nameof(HasCredentialFile))]
+        private string _credentialFile = string.Empty;
+
+        [ObservableProperty]
+        private string _newRegistryKey = string.Empty;
+
+        public bool IsRemote => !string.IsNullOrWhiteSpace(Computer);
+
+        public bool HasCredentialFile => !string.IsNullOrWhiteSpace(CredentialFile);
+
+        public string CredentialText => HasCredentialFile ? $"Signs in with {CredentialFile.Trim().Split('\\', '/')[^1]}" : "Signs in as the logged-in user";
+
         [ObservableProperty]
         private bool _isEnabled;
 
@@ -121,9 +145,10 @@ namespace DriftBuster.Gui.ViewModels
 
                 var scope = Scope switch { ServerScanScope.AllDrives => "All drives", ServerScanScope.SingleDrive => "Single drive", _ => "Custom roots" };
                 var first = Roots.Select(root => root.Path).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
-                return first is null ? scope
+                var files = first is null ? scope
                     : Roots.Count > 1 ? $"{scope}: {first} (+{Roots.Count - 1} more)"
                     : $"{scope}: {first}";
+                return IsRemote ? $"{files} · registry on {Computer.Trim()}" : files;
             }
         }
 

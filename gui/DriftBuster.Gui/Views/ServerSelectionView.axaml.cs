@@ -2,9 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 
+using DriftBuster.Backend;
 using DriftBuster.Gui.Services;
 using DriftBuster.Gui.ViewModels;
 
@@ -42,6 +45,52 @@ namespace DriftBuster.Gui.Views
             if (_viewModel is not null)
             {
                 _viewModel.CopyActivityRequested += OnCopyActivityRequested;
+            }
+        }
+
+        // Saves a sign-in for the selected host's computer under the data root and points the host at it.
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        private async void OnSaveCredential(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ServerSlotViewModel slot || !slot.IsRemote)
+            {
+                return;
+            }
+
+            var name = System.Text.RegularExpressions.Regex.Replace(slot.Computer.Trim(), "[^A-Za-z0-9._-]", "_", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
+            var path = System.IO.Path.Combine(DriftbusterPaths.GetDataRoot(), "credentials", name + ".xml");
+            var saved = await DialogHost.ShowAsync<string>(this, new CredentialWindow(slot.Computer.Trim(), path)).ConfigureAwait(true);
+            if (!string.IsNullOrEmpty(saved))
+            {
+                slot.CredentialFile = saved;
+            }
+        }
+
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        private async void OnBrowseCredential(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ServerSlotViewModel slot || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage)
+            {
+                return;
+            }
+
+            var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Pick a saved sign-in (Export-Clixml PSCredential)",
+                AllowMultiple = false,
+                FileTypeFilter = [new FilePickerFileType("Credential file") { Patterns = ["*.xml"] }],
+            }).ConfigureAwait(true);
+            if (files.Count > 0 && files[0].TryGetLocalPath() is { } local)
+            {
+                slot.CredentialFile = local;
+            }
+        }
+
+        private void OnClearCredential(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is ServerSlotViewModel slot)
+            {
+                slot.CredentialFile = string.Empty;
             }
         }
 

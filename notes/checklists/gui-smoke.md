@@ -11,11 +11,14 @@ Use two or more copies of a configuration tree that differ (the `fixtures/multi-
    - Select each host in the list; the editor on the right follows. Add a root, remove it, change the scope.
    - **Add host** appends and selects a new host; untick it so it is not scanned.
    - Drag a host to a new position; the order holds after a restart when **Remember session** is on.
+   - Add a key under **Registry keys (all hosts)** (e.g. `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion`); on one host
+     set **Computer** to another machine and try **Save sign-in…**, **Use a saved file…** and **Use my sign-in**.
 
 3. **Compare**
    - **Run all**; the page lands on Compare with one chip per server and the file list.
    - **Next** / **Previous** (F8 / Shift+F8) walk the differences into the next file; right-clicking a row does not move the grid.
    - Click a server chip, search, toggle **Only show differences**, **Show: Marked**, **Show ignored**.
+   - The registry key is listed as `registry/HKLM/…/.reg` with one row per value; File details shows its `.reg` text.
 
 4. **Right-click menu** (on a setting, a value and a file)
    - Group: add (new name), view, remove. Rule: create from the item with an application name, add another setting to it.
