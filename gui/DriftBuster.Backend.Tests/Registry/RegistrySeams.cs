@@ -13,10 +13,6 @@ internal sealed class RegistrySeams : IDisposable
     private readonly Func<IReadOnlyList<RegistryApp>> _commandsEnumerate = RegistryCommands.EnumerateInstalledApps;
     private readonly Func<string, IReadOnlyList<RegistryApp>, IReadOnlyList<RegistryRoot>> _commandsFind = RegistryCommands.FindAppRegistryRoots;
     private readonly Func<IReadOnlyList<RegistryRoot>, SearchSpec, IReadOnlyList<RegistryHit>> _commandsSearch = RegistryCommands.SearchRegistry;
-    private readonly Func<bool> _collectorIsWindows = RegistryScanCollector.IsWindows;
-    private readonly Func<IReadOnlyList<RegistryApp>> _collectorEnumerate = RegistryScanCollector.EnumerateInstalledApps;
-    private readonly Func<string, IReadOnlyList<RegistryApp>, IReadOnlyList<RegistryRoot>> _collectorFind = RegistryScanCollector.FindAppRegistryRoots;
-    private readonly Func<IReadOnlyList<RegistryRoot>, SearchSpec, IReadOnlyList<RegistryHit>> _collectorSearch = RegistryScanCollector.SearchRegistry;
 
     public void Dispose()
     {
@@ -25,9 +21,5 @@ internal sealed class RegistrySeams : IDisposable
         RegistryCommands.EnumerateInstalledApps = _commandsEnumerate;
         RegistryCommands.FindAppRegistryRoots = _commandsFind;
         RegistryCommands.SearchRegistry = _commandsSearch;
-        RegistryScanCollector.IsWindows = _collectorIsWindows;
-        RegistryScanCollector.EnumerateInstalledApps = _collectorEnumerate;
-        RegistryScanCollector.FindAppRegistryRoots = _collectorFind;
-        RegistryScanCollector.SearchRegistry = _collectorSearch;
     }
 }

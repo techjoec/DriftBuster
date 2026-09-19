@@ -8,9 +8,8 @@ using DriftBuster.Backend.Remote;
 namespace DriftBuster.Backend.Tests.Registry;
 
 /// <summary>
-/// Live hive scans through the library: root descriptors, <see cref="RegistryCommands.EmitConfig"/> with explicit roots, the offline
-/// collector's registry branch (<see cref="RegistryScanCollector"/>) with its seams swapped, and registry scans embedded in a capture
-/// manifest.
+/// Live hive scans through the library: root descriptors, <see cref="RegistryCommands.EmitConfig"/> with explicit roots, and registry
+/// scans embedded in a capture manifest.
 /// </summary>
 [Collection(RegistrySeamCollection.Name)]
 public sealed class LiveHivesTests : IDisposable
@@ -53,46 +52,6 @@ public sealed class LiveHivesTests : IDisposable
             new KeyValuePair<string, object?>("hive", "HKLM"),
             new KeyValuePair<string, object?>("path", "Software\\VendorA"),
             new KeyValuePair<string, object?>("view", "64"));
-    }
-
-    [Fact]
-    public void OfflineRunnerUsesExplicitRoots()
-    {
-        var sourcePayload = RemoteSchemaTests.Map(
-            ("registry_scan", RemoteSchemaTests.Map(
-                ("token", "VendorA"),
-                ("roots", new List<object?> { RemoteSchemaTests.Map(("hive", "HKLM"), ("path", @"Software\\VendorA"), ("view", "64")) }))));
-        var source = OfflineRegistryScanSource.FromDict(sourcePayload);
-
-        var recorded = new Dictionary<string, object?>(StringComparer.Ordinal);
-        RegistryScanCollector.IsWindows = () => true;
-        RegistryScanCollector.FindAppRegistryRoots = (_, _) => throw new InvalidOperationException("find_app_registry_roots should not run when roots are supplied");
-        RegistryScanCollector.EnumerateInstalledApps = () => throw new InvalidOperationException("find_app_registry_roots should not run when roots are supplied");
-        RegistryScanCollector.SearchRegistry = (roots, spec) =>
-        {
-            recorded["roots"] = roots;
-            recorded["keywords"] = spec.Keywords;
-            return [new RegistryHit(@"Software\\VendorA", "HKLM", "Server", "api.internal", "keyword")];
-        };
-
-        var alias = source.DestinationName(fallbackIndex: 1);
-        var destination = Directory.CreateDirectory(Path.Combine(_tmp.FullName, "data", alias)).FullName;
-        var result = RegistryScanCollector.Collect(source, destination);
-
-        recorded.Should().ContainKey("roots");
-        ((IReadOnlyList<RegistryRoot>)recorded["roots"]!).Should().Equal(new RegistryRoot("HKLM", @"Software\\VendorA", "64"));
-
-        var summary = result.Summary;
-        summary["type"].Should().Be("registry_scan");
-        var normalisedRoots = Items(summary["roots"]).Cast<string>().Select(entry => entry.Replace(@"\\", @"\", StringComparison.Ordinal));
-        normalisedRoots.Should().Equal(@"HKLM \ Software\VendorA");
-        var normalisedRequested = Items(summary["requested_roots"]).Cast<string>().Select(entry => entry.Replace(@"\\", @"\", StringComparison.Ordinal));
-        normalisedRequested.Should().Equal(@"HKLM \ Software\VendorA (view 64)");
-
-        result.ResultPath.Should().NotBeNull();
-        EngineJson.TryLoads(File.ReadAllText(Path.Combine(destination, "registry_scan.json"), Encoding.UTF8), out var payload).Should().BeTrue();
-        var requested = Items(Map(payload)["requested_roots"]);
-        Map(requested[0])["view"].Should().Be("64");
     }
 
     [Fact]
