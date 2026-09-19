@@ -189,7 +189,7 @@ public class RunProfilesViewModelTests
         {
             var service = new FakeDriftbusterService
             {
-                ListSchedulesHandler = _ => Task.FromResult(new ScheduleListResult()),
+                ListSchedulesHandler = _ => Task.FromResult(new ScheduleListResult([])),
             };
 
             var captured = new List<ScheduleDefinition>();
@@ -403,20 +403,20 @@ public class RunProfilesViewModelTests
         schedule.Name = "nightly";
         schedule.Profile = "nightly";
         schedule.Every = "daily";
-        schedule.Error.Should().Be("Unsupported interval fragment near: daily");
+        schedule.Error.Should().Be("every: Unsupported interval: 'daily'.");
 
         schedule.Every = "24h";
         schedule.StartAt = "02:00";
-        schedule.Error.Should().Be("Invalid ISO 8601 timestamp: '02:00'");
+        schedule.Error.Should().Be("start_at: Invalid ISO 8601 timestamp: '02:00'.");
 
         schedule.StartAt = "2025-01-01T02:00:00Z";
         schedule.WindowStart = "25:00";
         schedule.WindowEnd = "17:00";
         schedule.WindowTimezone = "Mars/Olympus";
-        schedule.Error.Should().Be("Unknown time zone: Mars/Olympus");
+        schedule.Error.Should().Be("window: Unknown time zone: 'Mars/Olympus'.");
 
         schedule.WindowTimezone = "America/Chicago";
-        schedule.Error.Should().Be("Time must be HH:MM or HH:MM:SS");
+        schedule.Error.Should().Be("window: Time must be HH:MM or HH:MM:SS, not '25:00'.");
 
         schedule.WindowStart = "08:00";
         schedule.Error.Should().BeNull();
@@ -1046,7 +1046,7 @@ public class RunProfilesViewModelTests
             {
                 ListSchedulesHandler = _ => failing
                     ? Task.FromException<ScheduleListResult>(new InvalidOperationException("Failed to parse schedules"))
-                    : Task.FromResult(new ScheduleListResult { Schedules = new[] { new ScheduleDefinition { Name = "n", Profile = "p", Every = "1h" } } }),
+                    : Task.FromResult(new ScheduleListResult([new ScheduleDefinition { Name = "n", Profile = "p", Every = "1h" }])),
                 SaveSchedulesHandler = (_, _) =>
                 {
                     saves++;
@@ -1220,29 +1220,23 @@ public class RunProfilesViewModelTests
         }
     }
     [Fact]
-    public async Task A_schedule_card_with_a_numeric_interval_keeps_its_json_value_and_can_be_saved()
+    public async Task A_loaded_schedule_card_saves_as_loaded_and_reports_a_bad_interval()
     {
         var baseline = Path.GetTempFileName();
         try
         {
             var captured = new List<ScheduleDefinition>();
+            var loaded = new ScheduleDefinition
+            {
+                Name = "n",
+                Profile = "p",
+                Every = "90m",
+                Tags = ["ops"],
+                Metadata = new Dictionary<string, string>(StringComparer.Ordinal) { ["count"] = "5" },
+            };
             var service = new FakeDriftbusterService
             {
-                ScheduleListResponse = new ScheduleListResult
-                {
-                    Schedules = new[]
-                    {
-                        new ScheduleDefinition
-                        {
-                            Name = "n",
-                            Profile = "p",
-                            Every = "90",
-                            EveryValue = 90,
-                            Metadata = new Dictionary<string, string>(StringComparer.Ordinal) { ["count"] = "5" },
-                            MetadataValues = new Dictionary<string, object?>(StringComparer.Ordinal) { ["count"] = 5 },
-                        },
-                    },
-                },
+                ScheduleListResponse = new ScheduleListResult([loaded]),
                 SaveProfileHandler = (_, _) => Task.CompletedTask,
                 SaveSchedulesHandler = (schedules, _) =>
                 {
@@ -1259,16 +1253,12 @@ public class RunProfilesViewModelTests
             viewModel.SaveCommand.CanExecute(null).Should().BeTrue();
             await viewModel.SaveCommand.ExecuteAsync(null);
 
-            var saved = Assert.Single(captured);
-            saved.EveryValue.Should().Be(90);
-            saved.MetadataValues!["count"].Should().Be(5);
-            ScheduleStore.ValidationError(saved).Should().BeNull();
+            Assert.Single(captured).Should().BeEquivalentTo(loaded);
 
             // Saving refreshes the cards from the service.
             var reloaded = Assert.Single(viewModel.Schedules);
-            reloaded.Error.Should().BeNull();
             reloaded.Every = "120";
-            reloaded.Error.Should().Be("Unsupported interval fragment near: 120");
+            reloaded.Error.Should().Be("every: Unsupported interval: '120'.");
             viewModel.SaveCommand.CanExecute(null).Should().BeFalse();
         }
         finally

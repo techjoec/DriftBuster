@@ -1,147 +1,121 @@
-using System.Text;
+using System.Text.Json;
 
-using DriftBuster.Backend.Diff;
 using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
+using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Profiles.Run;
 
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
-/// The schedule files under the profiles root: the <c>schedules.json</c> manifest (<c>{"schedules": [...]}</c> or a bare array) and
-/// <c>scheduler-state.json</c> (per schedule <c>next_run</c> and <c>pending</c>, sorted, indented, ASCII-escaped JSON plus a new line).
-/// The GUI's lenient manifest reading and writing is the <c>ListSchedules</c> / <c>SaveSchedules</c> half.
+/// The schedule files under the profiles root: <c>schedules.json</c> (<see cref="ScheduleManifest"/>) and <c>scheduler-state.json</c>
+/// (per schedule <see cref="ScheduleStateEntry"/>). Both are read strictly (<see cref="ModelJson"/>); a file that cannot be read
+/// raises <see cref="ScheduleException"/> naming the file and the JSON path. A missing file is empty.
 /// </summary>
-public static partial class ScheduleStore
+public static class ScheduleStore
 {
-    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
-
-    /// <summary>The override as given, else <c>schedules.json</c> under the profiles root (created).</summary>
+    /// <summary>The override as given, else <c>schedules.json</c> under the profiles root.</summary>
     public static string DefaultConfigPath(string? baseDir, string? overridePath)
-        => overridePath is not null ? LexicalPath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "schedules.json");
+        => overridePath ?? Path.Join(RunProfileStore.ProfilesRoot(baseDir), "schedules.json");
 
     /// <summary>The override as given, else <c>scheduler-state.json</c> under the profiles root.</summary>
     public static string DefaultStatePath(string? baseDir, string? overridePath)
-        => overridePath is not null ? LexicalPath.Str(overridePath) : RunProfileStore.JoinName(RunProfileStore.ProfilesRoot(baseDir), "scheduler-state.json");
+        => overridePath ?? Path.Join(RunProfileStore.ProfilesRoot(baseDir), "scheduler-state.json");
 
-    /// <summary>
-    /// The mapping entries of the manifest's <c>schedules</c> (or of a bare array). A missing file, text that is not JSON and a truthy payload
-    /// that is neither an array nor a string raise <see cref="CommandExitException"/>; a falsy payload is empty.
-    /// </summary>
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> LoadSchedulePayload(string path)
+    public static ScheduleManifest LoadManifest(string path)
+        => Read(path, ModelJson.TypeInfo<ScheduleManifest>()) ?? new ScheduleManifest([]);
+
+    public static IReadOnlyDictionary<string, ScheduleStateEntry> LoadState(string path)
+        => Read(path, ModelJson.TypeInfo<IReadOnlyDictionary<string, ScheduleStateEntry>>()) ?? new Dictionary<string, ScheduleStateEntry>(StringComparer.Ordinal);
+
+    public static void SaveState(ProfileScheduler scheduler, string path)
     {
-        ArgumentNullException.ThrowIfNull(path);
-        if (!RunProfileStore.Exists(path))
-        {
-            throw new CommandExitException($"Schedule manifest not found: {path}");
-        }
-
-        var payload = ReadJson(path) ?? throw new CommandExitException($"Failed to parse schedules from {path}: invalid JSON document");
-        var entries = payload.Value is IReadOnlyDictionary<string, object?> mapping
-            ? mapping.TryGetValue("schedules", out var schedules) ? schedules : new List<object?>()
-            : payload.Value;
-        if (!EngineBuiltins.IsTruthy(entries))
-        {
-            return [];
-        }
-
-        return entries switch
-        {
-            List<object?> list => list.OfType<IReadOnlyDictionary<string, object?>>().ToList(),
-            string => [],
-            _ => throw new CommandExitException("Schedules payload must be an array of schedule entries."),
-        };
+        ArgumentNullException.ThrowIfNull(scheduler);
+        Write(path, ModelJson.Serialize(scheduler.SnapshotState()));
     }
 
-    /// <summary>
-    /// Each entry through <see cref="ScheduleSpec.FromDict"/> with a loader over <see cref="RunProfileStore.LoadProfile"/>; a
-    /// <see cref="ScheduleException"/> becomes a <see cref="CommandExitException"/>.
-    /// </summary>
-    public static IReadOnlyList<ScheduleSpec> BuildScheduleSpecs(IEnumerable<IReadOnlyDictionary<string, object?>> entries, string? baseDir)
+    /// <summary>The GUI's view of the manifest under <paramref name="baseDir"/>.</summary>
+    public static ScheduleListResult ListSchedules(string? baseDir)
+        => new(LoadManifest(DefaultConfigPath(baseDir, overridePath: null)).Schedules);
+
+    /// <summary>Validates every schedule (<see cref="Validate"/>) and writes the manifest in the given order.</summary>
+    public static void SaveSchedules(IEnumerable<ScheduleDefinition> schedules, string? baseDir)
     {
-        ArgumentNullException.ThrowIfNull(entries);
-        RunProfile Loader(string name) => RunProfileStore.LoadProfile(name, baseDir);
-        var specs = new List<ScheduleSpec>();
-        foreach (var entry in entries)
+        ArgumentNullException.ThrowIfNull(schedules);
+        var manifest = new ScheduleManifest([.. schedules]);
+        Validate(manifest.Schedules);
+        Write(DefaultConfigPath(baseDir, overridePath: null), ModelJson.Serialize(manifest));
+    }
+
+    /// <summary>The specs of every schedule, in order; <see cref="ScheduleException"/> names the first invalid one by index and field.</summary>
+    public static IReadOnlyList<ScheduleSpec> Validate(IReadOnlyList<ScheduleDefinition> schedules)
+    {
+        ArgumentNullException.ThrowIfNull(schedules);
+        var specs = new List<ScheduleSpec>(schedules.Count);
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        for (var index = 0; index < schedules.Count; index++)
         {
+            ScheduleSpec spec;
             try
             {
-                specs.Add(ScheduleSpec.FromDict(entry, Loader));
+                spec = ScheduleSpec.From(schedules[index]);
             }
             catch (ScheduleException exc)
             {
-                throw new CommandExitException(exc.Message, exc);
+                throw new ScheduleException($"schedules[{index}].{exc.Message}", exc);
             }
+
+            if (!names.Add(spec.Name))
+            {
+                throw new ScheduleException($"schedules[{index}].name: '{spec.Name}' is used by an earlier schedule.");
+            }
+
+            specs.Add(spec);
         }
 
         return specs;
     }
 
-    /// <summary>
-    /// Empty when the file is missing; each mapping entry reduced to <c>next_run</c> and <c>pending</c> (other entries skipped). Text that
-    /// is not JSON, or a payload that is not an object, raises <see cref="CommandExitException"/>.
-    /// </summary>
-    public static OrderedDictionary<string, object?> LoadScheduleState(string path)
+    /// <summary>The refusal <see cref="ScheduleSpec.From"/> gives one schedule, or null when it is valid.</summary>
+    public static string? ValidationError(ScheduleDefinition schedule)
     {
-        ArgumentNullException.ThrowIfNull(path);
-        var normalised = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        if (!RunProfileStore.Exists(path))
+        try
         {
-            return normalised;
+            _ = ScheduleSpec.From(schedule);
+            return null;
         }
-
-        var payload = ReadJson(path) ?? throw new CommandExitException($"Failed to parse scheduler state from {path}: invalid JSON document");
-        if (payload.Value is not IReadOnlyDictionary<string, object?> mapping)
+        catch (ScheduleException exc)
         {
-            throw new CommandExitException("Scheduler state payload must be a JSON object.");
+            return exc.Message;
         }
-
-        foreach (var (name, entry) in mapping)
-        {
-            if (entry is IReadOnlyDictionary<string, object?> fields)
-            {
-                normalised[name] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-                {
-                    ["next_run"] = fields.GetValueOrDefault("next_run"),
-                    ["pending"] = fields.GetValueOrDefault("pending"),
-                };
-            }
-        }
-
-        return normalised;
     }
 
-    /// <summary>
-    /// The snapshot as sorted, indented, ASCII-escaped JSON with a trailing new line, parents created. An unwritable path raises the
-    /// runtime's exception: the parent directory's (<see cref="EnginePath.MakeDirectories"/>), or the file's
-    /// (<see cref="UnauthorizedAccessException"/> for a directory).
-    /// </summary>
-    public static void WriteScheduleState(ProfileScheduler scheduler, string path)
+    private static T? Read<T>(string path, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
+        where T : class
     {
-        ArgumentNullException.ThrowIfNull(scheduler);
-        ArgumentNullException.ThrowIfNull(path);
-        var parent = EngineOsPath.Split(path).Head;
-        if (parent.Length > 0)
+        if (!File.Exists(path))
         {
-            EnginePath.MakeDirectories(parent);
+            return null;
         }
 
-        var text = Canonicaliser.DumpsSorted(scheduler.SnapshotState(), indent: true, ensureAscii: true) + "\n";
-        if (!string.Equals(Environment.NewLine, "\n", StringComparison.Ordinal))
+        try
         {
-            text = text.Replace("\n", Environment.NewLine, StringComparison.Ordinal);
+            using var stream = File.OpenRead(path);
+            return JsonSerializer.Deserialize(stream, typeInfo) ?? throw new ScheduleException($"{path}: the file holds null.");
+        }
+        catch (JsonException exc)
+        {
+            throw new ScheduleException($"{path}: {exc.Path ?? "$"}: {exc.Message}", exc);
+        }
+    }
+
+    private static void Write(string path, string text)
+    {
+        if (Path.GetDirectoryName(Path.GetFullPath(path)) is { } directory)
+        {
+            Directory.CreateDirectory(directory);
         }
 
-        WriteText(path, text);
+        AtomicFile.WriteAllText(path, text);
     }
-
-    private static void WriteText(string path, string text) => EngineTextFile.WriteText(path, text);
-
-    // Null when the text is not JSON; a directory raises UnauthorizedAccessException, non-UTF-8 bytes and the decoder's limits raise
-    // InvalidDataException, all unwrapped.
-    private static JsonValue? ReadJson(string path)
-    {
-        return EngineJson.TryLoadsOrRaiseLimits(EngineUtf8.DecodeFile(EngineTextFile.ReadBytes(path, path)), out var value) ? new JsonValue(value) : null;
-    }
-
-    private sealed record JsonValue(object? Value);
 }

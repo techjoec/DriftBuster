@@ -125,7 +125,7 @@ public sealed class DriftbusterServiceTests
         public Task<ScheduleListResult> ListSchedulesAsync(string? baseDir = null, CancellationToken cancellationToken = default)
         {
             ListSchedulesCalls++;
-            return Task.FromResult(new ScheduleListResult());
+            return Task.FromResult(new ScheduleListResult([]));
         }
 
         public Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, string? baseDir = null, CancellationToken cancellationToken = default)
@@ -137,13 +137,13 @@ public sealed class DriftbusterServiceTests
         public Task<ScheduleStatusListResult> ListScheduleStatusAsync(string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException("The GUI does not list scheduler state.");
 
-        public Task<ScheduleDueResult> ListDueSchedulesAsync(string? reference = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+        public Task<ScheduleDueResult> ListDueSchedulesAsync(DateTimeOffset? reference = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException("The GUI does not list due schedules.");
 
-        public Task<ScheduleStateResult> CompleteScheduleAsync(string name, string? completedAt = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+        public Task<ScheduleStateResult> CompleteScheduleAsync(string name, DateTimeOffset? completedAt = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException("The GUI does not complete schedules.");
 
-        public Task<ScheduleStateResult> SkipScheduleAsync(string name, string resumeAt, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+        public Task<ScheduleStateResult> SkipScheduleAsync(string name, DateTimeOffset resumeAt, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException("The GUI does not skip schedules.");
     }
 }

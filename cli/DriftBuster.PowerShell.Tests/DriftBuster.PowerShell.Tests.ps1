@@ -331,12 +331,12 @@ Describe 'DriftBuster PowerShell module' {
             $list[0].metadata.owner | Should -Be 'ops'
             ConvertTo-Instant $list[0].start_at | Should -Be (ConvertTo-Instant '2025-01-01T00:00:00+00:00')
             ($list[0].PSObject.Properties.Name) | Should -Contain 'pending'
-            ($list[0].PSObject.Properties.Name) | Should -Not -Contain 'window'
+            $list[0].window | Should -BeNullOrEmpty
 
             $raw = Get-DriftBusterSchedule @schedulePaths -Raw
             $raw | Should -BeOfType [string]
             $raw | Should -BeLike '*"start_at": "2025-01-01T00:00:00+00:00"*'
-            @($raw | ConvertFrom-Json -NoEnumerate) | Should -HaveCount 1
+            @(($raw | ConvertFrom-Json).schedules) | Should -HaveCount 1
         }
 
         It 'records due runs as pending in the state file' {

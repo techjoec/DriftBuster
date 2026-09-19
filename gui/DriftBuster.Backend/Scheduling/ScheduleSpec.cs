@@ -1,101 +1,30 @@
-using System.Collections.ObjectModel;
-
-using DriftBuster.Backend.Infrastructure;
-using DriftBuster.Backend.Profiles.Run;
+using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.Scheduling;
 
-/// <summary>
-/// A named schedule running a profile every <see cref="Interval"/>, from an optional start, inside an optional daily window, with tags
-/// and metadata (values in the <see cref="EngineJson"/> domain) and an optional profile loader.
-/// </summary>
-public sealed class ScheduleSpec
+/// <summary>A validated <see cref="ScheduleDefinition"/>: a named schedule running a profile every <see cref="Interval"/>.</summary>
+public sealed record ScheduleSpec(
+    string Name,
+    string Profile,
+    TimeSpan Interval,
+    DateTimeOffset? StartAt,
+    ScheduleWindow? Window,
+    IReadOnlyList<string> Tags,
+    IReadOnlyDictionary<string, string> Metadata)
 {
-    /// <summary>Requires a positive interval, then a name and a profile that are not blank.</summary>
-    public ScheduleSpec(
-        string name,
-        string profile,
-        TimeSpan interval,
-        DateTimeOffset? startAt = null,
-        ScheduleWindow? window = null,
-        IReadOnlyList<string>? tags = null,
-        IReadOnlyDictionary<string, object?>? metadata = null,
-        Func<string, RunProfile>? loader = null)
+    /// <summary>The definition checked field by field; <see cref="ScheduleException"/> names the first invalid one.</summary>
+    public static ScheduleSpec From(ScheduleDefinition definition)
     {
-        ArgumentNullException.ThrowIfNull(name);
-        ArgumentNullException.ThrowIfNull(profile);
-        if (interval <= TimeSpan.Zero)
-        {
-            throw new ScheduleException("Interval must be positive.");
-        }
-
-        if (EngineText.Strip(name).Length == 0)
-        {
-            throw new ScheduleException("Schedule name must not be empty.");
-        }
-
-        if (EngineText.Strip(profile).Length == 0)
-        {
-            throw new ScheduleException("Profile reference must not be empty.");
-        }
-
-        Name = name;
-        Profile = profile;
-        Interval = interval;
-        StartAt = startAt?.ToUniversalTime();
-        Window = window;
-        Tags = (tags ?? []).ToList().AsReadOnly();
-        Metadata = new ReadOnlyDictionary<string, object?>(new OrderedDictionary<string, object?>(metadata ?? new OrderedDictionary<string, object?>(StringComparer.Ordinal), StringComparer.Ordinal));
-        Loader = loader;
-    }
-
-    public string Name { get; }
-
-    public string Profile { get; }
-
-    public TimeSpan Interval { get; }
-
-    /// <summary>The first-run anchor, in UTC.</summary>
-    public DateTimeOffset? StartAt { get; }
-
-    public ScheduleWindow? Window { get; }
-
-    public IReadOnlyList<string> Tags { get; }
-
-    public IReadOnlyDictionary<string, object?> Metadata { get; }
-
-    public Func<string, RunProfile>? Loader { get; }
-
-    /// <summary>
-    /// <c>name</c>, <c>profile</c> (as text) and the raw <c>every</c> are required; a truthy <c>start_at</c> goes through
-    /// <see cref="ScheduleParsing.ParseIsoTimestamp"/> (UTC); <c>window</c> is read from a mapping; <c>tags</c> from a list become its
-    /// stripped non-empty text items sorted by code point, any other truthy value one stripped item; <c>metadata</c> must be a mapping.
-    /// The interval is checked last.
-    /// </summary>
-    public static ScheduleSpec FromDict(IReadOnlyDictionary<string, object?> payload, Func<string, RunProfile>? profileLoader = null)
-    {
-        ArgumentNullException.ThrowIfNull(payload);
-        if (!payload.TryGetValue("name", out var name) || !payload.TryGetValue("profile", out var profile) || !payload.TryGetValue("every", out var every))
-        {
-            throw new ScheduleException("Schedule entries require name, profile, and every");
-        }
-
-        var startAtRaw = payload.GetValueOrDefault("start_at");
-        DateTimeOffset? startAt = EngineBuiltins.IsTruthy(startAtRaw)
-            ? ScheduleParsing.ParseIsoTimestamp(EngineRepr.Str(startAtRaw))
-            : null;
-        var window = payload.GetValueOrDefault("window") is IReadOnlyDictionary<string, object?> windowPayload
-            ? ScheduleWindow.FromDict(windowPayload)
-            : null;
-        var tags = TagsFrom(payload.TryGetValue("tags", out var tagsRaw) ? tagsRaw : new List<object?>());
-        var metadataRaw = payload.TryGetValue("metadata", out var metadataValue) ? metadataValue : new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        if (metadataRaw is not IReadOnlyDictionary<string, object?> metadata)
-        {
-            throw new ScheduleException("Metadata must be a mapping when provided.");
-        }
-
-        var interval = ScheduleParsing.ParseInterval(every);
-        return new ScheduleSpec(EngineRepr.Str(name), EngineRepr.Str(profile), interval, startAt, window, tags, metadata, profileLoader);
+        ArgumentNullException.ThrowIfNull(definition);
+        var name = Required(definition.Name, "name");
+        var profile = Required(definition.Profile, "profile");
+        var interval = Field("every", () => ScheduleParsing.ParseInterval(definition.Every));
+        DateTimeOffset? startAt = string.IsNullOrWhiteSpace(definition.StartAt)
+            ? null
+            : Field("start_at", () => ScheduleParsing.ParseTimestamp(definition.StartAt));
+        var window = definition.Window is { } windowDefinition ? Field("window", () => ScheduleWindow.From(windowDefinition)) : null;
+        var tags = definition.Tags.Select(tag => tag.Trim()).Where(tag => tag.Length > 0).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        return new ScheduleSpec(name, profile, interval, startAt, window, tags, definition.Metadata);
     }
 
     /// <summary>The reference in UTC, aligned to the window when there is one.</summary>
@@ -105,24 +34,24 @@ public sealed class ScheduleSpec
         return Window is null ? candidate : Window.Align(candidate);
     }
 
-    /// <summary>The first run: the start, else the reference, else now, aligned.</summary>
-    public DateTimeOffset InitialRun(DateTimeOffset? reference = null) => AlignTo(StartAt ?? reference ?? IsoTimestamp.UtcNow());
+    /// <summary>The first run: the start, else <paramref name="now"/>, aligned.</summary>
+    public DateTimeOffset InitialRun(DateTimeOffset now) => AlignTo(StartAt ?? now);
 
-    /// <summary>The run after <paramref name="moment"/>: the moment in UTC plus the interval, aligned.</summary>
+    /// <summary>The run after <paramref name="moment"/>: the moment plus the interval, aligned.</summary>
     public DateTimeOffset NextAfter(DateTimeOffset moment) => AlignTo(moment.ToUniversalTime() + Interval);
 
-    public RunProfile LoadProfile()
-        => Loader is null ? throw new ScheduleException("Profile loader not configured for this schedule") : Loader(Profile);
+    private static string Required(string? value, string field)
+        => string.IsNullOrWhiteSpace(value) ? throw new ScheduleException($"{field}: required.") : value.Trim();
 
-    private static List<string> TagsFrom(object? raw)
+    private static T Field<T>(string field, Func<T> parse)
     {
-        if (raw is List<object?> items)
+        try
         {
-            var tags = items.Select(tag => EngineText.Strip(EngineRepr.Str(tag))).Where(tag => tag.Length > 0).ToList();
-            tags.Sort(PathText.CompareCodePoints);
-            return tags;
+            return parse();
         }
-
-        return EngineBuiltins.IsTruthy(raw) ? [EngineText.Strip(EngineRepr.Str(raw))] : [];
+        catch (ScheduleException exc)
+        {
+            throw new ScheduleException($"{field}: {exc.Message}", exc);
+        }
     }
 }

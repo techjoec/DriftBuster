@@ -1,4 +1,4 @@
-using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.Scheduling;
 
@@ -25,24 +25,22 @@ public sealed class ScheduleWindow
     /// <summary>The zone name as configured (<c>UTC</c> when none was given).</summary>
     public string TimezoneName { get; }
 
-    /// <summary>
-    /// The window from a payload: <c>start</c> and <c>end</c> as text (both required) and <c>timezone</c> (default <c>UTC</c>), the time
-    /// zone resolved before either time is parsed.
-    /// </summary>
-    public static ScheduleWindow FromDict(IReadOnlyDictionary<string, object?> payload)
+    /// <summary>The window's bounds and zone parsed; the zone is resolved first.</summary>
+    public static ScheduleWindow From(ScheduleWindowDefinition definition)
     {
-        ArgumentNullException.ThrowIfNull(payload);
-        if (!payload.TryGetValue("start", out var start) || !payload.TryGetValue("end", out var end))
-        {
-            throw new ScheduleException("Window requires start and end fields");
-        }
-
-        var startText = EngineRepr.Str(start);
-        var endText = EngineRepr.Str(end);
-        var name = EngineRepr.Str(payload.TryGetValue("timezone", out var zone) ? zone : "UTC");
+        ArgumentNullException.ThrowIfNull(definition);
+        var name = string.IsNullOrWhiteSpace(definition.Timezone) ? "UTC" : definition.Timezone.Trim();
         var timezone = ScheduleParsing.BuildTimezone(name);
-        return new ScheduleWindow(ScheduleParsing.ParseTime(startText), ScheduleParsing.ParseTime(endText), timezone, name);
+        return new ScheduleWindow(ScheduleParsing.ParseTime(definition.Start), ScheduleParsing.ParseTime(definition.End), timezone, name);
     }
+
+    /// <summary>The window as it is written in a manifest.</summary>
+    public ScheduleWindowDefinition ToDefinition() => new()
+    {
+        Start = Start.ToString(Start.Second == 0 ? "HH':'mm" : "HH':'mm':'ss", System.Globalization.CultureInfo.InvariantCulture),
+        End = End.ToString(End.Second == 0 ? "HH':'mm" : "HH':'mm':'ss", System.Globalization.CultureInfo.InvariantCulture),
+        Timezone = TimezoneName,
+    };
 
     /// <summary>Whether the instant's wall-clock time of day in the window's zone, at full precision, lies inside the window.</summary>
     public bool Contains(DateTimeOffset moment) => Covers(WallClock(moment).TimeOfDay);

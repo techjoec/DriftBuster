@@ -1,11 +1,4 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
-{
-    public sealed class ScheduleListResult
-    {
-        [JsonPropertyName("schedules")]
-        public ScheduleDefinition[] Schedules { get; set; } = Array.Empty<ScheduleDefinition>();
-    }
-}
+/// <summary>The manifest's schedules in manifest order.</summary>
+public sealed record ScheduleListResult(IReadOnlyList<ScheduleDefinition> Schedules);

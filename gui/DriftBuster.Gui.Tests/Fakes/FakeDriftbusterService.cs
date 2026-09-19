@@ -38,7 +38,7 @@ internal sealed class FakeDriftbusterService : IDriftbusterService
 
     public ServerScanResponse ServerScanResponse { get; set; } = new();
 
-    public ScheduleListResult ScheduleListResponse { get; set; } = new();
+    public ScheduleListResult ScheduleListResponse { get; set; } = new([]);
 
     public Task<string> PingAsync(CancellationToken cancellationToken = default)
     {

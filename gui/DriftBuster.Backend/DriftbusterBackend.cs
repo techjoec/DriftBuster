@@ -80,82 +80,28 @@ namespace DriftBuster.Backend
         }
 
         public Task<ScheduleListResult> ListSchedulesAsync(string? baseDir = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => ScheduleStore.ListSchedules(baseDir, cancellationToken), cancellationToken);
-        }
+            => Task.Run(() => ScheduleStore.ListSchedules(baseDir), cancellationToken);
 
         public Task SaveSchedulesAsync(IEnumerable<ScheduleDefinition> schedules, string? baseDir = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => ScheduleStore.SaveSchedules(schedules, baseDir, cancellationToken), cancellationToken);
-        }
+            => Task.Run(() => ScheduleStore.SaveSchedules(schedules, baseDir), cancellationToken);
 
         public Task<ScheduleStatusListResult> ListScheduleStatusAsync(string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(
-                () => new ScheduleStatusListResult
-                {
-                    Schedules = ScheduleCommands.List(FacadeBaseDir(baseDir), FacadePath(configPath), FacadePath(statePath))
-                        .Cast<OrderedDictionary<string, object?>>()
-                        .Select(ToScheduleStatus)
-                        .ToArray(),
-                },
-                cancellationToken);
-        }
+            => Task.Run(() => Schedules(baseDir, configPath, statePath).List(), cancellationToken);
 
-        public Task<ScheduleDueResult> ListDueSchedulesAsync(string? reference = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(
-                () => new ScheduleDueResult
-                {
-                    Runs = ScheduleCommands.Due(reference, FacadeBaseDir(baseDir), FacadePath(configPath), FacadePath(statePath))
-                        .Cast<OrderedDictionary<string, object?>>()
-                        .Select(run => new ScheduleDueRun
-                        {
-                            Name = (string)run["name"]!,
-                            Profile = (string)run["profile"]!,
-                            ScheduledFor = (string)run["scheduled_for"]!,
-                            Tags = ((List<object?>)run["tags"]!).Cast<string>().ToArray(),
-                            Metadata = new Dictionary<string, object?>((OrderedDictionary<string, object?>)run["metadata"]!, StringComparer.Ordinal),
-                        })
-                        .ToArray(),
-                },
-                cancellationToken);
-        }
+        public Task<ScheduleDueResult> ListDueSchedulesAsync(DateTimeOffset? reference = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+            => Task.Run(() => Schedules(baseDir, configPath, statePath).Due(reference), cancellationToken);
 
-        public Task<ScheduleStateResult> CompleteScheduleAsync(string name, string? completedAt = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => ToScheduleState(ScheduleCommands.MarkComplete(name, completedAt, FacadeBaseDir(baseDir), FacadePath(configPath), FacadePath(statePath))), cancellationToken);
-        }
+        public Task<ScheduleStateResult> CompleteScheduleAsync(string name, DateTimeOffset? completedAt = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+            => Task.Run(() => Schedules(baseDir, configPath, statePath).MarkComplete(name, completedAt), cancellationToken);
 
-        public Task<ScheduleStateResult> SkipScheduleAsync(string name, string resumeAt, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => ToScheduleState(ScheduleCommands.SkipUntil(name, resumeAt, FacadeBaseDir(baseDir), FacadePath(configPath), FacadePath(statePath))), cancellationToken);
-        }
+        public Task<ScheduleStateResult> SkipScheduleAsync(string name, DateTimeOffset resumeAt, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default)
+            => Task.Run(() => Schedules(baseDir, configPath, statePath).SkipUntil(name, resumeAt), cancellationToken);
+
+        private static ScheduleCommands Schedules(string? baseDir, string? configPath, string? statePath)
+            => new(FacadeBaseDir(baseDir), FacadePath(configPath), FacadePath(statePath));
 
         // A blank manifest or state path means the default under the profiles root.
         private static string? FacadePath(string? path) => string.IsNullOrWhiteSpace(path) ? null : path;
-
-        private static ScheduleStatus ToScheduleStatus(OrderedDictionary<string, object?> entry) => new()
-        {
-            Name = (string)entry["name"]!,
-            Profile = (string)entry["profile"]!,
-            IntervalSeconds = (double)entry["interval_seconds"]!,
-            Tags = ((List<object?>)entry["tags"]!).Cast<string>().ToArray(),
-            Metadata = new Dictionary<string, object?>((OrderedDictionary<string, object?>)entry["metadata"]!, StringComparer.Ordinal),
-            StartAt = (string?)entry["start_at"],
-            NextRun = (string?)entry["next_run"],
-            Pending = (string?)entry["pending"],
-            Window = entry.GetValueOrDefault("window") is OrderedDictionary<string, object?> window
-                ? new ScheduleWindowDefinition { Start = (string?)window["start"], End = (string?)window["end"], Timezone = (string?)window["timezone"] }
-                : null,
-        };
-
-        private static ScheduleStateResult ToScheduleState(OrderedDictionary<string, object?> result) => new()
-        {
-            Name = (string)result["name"]!,
-            NextRun = (string?)result["next_run"],
-            Pending = (string?)result["pending"],
-        };
 
         public Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(RunProfileDefinition profile, OfflineCollectorRequest request, string? baseDir = null, CancellationToken cancellationToken = default)
         {

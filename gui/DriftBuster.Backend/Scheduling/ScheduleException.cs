@@ -1,25 +1,20 @@
 namespace DriftBuster.Backend.Scheduling;
 
-/// <summary>Invalid schedule input. The message is the refusal alone, without a parameter name.</summary>
-public sealed class ScheduleException : ArgumentException
+/// <summary>An invalid schedule, schedule file or scheduler request; the message says which field and why.</summary>
+public sealed class ScheduleException : Exception
 {
-    private readonly string _message;
-
     public ScheduleException()
-        : this("Invalid schedule.")
+        : base("Invalid schedule.")
     {
     }
 
     public ScheduleException(string message)
-        : this(message, innerException: null)
+        : base(message)
     {
     }
 
     public ScheduleException(string message, Exception? innerException)
-        : base(message, paramName: null, innerException)
+        : base(message, innerException)
     {
-        _message = message;
     }
-
-    public override string Message => _message;
 }

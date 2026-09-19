@@ -923,34 +923,31 @@ function Resolve-DriftBusterProviderPath {
 
 function ConvertTo-DriftBusterScheduleJson {
     [CmdletBinding()]
+    [OutputType([string])]
     param(
         [Parameter(Mandatory = $true)]
         [object]
         $Value
     )
 
-    # Indented JSON with timestamps left readable; a schedule without a window omits the key, as the scheduler's JSON contract does.
-    $options = [System.Text.Json.JsonSerializerOptions]::new()
-    $options.WriteIndented = $true
-    $options.Encoder = [System.Text.Encodings.Web.JavaScriptEncoder]::UnsafeRelaxedJsonEscaping
-    $node = [System.Text.Json.JsonSerializer]::SerializeToNode($Value, $Value.GetType(), $options)
-    $entries = [System.Collections.Generic.List[object]]::new()
-    if ($node -is [System.Text.Json.Nodes.JsonArray]) {
-        foreach ($item in $node) {
-            $entries.Add($item)
-        }
-    }
-    else {
-        $entries.Add($node)
+    # The backend's own JSON contract (snake_case, indented), as the console tool prints it.
+    return [System.Text.Json.JsonSerializer]::Serialize($Value, $Value.GetType(), [DriftBuster.Backend.Json.ModelJson]::Options)
+}
+
+function ConvertTo-DriftBusterScheduleTime {
+    [CmdletBinding()]
+    [OutputType([System.Nullable[System.DateTimeOffset]])]
+    param(
+        [string]
+        $Text
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $null
     }
 
-    foreach ($entry in $entries) {
-        if ($entry -is [System.Text.Json.Nodes.JsonObject] -and $entry.ContainsKey('window') -and $null -eq $entry['window']) {
-            $null = $entry.Remove('window')
-        }
-    }
-
-    return $node.ToJsonString($options)
+    # ISO 8601; a time without an offset is UTC.
+    return [DriftBuster.Backend.Scheduling.ScheduleParsing]::ParseTimestamp($Text)
 }
 
 function Export-DriftBusterSqlSnapshot {
@@ -1681,16 +1678,7 @@ function ConvertFrom-DriftBusterScheduleModel {
         $Model
     )
 
-    # Unlike the other models, schedule entries keep their null timestamps, as the scheduler's JSON contract prints them.
-    $options = [System.Text.Json.JsonSerializerOptions]::new()
-    $json = [System.Text.Json.JsonSerializer]::Serialize($Model, $Model.GetType(), $options)
-    $converted = ConvertFrom-DriftBusterJson -Json $json
-    $window = $converted.PSObject.Properties['window']
-    if ($window -and $null -eq $window.Value) {
-        $converted.PSObject.Properties.Remove('window')
-    }
-
-    return $converted
+    return ConvertFrom-DriftBusterJson -Json (ConvertTo-DriftBusterScheduleJson -Value $Model)
 }
 
 function Write-DriftBusterScheduleOutput {
@@ -1700,17 +1688,20 @@ function Write-DriftBusterScheduleOutput {
         [object]
         $Result,
 
+        [object[]]
+        $Entry,
+
         [switch]
         $Raw
     )
 
-    # An array result (schedules or due runs) is emitted one entry at a time; a state result is a single object.
+    # -Raw is the whole result as the console tool prints it; otherwise one object per entry (or the result itself).
     if ($Raw) {
         return ConvertTo-DriftBusterScheduleJson -Value $Result
     }
 
-    foreach ($entry in @($Result)) {
-        Write-Output (ConvertFrom-DriftBusterScheduleModel -Model $entry)
+    foreach ($item in $(if ($PSBoundParameters.ContainsKey('Entry')) { $Entry } else { @($Result) })) {
+        Write-Output (ConvertFrom-DriftBusterScheduleModel -Model $item)
     }
 }
 
@@ -1757,7 +1748,7 @@ Get-DriftBusterSchedule -BaseDir .\.driftbuster
 
     $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
     $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.ListScheduleStatusAsync($paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
-    Write-DriftBusterScheduleOutput -Result $result.Schedules -Raw:$Raw
+    Write-DriftBusterScheduleOutput -Result $result -Entry @($result.Schedules) -Raw:$Raw
 }
 
 function Get-DriftBusterScheduleDue {
@@ -1808,9 +1799,9 @@ Get-DriftBusterScheduleDue -BaseDir .\.driftbuster -At '2025-01-02T00:00:00Z'
     )
 
     $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
-    $reference = if ($At) { $At } else { $null }
+    $reference = ConvertTo-DriftBusterScheduleTime -Text $At
     $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.ListDueSchedulesAsync($reference, $paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
-    Write-DriftBusterScheduleOutput -Result $result.Runs -Raw:$Raw
+    Write-DriftBusterScheduleOutput -Result $result -Entry @($result.Runs) -Raw:$Raw
 }
 
 function Complete-DriftBusterSchedule {
@@ -1868,7 +1859,7 @@ Complete-DriftBusterSchedule -Name nightly -BaseDir .\.driftbuster
     )
 
     $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
-    $completed = if ($CompletedAt) { $CompletedAt } else { $null }
+    $completed = ConvertTo-DriftBusterScheduleTime -Text $CompletedAt
     $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.CompleteScheduleAsync($Name, $completed, $paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
     Write-DriftBusterScheduleOutput -Result $result -Raw:$Raw
 }
@@ -1928,7 +1919,7 @@ Skip-DriftBusterSchedule -Name nightly -ResumeAt '2025-01-05T09:30:00Z'
     )
 
     $paths = Resolve-DriftBusterSchedulePath -BaseDir $BaseDir -ConfigPath $ConfigPath -StatePath $StatePath
-    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.SkipScheduleAsync($Name, $ResumeAt, $paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
+    $result = Wait-DriftBusterTask -Task $script:DriftBusterBackend.SkipScheduleAsync($Name, (ConvertTo-DriftBusterScheduleTime -Text $ResumeAt), $paths.BaseDir, $paths.ConfigPath, $paths.StatePath)
     Write-DriftBusterScheduleOutput -Result $result -Raw:$Raw
 }
 

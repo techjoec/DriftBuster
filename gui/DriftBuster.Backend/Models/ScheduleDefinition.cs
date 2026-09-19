@@ -1,52 +1,26 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
+/// <summary>
+/// One schedule in <c>schedules.json</c>: run <see cref="Profile"/> every <see cref="Every"/> (<c>15m</c>, <c>1h30m</c>, <c>1.5d</c>
+/// or an ISO 8601 time duration such as <c>PT2H</c>), from an optional ISO 8601 <see cref="StartAt"/> (UTC when it has no offset),
+/// inside an optional daily <see cref="Window"/>.
+/// </summary>
+public sealed record ScheduleDefinition
 {
-    public sealed class ScheduleDefinition
-    {
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
+    public required string Name { get; init; }
 
-        [JsonPropertyName("profile")]
-        public string Profile { get; set; } = string.Empty;
+    public required string Profile { get; init; }
 
-        [JsonPropertyName("every")]
-        public string Every { get; set; } = string.Empty;
+    public required string Every { get; init; }
 
-        [JsonPropertyName("start_at")]
-        public string? StartAt { get; set; }
-            = null;
+    public string? StartAt { get; init; }
 
-        [JsonPropertyName("window")]
-        public ScheduleWindowDefinition? Window { get; set; }
-            = null;
+    public ScheduleWindowDefinition? Window { get; init; }
 
-        [JsonPropertyName("tags")]
-        public string[] Tags { get; set; } = System.Array.Empty<string>();
+    // Source-generated reads pass null for an absent init-only member, so the setters restore the empty default.
+    public IReadOnlyList<string> Tags { get; init => field = value ?? []; } = [];
 
-        [JsonPropertyName("metadata")]
-        public IDictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>(System.StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, string> Metadata { get; init => field = value ?? Empty; } = Empty;
 
-        /// <summary>
-        /// The manifest's <c>every</c> when it is not a string (seconds as a JSON number); written back in place of <see cref="Every"/> while
-        /// <see cref="Every"/> still shows its text.
-        /// </summary>
-        [JsonIgnore]
-        public object? EveryValue { get; set; }
-
-        /// <summary>
-        /// The manifest's metadata values that are not strings (numbers, booleans, null, lists, objects), by key; each is written back in place
-        /// of its <see cref="Metadata"/> text while that text still shows it.
-        /// </summary>
-        [JsonIgnore]
-        public IDictionary<string, object?>? MetadataValues { get; set; }
-
-        /// <summary>
-        /// The manifest entry the card was read from. Each field whose card text still shows what the entry held is written back as the entry
-        /// held it, and keys the card does not show are kept.
-        /// </summary>
-        [JsonIgnore]
-        public IReadOnlyDictionary<string, object?>? ManifestEntry { get; set; }
-    }
+    private static readonly IReadOnlyDictionary<string, string> Empty = new Dictionary<string, string>(StringComparer.Ordinal);
 }

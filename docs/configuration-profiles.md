@@ -124,18 +124,21 @@ driftbuster detection-profile diff baseline-summary.json current-summary.json
 Run profile schedules live in `Profiles/schedules.json` as
 `{"schedules": [ ... ]}`; the GUI schedule cards and `driftbuster schedule`
 read and write the same manifest, with runtime state in
-`Profiles/scheduler-state.json`.
+`Profiles/scheduler-state.json`. Both files are read strictly: an unknown or
+repeated key, a missing required field or a value of the wrong type stops the
+command with the file, the JSON path and the reason. A missing manifest holds no
+schedules. The GUI validates every card before it saves.
 
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `name` | string | — | Unique identifier for the scheduled run. |
 | `profile` | string | — | Profile name or path the schedule runs. |
-| `every` | string or number | — | Interval such as `"15m"`, `"1h30m"`, `"PT1H"`, or seconds (`900`). |
+| `every` | string | — | Interval such as `"15m"`, `"1h30m"`, `"1.5d"` or an ISO 8601 duration (`"PT1H"`, `"P1D"`). |
 | `start_at` | ISO 8601 string or null | null | Optional first-run anchor (`yyyy-MM-dd[THH:mm[:ss[.fraction]][Z\|±HH:MM]]`; no offset means UTC). Defaults to now when omitted. |
 | `window.start` / `window.end` | `H:MM[:SS]` | — | Optional run window in local time, bounds inclusive. When start > end the window is treated as overnight. |
 | `window.timezone` | IANA zone string | `"UTC"` | Time zone used to evaluate the window, resolved through the operating system's time zone data. |
-| `tags` | array of strings | `[]` | Free-form labels surfaced on due runs. |
-| `metadata` | object | `{}` | Arbitrary JSON metadata mirrored into schedule payloads. |
+| `tags` | array of strings | `[]` | Free-form labels surfaced on due runs (trimmed, de-duplicated, sorted). |
+| `metadata` | object of strings | `{}` | Text values mirrored into schedule payloads. |
 
 ```json
 {
@@ -161,7 +164,9 @@ driftbuster schedule skip-until --name nightly-backup --resume-at 2025-01-10T02:
 ```
 
 Every stored and printed time is UTC (`2025-01-02T02:00:00+00:00`), with a
-six-digit fraction only when it is not zero.
+fraction only when it is not zero. `list` prints `{"schedules": [...]}`, `due`
+prints `{"runs": [...]}`, and `mark-complete` / `skip-until` print the
+schedule's `name`, `next_run` and `pending`.
 
 A run that falls outside its window moves to the window start: the same local
 day when it is before a daytime window (or inside an overnight window's closed

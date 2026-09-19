@@ -1,111 +1,121 @@
-using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Scheduling;
 
 namespace DriftBuster.Backend.Tests.Scheduling;
 
-/// <summary>The profile scheduler.</summary>
+/// <summary>Field parsing, definition validation and the scheduler's pending/complete/skip cycle.</summary>
 public sealed class SchedulerTests
 {
-    internal static OrderedDictionary<string, object?> Payload(params (string Key, object? Value)[] items)
-    {
-        var payload = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var (key, value) in items)
-        {
-            payload[key] = value;
-        }
+    private static readonly DateTimeOffset March1 = new(2025, 3, 1, 8, 0, 0, TimeSpan.Zero);
 
-        return payload;
-    }
+    internal static ScheduleDefinition Definition(string name = "backup", string every = "12h", string? startAt = "2025-03-01T08:00:00Z", ScheduleWindowDefinition? window = null)
+        => new() { Name = name, Profile = "nightly", Every = every, StartAt = startAt, Window = window };
 
-    private static DateTimeOffset Utc(int year, int month, int day, int hour = 0, int minute = 0)
-        => new(year, month, day, hour, minute, 0, TimeSpan.Zero);
+    [Theory]
+    [InlineData("15m", 900)]
+    [InlineData("1h30m", 5400)]
+    [InlineData("1.5d", 129600)]
+    [InlineData(" 2H ", 7200)]
+    [InlineData("PT45M", 2700)]
+    [InlineData("pt1h30m", 5400)]
+    [InlineData("P1D", 86400)]
+    public void Intervals_accept_compact_tokens_and_iso_durations(string text, double seconds)
+        => ScheduleParsing.ParseInterval(text).TotalSeconds.Should().Be(seconds);
 
-    [Fact]
-    public void ParseIntervalSupportsNumericIsoAndCompactTokens()
-    {
-        ScheduleParsing.ParseInterval(90).Should().Be(TimeSpan.FromSeconds(90));
-        ScheduleParsing.ParseInterval("15m").Should().Be(TimeSpan.FromMinutes(15));
-        ScheduleParsing.ParseInterval("1h30m").Should().Be(TimeSpan.FromMinutes(90));
-        ScheduleParsing.ParseInterval("PT45M").Should().Be(TimeSpan.FromMinutes(45));
-        FluentActions.Invoking(() => ScheduleParsing.ParseInterval("0m")).Should().Throw<ScheduleException>();
-    }
-
-    [Fact]
-    public void ScheduleSpecAlignsToWindowAndRollsForward()
-    {
-        var window = ScheduleWindow.FromDict(Payload(("start", "22:00"), ("end", "02:00"), ("timezone", "UTC")));
-        var startAt = Utc(2025, 1, 1, 21);
-        var spec = new ScheduleSpec("overnight", "profiles/nightly.json", TimeSpan.FromDays(1), startAt: startAt, window: window);
-
-        var initial = spec.InitialRun();
-        IsoTimestamp.Format(initial).Should().Be(IsoTimestamp.Format(Utc(2025, 1, 1, 22)));
-        var rolled = spec.NextAfter(initial);
-        IsoTimestamp.Format(rolled).Should().Be(IsoTimestamp.Format(Utc(2025, 1, 2, 22)));
-    }
+    [Theory]
+    [InlineData("0m")]
+    [InlineData("90")]
+    [InlineData("15 minutes")]
+    [InlineData("PT")]
+    [InlineData("")]
+    public void Other_interval_text_is_refused(string text)
+        => FluentActions.Invoking(() => ScheduleParsing.ParseInterval(text)).Should().Throw<ScheduleException>();
 
     [Fact]
-    public void ProfileSchedulerTracksPendingRunsUntilCompletion()
+    public void Timestamps_without_an_offset_are_utc()
     {
-        var spec = new ScheduleSpec("backup", "profiles/backup.json", TimeSpan.FromHours(12), startAt: Utc(2025, 3, 1, 8));
-        var scheduler = new ProfileScheduler([spec]);
-        var now = Utc(2025, 3, 1, 9);
+        ScheduleParsing.ParseTimestamp("2025-03-01T08:00:00").Should().Be(March1);
+        ScheduleParsing.ParseTimestamp("2025-03-01T02:00:00-06:00").Should().Be(March1);
+        ScheduleParsing.ParseTimestamp("2025-03-01 08:00Z").Should().Be(March1);
+        ScheduleParsing.ParseTimestamp("2025-03-01").Should().Be(March1.AddHours(-8));
+        FluentActions.Invoking(() => ScheduleParsing.ParseTimestamp("soon")).Should().Throw<ScheduleException>().WithMessage("Invalid ISO 8601 timestamp: 'soon'.");
+        FluentActions.Invoking(() => ScheduleParsing.ParseTimestamp("08:00")).Should().Throw<ScheduleException>();
+    }
 
-        var due = scheduler.Due(reference: now);
-        due.Should().HaveCount(1);
-        var run = due[0];
-        run.Name.Should().Be("backup");
-        IsoTimestamp.Format(run.ScheduledFor).Should().Be(IsoTimestamp.Format(Utc(2025, 3, 1, 8)));
+    [Theory]
+    [InlineData(" ", "12h", null, "name: required.")]
+    [InlineData("n", "often", null, "every: Unsupported interval: 'often'.")]
+    [InlineData("n", "12h", "later", "start_at: Invalid ISO 8601 timestamp: 'later'.")]
+    public void Validation_names_the_field(string name, string every, string? startAt, string message)
+        => FluentActions.Invoking(() => ScheduleSpec.From(Definition(name, every, startAt))).Should().Throw<ScheduleException>().WithMessage(message);
 
-        // Subsequent polls keep surfacing the pending run until it is marked complete.
-        var repeat = scheduler.Due(reference: now);
-        IsoTimestamp.Format(repeat[0].ScheduledFor).Should().Be(IsoTimestamp.Format(run.ScheduledFor));
-
-        scheduler.MarkComplete("backup", completedAt: run.ScheduledFor);
-        var peeked = scheduler.Peek("backup");
-        IsoTimestamp.Format(peeked).Should().Be(IsoTimestamp.Format(Utc(2025, 3, 1, 20)));
-
-        var later = scheduler.Due(reference: Utc(2025, 3, 1, 21));
-        IsoTimestamp.Format(later[0].ScheduledFor).Should().Be(IsoTimestamp.Format(Utc(2025, 3, 1, 20)));
+    [Fact]
+    public void Window_errors_name_the_window()
+    {
+        FluentActions.Invoking(() => ScheduleSpec.From(Definition(window: new() { Start = "25:00", End = "06:00" })))
+            .Should().Throw<ScheduleException>().WithMessage("window: Time must be HH:MM or HH:MM:SS, not '25:00'.");
+        FluentActions.Invoking(() => ScheduleSpec.From(Definition(window: new() { Start = "01:00", End = "06:00", Timezone = "Mars/Olympus" })))
+            .Should().Throw<ScheduleException>().WithMessage("window: Unknown time zone: 'Mars/Olympus'.");
     }
 
     [Fact]
-    public void SkipUntilResetsScheduleAnchor()
-    {
-        var spec = new ScheduleSpec("cleanup", "profiles/cleanup.json", TimeSpan.FromDays(1), startAt: Utc(2025, 4, 1, 2));
-        var scheduler = new ProfileScheduler([spec]);
-        scheduler.SkipUntil("cleanup", Utc(2025, 4, 3, 6, 30));
+    public void Tags_are_trimmed_distinct_and_ordered()
+        => ScheduleSpec.From(Definition() with { Tags = [" ops", "b", "ops", " "] }).Tags.Should().Equal("b", "ops");
 
-        // Windowless schedules align directly to the supplied resume timestamp.
-        IsoTimestamp.Format(scheduler.Peek("cleanup")).Should().Be(IsoTimestamp.Format(Utc(2025, 4, 3, 6, 30)));
+    [Fact]
+    public void An_overnight_window_moves_a_daytime_start_to_the_evening()
+    {
+        var spec = ScheduleSpec.From(Definition(every: "24h", startAt: "2025-01-01T12:00:00Z", window: new() { Start = "22:00", End = "02:00" }));
+
+        spec.InitialRun(March1).Should().Be(new DateTimeOffset(2025, 1, 1, 22, 0, 0, TimeSpan.Zero));
+        spec.NextAfter(new DateTimeOffset(2025, 1, 1, 22, 0, 0, TimeSpan.Zero)).Should().Be(new DateTimeOffset(2025, 1, 2, 22, 0, 0, TimeSpan.Zero));
+        spec.Window!.Contains(new DateTimeOffset(2025, 1, 2, 1, 30, 0, TimeSpan.Zero)).Should().BeTrue();
+        spec.Window.Contains(new DateTimeOffset(2025, 1, 2, 12, 0, 0, TimeSpan.Zero)).Should().BeFalse();
     }
 
     [Fact]
-    public void ScheduleWindowContainsHandlesOvernightBounds()
+    public void A_due_run_stays_pending_until_completed()
     {
-        var window = ScheduleWindow.FromDict(Payload(("start", "21:30"), ("end", "01:30"), ("timezone", "UTC")));
-        var inside = Utc(2025, 5, 1, 23);
-        var afterMidnight = Utc(2025, 5, 2, 1);
-        var outside = Utc(2025, 5, 1, 12);
-        window.Contains(inside).Should().BeTrue();
-        window.Contains(afterMidnight).Should().BeTrue();
-        window.Contains(outside).Should().BeFalse();
+        var scheduler = new ProfileScheduler([ScheduleSpec.From(Definition())], new FixedTimeProvider(March1));
+
+        var run = scheduler.Due(March1).Should().ContainSingle().Subject;
+        run.ScheduledFor.Should().Be(March1);
+        scheduler.Due(March1.AddHours(1)).Should().ContainSingle().Which.ScheduledFor.Should().Be(March1);
+
+        scheduler.MarkComplete("backup");
+        scheduler.StateOf("backup").Should().Be(new ScheduleStateEntry(March1.AddHours(12), null));
+        scheduler.Due(March1.AddHours(1)).Should().BeEmpty();
+        FluentActions.Invoking(() => scheduler.MarkComplete("backup")).Should().Throw<ScheduleException>().WithMessage("Schedule 'backup' is not pending.");
     }
 
     [Fact]
-    public void SnapshotAndRestoreStatePreservesPendingRuns()
+    public void Runs_due_together_keep_registration_order()
     {
-        var start = Utc(2025, 6, 1, 8);
-        var spec = new ScheduleSpec("nightly", "profiles/nightly.json", TimeSpan.FromDays(1), startAt: start);
-        var scheduler = new ProfileScheduler([spec]);
+        var scheduler = new ProfileScheduler([ScheduleSpec.From(Definition("b")), ScheduleSpec.From(Definition("a"))], new FixedTimeProvider(March1));
 
-        // Trigger a pending run so the snapshot captures both fields.
-        scheduler.Due(reference: start);
-        var snapshot = scheduler.SnapshotState();
-        ((OrderedDictionary<string, object?>)snapshot["nightly"]!)["pending"].Should().Be(IsoTimestamp.Format(start));
+        scheduler.Due(March1).Select(run => run.Name).Should().Equal("b", "a");
+        scheduler.Schedules().Select(spec => spec.Name).Should().Equal("a", "b");
+    }
 
-        var restored = new ProfileScheduler([spec]);
-        restored.ApplyState(snapshot);
-        var restoredState = restored.SnapshotState();
-        ((OrderedDictionary<string, object?>)restoredState["nightly"]!)["pending"].Should().Be(IsoTimestamp.Format(start));
+    [Fact]
+    public void Skip_until_restarts_the_schedule_and_saved_state_restores()
+    {
+        var scheduler = new ProfileScheduler([ScheduleSpec.From(Definition())], new FixedTimeProvider(March1));
+        _ = scheduler.Due(March1);
+        scheduler.SkipUntil("backup", March1.AddDays(2));
+        scheduler.StateOf("backup").Should().Be(new ScheduleStateEntry(March1.AddDays(2), null));
+
+        var restored = new ProfileScheduler([ScheduleSpec.From(Definition())], new FixedTimeProvider(March1));
+        restored.ApplyState(scheduler.SnapshotState());
+        restored.StateOf("backup").Should().Be(scheduler.StateOf("backup"));
+        FluentActions.Invoking(() => restored.SkipUntil("gone", March1)).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: 'gone'.");
+        FluentActions.Invoking(() => restored.Register(ScheduleSpec.From(Definition()))).Should().Throw<ScheduleException>();
+    }
+
+    [Fact]
+    public void A_schedule_without_a_start_begins_now()
+    {
+        var scheduler = new ProfileScheduler([ScheduleSpec.From(Definition(startAt: null))], new FixedTimeProvider(March1));
+        scheduler.StateOf("backup").NextRun.Should().Be(March1);
     }
 }

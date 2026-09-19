@@ -1,0 +1,26 @@
+using System.Text.Json.Serialization;
+
+using DriftBuster.Backend.Models;
+using DriftBuster.Backend.Scheduling;
+
+namespace DriftBuster.Backend.Json;
+
+/// <summary>The source-generated contracts behind <see cref="ModelJson"/>; every model read from or written to JSON is listed here.</summary>
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
+    UseStringEnumConverter = true,
+    WriteIndented = true,
+    NewLine = "\n",
+    AllowDuplicateProperties = false,
+    UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+    RespectNullableAnnotations = true,
+    RespectRequiredConstructorParameters = true)]
+[JsonSerializable(typeof(ScheduleManifest))]
+[JsonSerializable(typeof(IReadOnlyDictionary<string, ScheduleStateEntry>))]
+[JsonSerializable(typeof(ScheduleListResult))]
+[JsonSerializable(typeof(ScheduleStatusListResult))]
+[JsonSerializable(typeof(ScheduleDueResult))]
+[JsonSerializable(typeof(ScheduleStateResult))]
+[JsonSerializable(typeof(IReadOnlyList<ScheduleStatus>))]
+[JsonSerializable(typeof(IReadOnlyList<ScheduleDueRun>))]
+internal sealed partial class ModelJsonContext : JsonSerializerContext;

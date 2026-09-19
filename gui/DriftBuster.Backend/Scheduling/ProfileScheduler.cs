@@ -1,5 +1,3 @@
-using DriftBuster.Backend.Infrastructure;
-
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
@@ -8,41 +6,34 @@ namespace DriftBuster.Backend.Scheduling;
 /// </summary>
 public sealed class ProfileScheduler
 {
+    private readonly TimeProvider _time;
     private readonly OrderedDictionary<string, ScheduleSpec> _specs = new(StringComparer.Ordinal);
-    private readonly OrderedDictionary<string, ScheduleState> _state = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ScheduleState> _state = new(StringComparer.Ordinal);
 
-    public ProfileScheduler(IEnumerable<ScheduleSpec>? specs = null)
+    public ProfileScheduler(IEnumerable<ScheduleSpec> specs, TimeProvider? time = null)
     {
-        foreach (var spec in specs ?? [])
+        ArgumentNullException.ThrowIfNull(specs);
+        _time = time ?? TimeProvider.System;
+        foreach (var spec in specs)
         {
             Register(spec);
         }
     }
 
-    /// <summary>The clock (UTC, whole microseconds); tests swap it.</summary>
-    internal static Func<DateTimeOffset> Now { get; set; } = IsoTimestamp.UtcNow;
-
     /// <summary>A new name starts at <see cref="ScheduleSpec.InitialRun"/> of now.</summary>
     public void Register(ScheduleSpec spec)
     {
         ArgumentNullException.ThrowIfNull(spec);
-        if (_specs.ContainsKey(spec.Name))
+        if (!_specs.TryAdd(spec.Name, spec))
         {
-            throw new ScheduleException("Schedule already registered: " + spec.Name);
+            throw new ScheduleException($"Schedule already registered: '{spec.Name}'.");
         }
 
-        var start = spec.InitialRun(Now());
-        _specs[spec.Name] = spec;
-        _state[spec.Name] = new ScheduleState(start);
+        _state[spec.Name] = new ScheduleState(spec.InitialRun(_time.GetUtcNow()));
     }
 
-    /// <summary>The specs ordered by name code point.</summary>
-    public IReadOnlyList<ScheduleSpec> Schedules()
-    {
-        var names = _specs.Keys.ToList();
-        names.Sort(PathText.CompareCodePoints);
-        return names.Select(name => _specs[name]).ToList();
-    }
+    /// <summary>The specs ordered by name.</summary>
+    public IReadOnlyList<ScheduleSpec> Schedules() => [.. _specs.Values.OrderBy(spec => spec.Name, StringComparer.Ordinal)];
 
     /// <summary>
     /// Every pending run at or before the reference, and every schedule whose next run is at or before it (which becomes pending),
@@ -50,51 +41,32 @@ public sealed class ProfileScheduler
     /// </summary>
     public IReadOnlyList<ScheduledRun> Due(DateTimeOffset? reference = null)
     {
-        var now = (reference ?? Now()).ToUniversalTime();
+        var now = (reference ?? _time.GetUtcNow()).ToUniversalTime();
         var runs = new List<ScheduledRun>();
         foreach (var (name, spec) in _specs)
         {
             var state = _state[name];
-            if (state.Pending is { } pending)
-            {
-                if (pending <= now)
-                {
-                    runs.Add(new ScheduledRun(name, spec.Profile, pending, spec.Tags, spec.Metadata));
-                }
-
-                continue;
-            }
-
-            if (state.NextRun <= now)
+            if (state.Pending is null && state.NextRun <= now)
             {
                 state.Pending = state.NextRun;
-                runs.Add(new ScheduledRun(name, spec.Profile, state.NextRun, spec.Tags, spec.Metadata));
+            }
+
+            if (state.Pending is { } pending && pending <= now)
+            {
+                runs.Add(new ScheduledRun(name, spec.Profile, pending, spec.Tags, spec.Metadata));
             }
         }
 
-        return runs.Order(Comparer<ScheduledRun>.Create(static (left, right) =>
-            left.ScheduledFor < right.ScheduledFor ? -1 : (right.ScheduledFor < left.ScheduledFor ? 1 : 0))).ToArray();
-    }
-
-    /// <summary>The pending run, else the next run.</summary>
-    public DateTimeOffset Peek(string name)
-    {
-        var state = State(name);
-        return state.Pending ?? state.NextRun;
+        return [.. runs.OrderBy(run => run.ScheduledFor)];
     }
 
     /// <summary>Clears the pending run; the next run follows the completion time (the pending time by default).</summary>
     public void MarkComplete(string name, DateTimeOffset? completedAt = null)
     {
         var state = State(name);
-        if (state.Pending is null)
-        {
-            throw new ScheduleException($"Schedule {name} is not pending.");
-        }
-
-        var completed = (completedAt ?? state.Pending.Value).ToUniversalTime();
+        var pending = state.Pending ?? throw new ScheduleException($"Schedule '{name}' is not pending.");
         state.Pending = null;
-        state.NextRun = _specs[name].NextAfter(completed);
+        state.NextRun = _specs[name].NextAfter(completedAt ?? pending);
     }
 
     /// <summary>Clears the pending run and restarts at the resume time, aligned.</summary>
@@ -105,61 +77,34 @@ public sealed class ProfileScheduler
         state.NextRun = _specs[name].AlignTo(resumeAt);
     }
 
-    public void Cancel(string name)
-    {
-        ArgumentNullException.ThrowIfNull(name);
-        if (!_specs.Remove(name))
-        {
-            throw new ScheduleException("Unknown schedule: " + name);
-        }
+    /// <summary>The state of every schedule, for <c>scheduler-state.json</c>.</summary>
+    public IReadOnlyDictionary<string, ScheduleStateEntry> SnapshotState()
+        => _state.ToDictionary(pair => pair.Key, pair => new ScheduleStateEntry(pair.Value.NextRun, pair.Value.Pending), StringComparer.Ordinal);
 
-        _state.Remove(name);
+    /// <summary>The saved state of each registered schedule; entries for names no longer in the manifest are ignored.</summary>
+    public void ApplyState(IReadOnlyDictionary<string, ScheduleStateEntry> saved)
+    {
+        ArgumentNullException.ThrowIfNull(saved);
+        foreach (var (name, entry) in saved)
+        {
+            if (_state.TryGetValue(name, out var state))
+            {
+                state.NextRun = entry.NextRun.ToUniversalTime();
+                state.Pending = entry.Pending?.ToUniversalTime();
+            }
+        }
     }
 
-    /// <summary>Per schedule in registration order, <c>next_run</c> and <c>pending</c> as ISO strings (pending may be null).</summary>
-    public OrderedDictionary<string, object?> SnapshotState()
+    /// <summary>The state of one schedule.</summary>
+    public ScheduleStateEntry StateOf(string name)
     {
-        var snapshot = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var (name, state) in _state)
-        {
-            snapshot[name] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["next_run"] = IsoTimestamp.Format(state.NextRun),
-                ["pending"] = state.Pending is { } pending ? IsoTimestamp.Format(pending) : null,
-            };
-        }
-
-        return snapshot;
-    }
-
-    /// <summary>
-    /// For each registered name in the mapping, a truthy <c>next_run</c> replaces the next run and <c>pending</c> is set from a truthy
-    /// value or cleared; both go through <see cref="ScheduleParsing.ParseTimestamp"/>.
-    /// </summary>
-    public void ApplyState(IReadOnlyDictionary<string, object?> state)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        foreach (var (name, payload) in state)
-        {
-            if (!_state.TryGetValue(name, out var entry))
-            {
-                continue;
-            }
-
-            var nextRun = EngineBuiltins.Get(payload, "next_run");
-            if (EngineBuiltins.IsTruthy(nextRun))
-            {
-                entry.NextRun = ScheduleParsing.ParseTimestamp(nextRun);
-            }
-
-            var pending = EngineBuiltins.Get(payload, "pending");
-            entry.Pending = EngineBuiltins.IsTruthy(pending) ? ScheduleParsing.ParseTimestamp(pending) : null;
-        }
+        var state = State(name);
+        return new ScheduleStateEntry(state.NextRun, state.Pending);
     }
 
     private ScheduleState State(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
-        return _state.TryGetValue(name, out var state) ? state : throw new ScheduleException("Unknown schedule: " + name);
+        return _state.TryGetValue(name, out var state) ? state : throw new ScheduleException($"Unknown schedule: '{name}'.");
     }
 }

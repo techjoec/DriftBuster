@@ -1,149 +1,74 @@
-using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
 
 namespace DriftBuster.Backend.Scheduling;
 
 /// <summary>
-/// The <c>schedule</c> subcommands (<c>list</c>, <c>due</c>, <c>mark-complete</c>, <c>skip-until</c>): each builds the scheduler from the
-/// manifest and the state file and returns the payload the console tool prints as JSON; <c>due</c>, <c>mark-complete</c> and
-/// <c>skip-until</c> write the state file first.
+/// The <c>schedule</c> operations (<c>list</c>, <c>due</c>, <c>mark-complete</c>, <c>skip-until</c>) over the manifest and the state
+/// file; <c>due</c>, <c>mark-complete</c> and <c>skip-until</c> save the state. Failures raise <see cref="ScheduleException"/>.
 /// </summary>
-public static class ScheduleCommands
+public sealed class ScheduleCommands(string? baseDir, string? configPath = null, string? statePath = null, TimeProvider? time = null)
 {
-    /// <summary>
-    /// Specs from the manifest (<see cref="ScheduleStore.DefaultConfigPath"/>), registered in manifest order, then the state file
-    /// (<see cref="ScheduleStore.DefaultStatePath"/>) applied. Returns the scheduler and the state path.
-    /// </summary>
-    public static (ProfileScheduler Scheduler, string StatePath) BuildScheduler(string? baseDir, string? configPath = null, string? statePath = null)
+    private readonly string _configPath = ScheduleStore.DefaultConfigPath(baseDir, configPath);
+    private readonly string _statePath = ScheduleStore.DefaultStatePath(baseDir, statePath);
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
+    /// <summary>Every schedule by name with its interval, tags, metadata, start, window and state.</summary>
+    public ScheduleStatusListResult List()
     {
-        var config = ScheduleStore.DefaultConfigPath(baseDir, configPath);
-        var entries = ScheduleStore.LoadSchedulePayload(config);
-        var specs = ScheduleStore.BuildScheduleSpecs(entries, baseDir);
-        var scheduler = new ProfileScheduler(specs);
-        var state = ScheduleStore.DefaultStatePath(baseDir, statePath);
-        scheduler.ApplyState(ScheduleStore.LoadScheduleState(state));
-        return (scheduler, state);
+        var scheduler = Load();
+        return new ScheduleStatusListResult([.. scheduler.Schedules().Select(spec =>
+        {
+            var state = scheduler.StateOf(spec.Name);
+            return new ScheduleStatus(
+                spec.Name,
+                spec.Profile,
+                spec.Interval.TotalSeconds,
+                spec.Tags,
+                spec.Metadata,
+                spec.StartAt,
+                state.NextRun,
+                state.Pending,
+                spec.Window is { } window ? window.ToDefinition() : null);
+        })]);
     }
 
-    /// <summary>
-    /// A command-line timestamp through <see cref="IsoTimestamp.TryParse"/>: text without an offset is UTC, the result is UTC, and text
-    /// that does not parse raises <see cref="CommandExitException"/>.
-    /// </summary>
-    public static DateTimeOffset ParseReferenceTimestamp(string value)
+    /// <summary>The runs due at <paramref name="at"/> (now when null), each marked pending.</summary>
+    public ScheduleDueResult Due(DateTimeOffset? at = null)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        return IsoTimestamp.TryParse(value, out var instant)
-            ? instant
-            : throw new CommandExitException("Unable to parse timestamp: " + EngineRepr.StrRepr(value));
+        var scheduler = Load();
+        var runs = scheduler.Due(at ?? _time.GetUtcNow());
+        ScheduleStore.SaveState(scheduler, _statePath);
+        return new ScheduleDueResult([.. runs.Select(run => new ScheduleDueRun(run.Name, run.Profile, run.ScheduledFor, run.Tags, run.Metadata))]);
     }
 
-    /// <summary>Every schedule by name with its interval in seconds, tags, metadata, start, next run, pending run and window.</summary>
-    public static IReadOnlyList<object?> List(string? baseDir, string? configPath = null, string? statePath = null)
+    /// <summary>Completes the pending run (at <paramref name="completedAt"/>, else its scheduled time) and advances the schedule.</summary>
+    public ScheduleStateResult MarkComplete(string name, DateTimeOffset? completedAt = null)
     {
-        var (scheduler, _) = BuildScheduler(baseDir, configPath, statePath);
-        var snapshot = scheduler.SnapshotState();
-        var payload = new List<object?>();
-        foreach (var spec in scheduler.Schedules())
-        {
-            var state = snapshot.GetValueOrDefault(spec.Name) as OrderedDictionary<string, object?>;
-            var entry = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["name"] = spec.Name,
-                ["profile"] = spec.Profile,
-                ["interval_seconds"] = spec.Interval.TotalSeconds,
-                ["tags"] = spec.Tags.Cast<object?>().ToList(),
-                ["metadata"] = new OrderedDictionary<string, object?>(spec.Metadata, StringComparer.Ordinal),
-                ["start_at"] = spec.StartAt is { } startAt ? IsoTimestamp.Format(startAt) : null,
-                ["next_run"] = state?.GetValueOrDefault("next_run"),
-                ["pending"] = state?.GetValueOrDefault("pending"),
-            };
-            if (spec.Window is { } window)
-            {
-                entry["window"] = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-                {
-                    ["start"] = IsoTimestamp.FormatTimeOfDay(window.Start),
-                    ["end"] = IsoTimestamp.FormatTimeOfDay(window.End),
-                    ["timezone"] = window.TimezoneName,
-                };
-            }
-
-            payload.Add(entry);
-        }
-
-        return payload;
+        var scheduler = Load();
+        scheduler.MarkComplete(name, completedAt);
+        return Save(scheduler, name);
     }
 
-    /// <summary>
-    /// The runs due at <paramref name="at"/> (when not empty, through <see cref="ParseReferenceTimestamp"/>; otherwise now), with the state
-    /// file written after the scheduler marks them pending.
-    /// </summary>
-    public static IReadOnlyList<object?> Due(string? at, string? baseDir, string? configPath = null, string? statePath = null)
+    /// <summary>Clears any pending run and restarts the schedule at <paramref name="resumeAt"/>, aligned.</summary>
+    public ScheduleStateResult SkipUntil(string name, DateTimeOffset resumeAt)
     {
-        var (scheduler, state) = BuildScheduler(baseDir, configPath, statePath);
-        DateTimeOffset? reference = string.IsNullOrEmpty(at) ? null : ParseReferenceTimestamp(at);
-        var payload = scheduler.Due(reference)
-            .Select(run => (object?)new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["name"] = run.Name,
-                ["profile"] = run.Profile,
-                ["scheduled_for"] = IsoTimestamp.Format(run.ScheduledFor),
-                ["tags"] = run.Tags.Cast<object?>().ToList(),
-                ["metadata"] = new OrderedDictionary<string, object?>(run.Metadata, StringComparer.Ordinal),
-            })
-            .ToList();
-        ScheduleStore.WriteScheduleState(scheduler, state);
-        return payload;
+        var scheduler = Load();
+        scheduler.SkipUntil(name, resumeAt);
+        return Save(scheduler, name);
     }
 
-    /// <summary>
-    /// Completes the pending run (at <paramref name="completedAt"/> when not empty) and returns the schedule's <c>name</c>, <c>next_run</c>
-    /// and <c>pending</c>; a <see cref="ScheduleException"/> becomes <see cref="CommandExitException"/>.
-    /// </summary>
-    public static OrderedDictionary<string, object?> MarkComplete(string name, string? completedAt, string? baseDir, string? configPath = null, string? statePath = null)
+    private ProfileScheduler Load()
     {
-        ArgumentNullException.ThrowIfNull(name);
-        var (scheduler, state) = BuildScheduler(baseDir, configPath, statePath);
-        DateTimeOffset? completed = string.IsNullOrEmpty(completedAt) ? null : ParseReferenceTimestamp(completedAt);
-        try
-        {
-            scheduler.MarkComplete(name, completed);
-        }
-        catch (ScheduleException exc)
-        {
-            throw new CommandExitException(exc.Message, exc);
-        }
-
-        return StateResult(name, scheduler, state);
+        var specs = ScheduleStore.Validate(ScheduleStore.LoadManifest(_configPath).Schedules);
+        var scheduler = new ProfileScheduler(specs, _time);
+        scheduler.ApplyState(ScheduleStore.LoadState(_statePath));
+        return scheduler;
     }
 
-    /// <summary>Restarts the schedule at <paramref name="resumeAt"/> and returns its <c>name</c>, <c>next_run</c> and <c>pending</c>.</summary>
-    public static OrderedDictionary<string, object?> SkipUntil(string name, string resumeAt, string? baseDir, string? configPath = null, string? statePath = null)
+    private ScheduleStateResult Save(ProfileScheduler scheduler, string name)
     {
-        ArgumentNullException.ThrowIfNull(name);
-        ArgumentNullException.ThrowIfNull(resumeAt);
-        var (scheduler, state) = BuildScheduler(baseDir, configPath, statePath);
-        var resume = ParseReferenceTimestamp(resumeAt);
-        try
-        {
-            scheduler.SkipUntil(name, resume);
-        }
-        catch (ScheduleException exc)
-        {
-            throw new CommandExitException(exc.Message, exc);
-        }
-
-        return StateResult(name, scheduler, state);
-    }
-
-    private static OrderedDictionary<string, object?> StateResult(string name, ProfileScheduler scheduler, string statePath)
-    {
-        var snapshot = scheduler.SnapshotState().GetValueOrDefault(name) as OrderedDictionary<string, object?>;
-        var result = new OrderedDictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["name"] = name,
-            ["next_run"] = snapshot?.GetValueOrDefault("next_run"),
-            ["pending"] = snapshot?.GetValueOrDefault("pending"),
-        };
-        ScheduleStore.WriteScheduleState(scheduler, statePath);
-        return result;
+        ScheduleStore.SaveState(scheduler, _statePath);
+        var state = scheduler.StateOf(name);
+        return new ScheduleStateResult(name, state.NextRun, state.Pending);
     }
 }

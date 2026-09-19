@@ -1,244 +1,124 @@
-using System.Text;
-
-using DriftBuster.Backend.Diff;
-using DriftBuster.Backend.Infrastructure;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Scheduling;
 
-using static DriftBuster.Backend.Tests.Scheduling.SchedulerTests;
-
 namespace DriftBuster.Backend.Tests.Scheduling;
 
-/// <summary>
-/// <see cref="ScheduleStore"/> and the edges of <see cref="ProfileScheduler"/> and <see cref="ScheduleCommands"/>, including the GUI
-/// manifest writer and reader.
-/// </summary>
+/// <summary><c>schedules.json</c> and <c>scheduler-state.json</c>: strict reads, validated writes, and the schedule operations over them.</summary>
 public sealed class ScheduleStoreTests : IDisposable
 {
-    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
-
-    private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-schedule-store-");
+    private static readonly DateTimeOffset Jan1 = new(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    private readonly DirectoryInfo _tmp = Directory.CreateTempSubdirectory("driftbuster-schedules-");
 
     public void Dispose() => _tmp.Delete(recursive: true);
 
-    private string Write(string name, string text)
+    private string Manifest => ScheduleStore.DefaultConfigPath(_tmp.FullName, overridePath: null);
+
+    private string State => ScheduleStore.DefaultStatePath(_tmp.FullName, overridePath: null);
+
+    private static ScheduleDefinition Nightly => new()
     {
-        var path = Path.Combine(_tmp.FullName, name);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, text, Utf8);
-        return path;
+        Name = "nightly",
+        Profile = "nightly",
+        Every = "24h",
+        StartAt = "2025-01-01T00:00:00Z",
+        Tags = ["ops"],
+        Metadata = new Dictionary<string, string>(StringComparer.Ordinal) { ["notes"] = "Rotation" },
+        Window = new ScheduleWindowDefinition { Start = "00:00", End = "06:00", Timezone = "Europe/London" },
+    };
+
+    [Fact]
+    public void Saved_schedules_read_back_as_written()
+    {
+        ScheduleStore.SaveSchedules([Nightly, Nightly with { Name = "hourly", Every = "1h", Window = null }], _tmp.FullName);
+
+        var schedules = ScheduleStore.ListSchedules(_tmp.FullName).Schedules;
+        schedules.Select(schedule => schedule.Name).Should().Equal("nightly", "hourly");
+        schedules[0].Should().BeEquivalentTo(Nightly);
+        File.ReadAllText(Manifest).Should().Contain("\"start_at\": \"2025-01-01T00:00:00Z\"").And.EndWith("}\n");
+        Directory.GetFiles(Path.GetDirectoryName(Manifest)!, "*.tmp").Should().BeEmpty();
     }
 
-    private static ScheduleSpec Spec(string name = "a")
-        => ScheduleSpec.FromDict(Payload(("name", name), ("profile", "p"), ("every", "1h"), ("start_at", "2025-01-01T00:00:00Z")));
+    [Fact]
+    public void A_missing_manifest_holds_no_schedules()
+        => ScheduleStore.ListSchedules(_tmp.FullName).Schedules.Should().BeEmpty();
 
     [Theory]
-    [InlineData("""{"schedules": "abc"}""", "[]")]
-    [InlineData("""[1, {"name": "x"}]""", "[{'name': 'x'}]")]
-    [InlineData("null", "[]")]
-    [InlineData("""{"schedules": [{"name": "a"}]}""", "[{'name': 'a'}]")]
-    public void LoadSchedulePayloadKeepsMappingEntries(string text, string expected)
+    [InlineData("""{"schedules": [{"name": "n", "profile": "p", "every": "1h", "colour": "red"}]}""", "$.schedules[0].colour")]
+    [InlineData("""{"schedules": [{"name": "n", "name": "m", "profile": "p", "every": "1h"}]}""", "$.schedules[0].name")]
+    [InlineData("""{"schedules": [{"name": "n", "profile": "p"}]}""", "every")]
+    [InlineData("""{"schedules": [{"name": "n", "profile": "p", "every": 3600}]}""", "$.schedules[0].every")]
+    [InlineData("""{"schedules": [{"name": "n", "profile": "p", "every": "1h", "metadata": {"n": 2}}]}""", "$.schedules[0].metadata.n")]
+    [InlineData("""[{"name": "n", "profile": "p", "every": "1h"}]""", "$")]
+    public void A_manifest_the_model_does_not_describe_is_refused_with_its_path(string json, string where)
     {
-        var entries = ScheduleStore.LoadSchedulePayload(Write("m.json", text));
-        EngineRepr.Repr(entries.Cast<object?>().ToList()).Should().Be(expected);
+        Directory.CreateDirectory(Path.GetDirectoryName(Manifest)!);
+        File.WriteAllText(Manifest, json);
+
+        FluentActions.Invoking(() => ScheduleStore.ListSchedules(_tmp.FullName))
+            .Should().Throw<ScheduleException>().Where(exc => exc.Message.StartsWith(Manifest + ": ", StringComparison.Ordinal) && exc.Message.Contains(where, StringComparison.Ordinal));
     }
 
     [Fact]
-    public void LoadSchedulePayloadReportsMissingAndInvalidFiles()
+    public void Saving_refuses_invalid_or_repeated_schedules_by_index()
     {
-        var missing = Path.Combine(_tmp.FullName, "missing.json");
-        FluentActions.Invoking(() => ScheduleStore.LoadSchedulePayload(missing))
-            .Should().Throw<CommandExitException>().WithMessage($"Schedule manifest not found: {missing}");
-        var invalid = Write("bad.json", "{bad");
-        FluentActions.Invoking(() => ScheduleStore.LoadSchedulePayload(invalid))
-            .Should().Throw<CommandExitException>().WithMessage($"Failed to parse schedules from {invalid}: invalid JSON document");
+        FluentActions.Invoking(() => ScheduleStore.SaveSchedules([Nightly, Nightly with { Every = "often" }], _tmp.FullName))
+            .Should().Throw<ScheduleException>().WithMessage("schedules[1].every: Unsupported interval: 'often'.");
+        FluentActions.Invoking(() => ScheduleStore.SaveSchedules([Nightly, Nightly], _tmp.FullName))
+            .Should().Throw<ScheduleException>().WithMessage("schedules[1].name: 'nightly' is used by an earlier schedule.");
+        File.Exists(Manifest).Should().BeFalse();
+
+        ScheduleStore.ValidationError(Nightly).Should().BeNull();
+        ScheduleStore.ValidationError(Nightly with { Profile = "" }).Should().Be("profile: required.");
     }
 
     [Fact]
-    public void LoadScheduleStateNormalisesEntriesAndRefusesOtherPayloads()
+    public void Commands_list_hand_out_complete_and_skip_runs()
     {
-        ScheduleStore.LoadScheduleState(Path.Combine(_tmp.FullName, "none.json")).Should().BeEmpty();
-        var state = ScheduleStore.LoadScheduleState(Write("s.json", """{"a": 5, "b": {"next_run": "2025-01-01", "pending": null, "x": 1}}"""));
-        EngineRepr.Repr(state).Should().Be("{'b': {'next_run': '2025-01-01', 'pending': null}}");
-        FluentActions.Invoking(() => ScheduleStore.LoadScheduleState(Write("list.json", "[1]")))
-            .Should().Throw<CommandExitException>().WithMessage("Scheduler state payload must be a JSON object.");
-        var invalid = Write("bad.json", "{bad");
-        FluentActions.Invoking(() => ScheduleStore.LoadScheduleState(invalid))
-            .Should().Throw<CommandExitException>().WithMessage($"Failed to parse scheduler state from {invalid}: invalid JSON document");
+        ScheduleStore.SaveSchedules([Nightly], _tmp.FullName);
+        var commands = new ScheduleCommands(_tmp.FullName, time: new FixedTimeProvider(Jan1.AddDays(1)));
+
+        var run = commands.Due().Runs.Should().ContainSingle().Subject;
+        run.Should().BeEquivalentTo(new ScheduleDueRun("nightly", "nightly", Jan1, ["ops"], Nightly.Metadata));
+        ScheduleStore.LoadState(State)["nightly"].Should().Be(new ScheduleStateEntry(Jan1, Jan1));
+
+        var status = commands.List().Schedules.Should().ContainSingle().Subject;
+        status.IntervalSeconds.Should().Be(86400);
+        status.Pending.Should().Be(Jan1);
+        status.Window.Should().Be(new ScheduleWindowDefinition { Start = "00:00", End = "06:00", Timezone = "Europe/London" });
+
+        commands.MarkComplete("nightly").Should().Be(new ScheduleStateResult("nightly", Jan1.AddDays(1), null));
+        FluentActions.Invoking(() => commands.MarkComplete("nightly")).Should().Throw<ScheduleException>().WithMessage("Schedule 'nightly' is not pending.");
+
+        var customState = Path.Join(_tmp.FullName, "state", "custom.json");
+        new ScheduleCommands(_tmp.FullName, statePath: customState).SkipUntil("nightly", new DateTimeOffset(2025, 7, 1, 12, 0, 0, TimeSpan.Zero))
+            .NextRun.Should().Be(new DateTimeOffset(2025, 7, 1, 23, 0, 0, TimeSpan.Zero));
+        ScheduleStore.LoadState(customState)["nightly"].NextRun.Should().Be(new DateTimeOffset(2025, 7, 1, 23, 0, 0, TimeSpan.Zero));
+        ScheduleStore.LoadState(State)["nightly"].NextRun.Should().Be(Jan1.AddDays(1));
     }
 
     [Fact]
-    public void ApplyStateConvertsTimestampsToUtcAndRaisesOnBadValues()
+    public void A_state_file_the_model_does_not_describe_is_refused()
     {
-        var scheduler = new ProfileScheduler([Spec()]);
-        FluentActions.Invoking(() => scheduler.ApplyState(Payload(("a", Payload(("next_run", "garbage"), ("pending", null))))))
-            .Should().Throw<ScheduleException>().WithMessage("Unable to parse timestamp: 'garbage'");
-        FluentActions.Invoking(() => scheduler.ApplyState(Payload(("a", Payload(("next_run", 5), ("pending", null))))))
-            .Should().Throw<ScheduleException>().WithMessage("Unable to parse timestamp: 5");
-        FluentActions.Invoking(() => scheduler.ApplyState(Payload(("a", Payload(("next_run", "0001-01-01T00:00:00+01:00"))))))
-            .Should().Throw<ScheduleException>().WithMessage("Unable to parse timestamp: '0001-01-01T00:00:00+01:00'");
+        ScheduleStore.SaveSchedules([Nightly], _tmp.FullName);
+        File.WriteAllText(State, """{"nightly": {"next_run": "tomorrow", "pending": null}}""");
 
-        scheduler.ApplyState(Payload(("a", Payload(("next_run", "2025-01-01T05:00:00+05:30"), ("pending", "2025-01-01T00:00:00.5"))), ("unknown", 7)));
-        EngineRepr.Repr(scheduler.SnapshotState())
-            .Should().Be("{'a': {'next_run': '2024-12-31T23:30:00+00:00', 'pending': '2025-01-01T00:00:00.500000+00:00'}}");
-
-        var path = Path.Combine(_tmp.FullName, "deep", "st.json");
-        ScheduleStore.WriteScheduleState(scheduler, path);
-        File.ReadAllText(path, Utf8).ReplaceLineEndings("\n")
-            .Should().Be("{\n  \"a\": {\n    \"next_run\": \"2024-12-31T23:30:00+00:00\",\n    \"pending\": \"2025-01-01T00:00:00.500000+00:00\"\n  }\n}\n");
+        FluentActions.Invoking(() => new ScheduleCommands(_tmp.FullName).List())
+            .Should().Throw<ScheduleException>().Where(exc => exc.Message.StartsWith(State + ": ", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void SchedulerOperationsRaiseScheduleErrors()
+    public async Task The_backend_facade_runs_the_same_operations()
     {
-        var spec = Spec();
-        var scheduler = new ProfileScheduler([spec]);
-        FluentActions.Invoking(() => scheduler.MarkComplete("a")).Should().Throw<ScheduleException>().WithMessage("Schedule a is not pending.");
-        FluentActions.Invoking(() => scheduler.MarkComplete("zz")).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
-        FluentActions.Invoking(() => scheduler.SkipUntil("zz", IsoTimestamp.UtcNow())).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
-        FluentActions.Invoking(() => scheduler.Peek("zz")).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
-        FluentActions.Invoking(() => scheduler.Cancel("zz")).Should().Throw<ScheduleException>().WithMessage("Unknown schedule: zz");
-        FluentActions.Invoking(() => scheduler.Register(spec)).Should().Throw<ScheduleException>().WithMessage("Schedule already registered: a");
-        FluentActions.Invoking(() => spec.LoadProfile()).Should().Throw<ScheduleException>().WithMessage("Profile loader not configured for this schedule");
+        var ct = TestContext.Current.CancellationToken;
+        ScheduleStore.SaveSchedules([Nightly], _tmp.FullName);
+        IDriftbusterBackend backend = new DriftbusterBackend();
 
-        var run = scheduler.Due(new DateTimeOffset(2025, 1, 2, 0, 0, 0, TimeSpan.Zero)).Single();
-        FluentActions.Invoking(() => run.LoadProfile()).Should().Throw<ScheduleException>().WithMessage("A profile loader is required to hydrate the run.");
-        run.LoadProfile(name => new DriftBuster.Backend.Profiles.Run.RunProfile(name)).Name.Should().Be("p");
-
-        scheduler.Cancel("a");
-        scheduler.SnapshotState().Should().BeEmpty();
-        scheduler.Register(Spec("b"));
-        scheduler.Register(Spec("a"));
-        scheduler.Schedules().Select(item => item.Name).Should().Equal("a", "b");
-        scheduler.SnapshotState().Keys.Should().Equal("b", "a");
-        FluentActions.Invoking(() => ScheduleCommands.ParseReferenceTimestamp("nope"))
-            .Should().Throw<CommandExitException>().WithMessage("Unable to parse timestamp: 'nope'");
-    }
-
-    [Fact]
-    public void CommandsReportManifestAndSchedulerErrorsAsExits()
-    {
-        var baseDir = _tmp.FullName;
-        Write(Path.Combine("Profiles", "schedules.json"), """[{"name": "a", "profile": "p", "every": "nope"}]""");
-        FluentActions.Invoking(() => ScheduleCommands.List(baseDir))
-            .Should().Throw<CommandExitException>().WithMessage("Unsupported interval fragment near: nope");
-
-        Write(Path.Combine("Profiles", "schedules.json"), """[{"name": "a", "profile": "p", "every": "1h", "start_at": "2025-01-01T00:00:00Z", "window": {"start": "01:00", "end": "02:00", "timezone": "Asia/Kolkata"}, "tags": ["z", "b"], "metadata": {"n": [1, 2.5]}}]""");
-        FluentActions.Invoking(() => ScheduleCommands.MarkComplete("a", null, baseDir))
-            .Should().Throw<CommandExitException>().WithMessage("Schedule a is not pending.");
-        FluentActions.Invoking(() => ScheduleCommands.SkipUntil("zz", "2025-01-01", baseDir))
-            .Should().Throw<CommandExitException>().WithMessage("Unknown schedule: zz");
-
-        var listing = ScheduleCommands.List(baseDir);
-        EngineRepr.Repr(listing.ToList()).Should().Be(
-            "[{'name': 'a', 'profile': 'p', 'interval_seconds': 3600.0, 'tags': ['b', 'z'], 'metadata': {'n': [1, 2.5]}, "
-            + "'start_at': '2025-01-01T00:00:00+00:00', 'next_run': '2025-01-01T19:30:00+00:00', 'pending': null, "
-            + "'window': {'start': '01:00:00', 'end': '02:00:00', 'timezone': 'Asia/Kolkata'}}]");
-        var custom = Path.Combine(_tmp.FullName, "elsewhere", "state.json");
-        EngineRepr.Repr(ScheduleCommands.Due("2025-01-02T00:00:00", baseDir, statePath: custom).ToList())
-            .Should().Be("[{'name': 'a', 'profile': 'p', 'scheduled_for': '2025-01-01T19:30:00+00:00', 'tags': ['b', 'z'], 'metadata': {'n': [1, 2.5]}}]");
-        File.Exists(custom).Should().BeTrue();
-        EngineRepr.Repr(ScheduleCommands.MarkComplete("a", null, baseDir, statePath: custom))
-            .Should().Be("{'name': 'a', 'next_run': '2025-01-01T20:30:00+00:00', 'pending': null}");
-    }
-
-    [Fact]
-    public void GuiManifestRoundTripsCardsAsJsonDumpsWritesThem()
-    {
-        var baseDir = _tmp.FullName;
-        ScheduleStore.SaveSchedules(
-            [
-                new ScheduleDefinition
-                {
-                    Name = " nightly ",
-                    Profile = " daily ",
-                    Every = " 24h ",
-                    StartAt = " 2025-01-01T02:00:00+00:00 ",
-                    Window = new ScheduleWindowDefinition { Start = " 08:00 ", End = "17:00", Timezone = "UTC" },
-                    Tags = ["prod", "Prod", " staging "],
-                    Metadata = new Dictionary<string, string>(StringComparer.Ordinal) { [" team "] = "infra", [" "] = "dropped" },
-                },
-                new ScheduleDefinition { Name = "alpha", Profile = "p", Every = "90s" },
-            ],
-            baseDir,
-            TestContext.Current.CancellationToken);
-
-        var text = File.ReadAllText(Path.Combine(baseDir, "Profiles", "schedules.json")).ReplaceLineEndings("\n");
-        // Two-space indented JSON with a trailing newline.
-        text.Should().Be(
-            "{\n  \"schedules\": [\n    {\n      \"name\": \"nightly\",\n      \"profile\": \"daily\",\n      \"every\": \"24h\",\n"
-            + "      \"start_at\": \"2025-01-01T02:00:00+00:00\",\n      \"window\": {\n        \"start\": \"08:00\",\n"
-            + "        \"end\": \"17:00\",\n        \"timezone\": \"UTC\"\n      },\n      \"tags\": [\n        \"prod\",\n        \"staging\"\n      ],\n"
-            + "      \"metadata\": {\n        \"team\": \"infra\"\n      }\n    },\n    {\n      \"name\": \"alpha\",\n      \"profile\": \"p\",\n"
-            + "      \"every\": \"90s\"\n    }\n  ]\n}\n");
-
-        var loaded = ScheduleStore.ListSchedules(baseDir, TestContext.Current.CancellationToken).Schedules;
-        loaded.Select(schedule => schedule.Name).Should().Equal("nightly", "alpha");
-        loaded[0].StartAt.Should().Be("2025-01-01T02:00:00+00:00");
-        loaded[0].Window!.Start.Should().Be("08:00");
-        loaded[0].Tags.Should().Equal("prod", "staging");
-        loaded[0].Metadata.Should().ContainKey("team");
-    }
-
-    [Fact]
-    public void GuiManifestReaderSkipsIncompleteEntries()
-    {
-        var baseDir = _tmp.FullName;
-        ScheduleStore.ListSchedules(baseDir, TestContext.Current.CancellationToken).Schedules.Should().BeEmpty();
-        Write(Path.Combine("Profiles", "schedules.json"), "\"text\"");
-        ScheduleStore.ListSchedules(baseDir, TestContext.Current.CancellationToken).Schedules.Should().BeEmpty();
-        Write(
-            Path.Combine("Profiles", "schedules.json"),
-            """[{"name": "b", "profile": "p", "every": "1h", "tags": "one", "metadata": {"k": null}, "window": {}}, {"name": " ", "profile": "p", "every": "1h"}, {"profile": "p"}, 3]""");
-        var loaded = ScheduleStore.ListSchedules(baseDir, TestContext.Current.CancellationToken).Schedules.Should().ContainSingle().Subject;
-        loaded.Tags.Should().Equal("one");
-        loaded.Metadata["k"].Should().BeEmpty();
-        loaded.Window.Should().BeNull();
-    }
-
-    [Theory]
-    [InlineData("bad", null, null, null, null, "Unsupported interval fragment near: bad")]
-    [InlineData("0s", null, null, null, null, "Interval must be positive.")]
-    [InlineData("1h", "02:00", null, null, null, "Invalid ISO 8601 timestamp: '02:00'")]
-    [InlineData("1h", null, "08:00", null, "UTC", "Window requires start and end fields")]
-    [InlineData("1h", null, "08:00", "17:00", "Mars/Olympus", "Unknown time zone: Mars/Olympus")]
-    [InlineData("1h", "2025-01-01T00:00:00Z", "08:00", "17:00", "America/Chicago", null)]
-    public void GuiCardsValidateThroughTheSpecRules(string every, string? startAt, string? start, string? end, string? timezone, string? error)
-    {
-        var definition = new ScheduleDefinition
-        {
-            Name = "card",
-            Profile = "p",
-            Every = every,
-            StartAt = startAt,
-            Window = start is null && end is null && timezone is null ? null : new ScheduleWindowDefinition { Start = start, End = end, Timezone = timezone },
-        };
-
-        ScheduleStore.ValidationError(definition).Should().Be(error);
-        var save = () => ScheduleStore.SaveSchedules([definition], _tmp.FullName);
-        if (error is null)
-        {
-            save.Should().NotThrow();
-        }
-        else
-        {
-            save.Should().Throw<Exception>().WithMessage(error);
-        }
-    }
-
-    [Fact]
-    public void GuiSaveRefusesMissingFieldsAndRepeatedNames()
-    {
-        FluentActions.Invoking(() => ScheduleStore.SaveSchedules([new ScheduleDefinition { Profile = "p", Every = "1h" }], _tmp.FullName))
-            .Should().Throw<InvalidOperationException>().WithMessage("Schedule name is required.");
-        FluentActions.Invoking(() => ScheduleStore.SaveSchedules([new ScheduleDefinition { Name = "n", Every = "1h" }], _tmp.FullName))
-            .Should().Throw<InvalidOperationException>().WithMessage("Schedule 'n' is missing a profile reference.");
-        FluentActions.Invoking(() => ScheduleStore.SaveSchedules([new ScheduleDefinition { Name = "n", Profile = "p" }], _tmp.FullName))
-            .Should().Throw<InvalidOperationException>().WithMessage("Schedule 'n' is missing an interval.");
-        ScheduleStore.ValidationError(new ScheduleDefinition { Name = "n", Profile = "p" }).Should().Be("Schedule 'n' is missing an interval.");
-        FluentActions.Invoking(() => ScheduleStore.SaveSchedules(
-                [null!, new ScheduleDefinition { Name = "n", Profile = "p", Every = "1h" }, new ScheduleDefinition { Name = " n ", Profile = "q", Every = "2h" }],
-                _tmp.FullName))
-            .Should().Throw<ScheduleException>().WithMessage("Schedule already registered: n");
+        (await backend.ListSchedulesAsync(_tmp.FullName, ct)).Schedules.Should().ContainSingle();
+        (await backend.ListDueSchedulesAsync(Jan1.AddDays(1), _tmp.FullName, configPath: " ", cancellationToken: ct)).Runs.Should().ContainSingle();
+        (await backend.ListScheduleStatusAsync(_tmp.FullName, cancellationToken: ct)).Schedules[0].Pending.Should().Be(Jan1);
+        (await backend.CompleteScheduleAsync("nightly", Jan1, _tmp.FullName, cancellationToken: ct)).NextRun.Should().Be(Jan1.AddDays(1));
+        (await backend.SkipScheduleAsync("nightly", Jan1.AddDays(3), _tmp.FullName, cancellationToken: ct)).NextRun.Should().Be(Jan1.AddDays(3));
+        await backend.SaveSchedulesAsync([Nightly with { Name = "other" }], _tmp.FullName, ct);
+        (await backend.ListSchedulesAsync(_tmp.FullName, ct)).Schedules.Single().Name.Should().Be("other");
     }
 }

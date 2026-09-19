@@ -1,20 +1,11 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
+/// <summary>A daily window: <c>HH:mm</c> or <c>HH:mm:ss</c> bounds in a time zone (UTC when none); a start after the end runs overnight.</summary>
+public sealed record ScheduleWindowDefinition
 {
-    public sealed class ScheduleWindowDefinition
-    {
-        [JsonPropertyName("start")]
-        public string? Start { get; set; }
-            = null;
+    public required string Start { get; init; }
 
-        [JsonPropertyName("end")]
-        public string? End { get; set; }
-            = null;
+    public required string End { get; init; }
 
-        [JsonPropertyName("timezone")]
-        public string? Timezone { get; set; }
-            = null;
-    }
+    public string? Timezone { get; init; }
 }

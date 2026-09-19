@@ -37,10 +37,9 @@ public sealed class ScheduleIntegrationTests : IDisposable
 
         var due = InvokeCli("due", "--at", "2025-01-02T00:00:00Z");
         due.ExitCode.Should().Be(0, due.Err);
-        var duePayload = due.Json();
-        duePayload.GetArrayLength().Should().Be(1);
-        duePayload[0].GetProperty("name").GetString().Should().Be("nightly");
-        duePayload[0].GetProperty("scheduled_for").GetString().Should().Be("2025-01-01T00:00:00+00:00");
+        var run = due.Json().GetProperty("runs").EnumerateArray().Should().ContainSingle().Subject;
+        run.GetProperty("name").GetString().Should().Be("nightly");
+        run.GetProperty("scheduled_for").GetString().Should().Be("2025-01-01T00:00:00+00:00");
         var statePath = Path.Combine(baseDir, "Profiles", "scheduler-state.json");
         ReadJson(statePath).GetProperty("nightly").GetProperty("pending").GetString().Should().Be("2025-01-01T00:00:00+00:00");
 
@@ -57,17 +56,20 @@ public sealed class ScheduleIntegrationTests : IDisposable
 
         var listing = InvokeCli("list");
         listing.ExitCode.Should().Be(0, listing.Err);
-        listing.Json()[0].GetProperty("next_run").GetString().Should().Be("2025-01-05T09:30:00+00:00");
+        listing.Json().GetProperty("schedules")[0].GetProperty("next_run").GetString().Should().Be("2025-01-05T09:30:00+00:00");
     }
 
-    /// <summary>A <c>CommandExitException</c> from the schedule commands: the message on stderr and exit code 1.</summary>
+    /// <summary>A schedule refusal: the message (file, JSON path, reason) on stderr and exit code 1.</summary>
     [Fact]
     public void ScheduleErrorsExitOneWithTheMessage()
     {
+        var manifest = Path.Combine(Directory.CreateDirectory(Path.Combine(_tmp.FullName, "Profiles")).FullName, "schedules.json");
+        File.WriteAllText(manifest, """{"schedules": [{"name": "n", "profile": "p", "every": "1h", "colour": "red"}]}""", Utf8);
+
         var run = InvokeCli("list");
 
         run.ExitCode.Should().Be(1);
         run.Out.Should().BeEmpty();
-        run.Err.Should().Be($"Schedule manifest not found: {Path.Combine(_tmp.FullName, "Profiles", "schedules.json")}{Environment.NewLine}");
+        run.Err.Should().StartWith($"{manifest}: $.schedules[0].colour: ");
     }
 }

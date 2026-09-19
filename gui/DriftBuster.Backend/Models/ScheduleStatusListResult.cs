@@ -1,11 +1,4 @@
-using System.Text.Json.Serialization;
+namespace DriftBuster.Backend.Models;
 
-namespace DriftBuster.Backend.Models
-{
-    /// <summary>The schedules <c>schedule list</c> prints, ordered by name.</summary>
-    public sealed class ScheduleStatusListResult
-    {
-        [JsonPropertyName("schedules")]
-        public ScheduleStatus[] Schedules { get; set; } = [];
-    }
-}
+/// <summary>The schedules <c>schedule list</c> reports, ordered by name.</summary>
+public sealed record ScheduleStatusListResult(IReadOnlyList<ScheduleStatus> Schedules);

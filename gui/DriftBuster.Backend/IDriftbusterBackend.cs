@@ -27,13 +27,13 @@ namespace DriftBuster.Backend
         Task<ScheduleStatusListResult> ListScheduleStatusAsync(string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default);
 
         /// <summary>The runs due at <paramref name="reference"/> (ISO 8601; now when empty), marked pending in the state file (<c>schedule due</c>).</summary>
-        Task<ScheduleDueResult> ListDueSchedulesAsync(string? reference = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default);
+        Task<ScheduleDueResult> ListDueSchedulesAsync(DateTimeOffset? reference = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default);
 
         /// <summary>Completes a schedule's pending run at <paramref name="completedAt"/> (ISO 8601; the pending time when empty) (<c>schedule mark-complete</c>).</summary>
-        Task<ScheduleStateResult> CompleteScheduleAsync(string name, string? completedAt = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default);
+        Task<ScheduleStateResult> CompleteScheduleAsync(string name, DateTimeOffset? completedAt = null, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default);
 
         /// <summary>Skips a schedule until <paramref name="resumeAt"/> (ISO 8601) (<c>schedule skip-until</c>).</summary>
-        Task<ScheduleStateResult> SkipScheduleAsync(string name, string resumeAt, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default);
+        Task<ScheduleStateResult> SkipScheduleAsync(string name, DateTimeOffset resumeAt, string? baseDir = null, string? configPath = null, string? statePath = null, CancellationToken cancellationToken = default);
 
         Task<OfflineCollectorResult> PrepareOfflineCollectorAsync(
             RunProfileDefinition profile,

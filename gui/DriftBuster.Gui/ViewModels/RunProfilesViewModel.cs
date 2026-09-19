@@ -626,27 +626,19 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         {
             var entry = new ScheduleEntry(this)
             {
-                Name = definition.Name ?? string.Empty,
-                Profile = definition.Profile ?? string.Empty,
-                Every = definition.Every ?? string.Empty,
-                EveryValue = definition.EveryValue,
-                MetadataValues = definition.MetadataValues,
-                ManifestEntry = definition.ManifestEntry,
+                Name = definition.Name,
+                Profile = definition.Profile,
+                Every = definition.Every,
                 StartAt = string.IsNullOrWhiteSpace(definition.StartAt) ? null : definition.StartAt?.Trim(),
                 WindowStart = definition.Window?.Start?.Trim(),
                 WindowEnd = definition.Window?.End?.Trim(),
                 WindowTimezone = definition.Window?.Timezone?.Trim(),
-                TagsText = definition.Tags is { Length: > 0 }
-                    ? string.Join(", ", definition.Tags)
-                    : string.Empty,
+                TagsText = string.Join(", ", definition.Tags),
             };
 
-            if (definition.Metadata is not null)
+            foreach (var pair in definition.Metadata)
             {
-                foreach (var pair in definition.Metadata)
-                {
-                    entry.Metadata.Add(new KeyValueEntry { Key = pair.Key, Value = pair.Value });
-                }
+                entry.Metadata.Add(new KeyValueEntry { Key = pair.Key, Value = pair.Value });
             }
 
             Schedules.Add(entry);
@@ -909,7 +901,7 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
         var hasWindowEnd = !string.IsNullOrWhiteSpace(entry.WindowEnd);
         var hasWindowTimezone = !string.IsNullOrWhiteSpace(entry.WindowTimezone);
 
-        // A window without a time zone is a UTC window (ScheduleWindow.FromDict).
+        // A window without a time zone is a UTC window.
         if ((hasWindowStart || hasWindowEnd || hasWindowTimezone) && (!hasWindowStart || !hasWindowEnd))
         {
             return "Specify both window start and end times.";
@@ -1157,15 +1149,6 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
         public IRelayCommand<KeyValueEntry> RemoveMetadataCommand { get; }
 
-        /// <summary>The loaded interval's JSON value when it was not a string; saved while <see cref="Every"/> still shows it.</summary>
-        internal object? EveryValue { get; init; }
-
-        /// <summary>The loaded metadata values that were not strings; each saved while its entry still shows it.</summary>
-        internal IDictionary<string, object?>? MetadataValues { get; init; }
-
-        /// <summary>The manifest entry the card was loaded from; fields the card still shows as loaded are saved as the entry holds them.</summary>
-        internal IReadOnlyDictionary<string, object?>? ManifestEntry { get; init; }
-
         [ObservableProperty]
         private string _name = string.Empty;
 
@@ -1220,38 +1203,16 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
 
         partial void OnTagsTextChanged(string value) => Parent.ValidateSchedules();
 
-        internal ScheduleDefinition ToDefinition()
+        internal ScheduleDefinition ToDefinition() => new()
         {
-            var definition = new ScheduleDefinition
-            {
-                Name = Name.Trim(),
-                Profile = Profile.Trim(),
-                Every = Every.Trim(),
-                StartAt = string.IsNullOrWhiteSpace(StartAt) ? null : StartAt.Trim(),
-                EveryValue = EveryValue,
-                MetadataValues = MetadataValues,
-                ManifestEntry = ManifestEntry,
-            };
-
-            var window = BuildWindow();
-            if (window is not null)
-            {
-                definition.Window = window;
-            }
-
-            var tags = BuildTags();
-            if (tags.Length > 0)
-            {
-                definition.Tags = tags;
-            }
-
-            var metadata = BuildMetadata();
-            definition.Metadata = metadata.Count > 0
-                ? metadata
-                : new Dictionary<string, string>(System.StringComparer.Ordinal);
-
-            return definition;
-        }
+            Name = Name.Trim(),
+            Profile = Profile.Trim(),
+            Every = Every.Trim(),
+            StartAt = string.IsNullOrWhiteSpace(StartAt) ? null : StartAt.Trim(),
+            Window = BuildWindow(),
+            Tags = BuildTags(),
+            Metadata = BuildMetadata(),
+        };
 
         internal void Detach()
         {
@@ -1321,10 +1282,11 @@ public partial class RunProfilesViewModel : ObservableObject, IDisposable
                 return null;
             }
 
+            // A half-filled window is reported by ValidateSchedules before it can be saved.
             return new ScheduleWindowDefinition
             {
-                Start = start,
-                End = end,
+                Start = start ?? string.Empty,
+                End = end ?? string.Empty,
                 Timezone = timezone,
             };
         }

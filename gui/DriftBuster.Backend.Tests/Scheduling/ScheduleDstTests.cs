@@ -1,6 +1,6 @@
 using System.Globalization;
 
-using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Models;
 using DriftBuster.Backend.Scheduling;
 
 namespace DriftBuster.Backend.Tests.Scheduling;
@@ -28,37 +28,41 @@ public sealed class ScheduleDstTests
     [InlineData("UTC", "09:00", "17:00", "2025-03-09T17:00:00.999999+00:00", "2025-03-09T17:00:00+00:00", false)]
     public void WindowAlignsAndContainsAcrossTransitions(string zone, string start, string end, string candidate, string aligned, bool contains)
     {
-        var window = ScheduleWindow.FromDict(SchedulerTests.Payload(("start", start), ("end", end), ("timezone", zone)));
+        var window = ScheduleWindow.From(new ScheduleWindowDefinition { Start = start, End = end, Timezone = zone });
         var moment = DateTimeOffset.Parse(candidate, CultureInfo.InvariantCulture);
 
-        IsoTimestamp.Format(window.Align(moment)).Should().Be(aligned);
+        window.Align(moment).Should().Be(DateTimeOffset.Parse(aligned, CultureInfo.InvariantCulture));
         window.Contains(moment).Should().Be(contains);
     }
 
     [Theory]
     // A daily 02:15 run in Chicago skips 2025-03-09: 02:15 does not exist that day and resolves past the window's end.
-    [InlineData("America/Chicago", "2025-03-07T08:15:00+00:00", "1d", "02:15", "02:45", "2025-03-07T08:15:00+00:00 2025-03-08T08:15:00+00:00 2025-03-10T07:15:00+00:00 2025-03-11T07:15:00+00:00 2025-03-12T07:15:00+00:00")]
-    [InlineData("America/Chicago", "2025-10-31T06:30:00+00:00", "1d", "01:30", "01:45", "2025-10-31T06:30:00+00:00 2025-11-01T06:30:00+00:00 2025-11-02T06:30:00+00:00 2025-11-03T07:30:00+00:00 2025-11-04T07:30:00+00:00")]
-    [InlineData("Europe/London", "2025-03-28T01:30:00+00:00", "1d", "01:30", "02:00", "2025-03-28T01:30:00+00:00 2025-03-29T01:30:00+00:00 2025-03-31T00:30:00+00:00 2025-04-01T00:30:00+00:00 2025-04-02T00:30:00+00:00")]
-    [InlineData("Australia/Lord_Howe", "2025-10-02T15:15:00+00:00", "1d", "02:15", "02:20", "2025-10-02T15:45:00+00:00 2025-10-03T15:45:00+00:00 2025-10-05T15:15:00+00:00 2025-10-06T15:15:00+00:00 2025-10-07T15:15:00+00:00")]
-    [InlineData("UTC", "2025-03-07T02:00:00+00:00", "1d", "02:00", "02:10", "2025-03-07T02:00:00+00:00 2025-03-08T02:00:00+00:00 2025-03-09T02:00:00+00:00 2025-03-10T02:00:00+00:00 2025-03-11T02:00:00+00:00")]
-    public void WindowedChainsCrossTransitions(string zone, string startAt, string every, string start, string end, string runs)
+    [InlineData("America/Chicago", "2025-03-07T08:15:00+00:00", "02:15", "02:45", "2025-03-07T08:15Z 2025-03-08T08:15Z 2025-03-10T07:15Z 2025-03-11T07:15Z 2025-03-12T07:15Z")]
+    [InlineData("America/Chicago", "2025-10-31T06:30:00+00:00", "01:30", "01:45", "2025-10-31T06:30Z 2025-11-01T06:30Z 2025-11-02T06:30Z 2025-11-03T07:30Z 2025-11-04T07:30Z")]
+    [InlineData("Europe/London", "2025-03-28T01:30:00+00:00", "01:30", "02:00", "2025-03-28T01:30Z 2025-03-29T01:30Z 2025-03-31T00:30Z 2025-04-01T00:30Z 2025-04-02T00:30Z")]
+    [InlineData("Australia/Lord_Howe", "2025-10-02T15:15:00+00:00", "02:15", "02:20", "2025-10-02T15:45Z 2025-10-03T15:45Z 2025-10-05T15:15Z 2025-10-06T15:15Z 2025-10-07T15:15Z")]
+    [InlineData("UTC", "2025-03-07T02:00:00+00:00", "02:00", "02:10", "2025-03-07T02:00Z 2025-03-08T02:00Z 2025-03-09T02:00Z 2025-03-10T02:00Z 2025-03-11T02:00Z")]
+    public void DailyWindowedChainsCrossTransitions(string zone, string startAt, string start, string end, string runs)
     {
-        var spec = ScheduleSpec.FromDict(SchedulerTests.Payload(
-            ("name", "n"),
-            ("profile", "p"),
-            ("every", every),
-            ("start_at", startAt),
-            ("window", SchedulerTests.Payload(("start", start), ("end", end), ("timezone", zone)))));
+        var spec = ScheduleSpec.From(new ScheduleDefinition
+        {
+            Name = "n",
+            Profile = "p",
+            Every = "1d",
+            StartAt = startAt,
+            Window = new ScheduleWindowDefinition { Start = start, End = end, Timezone = zone },
+        });
 
-        var moment = spec.InitialRun();
-        var actual = new List<string> { IsoTimestamp.Format(moment) };
+        var moment = spec.InitialRun(DateTimeOffset.UnixEpoch);
+        var actual = new List<string> { Minutes(moment) };
         for (var step = 0; step < 4; step++)
         {
             moment = spec.NextAfter(moment);
-            actual.Add(IsoTimestamp.Format(moment));
+            actual.Add(Minutes(moment));
         }
 
         string.Join(' ', actual).Should().Be(runs);
     }
+
+    private static string Minutes(DateTimeOffset moment) => moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm'Z'", CultureInfo.InvariantCulture);
 }

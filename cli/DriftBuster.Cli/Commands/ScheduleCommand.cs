@@ -1,13 +1,13 @@
 using System.CommandLine;
 
-using DriftBuster.Backend.Infrastructure;
+using DriftBuster.Backend.Json;
 using DriftBuster.Backend.Scheduling;
 
 namespace DriftBuster.Cli.Commands;
 
 /// <summary>
-/// <c>driftbuster schedule list|due|mark-complete|skip-until</c> over <see cref="ScheduleCommands"/>, each payload printed as sorted JSON
-/// indented 2 and a new line.
+/// <c>driftbuster schedule list|due|mark-complete|skip-until</c> over <see cref="ScheduleCommands"/>, each result printed as indented
+/// JSON (<see cref="ModelJson"/>).
 /// </summary>
 internal static class ScheduleCommand
 {
@@ -31,13 +31,15 @@ internal static class ScheduleCommand
         return (config, state);
     }
 
-    private static string? PathValue(ParseResult parseResult, Option<string?> option)
-        => parseResult.GetValue(option) is { } text ? LexicalPath.Str(text) : null;
+    private static ScheduleCommands Commands(ParseResult parseResult, Option<string?> baseDir, Option<string?> config, Option<string?> state)
+        => new(ProfileCommand.BaseDir(parseResult, baseDir), parseResult.GetValue(config), parseResult.GetValue(state));
 
-    private static void PrintJson(TextWriter stdout, object? payload)
+    private static DateTimeOffset? Timestamp(string? text) => string.IsNullOrWhiteSpace(text) ? null : ScheduleParsing.ParseTimestamp(text);
+
+    private static int Print<T>(TextWriter stdout, T result)
     {
-        var text = ConsoleText.Dumps(payload, indent: 2, sortKeys: true);
-        ConsoleText.Write(stdout, text.EndsWith('\n') ? text : text + "\n");
+        ConsoleText.Write(stdout, ModelJson.Serialize(result));
+        return 0;
     }
 
     private static Command BuildList(Option<string?> baseDir)
@@ -46,8 +48,7 @@ internal static class ScheduleCommand
         var (config, state) = Common(command);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
-            PrintJson(stdout, ScheduleCommands.List(ProfileCommand.BaseDir(parseResult, baseDir), PathValue(parseResult, config), PathValue(parseResult, state)));
-            return 0;
+            return Print(stdout, Commands(parseResult, baseDir, config, state).List());
         }));
         return command;
     }
@@ -60,9 +61,7 @@ internal static class ScheduleCommand
         command.Options.Add(at);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
-            PrintJson(stdout, ScheduleCommands.Due(
-                parseResult.GetValue(at), ProfileCommand.BaseDir(parseResult, baseDir), PathValue(parseResult, config), PathValue(parseResult, state)));
-            return 0;
+            return Print(stdout, Commands(parseResult, baseDir, config, state).Due(Timestamp(parseResult.GetValue(at))));
         }));
         return command;
     }
@@ -77,13 +76,7 @@ internal static class ScheduleCommand
         command.Options.Add(completedAt);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
-            PrintJson(stdout, ScheduleCommands.MarkComplete(
-                parseResult.GetValue(name)!,
-                parseResult.GetValue(completedAt),
-                ProfileCommand.BaseDir(parseResult, baseDir),
-                PathValue(parseResult, config),
-                PathValue(parseResult, state)));
-            return 0;
+            return Print(stdout, Commands(parseResult, baseDir, config, state).MarkComplete(parseResult.GetValue(name)!, Timestamp(parseResult.GetValue(completedAt))));
         }));
         return command;
     }
@@ -98,13 +91,7 @@ internal static class ScheduleCommand
         command.Options.Add(resumeAt);
         command.SetAction(parseResult => CommandRunner.Run(parseResult, (stdout, _) =>
         {
-            PrintJson(stdout, ScheduleCommands.SkipUntil(
-                parseResult.GetValue(name)!,
-                parseResult.GetValue(resumeAt)!,
-                ProfileCommand.BaseDir(parseResult, baseDir),
-                PathValue(parseResult, config),
-                PathValue(parseResult, state)));
-            return 0;
+            return Print(stdout, Commands(parseResult, baseDir, config, state).SkipUntil(parseResult.GetValue(name)!, ScheduleParsing.ParseTimestamp(parseResult.GetValue(resumeAt)!)));
         }));
         return command;
     }
