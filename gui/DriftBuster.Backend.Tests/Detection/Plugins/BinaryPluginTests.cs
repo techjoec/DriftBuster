@@ -52,7 +52,7 @@ public sealed class BinaryPluginTests
         match.Confidence.Should().BeApproximately(0.92, 1e-9);
         match.Reasons.Should().Equal(
             "Detected binary property list header (bplist00)",
-            "Parsed binary property list via plistlib");
+            "Parsed binary property list");
         match.Metadata.Keys.Should().Equal("signature", "top_level_keys");
         Strings(match.Metadata["top_level_keys"]).Should().Equal("Environment", "FeatureFlags", "ReviewedAt");
     }

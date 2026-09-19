@@ -49,16 +49,13 @@ public sealed class PathTextTests
         PathText.RelativePosix(root, root).Should().Be(".");
     }
 
-    // POSIX paths order by their component lists, each component by code point.
+    // POSIX paths order by their component lists, each component ordinally, so a folder's entries stay together.
     [Fact]
-    public void ComparePosixPathsMatchesPurePathOrdering()
+    public void ComparePosixPathsOrdersByComponent()
     {
-        string[] paths = ["a-b/x.txt", "a.txt", "a/sub/y.txt", "a/z.txt", "\uFF5E.conf", "\U0001F600.conf", "a", "A.txt"];
+        string[] paths = ["a-b/x.txt", "a.txt", "a/sub/y.txt", "a/z.txt", "a", "A.txt"];
         var sorted = paths.OrderBy(path => path, Comparer<string>.Create(PathText.ComparePosixPaths)).ToList();
-        sorted.Should().Equal("A.txt", "a", "a/sub/y.txt", "a/z.txt", "a-b/x.txt", "a.txt", "\uFF5E.conf", "\U0001F600.conf");
-        PathText.CompareCodePoints("\U0001F600", "\uFF5E").Should().BePositive();
-        string.CompareOrdinal("\U0001F600", "\uFF5E").Should().BeNegative();
-        PathText.CompareCodePoints("ab", "abc").Should().BeNegative();
+        sorted.Should().Equal("A.txt", "a", "a/sub/y.txt", "a/z.txt", "a-b/x.txt", "a.txt");
         PathText.ComparePosixPaths("a", "a").Should().Be(0);
     }
 }

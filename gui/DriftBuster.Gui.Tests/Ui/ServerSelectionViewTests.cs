@@ -905,7 +905,7 @@ public sealed class ServerSelectionViewTests
     public async Task RunAllProducesTimelineAndToast()
     {
         var toast = new ToastService(action => action());
-        var viewModel = CreateViewModel(toast: toast);
+        using var viewModel = CreateViewModel(toast: toast);
 
         await viewModel.RunAllCommand.ExecuteAsync(null);
 

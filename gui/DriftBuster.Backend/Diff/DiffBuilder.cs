@@ -210,7 +210,7 @@ public static class DiffBuilder
     {
         var stats = result.Stats;
         var redactionCounts = new OrderedDictionary<string, int>(StringComparer.Ordinal);
-        foreach (var (token, count) in (result.RedactionCounts ?? new Dictionary<string, int>(StringComparer.Ordinal)).OrderBy(pair => pair.Key, Comparer<string>.Create(PathText.CompareCodePoints)))
+        foreach (var (token, count) in (result.RedactionCounts ?? new Dictionary<string, int>(StringComparer.Ordinal)).OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             redactionCounts[token] = count;
         }

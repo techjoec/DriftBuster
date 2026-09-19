@@ -115,8 +115,8 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
             return new DetectionMatch(Name, "plist", "xml-or-binary", 0.92, reasons, metadata);
         }
 
-        metadata["top_level_keys"] = JsonNodes.Array(BinaryPlist.SortedKeys(payload).Select(JsonNodes.From));
-        reasons.Add("Parsed binary property list via plistlib");
+        metadata["top_level_keys"] = JsonNodes.Strings(BinaryPlist.SortedKeys(payload));
+        reasons.Add("Parsed binary property list");
         return new DetectionMatch(Name, "plist", "xml-or-binary", 0.92, reasons, metadata);
     }
 
@@ -157,7 +157,7 @@ public sealed class BinaryHybridPlugin : IFormatPlugin
         }
 
         var keys = keySet.ToList();
-        keys.Sort(PathText.CompareCodePoints);
+        keys.Sort(StringComparer.Ordinal);
         var metadata = new JsonObject
         {
             ["front_matter_keys"] = JsonNodes.Strings(keys),

@@ -45,7 +45,7 @@ internal sealed class FakeRegistryBackend : IRegistryBackend
         }
 
         var names = node.Subkeys.Keys.ToList();
-        names.Sort(PathText.CompareCodePoints);
+        names.Sort(StringComparer.Ordinal);
         return names;
     }
 

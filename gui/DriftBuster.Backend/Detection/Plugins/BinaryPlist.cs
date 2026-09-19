@@ -10,8 +10,8 @@ namespace DriftBuster.Backend.Detection.Plugins;
 /// UTF-16BE strings, UIDs, arrays, dicts). Objects are cached by reference, so shared and self-referencing containers terminate.
 /// </summary>
 /// <remarks>
-/// Values decode to null, bool, BigInteger, double, DateTime, byte[], string, <see cref="Uid"/>, List and OrderedDictionary
-/// (keys compared by <see cref="KeyComparer"/>: true, 1 and 1.0 are one key). Every malformed payload throws one
+/// Values decode to null, bool, BigInteger, double, DateTime, byte[], string, <see cref="Uid"/>, List and OrderedDictionary with
+/// string keys (a dict key that is not a string, as Apple's format requires, makes the payload invalid). Every malformed payload throws one
 /// <see cref="DecodeException"/>; nesting past <see cref="MaxNestingDepth"/> does too, instead of exhausting the stack.
 /// </remarks>
 internal static partial class BinaryPlist
@@ -30,9 +30,6 @@ internal static partial class BinaryPlist
     {
         public override string ToString() => $"UID({Data.ToString(CultureInfo.InvariantCulture)})";
     }
-
-    /// <summary>Stands in for a null key inside a dict, which the dictionary type cannot hold directly.</summary>
-    internal static object NoneKey { get; } = new();
 
     private static readonly Encoding StrictUtf16Be = new UnicodeEncoding(bigEndian: true, byteOrderMark: false, throwOnInvalidBytes: true);
 
@@ -320,23 +317,16 @@ internal static partial class BinaryPlist
             return result;
         }
 
-        private OrderedDictionary<object, object?> ReadDict(ulong reference, ulong count, int depth)
+        private OrderedDictionary<string, object?> ReadDict(ulong reference, ulong count, int depth)
         {
             var keyRefs = ReadRefs(count);
             var valueRefs = ReadRefs(count);
-            var result = new OrderedDictionary<object, object?>(KeyComparer.Instance);
+            var result = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
             _objects[reference] = result;
             for (var index = 0; index < keyRefs.Length; index++)
             {
                 var value = ReadObject(valueRefs[index], depth + 1);
-                var key = ReadObject(keyRefs[index], depth + 1) ?? NoneKey;
-                if (key is List<object?> or OrderedDictionary<object, object?>)
-                {
-                    // A container cannot be a key: KeyComparer cannot hash one.
-                    throw InvalidFile();
-                }
-
-                result[key] = value;
+                result[ReadObject(keyRefs[index], depth + 1) as string ?? throw InvalidFile()] = value;
             }
 
             return result;

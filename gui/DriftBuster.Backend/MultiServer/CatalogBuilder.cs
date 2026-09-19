@@ -62,7 +62,7 @@ public static class CatalogBuilder
         var catalog = new List<ConfigCatalogEntry>();
         var drilldown = new List<ConfigDrilldown>();
         var configIds = configIndex.Keys.ToList();
-        configIds.Sort(PathText.CompareCodePoints);
+        configIds.Sort(StringComparer.Ordinal);
         foreach (var configId in configIds)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -84,7 +84,7 @@ public static class CatalogBuilder
     {
         if (!perHost.TryGetValue(baselineHostId, out var baseline))
         {
-            var fallbackHostId = perHost.Keys.Min(Comparer<string>.Create(PathText.CompareCodePoints))!;
+            var fallbackHostId = perHost.Keys.Min(StringComparer.Ordinal)!;
             baseline = perHost[fallbackHostId];
         }
 

@@ -7,7 +7,7 @@ namespace DriftBuster.Backend.Diff;
 
 public static partial class Canonicaliser
 {
-    private static readonly Comparer<string> CodePointOrder = Comparer<string>.Create(PathText.CompareCodePoints);
+    private static readonly StringComparer OrdinalOrder = StringComparer.Ordinal;
 
     /// <summary>
     /// Written names: <c>&lt;name</c>, the element's namespace declarations, attributes sorted by expanded name, then <c> /&gt;</c> when
@@ -62,7 +62,7 @@ public static partial class Canonicaliser
     private static void OpenElement(StringBuilder builder, Stack<(XNode Node, bool Closing, int Depth)> stack, XElement element, int depth)
     {
         builder.Append('<').Append(WrittenName(element));
-        foreach (var declaration in element.Attributes().Where(attribute => attribute.IsNamespaceDeclaration).OrderBy(DeclaredPrefix, CodePointOrder))
+        foreach (var declaration in element.Attributes().Where(attribute => attribute.IsNamespaceDeclaration).OrderBy(DeclaredPrefix, OrdinalOrder))
         {
             builder.Append(" xmlns");
             var prefix = DeclaredPrefix(declaration);
@@ -76,7 +76,7 @@ public static partial class Canonicaliser
         }
 
         // Keys are unique expanded names ("{uri}local" or "local").
-        foreach (var attribute in element.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration).OrderBy(attribute => attribute.Name.ToString(), CodePointOrder))
+        foreach (var attribute in element.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration).OrderBy(attribute => attribute.Name.ToString(), OrdinalOrder))
         {
             builder.Append(' ').Append(WrittenName(attribute)).Append("=\"");
             AppendEscapedAttribute(builder, CollapseWhitespace(attribute.Value)).Append('"');

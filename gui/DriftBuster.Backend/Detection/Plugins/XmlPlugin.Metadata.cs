@@ -23,8 +23,8 @@ public sealed partial class XmlPlugin
 
         public int Compare((string Key, string Value) x, (string Key, string Value) y)
         {
-            var result = PathText.CompareCodePoints(x.Key.ToLowerInvariant(), y.Key.ToLowerInvariant());
-            return result != 0 ? result : PathText.CompareCodePoints(x.Key, y.Key);
+            var result = string.CompareOrdinal(x.Key.ToLowerInvariant(), y.Key.ToLowerInvariant());
+            return result != 0 ? result : string.CompareOrdinal(x.Key, y.Key);
         }
     }
 

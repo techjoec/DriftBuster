@@ -195,7 +195,7 @@ public sealed partial class MultiServerRunner
     internal static string RootFingerprint(IReadOnlyList<string> roots)
     {
         var resolved = roots.Select(FilePaths.ResolveLinks).ToList();
-        resolved.Sort(PathText.CompareCodePoints);
+        resolved.Sort(StringComparer.Ordinal);
         return MultiServerPlan.Sha1Hex(string.Join('|', resolved));
     }
 

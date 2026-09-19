@@ -80,7 +80,7 @@ public static partial class RegistryScan
         }
 
         var seen = new HashSet<(string, string)>();
-        var codePoints = Comparer<string>.Create(PathText.CompareCodePoints);
+        var codePoints = StringComparer.Ordinal;
         return apps
             .Where(app => seen.Add((app.Hive, app.KeyPath)))
             .OrderBy(app => app.DisplayName.ToLowerInvariant(), codePoints)

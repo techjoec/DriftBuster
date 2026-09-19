@@ -1,6 +1,6 @@
 namespace DriftBuster.Backend.Infrastructure;
 
-/// <summary>The path text helpers the engine uses, over <see cref="LexicalPath"/>; engine code never calls <see cref="Path.GetExtension"/>.</summary>
+/// <summary>Path text rules DriftBuster shows and sorts by, over <see cref="LexicalPath"/>.</summary>
 public static class PathText
 {
     /// <summary>The last segment (empty and "." segments dropped); "", for ".", "/" or a bare root.</summary>
@@ -59,7 +59,7 @@ public static class PathText
     public static string RelativePosix(string root, string path) => ToPosix(Path.GetRelativePath(root, path));
 
     /// <summary>
-    /// Orders posix paths component by component, each by code point: "a/z" before "a-b", and astral characters after all BMP ones.
+    /// Orders posix paths component by component, each ordinally: "a/z" before "a-b", so a folder's entries stay together.
     /// </summary>
     public static int ComparePosixPaths(string left, string right)
     {
@@ -70,7 +70,7 @@ public static class PathText
         var count = Math.Min(leftParts.Length, rightParts.Length);
         for (var index = 0; index < count; index++)
         {
-            var result = CompareCodePoints(leftParts[index], rightParts[index]);
+            var result = string.CompareOrdinal(leftParts[index], rightParts[index]);
             if (result != 0)
             {
                 return result;
@@ -78,45 +78,5 @@ public static class PathText
         }
 
         return leftParts.Length.CompareTo(rightParts.Length);
-    }
-
-    /// <summary>
-    /// Ordering by code point, so astral characters sort after every BMP character. A surrogate pair is one astral code point; an
-    /// unpaired surrogate is its own code point (U+D800-U+DFFF), below U+E000.
-    /// </summary>
-    public static int CompareCodePoints(string left, string right)
-    {
-        ArgumentNullException.ThrowIfNull(left);
-        ArgumentNullException.ThrowIfNull(right);
-        var leftIndex = 0;
-        var rightIndex = 0;
-        while (leftIndex < left.Length && rightIndex < right.Length)
-        {
-            var a = CodePointAt(left, leftIndex, out var leftWidth);
-            var b = CodePointAt(right, rightIndex, out var rightWidth);
-            if (a != b)
-            {
-                return a.CompareTo(b);
-            }
-
-            leftIndex += leftWidth;
-            rightIndex += rightWidth;
-        }
-
-        return (left.Length - leftIndex).CompareTo(right.Length - rightIndex);
-    }
-
-    // The code point starting at index: a high surrogate followed by a low one is one astral code point, any other unit is its own.
-    private static int CodePointAt(string text, int index, out int width)
-    {
-        var ch = text[index];
-        if (char.IsHighSurrogate(ch) && index + 1 < text.Length && char.IsLowSurrogate(text[index + 1]))
-        {
-            width = 2;
-            return char.ConvertToUtf32(ch, text[index + 1]);
-        }
-
-        width = 1;
-        return ch;
     }
 }

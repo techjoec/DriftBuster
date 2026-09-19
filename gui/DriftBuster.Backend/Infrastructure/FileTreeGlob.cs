@@ -80,7 +80,7 @@ public static class FileTreeGlob
         }
 
         Walk(baseDirectory, segments.Skip(literal).ToList(), 0, new HashSet<string>(StringComparer.Ordinal), results, cancellationToken);
-        results.Sort((left, right) => PathText.CompareCodePoints(PathText.ToPosix(left), PathText.ToPosix(right)));
+        results.Sort((left, right) => string.CompareOrdinal(PathText.ToPosix(left), PathText.ToPosix(right)));
         return results;
     }
 
