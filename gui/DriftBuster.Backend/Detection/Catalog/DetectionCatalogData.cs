@@ -8,6 +8,12 @@ internal static class DetectionCatalogData
         Slug: "registry-export",
         Priority: 10,
         DefaultSeverity: "high",
+        DefaultVariant: "regedit5",
+        Subtypes:
+        [
+            new FormatSubtype("RegistryExportVersion5", 11, Variant: "regedit5", Severity: "high"),
+            new FormatSubtype("RegistryExportRegedit4", 12, Variant: "regedit4", Severity: "high"),
+        ],
         SeverityHint: "Registry exports capture entire hive snapshots, including secrets, policy settings, and service fingerprints.",
         RemediationHints:
         [
@@ -461,7 +467,7 @@ internal static class DetectionCatalogData
     private static readonly FallbackClass Fallback = new FallbackClass("UnknownTextOrBinary", "unknown-text-or-binary", 1000, "info");
 
     internal static DetectionCatalog Build() => new(
-        Version: "0.0.3",
+        Version: "0.0.4",
         Updated: "2025-10-10",
         Classes:
         [

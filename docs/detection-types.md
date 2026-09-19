@@ -5,14 +5,14 @@ The detection catalog (`DetectionCatalog.Default`, built in
 holds the canonical detection metadata consumed by the core detector; the usage
 percentages are survey estimates kept in this document. Detection runs in
 ascending priority order; the first positive match wins. The tables below blend the shipped class definitions from
-the catalog (v0.0.3) with the usage insights from the format survey data
-(v0.0.3).
+the catalog (v0.0.4) with the usage insights from the format survey data
+(v0.0.4).
 
 ## Active Detection Classes
 
 | Priority | Class Name              | Catalog Format        | Default Severity | Primary Variant / Notes                 | Key Extensions                      | Usage % | Detection Cues                |
 |----------|------------------------|-----------------------|------------------|-----------------------------------------|-------------------------------------|---------|-------------------------------|
-| 10       | RegistryExport         | registry-export       | high             | catalog entry only; no built-in plugin emits it | `.reg`                 | 10      | —                             |
+| 10       | RegistryExport         | registry-export       | high             | regedit5 (UTF-16LE), regedit4            | `.reg`                               | 10      | export header + `[HKEY_…]` sections |
 | 15       | RegistryLive           | registry-live         | medium           | scan-definition                          | `.json`, `.yml`, `.yaml`             | —       | `registry_scan` manifest key  |
 | 20       | StructuredConfigXml    | structured-config-xml | high             | web/app/machine + transform variants     | `.config`                            | 12      | filename + section hints      |
 | 30       | XmlGeneric             | xml                   | medium           | generic, msbuild, manifest/resource/XAML | `.xml`, `.manifest`, `.resx`, `.xaml` | 14     | namespace + root metadata     |
@@ -290,7 +290,7 @@ lowercase slugs to remain JSON friendly and arrive pre-sanitised for adapters.
 
 | Key               | Description                                                   | Example Value |
 |-------------------|---------------------------------------------------------------|---------------|
-| `catalog_version` | Detection catalog version embedded in the match payload.     | `0.0.3`     |
+| `catalog_version` | Detection catalog version embedded in the match payload.     | `0.0.4`     |
 | `catalog_format`  | Canonical catalog identifier resolved from `format_name`.   | `xml`       |
 | `catalog_variant` | Optional variant slug derived from `DetectionMatch.variant`.| `resource-xml`  |
 | `bytes_sampled`   | Number of bytes the detector analysed for the match.         | `65536`     |
@@ -299,15 +299,15 @@ lowercase slugs to remain JSON friendly and arrive pre-sanitised for adapters.
 
 Sample metadata payload:
 
-``json
+```json
 {
-  "catalog_version": "0.0.3",
+  "catalog_version": "0.0.4",
   "catalog_format": "xml",
   "catalog_variant": "resource-xml",
   "bytes_sampled": 65536,
   "encoding": "utf-8"
 }
-``
+```
 
 Keep this document synchronised with `DetectionCatalogData.cs` and the format
 survey data whenever priorities, variants, or usage assumptions change.

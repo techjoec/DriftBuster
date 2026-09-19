@@ -242,7 +242,7 @@ public sealed class DetectorTests : IDisposable
         match.Should().NotBeNull();
         match!.PluginName.Should().Be("test-xml-recorder");
         match.Metadata.Should().NotBeNull();
-        match.Metadata!["catalog_version"].Should().Be("0.0.3");
+        match.Metadata!["catalog_version"].Should().Be("0.0.4");
         match.Metadata["catalog_format"].Should().Be("xml");
         match.Metadata["catalog_variant"].Should().Be("generic");
         match.Metadata["bytes_sampled"].Should().Be(4);

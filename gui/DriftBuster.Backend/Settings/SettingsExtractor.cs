@@ -31,7 +31,8 @@ public static class SettingsExtractor
             "json" => JsonSettings.Extract(text),
             "yaml" => YamlSettings.Extract(text),
             "toml" => TomlSettings.Extract(text),
-            "ini" or "registry-export" => IniSettings.Extract(text),
+            "ini" => IniSettings.Extract(text),
+            "registry-export" => RegistryExportSettings.Extract(text),
             "properties" => IniSettings.Extract(text, continuations: true),
             "registry-live" => JsonSettings.Extract(text) ?? YamlSettings.Extract(text),
             _ => pluginName switch

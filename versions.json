@@ -1,6 +1,6 @@
 {
   "core": "0.2.0",
-  "catalog": "0.0.3",
+  "catalog": "0.0.4",
   "gui": "0.2.0",
   "powershell": "0.2.0"
 }

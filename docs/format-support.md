@@ -11,7 +11,8 @@ the code.
 | Structured configuration | `.config` web/app/machine files, build transforms, assembly sidecars | xml    | 0.0.6          | Stabilising  | Transform scope, precedence, schema provenance, attribute hints, MSBuild metadata, and line-level namespace provenance hashes are populated. |
 | Generic XML              | Application manifests (`.manifest`), resources (`.resx`), XAML UI | xml    | 0.0.6          | Stabilising  | Namespace logging captures per-declaration hashes + line numbers, schema provenance, `.resx` resource keys, MSBuild project detection, and attribute hints surface alongside hunt-aligned tokens. |
 | JSON                     | Generic JSON, comment-friendly `jsonc`, `appsettings*.json`      | json   | 0.0.3          | Preview      | Large-sample validation and sampling guardrails are still being tuned. |
-| Registry live scan       | JSON/YAML scan manifests (`registry_scan` token/keywords/patterns) | registry-live | 0.0.1      | Preview      | Integrates live Windows Registry hunts via definition files; avoids `.reg` exports. |
+| Registry export          | Registry Editor exports (`.reg`), version 5 (UTF-16LE) and `REGEDIT4` | registry-export | 0.0.1  | Preview      | Requires the export header; records the editor version, hives, key and value counts, and deletions. |
+| Registry live scan       | JSON/YAML scan manifests (`registry_scan` token/keywords/patterns) | registry-live | 0.0.1      | Preview      | Integrates live Windows Registry hunts via definition files. |
 | INI                       | Classic/sectionless, dotenv gating, directive spillover metadata | ini    | 0.0.2          | Preview     | Records encoding, comment style, sensitive key hints, and classifies dotenv/unix-conf/hybrid variants for remediation planning. |
 | YAML                     | Generic YAML, Kubernetes manifest hints                           | yaml   | 0.0.3          | Preview      | Parser-free heuristics capture document markers, indentation tolerances, review metadata, and `apiVersion`/`kind` hints. |
 | Conf DSL                 | Logstash pipeline configs (`input`/`filter`/`output` blocks)      | conf   | 0.0.1          | Preview      | Tight heuristics avoid stealing `.conf` INI-like files covered by the INI plugin. |
@@ -34,6 +35,7 @@ settings are named like this:
 | JSON | Dotted paths (`Logging.LogLevel.Default`), array items by position (`Hosts[2]`); comments are tolerated |
 | YAML | Dotted paths, sequence items by position; a second document is prefixed `doc2.` |
 | TOML | `table.key`, arrays of tables by position (`plugin[2].name`) |
+| Registry exports (`.reg`) | `[key path] value name` (`(Default)` for `@`); strings unescaped, `dword` with its decimal value, expandable and multi-strings decoded, deletions as `(deleted)` |
 | INI, `.env`, `.properties` | `[section] key`, or the bare key before any section |
 | HCL, nginx and other conf, Dockerfile, text | The directive or key, prefixed by the blocks it sits in (`http.server.listen`); repeated names are numbered (`RUN #2`) |
 | SQLite, property lists, Markdown with front matter and other binary-hybrid files | One `(file contents)` entry compared by hash |

@@ -39,12 +39,12 @@ internal static partial class VersionSync
             $"[\"catalog_version\"].Should().Be(\"{catalog}\")");
 
         var detectionTypes = At(root, "docs", "detection-types.md");
-        yield return new(detectionTypes, "DETECTION_CATALOG` \\(v[^)]+\\)", $"DETECTION_CATALOG` (v{catalog})", 1);
+        yield return new(detectionTypes, "the catalog \\(v[^)]+\\)", $"the catalog (v{catalog})", 1);
         yield return new(detectionTypes, "format survey data\\n\\(v[0-9.]+\\)", $"format survey data\n(v{catalog})", 1);
         yield return new(
             detectionTypes,
-            "``catalog_version`` \\| Detection catalog version embedded in the match payload\\.\\s+\\| ``[0-9.]+``",
-            $"``catalog_version`` | Detection catalog version embedded in the match payload.     | ``{catalog}``",
+            "`catalog_version` \\| Detection catalog version embedded in the match payload\\.\\s+\\| `[0-9.]+`",
+            $"`catalog_version` | Detection catalog version embedded in the match payload.     | `{catalog}`",
             1);
         yield return new(detectionTypes, "\"catalog_version\": \"[^\"]+\"", $"\"catalog_version\": \"{catalog}\"");
         yield return new(At(root, "notes", "snippets", "xml-config-diffs.md"), "\"catalog_version\": \"[^\"]+\"", $"\"catalog_version\": \"{catalog}\"");

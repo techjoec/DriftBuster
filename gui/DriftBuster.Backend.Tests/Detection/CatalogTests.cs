@@ -109,7 +109,7 @@ public sealed class CatalogTests
     {
         var lookup = DetectionMetadata.BuildFormatLookup(Catalog);
 
-        Catalog.Version.Should().Be("0.0.3");
+        Catalog.Version.Should().Be("0.0.4");
         lookup["registry-export"].Canonical.Should().Be("registry-export");
         lookup["registryexport"].Canonical.Should().Be("registry-export");
         lookup["structured-config"].Canonical.Should().Be("structured-config-xml");

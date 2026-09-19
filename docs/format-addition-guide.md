@@ -12,17 +12,18 @@ each class declares its `Name`, `Priority` and `Version`:
 
 | Order | Plugin          | Class                  | Priority |
 |-------|-----------------|------------------------|----------|
-| 0     | `registry-live` | `RegistryLivePlugin`   | 30       |
-| 1     | `xml`           | `XmlPlugin`            | 100      |
-| 2     | `dockerfile`    | `DockerfilePlugin`     | 120      |
-| 3     | `conf`          | `ConfPlugin`           | 150      |
-| 4     | `hcl`           | `HclPlugin`            | 158      |
-| 5     | `yaml`          | `YamlPlugin`           | 160      |
-| 6     | `toml`          | `TomlPlugin`           | 165      |
-| 7     | `ini`           | `IniPlugin`            | 170      |
-| 8     | `json`          | `JsonPlugin`           | 200      |
-| 9     | `binary-hybrid` | `BinaryHybridPlugin`   | 210      |
-| 10    | `text`          | `TextPlugin`           | 1000     |
+| 0     | `registry-export` | `RegistryExportPlugin` | 20     |
+| 1     | `registry-live` | `RegistryLivePlugin`   | 30       |
+| 2     | `xml`           | `XmlPlugin`            | 100      |
+| 3     | `dockerfile`    | `DockerfilePlugin`     | 120      |
+| 4     | `conf`          | `ConfPlugin`           | 150      |
+| 5     | `hcl`           | `HclPlugin`            | 158      |
+| 6     | `yaml`          | `YamlPlugin`           | 160      |
+| 7     | `toml`          | `TomlPlugin`           | 165      |
+| 8     | `ini`           | `IniPlugin`            | 170      |
+| 9     | `json`          | `JsonPlugin`           | 200      |
+| 10    | `binary-hybrid` | `BinaryHybridPlugin`   | 210      |
+| 11    | `text`          | `TextPlugin`           | 1000     |
 
 `FormatRegistry.RegistrySummary()` reports the live order, priority and version.
 When you update or add a plugin, bump its `Version` property and the matrix in
