@@ -25,7 +25,7 @@ public static class SettingsExtractor
             return new ExtractedSettings(SettingsMode.Binary, [new SettingEntry("(file contents)", "sha256:" + fileHash)]);
         }
 
-        var parsed = formatId switch
+        var parsed = string.Equals(pluginName, "script", StringComparison.Ordinal) ? ScriptSettings.Extract(text) : formatId switch
         {
             "structured-config-xml" or "xml" => XmlSettings.Extract(text),
             "json" => JsonSettings.Extract(text),

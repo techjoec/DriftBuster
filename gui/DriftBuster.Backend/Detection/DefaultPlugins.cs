@@ -19,13 +19,14 @@ public static class DefaultPlugins
     }
 
     /// <summary>
-    /// Fresh instances of every built-in plugin, in priority order (registry-export 20, registry-live 30, xml 100, dockerfile 120,
+    /// Fresh instances of every built-in plugin, in priority order (registry-export 20, registry-live 30, script 90, xml 100, dockerfile 120,
     /// conf 150, hcl 158, yaml 160, toml 165, ini 170, json 200, binary-hybrid 210, text 1000).
     /// </summary>
     public static IReadOnlyList<IFormatPlugin> CreateBuiltIns() =>
     [
         new RegistryExportPlugin(),
         new RegistryLivePlugin(),
+        new ScriptPlugin(),
         new XmlPlugin(),
         new DockerfilePlugin(),
         new ConfPlugin(),
