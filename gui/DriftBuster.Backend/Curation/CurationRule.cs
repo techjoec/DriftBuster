@@ -9,39 +9,30 @@ namespace DriftBuster.Backend.Curation;
 /// </summary>
 public sealed record CurationRule
 {
-    [JsonPropertyName("name")]
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("enabled")]
+    // Required in the file: a source-generated read would give an absent flag false, not this default.
+    [JsonRequired]
     public bool Enabled { get; init; } = true;
 
-    [JsonPropertyName("scope")]
-    public string Scope { get; init; } = string.Empty;
+    public string Scope { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("file_pattern")]
-    public string FilePattern { get; init; } = string.Empty;
+    public string FilePattern { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("key_pattern")]
-    public string KeyPattern { get; init; } = string.Empty;
+    public string KeyPattern { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("app_name")]
-    public string AppName { get; init; } = string.Empty;
+    public string AppName { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("file_label")]
-    public string FileLabel { get; init; } = string.Empty;
+    public string FileLabel { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("description")]
-    public string Description { get; init; } = string.Empty;
+    public string Description { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("ignore")]
     public bool Ignore { get; init; }
 
     /// <summary>Empty, <see cref="CurationChoiceKinds.Mask"/> or <see cref="CurationChoiceKinds.Unmask"/>.</summary>
-    [JsonPropertyName("mask")]
-    public string Mask { get; init; } = string.Empty;
+    public string Mask { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("groups")]
-    public IReadOnlyList<string> Groups { get; init; } = [];
+    public IReadOnlyList<string> Groups { get; init => field = value ?? []; } = [];
 
     public bool MatchesFile(string path) => CurationPattern.IsMatch(path, FilePattern);
 

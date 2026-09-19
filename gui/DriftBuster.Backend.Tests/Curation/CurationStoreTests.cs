@@ -50,20 +50,38 @@ public sealed class CurationStoreTests : IDisposable
 
         var load = () => CurationStore.Load(path);
 
-        load.Should().Throw<InvalidDataException>().WithMessage("*could not be read*");
+        load.Should().Throw<InvalidDataException>().WithMessage(path + ": $*");
+        File.ReadAllText(path).Should().Be("{ not json");
     }
 
     [Fact]
-    public void Missing_lists_in_a_hand_edited_file_become_empty()
+    public void Members_left_out_of_a_hand_edited_file_take_their_defaults()
     {
         var path = PathOf("partial.json");
-        File.WriteAllText(path, """{"schema_version": 1, "groups": [{"name": "g"}], "rules": null}""");
+        File.WriteAllText(path, """{"schema_version": 1, "groups": [{"name": "g"}], "rules": [{"name": "r", "enabled": true}]}""");
 
         var document = CurationStore.Load(path);
 
         document.Groups.Single().Members.Should().BeEmpty();
-        document.Rules.Should().BeEmpty();
+        document.Rules.Single().Should().BeEquivalentTo(new CurationRule { Name = "r" });
         document.Choices.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("""{"schema_version": 1, "rules": null}""", "$.rules")]
+    [InlineData("""{"schema_version": 1, "labels": []}""", "$")]
+    [InlineData("""{"schema_version": 1, "groups": [], "groups": []}""", "$")]
+    [InlineData("""{"schema_version": 1, "rules": [{"name": "r"}]}""", "$.rules[0]")]
+    [InlineData("""{"schema_version": 2}""", "$.schema_version")]
+    [InlineData("""{}""", "$.schema_version: 0")]
+    public void A_file_that_does_not_fit_is_refused_with_its_json_path(string text, string where)
+    {
+        var path = PathOf("strict.json");
+        File.WriteAllText(path, text);
+
+        var load = () => CurationStore.Load(path);
+
+        load.Should().Throw<InvalidDataException>().Which.Message.Should().StartWith(path + ": " + where);
     }
 
     [Fact]

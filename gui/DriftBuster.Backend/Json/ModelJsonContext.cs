@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using DriftBuster.Backend.Curation;
 using DriftBuster.Backend.Models;
 using DriftBuster.Backend.MultiServer;
 using DriftBuster.Backend.Profiles.Detection;
@@ -22,6 +23,7 @@ namespace DriftBuster.Backend.Json;
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     RespectNullableAnnotations = true,
     RespectRequiredConstructorParameters = true)]
+[JsonSerializable(typeof(CurationDocument))]
 [JsonSerializable(typeof(RunProfileDefinition))]
 [JsonSerializable(typeof(RunProfileListResult))]
 [JsonSerializable(typeof(RunProfileRunResult))]

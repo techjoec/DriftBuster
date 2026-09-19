@@ -11,15 +11,12 @@ namespace DriftBuster.Backend.Curation;
 /// </summary>
 public sealed record CurationTarget
 {
-    [JsonPropertyName("file")]
-    public string File { get; init; } = string.Empty;
+    public string File { get; init => field = value ?? string.Empty; } = string.Empty;
 
-    [JsonPropertyName("key")]
-    public string Key { get; init; } = string.Empty;
+    public string Key { get; init => field = value ?? string.Empty; } = string.Empty;
 
     /// <summary>The value's fingerprint (<see cref="ValueHashOf"/>); empty for any value.</summary>
-    [JsonPropertyName("value_hash")]
-    public string ValueHash { get; init; } = string.Empty;
+    public string ValueHash { get; init => field = value ?? string.Empty; } = string.Empty;
 
     /// <summary>True when the target is a whole file rather than a setting in it.</summary>
     [JsonIgnore]

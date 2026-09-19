@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace DriftBuster.Backend.Curation;
 
 /// <summary>Everything the user has decided about settings: groups, rules, ignore and mask choices, and the review list.</summary>
@@ -7,18 +5,13 @@ public sealed record CurationDocument
 {
     public const int CurrentSchemaVersion = 1;
 
-    [JsonPropertyName("schema_version")]
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 
-    [JsonPropertyName("groups")]
-    public IReadOnlyList<CurationGroup> Groups { get; init; } = [];
+    public IReadOnlyList<CurationGroup> Groups { get; init => field = value ?? []; } = [];
 
-    [JsonPropertyName("rules")]
-    public IReadOnlyList<CurationRule> Rules { get; init; } = [];
+    public IReadOnlyList<CurationRule> Rules { get; init => field = value ?? []; } = [];
 
-    [JsonPropertyName("choices")]
-    public IReadOnlyList<CurationChoice> Choices { get; init; } = [];
+    public IReadOnlyList<CurationChoice> Choices { get; init => field = value ?? []; } = [];
 
-    [JsonPropertyName("review")]
-    public IReadOnlyList<CurationReviewItem> Review { get; init; } = [];
+    public IReadOnlyList<CurationReviewItem> Review { get; init => field = value ?? []; } = [];
 }
