@@ -136,6 +136,18 @@ namespace DriftBuster.Gui.ViewModels
 
         public IRelayCommand<ConfigCatalogItemViewModel> DrilldownCommand { get; }
 
+        /// <summary>The settings comparison of the same scan, for the right-click menu's file actions.</summary>
+        public CompareViewModel? Compare { get; set; }
+
+        /// <summary>Raised with a config id when the user asks to see a file's settings in Compare.</summary>
+        public event EventHandler<ValueEventArgs<string>>? CompareRequested;
+
+        public void RequestCompare(ConfigCatalogItemViewModel item)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+            CompareRequested?.Invoke(this, new ValueEventArgs<string>(item.ConfigId));
+        }
+
         public IRelayCommand<ConfigCatalogItemViewModel> ReScanMissingCommand { get; }
 
         public IRelayCommand ReScanAllPartialCommand { get; }

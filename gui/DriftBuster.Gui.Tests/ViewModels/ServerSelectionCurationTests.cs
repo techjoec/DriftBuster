@@ -51,4 +51,27 @@ public sealed class ServerSelectionCurationTests
         viewModel.CompareViewModel.RawText(context, "c").Should().Be("prod text");
         viewModel.CompareViewModel.RawText(context, "b").Should().BeNull();
     }
+
+    [Fact]
+    public async Task Files_hands_a_file_to_Compare()
+    {
+        var service = new FakeDriftbusterService
+        {
+            RunServerScansHandler = (plans, _, _) => Task.FromResult(new ServerScanResponse
+            {
+                Results = plans.Select(plan => new ServerScanResult { HostId = plan.HostId, Label = plan.Label, Status = ServerScanStatus.Succeeded }).ToArray(),
+                Comparison = SampleComparison.Build(),
+            }),
+        };
+        using var viewModel = new ServerSelectionViewModel(service, new ToastService(action => action()), new InMemorySessionCacheService(), curation: new InMemoryCurationService());
+        viewModel.Servers[0].IsEnabled = true;
+        await viewModel.RunAllCommand.ExecuteAsync(null);
+        viewModel.CatalogViewModel.Compare.Should().BeSameAs(viewModel.CompareViewModel);
+        viewModel.CurrentView = MultiServerView.Details;
+
+        viewModel.CatalogViewModel.RequestCompare(new ConfigCatalogItemViewModel(new ConfigCatalogEntry { ConfigId = "json/same", DisplayName = "same.json" }, totalHosts: 3));
+
+        viewModel.CurrentView.Should().Be(MultiServerView.Compare);
+        viewModel.CompareViewModel.SelectedFile!.Path.Should().Be("same.json");
+    }
 }

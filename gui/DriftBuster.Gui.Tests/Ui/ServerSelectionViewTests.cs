@@ -989,22 +989,22 @@ public sealed class ServerSelectionViewTests
     }
 
     [AvaloniaFact]
-    public void Server_cards_surface_validation_summaries_in_tooltips()
+    public void Host_list_items_surface_validation_summaries_in_tooltips()
     {
         var viewModel = CreateViewModel();
-        viewModel.UseVirtualizedServerList = false;
 
         var view = new ServerSelectionView
         {
             DataContext = viewModel,
         };
 
-        var fallback = view.FindControl<ItemsControl>("ServerCardsFallback");
-        fallback.Should().NotBeNull();
-        fallback!.ItemTemplate.Should().NotBeNull();
+        var hosts = view.FindControl<ListBox>("HostList");
+        hosts.Should().NotBeNull();
+        hosts!.ItemTemplate.Should().NotBeNull();
+        viewModel.SelectedServer.Should().BeSameAs(viewModel.Servers[0], "the first host is selected for editing");
 
         var slot = viewModel.Servers[0];
-        var template = (IDataTemplate)fallback.ItemTemplate!;
+        var template = (IDataTemplate)hosts.ItemTemplate!;
         var card = (Border)template.Build(slot)!;
         card.DataContext = slot;
 
@@ -1055,11 +1055,6 @@ public sealed class ServerSelectionViewTests
         view.Arrange(new Rect(view.DesiredSize));
         view.UpdateLayout();
 
-        var serverRepeater = view.FindControl<ItemsControl>("ServerCardsVirtualRepeater");
-        var serverFallback = view.FindControl<ItemsControl>("ServerCardsFallback");
-        serverRepeater!.IsVisible.Should().BeTrue();
-        serverFallback!.IsVisible.Should().BeFalse();
-
         var activityRepeater = view.FindControl<ItemsControl>("ActivityVirtualRepeater");
         var activityFallback = view.FindControl<ItemsControl>("ActivityFallback");
         activityRepeater!.IsVisible.Should().BeTrue();
@@ -1075,11 +1070,6 @@ public sealed class ServerSelectionViewTests
         nonVirtualView.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         nonVirtualView.Arrange(new Rect(nonVirtualView.DesiredSize));
         nonVirtualView.UpdateLayout();
-
-        var nonVirtualServerRepeater = nonVirtualView.FindControl<ItemsControl>("ServerCardsVirtualRepeater");
-        var nonVirtualServerFallback = nonVirtualView.FindControl<ItemsControl>("ServerCardsFallback");
-        nonVirtualServerRepeater!.IsVisible.Should().BeFalse();
-        nonVirtualServerFallback!.IsVisible.Should().BeTrue();
 
         var nonVirtualActivityRepeater = nonVirtualView.FindControl<ItemsControl>("ActivityVirtualRepeater");
         var nonVirtualActivityFallback = nonVirtualView.FindControl<ItemsControl>("ActivityFallback");

@@ -11,41 +11,42 @@ namespace DriftBuster.Gui.Views
 {
     /// <summary>
     /// The Compare view's right-click menu for a setting, one server's value of it, or a whole file. Every item calls the view
-    /// model; dialogs and the clipboard go through the view.
+    /// model; dialogs and the clipboard go through <see cref="DialogHost"/>.
     /// </summary>
     [ExcludeFromCodeCoverage]
     internal static class CompareContextMenu
     {
-        public static ContextMenu Build(CompareView view, CompareViewModel viewModel, CompareContext context)
+        public static ContextMenu Build(Control anchor, CompareViewModel viewModel, CompareContext context, IEnumerable<Control>? leading = null)
         {
-            var items = new List<Control>
+            var items = new List<Control>(leading ?? []);
+            items.AddRange(new Control[]
             {
-                GroupMenu(view, viewModel, context),
-                RuleMenu(view, viewModel, context),
+                GroupMenu(anchor, viewModel, context),
+                RuleMenu(anchor, viewModel, context),
                 Item(context.Row is null ? "Mark every setting" : context.Row.IsMarked ? "Unmark" : "Mark", () => viewModel.ToggleMark(context)),
-                CopyMenu(view, context),
-                ViewMenu(view, viewModel, context),
+                CopyMenu(anchor, context),
+                ViewMenu(anchor, viewModel, context),
                 Item(context.Row?.InReview == true ? "Remove from report" : "Add to report", () => viewModel.ToggleReview(context)),
                 new Separator(),
                 IgnoreMenu(viewModel, context),
-            };
+            });
 
             if (context.Row is not null)
             {
                 var masked = context.Row.Cells.Any(cell => cell.IsMasked);
                 items.Add(Sub(masked ? "Unmask values" : "Mask values", Lasting(persistence => viewModel.SetMasked(context, !masked, persistence))));
-                items.Add(HistoryMenu(view, viewModel, context, "History"));
+                items.Add(HistoryMenu(anchor, viewModel, context, "History"));
             }
 
             items.Add(new Separator());
-            items.Add(WhatIsMenu(view, context));
+            items.Add(WhatIsMenu(anchor, context));
             items.Add(Sub("Report bug",
-                Item("GitHub issue…", () => _ = view.ShowAsync(new BugReportWindow(CompareViewModel.BugReport(context), preferApi: false))),
-                Item("Send to receiver…", () => _ = view.ShowAsync(new BugReportWindow(CompareViewModel.BugReport(context), preferApi: true)))));
+                Item("GitHub issue…", () => _ = DialogHost.ShowAsync(anchor, new BugReportWindow(CompareViewModel.BugReport(context), preferApi: false))),
+                Item("Send to receiver…", () => _ = DialogHost.ShowAsync(anchor, new BugReportWindow(CompareViewModel.BugReport(context), preferApi: true)))));
             return new ContextMenu { ItemsSource = items };
         }
 
-        private static MenuItem GroupMenu(CompareView view, CompareViewModel viewModel, CompareContext context)
+        private static MenuItem GroupMenu(Control anchor, CompareViewModel viewModel, CompareContext context)
         {
             var items = viewModel.GroupsOf(context).Select(group => (Control)Sub(group,
                 Item("View this group", () => viewModel.ViewGroup(group)),
@@ -55,34 +56,34 @@ namespace DriftBuster.Gui.Views
                 items.Add(new Separator());
             }
 
-            items.Add(Item("Add to group…", () => _ = AddToGroupAsync(view, viewModel, context)));
-            items.Add(Item("Manage groups…", () => _ = view.ShowManagerAsync(new CurationManagerViewModel(viewModel.Curation, viewModel.HostSetId, CurationManagerViewModel.GroupsTab))));
+            items.Add(Item("Add to group…", () => _ = AddToGroupAsync(anchor, viewModel, context)));
+            items.Add(Item("Manage groups…", () => _ = DialogHost.ShowManagerAsync(anchor, viewModel, new CurationManagerViewModel(viewModel.Curation, viewModel.HostSetId, CurationManagerViewModel.GroupsTab))));
             return Sub("Group", items.ToArray());
         }
 
-        private static async System.Threading.Tasks.Task AddToGroupAsync(CompareView view, CompareViewModel viewModel, CompareContext context)
+        private static async System.Threading.Tasks.Task AddToGroupAsync(Control anchor, CompareViewModel viewModel, CompareContext context)
         {
-            var name = await view.ShowAsync<string>(new GroupPickerWindow($"Add {context.Key ?? context.Path} to a group", viewModel.GroupNames)).ConfigureAwait(true);
+            var name = await DialogHost.ShowAsync<string>(anchor, new GroupPickerWindow($"Add {context.Key ?? context.Path} to a group", viewModel.GroupNames)).ConfigureAwait(true);
             if (!string.IsNullOrWhiteSpace(name))
             {
                 viewModel.AddToGroup(context, name);
             }
         }
 
-        private static MenuItem RuleMenu(CompareView view, CompareViewModel viewModel, CompareContext context)
+        private static MenuItem RuleMenu(Control anchor, CompareViewModel viewModel, CompareContext context)
         {
             var existing = viewModel.RuleNames.Select(name => (Control)Item(name, () => viewModel.AddToRule(context, name))).ToArray();
             return Sub("Rule",
                 existing.Length == 0 ? Disabled("Add to existing rule (none yet)") : Sub("Add to existing rule", existing),
-                Item("Create new rule…", () => _ = view.ShowManagerAsync(new CurationManagerViewModel(viewModel.Curation, viewModel.HostSetId, CurationManagerViewModel.RulesTab, viewModel.RuleDraftFor(context)))),
-                Item("Manage rules…", () => _ = view.ShowManagerAsync(new CurationManagerViewModel(viewModel.Curation, viewModel.HostSetId, CurationManagerViewModel.RulesTab))));
+                Item("Create new rule…", () => _ = DialogHost.ShowManagerAsync(anchor, viewModel, new CurationManagerViewModel(viewModel.Curation, viewModel.HostSetId, CurationManagerViewModel.RulesTab, viewModel.RuleDraftFor(context)))),
+                Item("Manage rules…", () => _ = DialogHost.ShowManagerAsync(anchor, viewModel, new CurationManagerViewModel(viewModel.Curation, viewModel.HostSetId, CurationManagerViewModel.RulesTab))));
         }
 
-        private static MenuItem CopyMenu(CompareView view, CompareContext context)
+        private static MenuItem CopyMenu(Control anchor, CompareContext context)
         {
             if (context.Row is null)
             {
-                return Item("Copy file path", () => _ = view.CopyAsync(context.Path));
+                return Item("Copy file path", () => _ = DialogHost.CopyAsync(anchor, context.Path));
             }
 
             var scopes = new List<(string Label, CompareCopyScope Scope)> { ("All", CompareCopyScope.All), ("Setting", CompareCopyScope.Setting) };
@@ -97,7 +98,7 @@ namespace DriftBuster.Gui.Views
             }
 
             Control Format(string label, CompareCopyFormat format) => Sub(label, scopes
-                .Select(scope => (Control)Item(scope.Label, () => _ = view.CopyAsync(CompareViewModel.Copy(context, format, scope.Scope))))
+                .Select(scope => (Control)Item(scope.Label, () => _ = DialogHost.CopyAsync(anchor, CompareViewModel.Copy(context, format, scope.Scope))))
                 .ToArray());
             return Sub("Copy as",
                 Format("JSON", CompareCopyFormat.Json),
@@ -106,12 +107,12 @@ namespace DriftBuster.Gui.Views
                 Format("Hex", CompareCopyFormat.Hex));
         }
 
-        private static MenuItem ViewMenu(CompareView view, CompareViewModel viewModel, CompareContext context)
+        private static MenuItem ViewMenu(Control anchor, CompareViewModel viewModel, CompareContext context)
         {
             var raw = viewModel.Servers.Select(server => (Control)Item(server.Label, () =>
             {
                 var text = viewModel.RawText(context, server.HostId);
-                _ = view.ShowAsync(new TextViewerWindow(
+                _ = DialogHost.ShowAsync(anchor, new TextViewerWindow(
                     $"{context.File.FileName} on {server.Label}",
                     $"{context.Path} on {server.Label}",
                     text ?? string.Empty,
@@ -119,29 +120,29 @@ namespace DriftBuster.Gui.Views
             })).ToArray();
             var items = new List<Control>
             {
-                Item("As tree", () => _ = view.ShowAsync(new SettingsTreeWindow($"{context.Path} as a tree", viewModel.TreeOf(context.File)))),
+                Item("As tree", () => _ = DialogHost.ShowAsync(anchor, new SettingsTreeWindow($"{context.Path} as a tree", viewModel.TreeOf(context.File)))),
                 raw.Length == 0 ? Disabled("Raw data") : Sub("Raw data", raw),
             };
             if (context.Row is not null)
             {
-                items.Add(HistoryMenu(view, viewModel, context, "History"));
+                items.Add(HistoryMenu(anchor, viewModel, context, "History"));
             }
 
             return Sub("View", items.ToArray());
         }
 
-        private static MenuItem HistoryMenu(CompareView view, CompareViewModel viewModel, CompareContext context, string header)
+        private static MenuItem HistoryMenu(Control anchor, CompareViewModel viewModel, CompareContext context, string header)
         {
             void Show(CompareHistoryKind kind)
             {
                 try
                 {
                     var history = viewModel.History(context, kind);
-                    _ = view.ShowAsync(new HistoryWindow($"History of {context.Key} in {context.Path}", history, kind));
+                    _ = DialogHost.ShowAsync(anchor, new HistoryWindow($"History of {context.Key} in {context.Path}", history, kind));
                 }
                 catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException or UnauthorizedAccessException)
                 {
-                    _ = view.ShowAsync(new TextViewerWindow("History", "History could not be read", ex.Message));
+                    _ = DialogHost.ShowAsync(anchor, new TextViewerWindow("History", "History could not be read", ex.Message));
                 }
             }
 
@@ -169,9 +170,9 @@ namespace DriftBuster.Gui.Views
             return Sub("Ignore", items.ToArray());
         }
 
-        private static MenuItem WhatIsMenu(CompareView view, CompareContext context)
+        private static MenuItem WhatIsMenu(Control anchor, CompareContext context)
         {
-            void Show(WhatIsSubject subject) => _ = view.ShowAsync(new TextViewerWindow(
+            void Show(WhatIsSubject subject) => _ = DialogHost.ShowAsync(anchor, new TextViewerWindow(
                 "What is…",
                 CompareViewModel.WhatIs(context, subject),
                 string.Empty,

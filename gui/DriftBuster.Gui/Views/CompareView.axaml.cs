@@ -276,39 +276,7 @@ namespace DriftBuster.Gui.Views
         {
             if (_viewModel is not null)
             {
-                await ShowManagerAsync(new CurationManagerViewModel(_viewModel.Curation, _viewModel.HostSetId)).ConfigureAwait(true);
-            }
-        }
-
-        internal async Task ShowManagerAsync(CurationManagerViewModel manager)
-        {
-            await ShowAsync(new CurationManagerWindow(manager)).ConfigureAwait(true);
-            if (_viewModel is not null)
-            {
-                // The last action's message no longer describes what is on screen.
-                _viewModel.StatusMessage = string.Empty;
-            }
-        }
-
-        /// <summary>Shows a dialog over the window this view is in, or on its own when there is none.</summary>
-        internal async Task<T?> ShowAsync<T>(Window dialog)
-        {
-            if (TopLevel.GetTopLevel(this) is Window owner)
-            {
-                return await dialog.ShowDialog<T?>(owner).ConfigureAwait(true);
-            }
-
-            dialog.Show();
-            return default;
-        }
-
-        internal Task ShowAsync(Window dialog) => ShowAsync<object>(dialog);
-
-        internal async Task CopyAsync(string text)
-        {
-            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-            {
-                await clipboard.SetTextAsync(text).ConfigureAwait(true);
+                await DialogHost.ShowManagerAsync(this, _viewModel, new CurationManagerViewModel(_viewModel.Curation, _viewModel.HostSetId)).ConfigureAwait(true);
             }
         }
     }

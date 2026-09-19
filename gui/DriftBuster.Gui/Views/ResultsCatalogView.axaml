@@ -42,10 +42,11 @@
 
       <Border Grid.Row="1" Classes="surface" Padding="12,10" CornerRadius="{DynamicResource Radius.Large}">
         <Grid RowDefinitions="Auto,*" RowSpacing="6">
-          <TextBlock Classes="subtitle" Text="Every scanned file. Double-click a row, or use its button, for the line-by-line diff." />
+          <TextBlock Classes="subtitle" Text="Every scanned file. Double-click a row for the line-by-line diff; right-click for more." />
           <DataGrid x:Name="CatalogGrid"
                     Grid.Row="1"
                     DoubleTapped="OnCatalogGridDoubleTapped"
+                    ContextRequested="OnCatalogGridContextRequested"
                     ItemsSource="{Binding FilteredEntriesView}"
                     AutoGenerateColumns="False"
                     IsReadOnly="True"

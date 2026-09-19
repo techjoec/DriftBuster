@@ -24,6 +24,31 @@ namespace DriftBuster.Gui.ViewModels
         /// <summary>The raw text of one server's copy of a file (config id, host id), when the owner can provide it.</summary>
         public Func<string, string, string?>? RawTextProvider { get; set; }
 
+        /// <summary>The file with this catalog config id, whether or not the filters show it.</summary>
+        public CompareFileViewModel? FileFor(string configId) =>
+            _files.FirstOrDefault(file => string.Equals(file.ConfigId, configId, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Selects a file, first easing the filters that hide it.</summary>
+        public void ShowFile(CompareFileViewModel file)
+        {
+            ArgumentNullException.ThrowIfNull(file);
+            if (!VisibleFiles.Contains(file))
+            {
+                SearchText = string.Empty;
+                FocusHostId = null;
+                GroupFilter = null;
+                ReviewOnly = false;
+                MarkFilter = CompareMarkFilter.All;
+                ShowIgnored |= file.Ignored;
+                if (!VisibleFiles.Contains(file))
+                {
+                    DifferencesOnly = false;
+                }
+            }
+
+            SelectedFile = file;
+        }
+
         public IReadOnlyList<string> GroupNames => Curation.Document.Groups.Select(group => group.Name).ToArray();
 
         public IReadOnlyList<string> RuleNames => Curation.Document.Rules.Select(rule => rule.Name).ToArray();

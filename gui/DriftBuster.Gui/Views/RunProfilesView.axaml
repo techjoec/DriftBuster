@@ -5,19 +5,25 @@
              xmlns:conv="using:DriftBuster.Gui.Converters"
              x:Class="DriftBuster.Gui.Views.RunProfilesView"
              x:DataType="vm:RunProfilesViewModel">
-  <Grid ColumnDefinitions="260,*" RowDefinitions="Auto,*">
-    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-      <Button Content="Refresh" Classes="outline"
-              Command="{Binding RefreshCommand}"
-              automation:AutomationProperties.AutomationId="Profiles.Refresh" />
-      <TextBlock Text="Saved profiles" FontWeight="SemiBold" VerticalAlignment="Center" />
+  <!-- Fills the space it is given: saved profiles on the left, the selected profile's form on the right. -->
+  <Grid RowDefinitions="Auto,*" RowSpacing="10">
+    <StackPanel Spacing="2">
+      <TextBlock Classes="heading" Text="Profiles" />
+      <TextBlock Classes="subtitle" Text="Save the folders and options of a scan you run often, run it again, schedule it, or build an offline collector from it." />
     </StackPanel>
 
-    <Border Grid.Row="1" Grid.Column="0" Classes="surface" Padding="12" CornerRadius="{DynamicResource Radius.Medium}" Margin="0,6,18,0">
-      <StackPanel Spacing="8">
-        <ListBox ItemsSource="{Binding Profiles}"
+    <Grid Grid.Row="1" ColumnDefinitions="280,6,*">
+    <Border Classes="pane">
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="Saved profiles" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Refresh" Classes="outline"
+                  Command="{Binding RefreshCommand}"
+                  automation:AutomationProperties.AutomationId="Profiles.Refresh" />
+        </Grid>
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Profiles}"
                  SelectedItem="{Binding SelectedProfile}"
-                 MinHeight="240"
                  Background="Transparent"
                  automation:AutomationProperties.AutomationId="Profiles.List"
                  automation:AutomationProperties.Name="Saved profiles">
@@ -25,21 +31,21 @@
             <DataTemplate>
               <StackPanel>
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding Description}" Classes="subtitle" />
+                <TextBlock Text="{Binding Description}" Classes="subtitle" TextWrapping="Wrap" />
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="Load" Classes="primary"
-                  Command="{Binding LoadProfileCommand}"
-                  CommandParameter="{Binding SelectedProfile}"
-                  automation:AutomationProperties.AutomationId="Profiles.Load" />
-        </StackPanel>
-      </StackPanel>
+        <Button Grid.Row="2" Content="Load" Classes="primary"
+                HorizontalAlignment="Left"
+                Command="{Binding LoadProfileCommand}"
+                CommandParameter="{Binding SelectedProfile}"
+                automation:AutomationProperties.AutomationId="Profiles.Load" />
+      </Grid>
     </Border>
+    <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
 
-    <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}" Margin="0,6,0,0">
+    <Border Grid.Column="2" Classes="pane">
       <Grid RowDefinitions="Auto,*" RowSpacing="12">
       <!-- The actions stay in view while the form below scrolls. -->
       <StackPanel Spacing="6">
@@ -291,5 +297,6 @@
       </ScrollViewer>
       </Grid>
     </Border>
+    </Grid>
   </Grid>
 </UserControl>

@@ -222,4 +222,28 @@ public sealed class CompareCurationTests
         viewModel.CurationWarning.Should().Contain("bad json");
         viewModel.Dispose();
     }
+
+    [Fact]
+    public void A_file_from_the_catalog_is_found_and_shown_even_when_filtered_out()
+    {
+        var (viewModel, _) = Load();
+        viewModel.FileFor("JSON/SAME").Should().NotBeNull("config ids match case-insensitively");
+        viewModel.FileFor("nope").Should().BeNull();
+
+        viewModel.SearchText = "legacy";
+        viewModel.ReviewOnly = true;
+        var same = viewModel.FileFor("json/same")!;
+        viewModel.VisibleFiles.Should().NotContain(same);
+
+        viewModel.ShowFile(same);
+
+        viewModel.SelectedFile.Should().BeSameAs(same);
+        viewModel.DifferencesOnly.Should().BeFalse("the file does not differ, so differences-only had to go");
+        viewModel.ReviewOnly.Should().BeFalse();
+        viewModel.SearchText.Should().BeEmpty();
+
+        var app = viewModel.FileFor("json/app")!;
+        viewModel.ShowFile(app);
+        viewModel.SelectedFile.Should().BeSameAs(app);
+    }
 }

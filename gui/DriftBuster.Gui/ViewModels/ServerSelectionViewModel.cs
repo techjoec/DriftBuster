@@ -82,20 +82,20 @@ namespace DriftBuster.Gui.ViewModels
             _showDrilldownForHostCommand = new RelayCommand<string>(OnShowDrilldownForHost, CanShowDrilldownForHost);
 
             Servers = new ObservableCollection<ServerSlotViewModel>(CreateDefaultServers());
-            Servers.CollectionChanged += (_, _) => RefreshServerVirtualization();
             ReindexServers();
             CatalogViewModel = new ResultsCatalogViewModel(_performanceProfile);
             CatalogViewModel.ReScanRequested += (_, e) => _ = RunScopedAsync(e.Value);
             CatalogViewModel.DrilldownRequested += (_, e) => LoadDrilldown(e.Value.ConfigId, MultiServerView.Details);
+            CatalogViewModel.CompareRequested += OnCatalogCompareRequested;
             CatalogViewModel.PropertyChanged += OnCatalogPropertyChanged;
 
             _activityEntriesReadonly = new ReadOnlyObservableCollection<ActivityEntryViewModel>(_activityEntries);
             FilteredActivityEntries = new ObservableCollection<ActivityEntryViewModel>();
 
-            RefreshServerVirtualization();
             RefreshActivityVirtualization();
 
             CompareViewModel = new CompareViewModel(curation) { RawTextProvider = RawTextOf };
+            CatalogViewModel.Compare = CompareViewModel;
             CompareViewModel.DetailsRequested += OnCompareDetailsRequested;
             ShowSetupCommand = new RelayCommand(() => CurrentView = MultiServerView.Setup);
             ShowCompareCommand = new RelayCommand(() => CurrentView = MultiServerView.Compare, () => CompareViewModel.HasData);
@@ -115,6 +115,14 @@ namespace DriftBuster.Gui.ViewModels
         public ObservableCollection<ServerSlotViewModel> Servers { get; }
 
         public IReadOnlyList<ScanScopeOption> ScopeOptions { get; }
+
+        /// <summary>The host whose settings the Setup page shows beside the host list.</summary>
+        [ObservableProperty]
+        private ServerSlotViewModel? _selectedServer;
+
+        public bool HasSelectedServer => SelectedServer is not null;
+
+        partial void OnSelectedServerChanged(ServerSlotViewModel? value) => OnPropertyChanged(nameof(HasSelectedServer));
 
         public IReadOnlyList<ActivityFilterOption> ActivityFilterOptions { get; } = new ReadOnlyCollection<ActivityFilterOption>(new[]
         {
@@ -191,9 +199,6 @@ namespace DriftBuster.Gui.ViewModels
         public ObservableCollection<ActivityEntryViewModel> FilteredActivityEntries { get; }
 
         public bool HasActivityEntries => _activityEntries.Count > 0;
-
-        [ObservableProperty]
-        private bool _useVirtualizedServerList;
 
         [ObservableProperty]
         private bool _useVirtualizedActivityFeed;
@@ -691,6 +696,7 @@ namespace DriftBuster.Gui.ViewModels
             var slot = CreateServerSlot(index, enabled: true);
             Servers.Add(slot);
             ReindexServers();
+            SelectedServer = slot;
             StatusBanner = $"Added {slot.Label}.";
             LogActivity(ActivitySeverity.Info, $"Added {slot.Label}", $"Host id: {slot.HostId}");
         }
@@ -986,6 +992,16 @@ namespace DriftBuster.Gui.ViewModels
             }
         }
 
+        // Files → Compare: open the comparison on the file the user picked in the catalog.
+        private void OnCatalogCompareRequested(object? sender, ValueEventArgs<string> e)
+        {
+            if (CompareViewModel.FileFor(e.Value) is { } file)
+            {
+                CompareViewModel.ShowFile(file);
+                CurrentView = MultiServerView.Compare;
+            }
+        }
+
         // Keeps the scan's settings for the history views; a failure is noted and does not affect the results.
         private async Task RecordHistoryAsync(ServerScanResponse? response, string hostSetId)
         {
@@ -1095,6 +1111,11 @@ namespace DriftBuster.Gui.ViewModels
             for (var index = 0; index < Servers.Count; index++)
             {
                 Servers[index].Index = index;
+            }
+
+            if (SelectedServer is null || !Servers.Contains(SelectedServer))
+            {
+                SelectedServer = Servers.FirstOrDefault();
             }
 
             OnPropertyChanged(nameof(ActiveServers));
@@ -1352,11 +1373,6 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             RefreshActivityVirtualization();
-        }
-
-        private void RefreshServerVirtualization()
-        {
-            UseVirtualizedServerList = _performanceProfile.ShouldVirtualize(Servers.Count);
         }
 
         private void RefreshActivityVirtualization()
@@ -1663,6 +1679,7 @@ namespace DriftBuster.Gui.ViewModels
 
             CatalogViewModel.PropertyChanged -= OnCatalogPropertyChanged;
             CompareViewModel.DetailsRequested -= OnCompareDetailsRequested;
+            CatalogViewModel.CompareRequested -= OnCatalogCompareRequested;
             CompareViewModel.Dispose();
             _runGate.Dispose();
             _runCancellation?.Dispose();

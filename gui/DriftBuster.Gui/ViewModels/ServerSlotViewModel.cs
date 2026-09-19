@@ -84,6 +84,49 @@ namespace DriftBuster.Gui.ViewModels
 
         public bool CanRetry => RunState == ServerScanStatus.Failed;
 
+        /// <summary>The run state in a word for the host list; <see cref="StatusText"/> has the full message.</summary>
+        public string ShortStatus => RunState switch
+        {
+            ServerScanStatus.Idle => IsEnabled ? "Ready" : "Off",
+            ServerScanStatus.Queued => "Queued",
+            ServerScanStatus.Running => "Scanning",
+            ServerScanStatus.Succeeded => "Done",
+            ServerScanStatus.Failed => "Failed",
+            ServerScanStatus.Skipped => "Off",
+            _ => RunState.ToString(),
+        };
+
+        public bool HasLastRun => LastRunAt is not null;
+
+        /// <summary>When the host last ran, in this machine's time zone.</summary>
+        public string LastRunText => LastRunAt is { } at ? $"Last run: {at.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture)}" : string.Empty;
+
+        partial void OnRunStateChanged(ServerScanStatus value) => OnPropertyChanged(nameof(ShortStatus));
+
+        partial void OnLastRunAtChanged(DateTimeOffset? value)
+        {
+            OnPropertyChanged(nameof(HasLastRun));
+            OnPropertyChanged(nameof(LastRunText));
+        }
+
+        /// <summary>What the host will scan, in one line for the host list: "Custom roots: C:\\apps (+1 more)".</summary>
+        public string SummaryText
+        {
+            get
+            {
+                if (!IsEnabled)
+                {
+                    return "Not scanned";
+                }
+
+                var scope = Scope switch { ServerScanScope.AllDrives => "All drives", ServerScanScope.SingleDrive => "Single drive", _ => "Custom roots" };
+                var first = Roots.Select(root => root.Path).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+                return first is null ? scope
+                    : Roots.Count > 1 ? $"{scope}: {first} (+{Roots.Count - 1} more)"
+                    : $"{scope}: {first}";
+            }
+        }
+
         public bool HasCachedResult => RunState is ServerScanStatus.Cached or ServerScanStatus.Succeeded;
 
         partial void OnRootInputErrorChanged(string? value)
@@ -106,11 +149,13 @@ namespace DriftBuster.Gui.ViewModels
             }
 
             RefreshValidationSummary();
+            OnPropertyChanged(nameof(SummaryText));
             _owner.NotifyServerToggled(this);
         }
 
         partial void OnScopeChanged(ServerScanScope value)
         {
+            OnPropertyChanged(nameof(SummaryText));
             DebugLog.Trace("ServerSlot", "OnScopeChanged", new { NewScope = value.ToString(), Label });
             _owner.NotifyScopeChanged(this);
         }
@@ -266,6 +311,7 @@ namespace DriftBuster.Gui.ViewModels
 
         private void OnRootsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            OnPropertyChanged(nameof(SummaryText));
             if (_suppressRootEvents)
             {
                 return;

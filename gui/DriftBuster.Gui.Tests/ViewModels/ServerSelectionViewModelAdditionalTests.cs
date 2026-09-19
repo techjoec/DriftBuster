@@ -707,16 +707,11 @@ public sealed class ServerSelectionViewModelAdditionalTests
         var service = new FakeDriftbusterService();
         var toast = new ToastService(action => action());
 
-        var conservativeProfile = new PerformanceProfile(virtualizationThreshold: 10);
-        var conservativeViewModel = new ServerSelectionViewModel(service, toast, performanceProfile: conservativeProfile);
-        conservativeViewModel.UseVirtualizedServerList.Should().BeFalse();
-
         var profile = new PerformanceProfile(virtualizationThreshold: 2);
         var viewModel = new ServerSelectionViewModel(service, toast, performanceProfile: profile);
         var server = viewModel.Servers[0];
 
         viewModel.UseVirtualizedActivityFeed.Should().BeFalse();
-        viewModel.UseVirtualizedServerList.Should().BeTrue();
 
         server.NewRootPath = " ";
         viewModel.AddRootCommand.Execute(server);
