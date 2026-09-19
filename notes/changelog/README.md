@@ -1,5 +1,3 @@
-> Historical note: written when DriftBuster had a Python engine; the product is .NET only.
-
 # DriftBuster Component Changelogs
 
 Each component maintains its own Markdown changelog. Keep entries ordered with
@@ -8,7 +6,7 @@ Velopack builds.
 
 ## Files
 
-- `core.md` — backend detector and Python APIs.
+- `core.md` — backend library (`DriftBuster.Backend`), console tool and PowerShell module.
 - `gui.md` — Avalonia desktop front-end.
 - `installer.md` — Velopack installer packaging specifics.
 - `tooling.md` — scripts, dev tooling, automation helpers.
