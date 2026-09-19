@@ -4,151 +4,165 @@
              xmlns:vm="using:DriftBuster.Gui.ViewModels"
              x:Class="DriftBuster.Gui.Views.HuntView"
              x:DataType="vm:HuntViewModel">
-  <ScrollViewer AllowAutoHide="False">
-    <StackPanel Spacing="24" Margin="0,0,18,0">
+  <!-- Fills the space it is given: the scan bar and rule chips stay put, the findings and the selected one scroll on their own. -->
+  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+    <StackPanel Spacing="2">
+      <TextBlock Classes="heading" Text="Hunt explorer" />
+      <TextBlock Classes="subtitle" Text="Scan a folder for values that change between machines: paths, hosts, connection strings, versions." />
+    </StackPanel>
+
+    <Border Grid.Row="1" Classes="pane">
       <StackPanel Spacing="6">
-        <TextBlock Classes="heading" Text="Hunt explorer" />
-        <TextBlock Classes="subtitle"
-                   Text="Scan directories for dynamic signals and surface contextual metadata." />
-      </StackPanel>
-
-      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="18">
-          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-            <StackPanel Spacing="8" Margin="0,0,12,0">
-              <TextBlock Text="Target path" FontSize="14" FontWeight="SemiBold" />
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                <TextBox PlaceholderText="Directory or file"
-                         Text="{Binding DirectoryPath, Mode=TwoWay}"
-                         automation:AutomationProperties.AutomationId="Hunt.Path"
-                         automation:AutomationProperties.Name="Target path" />
-                <Button Grid.Column="1" Content="Browse" Classes="outline" Click="OnBrowseDirectory" automation:AutomationProperties.AutomationId="Hunt.Browse" />
-              </Grid>
-              <TextBlock Text="{Binding DirectoryError}"
-                         Foreground="{DynamicResource Brush.Accent}"
-                         FontSize="12"
-                         IsVisible="{Binding HasDirectoryError}" />
-            </StackPanel>
-
-            <StackPanel Grid.Column="0" Grid.Row="1" Spacing="8" Margin="0,12,12,0">
-              <TextBlock Text="Excerpt filter" FontSize="14" FontWeight="SemiBold" />
-              <TextBox PlaceholderText="Optional excerpt filter"
-                       Text="{Binding Pattern, Mode=TwoWay}"
-                       automation:AutomationProperties.AutomationId="Hunt.Pattern"
-                       automation:AutomationProperties.Name="Excerpt filter" />
-            </StackPanel>
-
-            <Button Grid.Column="1" Classes="primary"
-                    Grid.RowSpan="2"
-                    Content="Scan"
-                    Command="{Binding RunHuntCommand}"
-                    MinWidth="120"
-                    VerticalAlignment="Bottom"
-                    HorizontalAlignment="Right"
-                    automation:AutomationProperties.AutomationId="Hunt.Scan" />
-          </Grid>
-
-          <ProgressBar Width="180"
+        <Grid ColumnDefinitions="2*,Auto,*,Auto" ColumnSpacing="10">
+          <TextBox PlaceholderText="Folder or file to scan"
+                   Text="{Binding DirectoryPath, Mode=TwoWay}"
+                   automation:AutomationProperties.AutomationId="Hunt.Path"
+                   automation:AutomationProperties.Name="Target path" />
+          <Button Grid.Column="1" Content="Browse" Classes="outline" Click="OnBrowseDirectory" automation:AutomationProperties.AutomationId="Hunt.Browse" />
+          <TextBox Grid.Column="2"
+                   PlaceholderText="Only lines containing… (optional)"
+                   Text="{Binding Pattern, Mode=TwoWay}"
+                   automation:AutomationProperties.AutomationId="Hunt.Pattern"
+                   automation:AutomationProperties.Name="Excerpt filter" />
+          <Button Grid.Column="3" Classes="primary"
+                  Content="Scan"
+                  Command="{Binding RunHuntCommand}"
+                  automation:AutomationProperties.AutomationId="Hunt.Scan" />
+        </Grid>
+        <TextBlock Text="{Binding DirectoryError}"
+                   Foreground="{DynamicResource Brush.Accent}"
+                   FontSize="12"
+                   IsVisible="{Binding HasDirectoryError}" />
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <ProgressBar Width="160"
                        IsVisible="{Binding IsBusy}"
                        IsIndeterminate="True"
                        automation:AutomationProperties.AutomationId="Hunt.Progress"
                        automation:AutomationProperties.Name="Scanning" />
-
-          <Border Classes="notice"
-                  IsVisible="{Binding HasError}">
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <TextBlock Text="⚠"
-                         FontSize="16"
-                         VerticalAlignment="Center" />
-              <TextBlock Text="{Binding ErrorMessage}" FontSize="13" />
-            </StackPanel>
-          </Border>
-
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock Text="{Binding StatusMessage}"
-                       Classes="subtitle"
-                       IsVisible="{Binding HasStatus}" />
-            <Border Background="{DynamicResource Brush.SurfaceMuted}"
-                    Classes="chip"
-                    IsVisible="{Binding HasHits}">
-              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <TextBlock Text="Hits" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding ResultCount}" />
-              </StackPanel>
-            </Border>
-          </StackPanel>
+          <TextBlock Text="{Binding StatusMessage}" Classes="subtitle" IsVisible="{Binding HasStatus}" VerticalAlignment="Center" />
         </StackPanel>
-      </Border>
+        <Border Classes="notice" IsVisible="{Binding HasError}">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
+        </Border>
+      </StackPanel>
+    </Border>
 
-      <Border Classes="surface" Padding="16" CornerRadius="{DynamicResource Radius.Large}">
-        <StackPanel Spacing="18">
-          <TextBlock Text="Findings" FontSize="18" FontWeight="SemiBold" />
-          <TextBlock Classes="subtitle"
-                     Text="Each hit surfaces rule metadata, token highlighting, and the captured excerpt." />
-
-          <ItemsControl ItemsSource="{Binding Hits}" IsVisible="{Binding HasHits}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Background="{DynamicResource Brush.SurfaceMuted}"
-                        BorderBrush="{DynamicResource Brush.Border}"
-                        BorderThickness="{DynamicResource Thickness.Border}"
-                        CornerRadius="{DynamicResource Radius.Medium}"
-                        Padding="18"
-                        Width="300"
-                        Margin="0,0,16,16">
-                  <StackPanel Spacing="10">
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding RuleName}" FontWeight="SemiBold" />
-                      <Border Background="{DynamicResource Brush.Accent}"
-                              CornerRadius="{DynamicResource Radius.Small}"
-                              Padding="8,2"
-                              IsVisible="{Binding HasToken}">
-                        <TextBlock Text="{Binding TokenName}" Foreground="#0B1120" FontSize="12" />
-                      </Border>
-                    </StackPanel>
-                    <TextBlock Text="{Binding Description}" Classes="subtitle" TextWrapping="Wrap" />
-                    <StackPanel Spacing="4">
-                      <TextBlock Text="Path" FontSize="12" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding RelativePath}" Classes="subtitle" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                      <TextBlock Text="Line" FontSize="12" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding LineNumber}" />
-                    </StackPanel>
-                    <Border Background="{DynamicResource Brush.SurfaceMuted}" CornerRadius="{DynamicResource Radius.Small}" Padding="10">
-                      <TextBlock Text="{Binding Excerpt}" TextWrapping="Wrap" />
-                    </Border>
-                  </StackPanel>
+    <!-- Findings per rule: click a rule to show only its findings; search narrows further. -->
+    <StackPanel Grid.Row="2" Spacing="6" IsVisible="{Binding HasHits}">
+      <ItemsControl ItemsSource="{Binding RuleChips}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:HuntRuleChip">
+            <Button Classes="chip"
+                    Classes.selected="{Binding IsSelected}"
+                    Command="{Binding ((vm:HuntViewModel)DataContext).ToggleRuleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    CommandParameter="{Binding}"
+                    ToolTip.Tip="Show only this rule's findings"
+                    automation:AutomationProperties.AutomationId="Hunt.Rule"
+                    automation:AutomationProperties.Name="{Binding Name, StringFormat='Show only {0}'}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Border Classes="count">
+                  <TextBlock Text="{Binding Count}" FontSize="12" FontWeight="SemiBold" />
                 </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <TextBlock Text="No matches yet. Run a scan to populate the findings." 
-                     Classes="subtitle"
-                     HorizontalAlignment="Center"
-                     IsVisible="{Binding HasNoHits}" />
-
-          <Expander Header="Raw JSON"
-                    IsExpanded="False"
-                    IsVisible="{Binding HasRawJson}"
-                    automation:AutomationProperties.AutomationId="Hunt.RawJson"
-                    automation:AutomationProperties.Name="Raw JSON">
-            <Border Background="{DynamicResource Brush.SurfaceAlt}" Padding="16" CornerRadius="{DynamicResource Radius.Medium}">
-              <ScrollViewer MaxHeight="320" AllowAutoHide="False">
-                <TextBlock Text="{Binding RawJson}"
-                           FontFamily="Consolas"
-                           TextWrapping="Wrap" />
-              </ScrollViewer>
-            </Border>
-          </Expander>
-        </StackPanel>
-      </Border>
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 PlaceholderText="Search rules, files or excerpts"
+                 automation:AutomationProperties.AutomationId="Hunt.Search"
+                 automation:AutomationProperties.Name="Search findings" />
+        <Button Grid.Column="1" Content="Show everything" Classes="outline"
+                IsVisible="{Binding HasFilters}"
+                Command="{Binding ClearFiltersCommand}"
+                automation:AutomationProperties.AutomationId="Hunt.ClearFilters" />
+      </Grid>
+      <TextBlock Text="{Binding FilterText}" IsVisible="{Binding HasFilters}" FontWeight="SemiBold" />
     </StackPanel>
-  </ScrollViewer>
+
+    <TabControl Grid.Row="3"
+                SelectedIndex="{Binding ResultTab}"
+                IsVisible="{Binding HasHits}"
+                automation:AutomationProperties.AutomationId="Hunt.Results"
+                automation:AutomationProperties.Name="Results">
+      <TabItem Header="Findings" automation:AutomationProperties.AutomationId="Hunt.Tab.Findings">
+        <Grid ColumnDefinitions="3*,6,2*" MinHeight="220">
+          <Border Classes="pane" Padding="0">
+            <DataGrid x:Name="HitsGrid"
+                      ItemsSource="{Binding VisibleHits}"
+                      SelectedItem="{Binding SelectedHit}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      ContextRequested="OnHitContextRequested"
+                      automation:AutomationProperties.AutomationId="Hunt.Findings"
+                      automation:AutomationProperties.Name="Findings">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Rule" x:DataType="vm:HuntViewModel+HuntHitView" Binding="{Binding RuleName}" Width="Auto" />
+                <DataGridTemplateColumn Header="File" Width="*">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:HuntViewModel+HuntHitView">
+                      <TextBlock Text="{Binding RelativePath}" TextTrimming="PathSegmentEllipsis" ToolTip.Tip="{Binding RelativePath}" VerticalAlignment="Center" Margin="12,0" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Line" x:DataType="vm:HuntViewModel+HuntHitView" Binding="{Binding LineNumber}" Width="Auto" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Border>
+          <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+          <!-- The selected finding in full. -->
+          <Border Grid.Column="2" Classes="pane" IsVisible="{Binding HasSelectedHit}">
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding SelectedHit.RuleName, FallbackValue=''}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Border Classes="badge accent" IsVisible="{Binding SelectedHit.HasToken, FallbackValue=False}" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding SelectedHit.TokenName, FallbackValue=''}" />
+                </Border>
+              </StackPanel>
+              <TextBlock Grid.Row="1" Text="{Binding SelectedHit.Description, FallbackValue=''}" Classes="subtitle" TextWrapping="Wrap" />
+              <SelectableTextBlock Grid.Row="2" Text="{Binding SelectedHit.Location, FallbackValue=''}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <Border Grid.Row="3" Background="{DynamicResource Brush.SurfaceMuted}" CornerRadius="{DynamicResource Radius.Small}" Padding="10">
+                <ScrollViewer AllowAutoHide="False">
+                  <SelectableTextBlock Text="{Binding SelectedHit.FullExcerpt, FallbackValue=''}" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,14,0" />
+                </ScrollViewer>
+              </Border>
+              <WrapPanel Grid.Row="4">
+                <Button Content="Copy location" Classes="outline" Margin="0,0,6,6" Click="OnCopyLocation" automation:AutomationProperties.AutomationId="Hunt.CopyLocation" />
+                <Button Content="Copy excerpt" Classes="outline" Margin="0,0,6,6" Click="OnCopyExcerpt" automation:AutomationProperties.AutomationId="Hunt.CopyExcerpt" />
+                <Button Content="Open folder" Classes="outline" Margin="0,0,6,6" Click="OnOpenFolder" automation:AutomationProperties.AutomationId="Hunt.OpenFolder" />
+              </WrapPanel>
+            </Grid>
+          </Border>
+        </Grid>
+      </TabItem>
+      <TabItem Header="JSON" IsVisible="{Binding HasRawJson}" automation:AutomationProperties.AutomationId="Hunt.Tab.Json">
+        <TextBox Text="{Binding RawJson, Mode=OneWay}"
+                 IsReadOnly="True"
+                 AcceptsReturn="True"
+                 FontFamily="Consolas"
+                 TextWrapping="NoWrap"
+                 automation:AutomationProperties.AutomationId="Hunt.RawJson"
+                 automation:AutomationProperties.Name="Raw JSON" />
+      </TabItem>
+    </TabControl>
+
+    <TextBlock Grid.Row="3"
+               Text="No findings yet. Pick a folder and scan."
+               Classes="subtitle"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Top"
+               Margin="0,24,0,0"
+               IsVisible="{Binding HasNoHits}" />
+  </Grid>
 </UserControl>

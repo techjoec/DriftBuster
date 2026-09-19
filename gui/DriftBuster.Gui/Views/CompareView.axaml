@@ -9,20 +9,6 @@
     <KeyBinding Gesture="Shift+F8" Command="{Binding PreviousDifferenceCommand}" />
   </UserControl.KeyBindings>
   <UserControl.Styles>
-    <!-- A server chip reads like text and acts as a filter toggle. -->
-    <Style Selector="Button.server-chip">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
-      <Setter Property="Padding" Value="10,4" />
-      <Setter Property="Margin" Value="0,0,8,6" />
-      <Setter Property="MinWidth" Value="0" />
-      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Small}" />
-    </Style>
-    <Style Selector="Button.server-chip.focused">
-      <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-    </Style>
     <Style Selector="TextBlock.dot">
       <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
     </Style>
@@ -37,12 +23,6 @@
     </Style>
     <Style Selector="TextBlock.file-summary.differs">
       <Setter Property="Foreground" Value="{DynamicResource Brush.DiffersText}" />
-    </Style>
-    <Style Selector="Border.count">
-      <Setter Property="Background" Value="{DynamicResource Brush.DiffersBackground}" />
-      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Small}" />
-      <Setter Property="Padding" Value="6,1" />
-      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Grid.ignored, Border.ignored">
       <Setter Property="Opacity" Value="0.55" />
@@ -85,8 +65,8 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:CompareServerViewModel">
-              <Button Classes="server-chip"
-                      Classes.focused="{Binding IsFocused}"
+              <Button Classes="chip"
+                      Classes.selected="{Binding IsFocused}"
                       Command="{Binding ((vm:CompareViewModel)DataContext).FocusServerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       CommandParameter="{Binding}"
                       ToolTip.Tip="Show only what differs on this server"

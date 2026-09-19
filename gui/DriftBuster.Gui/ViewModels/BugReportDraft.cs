@@ -25,25 +25,44 @@ namespace DriftBuster.Gui.ViewModels
         private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
         public BugReportDraft(CompareContext context)
+            : this(
+                (context ?? throw new ArgumentNullException(nameof(context))).Path,
+                context.Key ?? string.Empty,
+                context.File.Format,
+                context.File.Mode,
+                // A secret goes out as its marker even when the user has it unmasked on screen.
+                context.Row?.Cells.ToDictionary(cell => cell.HostLabel, cell => cell.IsSecret ? (cell.IsDifferent ? "•••• (differs)" : "•••• (same)") : cell.Text, StringComparer.Ordinal)
+                    ?? new Dictionary<string, string>(StringComparer.Ordinal),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["summary"] = context.File.Summary,
+                    ["file_name"] = context.File.FileName,
+                    ["application"] = context.File.AppName,
+                    ["groups"] = string.Join(", ", context.Row?.Groups ?? []),
+                    ["ignored"] = (context.Row?.Ignored ?? context.File.Ignored) ? "yes" : "no",
+                    ["differs"] = (context.Row?.RawDiffers ?? context.File.RawDiffers) ? "yes" : "no",
+                    ["value_masked"] = context.Row?.Cells.Any(cell => cell.IsSecret) == true ? "yes" : "no",
+                })
         {
-            ArgumentNullException.ThrowIfNull(context);
-            SourcePath = context.Path;
-            Setting = context.Key ?? string.Empty;
-            Format = context.File.Format;
-            Mode = context.File.Mode;
-            // A secret goes out as its marker even when the user has it unmasked on screen.
-            Values = context.Row?.Cells.ToDictionary(cell => cell.HostLabel, cell => cell.IsSecret ? (cell.IsDifferent ? "•••• (differs)" : "•••• (same)") : cell.Text, StringComparer.Ordinal)
-                ?? new Dictionary<string, string>(StringComparer.Ordinal);
-            Metadata = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["summary"] = context.File.Summary,
-                ["file_name"] = context.File.FileName,
-                ["application"] = context.File.AppName,
-                ["groups"] = string.Join(", ", context.Row?.Groups ?? []),
-                ["ignored"] = (context.Row?.Ignored ?? context.File.Ignored) ? "yes" : "no",
-                ["differs"] = (context.Row?.RawDiffers ?? context.File.RawDiffers) ? "yes" : "no",
-                ["value_masked"] = context.Row?.Cells.Any(cell => cell.IsSecret) == true ? "yes" : "no",
-            };
+        }
+
+        /// <summary>A report about anything with a path: the source path (relative, no host), what in it, and what is known.</summary>
+        public BugReportDraft(
+            string sourcePath,
+            string setting,
+            string format,
+            string mode,
+            IReadOnlyDictionary<string, string> values,
+            IReadOnlyDictionary<string, string> metadata,
+            string? category = null)
+        {
+            SourcePath = sourcePath ?? throw new ArgumentNullException(nameof(sourcePath));
+            Setting = setting ?? string.Empty;
+            Format = format ?? string.Empty;
+            Mode = mode ?? string.Empty;
+            Values = values ?? throw new ArgumentNullException(nameof(values));
+            Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+            _category = category is not null && Categories.Contains(category, StringComparer.Ordinal) ? category : Categories[0];
             _payloadText = Payload;
         }
 
@@ -54,6 +73,7 @@ namespace DriftBuster.Gui.ViewModels
             "Wrong value type",
             "Not a configuration file",
             "Secret not masked, or masked wrongly",
+            "Hunt finding is not a real secret or value (false positive)",
             "Something else",
         ];
 
