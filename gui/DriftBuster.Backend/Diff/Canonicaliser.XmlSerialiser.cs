@@ -11,12 +11,10 @@ public static partial class Canonicaliser
     private static readonly Comparer<string> CodePointOrder = Comparer<string>.Create(PathText.CompareCodePoints);
 
     /// <summary>
-    /// <c>_normalise</c> then <c>ET.tostring(root, encoding="unicode")</c> with written names: <c>&lt;name</c>, the
-    /// element's namespace declarations, attributes sorted by expanded name, then <c> /&gt;</c> when there is neither
-    /// text nor a child, otherwise <c>&gt;</c>, text, children and the end tag; every node is followed by its tail.
-    /// Comments are written <c>&lt;!--text--&gt;</c> without escaping. Each start tag and comment, and the end tag of an
-    /// element with children, starts a new line indented two spaces per depth, so a line diff shows the drifted element
-    /// rather than the whole document. Walked on an explicit stack.
+    /// Written names: <c>&lt;name</c>, the element's namespace declarations, attributes sorted by expanded name, then <c> /&gt;</c> when
+    /// empty, else <c>&gt;</c>, text, children and end tag; each node followed by its tail. Comments are unescaped. Each start tag,
+    /// comment and end tag of an element with children starts a new line indented two spaces per depth, so a line diff shows the
+    /// drifted element. Explicit stack.
     /// </summary>
     private static string SerialiseXml(XElement root)
     {
@@ -78,7 +76,7 @@ public static partial class Canonicaliser
             AppendEscapedAttribute(builder, declaration.Uri).Append('"');
         }
 
-        // sorted(element.attrib.items()): keys are unique expanded names ("{uri}local" or "local").
+        // Keys are unique expanded names ("{uri}local" or "local").
         foreach (var attribute in element.Attributes().OrderBy(attribute => attribute.Name.ToString(), CodePointOrder))
         {
             builder.Append(' ').Append(WrittenName(attribute)).Append("=\"");
@@ -105,7 +103,7 @@ public static partial class Canonicaliser
 
     private static string WrittenName(XObject node) => node.Annotation<XmlWrittenName>()!.QualifiedName;
 
-    // Only values that are entirely Python white space collapse; any other value keeps its padding.
+    // Only whitespace-only values collapse; others keep their padding.
     private static string CollapseWhitespace(string value) => EngineText.Strip(value).Length == 0 ? string.Empty : value;
 
     // The tail: the character data between this node and the next non-text sibling.
@@ -120,7 +118,7 @@ public static partial class Canonicaliser
         AppendEscapedText(builder, CollapseWhitespace(tail.ToString()));
     }
 
-    // _escape_cdata: & < > only.
+    // & < > only.
     private static void AppendEscapedText(StringBuilder builder, string text)
     {
         foreach (var ch in text)
@@ -135,7 +133,7 @@ public static partial class Canonicaliser
         }
     }
 
-    // _escape_attrib: & < > " plus CR, LF and tab as numeric references (&#09; keeps its leading zero).
+    // & < > " plus CR, LF and tab as numeric references (&#09; keeps its leading zero).
     private static StringBuilder AppendEscapedAttribute(StringBuilder builder, string text)
     {
         foreach (var ch in text)

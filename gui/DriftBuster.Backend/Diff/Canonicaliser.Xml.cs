@@ -11,27 +11,18 @@ public static partial class Canonicaliser
     private const string DoctypeKeyword = "<!DOCTYPE";
 
     /// <summary>
-    /// <c>canonicalise_xml</c>: the XML declaration and DOCTYPE captured verbatim, the rest parsed (comments kept) and
-    /// re-serialised on one line with attributes sorted, white-space-only attribute values, text, tails and comments
-    /// collapsed to empty, and the captured prolog joined in front with LF. A payload that does not parse goes through
-    /// <see cref="CanonicaliseText"/>.
+    /// XML declaration and DOCTYPE kept verbatim; the rest parsed (comments kept) and re-serialised with sorted attributes,
+    /// whitespace-only attribute values, text and comments collapsed to empty, and the prolog joined in front with LF. A payload that
+    /// does not parse goes through <see cref="CanonicaliseText"/>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Namespace prefixes are kept as written. ElementTree serialises every namespaced name with a prefix
-    /// of its own choosing (<c>ns0</c>, <c>ns1</c>, ... in first-use order, or a well-known prefix such as <c>xsi</c>),
-    /// declares every used namespace once on the root sorted by that prefix and drops unused declarations; a QName
-    /// inside an attribute value then points at a prefix that no longer exists. The canonicaliser writes element and attribute
-    /// names with their original prefixes and keeps each <c>xmlns</c>/<c>xmlns:p</c> declaration on the element that
-    /// made it, sorted by prefix and before the attributes. Attributes are ordered by <c>{uri}local</c>, so
-    /// renaming prefixes and moving the declarations maps one output onto the other.
+    /// Namespace prefixes stay as written and each <c>xmlns</c> declaration stays on its element (sorted by prefix, before the attributes),
+    /// so QNames inside attribute values keep pointing at a real prefix. Attributes order by <c>{uri}local</c>.
     /// </para>
     /// <para>
-    /// A document whose DOCTYPE reaches the parser (one not at the start, or one the bracket scan could not close) and
-    /// declares entities is refused, so it canonicalises as text; ElementTree would expand the entities. Documents
-    /// nested deeper than a recursion limit and text holding unpaired surrogates would fail a recursive serialiser; the
-    /// canonicaliser normalises and serialises on an explicit stack and
-    /// treats a surrogate as a parse failure.
+    /// A DOCTYPE that reaches the parser and declares entities is refused, so such a document canonicalises as text and no entity is
+    /// expanded. An unpaired surrogate counts as a parse failure. Serialisation uses an explicit stack.
     /// </para>
     /// </remarks>
     public static string CanonicaliseXml(string payload)
@@ -81,8 +72,7 @@ public static partial class Canonicaliser
         return prolog.Length > 0 ? prolog + "\n" + serialised : serialised;
     }
 
-    // re.compile(r"<\?xml[^>]*\?>", re.IGNORECASE).match(text): "<?xml" in any ASCII case (no other code point folds to
-    // x, m or l), then the first '>' must directly follow a '?' that is not part of "<?xml". Returns the match end or 0.
+    // "<?xml" in any ASCII case, then the first '>' must directly follow a '?' outside "<?xml"; the match end, or 0.
     private static int MatchXmlDeclaration(string text)
     {
         if (text.Length < 7 || text[0] != '<' || text[1] != '?' || (text[2] | 0x20) != 'x' || (text[3] | 0x20) != 'm' || (text[4] | 0x20) != 'l')
@@ -94,7 +84,7 @@ public static partial class Canonicaliser
         return close > 5 && text[close - 1] == '?' ? close + 1 : 0;
     }
 
-    // text.upper().startswith("<!DOCTYPE"), with str.upper's full mapping (one code point may upper-case to several).
+    // Upper-cased (full mapping) text starts with "<!DOCTYPE".
     private static bool UpperStartsWithDoctype(string text)
     {
         var upper = new StringBuilder();

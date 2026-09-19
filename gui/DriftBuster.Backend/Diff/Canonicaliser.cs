@@ -9,7 +9,7 @@ public static partial class Canonicaliser
 {
     private const char Bom = '\uFEFF';
 
-    /// <summary>The content types <c>_NORMALISERS</c> knows.</summary>
+    /// <summary>The content types with a normaliser.</summary>
     public static IReadOnlyList<string> ContentTypes { get; } = ["text", "json", "xml"];
 
     /// <summary>
@@ -40,9 +40,8 @@ public static partial class Canonicaliser
     internal static ArgumentException UnsupportedContentType(string contentType) => new($"Unsupported content_type: {contentType}", nameof(contentType));
 
     /// <summary>
-    /// <c>canonicalise_text</c>: every leading U+FEFF removed; U+2028, U+2029 and U+0085 become LF; CRLF then CR become
-    /// LF; trailing Python white space (<c>str.rstrip</c>) removed from every line; lines joined with LF. A trailing line
-    /// break therefore survives as a final empty line.
+    /// Leading U+FEFF removed; U+2028, U+2029 and U+0085 become LF; CRLF then CR become LF; trailing whitespace
+    /// (<see cref="EngineText.IsSpace"/>) trimmed per line; lines joined with LF (a trailing break survives as a final empty line).
     /// </summary>
     public static string CanonicaliseText(string payload)
     {

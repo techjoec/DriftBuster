@@ -10,14 +10,13 @@ namespace DriftBuster.Backend.Diff;
 /// </summary>
 public static class DiffBuilder
 {
-    /// <summary>Seam for the UTC clock the summaries stamp themselves with.</summary>
+    /// <summary>UTC clock for summary timestamps (test seam).</summary>
     internal static Func<DateTimeOffset> UtcNow { get; set; } = static () => DateTimeOffset.UtcNow;
 
     /// <summary>
-    /// Both sides canonicalised for <paramref name="contentType"/> (an unknown type raises
-    /// <see cref="ArgumentException"/>), split into lines, redacted line by line when a redactor resolves,
-    /// diffed with <see cref="LineDiff"/> into a unified diff (<see cref="UnifiedDiffWriter"/>, <paramref name="contextLines"/>
-    /// of context) joined by LF, counted over the same change regions, and clamped by <see cref="DiffSafetyLimits"/>.
+    /// Both sides canonicalised for <paramref name="contentType"/> (unknown types throw <see cref="ArgumentException"/>), split into
+    /// lines, redacted per line when a redactor resolves, diffed (<see cref="LineDiff"/>, <see cref="UnifiedDiffWriter"/>) with
+    /// <paramref name="contextLines"/> of context, counted, and clamped by <see cref="DiffSafetyLimits"/>.
     /// </summary>
     public static DiffArtifact BuildUnifiedDiff(
         string before,
@@ -82,7 +81,7 @@ public static class DiffBuilder
     private static List<string> ApplyRedaction(IReadOnlyList<string> lines, RedactionFilter? redactor)
         => redactor is null ? lines.ToList() : lines.Select(redactor.Apply).ToList();
 
-    /// <summary><c>render_unified_diff</c>: the diff text of <see cref="BuildUnifiedDiff"/>.</summary>
+    /// <summary>The diff text of <see cref="BuildUnifiedDiff"/>.</summary>
     public static string RenderUnifiedDiff(
         string before,
         string after,
@@ -96,8 +95,8 @@ public static class DiffBuilder
         => BuildUnifiedDiff(before, after, contentType, fromLabel, toLabel, null, redactor, maskTokens, placeholder, contextLines).Diff;
 
     /// <summary>
-    /// <c>build_binary_diff</c>: digests stand in for the canonical payloads; the diff names the label (default
-    /// <c>binary</c>), both sizes and digests, and the signed byte delta when the sizes differ.
+    /// Digests stand in for the payloads; the diff names the label (default <c>binary</c>), both sizes and digests, and the signed
+    /// byte delta when sizes differ.
     /// </summary>
     public static DiffArtifact BuildBinaryDiff(
         byte[] before,
@@ -151,7 +150,6 @@ public static class DiffBuilder
         };
     }
 
-    /// <summary><c>summarise_diff_result</c>.</summary>
     public static DiffResultSummary SummariseDiffResult(
         DiffArtifact result,
         IReadOnlyList<string>? versions = null,
@@ -164,8 +162,8 @@ public static class DiffBuilder
     }
 
     /// <summary>
-    /// <c>summarise_diff_results</c>: one comparison per result; name lists, when given, must match the results in
-    /// length. An empty result list or a length mismatch raises <see cref="ArgumentException"/>.
+    /// One comparison per result; name lists, when given, must match the results in length. No results or a length mismatch throws
+    /// <see cref="ArgumentException"/>.
     /// </summary>
     public static DiffResultSummary SummariseDiffResults(
         IReadOnlyList<DiffArtifact> results,
@@ -197,7 +195,7 @@ public static class DiffBuilder
 
     private static DiffResultSummary NewSummary(IReadOnlyList<string>? versions, DiffComparisonSummary[] comparisons)
     {
-        // datetime carries microseconds; drop the sub-microsecond ticks .NET adds.
+        // Microsecond precision.
         var now = UtcNow().ToUniversalTime();
         return new DiffResultSummary
         {
@@ -208,7 +206,6 @@ public static class DiffBuilder
         };
     }
 
-    /// <summary><c>_build_comparison_summary(result, baseline_name, comparison_name)</c>.</summary>
     internal static DiffComparisonSummary BuildComparisonSummary(DiffArtifact result, string? baselineName, string? comparisonName)
     {
         var stats = result.Stats;
@@ -256,7 +253,7 @@ public static class DiffBuilder
         };
     }
 
-    /// <summary><c>diff_summary_to_payload</c>: the JSON-ready mapping, keys in a fixed order.</summary>
+    /// <summary>The JSON-ready summary, keys in a fixed order.</summary>
     public static OrderedDictionary<string, object?> DiffSummaryToPayload(DiffResultSummary summary)
     {
         ArgumentNullException.ThrowIfNull(summary);

@@ -5,15 +5,10 @@ using DriftBuster.Backend.Infrastructure;
 
 namespace DriftBuster.Backend.Diff;
 
-/// <summary>
-/// Replaces known tokens with a placeholder and counts every
-/// replacement per token.
-/// </summary>
+/// <summary>Replaces known tokens with a placeholder and counts every replacement per token.</summary>
 /// <remarks>
-/// Tokens are deduplicated keeping first occurrences, empty tokens dropped, then ordered longest first by code-point
-/// length with ties kept in their given order (Python's stable <c>sort(key=len, reverse=True)</c>). Matching is
-/// <c>str.count</c> / <c>str.replace</c>: non-overlapping, left to right, on whole code points, so a token never
-/// matches half of a surrogate pair.
+/// Tokens are de-duplicated (first kept), empties dropped, then ordered longest first by code points, ties in given order.
+/// Matches are non-overlapping, left to right, on code-point boundaries, so a token never matches half a surrogate pair.
 /// </remarks>
 public class RedactionFilter
 {
@@ -33,15 +28,13 @@ public class RedactionFilter
             .ToArray();
     }
 
-    /// <summary>The tokens as given.</summary>
     public IReadOnlyList<string> Tokens { get; }
 
     public string Placeholder { get; }
 
-    /// <summary><c>_ordered_tokens</c>: unique, non-empty, longest first.</summary>
+    /// <summary>Unique, non-empty tokens, longest first.</summary>
     public IReadOnlyList<string> OrderedTokens { get; }
 
-    /// <summary><c>has_hits</c>.</summary>
     public bool HasHits => _hits.Count > 0;
 
     /// <summary>Returns <paramref name="text"/> with each configured token replaced by the placeholder.</summary>
@@ -69,15 +62,14 @@ public class RedactionFilter
         return result;
     }
 
-    /// <summary><c>stats()</c>: a copy of the per-token counts in first-hit order.</summary>
+    /// <summary>A copy of the per-token counts in first-hit order.</summary>
     public OrderedDictionary<string, int> Stats() => new(_hits, StringComparer.Ordinal);
 
-    /// <summary><c>reset()</c>.</summary>
     public void Reset() => _hits.Clear();
 
     /// <summary>
-    /// <c>resolve_redactor</c>: the explicit redactor, or a new filter over <paramref name="maskTokens"/>, or null when
-    /// neither is given. Supplying both (with at least one mask token) raises <see cref="ArgumentException"/>.
+    /// The explicit redactor, or a new filter over <paramref name="maskTokens"/>, or null when neither is given. Both at once (with a
+    /// token) throws <see cref="ArgumentException"/>.
     /// </summary>
     public static RedactionFilter? Resolve(RedactionFilter? redactor = null, IReadOnlyList<string>? maskTokens = null, string placeholder = DefaultPlaceholder)
     {
@@ -96,11 +88,8 @@ public class RedactionFilter
     }
 
     /// <summary>
-    /// <c>redact_data</c> over Python's runtime categories rather than the static .NET type: strings are redacted; a dictionary
-    /// becomes an ordered dictionary keyed by <c>str(key)</c>; an array of any element type (the tuple) stays an
-    /// <see cref="object"/> array; a set of any element type (<see cref="ISet{T}"/> or <see cref="IReadOnlySet{T}"/>) stays a
-    /// set; a byte array (<c>bytes</c>) is returned unchanged; a list and any other enumerable become a list; everything else
-    /// is returned unchanged.
+    /// Redacts strings inside any value: dictionaries become ordered dictionaries with string keys, object arrays stay arrays, sets
+    /// stay sets, byte arrays are unchanged, lists and other enumerables become lists, everything else is unchanged.
     /// </summary>
     public static object? RedactData(object? data, RedactionFilter redactor)
     {

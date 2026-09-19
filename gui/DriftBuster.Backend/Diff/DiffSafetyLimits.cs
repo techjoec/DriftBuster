@@ -7,27 +7,24 @@ using DriftBuster.Backend.Infrastructure;
 namespace DriftBuster.Backend.Diff;
 
 /// <summary>
-/// <c>_enforce_diff_safety_limits</c> and the <c>safety_limits</c> mapping it returns when anything was clamped:
-/// <c>thresholds</c> always, then <c>canonical</c> (<c>before</c> and/or <c>after</c>) and <c>diff</c> when those were
-/// truncated. Sizes are UTF-8 byte counts; digests are taken over the full payload before clamping.
+/// Clamping for diff output, and the <c>safety_limits</c> mapping when anything was clamped: <c>thresholds</c> always, then
+/// <c>canonical</c> (<c>before</c>/<c>after</c>) and <c>diff</c> when truncated. Sizes are UTF-8 bytes; digests cover the full payload.
 /// </summary>
-/// <remarks>
-/// An unpaired surrogate is encoded as U+FFFD instead of aborting the diff, which the strict UTF-8 codec would do.
-/// </remarks>
+/// <remarks>An unpaired surrogate is encoded as U+FFFD rather than failing the diff.</remarks>
 public sealed class DiffSafetyLimits
 {
-    /// <summary><c>_SAFE_DIFF_MAX_CANONICAL_BYTES</c>: 256 KiB per canonical payload.</summary>
+    /// <summary>Per canonical payload.</summary>
     public const int DefaultMaxCanonicalBytes = 256 * 1024;
 
-    /// <summary><c>_SAFE_DIFF_MAX_DIFF_BYTES</c>: 128 KiB of unified diff output.</summary>
+    /// <summary>Unified diff output.</summary>
     public const int DefaultMaxDiffBytes = 128 * 1024;
 
-    /// <summary><c>_SAFE_DIFF_MAX_DIFF_LINES</c>: 600 rendered diff lines.</summary>
+    /// <summary>Rendered diff lines.</summary>
     public const int DefaultMaxDiffLines = 600;
 
     private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
-    // bytes.decode("utf-8", "ignore"): invalid and truncated sequences vanish.
+    // UTF-8 decode that drops invalid and truncated sequences.
     private static readonly Encoding Utf8Ignore = Encoding.GetEncoding(
         "utf-8",
         EncoderFallback.ReplacementFallback,
@@ -146,10 +143,7 @@ public sealed class DiffSafetyLimits
         return payload;
     }
 
-    /// <summary>
-    /// <c>_enforce_diff_safety_limits(canonical_before, canonical_after, diff_text)</c>: the inputs unchanged and null
-    /// limits when nothing exceeds a threshold, otherwise the clamped values and the limits.
-    /// </summary>
+    /// <summary>The inputs and null limits when nothing exceeds a threshold, otherwise the clamped values and the limits.</summary>
     public static (string Before, string After, string Diff, DiffSafetyLimits? Limits) Enforce(string canonicalBefore, string canonicalAfter, string diffText)
     {
         ArgumentNullException.ThrowIfNull(canonicalBefore);
@@ -182,10 +176,9 @@ public sealed class DiffSafetyLimits
         return (clampedBefore, clampedAfter, clampedDiff, limits);
     }
 
-    /// <summary><c>_digest(value)</c>: <c>sha256:</c> and the lower-case hex SHA-256 of the UTF-8 bytes.</summary>
+    /// <summary><c>sha256:</c> plus the lower-case hex SHA-256 of the UTF-8 bytes.</summary>
     public static string Digest(string value) => DigestBytes(Utf8.GetBytes(value));
 
-    /// <summary><c>_digest_bytes(payload)</c>.</summary>
     public static string DigestBytes(byte[] payload)
         => "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(payload));
 
@@ -268,7 +261,7 @@ public sealed class DiffSafetyLimits
         return (AppendNotice(workingText, notice), info);
     }
 
-    // _append_notice: strip trailing LF characters, then the notice on its own line (or alone when nothing is left).
+    // Trailing LFs stripped, then the notice on its own line (or alone when nothing is left).
     private static string AppendNotice(string text, string notice)
     {
         var stripped = text.TrimEnd('\n');

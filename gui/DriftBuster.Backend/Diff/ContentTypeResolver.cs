@@ -10,16 +10,12 @@ namespace DriftBuster.Backend.Diff;
 /// </summary>
 public static class ContentTypeResolver
 {
-    /// <summary>The content type for text that is not XML.</summary>
     public const string Text = "text";
 
-    /// <summary>The content type for XML documents.</summary>
     public const string Xml = "xml";
 
-    /// <summary>The content type for JSON documents.</summary>
     public const string Json = "json";
 
-    /// <summary>The canonicaliser for a catalog format.</summary>
     public static string FromCatalogFormat(string? catalogFormat) => catalogFormat switch
     {
         "structured-config-xml" or "xml" => Xml,

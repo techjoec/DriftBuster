@@ -25,14 +25,9 @@ public static partial class Canonicaliser
     }
 
     /// <summary>
-    /// <c>canonicalise_json</c>: empty or all-white-space input gives an empty string; text <c>json.loads</c> accepts
-    /// (after <c>str.strip</c>) is re-serialised as <c>json.dumps(parsed, ensure_ascii=False, sort_keys=True, indent=2)</c>;
-    /// anything else goes through <see cref="CanonicaliseText"/>.
+    /// Empty or whitespace-only input gives ""; trimmed text that parses (<see cref="EngineJson"/>) is re-serialised with sorted keys,
+    /// indent 2, non-ASCII kept; anything else goes through <see cref="CanonicaliseText"/>, including documents past the decoder limits.
     /// </summary>
-    /// <remarks>
-    /// A document past 4300 integer digits or past the nesting limit is refused by <see cref="EngineJson"/>, and the
-    /// canonicaliser falls back to text like any other undecodable payload.
-    /// </remarks>
     public static string CanonicaliseJson(string payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
@@ -51,21 +46,17 @@ public static partial class Canonicaliser
     }
 
     /// <summary>
-    /// The C encoder's output for <c>json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2)</c>: ", " never
-    /// appears (items end with "," and a new line), keys follow ": ", dictionary items are ordered by key code point,
-    /// empty containers are "{}" and "[]", floats use <c>float.__repr__</c> with NaN, Infinity and -Infinity spelled
-    /// as JavaScript does. Nesting is walked on an explicit stack. With <paramref name="indent"/> false the output is
-    /// <c>json.dumps(value, ensure_ascii=False, sort_keys=True)</c> instead: one line, items separated by ", ". With
-    /// <paramref name="ensureAscii"/> the strings are escaped as <c>ensure_ascii=True</c> escapes them (the default of
-    /// <c>json.dumps</c>): every UTF-16 unit outside space to "~" that has no short escape becomes <c>\uXXXX</c> in lower-case hex.
+    /// JSON with sorted keys (code-point order): indented output uses "," line ends and ": " after keys; empty containers are "{}"
+    /// and "[]"; floats in shortest round-trip form with NaN/Infinity/-Infinity. Without <paramref name="indent"/>, one line with ", "
+    /// separators. With <paramref name="ensureAscii"/>, every UTF-16 unit outside space..~ without a short escape becomes lower-case
+    /// <c>\uXXXX</c>. Explicit stack.
     /// </summary>
     internal static string DumpsSorted(object? value, bool indent = true, bool ensureAscii = false)
         => Dumps(value, indent, ensureAscii, sortKeys: true);
 
     /// <summary>
-    /// <see cref="DumpsSorted"/> with <paramref name="sortKeys"/> false: <c>json.dumps(value, ensure_ascii=..., indent=...)</c>, dictionary
-    /// items in insertion order. A container nested <paramref name="maxIndentDepth"/> levels below the document or deeper is written on one
-    /// line, as without <paramref name="indent"/> (the indented layout grows with the square of the nesting depth).
+    /// <see cref="DumpsSorted"/> with optional key sorting (insertion order otherwise). Containers <paramref name="maxIndentDepth"/> levels
+    /// deep or deeper are written on one line, since the indented layout grows with the square of the depth.
     /// </summary>
     internal static string Dumps(object? value, bool indent, bool ensureAscii, bool sortKeys, int maxIndentDepth = int.MaxValue)
     {
@@ -174,10 +165,8 @@ public static partial class Canonicaliser
         _ => throw new ArgumentException($"Unsupported JSON value type {value.GetType()}", nameof(value)),
     };
 
-    // escape_unicode (ensure_ascii=False): quote and backslash escaped, \b \f \n \r \t by name, other C0 controls as
-    // \u00XX in lower-case hex; everything else, DEL, U+2028 and unpaired surrogates included, is written as is.
-    // py_encode_basestring_ascii (ensure_ascii=True): the same short escapes, and every other unit outside " "-"~" (DEL, every
-    // non-ASCII unit, each half of a surrogate pair) as \uXXXX in lower-case hex.
+    // Quote and backslash escaped, \b \f \n \r \t by name, other C0 controls as lower-case \u00XX; with ensureAscii also every other
+    // unit outside space..~ (DEL, non-ASCII, each surrogate half). Without it, DEL, U+2028 and unpaired surrogates pass through.
     private static StringBuilder AppendJsonString(StringBuilder builder, string text, bool ensureAscii)
     {
         builder.Append('"');
